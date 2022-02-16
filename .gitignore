@@ -3,3 +3,4 @@ venv/
 .flaskenv
 __pycache__/
 .vscode/
+flask_session/

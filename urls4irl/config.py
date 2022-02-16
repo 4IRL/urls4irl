@@ -10,3 +10,5 @@ class Config:
     FLASK_ENV = environ.get("FLASK_ENV")
     DEBUG = "True"
     SECRET_KEY = environ.get("SECRET_KEY")
+    SESSION_PERMANENT = "False"
+    SESSION_TYPE = "filesystem"

@@ -1,1 +1,20 @@
-<h1>REH</h1>
+{% extends "layout.html" %}
+{% block content %}
+
+{% if user %}
+<h1>Welcome {{ user }}</h1>
+{% endif %}
+
+<div class="d-flex justify-content-center flex-column">
+            
+    <div class="btn-group">
+        <a class="btn btn-primary" href="{{url_for('login')}}">Login</a>
+        <a class="btn btn-primary" href="{{url_for('register_user')}}">Register</a>
+    </div>
+</div>
+
+{% if user %}
+<a class="btn btn-primary" href="{{url_for('logout')}}">Logout?</a>
+{% endif %}
+
+{% endblock %}
