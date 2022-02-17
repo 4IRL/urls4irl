@@ -1,3 +1,4 @@
+from atexit import register
 from flask import render_template, url_for, redirect, flash, session
 from urls4irl import app
 from urls4irl.forms import UserRegistrationForm, LoginForm
@@ -52,6 +53,8 @@ def register_user():
         print(register_form.username.data)
         print(register_form.email.data)
         print(register_form.password.data)
+        flash(f"Account created for {register_form.username.data}!", "success")
+        return redirect(url_for("home", user=register_form.username.data))
 
     return render_template('register_user.html', register_form=register_form)
 
