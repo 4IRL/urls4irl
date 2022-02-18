@@ -3,6 +3,9 @@ from flask import render_template, url_for, redirect, flash, session
 from urls4irl import app
 from urls4irl.forms import UserRegistrationForm, LoginForm
 from urls4irl.helpers import login_required
+from urls4irl.models import User
+
+#TODO Import User Model and add in account creation
 
 
 @app.route('/')
