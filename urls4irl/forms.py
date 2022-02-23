@@ -1,15 +1,17 @@
 """
 Forms that are needed to be built here:
-User registration form
-Login Form
 UTub building form
-URL Creation form?
+URL Creation form
+Tag form?
 
 """
 
+from msilib.schema import _Validation_records
+from flask import Flask
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, InputRequired
+from wtforms.validators import DataRequired, Length, Email, EqualTo, InputRequired, ValidationError
+from urls4irl.models import User
 
 
 class UserRegistrationForm(FlaskForm):
@@ -24,14 +26,28 @@ class UserRegistrationForm(FlaskForm):
         submit (SubmitField): Represents the button to submit the form
     """
 
-    username = StringField('Username', validators=[DataRequired(), Length(min=4, max=20)])
-    email = StringField('Email', validators=[DataRequired(), Email()])
-    confirm_email = StringField('Confirm Email', validators=[DataRequired(), EqualTo('email')])
-    password = PasswordField('Password', validators=[DataRequired(), Length(min=5, max=28)])
-    confirm_password = PasswordField('Confirm Password', validators=[DataRequired(), EqualTo('password')])
+    username = StringField('Username', validators=[InputRequired(), Length(min=4, max=20)])
+    email = StringField('Email', validators=[InputRequired(), Email()])
+    confirm_email = StringField('Confirm Email', validators=[InputRequired(), EqualTo('email')])
+    password = PasswordField('Password', validators=[InputRequired(), Length(min=12, max=30)])
+    confirm_password = PasswordField('Confirm Password', validators=[InputRequired(), EqualTo('password')])
 
     submit = SubmitField('Register')
 
+    def validate_username(self, username):
+        """Validates username is unique in the db"""
+        username_exists = User.query.filter_by(username=username.data).first()
+
+        if username_exists:
+            raise ValidationError('That username is already taken. Please choose another.')
+
+    def validate_email(self, email):
+        """Validates username is unique in the db"""
+        email_exists = User.query.filter_by(email=email.data).first()
+
+        if email_exists:
+            raise ValidationError('That email address is already in use.')
+        
 
 class LoginForm(FlaskForm):
     """Form to login users. Inherits from FlaskForm. All fields require data.
@@ -42,9 +58,19 @@ class LoginForm(FlaskForm):
         submit (Submitfield): Represents the submit button to submit the form
     """
 
-    username = StringField('Username', validators=[DataRequired()])
-    password = PasswordField('Password', validators=[DataRequired()])
+    username = StringField('Username', validators=[InputRequired()])
+    password = PasswordField('Password', validators=[InputRequired()])
 
     submit = SubmitField('Login')
 
 
+class UTubForm(FlaskForm):
+    """Form to create a UTub. Inherits from FlaskForm. All fields require data.
+
+    Fields:
+        name (Stringfield): Maximum 30 chars? TODO
+    """
+    
+    name = StringField('UTub Name', validators=[InputRequired(), Length(min=1, max=30)])
+
+    submit = SubmitField('Create UTub!')
