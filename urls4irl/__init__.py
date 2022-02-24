@@ -11,7 +11,8 @@ app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///urls4irl_db.db"
 Session(app)
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
-
+login_manager.login_view = 'login'  # Where to send user if they aren't logged in but try to access a logged in page
+login_manager.login_message_category = 'info'
 
 
 from urls4irl import routes

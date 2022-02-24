@@ -74,3 +74,23 @@ class UTubForm(FlaskForm):
     name = StringField('UTub Name', validators=[InputRequired(), Length(min=1, max=30)])
 
     submit = SubmitField('Create UTub!')
+
+
+class UTubNewUserForm(FlaskForm):
+    """Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.
+
+    Fields:
+        username (Stringfield): Maximum 30 chars? TODO
+    """
+    
+    username = StringField('Username', validators=[InputRequired(), Length(min=1, max=30)])
+
+    submit = SubmitField('Add to this UTub!')
+
+    def validate_username(self, username):
+        """Validates username is unique in the db"""
+        username_exists = User.query.filter_by(username=username.data).first()
+
+        if not username_exists:
+            raise ValidationError('That user does not exist. Note this is case sensitive.')
+

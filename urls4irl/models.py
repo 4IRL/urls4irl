@@ -5,6 +5,8 @@ Users.
 TODO: UTubs.
 TODO: URLs
 TODO: tags
+
+# https://docs.sqlalchemy.org/en/14/orm/backref.html
 """
 from datetime import datetime
 from urls4irl import db, login_manager
@@ -14,6 +16,19 @@ from flask_login import UserMixin
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
+
+"""
+Represents the Many-to-Many relationship between UTubs and their allowed visitors.
+A new entry is created on creation of a UTub for the creator, and whomver the creator decides to add to the UTub.
+
+To query:
+https://stackoverflow.com/questions/12593421/sqlalchemy-and-flask-how-to-query-many-to-many-relationship/12594203
+"""
+utub_users = db.Table('utub_users',
+    db.Column('utub_id', db.Integer, db.ForeignKey('u_tub.id'), primary_key=True),
+    db.Column('user_id', db.Integer, db.ForeignKey('user.id'), primary_key=True)            
+)
 
 
 class User(db.Model, UserMixin):
@@ -42,4 +57,8 @@ class UTub(db.Model):
     name = db.Column(db.String(30), nullable=False) # Note that multiple UTubs can have the same name, maybe verify this per user?
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    users = db.relationship('User', secondary=utub_users, lazy='subquery', backref=db.backref('users'))
     # links = db.relationship('URLs', backref='urls', lazy='select')
+
+
+

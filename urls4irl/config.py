@@ -12,3 +12,4 @@ class Config:
     SECRET_KEY = environ.get("SECRET_KEY")
     SESSION_PERMANENT = "False"
     SESSION_TYPE = "filesystem"
+    SQLALCHEMY_TRACK_MODIFICATIONS = False

@@ -2,24 +2,47 @@
 {% block content %}
 
 
-<!-- Can get rid of these ASAP, need a splash page for unregistered users -->
-{% if not current_user.is_authenticated %}
-<div class="d-flex justify-content-center flex-row"> 
 
-    <a class="btn btn-primary mx-3" href="{{url_for('login')}}">Login</a>
-    <a class="btn btn-primary mx-3" href="{{url_for('register_user')}}">Register</a>
-</div>
-
-{% else %}
 <div class="d-flex justify-content-center flex-row">
     <h1>Hello there  {{current_user.username}}.</h1>
 </div>
-<div class="d-flex justify-content-center flex-row my-3">
-    <a class="btn btn-primary" href="{{url_for('create_utub')}}">Create a UTub!</a>
+<div class="d-flex justify-content-center flex-row">
+    <p>Find your UTubs below</p>
 </div>
-<div class="d-flex justify-content-center flex-row my-3">
-    <a class="btn btn-primary" href="{{url_for('logout')}}">Logout?</a>
-</div>
+
+{% if not utubs %}
+    <div class="d-flex justify-content-center flex-row">
+        <p>No UTubs for you :(</p>
+    </div>
+{% else %}
+    {% for single_utub in utubs %}
+        <div class="d-flex justify-content-center flex-row">
+            <h3>UTub: {{single_utub.name}}</h3> 
+        </div>
+        <div class="d-flex justify-content-center flex-row">
+            <ul>
+                <li>UTub Owner: {{single_utub.created_by.username}}</li>
+            {% for user in single_utub.users %}
+                <li>User in "{{single_utub.name}}": {{user.username}}</li>
+            {% endfor %}
+            </ul>
+        </div>
+        {% if single_utub.created_by.id == current_user.id %}
+            <div class="d-flex justify-content-center flex-row mb-5">
+                <a class="btn btn-success btn-sm" href="{{url_for('add_user', utub_id=single_utub.id)}}">Add a user!</a>
+            </div>
+        {% endif %}
+    {% endfor %}
 {% endif %}
+<div class="d-flex justify-content-center">
+    <div class="border-top pt-1">
+        <div class="d-flex justify-content-center flex-row my-3">
+            <a class="btn btn-primary" href="{{url_for('create_utub')}}">Create a UTub!</a>
+        </div>
+        <div class="d-flex justify-content-center flex-row my-3">
+            <a class="btn btn-primary" href="{{url_for('logout')}}">Logout?</a>
+        </div>
+    </div>
+</div>
 
 {% endblock %}

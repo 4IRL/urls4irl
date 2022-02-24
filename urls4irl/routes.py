@@ -1,14 +1,13 @@
 from werkzeug.security import check_password_hash, generate_password_hash
-from flask import render_template, url_for, redirect, flash, session
+from flask import render_template, url_for, redirect, flash, request, session
 from urls4irl import app, db
-from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm
+from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm
 # from urls4irl.helpers import login_required
 from urls4irl.models import User, UTub
 from flask_login import login_user, login_required, current_user, logout_user
 
 
-#TODO Import User Model and add in account creation
-
+"""### MAIN ROUTES ###"""
 
 @app.route('/')
 def splash():
@@ -20,9 +19,12 @@ def splash():
 @app.route('/home')
 @login_required
 def home():
-    """Splash page for logged in user"""    
-    return render_template('home.html')
+    """Splash page for logged in user. Loads and displays all UTubs."""
+    utubs = UTub.query.filter(UTub.users.any(id=int(current_user.get_id()))).all()
+    return render_template('home.html', utubs=utubs)
 
+"""### END MAIN ROUTES ###"""
+"""### USER LOGIN/LOGOUT/REGISTRATION ROUTES ###"""
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
@@ -37,9 +39,10 @@ def login():
 
         if user and check_password_hash(user.password, login_form.password.data):
             login_user(user)    # Can add Remember Me functionality here
-            print(session)
+            next_page = request.args.get('next')    # Takes user to the page they wanted to originally before being logged in
+
             flash(f"Successful login, {username}", category="success")
-            return redirect(url_for("home"))
+            return redirect(next_page) if next_page else redirect(url_for('home'))
         else:
             flash(f"Login Unsuccessful. Please check username and password.", category="danger")
 
@@ -50,24 +53,6 @@ def logout():
     """Logs user out by clearing session details. Returns to login page."""
     logout_user()
     return redirect(url_for('login'))
-
-@app.route('/create_utub', methods=["GET", "POST"])
-@login_required
-def create_utub():
-    """User wants to create a new utub."""
-
-    utub_form = UTubForm()
-
-    if utub_form.validate_on_submit():
-        name = utub_form.name.data
-        new_utub = UTub(name=name, user_id=current_user.get_id())
-        db.session.add(new_utub)
-        db.session.commit()
-        flash(f"Successfully made the {name} UTub!", category="success")
-        return redirect(url_for('home'))
-
-    flash("Okay let's get you a new UTub!", category="primary")
-    return render_template('create_utub.html', utub_form=utub_form)
 
 @app.route('/register', methods=["GET", "POST"])
 def register_user():
@@ -89,5 +74,60 @@ def register_user():
         return redirect(url_for("home"))
 
     return render_template('register_user.html', register_form=register_form)
+
+"""### END USER LOGIN/LOGOUT/REGISTRATION ROUTES ###"""
+"""### UTUB INVOLVED ROUTE ###"""
+
+@app.route('/create_utub', methods=["GET", "POST"])
+@login_required
+def create_utub():
+    """User wants to create a new utub."""
+
+    utub_form = UTubForm()
+
+    if utub_form.validate_on_submit():
+        name = utub_form.name.data
+        new_utub = UTub(name=name, user_id=current_user.get_id())
+
+        new_utub.users.append(current_user)
+        db.session.add(new_utub)
+        db.session.commit()
+        flash(f"Successfully made your UTub named {name}", category="success")
+        return redirect(url_for('home'))
+
+    flash("Okay let's get you a new UTub!", category="primary")
+    return render_template('create_utub.html', utub_form=utub_form)
+
+@app.route('/add_user/<int:utub_id>', methods=["GET", "POST"])
+@login_required
+def add_user(utub_id):
+    """Creater of utub wants to add a user to the utub."""
+    utub = UTub.query.get(int(utub_id))
+
+    if int(utub.created_by.id) != int(current_user.get_id()):
+        flash("Not authorized to add a user to this UTub", category="danger")
+        return redirect(url_for('home'))
+
+    utub_new_user_form = UTubNewUserForm()
+
+    if utub_new_user_form.validate_on_submit():
+        username = utub_new_user_form.username.data
+        
+        new_user = User.query.filter_by(username=username).first()
+        already_in_utub = [user for user in utub.users if int(user.id) == int(new_user.id)]
+
+        if already_in_utub:
+            flash("This user already exists in the UTub.", category="danger")
+        
+        else:
+            utub.users.append(new_user)
+            db.session.add(utub)
+            db.session.commit()
+            flash(f"Successfully added {username} to {utub.name}", category="success")
+            return redirect(url_for('home'))
+
+    return render_template('add_user_to_utub.html', utub_new_user_form=utub_new_user_form)
+
+
 
 
