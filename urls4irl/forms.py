@@ -11,7 +11,7 @@ from flask import Flask
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import DataRequired, Length, Email, EqualTo, InputRequired, ValidationError
-from urls4irl.models import User
+from urls4irl.models import User, URLS
 
 
 class UserRegistrationForm(FlaskForm):
@@ -94,3 +94,15 @@ class UTubNewUserForm(FlaskForm):
         if not username_exists:
             raise ValidationError('That user does not exist. Note this is case sensitive.')
 
+class UTubNewURLForm(FlaskForm):
+    """Form to add a URL to a UTub. Inherits from FlaskForm. All fields require data.
+
+    Fields:
+        URL (Stringfield): Maximum 2000 chars? TODO
+    """
+    
+    url_string = StringField('URL', validators=[InputRequired(), Length(min=1, max=2000)])
+
+    submit = SubmitField('Add URL to this UTub!')
+
+    # Can add validation for the URL here..

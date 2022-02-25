@@ -1,10 +1,11 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request, session
 from urls4irl import app, db
-from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm
+from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm
 # from urls4irl.helpers import login_required
-from urls4irl.models import User, UTub
+from urls4irl.models import User, Utub, URLS, UtubUrls
 from flask_login import login_user, login_required, current_user, logout_user
+from sqlalchemy import text
 
 
 """### MAIN ROUTES ###"""
@@ -14,13 +15,16 @@ def splash():
     """Splash page for either an unlogged in user.
 
     """
-    return render_template('splash.html')
+    return redirect(url_for('home'))
+    #return render_template('splash.html')
 
 @app.route('/home')
 @login_required
 def home():
     """Splash page for logged in user. Loads and displays all UTubs."""
-    utubs = UTub.query.filter(UTub.users.any(id=int(current_user.get_id()))).all()
+    utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
+    print(utubs[0].urls[0].url_string)
+    print([title.name for title in utubs[0].urls[0].associated_utubs])
     return render_template('home.html', utubs=utubs)
 
 """### END MAIN ROUTES ###"""
@@ -30,6 +34,16 @@ def home():
 def login():
     if current_user.is_authenticated:
         return redirect(url_for('home'))
+
+    if not User.query.filter().all():
+        password = generate_password_hash('abcdefg', method='pbkdf2:sha512', salt_length=16)
+        password2 = generate_password_hash('rehreh', method='pbkdf2:sha512', salt_length=16)
+        new_user = User(username="Giovanni", email='gio@g.com', email_confirm=False, password=password)
+        new_user2 = User(username="Rehan", email='Reh@reh.com', email_confirm=False, password=password2)
+        db.session.add(new_user)
+        db.session.add(new_user2)
+        db.session.commit()
+        flash("Added test user.", category='info')
 
     login_form = LoginForm()
 
@@ -87,7 +101,7 @@ def create_utub():
 
     if utub_form.validate_on_submit():
         name = utub_form.name.data
-        new_utub = UTub(name=name, user_id=current_user.get_id())
+        new_utub = Utub(name=name, user_id=current_user.get_id())
 
         new_utub.users.append(current_user)
         db.session.add(new_utub)
@@ -102,7 +116,7 @@ def create_utub():
 @login_required
 def add_user(utub_id):
     """Creater of utub wants to add a user to the utub."""
-    utub = UTub.query.get(int(utub_id))
+    utub = Utub.query.get(int(utub_id))
 
     if int(utub.created_by.id) != int(current_user.get_id()):
         flash("Not authorized to add a user to this UTub", category="danger")
@@ -128,6 +142,43 @@ def add_user(utub_id):
 
     return render_template('add_user_to_utub.html', utub_new_user_form=utub_new_user_form)
 
+@app.route('/add_url/<int:utub_id>', methods=["GET", "POST"])
+@login_required
+def add_url(utub_id: int):
+    """User wants to add URL to UTub."""
+    utub = Utub.query.get(int(utub_id))
 
+    if int(current_user.get_id()) not in [int(user.id) for user in utub.users]:
+        flash("Not authorized to add a URL to this UTub", category="danger")
+        return redirect(url_for('home'))
 
+    utub_new_url_form = UTubNewURLForm()
 
+    if utub_new_url_form.validate_on_submit():
+        url_string = utub_new_url_form.url_string.data
+        
+
+        # Get URL if already created
+        already_created_url = URLS.query.filter_by(url_string=url_string).first()
+
+        if already_created_url:
+            url_utub_user_add = UtubUrls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
+            db.session.add(utub)
+        
+        else:
+            # Else create new URL and append to the UTUB
+            new_url = URLS(url_string=url_string, created_by=int(current_user.get_id()))
+            db.session.add(new_url)
+            db.session.commit()
+            url_utub_user_add = UtubUrls(utub_id=utub_id, url_id=new_url.id, user_id=int(current_user.get_id()))
+            
+        db.session.add(url_utub_user_add)
+        db.session.commit()
+
+        flash(f"Added {url_string} to {utub.name}", category="info")
+        return redirect(url_for('home'))
+        
+
+    return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
+
+"""### END UTUB INVOLVED ROUTES ###"""

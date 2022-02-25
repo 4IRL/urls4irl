@@ -1,0 +1,40 @@
+{% extends "layout.html" %}
+{% block content %}
+
+<div class="d-flex justify-content-center">
+    <form method="POST" action="" novalidate>
+        {{ utub_new_url_form.hidden_tag() }}
+        <fieldset class="form-group">
+            <legend class="border-bottom mb-4">Add a URL to this UTub!</legend>
+            <div class="form-group">
+                {{ utub_new_url_form.url_string.label(class="form-control-label")}}
+                {% if utub_new_url_form.url_string.errors %}
+                    {{ utub_new_url_form.url_string(class="form-control form-control-lg is-invalid") }}
+                    <div class="invalid-feedback">
+                        {% for error in utub_new_url_form.url_string.errors %}
+                            <span>{{ error }}</span>
+                        {% endfor %}
+                    </div>
+                {% else %}
+                    {{ utub_new_url_form.url_string(class="form-control form-control-lg")}}
+                {% endif %}
+            </div>
+        <div class="form-group d-flex justify-content-center">
+            {{ utub_new_url_form.submit(class="btn btn-primary col-12")}}
+        </div>
+    </form>
+</div>
+<div class="d-flex justify-content-center">
+    <div class="border-top pt-3 px-3">
+        <small class="text-muted">
+            <a href="{{url_for('home')}}">Back to Home</a>
+        </small>
+    </div>
+    <div class="border-top pt-3 px-3">
+        <small class="text-muted">
+            <a href="{{url_for('logout')}}">Logout</a>
+        </small>
+    </div>
+</div>
+
+{% endblock content %}
