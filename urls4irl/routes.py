@@ -1,12 +1,9 @@
 from werkzeug.security import check_password_hash, generate_password_hash
-from flask import render_template, url_for, redirect, flash, request, session
+from flask import render_template, url_for, redirect, flash, request
 from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm
-# from urls4irl.helpers import login_required
 from urls4irl.models import User, Utub, URLS, UtubUrls
 from flask_login import login_user, login_required, current_user, logout_user
-from sqlalchemy import text
-
 
 """### MAIN ROUTES ###"""
 
@@ -21,21 +18,25 @@ def splash():
 @app.route('/home')
 @login_required
 def home():
-    """Splash page for logged in user. Loads and displays all UTubs."""
+    """Splash page for logged in user. Loads and displays all UTubs, and contained URLs."""
     utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
     print(utubs[0].urls[0].url_string)
     print([title.name for title in utubs[0].urls[0].associated_utubs])
     return render_template('home.html', utubs=utubs)
 
 """### END MAIN ROUTES ###"""
+
+
 """### USER LOGIN/LOGOUT/REGISTRATION ROUTES ###"""
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
+    """Login page. Allows user to register or login."""
     if current_user.is_authenticated:
         return redirect(url_for('home'))
 
     if not User.query.filter().all():
+        """!!! Added users for testing !!!"""
         password = generate_password_hash('abcdefg', method='pbkdf2:sha512', salt_length=16)
         password2 = generate_password_hash('rehreh', method='pbkdf2:sha512', salt_length=16)
         new_user = User(username="Giovanni", email='gio@g.com', email_confirm=False, password=password)
@@ -70,6 +71,7 @@ def logout():
 
 @app.route('/register', methods=["GET", "POST"])
 def register_user():
+    """Register a user page."""
     if current_user.is_authenticated:
         return redirect(url_for('home'))
 
@@ -90,7 +92,9 @@ def register_user():
     return render_template('register_user.html', register_form=register_form)
 
 """### END USER LOGIN/LOGOUT/REGISTRATION ROUTES ###"""
-"""### UTUB INVOLVED ROUTE ###"""
+
+
+"""### UTUB INVOLVED ROUTES ###"""
 
 @app.route('/create_utub', methods=["GET", "POST"])
 @login_required
