@@ -19,6 +19,11 @@
         <div class="d-flex justify-content-center flex-row">
             <h3>UTub: {{single_utub.name}}</h3> 
         </div>
+        {% if single_utub.created_by.id == current_user.id %}
+            <div class="d-flex justify-content-center flex-row">
+                <a class="btn btn-danger btn-sm mb-3 mx-3" href="#">Delete this UTub</a>
+            </div>
+        {% endif %}
         <div class="d-flex justify-content-center flex-row">
             <h5>Members</h5> 
         </div>
