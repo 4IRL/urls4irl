@@ -52,7 +52,7 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(166), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     utubs_created = db.relationship('Utub', backref='created_by', lazy=True)
-    url_added = db.relationship('URLS', backref='originally_added_by', lazy=True)
+    url_added = db.relationship('URLS', backref='added_to_utub_by', lazy=True)
 
     #TODO Relationship to the URL tag they added
 

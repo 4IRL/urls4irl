@@ -20,8 +20,6 @@ def splash():
 def home():
     """Splash page for logged in user. Loads and displays all UTubs, and contained URLs."""
     utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
-    print(utubs[0].urls[0].url_string)
-    print([title.name for title in utubs[0].urls[0].associated_utubs])
     return render_template('home.html', utubs=utubs)
 
 """### END MAIN ROUTES ###"""
@@ -167,7 +165,6 @@ def add_url(utub_id: int):
 
         if already_created_url:
             url_utub_user_add = UtubUrls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
-            db.session.add(utub)
         
         else:
             # Else create new URL and append to the UTUB
