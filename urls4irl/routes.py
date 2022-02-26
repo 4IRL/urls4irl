@@ -5,7 +5,7 @@ from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUse
 from urls4irl.models import User, Utub, URLS, UtubUrls
 from flask_login import login_user, login_required, current_user, logout_user
 
-"""### MAIN ROUTES ###"""
+"""#####################        MAIN ROUTES        ###################"""
 
 @app.route('/')
 def splash():
@@ -22,10 +22,9 @@ def home():
     utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
     return render_template('home.html', utubs=utubs)
 
-"""### END MAIN ROUTES ###"""
+"""#####################        END MAIN ROUTES        ###################"""
 
-
-"""### USER LOGIN/LOGOUT/REGISTRATION ROUTES ###"""
+"""#####################        USER LOGIN/LOGOUT/REGISTRATION ROUTES        ###################"""
 
 @app.route('/login', methods=["GET", "POST"])
 def login():
@@ -89,10 +88,9 @@ def register_user():
 
     return render_template('register_user.html', register_form=register_form)
 
-"""### END USER LOGIN/LOGOUT/REGISTRATION ROUTES ###"""
+"""#####################        END USER LOGIN/LOGOUT/REGISTRATION ROUTES        ###################"""
 
-
-"""### UTUB INVOLVED ROUTES ###"""
+"""#####################        UTUB INVOLVED ROUTES        ###################"""
 
 @app.route('/create_utub', methods=["GET", "POST"])
 @login_required
@@ -182,4 +180,18 @@ def add_url(utub_id: int):
 
     return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
 
-"""### END UTUB INVOLVED ROUTES ###"""
+@app.route('/delete_utub/<int:utub_id>/<int:owner_id>', methods=["POST"])
+@login_required
+def delete_utub(utub_id: int, owner_id: int):
+    """Creator wants to delete their UTub."""
+    
+    if int(current_user.get_id()) != owner_id:
+        flash("You do not have permission to delete this UTub")
+    
+    else:
+        flash("You are the owner and want to delete this UTub.")
+        # Delete UTub functionality here.
+
+    return redirect(url_for('home'))
+
+"""#####################        END UTUB INVOLVED ROUTES        ###################"""

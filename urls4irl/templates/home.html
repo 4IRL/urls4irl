@@ -21,7 +21,9 @@
         </div>
         {% if single_utub.created_by.id == current_user.id %}
             <div class="d-flex justify-content-center flex-row">
-                <a class="btn btn-danger btn-sm mb-3 mx-3" href="#">Delete this UTub</a>
+                <form action="{{url_for('delete_utub', utub_id=single_utub.id, owner_id=single_utub.created_by.id)}}" method="post">
+                    <button class="btn btn-danger btn-sm mb-3 mx-3" href="">Delete this UTub</button>
+                </form>
             </div>
         {% endif %}
         <div class="d-flex justify-content-center flex-row">
