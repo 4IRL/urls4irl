@@ -156,8 +156,7 @@ def add_url(utub_id: int):
 
     if utub_new_url_form.validate_on_submit():
         url_string = utub_new_url_form.url_string.data
-        
-
+    
         # Get URL if already created
         already_created_url = URLS.query.filter_by(url_string=url_string).first()
 
@@ -165,7 +164,7 @@ def add_url(utub_id: int):
             url_utub_user_add = UtubUrls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
         
         else:
-            # Else create new URL and append to the UTUB
+            # Else create new URL and appends to the UTUB
             new_url = URLS(url_string=url_string, created_by=int(current_user.get_id()))
             db.session.add(new_url)
             db.session.commit()
@@ -186,10 +185,10 @@ def delete_utub(utub_id: int, owner_id: int):
     """Creator wants to delete their UTub."""
     
     if int(current_user.get_id()) != owner_id:
-        flash("You do not have permission to delete this UTub")
+        flash("You do not have permission to delete this UTub", category="danger")
     
     else:
-        flash("You are the owner and want to delete this UTub.")
+        flash("You are the owner and want to delete this UTub.", category="danger")
         # Delete UTub functionality here.
 
     return redirect(url_for('home'))
