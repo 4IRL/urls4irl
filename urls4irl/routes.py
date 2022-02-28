@@ -193,4 +193,17 @@ def delete_utub(utub_id: int, owner_id: int):
 
     return redirect(url_for('home'))
 
+@app.route('/delete_url_from_utub/<int:utub_id>/<int:url_id>', methods=["POST"])
+@login_required
+def delete_url_from_utub(utub_id: int, url_id: int):
+    """User wants to delete a URL from a UTub. Only available to owner of that utub,
+    or whoever placed the URL into that Utub."""
+
+    # Check that current_user is either the owner of the UTub, or the one who added it to the UTub
+    # Delete only from the UTub, needs to be from the association table
+    return redirect(url_for('home'))
+        
+
 """#####################        END UTUB INVOLVED ROUTES        ###################"""
+
+
