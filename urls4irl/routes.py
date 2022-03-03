@@ -161,10 +161,17 @@ def add_url(utub_id: int):
         already_created_url = URLS.query.filter_by(url_string=url_string).first()
 
         if already_created_url:
+
+            # URL already generated, now confirm if within UTUB or not
+            if already_created_url in utub.urls:
+                # URL already in UTUB
+                flash(f"URL already in UTub", category="info")
+                return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
+
             url_utub_user_add = UtubUrls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
-        
+
         else:
-            # Else create new URL and appends to the UTUB
+            # Else create new URL and append to the UTUB
             new_url = URLS(url_string=url_string, created_by=int(current_user.get_id()))
             db.session.add(new_url)
             db.session.commit()
@@ -176,7 +183,6 @@ def add_url(utub_id: int):
         flash(f"Added {url_string} to {utub.name}", category="info")
         return redirect(url_for('home'))
         
-
     return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
 
 @app.route('/delete_utub/<int:utub_id>/<int:owner_id>', methods=["POST"])
