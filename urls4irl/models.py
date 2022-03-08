@@ -26,7 +26,7 @@ utub_users = db.Table('UtubUsers',
     db.Column('user_id', db.Integer, db.ForeignKey('User.id'), primary_key=True)            
 )
 
-class UtubUrls(db.Model):
+class Utub_Urls(db.Model):
     """
     Represents the Many-to-Many relationship between UTubs and the shared URLs.
     A new entry is created in the URLs table if it is not already added in there. This table
@@ -40,6 +40,10 @@ class UtubUrls(db.Model):
     url_notes = db.Column(db.String(140), default='')
     added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
+    user_that_added_url = db.relationship("User", back_populates="utub_urls")
+    url_in_utub = db.relationship("URLS")
+    utub = db.relationship("Utub", back_populates="utub_urls")
+
 
 class User(db.Model, UserMixin):
     """Class represents a User, with their username, email, and hashed password."""
@@ -52,8 +56,8 @@ class User(db.Model, UserMixin):
     password = db.Column(db.String(166), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     utubs_created = db.relationship('Utub', backref='created_by', lazy=True)
-    url_added = db.relationship('URLS', backref='added_to_utub_by', lazy=True)
-
+    utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
+    
     #TODO Relationship to the URL tag they added
 
     def __repr__(self):
@@ -67,11 +71,10 @@ class Utub(db.Model):
     __tablename__ = 'Utub'
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(30), nullable=False) # Note that multiple UTubs can have the same name, maybe verify this per user?
-    user_id = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
+    utub_creator = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     users = db.relationship('User', secondary=utub_users, lazy='subquery', backref=db.backref('users'))
-    urls = db.relationship('URLS', secondary=UtubUrls.__table__, lazy='subquery', backref=db.backref('associated_utubs'))
-
+    utub_urls = db.relationship('Utub_Urls', back_populates="utub")
 
 class URLS(db.Model):
     """Class represents a URL. A URL is added by a single user, but can be used generically across multiple UTubs if it's already

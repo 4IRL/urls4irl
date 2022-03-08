@@ -2,7 +2,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request
 from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm
-from urls4irl.models import User, Utub, URLS, UtubUrls
+from urls4irl.models import User, Utub, URLS, Utub_Urls
 from flask_login import login_user, login_required, current_user, logout_user
 
 """#####################        MAIN ROUTES        ###################"""
@@ -36,10 +36,13 @@ def login():
         """!!! Added users for testing !!!"""
         password = generate_password_hash('abcdefg', method='pbkdf2:sha512', salt_length=16)
         password2 = generate_password_hash('rehreh', method='pbkdf2:sha512', salt_length=16)
+        password3 = generate_password_hash('bobob', method='pbkdf2:sha512', salt_length=16)
         new_user = User(username="Giovanni", email='gio@g.com', email_confirm=False, password=password)
         new_user2 = User(username="Rehan", email='Reh@reh.com', email_confirm=False, password=password2)
+        new_user3 = User(username="Bobo", email='Bob@bob.com', email_confirm=False, password=password3)
         db.session.add(new_user)
         db.session.add(new_user2)
+        db.session.add(new_user3)
         db.session.commit()
         flash("Added test user.", category='info')
 
@@ -101,7 +104,7 @@ def create_utub():
 
     if utub_form.validate_on_submit():
         name = utub_form.name.data
-        new_utub = Utub(name=name, user_id=current_user.get_id())
+        new_utub = Utub(name=name, utub_creator=current_user.get_id())
 
         new_utub.users.append(current_user)
         db.session.add(new_utub)
@@ -160,22 +163,26 @@ def add_url(utub_id: int):
         # Get URL if already created
         already_created_url = URLS.query.filter_by(url_string=url_string).first()
 
+        
         if already_created_url:
 
-            # URL already generated, now confirm if within UTUB or not
-            if already_created_url in utub.urls:
+            # Get all urls currently in utub
+            urls_in_utub = [utub_user_url_object.url_in_utub for utub_user_url_object in utub.utub_urls]
+        
+            #URL already generated, now confirm if within UTUB or not
+            if already_created_url in urls_in_utub:
                 # URL already in UTUB
                 flash(f"URL already in UTub", category="info")
                 return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
 
-            url_utub_user_add = UtubUrls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
+            url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
 
         else:
             # Else create new URL and append to the UTUB
             new_url = URLS(url_string=url_string, created_by=int(current_user.get_id()))
             db.session.add(new_url)
             db.session.commit()
-            url_utub_user_add = UtubUrls(utub_id=utub_id, url_id=new_url.id, user_id=int(current_user.get_id()))
+            url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=new_url.id, user_id=int(current_user.get_id()))
             
         db.session.add(url_utub_user_add)
         db.session.commit()
