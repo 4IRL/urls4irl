@@ -31,6 +31,8 @@ class Utub_Urls(db.Model):
     Represents the Many-to-Many relationship between UTubs and the shared URLs.
     A new entry is created in the URLs table if it is not already added in there. This table
     indicates which UTubs contain which URLs, as well as any notes/description for that UTub specific URL.
+
+    https://stackoverflow.com/questions/52920701/many-to-many-with-three-tables-relating-with-each-other-sqlalchemy
     """
     __tablename__ = "UtubUrls"
 
@@ -74,7 +76,7 @@ class Utub(db.Model):
     utub_creator = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     users = db.relationship('User', secondary=utub_users, lazy='subquery', backref=db.backref('users'))
-    utub_urls = db.relationship('Utub_Urls', back_populates="utub")
+    utub_urls = db.relationship('Utub_Urls', back_populates="utub", cascade='all, delete')
 
 class URLS(db.Model):
     """Class represents a URL. A URL is added by a single user, but can be used generically across multiple UTubs if it's already
