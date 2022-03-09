@@ -43,15 +43,17 @@
         </div>
         <div class="d-flex justify-content-center flex-row">
             <ul>
-            {% for link in single_utub.urls %}
-                <li>Link in "{{single_utub.name}}": {{link.url_string}}</li>
-                <small>Added by {{link.added_to_utub_by.username}}</small>
-                {% if link.added_to_utub_by.id == current_user.id or single_utub.created_by.id == current_user.id %}
-                    <div class="d-flex justify-content-center flex-row">
-                        <a class="btn btn-info btn-sm col-6 mb-3 mx-3" href="#">Add tags</a>
-                        <a class="btn btn-danger btn-sm col-6 mb-3" href="#">Delete this URL</a>
-                    </div>
-                {% endif %}
+                {% for link in single_utub.utub_urls %}
+                <li>Link in "{{single_utub.name}}": {{link.url_in_utub.url_string}}</li>
+                <small>Added by {{link.user_that_added_url.username}}</small>
+                    {% if link.user_id == current_user.id or single_utub.created_by.id == current_user.id %}
+                        <div class="d-flex justify-content-center flex-row">
+                            <a class="btn btn-info btn-sm col-6 mb-3 mx-3" href="#">Add tags</a>
+                            <form action="{{url_for('delete_url', utub_id=single_utub.id, url_id=link.url_id)}}" method="post">
+                                <button class="btn btn-danger btn-sm col-6 mb-3" href="">Delete this URL</button>
+                            </form>
+                        </div>
+                    {% endif %}
                 <br>
             {% endfor %}
             </ul>
