@@ -1,8 +1,8 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request
 from urls4irl import app, db
-from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm
-from urls4irl.models import User, Utub, URLS, Utub_Urls
+from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm
+from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags
 from flask_login import login_user, login_required, current_user, logout_user
 
 """#####################        MAIN ROUTES        ###################"""
@@ -20,7 +20,6 @@ def splash():
 def home():
     """Splash page for logged in user. Loads and displays all UTubs, and contained URLs."""
     utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
-    
     return render_template('home.html', utubs=utubs)
 
 """#####################        END MAIN ROUTES        ###################"""
@@ -151,6 +150,80 @@ def add_user(utub_id: int):
 
     return render_template('add_user_to_utub.html', utub_new_user_form=utub_new_user_form)
 
+
+@app.route('/delete_utub/<int:utub_id>/<int:owner_id>', methods=["POST"])
+@login_required
+def delete_utub(utub_id: int, owner_id: int):
+    """
+    Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
+    URLS and users.
+
+    https://docs.sqlalchemy.org/en/13/orm/cascades.html#delete
+
+    Args:
+        utub_id (int): The ID of the UTub to be deleted
+        owner_id (int): The owner ID of the UTub to be deleted
+    """
+    
+    if int(current_user.get_id()) != owner_id:
+        flash("You do not have permission to delete this UTub", category="danger")
+    
+    else:
+        utub = Utub.query.get(int(utub_id))
+        db.session.delete(utub)
+        db.session.commit()
+        flash("You successfully deleted this UTub.", category="danger")
+
+
+    return redirect(url_for('home'))
+
+
+"""#####################        END UTUB INVOLVED ROUTES        ###################"""
+
+"""#####################        URL INVOLVED ROUTES        ###################"""
+
+
+@app.route('/delete_url/<int:utub_id>/<int:url_id>', methods=["POST"])
+@login_required
+def delete_url(utub_id: int, url_id: int):
+    """
+    User wants to delete a URL from a UTub. Only available to owner of that utub,
+    or whoever added the URL into that Utub.
+
+    Args:
+        utub_id (int): The ID of the UTub that contains the URL to be deleted
+        url_id (int): The ID of the URL to be deleted
+    """
+    utub = Utub.query.get(int(utub_id))
+    owner_id = utub.utub_creator
+    
+    # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
+    url_added_by = [url_in_utub.user_that_added_url.id for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id]
+
+    if len(url_added_by) != 1 or not url_added_by:
+        # No user added this URL, or multiple users did...
+        flash("Something went wrong", category="danger")
+        return redirect(url_for('home'))
+
+    # Otherwise, only one user should've added this url - retrieve them
+    url_added_by = url_added_by[0]
+
+    if int(current_user.get_id()) == owner_id or int(current_user.get_id()) == url_added_by:
+        # User is creator of this UTub, or added the URL
+        print("Yes you can!")
+        utub_url_user_row = Utub_Urls.query.filter_by(utub_id=utub_id, url_id=url_id).all()
+
+        if len(utub_url_user_row) > 1:
+            # How did this happen? URLs are unique to each UTub, so should only return one
+            flash("Error: Something went wrong", category="danger")
+            return redirect(url_for('home'))
+
+        db.session.delete(utub_url_user_row[0])
+        db.session.commit()
+        flash("You successfully deleted the URL from the UTub.", category="danger")
+
+    return redirect(url_for('home'))
+
 @app.route('/add_url/<int:utub_id>', methods=["GET", "POST"])
 @login_required
 def add_url(utub_id: int):
@@ -202,66 +275,102 @@ def add_url(utub_id: int):
         
     return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
 
-@app.route('/delete_utub/<int:utub_id>/<int:owner_id>', methods=["POST"])
+"""#####################        END URL INVOLVED ROUTES        ###################"""
+
+"""#####################        TAG INVOLVED ROUTES        ###################"""
+
+@app.route('/add_tag/<int:utub_id>/<int:url_id>', methods=["GET", "POST"])
 @login_required
-def delete_utub(utub_id: int, owner_id: int):
+def add_tag(utub_id: int, url_id: int):
     """
-    Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
-    URLS and users.
-
-    https://docs.sqlalchemy.org/en/13/orm/cascades.html#delete
-
+    User wants to add a tag to a URL. 5 tags per URL.
+    
     Args:
-        utub_id (int): The ID of the UTub to be deleted
-        owner_id (int): The owner ID of the UTub to be deleted
+        utub_id (int): The utub that this user is being added to
+        url_id (int): The URL this user wants to add a tag to
     """
-    
-    if int(current_user.get_id()) != owner_id:
-        flash("You do not have permission to delete this UTub", category="danger")
-    
-    else:
-        utub = Utub.query.get(int(utub_id))
-        db.session.delete(utub)
+    utub = Utub.query.get(utub_id)
+    utub_url = [url_in_utub for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id]
+    user_in_utub = [user for user in utub.users if int(user.id) == int(current_user.get_id())]
+
+    if not user_in_utub or not utub_url:
+        # How did a user not in this utub get access to add a tag to this URL?
+        # How did a user try to add a tag to a URL not contained within the UTub?
+        flash("Error has occurred", category="danger")
+        return redirect(url_for('home'))
+       
+    url_tag_form = UTubNewUrlTagForm()
+
+    if url_tag_form.validate_on_submit():
+
+        tag_to_add = url_tag_form.tag_string.data
+
+        # If too many tags, disallow adding tag
+        tags_already_on_this_url = [tags for tags in utub.utub_url_tags if int(tags.url_id) == int(url_id)]
+
+        if len(tags_already_on_this_url) > 4:
+                # Cannot have more than 5 tags on a URL
+                flash("You cannot add more tags to this URL.", category="danger")
+                return redirect(url_for('home'))
+
+        # If not a tag already, create it
+        tag_already_created = Tags.query.filter_by(tag_string=tag_to_add).first()
+
+        if tag_already_created:
+            # Check if tag already on url
+            this_tag_is_already_on_this_url = [tags for tags in tags_already_on_this_url if int(tags.tag_id) == int(tag_already_created.id)]
+
+            if this_tag_is_already_on_this_url:
+                flash("This tag is already on this URL", category="danger")
+                return redirect(url_for('home'))
+
+            # Associate with the UTub and URL
+            utub_url_tag = Url_Tags(utub_id=utub_id, url_id=url_id, tag_id=tag_already_created.id)
+
+        else:
+            # Create tag, then associate with this UTub and URL
+            new_tag = Tags(tag_string=tag_to_add, created_by=int(current_user.get_id()))
+            db.session.add(new_tag)
+            db.session.commit()
+            utub_url_tag = Url_Tags(utub_id=utub_id, url_id=url_id, tag_id=new_tag.id)
+
+        db.session.add(utub_url_tag)
         db.session.commit()
-        flash("You successfully deleted this UTub.", category="danger")
 
+        flash(f"Added {tag_to_add} to {utub_url[0].url_in_utub.url_string}", category="info")
 
-    return redirect(url_for('home'))
+        return redirect(url_for('home'))
 
-@app.route('/delete_url/<int:utub_id>/<int:url_id>', methods=["POST"])
+    return render_template('add_tag_to_url.html', url_tag_form=url_tag_form)
+
+@app.route('/remove_tag/<int:utub_id>/<int:url_id>/<int:tag_id>', methods=["POST"])
 @login_required
-def delete_url(utub_id: int, url_id: int):
+def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
-    User wants to delete a URL from a UTub. Only available to owner of that utub,
-    or whoever added the URL into that Utub.
+    User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted
         url_id (int): The ID of the URL to be deleted
+        tag_id (int): The ID of the tag
     """
     utub = Utub.query.get(int(utub_id))
     owner_id = utub.utub_creator
-    
-    # Search through all urls in the UTub for the one that matches the prescribed URL ID - should be only one
-    url_added_by = [url_in_utub.user_that_added_url.id for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id][0]
 
-    if int(current_user.get_id()) == owner_id or int(current_user.get_id()) == url_added_by:
+    if int(current_user.get_id()) == owner_id:
         # User is creator of this UTub, or added the URL
         print("Yes you can!")
-        utub_url_user_row = Utub_Urls.query.filter_by(utub_id=utub_id, url_id=url_id).all()
+        tag_for_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).all()
 
-        if len(utub_url_user_row) > 1:
-            # How did this happen? URLs are unique to each UTub, so should only return one
+        if len(tag_for_url_in_utub) > 1:
+            # How did this happen? Each url contains 5 unique tags
             flash("Error: Something went wrong", category="danger")
             return redirect(url_for('home'))
 
-        db.session.delete(utub_url_user_row[0])
+        db.session.delete(tag_for_url_in_utub[0])
         db.session.commit()
-        flash("You successfully deleted the URL from the UTub.", category="danger")
+        flash("You successfully deleted the tag from the URL.", category="danger")
 
     return redirect(url_for('home'))
-        
 
-"""#####################        END UTUB INVOLVED ROUTES        ###################"""
-
-
+"""#####################        END TAG INVOLVED ROUTES        ###################"""
