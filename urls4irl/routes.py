@@ -358,16 +358,10 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
     owner_id = utub.utub_creator
 
     if int(current_user.get_id()) == owner_id:
-        # User is creator of this UTub, or added the URL
-        print("Yes you can!")
-        tag_for_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).all()
+        # User is creator of this UTub
+        tag_for_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).first()
 
-        if len(tag_for_url_in_utub) > 1:
-            # How did this happen? Each url contains 5 unique tags
-            flash("Error: Something went wrong", category="danger")
-            return redirect(url_for('home'))
-
-        db.session.delete(tag_for_url_in_utub[0])
+        db.session.delete(tag_for_url_in_utub)
         db.session.commit()
         flash("You successfully deleted the tag from the URL.", category="danger")
 

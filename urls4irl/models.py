@@ -1,8 +1,6 @@
 """
 Contains database models for URLS4IRL.
 
-TODO: tags
-
 # https://docs.sqlalchemy.org/en/14/orm/backref.html
 """
 from datetime import datetime
@@ -78,8 +76,6 @@ class User(db.Model, UserMixin):
     utubs_created = db.relationship('Utub', backref='created_by', lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     
-    #TODO Relationship to the URL tag they added
-
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
 
