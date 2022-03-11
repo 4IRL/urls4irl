@@ -1,84 +1,127 @@
 {% extends "layout.html" %}
 {% block content %}
-
-
-
+<!-- Personalized welcome tagline -->
 <div class="d-flex justify-content-center flex-row">
     <h1>Hello there  {{current_user.username}}.</h1>
-    <h1>Hello again  {{current_user.username}}.</h1>
-</div>
-<div class="d-flex justify-content-center flex-row">
-    <p>Find your UTubs below</p>
 </div>
 
-{% if not utubs %}
-    <div class="d-flex justify-content-center flex-row">
-        <p>No UTubs for you :(</p>
-    </div>
-{% else %}
-    {% for single_utub in utubs %}
-        <div class="d-flex justify-content-center flex-row">
-            <h3>UTub: {{single_utub.name}}</h3> 
-        </div>
-        {% if single_utub.created_by.id == current_user.id %}
-            <div class="d-flex justify-content-center flex-row">
-                <form action="{{url_for('delete_utub', utub_id=single_utub.id, owner_id=single_utub.created_by.id)}}" method="post">
-                    <button class="btn btn-danger btn-sm mb-3 mx-3" href="">Delete this UTub</button>
-                </form>
-            </div>
-        {% endif %}
-        <div class="d-flex justify-content-center flex-row">
-            <h5>Members</h5> 
-        </div>
-        <div class="d-flex justify-content-center flex-row">
-            <ul>
-                <li>UTub Owner: {{single_utub.created_by.username}}</li>
-            {% for user in single_utub.users %}
-                <li>User in "{{single_utub.name}}": {{user.username}}</li>
-            {% endfor %}
-            </ul>
-        </div>
-        <div class="d-flex justify-content-center flex-row">
-            <h5>URLs</h5> 
-        </div>
-        <div class="d-flex justify-content-center flex-row">
-            <ul>
-                {% for link in single_utub.utub_urls %}
-                <li>Link in "{{single_utub.name}}": {{link.url_in_utub.url_string}}</li>
-                <small>Added by {{link.user_that_added_url.username}}</small>
-                    {% if link.user_id == current_user.id or single_utub.created_by.id == current_user.id %}
+<div class="row align-items-left content">
+    <!-- Left Side Panel -->
+    <div class="col-md-2 order-2 order-md-1">
+
+        <!-- UPR Left Side Panel, UTubs ("red") -->
+        <div id="UTubDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
+            <div class="form-group">
+                <h2>UTubs</h2>
+                    {% if not utubs %}
                         <div class="d-flex justify-content-center flex-row">
-                            <a class="btn btn-info btn-sm col-6 mb-3 mx-3" href="#">Add tags</a>
-                            <form action="{{url_for('delete_url', utub_id=single_utub.id, url_id=link.url_id)}}" method="post">
-                                <button class="btn btn-danger btn-sm col-6 mb-3" href="">Delete this URL</button>
-                            </form>
+                            <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Add UTub!</a>
+                        </div>
+                    {% else %}
+                        <form>
+                            {% for single_utub in utubs %}
+                                <label for="UTub{{loop.index}}">
+                                    <input type="radio" id="UTub{{loop.index}}" name="UTubSelection" value="{{single_utub.name}}">
+                                    {{single_utub.name}}
+                                </label>
+                            {% endfor %}
+                        </form>
+                        <div class="d-flex justify-content-center flex-row">
+                            <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Add UTub!</a>
                         </div>
                     {% endif %}
-                <br>
-            {% endfor %}
-            </ul>
+            </div>
         </div>
-        <div class="d-flex justify-content-center">
-            {% if single_utub.created_by.id == current_user.id %}
-                <div class="d-flex justify-content-center flex-row mb-5">
-                    <a class="btn btn-success btn-sm col-8 mx-3" href="{{url_for('add_user', utub_id=single_utub.id)}}">Add a user!</a>
-                    <a class="btn btn-success btn-sm col-8 mx-3" href="{{url_for('add_url', utub_id=single_utub.id)}}">Add a URL!</a>
+
+        
+        <!-- LWR Left Side Panel, Tags ("orange") -->
+        <!-- Will be alpha ordered -->
+        <div id="TagDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
+            {% if not tags %}
+                <form>
+                    <label for="Tag0">
+                        <input type="checkbox" id="Tag0" name="Tag0" checked>
+                        Tag0
+                    </label>
+                </form>
+                <div class="d-flex justify-content-center flex-row">
+                    <a class="btn btn-primary col-7 mx-3" href="#">Add Tag!</a>
                 </div>
             {% else %}
-                <div class="d-flex justify-content-center flex-row mb-5">
-                    <a class="btn btn-success btn-md col-12 px-4" href="{{url_for('add_url', utub_id=single_utub.id)}}">Add a URL!</a>
-                </div>
+                <form>
+                    {% for tag in tags %}
+                        <label for="{{tag.name}}">
+                            <input type="checkbox" id="Tag{{loop.index}}" name="{{tag.name}}" checked>
+                            Tag1 <!-- insert tag jinja -->
+                        </label>
+                    {% endfor %}
+                </form>
+                <a class="btn btn-primary col-7 mx-3" href="#">Add Tag!</a>
             {% endif %}
         </div>
-    {% endfor %}
-{% endif %}
-<div class="d-flex justify-content-center">
-    <div class="border-top pt-1">
-        <div class="d-flex justify-content-center flex-row my-3">
-            <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Create a UTub!</a>
-            <a class="btn btn-primary col-4 mx-3" href="{{url_for('logout')}}">Logout</a>
+    </div>
+
+    <!-- Center Panel, URLs ("gray")-->
+
+    <div id="centerPanel" class="col-md-5 text-left order-2 order-md-1 mb-md-1 px-0 py-3 panel">
+        <div class="row justify-content-center">
+            <div class="col-10 col-lg-8 mb-md-0">
+                <h2 id="UTubHeader">Select a UTub</h2>
+                {% if not utubs %}
+                    <!-- Leave empty? Include a pretty image of a tub? -->
+                {% else %}
+                    <ul>
+                        <!-- { % for link in single_utub.urls % } -->
+                        <li>
+                            <!-- Link in "{ {single_utub.name} }": { {link.url_string} } -->
+                                <!-- { % for tag in single_utub.urls % } -->
+                                    <span class="tag">Tag0</span>
+                                <!-- { % endfor % } -->
+                        </li>
+                        <!-- { % endfor % } -->
+                    </ul>     
+                {% endif %}       
+            </div>
         </div>
     </div>
+
+    <!-- Right Side Panel -->
+
+    <div id="rightPanel" class="col-md-5 order-3 order-md-3 panel">
+        <div id="InfoDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
+
+            <h2>Information</h2>
+            <p class="lead">
+                Storing email addresses in a PostGreSQL database
+
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
+                beatae, maiores deserunt
+                in voluptatibus
+                aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
+                repellat eveniet quidem
+                voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
+                autem nam ex deserunt debitis
+                eaque ratione! Nobis, quidem assumenda.
+            </p>
+
+            <button>Access URL</button>
+        </div>
+
+        <div id="ChatDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
+            <h2>Chat</h2>
+            <p class="lead">
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
+                beatae, maiores deserunt
+                in voluptatibus
+                aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
+                repellat eveniet quidem
+                voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
+                autem nam ex deserunt debitis
+                eaque ratione! Nobis, quidem assumenda.
+            </p>
+        </div>
+    </div>
+
 </div>
 
 {% endblock %}
