@@ -59,3 +59,10 @@ How about we add some goals we need to hit before we can go fully public?
 - [ ] Hosting the website somewhere
 - [ ] Websockets for UTub chatting
 - [ ] [Finish this Readme!](https://hackmd.io/2uvlNeFrT-qBu3qiXTcC6w?both)
+
+
+### Step 3: Reach Goals
+> Let's get some reach goals, shall we?
+
+- [ ] RestAPI developed for the backend
+- [ ] iOS app developed from the RestAPI
