@@ -2,7 +2,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request
 from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm
-from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags
+from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, utub_users
 from flask_login import login_user, login_required, current_user, logout_user
 
 """#####################        MAIN ROUTES        ###################"""
@@ -150,6 +150,39 @@ def add_user(utub_id: int):
 
     return render_template('add_user_to_utub.html', utub_new_user_form=utub_new_user_form)
 
+@app.route('/delete_user/<int:utub_id>/<int:user_id>',  methods=["POST"])
+@login_required
+def delete_user(utub_id: int, user_id: int):
+    """
+    Delete a user from a Utub. The creator of the Utub can delete anyone but themselves.
+    Any user can remove themselves from a UTub they did not create.
+
+    Args:
+        utub_id (int): ID of the UTub to remove the user from
+        user_id (int): ID of the User to remove from the UTub
+    """
+    current_utub = Utub.query.get(int(utub_id))
+
+    if int(user_id) == int(current_utub.created_by.id):
+        # Creator tried to delete themselves
+        flash("You cannot remove yourself from your created UTub.", category="danger")
+        return redirect(url_for('home'))
+
+    current_user_ids_in_utub = [int(user.id) for user in current_user.users]
+
+    if int(user_id) not in current_user_ids_in_utub:
+        # User not in this Utub
+        flash("Can't remove a user that isn't in this UTub.", category="danger")
+        return redirect(url_for('home'))
+
+    else:
+        print("Trying to delete.")
+        #user_to_delete = utub_users.query.get()
+    
+    print(dir(current_utub.users))
+    print("You wanted to delete a user.")
+    print([user.id for user in current_utub.users])
+    return redirect(url_for('home'))
 
 @app.route('/delete_utub/<int:utub_id>/<int:owner_id>', methods=["POST"])
 @login_required
