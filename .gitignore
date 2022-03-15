@@ -6,3 +6,4 @@ __pycache__/
 flask_session/
 *.db
 testing/
+*.DS_Store
