@@ -2,7 +2,7 @@ from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request
 from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm
-from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, utub_users
+from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags
 from flask_login import login_user, login_required, current_user, logout_user
 
 """#####################        MAIN ROUTES        ###################"""
@@ -168,23 +168,33 @@ def delete_user(utub_id: int, user_id: int):
         flash("Creator of a UTub cannot be removed.", category="danger")
         return redirect(url_for('home'))
 
-    current_user_ids_in_utub = [int(user.id) for user in current_utub.users if int(user_id) == int(user.id)]
+    current_user_ids_in_utub = [int(user.id) for user in current_utub.users]
 
     if int(user_id) not in current_user_ids_in_utub:
         # User not in this Utub
         flash("Can't remove a user that isn't in this UTub.", category="danger")
         return redirect(url_for('home'))
 
-    else:
+    if int(current_user.get_id()) == int(current_utub.created_by.id):
+        # Creator of utub wants to delete someone
         user_to_delete_in_utub = [users_in_utub for users_in_utub in current_utub.users if int(user_id) == (users_in_utub.id)][0]
-        current_utub.users.remove(user_to_delete_in_utub)
-        db.session.commit()
+
+    elif int(current_user.get_id()) in current_user_ids_in_utub and int(user_id) == int(current_user.get_id()):
+        # User in this UTub and user wants to remove themself
+        user_to_delete_in_utub = [users_in_utub for users_in_utub in current_utub.users if int(user_id) == (users_in_utub.id)][0]
+
+    else:
+        flash("Error: Only the creator of a UTub can delete other users. Only you can remove yourself.", category="danger")
+        return redirect(url_for('home'))
+    
+    current_utub.users.remove(user_to_delete_in_utub)
+    db.session.commit()
 
     return redirect(url_for('home'))
 
-@app.route('/delete_utub/<int:utub_id>/<int:owner_id>', methods=["POST"])
+@app.route('/delete_utub/<int:utub_id>', methods=["POST"])
 @login_required
-def delete_utub(utub_id: int, owner_id: int):
+def delete_utub(utub_id: int):
     """
     Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
     URLS and users.
@@ -193,11 +203,11 @@ def delete_utub(utub_id: int, owner_id: int):
 
     Args:
         utub_id (int): The ID of the UTub to be deleted
-        owner_id (int): The owner ID of the UTub to be deleted
     """
-    
-    if int(current_user.get_id()) != owner_id:
-        flash("You do not have permission to delete this UTub", category="danger")
+    utub = Utub.query.get(int(utub_id))
+
+    if int(current_user.get_id()) != int(utub.created_by.id):
+        flash("You do not have permission to delete this UTub.", category="danger")
     
     else:
         utub = Utub.query.get(int(utub_id))
@@ -226,7 +236,7 @@ def delete_url(utub_id: int, url_id: int):
         url_id (int): The ID of the URL to be deleted
     """
     utub = Utub.query.get(int(utub_id))
-    owner_id = utub.utub_creator
+    owner_id = int(utub.created_by.id)
     
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
     url_added_by = [url_in_utub.user_that_added_url.id for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id]
@@ -241,7 +251,6 @@ def delete_url(utub_id: int, url_id: int):
 
     if int(current_user.get_id()) == owner_id or int(current_user.get_id()) == url_added_by:
         # User is creator of this UTub, or added the URL
-        print("Yes you can!")
         utub_url_user_row = Utub_Urls.query.filter_by(utub_id=utub_id, url_id=url_id).all()
 
         if len(utub_url_user_row) > 1:
@@ -252,6 +261,9 @@ def delete_url(utub_id: int, url_id: int):
         db.session.delete(utub_url_user_row[0])
         db.session.commit()
         flash("You successfully deleted the URL from the UTub.", category="danger")
+
+    else:
+        flash("Can only delete URLs you added, or if you are the creator of this UTub.", category="danger")
 
     return redirect(url_for('home'))
 

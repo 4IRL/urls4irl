@@ -73,7 +73,6 @@ class User(db.Model, UserMixin):
     email_confirm = db.Column(db.Boolean, default=False)
     password = db.Column(db.String(166), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    utubs = db.relationship('Utub', secondary=utub_users, lazy='subquery', backref=db.backref('utubs'))
     utubs_created = db.relationship('Utub', backref='created_by', lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     
