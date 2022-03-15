@@ -165,10 +165,10 @@ def delete_user(utub_id: int, user_id: int):
 
     if int(user_id) == int(current_utub.created_by.id):
         # Creator tried to delete themselves
-        flash("You cannot remove yourself from your created UTub.", category="danger")
+        flash("Creator of a UTub cannot be removed.", category="danger")
         return redirect(url_for('home'))
 
-    current_user_ids_in_utub = [int(user.id) for user in current_user.users]
+    current_user_ids_in_utub = [int(user.id) for user in current_utub.users if int(user_id) == int(user.id)]
 
     if int(user_id) not in current_user_ids_in_utub:
         # User not in this Utub
@@ -176,12 +176,10 @@ def delete_user(utub_id: int, user_id: int):
         return redirect(url_for('home'))
 
     else:
-        print("Trying to delete.")
-        #user_to_delete = utub_users.query.get()
-    
-    print(dir(current_utub.users))
-    print("You wanted to delete a user.")
-    print([user.id for user in current_utub.users])
+        user_to_delete_in_utub = [users_in_utub for users_in_utub in current_utub.users if int(user_id) == (users_in_utub.id)][0]
+        current_utub.users.remove(user_to_delete_in_utub)
+        db.session.commit()
+
     return redirect(url_for('home'))
 
 @app.route('/delete_utub/<int:utub_id>/<int:owner_id>', methods=["POST"])
