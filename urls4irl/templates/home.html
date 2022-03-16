@@ -9,7 +9,7 @@
     <!-- Left Side Panel -->
     <div class="col-md-2 order-2 order-md-1">
 
-        <!-- UPR Left Side Panel, UTubs ("red") -->
+        <!-- UPR LH Panel, UTubs ("red") -->
         <div id="UTubDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
             <div class="form-group">
                 <h2>UTubs</h2>
@@ -27,14 +27,14 @@
                             {% endfor %}
                         </form>
                         <div class="d-flex justify-content-center flex-row">
-                            <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Add UTub!</a>
+                            <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Create New UTub!</a>
                         </div>
                     {% endif %}
             </div>
         </div>
 
         
-        <!-- LWR Left Side Panel, Tags ("orange") -->
+        <!-- LWR LH Panel, Tags ("orange") -->
         <!-- Will be alpha ordered -->
         <div id="TagDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
             {% if not tags %}
@@ -45,7 +45,7 @@
                     </label>
                 </form>
                 <div class="d-flex justify-content-center flex-row">
-                    <a class="btn btn-primary col-7 mx-3" href="#">Add Tag!</a>
+                    <a class="btn btn-primary col-7 mx-3" href="#">Create New Tag!</a>
                 </div>
             {% else %}
                 <form>
@@ -56,7 +56,7 @@
                         </label>
                     {% endfor %}
                 </form>
-                <a class="btn btn-primary col-7 mx-3" href="#">Add Tag!</a>
+                <a class="btn btn-primary col-7 mx-3" href="#">Create New Tag!</a>
             {% endif %}
         </div>
     </div>
@@ -71,15 +71,45 @@
                     <!-- Leave empty? Include a pretty image of a tub? -->
                 {% else %}
                     <ul>
-                        <!-- { % for link in single_utub.urls % } -->
+                        <!-- { % for link in selected_utub.urls % } -->
                         <li>
-                            <!-- Link in "{ {single_utub.name} }": { {link.url_string} } -->
-                                <!-- { % for tag in single_utub.urls % } -->
+                            <!-- { {link.url_string} } -->
+                                <!-- For "selected tub" (instead of "single_utub") on UPR LH panel -->
+                                <!-- app.js has selector that indicates which UTub is currently selected, can extract UTub ID and have an AJAX callback to the db -->
+                                <!-- { % for tag in selected_utub.urls % } -->
                                     <span class="tag">Tag0</span>
                                 <!-- { % endfor % } -->
+                                <!-- <small>Added by { {link.added_to_utub_by.username} }</small> -->
+                                <!-- { % if link.added_to_utub_by.id == current_user.id or selected_utub.created_by.id == current_user.id % } -->
+                                    <div class="d-flex justify-content-center flex-row">
+                                        <a class="btn btn-info btn-sm col-6 mb-3 mx-3" href="#">Add tags</a>
+                                        <a class="btn btn-danger btn-sm col-6 mb-3" href="#">Delete this URL</a>
+                                    </div>
+                                <!-- { % endif % } -->
                         </li>
                         <!-- { % endfor % } -->
-                    </ul>     
+                    </ul>
+
+                    
+                    <!-- { % if selected_utub.created_by.id == current_user.id % } -->
+                        <!-- <div class="d-flex justify-content-center flex-row">
+                            <a class="btn btn-success btn-sm col-6 mx-3" href="{ {url_for('add_url', utub_id=single_utub.id)} }">Add a URL!</a>
+                            <a class="btn btn-danger btn-sm col-6 mb-3" href="#">Delete this UTub</a>
+                        </div> -->
+                        <!-- { % else % } -->
+                        <div class="d-flex justify-content-center flex-row mb-5">
+                            <a class="btn btn-success btn-md col-12 px-4" href="#">Add a URL!</a>
+                            <!-- <a class="btn btn-success btn-md col-12 px-4" href="{ {url_for('add_url', utub_id=selected_utub.id)} }">Add a URL!</a> -->
+                        </div>
+                    <!-- { % endif % } -->
+                    
+                    <!-- { % if selected_utub.created_by.id == current_user.id % } -->
+                        <!-- <div class="d-flex justify-content-center flex-row">
+                            <form action="{ {url_for('delete_utub', utub_id=selected_utub.id, owner_id=selected_utub.created_by.id)} }" method="post">
+                                <button class="btn btn-danger btn-sm mb-3 mx-3" href="">Delete this UTub</button>
+                            </form>
+                        </div> -->
+                    <!-- { % endif % }      -->
                 {% endif %}       
             </div>
         </div>
@@ -89,6 +119,22 @@
 
     <div id="rightPanel" class="col-md-5 order-3 order-md-3 panel">
         <div id="InfoDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
+
+            <h5>Members</h5> 
+            
+            <!-- { % for selected_utub in utubs % } -->
+                <ul>
+                    <li>UTub Owner: Placeholder</li>
+                    <!-- <li>UTub Owner: { {selected_utub.created_by.username} }</li> -->
+                <!-- { % for user in selected_utub.users % } -->
+                    <!-- <li>UTub User: { {user.username} }</li> -->
+                    <li>UTub User: Placeholder</li>
+                <!-- { % endfor % } -->
+                </ul>
+
+            
+            <h5>Actions</h5> 
+
 
             <h2>Information</h2>
             <p class="lead">
