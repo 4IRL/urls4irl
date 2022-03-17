@@ -20,7 +20,15 @@ def splash():
 def home():
     """Splash page for logged in user. Loads and displays all UTubs, and contained URLs."""
     utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
-    return render_template('home.html', utubs=utubs)
+    try:
+        print(dir(utubs[0]))
+        print(utubs[0].serialized)
+
+    except IndexError:
+        print("Empty")
+
+    finally:
+        return render_template('home.html', utubs=utubs)
 
 """#####################        END MAIN ROUTES        ###################"""
 
