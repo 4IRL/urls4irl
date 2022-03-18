@@ -35,10 +35,11 @@ This is our first web app and we are exciting to share it with the world! Come w
     - [x] Ability to delete a UTub if the owner
     - [x] Ability add a URL to any UTub user is a part of
     - [x] Ability to delete any URL in the UTub if the owner of the UTub
-    - [x] Ability to delete a URL in another user's UTub if that user added it
+    - [x] Ability for current user to delete a URL in another user's UTub if that current user added it
     - [x] Ability to add tags to any URL
     - [x] Ability for the UTub owner to remove tags on any URL in their UTub
-    - [ ] Ability for a user to leave a UTub 
+    - [X] Ability for a user to leave a UTub 
+    - [X] Ability for a UTub creator to remove a user in their UTub (besides themselves)
 - [ ] User home page with their UTubs displayed, including:
     - [ ] All URLs shown for all selected UTubs, separated per UTub
     - [ ] All tags shown for all selected UTubs

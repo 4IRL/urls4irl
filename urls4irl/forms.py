@@ -6,7 +6,6 @@ Tag form?
 
 """
 
-from msilib.schema import _Validation_records
 from flask import Flask
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
