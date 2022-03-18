@@ -4,6 +4,7 @@ from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm
 from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags
 from flask_login import login_user, login_required, current_user, logout_user
+import json
 
 """#####################        MAIN ROUTES        ###################"""
 
@@ -20,15 +21,11 @@ def splash():
 def home():
     """Splash page for logged in user. Loads and displays all UTubs, and contained URLs."""
     utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
-    try:
-        print(dir(utubs[0]))
-        print(utubs[0].serialized)
+    utubs_to_json = []
+    for utub in utubs:
+        utubs_to_json.append(utub.serialized)
 
-    except IndexError:
-        print("Empty")
-
-    finally:
-        return render_template('home.html', utubs=utubs)
+    return render_template('home.html', utubs=utubs, utubs_json=utubs_to_json)
 
 """#####################        END MAIN ROUTES        ###################"""
 
