@@ -15,9 +15,6 @@
         <p>No UTubs for you :(</p>
     </div>
 {% else %}
-    <script type="text/javascript">
-        var jsArrayOfItems = JSON.parse('{{utubs_json|tojson|safe}}');
-    </script>
     {% for single_utub in utubs %}
         <div class="d-flex justify-content-center flex-row">
             <h3>UTub: {{single_utub.name}}</h3> 

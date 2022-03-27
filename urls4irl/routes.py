@@ -4,7 +4,6 @@ from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm
 from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags
 from flask_login import login_user, login_required, current_user, logout_user
-import json
 
 """#####################        MAIN ROUTES        ###################"""
 
