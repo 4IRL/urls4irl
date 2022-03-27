@@ -11,8 +11,16 @@ form {
     flex-flow: column;
 }
 
+img {
+    max-width:100%;
+}
+
 .panel {
     border-radius: 30px;
+}
+
+.unselectedUTub {
+    display: none;
 }
 
 span.tag {
@@ -38,8 +46,12 @@ span.tag {
     background: gray;
 }
 
-#InfoDeck {
+#UTubInfoDeck {
     background: blue;
+}
+
+#URLInfoDeck {
+    background: purple;
 }
 
 #ChatDeck {

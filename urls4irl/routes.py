@@ -1,9 +1,11 @@
 from werkzeug.security import check_password_hash, generate_password_hash
-from flask import render_template, url_for, redirect, flash, request
+from flask import render_template, jsonify, url_for, redirect, flash, request
+from flask_login import login_user, login_required, current_user, logout_user
+import json
+
 from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm
 from urls4irl.models import User, Utub, URLS, Utub_Urls
-from flask_login import login_user, login_required, current_user, logout_user
 
 """#####################        MAIN ROUTES        ###################"""
 
@@ -20,8 +22,10 @@ def splash():
 def home():
     """Splash page for logged in user. Loads and displays all UTubs, and contained URLs."""
     utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
-    
-    return render_template('home.html', utubs=utubs)
+    utubs_to_json = []
+    for utub in utubs:
+        utubs_to_json.append(utub.serialized)
+    return render_template('home.html', utubs_json=utubs_to_json)
 
 """#####################        END MAIN ROUTES        ###################"""
 
@@ -126,6 +130,7 @@ def add_user(utub_id: int):
         utub_id (int): The utub that this user is being added to
     """
     utub = Utub.query.get(utub_id)
+    utub_json = utub.serialized
 
     if int(utub.created_by.id) != int(current_user.get_id()):
         flash("Not authorized to add a user to this UTub", category="danger")
@@ -201,6 +206,47 @@ def add_url(utub_id: int):
         return redirect(url_for('home'))
         
     return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
+
+@app.route('/remove_user/<int:utub_id>/<int:user_id>',  methods=["POST"])
+@login_required
+def remove_user(utub_id: int, user_id: int):
+    """
+    Delete a user from a Utub. The creator of the Utub can remove anyone but themselves.
+    Any user can remove themselves from a UTub they did not create.
+    Args:
+        utub_id (int): ID of the UTub to remove the user from
+        user_id (int): ID of the User to remove from the UTub
+    """
+    current_utub = Utub.query.get(int(utub_id))
+
+    if int(user_id) == int(current_utub.created_by.id):
+        # Creator tried to remove themselves
+        flash("Creator of a UTub cannot be removed.", category="danger")
+        return redirect(url_for('home'))
+
+    current_user_ids_in_utub = [int(user.id) for user in current_utub.users]
+
+    if int(user_id) not in current_user_ids_in_utub:
+        # User not in this Utub
+        flash("Can't remove a user that isn't in this UTub.", category="danger")
+        return redirect(url_for('home'))
+
+    if int(current_user.get_id()) == int(current_utub.created_by.id):
+        # Creator of utub wants to remove someone
+        user_to_remove_in_utub = [users_in_utub for users_in_utub in current_utub.users if int(user_id) == (users_in_utub.id)][0]
+
+    elif int(current_user.get_id()) in current_user_ids_in_utub and int(user_id) == int(current_user.get_id()):
+        # User in this UTub and user wants to remove themself
+        user_to_remove_in_utub = [users_in_utub for users_in_utub in current_utub.users if int(user_id) == (users_in_utub.id)][0]
+
+    else:
+        flash("Error: Only the creator of a UTub can remove other users. Only you can remove yourself.", category="danger")
+        return redirect(url_for('home'))
+    
+    current_utub.users.remove(user_to_remove_in_utub)
+    db.session.commit()
+
+    return redirect(url_for('home'))
 
 @app.route('/delete_utub/<int:utub_id>/<int:owner_id>', methods=["POST"])
 @login_required

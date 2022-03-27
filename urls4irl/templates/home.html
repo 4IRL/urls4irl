@@ -1,27 +1,27 @@
 {% extends "layout.html" %}
 {% block content %}
 <!-- Personalized welcome tagline -->
-<div class="d-flex justify-content-center flex-row">
+<div id="demo" class="d-flex justify-content-center flex-row">
     <h1>Hello there  {{current_user.username}}.</h1>
 </div>
 
 <div class="row align-items-left content">
     <!-- Left Side Panel -->
-    <div class="col-md-2 order-2 order-md-1">
+    <div id="leftPanel" class="col-md-2 order-2 order-md-1">
 
         <!-- UPR LH Panel, UTubs ("red") -->
         <div id="UTubDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
             <div class="form-group">
                 <h2>UTubs</h2>
-                    {% if not utubs %}
+                    {% if not utubs_json %}
                         <div class="d-flex justify-content-center flex-row">
                             <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Add UTub!</a>
                         </div>
                     {% else %}
                         <form>
-                            {% for single_utub in utubs %}
+                            {% for single_utub in utubs_json %}
                                 <label for="UTub{{loop.index}}">
-                                    <input type="radio" id="UTub{{loop.index}}" name="UTubSelection" value="{{single_utub.name}}">
+                                    <input type="radio" id="{{single_utub.id}}" name="UTubSelection" value="{{single_utub.name}}">
                                     {{single_utub.name}}
                                 </label>
                             {% endfor %}
@@ -67,49 +67,16 @@
         <div class="row justify-content-center">
             <div class="col-10 col-lg-8 mb-md-0">
                 <h2 id="UTubHeader">Select a UTub</h2>
-                {% if not utubs %}
-                    <!-- Leave empty? Include a pretty image of a tub? -->
+                <img id="TubImage" src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80" alt="Select a Tub!">
+                <!-- Figure out Font Awesome icons... -->
+                <!-- <i class="fas fa-bath"></i>
+                <i class="fa fa-flask"></i> -->
+                {% if not utubs_json %}
+                    <img src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80" alt="Create a Tub!">
                 {% else %}
-                    <ul>
-                        <!-- { % for link in selected_utub.urls % } -->
-                        <li>
-                            <!-- { {link.url_string} } -->
-                                <!-- For "selected tub" (instead of "single_utub") on UPR LH panel -->
-                                <!-- app.js has selector that indicates which UTub is currently selected, can extract UTub ID and have an AJAX callback to the db -->
-                                <!-- { % for tag in selected_utub.urls % } -->
-                                    <span class="tag">Tag0</span>
-                                <!-- { % endfor % } -->
-                                <!-- <small>Added by { {link.added_to_utub_by.username} }</small> -->
-                                <!-- { % if link.added_to_utub_by.id == current_user.id or selected_utub.created_by.id == current_user.id % } -->
-                                    <div class="d-flex justify-content-center flex-row">
-                                        <a class="btn btn-info btn-sm col-6 mb-3 mx-3" href="#">Add tags</a>
-                                        <a class="btn btn-danger btn-sm col-6 mb-3" href="#">Delete this URL</a>
-                                    </div>
-                                <!-- { % endif % } -->
-                        </li>
-                        <!-- { % endfor % } -->
+                    <ul id="listURLs">
+                        <!-- Current selected UTub's URLs will be displayed here -->
                     </ul>
-
-                    
-                    <!-- { % if selected_utub.created_by.id == current_user.id % } -->
-                        <!-- <div class="d-flex justify-content-center flex-row">
-                            <a class="btn btn-success btn-sm col-6 mx-3" href="{ {url_for('add_url', utub_id=single_utub.id)} }">Add a URL!</a>
-                            <a class="btn btn-danger btn-sm col-6 mb-3" href="#">Delete this UTub</a>
-                        </div> -->
-                        <!-- { % else % } -->
-                        <div class="d-flex justify-content-center flex-row mb-5">
-                            <a class="btn btn-success btn-md col-12 px-4" href="#">Add a URL!</a>
-                            <!-- <a class="btn btn-success btn-md col-12 px-4" href="{ {url_for('add_url', utub_id=selected_utub.id)} }">Add a URL!</a> -->
-                        </div>
-                    <!-- { % endif % } -->
-                    
-                    <!-- { % if selected_utub.created_by.id == current_user.id % } -->
-                        <!-- <div class="d-flex justify-content-center flex-row">
-                            <form action="{ {url_for('delete_utub', utub_id=selected_utub.id, owner_id=selected_utub.created_by.id)} }" method="post">
-                                <button class="btn btn-danger btn-sm mb-3 mx-3" href="">Delete this UTub</button>
-                            </form>
-                        </div> -->
-                    <!-- { % endif % }      -->
                 {% endif %}       
             </div>
         </div>
@@ -118,26 +85,75 @@
     <!-- Right Side Panel -->
 
     <div id="rightPanel" class="col-md-5 order-3 order-md-3 panel">
-        <div id="InfoDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
+        <div id="UTubInfoDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
 
-            <h5>Members</h5> 
+            <h2>UTub Information</h2>
+
+            <h5>Owner</h5> 
+            <span id="UTubOwner"></span>
             
-            <!-- { % for selected_utub in utubs % } -->
-                <ul>
-                    <li>UTub Owner: Placeholder</li>
-                    <!-- <li>UTub Owner: { {selected_utub.created_by.username} }</li> -->
-                <!-- { % for user in selected_utub.users % } -->
-                    <!-- <li>UTub User: { {user.username} }</li> -->
-                    <li>UTub User: Placeholder</li>
-                <!-- { % endfor % } -->
-                </ul>
+            <h5>Users</h5> 
+            <select id="UTubUsers">
+                <option disabled selected value> -- Select a UTub -- </option>
+            </select>
 
-            
-            <h5>Actions</h5> 
-
-
-            <h2>Information</h2>
-            <p class="lead">
+            <div id="UTubActions">
+                <h5>Actions</h5> 
+                <a id="addUser" class="btn btn-success btn-sm mb-3 mx-1" href="#">Add a User</a>
+                
+                <button class="btn btn-warning btn-sm mb-3 mx-1" data-toggle="modal" data-target="#removeUserModal">Remove this User</button>
+                <!-- <form action="#" method="post"> -->
+                    <!-- <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/> -->
+                    <!-- Modal -->
+                    <div class="modal fade" id="removeUserModal" tabindex="-1" role="dialog" aria-labelledby="removeUserModalLabel" aria-hidden="true">
+                        <div class="modal-dialog modal-dialog-centered" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                <h5 class="modal-title" id="removeUserModalLabel">Are you sure you want to remove this user?</h5>
+                                <a type="a" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </a>
+                                </div>
+                                <div class="modal-body">
+                                    This user will no longer have the ability to view or add URLs in the UTub.
+                                </div>
+                                <div class="modal-footer">
+                                <a type="a" class="btn btn-secondary" data-dismiss="modal">I Changed My Mind</a>
+                                <a type="a" id="removeUser" href="#" class="btn btn-danger">Remove</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                <!-- </form> -->
+                
+                <a class="btn btn-danger btn-sm mb-3 mx-1" data-toggle="modal" data-target="#removeUserModal">Delete this UTub</a>
+                <form action="#" method="post">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    <!-- Modal -->
+                    <div class="modal fade" id="deleteUTubModal" tabindex="-1" role="dialog" aria-labelledby="deleteUTubModalLabel" aria-hidden="true">
+                        <div class="modal-dialog" role="document">
+                            <div class="modal-content">
+                                <div class="modal-header">
+                                <h5 class="modal-title" id="deleteUTubModalLabel">Are you sure you want to delete?</h5>
+                                <a type="a" class="close" data-dismiss="modal" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span>
+                                </a>
+                                </div>
+                                <div class="modal-body">
+                                    URLs in the UTub will no longer be accessible. This action cannot be undone.
+                                </div>
+                                <div class="modal-footer">
+                                <a type="a" class="btn btn-secondary" data-dismiss="modal">I Changed My Mind</a>
+                                <a type="a" id="deleteUTub" href="#" class="btn btn-danger">Delete</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+           
+            <h5>Description</h5>
+            <p id="UTubInfo" class="lead">
                 Storing email addresses in a PostGreSQL database
 
                 Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
@@ -149,9 +165,25 @@
                 autem nam ex deserunt debitis
                 eaque ratione! Nobis, quidem assumenda.
             </p>
-
-            <button>Access URL</button>
         </div>
+
+        <div id="URLInfoDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
+            
+            <h2>URL Information</h2>
+
+            <h5>Actions</h5> 
+            <button class="btn btn-primary btn-sm mb-3 mx-1" id="URLLink" onclick="AccessLink()">Access URL</button>
+            <a class="btn btn-info btn-sm mb-3 mx-1" href="#">Add tags</a>
+            <a class="btn btn-danger btn-sm mb-3 mx-1" id="DeleteURL" href="#">Delete this URL</a>
+
+            <h5>Description</h5>
+            <p id="URLInfo" class="lead">
+                Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
+                beatae, maiores deserunt
+            </p>
+        </div>
+        
+
 
         <div id="ChatDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
             <h2>Chat</h2>
@@ -167,7 +199,14 @@
             </p>
         </div>
     </div>
-
 </div>
+
+    
+    <!-- Home Page JS -->
+    <script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
+    
+    <script>
+        my_func(JSON.parse('{{utubs_json|tojson|safe}}'));
+    </script>
 
 {% endblock %}
