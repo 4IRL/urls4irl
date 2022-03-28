@@ -27,7 +27,7 @@ $(document).ready(function() {
 
     $('select').change(function () {
         // Update href
-        $('#removeUser').attr("href", '/remove_user/' + selectedUTubID + '/' + $(this)[0].value)
+        $('#removeUserTemp').attr("action", '/remove_user/' + selectedUTubID + '/' + $(this)[0].value)
     })
 
 
@@ -94,7 +94,7 @@ function switchUTub(UTubID) {
     // Update hrefs
     $('#addURL').attr("href", "/add_url/" + UTubID);
     $('#addUser').attr("href", "/add_user/" + UTubID);
-    $('#deleteUTub').attr("href", "/delete_utub/" + UTubID + "/" + selectedUTub.creator);
+    $('#deleteUTubTemp').attr("action", "/delete_utub/" + UTubID + "/" + selectedUTub.creator);
 }
 
 function AccessLink() {
