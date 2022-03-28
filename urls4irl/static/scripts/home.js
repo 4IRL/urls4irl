@@ -1,6 +1,9 @@
 var selectedUTubID;
 var selectedUTub;
-var selectedURL;
+var selectedURL = {
+    url: '',
+    id: 0
+};
 var UserID;
 var UTubJSON;
 var tags;
@@ -13,7 +16,8 @@ function my_func(obj) {
 
 // UI Interactions
 
-$(document).ready(function() {
+$(document).ready(function () {
+    // Selected UTub
     $('input:radio').click(function () {
         // Reset
         $('#TubImage').remove();
@@ -25,34 +29,28 @@ $(document).ready(function() {
         $('#UTubHeader')[0].innerHTML = $('input[type="radio"]:checked')[0].value;
     })
 
+    // Selected URL
+    $('#centerPanel').on('click', '#listURLs', function (e) {
+        $(this).children().css("color", "black");    // Reset all to default color
+        $(e.target).css("color", "yellow");          // Highlight new focus URL
+
+        selectedURL.url = $(e.target)[0].innerHTML;
+        selectedURL.id = $(e.target).attr("urlid");
+        selectURL(selectedURL);
+    });
+
+    // Selected User
     $('select').change(function () {
         // Update href
         $('#removeUserTemp').attr("action", '/remove_user/' + selectedUTubID + '/' + $(this)[0].value)
     })
-
-
-    $('#centerPanel').on('click','#listURLs', function (e) {
-        $(this).children().css("color", "black");    // Reset all to default color
-        $(e.target).css("color", "yellow");          // Highlight new focus URL
-        let urlid = $(e.target).attr("urlid");
-
-        selectedURL = $(e.target)[0].innerHTML;
-        $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + urlid);
-
-        // Find notes for selected URL
-        let i = 0;
-        while (selectedUTub.urls[i].url.id != urlid) {
-            i++;
-        }
-        $('#URLInfo')[0].innerHTML = selectedUTub.urls[i].notes;
-    });
 });
 
 // Functions
 
 function switchUTub(UTubID) {
-    // Clear
-    $('#URLInfo').innerHTML = '';
+    // Clear 
+    clearSelectedURL()
 
     // Loop through array to find selected UTub
     let i = 0;
@@ -69,14 +67,15 @@ function switchUTub(UTubID) {
         URLs.push(url);
         let tags = URLArray[i].tags;
         let tagString = '';
-        for (let tag in tags) {
-            tagString += '<span class="tag">' + tag + '</span>';
+        console.log(tags)
+        for (let i in tags) {
+            tagString += '<span class="tag">' + tags[i].tag + '</span>';
         }
         html += '<li urlid=' + url.id + '>' + url.url + tagString + '</li>';
     }
     $('#listURLs')[0].innerHTML = html;
 
-    // Update UTub description
+    // Update UTub description, not yet implemented on backend
     // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
 
     UserArray = selectedUTub.users;
@@ -97,12 +96,34 @@ function switchUTub(UTubID) {
     $('#deleteUTubTemp').attr("action", "/delete_utub/" + UTubID + "/" + selectedUTub.creator);
 }
 
+function selectURL(selectedURL) {
+    // Find notes for selected URL
+    let i = 0;
+    while (selectedUTub.urls[i].url.id != selectedURL.id) {
+        i++;
+    }
+    $('#URLInfo')[0].innerHTML = selectedUTub.urls[i].notes;
+    
+    // Update hrefs
+    $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURL.id);
+    $('#EditURL').attr("href", "/edit_url/" + selectedUTubID + "/" + selectedURL.id);
+    $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURL.id);
+}
+
+function clearSelectedURL() {
+    $('#URLInfo')[0].innerHTML = '';
+    
+    // Update hrefs
+    $('#addTags').attr("href", "#");
+    $('#EditURL').attr("href", "#");
+    $('#DeleteURL').attr("href", "#");
+}
+
 function AccessLink() {
-    console.log(selectedURL)
-    if(!selectedURL.startsWith('https://')) {
-        window.open('https://' + selectedURL, "_blank");
+    if (!selectedURL.url.startsWith('https://')) {
+        window.open('https://' + selectedURL.url, "_blank");
     } else {
-        window.open(selectedURL, "_blank");
+        window.open(selectedURL.url, "_blank");
     }
 }
 

@@ -6,7 +6,6 @@ Tag form?
 
 """
 
-from msilib.schema import _Validation_records
 from flask import Flask
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
@@ -94,6 +93,7 @@ class UTubNewUserForm(FlaskForm):
         if not username_exists:
             raise ValidationError('That user does not exist. Note this is case sensitive.')
 
+
 class UTubNewURLForm(FlaskForm):
     """Form to add a URL to a UTub. Inherits from FlaskForm. All fields require data.
 
@@ -106,3 +106,17 @@ class UTubNewURLForm(FlaskForm):
     submit = SubmitField('Add URL to this UTub!')
 
     #TODO Add validation for the URL here..
+
+
+class UTubNewUrlTagForm(FlaskForm):
+    """Form to add a tag to a URL in a Utub.
+
+    Fields:
+        tag_string (Stringfield): Maximum 30 chars? TODO
+    """
+    
+    tag_string = StringField('Tag', validators=[InputRequired(), Length(min=1, max=30)])
+
+    submit = SubmitField('Add tag to this URL!')
+
+    #TODO Add tag validation (PG filter?)
