@@ -1,3 +1,4 @@
+from unicodedata import name
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request
 from urls4irl import app, db
@@ -16,16 +17,35 @@ def splash():
     return redirect(url_for('home'))
     #return render_template('splash.html')
 
-@app.route('/home')
+@app.route('/home', methods=["GET"])
 @login_required
 def home():
-    """Splash page for logged in user. Loads and displays all UTubs, and contained URLs."""
+    """
+    Splash page for logged in user. Loads and displays all UTubs, and contained URLs.
+    
+    If GET contains no JSON -
+        Frontend receives all Utub names for that user
+
+    Otherwise - 
+        Receives Utub data for the selected utub in the provided JSON
+
+    Probably better in a POST request.
+    """
+    utub_requested = request.get_json()
+
     utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
     utubs_to_json = []
     for utub in utubs:
         utubs_to_json.append(utub.serialized)
 
-    return render_template('home.html', utubs=utubs, utubs_json=utubs_to_json)
+    if not utub_requested:   
+        return render_template('home.html', utubs=utubs, utubs_json=utubs_to_json)
+
+    else:
+        utub_id_requested = int(utub_requested['utub_id'])
+        utub = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).filter_by(id=utub_id_requested).first_or_404()
+
+        return render_template('home.html', utubs=utubs, utubs_json=utub.serialized)
 
 """#####################        END MAIN ROUTES        ###################"""
 
