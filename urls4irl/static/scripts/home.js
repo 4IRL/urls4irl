@@ -98,7 +98,12 @@ function switchUTub(UTubID) {
 }
 
 function AccessLink() {
-    window.open(selectedURL, "_blank");
+    console.log(selectedURL)
+    if(!selectedURL.startsWith('https://')) {
+        window.open('https://' + selectedURL, "_blank");
+    } else {
+        window.open(selectedURL, "_blank");
+    }
 }
 
 // $.get('http://someurl.com',function(data,status) {
