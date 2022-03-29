@@ -6,7 +6,7 @@ var selectedURL = {
 };
 var UserID;
 var UTubJSON;
-var tags;
+var tags = [];
 var URLs = [];
 
 function my_func(obj) {
@@ -50,7 +50,7 @@ $(document).ready(function () {
 
 function switchUTub(UTubID) {
     // Clear 
-    clearSelectedURL()
+    resetUTubs();
 
     // Loop through array to find selected UTub
     let i = 0;
@@ -59,25 +59,53 @@ function switchUTub(UTubID) {
     }
     selectedUTub = UTubJSON[i];
 
-    // Build center panel URL-tag list
-    URLArray = selectedUTub.urls;
-    let html = '';
-    for (let i in URLArray) {
-        let url = URLArray[i].url;
-        URLs.push(url);
-        let tags = URLArray[i].tags;
-        let tagString = '';
-        console.log(tags)
-        for (let i in tags) {
-            tagString += '<span class="tag">' + tags[i].tag + '</span>';
-        }
-        html += '<li urlid=' + url.id + '>' + url.url + tagString + '</li>';
-    }
-    $('#listURLs')[0].innerHTML = html;
+    // Center panel
+    gatherURLs();
 
+    // LH panels
+    buildTagDeck();
+
+    // RH panels
     // Update UTub description, not yet implemented on backend
     // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
 
+    gatherUsers();
+
+    // Update hrefs
+    $('#addURL').attr("href", "/add_url/" + UTubID);
+    $('#addUser').attr("href", "/add_user/" + UTubID);
+    $('#deleteUTubTemp').attr("action", "/delete_utub/" + UTubID + "/" + selectedUTub.creator);
+}
+
+// Build center panel URL-tag list
+function gatherURLs() {
+    URLArray = selectedUTub.urls;
+    let html = '';
+    for (let i in URLArray) {
+        // Load URLs on frontend array
+        let urlObj = URLArray[i];
+        URLs.push(urlObj);
+
+        // Build tag html strings 
+        let tagString = '';
+        for (let j in urlObj.tags) {
+            // Extract all tags in UTub
+            if (tags.indexOf(urlObj.tags[j].tag) === -1) {
+                tags.push(urlObj.tags[j].tag);
+            }
+            tagString += '<span class="tag">' + urlObj.tags[j].tag + '</span>';
+        }
+
+        // Assemble url list items
+        html += '<li urlid=' + urlObj.url.id + '>' + urlObj.url.url + tagString + '</li>';
+    }
+    console.log(URLs)
+    console.log(tags)
+    $('#listURLs')[0].innerHTML = html;
+}
+
+// Creates option dropdown menu of users in UTub
+function gatherUsers() {
     UserArray = selectedUTub.users;
     html = '<option disabled selected value> -- Select a User -- </option>';
     for (let i in UserArray) {
@@ -89,30 +117,45 @@ function switchUTub(UTubID) {
         }
     }
     $('#UTubUsers')[0].innerHTML = html;
-
-    // Update hrefs
-    $('#addURL').attr("href", "/add_url/" + UTubID);
-    $('#addUser').attr("href", "/add_user/" + UTubID);
-    $('#deleteUTubTemp').attr("action", "/delete_utub/" + UTubID + "/" + selectedUTub.creator);
 }
 
-function selectURL(selectedURL) {
+function buildTagDeck() {
+    let html = '<div class="form-group"><h2>Tags</h2>';
+    if (tags.length !== 0) {
+        tags.sort();
+        html += '<form>';
+        for (let i in tags) {        
+            html += '<label for="' + tags[i] + '"><input type="checkbox" name="' + tags[i] + '" checked>' + tags[i] + '</label>';
+        }
+        html += '</form>'
+    } else {
+        html += '<h5>No Tags Applied to any URLs in this UTub</h5>'
+    }
+    html += '</div>'
+    $('#TagDeck')[0].innerHTML = html
+}
+
+function selectURL(URLObj) {
     // Find notes for selected URL
     let i = 0;
-    while (selectedUTub.urls[i].url.id != selectedURL.id) {
+    while (selectedUTub.urls[i].url.id != URLObj.id) {
         i++;
     }
     $('#URLInfo')[0].innerHTML = selectedUTub.urls[i].notes;
-    
+
     // Update hrefs
     $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURL.id);
     $('#EditURL').attr("href", "/edit_url/" + selectedUTubID + "/" + selectedURL.id);
     $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURL.id);
 }
 
-function clearSelectedURL() {
+function resetUTubs() {
+    // Reset tag deck
+    tags = [];
+
+    // Empty URL description
     $('#URLInfo')[0].innerHTML = '';
-    
+
     // Update hrefs
     $('#addTags').attr("href", "#");
     $('#EditURL').attr("href", "#");

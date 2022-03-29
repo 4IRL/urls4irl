@@ -37,27 +37,10 @@
         <!-- LWR LH Panel, Tags ("orange") -->
         <!-- Will be alpha ordered -->
         <div id="TagDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
-            {% if not tags %}
-                <form>
-                    <label for="Tag0">
-                        <input type="checkbox" id="Tag0" name="Tag0" checked>
-                        Tag0
-                    </label>
-                </form>
-                <div class="d-flex justify-content-center flex-row">
-                    <a class="btn btn-primary col-7 mx-3" href="#">Create New Tag!</a>
-                </div>
-            {% else %}
-                <form>
-                    {% for tag in tags %}
-                        <label for="{{tag.name}}">
-                            <input type="checkbox" id="Tag{{loop.index}}" name="{{tag.name}}" checked>
-                            Tag1 <!-- insert tag jinja -->
-                        </label>
-                    {% endfor %}
-                </form>
-                <a class="btn btn-primary col-7 mx-3" href="#">Create New Tag!</a>
-            {% endif %}
+            <div class="form-group">
+                <h2>Tags</h2>
+                <h5>No UTub Selected</h5>
+            </div>
         </div>
     </div>
 
