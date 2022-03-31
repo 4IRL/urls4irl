@@ -1,13 +1,13 @@
-var selectedUTubID;
-var selectedUTub;
-var selectedURL = {
+var UTubJSON;               // Full JSON sent from server
+var URLs = [];              // Array with all URL data sent from server in the selectedUTub
+var tagsObj = {};           // Object with tag key and id value pairs
+var UserID;
+var selectedUTub;           // Array item for the current UTub
+var selectedUTubID;         // Current UTub ID
+var selectedURL = {         // Used to identify which URL is in focus
     url: '',
     id: 0
 };
-var UserID;
-var UTubJSON;
-var tags = [];
-var URLs = [];
 
 function my_func(obj) {
     UTubJSON = obj;
@@ -31,12 +31,19 @@ $(document).ready(function () {
 
     // Selected URL
     $('#centerPanel').on('click', '#listURLs', function (e) {
+        console.log("clicked")
+        console.log($(this))
         $(this).children().css("color", "black");    // Reset all to default color
         $(e.target).css("color", "yellow");          // Highlight new focus URL
 
         selectedURL.url = $(e.target)[0].innerHTML;
         selectedURL.id = $(e.target).attr("urlid");
         selectURL(selectedURL);
+    });
+
+    // Selected Tag
+    $('#TagDeck').on('click', '#listTags', function (e) {
+        toggleTag($(e.target).parent().attr("tagid"));
     });
 
     // Selected User
@@ -60,7 +67,7 @@ function switchUTub(UTubID) {
     selectedUTub = UTubJSON[i];
 
     // Center panel
-    gatherURLs();
+    buildURLDeck();
 
     // LH panels
     buildTagDeck();
@@ -77,34 +84,86 @@ function switchUTub(UTubID) {
     $('#deleteUTubTemp').attr("action", "/delete_utub/" + UTubID + "/" + selectedUTub.creator);
 }
 
-// Build center panel URL-tag list
-function gatherURLs() {
+// Build LH panel tag list in selectedUTub
+function buildTagDeck() {
+    let html = '';
+    // Tags are objects and need extracting/sorting based on keys
+    let tagText = Object.keys(tagsObj)
+
+    // Need to sort IDs to same indices as text 
+    let tagID = Object.values(tagsObj)
+
+    if (tagText.length !== 0) {
+        tagText.sort();
+        // Loop through all tags and provide checkbox input for filtering
+        for (let i in tagText) {        
+            html += '<label for="' + tagText[i] + '" tagid='+ tagID[i] +'><input type="checkbox" name="' + tagText[i] + '" checked>' + tagText[i] + '</label>';
+        }
+    } else {
+        html += '<h5>No Tags Applied to any URLs in this UTub</h5>'     // No tags in UTub
+    }
+    $('#listTags')[0].innerHTML = html
+}
+
+function toggleTag(tagID) {
+    spanObjs = $('span[tagid="' + tagID + '"]')
+    console.log(spanObjs)
+    console.log($(spanObjs[1]).parent())
+    // for(let i in spanObjs) {
+    // }
+    
+    // console.log($('span[tagid="' + tagID + '"]'))
+    // console.log($('span[tagid="' + tagID + '"]').parent())
+    // var x = document.getElementById("myDIV");
+    // if (x.style.display === "none") {
+    //   x.style.display = "block";
+    // } else {
+    //   x.style.display = "none";
+    // }
+  }
+
+// Build center panel URL-tag list for selectedUTub
+function buildURLDeck() {
     URLArray = selectedUTub.urls;
     let html = '';
+    let tagText = [];                                       // A placeholder to check for unique tags to be added to global tags array
     for (let i in URLArray) {
         // Load URLs on frontend array
-        let urlObj = URLArray[i];
-        URLs.push(urlObj);
+        let urlItem = URLArray[i];
 
         // Build tag html strings 
         let tagString = '';
-        for (let j in urlObj.tags) {
+        for (let j in urlItem.tags) {
+            let tagItem = urlItem.tags[j];
             // Extract all tags in UTub
-            if (tags.indexOf(urlObj.tags[j].tag) === -1) {
-                tags.push(urlObj.tags[j].tag);
+            if (tagText.indexOf(tagItem.tag) === -1) {
+                tagText.push(tagItem.tag);
+                tagsObj[tagItem.tag] = tagItem.id;
             }
-            tagString += '<span class="tag">' + urlObj.tags[j].tag + '</span>';
+            tagString += '<span tagid='+ tagItem.id +' class="tag">' + tagItem.tag + '</span>';
         }
 
         // Assemble url list items
-        html += '<li urlid=' + urlObj.url.id + '>' + urlObj.url.url + tagString + '</li>';
+        html += '<li urlid=' + urlItem.url.id + '>' + urlItem.url.url + tagString + '</li>';
     }
-    console.log(URLs)
-    console.log(tags)
     $('#listURLs')[0].innerHTML = html;
 }
 
-// Creates option dropdown menu of users in UTub
+function selectURL(urlItem) {
+    // Find notes for selected URL
+    let i = 0;
+    while (selectedUTub.urls[i].url.id != urlItem.id) {
+        i++;
+    }
+    $('#URLInfo')[0].innerHTML = selectedUTub.urls[i].notes;
+
+    // Update hrefs
+    $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURL.id);
+    $('#EditURL').attr("href", "/edit_url/" + selectedUTubID + "/" + selectedURL.id);
+    $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURL.id);
+}
+
+// Creates option dropdown menu of users in RH UTub information panel
 function gatherUsers() {
     UserArray = selectedUTub.users;
     html = '<option disabled selected value> -- Select a User -- </option>';
@@ -119,35 +178,6 @@ function gatherUsers() {
     $('#UTubUsers')[0].innerHTML = html;
 }
 
-function buildTagDeck() {
-    let html = '<div class="form-group"><h2>Tags</h2>';
-    if (tags.length !== 0) {
-        tags.sort();
-        html += '<form>';
-        for (let i in tags) {        
-            html += '<label for="' + tags[i] + '"><input type="checkbox" name="' + tags[i] + '" checked>' + tags[i] + '</label>';
-        }
-        html += '</form>'
-    } else {
-        html += '<h5>No Tags Applied to any URLs in this UTub</h5>'
-    }
-    html += '</div>'
-    $('#TagDeck')[0].innerHTML = html
-}
-
-function selectURL(URLObj) {
-    // Find notes for selected URL
-    let i = 0;
-    while (selectedUTub.urls[i].url.id != URLObj.id) {
-        i++;
-    }
-    $('#URLInfo')[0].innerHTML = selectedUTub.urls[i].notes;
-
-    // Update hrefs
-    $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURL.id);
-    $('#EditURL').attr("href", "/edit_url/" + selectedUTubID + "/" + selectedURL.id);
-    $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURL.id);
-}
 
 function resetUTubs() {
     // Reset tag deck
@@ -155,6 +185,10 @@ function resetUTubs() {
 
     // Empty URL description
     $('#URLInfo')[0].innerHTML = '';
+
+    // Empty TagsDeck
+    $('#listTags')[0].innerHTML = '';
+    tagsObj = {};
 
     // Update hrefs
     $('#addTags').attr("href", "#");
