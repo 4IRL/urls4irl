@@ -31,8 +31,6 @@ $(document).ready(function () {
 
     // Selected URL
     $('#centerPanel').on('click', '#listURLs', function (e) {
-        console.log("clicked")
-        console.log($(this))
         $(this).children().css("color", "black");    // Reset all to default color
         $(e.target).css("color", "yellow");          // Highlight new focus URL
 
@@ -88,16 +86,21 @@ function switchUTub(UTubID) {
 function buildTagDeck() {
     let html = '';
     // Tags are objects and need extracting/sorting based on keys
-    let tagText = Object.keys(tagsObj)
+    let tagEntries = Object.entries(tagsObj)
+    tagEntries.sort(function (a, b) {
+        if (a[0] > b[0]) {
+            return 1
+        } else {
+            return -1
+        }
+    });
 
-    // Need to sort IDs to same indices as text 
-    let tagID = Object.values(tagsObj)
-
-    if (tagText.length !== 0) {
-        tagText.sort();
+    if (tagEntries.length !== 0) {
         // Loop through all tags and provide checkbox input for filtering
-        for (let i in tagText) {        
-            html += '<label for="' + tagText[i] + '" tagid='+ tagID[i] +'><input type="checkbox" name="' + tagText[i] + '" checked>' + tagText[i] + '</label>';
+        for (let i in tagEntries) {
+            let tagText = tagEntries[i][0]
+            let tagID = tagEntries[i][1]
+            html += '<label for="' + tagText + '" tagid=' + tagID + '><input type="checkbox" name="' + tagText + '" checked>' + tagText + '</label>';
         }
     } else {
         html += '<h5>No Tags Applied to any URLs in this UTub</h5>'     // No tags in UTub
@@ -107,20 +110,8 @@ function buildTagDeck() {
 
 function toggleTag(tagID) {
     spanObjs = $('span[tagid="' + tagID + '"]')
-    console.log(spanObjs)
-    console.log($(spanObjs[1]).parent())
-    // for(let i in spanObjs) {
-    // }
-    
-    // console.log($('span[tagid="' + tagID + '"]'))
-    // console.log($('span[tagid="' + tagID + '"]').parent())
-    // var x = document.getElementById("myDIV");
-    // if (x.style.display === "none") {
-    //   x.style.display = "block";
-    // } else {
-    //   x.style.display = "none";
-    // }
-  }
+    $($(spanObjs).parent()).toggle()
+}
 
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck() {
@@ -140,7 +131,7 @@ function buildURLDeck() {
                 tagText.push(tagItem.tag);
                 tagsObj[tagItem.tag] = tagItem.id;
             }
-            tagString += '<span tagid='+ tagItem.id +' class="tag">' + tagItem.tag + '</span>';
+            tagString += '<span tagid=' + tagItem.id + ' class="tag">' + tagItem.tag + '</span>';
         }
 
         // Assemble url list items
