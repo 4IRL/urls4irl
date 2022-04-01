@@ -19,10 +19,22 @@ A new entry is created on creation of a UTub for the creator, and whomver the cr
 To query:
 https://stackoverflow.com/questions/12593421/sqlalchemy-and-flask-how-to-query-many-to-many-relationship/12594203
 """
-utub_users = db.Table('UtubUsers',
-    db.Column('utub_id', db.Integer, db.ForeignKey('Utub.id'), primary_key=True),
-    db.Column('user_id', db.Integer, db.ForeignKey('User.id'), primary_key=True)            
-)
+# utub_users = db.Table('UtubUsers',
+#     db.Column('utub_id', db.Integer, db.ForeignKey('Utub.id'), primary_key=True),
+#     db.Column('user_id', db.Integer, db.ForeignKey('User.id'), primary_key=True)            
+# )
+class Utub_Users(db.Model):
+    __tablename__ = 'UtubUsers'
+    utub_id = db.Column(db.Integer, db.ForeignKey('Utub.id'), primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('User.id'), primary_key=True)
+
+    to_user = db.relationship('User', back_populates='utubs_is_member_of')
+    to_utub = db.relationship('Utub', back_populates='members')
+
+    @property
+    def serialized(self):
+        return self.to_user.serialized
+
 
 class Utub_Urls(db.Model):
     """
@@ -48,8 +60,8 @@ class Utub_Urls(db.Model):
     def serialized(self):
         """Returns serialized object."""
         return {
-            "url": self.url_in_utub.serialized,
-            "added_by": self.user_that_added_url.serialized,
+            "url": self.url_in_utub.serialized_for_utub,
+            "added_by": self.user_that_added_url.serialized['id'],
             "notes": self.url_notes
         }
 
@@ -80,6 +92,16 @@ class Url_Tags(db.Model):
             'tagged_url': self.tagged_url.serialized
         }
 
+    @property
+    def serialized_for_utub(self):
+        tag_item = self.tag_item.serialized
+        return self.tag_item.serialized
+
+    @property
+    def serialized_for_url(self):
+        return {
+            'id': self.tag_item.serialized['id']
+        }
 
 class User(db.Model, UserMixin):
     """Class represents a User, with their username, email, and hashed password."""
@@ -93,6 +115,7 @@ class User(db.Model, UserMixin):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     utubs_created = db.relationship('Utub', backref='created_by', lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
+    utubs_is_member_of = db.relationship("Utub_Users", back_populates='to_user')
     
     @property
     def serialized(self):
@@ -105,6 +128,7 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
 
+
 class Utub(db.Model):
     """Class represents a UTub. A UTub is created by a specific user, but has read-edit access given to other users depending on who it
     is shared with. The UTub contains a set of URL's and their associated tags."""
@@ -114,26 +138,49 @@ class Utub(db.Model):
     name = db.Column(db.String(30), nullable=False) # Note that multiple UTubs can have the same name, maybe verify this per user?
     utub_creator = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    users = db.relationship('User', secondary=utub_users, lazy='subquery', backref=db.backref('users'))
+    #utub_description = db.Column(db.String(500), nullable=True)
     utub_url_tags = db.relationship("Url_Tags", back_populates="utub_containing_this_tag", cascade='all, delete')
     utub_urls = db.relationship('Utub_Urls', back_populates="utub", cascade='all, delete')
+    members = db.relationship('Utub_Users', back_populates="to_utub", cascade='all, delete, delete-orphan')
 
     @property
     def serialized(self):
         """Return object in serialized form."""
         urls_serialized = [url.serialized for url in self.utub_urls]
+        url_for_utub = {'urls': []}
+        print(urls_serialized)
+        utub_tags = []
         for url in urls_serialized:
-            url['tags'] = []
+            tags_for_url = []
+
             for tag in self.utub_url_tags:
+                #print(tag.serialized_for_utub)
                 if tag.serialized['tagged_url']['id'] == url['url']['id']:
-                    url['tags'].append(tag.serialized['tag'])
+                    tag_data = tag.serialized['tag']
+                    tag_data_to_add = {'id': tag_data['id'], 'tag_string':tag_data['tag_string']}
+                    if tag_data_to_add not in utub_tags:
+                        utub_tags.append(tag_data_to_add)
+                    tags_for_url.append(tag_data['id'])
+
+
+            url_for_utub['urls'].append({
+                'added_by': url['added_by'],
+                'url_string': url['url']['url'],
+                'url_id': url['url']['id'],
+                'notes': url['notes'],
+                'tags': tags_for_url
+                }
+            )
+        #print(url_for_utub)
+
         return {
             'id': self.id,
             'name': self.name,
             'creator': self.utub_creator,
             'created_at': self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
-            'users': [user.serialized for user in self.users],
-            'urls': urls_serialized
+            'members': [member.serialized for member in self.members],
+            'urls': url_for_utub,
+            'utub_tags': utub_tags
         }
 
 
@@ -153,7 +200,16 @@ class URLS(db.Model):
         """Returns object in serialized form."""
         return {
             'id': self.id,
-            'url': self.url_string
+            'url': self.url_string,
+            'tags': [tag.tag_item.serialized for tag in self.url_tags]
+        }
+
+    @property
+    def serialized_for_utub(self):
+        return {
+            'id': self.id,
+            'url': self.url_string,
+            'tags': [int(tag.tag_item.serialized['id']) for tag in self.url_tags]
         }
 
 class Tags(db.Model):
@@ -170,5 +226,5 @@ class Tags(db.Model):
         """Returns serialized object."""
         return {
             'id': self.id,
-            'tag': self.tag_string
+            'tag_string': self.tag_string
         }
