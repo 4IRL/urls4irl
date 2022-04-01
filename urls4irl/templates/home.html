@@ -62,6 +62,7 @@
                     <ul id="listURLs">
                         <!-- Current selected UTub's URLs will be displayed here -->
                     </ul>
+                    <a id="addURL" class="btn btn-success btn-sm mb-3 mx-3" href="#">Add a URL</a>
                 {% endif %}       
             </div>
         </div>
@@ -201,7 +202,7 @@
     <script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
     
     <script>
-        my_func(JSON.parse('{{utubs_json|tojson|safe}}'));
+        my_func('{{utubs}}',JSON.parse('{{utubs_json|tojson|safe}}'));
     </script>
 
 {% endblock %}

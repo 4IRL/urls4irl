@@ -1,32 +1,104 @@
-var UTubJSON;               // Full JSON sent from server
-var URLs = [];              // Array with all URL data sent from server in the selectedUTub
-var tagsObj = {};           // Object with tag key and id value pairs
-var UserID;
-var selectedUTub;           // Array item for the current UTub
+var selectedUTub;           // Object with all relevant data for a single UTub
 var selectedUTubID;         // Current UTub ID
+var dictURLs = [];          // Array of all users in selectedUTub
+var dictTags = [];          // Array of all users in selectedUTub
+var dictMembers = [];         // Array of all users in selectedUTub
+var currentUserID;
 var selectedURL = {         // Used to identify which URL is in focus
     url: '',
     id: 0
 };
 
-function my_func(obj) {
+function my_func(UTubs,obj) {
+    console.log(UTubs)
     UTubJSON = obj;
     console.log(UTubJSON)
 }
 
 // UI Interactions
-
 $(document).ready(function () {
     // Selected UTub
     $('input:radio').click(function () {
         // Reset
         $('#TubImage').remove();
-        $('#addURL').remove();
-        $('#listURLs').parent()[0].innerHTML += '<a id="addURL" class="btn btn-success btn-sm mb-3 mx-3" href="#">Add a URL</a>';
 
-        selectedUTubID = $('input[type=radio]:checked')[0].id;
-        switchUTub(selectedUTubID);
-        $('#UTubHeader')[0].innerHTML = $('input[type="radio"]:checked')[0].value;
+        radioButton = $('input[type=radio]:checked')[0];
+        selectedUTubID = radioButton.id;
+        $.get('?UTubID=' + selectedUTubID, function (UTubJSON) {
+            selectedUTub = UTubJSON;
+        });
+        console.log(selectedUTub)
+
+        // selectedUTub = {
+        //     "created_at": "Fri, 01 Apr 2022 03:02:34 GMT",
+        //     "created_by": 1,
+        //     "id": 5,
+        //     "members": [
+        //         {
+        //             "id": 1,
+        //             "username": "Giovanni"
+        //         },
+        //         {
+        //             "id": 2,
+        //             "username": "Rehan"
+        //         }
+        //     ],
+        //     "name": "Third Utub!",
+        //     "tags": [
+        //         {
+        //             "id": 12,
+        //             "tag_string": "tag1"
+        //         },
+        //         {
+        //             "id": 13,
+        //             "tag_string": "tag2"
+        //         },
+        //         {
+        //             "id": 14,
+        //             "tag_string": "www.losgoogs.com"
+        //         },
+        //         {
+        //             "id": 15,
+        //             "tag_string": "Choochoo"
+        //         },
+        //         {
+        //             "id": 16,
+        //             "tag_string": "tag3"
+        //         }
+        //     ],
+        //     "urls": [
+        //         {
+        //             "added_by": 2,
+        //             "id": 10,
+        //             "notes": "",
+        //             "tags": [
+        //                 12,
+        //                 13,
+        //                 14,
+        //                 15
+        //             ],
+        //             "url": "wwww.elgoogs.com"
+        //         },
+        //         {
+        //             "added_by": 1,
+        //             "id": 11,
+        //             "notes": "",
+        //             "tags": [
+        //                 12,
+        //                 13,
+        //                 16
+        //             ],
+        //             "url": "losgoogs.com"
+        //         }
+        //     ]
+        // }
+
+        dictURLs = selectedUTub.urls;
+        dictTags = selectedUTub.tags;
+        dictUsers = selectedUTub.members;
+
+        switchUTub();
+        $('#UTubHeader')[0].innerHTML = radioButton.value;
     })
 
     // Selected URL
@@ -53,16 +125,9 @@ $(document).ready(function () {
 
 // Functions
 
-function switchUTub(UTubID) {
+function switchUTub() {
     // Clear 
     resetUTubs();
-
-    // Loop through array to find selected UTub
-    let i = 0;
-    while (UTubJSON[i].id != UTubID) {
-        i++;
-    }
-    selectedUTub = UTubJSON[i];
 
     // Center panel
     buildURLDeck();
@@ -77,9 +142,9 @@ function switchUTub(UTubID) {
     gatherUsers();
 
     // Update hrefs
-    $('#addURL').attr("href", "/add_url/" + UTubID);
-    $('#addUser').attr("href", "/add_user/" + UTubID);
-    $('#deleteUTubTemp').attr("action", "/delete_utub/" + UTubID + "/" + selectedUTub.creator);
+    $('#addURL').attr("href", "/add_url/" + selectedUTubID);
+    $('#addUser').attr("href", "/add_user/" + selectedUTubID);
+    $('#deleteUTubTemp').attr("action", "/delete_utub/" + selectedUTubID + "/" + selectedUTub.creator);
 }
 
 // Build LH panel tag list in selectedUTub
@@ -115,35 +180,27 @@ function toggleTag(tagID) {
 
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck() {
-    URLArray = selectedUTub.urls;
     let html = '';
     let tagText = [];                                       // A placeholder to check for unique tags to be added to global tags array
-    for (let i in URLArray) {
-        // Load URLs on frontend array
-        let urlItem = URLArray[i];
-
+    for (let i in dictURLs) {
         // Build tag html strings 
+        let tagArray = dictURLs[i].tags;
         let tagString = '';
-        for (let j in urlItem.tags) {
-            let tagItem = urlItem.tags[j];
-            // Extract all tags in UTub
-            if (tagText.indexOf(tagItem.tag) === -1) {
-                tagText.push(tagItem.tag);
-                tagsObj[tagItem.tag] = tagItem.id;
-            }
-            tagString += '<span tagid=' + tagItem.id + ' class="tag">' + tagItem.tag + '</span>';
+        for (let j in tagArray) {
+            let tag = dictTags.find(e => e.id === tagArray[j]);
+            tagString += '<span tagid=' + tag.id + ' class="tag">' + tag.tag_string + '</span>';
         }
 
         // Assemble url list items
-        html += '<li urlid=' + urlItem.url.id + '>' + urlItem.url.url + tagString + '</li>';
+        html += '<li urlid=' + dictURLs[i].id + '>' + dictURLs[i].url + tagString + '</li>';
     }
     $('#listURLs')[0].innerHTML = html;
 }
 
-function selectURL(urlItem) {
+function selectURL(urlObj) {
     // Find notes for selected URL
     let i = 0;
-    while (selectedUTub.urls[i].url.id != urlItem.id) {
+    while (selectedUTub.urls[i].url.id != urlObj.id) {
         i++;
     }
     $('#URLInfo')[0].innerHTML = selectedUTub.urls[i].notes;
