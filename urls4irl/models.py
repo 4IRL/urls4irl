@@ -60,7 +60,9 @@ class Utub_Urls(db.Model):
     def serialized(self):
         """Returns serialized object."""
         return {
-            "url": self.url_in_utub.serialized_for_utub,
+            "url_id": self.url_in_utub.serialized_for_utub['id'],
+            "url_string": self.url_in_utub.serialized_for_utub['url'],
+            "url_tags": self.url_in_utub.serialized_for_utub['tags'],
             "added_by": self.user_that_added_url.serialized['id'],
             "notes": self.url_notes
         }
@@ -92,16 +94,6 @@ class Url_Tags(db.Model):
             'tagged_url': self.tagged_url.serialized
         }
 
-    @property
-    def serialized_for_utub(self):
-        tag_item = self.tag_item.serialized
-        return self.tag_item.serialized
-
-    @property
-    def serialized_for_url(self):
-        return {
-            'id': self.tag_item.serialized['id']
-        }
 
 class User(db.Model, UserMixin):
     """Class represents a User, with their username, email, and hashed password."""
@@ -146,32 +138,14 @@ class Utub(db.Model):
     @property
     def serialized(self):
         """Return object in serialized form."""
-        urls_serialized = [url.serialized for url in self.utub_urls]
-        url_for_utub = {'urls': []}
-        print(urls_serialized)
+
+        # self.utub_url_tags may contain repeats of tags since same tags can be on multiple URLs
+        # Need to pull only the unique ones
         utub_tags = []
-        for url in urls_serialized:
-            tags_for_url = []
-
-            for tag in self.utub_url_tags:
-                #print(tag.serialized_for_utub)
-                if tag.serialized['tagged_url']['id'] == url['url']['id']:
-                    tag_data = tag.serialized['tag']
-                    tag_data_to_add = {'id': tag_data['id'], 'tag_string':tag_data['tag_string']}
-                    if tag_data_to_add not in utub_tags:
-                        utub_tags.append(tag_data_to_add)
-                    tags_for_url.append(tag_data['id'])
-
-
-            url_for_utub['urls'].append({
-                'added_by': url['added_by'],
-                'url_string': url['url']['url'],
-                'url_id': url['url']['id'],
-                'notes': url['notes'],
-                'tags': tags_for_url
-                }
-            )
-        #print(url_for_utub)
+        for tag in self.utub_url_tags:
+            tag_object = tag.tag_item.serialized
+            if tag_object not in utub_tags:
+                utub_tags.append(tag_object)
 
         return {
             'id': self.id,
@@ -179,7 +153,7 @@ class Utub(db.Model):
             'creator': self.utub_creator,
             'created_at': self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
             'members': [member.serialized for member in self.members],
-            'urls': url_for_utub,
+            'urls': [url.serialized for url in self.utub_urls],
             'utub_tags': utub_tags
         }
 

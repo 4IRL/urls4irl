@@ -40,32 +40,40 @@ def home():
             utub_id = a_utub.to_utub.id
             utub_details.append({"id":utub_id, "name": utub_name})
 
-        #utubs = Utub.query.filter(Utub.members.any(user_id=int(current_user.get_id()))).all()
-        #return (render_template('home.html', utubs_for_this_user=jsonify(utub_details)))
-        return jsonify(utub_details)
+        return (render_template('home.html', utubs_for_this_user=utub_details))
+
+    elif len(request.args) > 1:
+        # Too many args in URL
+        return abort(404)
 
     else:
+        if 'UTubID' not in request.args:
+            # Wrong argument
+            return abort(404)
+            
         requested_id = request.args.get('UTubID')
 
         utub = Utub.query.get_or_404(requested_id)
-        utub_data_serialized = utub.serialized
+        
         
         if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
+            # User is not member of the UTub they are requesting
             return abort(404)
 
-        utub_details = {}
+        utub_data_serialized = utub.serialized
+        
         utub_members = {"members": utub_data_serialized['members']}
         utub_url_details = {"urls": utub_data_serialized['urls']}
         utub_url_tag_details = {"tags": utub_data_serialized['utub_tags']}
-           
-        utub_details['created_by'] = utub.utub_creator
-        utub_details['created_at'] = utub.created_at
-        utub_details['name'] = utub.name
-        utub_details['id'] = utub.id
+        
+        utub_details = {
+            'created_by': utub.utub_creator,
+            'created_at': utub.created_at,
+            'name': utub.name,
+            'id': utub.id  
+        }
 
         utub_details = utub_details | utub_url_details | utub_url_tag_details | utub_members
-
-        utubs = Utub.query.filter(Utub.members.any(user_id=int(current_user.get_id()))).all()
 
         return jsonify(utub_details)
 
