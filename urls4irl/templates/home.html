@@ -10,6 +10,9 @@
     <p>Find your UTubs below</p>
 </div>
 
+<script type="text/javascript">
+    var jsArrayOfItems = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
+</script>
 {% if not utubs %}
     <div class="d-flex justify-content-center flex-row">
         <p>No UTubs for you :(</p>
@@ -33,18 +36,18 @@
         <div class="d-flex justify-content-center flex-row">
             <ul>
                 <li>UTub Owner: {{single_utub.created_by.username}}</li>
-            {% for user in single_utub.users %}
-                <li>User in "{{single_utub.name}}": {{user.username}}</li>
-                {% if single_utub.created_by.id == current_user.id and user.id != single_utub.created_by.id %}
+            {% for member in single_utub.members %}
+                <li>User in "{{single_utub.name}}": {{member.to_user.username}}</li>
+                {% if single_utub.created_by.id == current_user.id and member.user_id != single_utub.created_by.id %}
                     <div class="d-flex justify-content-center flex-row">
-                        <form action="{{url_for('delete_user', utub_id=single_utub.id, user_id=user.id)}}" method="post">
+                        <form action="{{url_for('delete_user', utub_id=single_utub.id, user_id=member.user_id)}}" method="post">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button class="btn btn-danger btn-sm mb-3 mx-3" href="">Delete this User</button>
                         </form>
                     </div>
-                {% elif user.id == current_user.id and single_utub.created_by.id != current_user.id %}
+                {% elif member.user_id == current_user.id and single_utub.created_by.id != current_user.id %}
                     <div class="d-flex justify-content-center flex-row">
-                        <form action="{{url_for('delete_user', utub_id=single_utub.id, user_id=user.id)}}" method="post">
+                        <form action="{{url_for('delete_user', utub_id=single_utub.id, user_id=member.user_id)}}" method="post">
                             <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                             <button class="btn btn-danger btn-sm mb-3 mx-3" href="">Leave Utub</button>
                         </form>
