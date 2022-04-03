@@ -26,6 +26,10 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 from url_normalize import url_normalize
 import requests
 
+class InvalidURLError(Exception):
+    """Error if the URL returns a bad status code."""
+    pass
+
 def _parse_url(url: str) -> str:
     """
     Uses the url_normalize package to 'normalize' the URL as much as possible.
@@ -69,6 +73,9 @@ def check_request_head(url: str) -> str:
     Args:
         url (str): The URL to check for validity
 
+    Raises:
+        InvalidURLError: If the URL provided a bad status code on the HEAD request.
+
     Returns:
         str: Either the redirected URL, or the original URL used in the request head method
     """
@@ -76,12 +83,11 @@ def check_request_head(url: str) -> str:
     url = _parse_url(url)
     response = requests.head(url)
     status_code = response.status_code
-    print(f"Status code: {status_code}")
 
     BAD_STATUS_CODES = (400, 404, 406, 410, 414, 451, 505)
 
     if status_code in BAD_STATUS_CODES:
-        return 'Invalid'
+        raise InvalidURLError
     
     else:
         location = response.headers.get('Location', None)

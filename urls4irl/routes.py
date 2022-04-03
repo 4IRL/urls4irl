@@ -1,10 +1,10 @@
-from unicodedata import name
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request, jsonify, abort
 from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm
 from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, Utub_Users
 from flask_login import login_user, login_required, current_user, logout_user
+from urls4irl.url_validation import InvalidURLError, check_request_head
 
 """#####################        MAIN ROUTES        ###################"""
 
@@ -13,6 +13,9 @@ def splash():
     """Splash page for either an unlogged in user.
 
     """
+    username = 'Giovanni'
+    user = User.query.filter_by(username=username).first()
+    login_user(user) 
     return redirect(url_for('home'))
     #return render_template('splash.html')
 
@@ -53,7 +56,6 @@ def home():
         requested_id = request.args.get('UTubID')
 
         utub = Utub.query.get_or_404(requested_id)
-        
         
         if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
             # User is not member of the UTub they are requesting
@@ -175,41 +177,35 @@ def create_utub():
     flash("Okay let's get you a new UTub!", category="primary")
     return render_template('create_utub.html', utub_form=utub_form)
 
-@app.route('/add_user/<int:utub_id>', methods=["GET", "POST"])
+@app.route('/delete_utub/<int:utub_id>', methods=["POST"])
 @login_required
-def add_user(utub_id: int):
+def delete_utub(utub_id: int):
     """
-    Creater of utub wants to add a user to the utub.
-    
+    Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
+    URLS and users.
+
+    https://docs.sqlalchemy.org/en/13/orm/cascades.html#delete
+
     Args:
-        utub_id (int): The utub that this user is being added to
+        utub_id (int): The ID of the UTub to be deleted
     """
-    utub = Utub.query.get(utub_id)
+    utub = Utub.query.get(int(utub_id))
 
-    if int(utub.created_by.id) != int(current_user.get_id()):
-        flash("Not authorized to add a user to this UTub", category="danger")
-        return redirect(url_for('home'))
+    if int(current_user.get_id()) != int(utub.created_by.id):
+        flash("You do not have permission to delete this UTub.", category="danger")
+    
+    else:
+        utub = Utub.query.get(int(utub_id))
+        db.session.delete(utub)
+        db.session.commit()
+        flash("You successfully deleted this UTub.", category="danger")
 
-    utub_new_user_form = UTubNewUserForm()
 
-    if utub_new_user_form.validate_on_submit():
-        username = utub_new_user_form.username.data
-        
-        new_user = User.query.filter_by(username=username).first()
-        already_in_utub = [member for member in utub.members if int(member.user_id) == int(new_user.id)]
+    return redirect(url_for('home'))
 
-        if already_in_utub:
-            flash("This user already exists in the UTub.", category="danger")
-        
-        else:
-            new_user_to_utub = Utub_Users()
-            new_user_to_utub.to_user = new_user
-            utub.members.append(new_user_to_utub)
-            db.session.commit()
-            flash(f"Successfully added {username} to {utub.name}", category="success")
-            return redirect(url_for('home'))
+"""#####################        END UTUB INVOLVED ROUTES        ###################"""
 
-    return render_template('add_user_to_utub.html', utub_new_user_form=utub_new_user_form)
+"""#####################        USER INVOLVED ROUTES        ###################"""
 
 @app.route('/delete_user/<int:utub_id>/<int:user_id>',  methods=["POST"])
 @login_required
@@ -253,34 +249,43 @@ def delete_user(utub_id: int, user_id: int):
 
     return redirect(url_for('home'))
 
-@app.route('/delete_utub/<int:utub_id>', methods=["POST"])
+@app.route('/add_user/<int:utub_id>', methods=["GET", "POST"])
 @login_required
-def delete_utub(utub_id: int):
+def add_user(utub_id: int):
     """
-    Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
-    URLS and users.
-
-    https://docs.sqlalchemy.org/en/13/orm/cascades.html#delete
-
-    Args:
-        utub_id (int): The ID of the UTub to be deleted
-    """
-    utub = Utub.query.get(int(utub_id))
-
-    if int(current_user.get_id()) != int(utub.created_by.id):
-        flash("You do not have permission to delete this UTub.", category="danger")
+    Creater of utub wants to add a user to the utub.
     
-    else:
-        utub = Utub.query.get(int(utub_id))
-        db.session.delete(utub)
-        db.session.commit()
-        flash("You successfully deleted this UTub.", category="danger")
+    Args:
+        utub_id (int): The utub that this user is being added to
+    """
+    utub = Utub.query.get(utub_id)
 
+    if int(utub.created_by.id) != int(current_user.get_id()):
+        flash("Not authorized to add a user to this UTub", category="danger")
+        return redirect(url_for('home'))
 
-    return redirect(url_for('home'))
+    utub_new_user_form = UTubNewUserForm()
 
+    if utub_new_user_form.validate_on_submit():
+        username = utub_new_user_form.username.data
+        
+        new_user = User.query.filter_by(username=username).first()
+        already_in_utub = [member for member in utub.members if int(member.user_id) == int(new_user.id)]
 
-"""#####################        END UTUB INVOLVED ROUTES        ###################"""
+        if already_in_utub:
+            flash("This user already exists in the UTub.", category="danger")
+        
+        else:
+            new_user_to_utub = Utub_Users()
+            new_user_to_utub.to_user = new_user
+            utub.members.append(new_user_to_utub)
+            db.session.commit()
+            flash(f"Successfully added {username} to {utub.name}", category="success")
+            return redirect(url_for('home'))
+
+    return render_template('add_user_to_utub.html', utub_new_user_form=utub_new_user_form)
+
+"""#####################        END USER INVOLVED ROUTES        ###################"""
 
 """#####################        URL INVOLVED ROUTES        ###################"""
 
@@ -347,9 +352,17 @@ def add_url(utub_id: int):
 
     if utub_new_url_form.validate_on_submit():
         url_string = utub_new_url_form.url_string.data
+
+        try:
+            validated_url = check_request_head(url_string)
+        
+        except InvalidURLError:
+            flash(f"Invalid URL.", category="danger")
+            return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)         
     
         # Get URL if already created
-        already_created_url = URLS.query.filter_by(url_string=url_string).first()
+        print(f"Validated URL: {validated_url}")
+        already_created_url = URLS.query.filter_by(url_string=validated_url).first()
 
         if already_created_url:
 
@@ -366,7 +379,7 @@ def add_url(utub_id: int):
 
         else:
             # Else create new URL and append to the UTUB
-            new_url = URLS(url_string=url_string, created_by=int(current_user.get_id()))
+            new_url = URLS(url_string=validated_url, created_by=int(current_user.get_id()))
             db.session.add(new_url)
             db.session.commit()
             url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=new_url.id, user_id=int(current_user.get_id()))
