@@ -19,7 +19,9 @@ MarkupSafe==2.0.1
 pipreqs==0.4.11
 python-dotenv==0.19.2
 requests==2.27.1
+six==1.16.0
 SQLAlchemy==1.4.31
+url-normalize==1.4.3
 urllib3==1.26.8
 Werkzeug==2.0.3
 WTForms==3.0.1
