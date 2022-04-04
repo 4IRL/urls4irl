@@ -1,10 +1,14 @@
+from audioop import cross
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request, jsonify, abort
 from urls4irl import app, db
-from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm
+from urls4irl.forms import (UserRegistrationForm, LoginForm, UTubForm, 
+                            UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm, UTubDescriptionForm)
 from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, Utub_Users
 from flask_login import login_user, login_required, current_user, logout_user
 from urls4irl.url_validation import InvalidURLError, check_request_head
+from flask_cors import cross_origin
+import sys
 
 """#####################        MAIN ROUTES        ###################"""
 
@@ -30,19 +34,12 @@ def home():
 
     Otherwise - 
         Receives Utub data for the selected utub in the provided JSON
-
-    Probably better in a POST request.
     """
     if not request.args:
         # User got here without any arguments in the URL
         # Therefore, only provide UTub name and UTub ID
-        utub_details = []
-        for a_utub in current_user.utubs_is_member_of:
-            utub_name = a_utub.to_utub.name
-            utub_id = a_utub.to_utub.id
-            utub_details.append({"id":utub_id, "name": utub_name})
-
-        return (render_template('home.html', utubs_for_this_user=utub_details))
+        utub_details = current_user.serialized_on_initial_load
+        return render_template('home.html', utubs_for_this_user=utub_details)
 
     elif len(request.args) > 1:
         # Too many args in URL
@@ -62,21 +59,8 @@ def home():
             return abort(404)
 
         utub_data_serialized = utub.serialized
-        
-        utub_members = {"members": utub_data_serialized['members']}
-        utub_url_details = {"urls": utub_data_serialized['urls']}
-        utub_url_tag_details = {"tags": utub_data_serialized['utub_tags']}
-        
-        utub_details = {
-            'created_by': utub.utub_creator,
-            'created_at': utub.created_at,
-            'name': utub.name,
-            'id': utub.id  
-        }
 
-        utub_details = utub_details | utub_url_details | utub_url_tag_details | utub_members
-
-        return jsonify(utub_details)
+        return jsonify(utub_data_serialized)
 
 
 """#####################        END MAIN ROUTES        ###################"""
@@ -202,6 +186,50 @@ def delete_utub(utub_id: int):
 
 
     return redirect(url_for('home'))
+
+@app.route('/update_utub_desc/<int:utub_id>', methods=["GET", "POST"])
+@login_required
+def update_utub_desc(utub_id: int):
+    """
+    Creator wants to update their UTub description.
+    Description limit is 500 characters.
+    Form data required to be sent from the frontend with a parameter "url_description".
+    
+    On GET:
+            The previous UTub's description is sent as JSON to be included in the form for editing.
+
+    On POST:
+            The new description is saved to the database for that UTub.
+        Requires a JSON in the POST request body.
+    Example:
+    {
+        "utub_description": "New UTub description."
+    }
+
+    Args:
+        utub_id (int): The ID of the UTub that will have its description updated
+    """
+    current_utub = Utub.query.get(int(utub_id))
+    current_utub_description = current_utub.utub_description
+
+    if current_utub_description is None:
+        current_utub_description = ""
+
+    utub_desc_form = UTubDescriptionForm()
+
+    if utub_desc_form.validate_on_submit():
+        new_utub_description = utub_desc_form.utub_description.data
+
+        if new_utub_description != current_utub_description:
+            current_utub.utub_description = new_utub_description
+            db.session.commit()
+
+        return redirect(url_for('home', UTubID=utub_id))
+
+    utub_description_for_get = {
+        "utub_description": current_utub_description
+    }
+    return render_template('add_desc_to_utub.html', desc_form=utub_desc_form, current_utub_desc=utub_description_for_get)
 
 """#####################        END UTUB INVOLVED ROUTES        ###################"""
 
@@ -407,13 +435,7 @@ def add_tag(utub_id: int, url_id: int):
         url_id (int): The URL this user wants to add a tag to
     """
     utub = Utub.query.get(utub_id)
-    a = [member for member in utub.members]
-    print([int(member.user_id) for member in utub.members if int(member.user_id) == int(current_user.get_id())])
-    print(a)
-    # print(utub.members)
-    # print(dir(utub.members))
     utub_url = [url_in_utub for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id]
-    #user_in_utub = [user for user in utub.users if int(user.id) == int(current_user.get_id())]
     user_in_utub = [int(member.user_id) for member in utub.members if int(member.user_id) == int(current_user.get_id())]
 
     if not user_in_utub or not utub_url:
