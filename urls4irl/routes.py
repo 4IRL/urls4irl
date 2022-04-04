@@ -56,7 +56,7 @@ def home():
         
         if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
             # User is not member of the UTub they are requesting
-            return abort(404)
+            return abort(403)
 
         utub_data_serialized = utub.serialized
 
@@ -72,6 +72,8 @@ def login():
     """Login page. Allows user to register or login."""
     if current_user.is_authenticated:
         return redirect(url_for('home'))
+
+    response_code = 200
 
     if not User.query.filter().all():
         """!!! Added users for testing !!!"""
@@ -101,8 +103,9 @@ def login():
             return redirect(next_page) if next_page else redirect(url_for('home'))
         else:
             flash(f"Login Unsuccessful. Please check username and password.", category="danger")
+            response_code = 400
 
-    return render_template('login.html', login_form=login_form)
+    return render_template('login.html', login_form=login_form), response_code
 
 @app.route('/logout')
 def logout():
@@ -128,7 +131,7 @@ def register_user():
         user = User.query.filter_by(username=username).first()
         login_user(user)
         flash(f"Account created for {register_form.username.data}!", "success")
-        return redirect(url_for("home"))
+        return redirect(url_for('home'))
 
     return render_template('register_user.html', register_form=register_form)
 
@@ -177,6 +180,7 @@ def delete_utub(utub_id: int):
 
     if int(current_user.get_id()) != int(utub.created_by.id):
         flash("You do not have permission to delete this UTub.", category="danger")
+        return home(), 403
     
     else:
         utub = Utub.query.get(int(utub_id))
@@ -184,8 +188,7 @@ def delete_utub(utub_id: int):
         db.session.commit()
         flash("You successfully deleted this UTub.", category="danger")
 
-
-    return redirect(url_for('home'))
+        return redirect(url_for('home'))
 
 @app.route('/update_utub_desc/<int:utub_id>', methods=["GET", "POST"])
 @login_required
@@ -210,6 +213,11 @@ def update_utub_desc(utub_id: int):
         utub_id (int): The ID of the UTub that will have its description updated
     """
     current_utub = Utub.query.get(int(utub_id))
+    
+    if int(current_user.get_id()) not in [int(member.user_id) for member in current_utub.members]:
+        flash("Not authorized to add a description to this UTub.", category="danger")
+        return home(), 403
+
     current_utub_description = current_utub.utub_description
 
     if current_utub_description is None:
@@ -251,14 +259,14 @@ def delete_user(utub_id: int, user_id: int):
     if int(user_id) == int(current_utub.created_by.id):
         # Creator tried to delete themselves
         flash("Creator of a UTub cannot be removed.", category="danger")
-        return redirect(url_for('home'))
+        return home(), 400
 
     current_user_ids_in_utub = [int(member.user_id) for member in current_utub.members]
 
     if int(user_id) not in current_user_ids_in_utub:
         # User not in this Utub
         flash("Can't remove a user that isn't in this UTub.", category="danger")
-        return redirect(url_for('home'))
+        return home(), 400
 
     if int(current_user.get_id()) == int(current_utub.created_by.id):
         # Creator of utub wants to delete someone
@@ -270,12 +278,12 @@ def delete_user(utub_id: int, user_id: int):
 
     else:
         flash("Error: Only the creator of a UTub can delete other users. Only you can remove yourself.", category="danger")
-        return redirect(url_for('home'))
+        return home, 403
     
     current_utub.members.remove(user_to_delete_in_utub)
     db.session.commit()
 
-    return redirect(url_for('home'))
+    return redirect(url_for('home', UTubID=utub_id))
 
 @app.route('/add_user/<int:utub_id>', methods=["GET", "POST"])
 @login_required
@@ -290,7 +298,7 @@ def add_user(utub_id: int):
 
     if int(utub.created_by.id) != int(current_user.get_id()):
         flash("Not authorized to add a user to this UTub", category="danger")
-        return redirect(url_for('home'))
+        return abort(403)
 
     utub_new_user_form = UTubNewUserForm()
 
@@ -302,6 +310,7 @@ def add_user(utub_id: int):
 
         if already_in_utub:
             flash("This user already exists in the UTub.", category="danger")
+            return home(), 400
         
         else:
             new_user_to_utub = Utub_Users()
@@ -309,7 +318,7 @@ def add_user(utub_id: int):
             utub.members.append(new_user_to_utub)
             db.session.commit()
             flash(f"Successfully added {username} to {utub.name}", category="success")
-            return redirect(url_for('home'))
+            return redirect(url_for('home', UTubID=utub_id))
 
     return render_template('add_user_to_utub.html', utub_new_user_form=utub_new_user_form)
 
@@ -338,7 +347,7 @@ def delete_url(utub_id: int, url_id: int):
     if len(url_added_by) != 1 or not url_added_by:
         # No user added this URL, or multiple users did...
         flash("Something went wrong", category="danger")
-        return redirect(url_for('home'))
+        return abort(404)
 
     # Otherwise, only one user should've added this url - retrieve them
     url_added_by = url_added_by[0]
@@ -350,16 +359,17 @@ def delete_url(utub_id: int, url_id: int):
         if len(utub_url_user_row) > 1:
             # How did this happen? URLs are unique to each UTub, so should only return one
             flash("Error: Something went wrong", category="danger")
-            return redirect(url_for('home'))
+            return abort(404)
 
         db.session.delete(utub_url_user_row[0])
         db.session.commit()
         flash("You successfully deleted the URL from the UTub.", category="danger")
+        return redirect(url_for('home', UTubID=utub_id))
 
     else:
         flash("Can only delete URLs you added, or if you are the creator of this UTub.", category="danger")
+        return home(), 403
 
-    return redirect(url_for('home'))
 
 @app.route('/add_url/<int:utub_id>', methods=["GET", "POST"])
 @login_required
@@ -374,7 +384,8 @@ def add_url(utub_id: int):
 
     if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
         flash("Not authorized to add a URL to this UTub", category="danger")
-        return redirect(url_for('home'))
+
+        return home(), 403
 
     utub_new_url_form = UTubNewURLForm()
 
@@ -386,37 +397,38 @@ def add_url(utub_id: int):
         
         except InvalidURLError:
             flash(f"Invalid URL.", category="danger")
-            return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)         
-    
-        # Get URL if already created
-        print(f"Validated URL: {validated_url}")
-        already_created_url = URLS.query.filter_by(url_string=validated_url).first()
+            return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form), 400
 
-        if already_created_url:
+        else: 
+            # Get URL if already created
+            print(f"Validated URL: {validated_url}")
+            already_created_url = URLS.query.filter_by(url_string=validated_url).first()
 
-            # Get all urls currently in utub
-            urls_in_utub = [utub_user_url_object.url_in_utub for utub_user_url_object in utub.utub_urls]
-        
-            #URL already generated, now confirm if within UTUB or not
-            if already_created_url in urls_in_utub:
-                # URL already in UTUB
-                flash(f"URL already in UTub", category="info")
-                return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
+            if already_created_url:
 
-            url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
-
-        else:
-            # Else create new URL and append to the UTUB
-            new_url = URLS(url_string=validated_url, created_by=int(current_user.get_id()))
-            db.session.add(new_url)
-            db.session.commit()
-            url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=new_url.id, user_id=int(current_user.get_id()))
+                # Get all urls currently in utub
+                urls_in_utub = [utub_user_url_object.url_in_utub for utub_user_url_object in utub.utub_urls]
             
-        db.session.add(url_utub_user_add)
-        db.session.commit()
+                #URL already generated, now confirm if within UTUB or not
+                if already_created_url in urls_in_utub:
+                    # URL already in UTUB
+                    flash(f"URL already in UTub", category="info")
+                    return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form), 400
 
-        flash(f"Added {url_string} to {utub.name}", category="info")
-        return redirect(url_for('home'))
+                url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
+
+            else:
+                # Else create new URL and append to the UTUB
+                new_url = URLS(url_string=validated_url, created_by=int(current_user.get_id()))
+                db.session.add(new_url)
+                db.session.commit()
+                url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=new_url.id, user_id=int(current_user.get_id()))
+                
+            db.session.add(url_utub_user_add)
+            db.session.commit()
+
+            flash(f"Added {url_string} to {utub.name}", category="info")
+            return redirect(url_for('home', UTubID=utub_id))
         
     return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
 
@@ -442,7 +454,7 @@ def add_tag(utub_id: int, url_id: int):
         # How did a user not in this utub get access to add a tag to this URL?
         # How did a user try to add a tag to a URL not contained within the UTub?
         flash("Error has occurred", category="danger")
-        return redirect(url_for('home'))
+        return home(), 404
        
     url_tag_form = UTubNewUrlTagForm()
 
@@ -456,7 +468,7 @@ def add_tag(utub_id: int, url_id: int):
         if len(tags_already_on_this_url) > 4:
                 # Cannot have more than 5 tags on a URL
                 flash("You cannot add more tags to this URL.", category="danger")
-                return redirect(url_for('home'))
+                return home(), 400
 
         # If not a tag already, create it
         tag_already_created = Tags.query.filter_by(tag_string=tag_to_add).first()
@@ -467,7 +479,7 @@ def add_tag(utub_id: int, url_id: int):
 
             if this_tag_is_already_on_this_url:
                 flash("This tag is already on this URL", category="danger")
-                return redirect(url_for('home'))
+                return render_template('add_tag_to_url.html', url_tag_form=url_tag_form), 400
 
             # Associate with the UTub and URL
             utub_url_tag = Url_Tags(utub_id=utub_id, url_id=url_id, tag_id=tag_already_created.id)
@@ -484,7 +496,7 @@ def add_tag(utub_id: int, url_id: int):
 
         flash(f"Added {tag_to_add} to {utub_url[0].url_in_utub.url_string}", category="info")
 
-        return redirect(url_for('home'))
+        return redirect(url_for('home', UTubID=utub_id))
 
     return render_template('add_tag_to_url.html', url_tag_form=url_tag_form)
 
@@ -509,7 +521,8 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         db.session.delete(tag_for_url_in_utub)
         db.session.commit()
         flash("You successfully deleted the tag from the URL.", category="danger")
+        return redirect(url_for('home', UTubID=utub_id))
 
-    return redirect(url_for('home'))
+    return home(), 403
 
 """#####################        END TAG INVOLVED ROUTES        ###################"""

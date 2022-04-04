@@ -81,7 +81,13 @@ def check_request_head(url: str) -> str:
     """
     
     url = _parse_url(url)
-    response = requests.head(url)
+    
+    try:
+        response = requests.head(url)
+    
+    except requests.exceptions.ConnectionError:
+        raise InvalidURLError
+        
     status_code = response.status_code
 
     BAD_STATUS_CODES = (400, 404, 406, 410, 414, 451, 505)
