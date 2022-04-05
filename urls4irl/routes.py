@@ -1,8 +1,9 @@
+from unicodedata import name
 from werkzeug.security import check_password_hash, generate_password_hash
-from flask import render_template, url_for, redirect, flash, request
+from flask import render_template, url_for, redirect, flash, request, jsonify, abort
 from urls4irl import app, db
 from urls4irl.forms import UserRegistrationForm, LoginForm, UTubForm, UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm
-from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags
+from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, Utub_Users
 from flask_login import login_user, login_required, current_user, logout_user
 
 """#####################        MAIN ROUTES        ###################"""
@@ -15,16 +16,66 @@ def splash():
     return redirect(url_for('home'))
     #return render_template('splash.html')
 
-@app.route('/home')
+@app.route('/home', methods=["GET"])
 @login_required
 def home():
-    """Splash page for logged in user. Loads and displays all UTubs, and contained URLs."""
-    utubs = Utub.query.filter(Utub.users.any(id=int(current_user.get_id()))).all()
-    utubs_to_json = []
-    for utub in utubs:
-        utubs_to_json.append(utub.serialized)
+    """
+    Splash page for logged in user. Loads and displays all UTubs, and contained URLs.
+    
+    If GET contains no JSON -
+        Frontend receives all Utub names for that user
 
-    return render_template('home.html', utubs=utubs, utubs_json=utubs_to_json)
+    Otherwise - 
+        Receives Utub data for the selected utub in the provided JSON
+
+    Probably better in a POST request.
+    """
+    if not request.args:
+        # User got here without any arguments in the URL
+        # Therefore, only provide UTub name and UTub ID
+        utub_details = []
+        for a_utub in current_user.utubs_is_member_of:
+            utub_name = a_utub.to_utub.name
+            utub_id = a_utub.to_utub.id
+            utub_details.append({"id":utub_id, "name": utub_name})
+
+        return (render_template('home.html', utubs_for_this_user=utub_details))
+
+    elif len(request.args) > 1:
+        # Too many args in URL
+        return abort(404)
+
+    else:
+        if 'UTubID' not in request.args:
+            # Wrong argument
+            return abort(404)
+            
+        requested_id = request.args.get('UTubID')
+
+        utub = Utub.query.get_or_404(requested_id)
+        
+        
+        if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
+            # User is not member of the UTub they are requesting
+            return abort(404)
+
+        utub_data_serialized = utub.serialized
+        
+        utub_members = {"members": utub_data_serialized['members']}
+        utub_url_details = {"urls": utub_data_serialized['urls']}
+        utub_url_tag_details = {"tags": utub_data_serialized['utub_tags']}
+        
+        utub_details = {
+            'created_by': utub.utub_creator,
+            'created_at': utub.created_at,
+            'name': utub.name,
+            'id': utub.id  
+        }
+
+        utub_details = utub_details | utub_url_details | utub_url_tag_details | utub_members
+
+        return jsonify(utub_details)
+
 
 """#####################        END MAIN ROUTES        ###################"""
 
@@ -102,16 +153,21 @@ def register_user():
 @app.route('/create_utub', methods=["GET", "POST"])
 @login_required
 def create_utub():
-    """User wants to create a new utub."""
+    """
+    User wants to create a new utub.
+    Assocation Object:
+    https://docs.sqlalchemy.org/en/14/orm/basic_relationships.html#many-to-many
+    
+    """
 
     utub_form = UTubForm()
 
     if utub_form.validate_on_submit():
         name = utub_form.name.data
         new_utub = Utub(name=name, utub_creator=current_user.get_id())
-
-        new_utub.users.append(current_user)
-        db.session.add(new_utub)
+        creator_to_utub = Utub_Users()
+        creator_to_utub.to_user = current_user
+        new_utub.members.append(creator_to_utub)
         db.session.commit()
         flash(f"Successfully made your UTub named {name}", category="success")
         return redirect(url_for('home'))
@@ -140,14 +196,15 @@ def add_user(utub_id: int):
         username = utub_new_user_form.username.data
         
         new_user = User.query.filter_by(username=username).first()
-        already_in_utub = [user for user in utub.users if int(user.id) == int(new_user.id)]
+        already_in_utub = [member for member in utub.members if int(member.user_id) == int(new_user.id)]
 
         if already_in_utub:
             flash("This user already exists in the UTub.", category="danger")
         
         else:
-            utub.users.append(new_user)
-            db.session.add(utub)
+            new_user_to_utub = Utub_Users()
+            new_user_to_utub.to_user = new_user
+            utub.members.append(new_user_to_utub)
             db.session.commit()
             flash(f"Successfully added {username} to {utub.name}", category="success")
             return redirect(url_for('home'))
@@ -172,7 +229,7 @@ def delete_user(utub_id: int, user_id: int):
         flash("Creator of a UTub cannot be removed.", category="danger")
         return redirect(url_for('home'))
 
-    current_user_ids_in_utub = [int(user.id) for user in current_utub.users]
+    current_user_ids_in_utub = [int(member.user_id) for member in current_utub.members]
 
     if int(user_id) not in current_user_ids_in_utub:
         # User not in this Utub
@@ -181,17 +238,17 @@ def delete_user(utub_id: int, user_id: int):
 
     if int(current_user.get_id()) == int(current_utub.created_by.id):
         # Creator of utub wants to delete someone
-        user_to_delete_in_utub = [users_in_utub for users_in_utub in current_utub.users if int(user_id) == (users_in_utub.id)][0]
+        user_to_delete_in_utub = [member_to_delete for member_to_delete in current_utub.members if int(user_id) == (member_to_delete.user_id)][0]
 
     elif int(current_user.get_id()) in current_user_ids_in_utub and int(user_id) == int(current_user.get_id()):
         # User in this UTub and user wants to remove themself
-        user_to_delete_in_utub = [users_in_utub for users_in_utub in current_utub.users if int(user_id) == (users_in_utub.id)][0]
+        user_to_delete_in_utub = [member_to_delete for member_to_delete in current_utub.members if int(user_id) == (member_to_delete.user_id)][0]
 
     else:
         flash("Error: Only the creator of a UTub can delete other users. Only you can remove yourself.", category="danger")
         return redirect(url_for('home'))
     
-    current_utub.users.remove(user_to_delete_in_utub)
+    current_utub.members.remove(user_to_delete_in_utub)
     db.session.commit()
 
     return redirect(url_for('home'))
@@ -243,7 +300,7 @@ def delete_url(utub_id: int, url_id: int):
     owner_id = int(utub.created_by.id)
     
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
-    url_added_by = [url_in_utub.user_that_added_url.id for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id]
+    url_added_by = [url_in_utub.user_that_added_url.id for url_in_utub in utub.utub_urls if int(url_in_utub.url_id) == int(url_id)]
 
     if len(url_added_by) != 1 or not url_added_by:
         # No user added this URL, or multiple users did...
@@ -282,7 +339,7 @@ def add_url(utub_id: int):
     """
     utub = Utub.query.get(int(utub_id))
 
-    if int(current_user.get_id()) not in [int(user.id) for user in utub.users]:
+    if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
         flash("Not authorized to add a URL to this UTub", category="danger")
         return redirect(url_for('home'))
 
@@ -337,8 +394,14 @@ def add_tag(utub_id: int, url_id: int):
         url_id (int): The URL this user wants to add a tag to
     """
     utub = Utub.query.get(utub_id)
+    a = [member for member in utub.members]
+    print([int(member.user_id) for member in utub.members if int(member.user_id) == int(current_user.get_id())])
+    print(a)
+    # print(utub.members)
+    # print(dir(utub.members))
     utub_url = [url_in_utub for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id]
-    user_in_utub = [user for user in utub.users if int(user.id) == int(current_user.get_id())]
+    #user_in_utub = [user for user in utub.users if int(user.id) == int(current_user.get_id())]
+    user_in_utub = [int(member.user_id) for member in utub.members if int(member.user_id) == int(current_user.get_id())]
 
     if not user_in_utub or not utub_url:
         # How did a user not in this utub get access to add a tag to this URL?

@@ -13,13 +13,13 @@
         <div id="UTubDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
             <div class="form-group">
                 <h2>UTubs</h2>
-                    {% if not utubs_json %}
+                    {% if not utubs_for_this_user %}
                         <div class="d-flex justify-content-center flex-row">
                             <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Add UTub!</a>
                         </div>
                     {% else %}
                         <form>
-                            {% for single_utub in utubs_json %}
+                            {% for single_utub in utubs_for_this_user %}
                                 <label for="UTub{{loop.index}}">
                                     <input type="radio" id="{{single_utub.id}}" name="UTubSelection" value="{{single_utub.name}}">
                                     {{single_utub.name}}
@@ -56,7 +56,7 @@
                 <!-- Figure out Font Awesome icons... -->
                 <!-- <i class="fas fa-bath"></i>
                 <i class="fa fa-flask"></i> -->
-                {% if not utubs_json %}
+                {% if not utubs_for_this_user %}
                     <img src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80" alt="Create a Tub!">
                 {% else %}
                     <ul id="listURLs">
@@ -87,34 +87,37 @@
                 <h5>Actions</h5> 
                 <a id="addUser" class="btn btn-success btn-sm mb-3 mx-1" href="#">Add a User</a>
                 
+                <div class="modal fade" id="removeUserModal" tabindex="-1" role="dialog" aria-labelledby="removeUserModalLabel" aria-hidden="true">
+                    <div class="modal-dialog modal-dialog-centered" role="document">
+                        <div class="modal-content">
+                            <div class="modal-header">
+                            <h5 class="modal-title" id="removeUserModalLabel">Are you sure you want to remove this user?</h5>
+                            <a type="a" class="close" data-dismiss="modal" aria-label="Close">
+                                <span aria-hidden="true">&times;</span>
+                            </a>
+                            </div>
+                            <div class="modal-body">
+                                This user will no longer have the ability to view or add URLs in the UTub.
+                            </div>
+                            <div class="modal-footer">
+                            <button type="a" class="btn btn-secondary" data-dismiss="modal">I Changed My Mind</button>
+                            <button type="a" id="removeUser" href="#" class="btn btn-danger">Remove User</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <button class="btn btn-warning btn-sm mb-3 mx-1" data-toggle="modal" data-target="#removeUserModal">Remove this User</button>
                 
-                <form id="removeUserTemp" action="#" method="post">
+                <!-- <form id="removeUserTemp" action="#" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button class="btn btn-warning btn-sm mb-3 mx-1" data-toggle="modal" data-target="#removeUserModal">Remove this User</button>
-                </form>
+                    button
+                </form> -->
 
                 <!-- <form action="#" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     Modal
-                    <div class="modal fade" id="removeUserModal" tabindex="-1" role="dialog" aria-labelledby="removeUserModalLabel" aria-hidden="true">
-                        <div class="modal-dialog modal-dialog-centered" role="document">
-                            <div class="modal-content">
-                                <div class="modal-header">
-                                <h5 class="modal-title" id="removeUserModalLabel">Are you sure you want to remove this user?</h5>
-                                <a type="a" class="close" data-dismiss="modal" aria-label="Close">
-                                    <span aria-hidden="true">&times;</span>
-                                </a>
-                                </div>
-                                <div class="modal-body">
-                                    This user will no longer have the ability to view or add URLs in the UTub.
-                                </div>
-                                <div class="modal-footer">
-                                <button type="a" class="btn btn-secondary" data-dismiss="modal">I Changed My Mind</button>
-                                <button type="a" id="removeUser" href="#" class="btn btn-danger">Remove User</button>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+                    div.modal
                 </form> -->
                 
                 <form id="deleteUTubTemp" action="#" method="post">
@@ -202,7 +205,7 @@
     <script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
     
     <script>
-        my_func('{{utubs}}',JSON.parse('{{utubs_json|tojson|safe}}'));
+        my_func(JSON.parse('{{utubs_for_this_user|tojson|safe}}'));
     </script>
 
 {% endblock %}
