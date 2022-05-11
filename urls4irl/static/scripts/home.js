@@ -1,18 +1,17 @@
-var dictUTubs = [];         // Array with all UTubs for currentUser
-var selectedUTub = {};      // Object with all relevant data for a single UTub
-var selectedUTubID;         // Current UTub ID
-var dictURLs = [];          // Array of all URLs in selectedUTub
-var dictTags = [];          // Array of all tags in selectedUTub
-var dictMembers = [];       // Array of all members in selectedUTub
-var currentUserID;
-var selectedURL = {         // Used to identify which URL is in focus
-    url: '',
-    id: 0
-};
+// var dictUTubs = [];         // Array with all UTubs for currentUser
+// var selectedUTub = {};      // Object with all relevant data for a single UTub
+// var selectedUTubID;         // Current UTub ID
+// var dictURLs = [];          // Array of all URLs in selectedUTub
+// var dictTags = [];          // Array of all tags in selectedUTub
+// var dictMembers = [];       // Array of all members in selectedUTub
+// var currentUserID;
+// var selectedURL = {         // Used to identify which URL is in focus
+//     url_string: '',
+//     url_id: 0
+// };
 
 function my_func(UTubs) {
     dictUTubs = UTubs;
-    console.log(dictUTubs)
 }
 
 // UI Interactions
@@ -25,13 +24,15 @@ $(document).ready(function () {
         radioButton = $('input[type=radio]:checked')[0];
         $('#UTubHeader')[0].innerHTML = radioButton.value;
         selectedUTubID = radioButton.id;
-        $.getJSON('/home?UTubID=' + selectedUTubID, function(UTubJSON) {
+        $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) {
             console.log('/home?UTubID=' + selectedUTubID)
-            selectedUTub = UTubJSON;
-            dictURLs = selectedUTub.urls;
-            dictTags = selectedUTub.tags;
-            dictUsers = selectedUTub.members;
-    
+
+            //Use local variables, pass them in to the switchUTub() function and work locally
+            var selectedUTub = UTubJSON;
+            var dictURLs = selectedUTub.urls;
+            var dictTags = selectedUTub.tags;
+            var dictUsers = selectedUTub.members;
+
             switchUTub();
         });
 
@@ -40,10 +41,13 @@ $(document).ready(function () {
     // Selected URL
     $('#centerPanel').on('click', '#listURLs', function (e) {
         $(this).children().css("color", "black");    // Reset all to default color
-        $(e.target).css("color", "yellow");          // Highlight new focus URL
+        if ($(e.target).style == 'color: black') {
+            $(e.target).css("color", "yellow");          // Highlight new focus URL
+        }
 
-        selectedURL.url = $(e.target)[0].innerHTML;
-        selectedURL.id = $(e.target).attr("urlid");
+        selectedURL.url_string = $(e.target)[0].innerHTML;
+        selectedURL.url_id = $(e.target).attr("urlid");
+        console.log(selectedURL)
         selectURL(selectedURL);
     });
 
@@ -111,23 +115,32 @@ function buildTagDeck() {
 
 function toggleTag(tagID) {
     spanObjs = $('span[tagid="' + tagID + '"]')
-    $($(spanObjs).parent()).toggle()
+    $($(spanObjs)).toggle()
+    console.log($(spanObjs).parent().children())
+    if ($(spanObjs).siblings().length < 1) {
+        $($(spanObjs).parent()).toggle()
+    }
 }
 
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck() {
     let html = '';
+    console.log(dictURLs)
     for (let i in dictURLs) {
         // Build tag html strings 
         let tagArray = dictURLs[i].url_tags;
         let tagString = '';
         for (let j in tagArray) {
-            let tag = dictTags.find(e => e.id === tagArray[j]);
+            let tag = dictTags.find(function (e) {
+                if (e.id === tagArray[j]) {
+                    return e.tag_string
+                }
+            });
             tagString += '<span tagid=' + tag.id + ' class="tag">' + tag.tag_string + '</span>';
         }
 
         // Assemble url list items
-        html += '<li urlid=' + dictURLs[i].id + '>' + dictURLs[i].url_string + tagString + '</li>';
+        html += '<li urlid=' + dictURLs[i].url_id + '>' + dictURLs[i].url_string + tagString + '</li>';
     }
     $('#listURLs')[0].innerHTML = html;
 }
@@ -135,7 +148,8 @@ function buildURLDeck() {
 function selectURL(urlObj) {
     // Find notes for selected URL
     let i = 0;
-    while (selectedUTub.urls[i].url.id != urlObj.id) {
+    console.log(Object.keys(selectedUTub.urls[i]))
+    while (selectedUTub.urls[i].url_id != urlObj.url_id) {
         i++;
     }
     $('#URLInfo')[0].innerHTML = selectedUTub.urls[i].notes;
@@ -180,10 +194,10 @@ function resetUTubs() {
 }
 
 function AccessLink() {
-    if (!selectedURL.url.startsWith('https://')) {
-        window.open('https://' + selectedURL.url, "_blank");
+    if (!selectedURL.url_string.startsWith('https://')) {
+        window.open('https://' + selectedURL.url_string, "_blank");
     } else {
-        window.open(selectedURL.url, "_blank");
+        window.open(selectedURL.url_string, "_blank");
     }
 }
 
