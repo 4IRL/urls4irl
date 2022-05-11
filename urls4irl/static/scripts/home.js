@@ -1,22 +1,14 @@
-// var dictUTubs = [];         // Array with all UTubs for currentUser
-// var selectedUTub = {};      // Object with all relevant data for a single UTub
-// var selectedUTubID;         // Current UTub ID
-// var dictURLs = [];          // Array of all URLs in selectedUTub
-// var dictTags = [];          // Array of all tags in selectedUTub
-// var dictMembers = [];       // Array of all members in selectedUTub
-// var currentUserID;
-// var selectedURL = {         // Used to identify which URL is in focus
-//     url_string: '',
-//     url_id: 0
-// };
-
-function my_func(UTubs) {
-    dictUTubs = UTubs;
-}
+var currentUserID;
+var selectedURL;
 
 // UI Interactions
 $(document).ready(function () {
     // Selected UTub
+    var selectedUTubID;
+    var selectedUTub;
+
+    currentUserID = $('#welcome')[0].user_id;
+
     $('input:radio').click(function () {
         // Reset
         $('#TubImage').remove();
@@ -25,30 +17,27 @@ $(document).ready(function () {
         $('#UTubHeader')[0].innerHTML = radioButton.value;
         selectedUTubID = radioButton.id;
         $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) {
-            console.log('/home?UTubID=' + selectedUTubID)
-
-            //Use local variables, pass them in to the switchUTub() function and work locally
-            var selectedUTub = UTubJSON;
-            var dictURLs = selectedUTub.urls;
-            var dictTags = selectedUTub.tags;
-            var dictUsers = selectedUTub.members;
-
-            switchUTub();
+            selectedUTub = UTubJSON;
+            switchUTub(UTubJSON);
         });
-
     })
 
     // Selected URL
     $('#centerPanel').on('click', '#listURLs', function (e) {
         $(this).children().css("color", "black");    // Reset all to default color
-        if ($(e.target).style == 'color: black') {
-            $(e.target).css("color", "yellow");          // Highlight new focus URL
+        if ($(e.target)[0].style.color == 'black') {
+            $(e.target).css("color", "yellow");      // Highlight new focus URL
         }
 
-        selectedURL.url_string = $(e.target)[0].innerHTML;
-        selectedURL.url_id = $(e.target).attr("urlid");
-        console.log(selectedURL)
-        selectURL(selectedURL);
+        var selectedURLid = $(e.target).attr("urlid");
+        console.log(selectedURLid)
+        var dictURLs = selectedUTub.urls;
+        selectedURL = dictURLs.find(function (e) {
+            if (e.url_id == selectedURLid) {
+                return e
+            }
+        });
+        selectURL(selectedUTubID);
     });
 
     // Selected Tag
@@ -56,39 +45,81 @@ $(document).ready(function () {
         toggleTag($(e.target).parent().attr("tagid"));
     });
 
-    // Selected User
+    // Selected User (only if creator)
     $('select').change(function () {
         // Update href
         $('#removeUserTemp').attr("action", '/remove_user/' + selectedUTubID + '/' + $(this)[0].value)
+    })
+
+    // Update UTub description (only if creator)
+    $('#UTubInfo').addEventListener('input', function() {
+        //handle update in db
+    })
+
+    // Update URL description
+    $('#URLInfo').addEventListener('input', function() {
+        //handle update in db
     })
 });
 
 // Functions
 
-function switchUTub() {
+function switchUTub(selectedUTub) {
+
+    console.log(selectedUTub)
+
+    //Use local variables, pass them in to the subsequent functions as required
+    var selectedUTubID = selectedUTub.id;
+    var dictURLs = selectedUTub.urls;
+    var dictTags = selectedUTub.tags;
+    var dictUsers = selectedUTub.members;
+    var creator = selectedUTub.created_by;
+
     // Clear 
     resetUTubs();
 
     // Center panel
-    buildURLDeck();
+    buildURLDeck(dictURLs, dictTags);
 
     // LH panels
-    buildTagDeck();
+    buildTagDeck(dictTags);
 
     // RH panels
     // Update UTub description, not yet implemented on backend
     // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
 
-    gatherUsers();
+    gatherUsers(dictUsers, creator);
 
     // Update hrefs
     $('#addURL').attr("href", "/add_url/" + selectedUTubID);
     $('#addUser').attr("href", "/add_user/" + selectedUTubID);
-    $('#deleteUTubTemp').attr("action", "/delete_utub/" + selectedUTubID + "/" + selectedUTub.creator);
+    $('#deleteUTubTemp').attr("action", "/delete_utub/" + selectedUTubID + "/" + currentUserID);
+}
+
+// Build center panel URL-tag list for selectedUTub
+function buildURLDeck(dictURLs, dictTags) {
+    let html = '';
+    for (let i in dictURLs) {
+        // Build tag html strings 
+        let tagArray = dictURLs[i].url_tags;
+        let tagString = '';
+        for (let j in tagArray) {
+            let tag = dictTags.find(function (e) {
+                if (e.id === tagArray[j]) {
+                    return e.tag_string
+                }
+            });
+            tagString += '<span tagid=' + tag.id + ' class="tag">' + tag.tag_string + '</span>';
+        }
+
+        // Assemble url list items
+        html += '<li urlid=' + dictURLs[i].url_id + '>' + dictURLs[i].url_string + tagString + '</li>';
+    }
+    $('#listURLs')[0].innerHTML = html;
 }
 
 // Build LH panel tag list in selectedUTub
-function buildTagDeck() {
+function buildTagDeck(dictTags) {
     let html = '';
 
     // // Tags are objects and need extracting/sorting based on keys
@@ -113,6 +144,31 @@ function buildTagDeck() {
     $('#listTags')[0].innerHTML = html
 }
 
+// Creates option dropdown menu of users in RH UTub information panel
+function gatherUsers(dictUsers, creator) {
+    html = '<option disabled selected value> -- Select a User -- </option>';
+    for (let i in dictUsers) {
+        let user = dictUsers[i];
+        if (user.id == creator) {
+            $('#UTubOwner')[0].innerHTML = user.username;
+        } else {
+            html += '<option value=' + user.id + '>' + user.username + '</option>'
+        }
+    }
+    $('#UTubUsers')[0].innerHTML = html;
+}
+
+function selectURL(selectedUTubID) {
+    // Find notes for selected URL
+    $('#URLInfo')[0].innerHTML = selectedURL.notes;
+    var selectedURLid = selectedURL.url_id;
+
+    // Update hrefs
+    $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
+    $('#EditURL').attr("href", "/edit_url/" + selectedUTubID + "/" + selectedURLid);
+    $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
+}
+
 function toggleTag(tagID) {
     spanObjs = $('span[tagid="' + tagID + '"]')
     $($(spanObjs)).toggle()
@@ -120,59 +176,6 @@ function toggleTag(tagID) {
     if ($(spanObjs).siblings().length < 1) {
         $($(spanObjs).parent()).toggle()
     }
-}
-
-// Build center panel URL-tag list for selectedUTub
-function buildURLDeck() {
-    let html = '';
-    console.log(dictURLs)
-    for (let i in dictURLs) {
-        // Build tag html strings 
-        let tagArray = dictURLs[i].url_tags;
-        let tagString = '';
-        for (let j in tagArray) {
-            let tag = dictTags.find(function (e) {
-                if (e.id === tagArray[j]) {
-                    return e.tag_string
-                }
-            });
-            tagString += '<span tagid=' + tag.id + ' class="tag">' + tag.tag_string + '</span>';
-        }
-
-        // Assemble url list items
-        html += '<li urlid=' + dictURLs[i].url_id + '>' + dictURLs[i].url_string + tagString + '</li>';
-    }
-    $('#listURLs')[0].innerHTML = html;
-}
-
-function selectURL(urlObj) {
-    // Find notes for selected URL
-    let i = 0;
-    console.log(Object.keys(selectedUTub.urls[i]))
-    while (selectedUTub.urls[i].url_id != urlObj.url_id) {
-        i++;
-    }
-    $('#URLInfo')[0].innerHTML = selectedUTub.urls[i].notes;
-
-    // Update hrefs
-    $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURL.id);
-    $('#EditURL').attr("href", "/edit_url/" + selectedUTubID + "/" + selectedURL.id);
-    $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURL.id);
-}
-
-// Creates option dropdown menu of users in RH UTub information panel
-function gatherUsers() {
-    UserArray = selectedUTub.users;
-    html = '<option disabled selected value> -- Select a User -- </option>';
-    for (let i in UserArray) {
-        let user = UserArray[i];
-        if (user.id == selectedUTub.creator) {
-            $('#UTubOwner')[0].innerHTML = user.username;
-        } else {
-            html += '<option value=' + user.id + '>' + user.username + '</option>'
-        }
-    }
-    $('#UTubUsers')[0].innerHTML = html;
 }
 
 
