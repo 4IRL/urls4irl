@@ -14,9 +14,11 @@ import sys
 
 @app.route('/')
 def splash():
-    """Splash page for either an unlogged in user.
-
     """
+    Splash page for an unlogged in user
+    """
+
+    # Test code until splash page built in
     username = 'Giovanni'
     user = User.query.filter_by(username=username).first()
     login_user(user) 
@@ -29,11 +31,14 @@ def home():
     """
     Splash page for logged in user. Loads and displays all UTubs, and contained URLs.
     
-    If GET contains no JSON -
-        Frontend receives all Utub names for that user
+    Args:
+        /home : With no args, this returns all UTubIDs for the given user
+        /home?UTubID=[int] = Where the integer value is the associated UTubID
+                                that the user clicked on
 
-    Otherwise - 
-        Receives Utub data for the selected utub in the provided JSON
+    Returns:
+        - All UTubIDs if no args
+        - Requested UTubID if a valid arg
     """
     if not request.args:
         # User got here without any arguments in the URL
