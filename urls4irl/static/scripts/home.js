@@ -6,6 +6,7 @@ $(document).ready(function () {
     // Selected UTub
     var selectedUTubID;
     var selectedUTub;
+    var activeTags;
 
     currentUserID = $('#welcome')[0].user_id;
 
@@ -18,7 +19,8 @@ $(document).ready(function () {
         selectedUTubID = radioButton.id;
         $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) {
             selectedUTub = UTubJSON;
-            switchUTub(UTubJSON);
+            activeTags = selectedUTub.tags;
+            buildUTub(UTubJSON);
         });
     })
 
@@ -30,7 +32,6 @@ $(document).ready(function () {
         }
 
         var selectedURLid = $(e.target).attr("urlid");
-        console.log(selectedURLid)
         var dictURLs = selectedUTub.urls;
         selectedURL = dictURLs.find(function (e) {
             if (e.url_id == selectedURLid) {
@@ -42,7 +43,19 @@ $(document).ready(function () {
 
     // Selected Tag
     $('#TagDeck').on('click', '#listTags', function (e) {
-        toggleTag($(e.target).parent().attr("tagid"));
+        let clickedTagID;
+
+        // Label clicked. Also toggles checkbox and assigns clickedTagID
+        if (e.target.nodeName.toLowerCase() == 'label') {
+            let input = $(e.target).children();
+            input.prop("checked", !input.prop("checked"));
+            clickedTagID = $(e.target).attr("tagid");
+            console.log(activeTags)
+        } else { // Checkbox clicked
+            clickedTagID = $(e.target).parent().attr("tagid")
+        }
+
+        updateURLDeck(activeTags);
     });
 
     // Selected User (only if creator)
@@ -52,21 +65,19 @@ $(document).ready(function () {
     })
 
     // Update UTub description (only if creator)
-    $('#UTubInfo').addEventListener('input', function() {
+    $('#UTubInfo').on('input', function() {
         //handle update in db
     })
 
     // Update URL description
-    $('#URLInfo').addEventListener('input', function() {
+    $('#URLInfo').on('input', function() {
         //handle update in db
     })
 });
 
 // Functions
 
-function switchUTub(selectedUTub) {
-
-    console.log(selectedUTub)
+function buildUTub(selectedUTub) {
 
     //Use local variables, pass them in to the subsequent functions as required
     var selectedUTubID = selectedUTub.id;
@@ -118,18 +129,45 @@ function buildURLDeck(dictURLs, dictTags) {
     $('#listURLs')[0].innerHTML = html;
 }
 
+function updateURLDeck(activeTags) {
+    let html = '';
+    for (let i in dictURLs) {
+        // Build tag html strings 
+        let tagArray = dictURLs[i].url_tags;
+        let tagString = '';
+        for (let j in tagArray) {
+            let tag = dictTags.find(function (e) {
+                if (e.id === tagArray[j]) {
+                    return e.tag_string
+                }
+            });
+            tagString += '<span tagid=' + tag.id + ' class="tag">' + tag.tag_string + '</span>';
+        }
+
+        // Assemble url list items
+        html += '<li urlid=' + dictURLs[i].url_id + '>' + dictURLs[i].url_string + tagString + '</li>';
+    }
+    $('#listURLs')[0].innerHTML = html;
+}
+
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
     let html = '';
 
-    // // Tags are objects and need extracting/sorting based on keys
-    // dictTags.sort(function (a, b) {
-    //     if (a[0] > b[0]) {
-    //         return 1
-    //     } else {
-    //         return -1
-    //     }
-    // });
+    // Alpha sort tags based on tag_string
+    dictTags.sort(function(a, b) {
+        const tagA = a.tag_string.toUpperCase(); // ignore upper and lowercase
+        const tagB = b.tag_string.toUpperCase(); // ignore upper and lowercase
+        if (tagA < tagB) {
+          return -1;
+        }
+        if (tagA > tagB) {
+          return 1;
+        }
+      
+        // tags must be equal
+        return 0;
+      });
 
     if (dictTags) {
         // Loop through all tags and provide checkbox input for filtering
@@ -172,12 +210,14 @@ function selectURL(selectedUTubID) {
 function toggleTag(tagID) {
     spanObjs = $('span[tagid="' + tagID + '"]')
     $($(spanObjs)).toggle()
-    console.log($(spanObjs).parent().children())
+    let sibArray = $(spanObjs).siblings();
+    for(let i=0; i < sibArray.length; i++){
+        console.log(sibArray[i].innerHTML)
+    }
     if ($(spanObjs).siblings().length < 1) {
         $($(spanObjs).parent()).toggle()
     }
 }
-
 
 function resetUTubs() {
     // Reset tag deck
