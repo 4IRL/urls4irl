@@ -37,8 +37,15 @@ $(document).ready(function () {
             if (e.url_id == selectedURLid) {
                 return e
             }
-        });
+        }); 
+
         selectURL(selectedUTubID);
+
+        // // Attempt to avoid error when tag is clicked. Currently "children()" gives all children under ul#listURLs
+        // console.log($(this).children().hasClass('url'))
+        // if ($(this).children().hasClass('url')) {
+
+        // }
     });
 
     // Selected Tag
@@ -58,6 +65,49 @@ $(document).ready(function () {
         updateURLDeck(activeTags);
     });
 
+    
+    $('#edit_url').on( "blur", function () {
+        console.log("reached the blur")
+        var urlText = $(this).val();
+        var selectedURLid = $(this).attr('urlid');
+        $.ajax({
+            type: 'post',
+            url: "/edit_url/" + selectedUTubID + "/" + selectedURLid,
+            success: function () {
+                $('#edit_url').text(urlText);
+            }
+        });
+    });
+
+    // // Change url to text input for edit
+    // $('li.url').click(function () {
+    //     console.log(selectedURL)
+    //     var urlid = $(this).attr('urlid');
+    //     var urlText = $(this).text();
+    //     $(this).html('');
+    //     $('<input></input>')
+    //         .attr({
+    //             'type': 'text',
+    //             'id': 'edit_url',
+    //             'urlid': urlid,
+    //             'size': '30',
+    //             'value': urlText
+    //         })
+    //         .appendTo(this);
+    //     $('#edit_url').focus();
+    // });
+
+    //    // Accept and POST changes to url once focus shifted
+    //    $('li.url').on('blur','#edit_url', function(){
+    //     var urlText = $(this).val();
+    //     $.ajax({
+    //       type: 'post',
+    //       url: '/edit_url' + urlText,
+    //       success: function(){
+    //         $('#edit_url').text(urlText);
+    //       }
+    //     });
+
     // Selected User (only if creator)
     $('select').change(function () {
         // Update href
@@ -65,15 +115,16 @@ $(document).ready(function () {
     })
 
     // Update UTub description (only if creator)
-    $('#UTubInfo').on('input', function() {
+    $('#UTubInfo').on('input', function () {
         //handle update in db
     })
 
     // Update URL description
-    $('#URLInfo').on('input', function() {
+    $('#URLInfo').on('input', function () {
         //handle update in db
     })
 });
+
 
 // Functions
 
@@ -120,11 +171,11 @@ function buildURLDeck(dictURLs, dictTags) {
                     return e.tag_string
                 }
             });
-            tagString += '<span tagid=' + tag.id + ' class="tag">' + tag.tag_string + '</span>';
+            tagString += '<span class="tag" tagid="' + tag.id + '">' + tag.tag_string + '</span>';
         }
 
         // Assemble url list items
-        html += '<li urlid=' + dictURLs[i].url_id + '>' + dictURLs[i].url_string + tagString + '</li>';
+        html += '<li class="url" urlid="' + dictURLs[i].url_id + '">' + dictURLs[i].url_string + tagString + '</li>';
     }
     $('#listURLs')[0].innerHTML = html;
 }
@@ -155,19 +206,19 @@ function buildTagDeck(dictTags) {
     let html = '';
 
     // Alpha sort tags based on tag_string
-    dictTags.sort(function(a, b) {
+    dictTags.sort(function (a, b) {
         const tagA = a.tag_string.toUpperCase(); // ignore upper and lowercase
         const tagB = b.tag_string.toUpperCase(); // ignore upper and lowercase
         if (tagA < tagB) {
-          return -1;
+            return -1;
         }
         if (tagA > tagB) {
-          return 1;
+            return 1;
         }
-      
+
         // tags must be equal
         return 0;
-      });
+    });
 
     if (dictTags) {
         // Loop through all tags and provide checkbox input for filtering
@@ -203,7 +254,7 @@ function selectURL(selectedUTubID) {
 
     // Update hrefs
     $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
-    $('#EditURL').attr("href", "/edit_url/" + selectedUTubID + "/" + selectedURLid);
+    $('#EditURL').attr("onclick", "EditURL(" + selectedURLid + ")");
     $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
 }
 
@@ -211,7 +262,7 @@ function toggleTag(tagID) {
     spanObjs = $('span[tagid="' + tagID + '"]')
     $($(spanObjs)).toggle()
     let sibArray = $(spanObjs).siblings();
-    for(let i=0; i < sibArray.length; i++){
+    for (let i = 0; i < sibArray.length; i++) {
         console.log(sibArray[i].innerHTML)
     }
     if ($(spanObjs).siblings().length < 1) {
@@ -242,6 +293,23 @@ function AccessLink() {
     } else {
         window.open(selectedURL.url_string, "_blank");
     }
+}
+
+function EditURL(selectedURLid) {
+    var URLli = $("li[urlid=" + selectedURLid + "]");   // Find URL HTML with selected ID
+    var liHTML = URLli.html().split('<span');           // Store pre-edit values
+    var URLString = liHTML[0];
+    var tagString = '<span' + liHTML[1];
+    
+    URLli.html('');                                     // Clear li
+    $('<input></input>').attr({                         // Replace with temporary input
+            'type': 'text',
+            'id': 'edit_url',
+            'urlid': selectedURLid,
+            'size': '30',
+            'value': URLString
+        }).appendTo(URLli);
+    $('#edit_url').focus();
 }
 
 // $.get('http://someurl.com',function(data,status) {
