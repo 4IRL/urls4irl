@@ -6,7 +6,7 @@ $(document).ready(function () {
     // Selected UTub
     var selectedUTubID;
     var selectedUTub;
-    var activeTags;
+    var activeTagIDs;
 
     currentUserID = $('#welcome')[0].user_id;
 
@@ -19,7 +19,7 @@ $(document).ready(function () {
         selectedUTubID = radioButton.id;
         $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) {
             selectedUTub = UTubJSON;
-            activeTags = selectedUTub.tags;
+            activeTagIDs = selectedUTub.tags.map(i => i.id);
             buildUTub(UTubJSON);
         });
     })
@@ -37,7 +37,7 @@ $(document).ready(function () {
             if (e.url_id == selectedURLid) {
                 return e
             }
-        }); 
+        });
 
         selectURL(selectedUTubID);
 
@@ -52,21 +52,34 @@ $(document).ready(function () {
     $('#TagDeck').on('click', '#listTags', function (e) {
         let clickedTagID;
 
-        // Label clicked. Also toggles checkbox and assigns clickedTagID
+        // Handle checkbox display
         if (e.target.nodeName.toLowerCase() == 'label') {
+            // Label clicked. Also toggles checkbox and assigns clickedTagID
             let input = $(e.target).children();
             input.prop("checked", !input.prop("checked"));
             clickedTagID = $(e.target).attr("tagid");
-            console.log(activeTags)
-        } else { // Checkbox clicked
+        } else {
+            // Checkbox clicked. Default functionality
             clickedTagID = $(e.target).parent().attr("tagid")
         }
+        clickedTagID = parseInt(clickedTagID);
 
-        updateURLDeck(activeTags);
+        // Hide/Show corresponding tag span
+        spanObjs = $('span[tagid="' + clickedTagID + '"]')
+        $($(spanObjs)).toggle()
+
+        // If unchecked, remove from activeTagIDs. Else, tag was checked and needs to be readded to activeTagIDs
+        const i = activeTagIDs.indexOf(clickedTagID);
+        if (i > -1) {
+            activeTagIDs.splice(i, 1);
+        } else {
+            activeTagIDs.push(clickedTagID)
+        }
+
+        updateURLDeck(activeTagIDs);
     });
 
-    
-    $('#edit_url').on( "blur", function () {
+    $('#edit_url').on("blur", function () {
         console.log("reached the blur")
         var urlText = $(this).val();
         var selectedURLid = $(this).attr('urlid');
@@ -78,35 +91,6 @@ $(document).ready(function () {
             }
         });
     });
-
-    // // Change url to text input for edit
-    // $('li.url').click(function () {
-    //     console.log(selectedURL)
-    //     var urlid = $(this).attr('urlid');
-    //     var urlText = $(this).text();
-    //     $(this).html('');
-    //     $('<input></input>')
-    //         .attr({
-    //             'type': 'text',
-    //             'id': 'edit_url',
-    //             'urlid': urlid,
-    //             'size': '30',
-    //             'value': urlText
-    //         })
-    //         .appendTo(this);
-    //     $('#edit_url').focus();
-    // });
-
-    //    // Accept and POST changes to url once focus shifted
-    //    $('li.url').on('blur','#edit_url', function(){
-    //     var urlText = $(this).val();
-    //     $.ajax({
-    //       type: 'post',
-    //       url: '/edit_url' + urlText,
-    //       success: function(){
-    //         $('#edit_url').text(urlText);
-    //       }
-    //     });
 
     // Selected User (only if creator)
     $('select').change(function () {
@@ -180,25 +164,23 @@ function buildURLDeck(dictURLs, dictTags) {
     $('#listURLs')[0].innerHTML = html;
 }
 
-function updateURLDeck(activeTags) {
-    let html = '';
-    for (let i in dictURLs) {
-        // Build tag html strings 
-        let tagArray = dictURLs[i].url_tags;
-        let tagString = '';
-        for (let j in tagArray) {
-            let tag = dictTags.find(function (e) {
-                if (e.id === tagArray[j]) {
-                    return e.tag_string
-                }
-            });
-            tagString += '<span tagid=' + tag.id + ' class="tag">' + tag.tag_string + '</span>';
+function updateURLDeck(activeTagIDs) {
+    let urlList = $('li.url');
+    for (let i = 0; i < urlList.length; i++) {
+        // Default hide URL
+        let hideURLBool = 1;
+        for (let j = 0; j < $(urlList[i])[0].children.length; j++) {
+            // If at least one tag <span> for given url <li> exists in activeTagsIDs, negate default hide boolean (show URL)
+            if(activeTagIDs.includes(parseInt($($(urlList[i])[0].children[j])[0].attributes.tagid.value))) {
+                hideURLBool *= 0;
+                break;
+            } 
         }
-
-        // Assemble url list items
-        html += '<li urlid=' + dictURLs[i].url_id + '>' + dictURLs[i].url_string + tagString + '</li>';
+        // If url <li> has no tag <span>s in activeTagIDs, hide <li>
+        if (hideURLBool) { $(urlList[i]).hide(); } 
+        // If tag reactivated, show URL
+        else { $(urlList[i]).show(); }
     }
-    $('#listURLs')[0].innerHTML = html;
 }
 
 // Build LH panel tag list in selectedUTub
@@ -296,22 +278,24 @@ function AccessLink() {
 }
 
 function EditURL(selectedURLid) {
-    var URLli = $("li[urlid=" + selectedURLid + "]");   // Find URL HTML with selected ID
-    var liHTML = URLli.html().split('<span');           // Store pre-edit values
+    var URLli = "li[urlid=" + selectedURLid + "]";   // Find URL HTML with selected ID
+    var liHTML = $(URLli).html().split('<span');     // Store pre-edit values
     var URLString = liHTML[0];
-    var tagString = '<span' + liHTML[1];
-    
-    URLli.html('');                                     // Clear li
-    $('<input></input>').attr({                         // Replace with temporary input
-            'type': 'text',
-            'id': 'edit_url',
-            'urlid': selectedURLid,
-            'size': '30',
-            'value': URLString
-        }).appendTo(URLli);
+    var tags = liHTML.slice(1);
+    tags = tags.map(i => '<span' + i)
+    var tagString = tags.join();
+    var tagString = liHTML.slice(1).map(i => '<span' + i).join();
+    console.log(tags)
+
+    $(URLli).html('');                               // Clear li
+    $('<input></input>').attr({                      // Replace with temporary input
+        'type': 'text',
+        'id': 'edit_url',
+        'urlid': selectedURLid,
+        'size': '30',
+        'value': URLString
+    }).appendTo($(URLli));
+    $(URLli).html($(URLli).html() + tagString);
+    console.log($(URLli).html())
     $('#edit_url').focus();
 }
-
-// $.get('http://someurl.com',function(data,status) {
-//       ...parse the data...
-// },'html');
