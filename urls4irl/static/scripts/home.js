@@ -168,11 +168,11 @@ function updateURLDeck(activeTagIDs) {
     let urlList = $('li.url');
     for (let i = 0; i < urlList.length; i++) {
         // Default hide URL
-        let hideURLBool = 1;
+        let hideURLBool = true;
         for (let j = 0; j < $(urlList[i])[0].children.length; j++) {
             // If at least one tag <span> for given url <li> exists in activeTagsIDs, negate default hide boolean (show URL)
             if(activeTagIDs.includes(parseInt($($(urlList[i])[0].children[j])[0].attributes.tagid.value))) {
-                hideURLBool *= 0;
+                hideURLBool = false;
                 break;
             } 
         }
