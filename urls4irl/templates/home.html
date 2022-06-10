@@ -170,9 +170,9 @@
             <h2>URL Information</h2>
 
             <h5>Actions</h5> 
-            <button id="URLLink" class="btn btn-success btn-sm mb-3 mx-1" onclick="AccessLink()">Access URL</button>
+            <button id="URLLink" class="btn btn-success btn-sm mb-3 mx-1" onclick="accessLink()">Access URL</button>
             <a id="addTags" class="btn btn-info btn-sm mb-3 mx-1" href="#">Add tags</a>
-            <button id="EditURL" class="btn btn-primary btn-sm mb-3 mx-1" onclick="EditURL()">Edit URL</button>
+            <button id="EditURL" class="btn btn-primary btn-sm mb-3 mx-1" onclick="editURL()">Edit URL</button>
             <a id="DeleteURL" class="btn btn-danger btn-sm mb-3 mx-1" href="#">Delete this URL</a>
 
             <h5>Description</h5>
@@ -204,4 +204,8 @@
     <!-- Home Page JS -->
     <script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
 
+{% endblock %}
+
+{% block modal_extender %}
+    {{ super() }}
 {% endblock %}

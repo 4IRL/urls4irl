@@ -185,7 +185,7 @@ function updateURLDeck(activeTagIDs) {
 
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
-    let html = '';
+    let html = '<label for="selectAll"><input id="selectAll" type="checkbox" name="selectAll" checked> Select All </label>';
 
     // Alpha sort tags based on tag_string
     dictTags.sort(function (a, b) {
@@ -207,7 +207,7 @@ function buildTagDeck(dictTags) {
         for (let i in dictTags) {
             let tagText = dictTags[i].tag_string;
             let tagID = dictTags[i].id;
-            html += '<label for="' + tagText + '" tagid=' + tagID + '><input type="checkbox" name="' + tagText + '" checked>' + tagText + '</label>';
+            html += '<label for="' + tagText + '" tagid=' + tagID + '><input class="tagCheckbox" type="checkbox" name="' + tagText + '" checked> ' + tagText + ' </label>';
         }
     } else {
         html += '<h5>No Tags Applied to any URLs in this UTub</h5>'     // No tags in UTub
@@ -236,20 +236,8 @@ function selectURL(selectedUTubID) {
 
     // Update hrefs
     $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
-    $('#EditURL').attr("onclick", "EditURL(" + selectedURLid + ")");
+    $('#EditURL').attr("onclick", "editURL(" + selectedURLid + ")");
     $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
-}
-
-function toggleTag(tagID) {
-    spanObjs = $('span[tagid="' + tagID + '"]')
-    $($(spanObjs)).toggle()
-    let sibArray = $(spanObjs).siblings();
-    for (let i = 0; i < sibArray.length; i++) {
-        console.log(sibArray[i].innerHTML)
-    }
-    if ($(spanObjs).siblings().length < 1) {
-        $($(spanObjs).parent()).toggle()
-    }
 }
 
 function resetUTubs() {
@@ -269,7 +257,7 @@ function resetUTubs() {
     $('#DeleteURL').attr("href", "#");
 }
 
-function AccessLink() {
+function accessLink() {
     if (!selectedURL.url_string.startsWith('https://')) {
         window.open('https://' + selectedURL.url_string, "_blank");
     } else {
@@ -277,7 +265,7 @@ function AccessLink() {
     }
 }
 
-function EditURL(selectedURLid) {
+function editURL(selectedURLid) {
     var URLli = "li[urlid=" + selectedURLid + "]";   // Find URL HTML with selected ID
     var liHTML = $(URLli).html().split('<span');     // Store pre-edit values
     var URLString = liHTML[0];
