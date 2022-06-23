@@ -8,7 +8,7 @@ $(document).ready(function () {
     var selectedUTub;
     var activeTagIDs;
 
-    currentUserID = $('#welcome')[0].user_id;
+    currentUserID = $('#welcome').attr('user_id');
 
     $('input:radio').click(function () {
         // Reset
@@ -28,7 +28,7 @@ $(document).ready(function () {
     $('#centerPanel').on('click', '#listURLs', function (e) {
         $(this).children().css("color", "black");    // Reset all to default color
         if ($(e.target)[0].style.color == 'black') {
-            $(e.target).css("color", "yellow");      // Highlight new focus URL
+            $(e.target).css("color", "blue");      // Highlight new focus URL
         }
 
         var selectedURLid = $(e.target).attr("urlid");
@@ -79,19 +79,6 @@ $(document).ready(function () {
         updateURLDeck(activeTagIDs);
     });
 
-    $('#edit_url').on("blur", function () {
-        console.log("reached the blur")
-        var urlText = $(this).val();
-        var selectedURLid = $(this).attr('urlid');
-        $.ajax({
-            type: 'post',
-            url: "/edit_url/" + selectedUTubID + "/" + selectedURLid,
-            success: function () {
-                $('#edit_url').text(urlText);
-            }
-        });
-    });
-
     // Selected User (only if creator)
     $('select').change(function () {
         // Update href
@@ -107,6 +94,20 @@ $(document).ready(function () {
     $('#URLInfo').on('input', function () {
         //handle update in db
     })
+
+    // Navbar animation
+    $('.first-button').on('click', function () {
+
+        $('.animated-icon1').toggleClass('open');
+    });
+    $('.second-button').on('click', function () {
+
+        $('.animated-icon2').toggleClass('open');
+    });
+    $('.third-button').on('click', function () {
+
+        $('.animated-icon3').toggleClass('open');
+    });
 });
 
 
@@ -145,6 +146,11 @@ function buildUTub(selectedUTub) {
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
     let html = '';
+    let cardHead = '<div class="col-md-12 col-lg-6 col-xl-4 mb-3"><div class="card"',
+    cardInt1 = '><img class="card-img-top" src="..." alt="Card image cap"><div class="card-body"><h5 class="card-title">',
+    cardInt2 = '</h5><p class="card-text">',
+    cardInt3 = '</p></div></div></div>';
+    
     for (let i in dictURLs) {
         // Build tag html strings 
         let tagArray = dictURLs[i].url_tags;
@@ -159,7 +165,7 @@ function buildURLDeck(dictURLs, dictTags) {
         }
 
         // Assemble url list items
-        html += '<li class="url" urlid="' + dictURLs[i].url_id + '">' + dictURLs[i].url_string + tagString + '</li>';
+        html += cardHead + 'urlid="' + dictURLs[i].url_id + '" ' + cardInt1 + dictURLs[i].url_string + cardInt2 + tagString + cardInt3;
     }
     $('#listURLs')[0].innerHTML = html;
 }
@@ -171,13 +177,13 @@ function updateURLDeck(activeTagIDs) {
         let hideURLBool = true;
         for (let j = 0; j < $(urlList[i])[0].children.length; j++) {
             // If at least one tag <span> for given url <li> exists in activeTagsIDs, negate default hide boolean (show URL)
-            if(activeTagIDs.includes(parseInt($($(urlList[i])[0].children[j])[0].attributes.tagid.value))) {
+            if (activeTagIDs.includes(parseInt($($(urlList[i])[0].children[j])[0].attributes.tagid.value))) {
                 hideURLBool = false;
                 break;
-            } 
+            }
         }
         // If url <li> has no tag <span>s in activeTagIDs, hide <li>
-        if (hideURLBool) { $(urlList[i]).hide(); } 
+        if (hideURLBool) { $(urlList[i]).hide(); }
         // If tag reactivated, show URL
         else { $(urlList[i]).show(); }
     }
@@ -236,7 +242,7 @@ function selectURL(selectedUTubID) {
 
     // Update hrefs
     $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
-    $('#EditURL').attr("onclick", "editURL(" + selectedURLid + ")");
+    $('#EditURL').attr("onclick", "editURL(" + selectedUTubID + "," + selectedURLid + ")");
     $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
 }
 
@@ -265,15 +271,13 @@ function accessLink() {
     }
 }
 
-function editURL(selectedURLid) {
+function editURL(selectedUTubID, selectedURLid) {
     var URLli = "li[urlid=" + selectedURLid + "]";   // Find URL HTML with selected ID
     var liHTML = $(URLli).html().split('<span');     // Store pre-edit values
     var URLString = liHTML[0];
     var tags = liHTML.slice(1);
     tags = tags.map(i => '<span' + i)
-    var tagString = tags.join();
-    var tagString = liHTML.slice(1).map(i => '<span' + i).join();
-    console.log(tags)
+    var tagString = liHTML.slice(1).map(i => '<span' + i).join('');
 
     $(URLli).html('');                               // Clear li
     $('<input></input>').attr({                      // Replace with temporary input
@@ -284,6 +288,20 @@ function editURL(selectedURLid) {
         'value': URLString
     }).appendTo($(URLli));
     $(URLli).html($(URLli).html() + tagString);
-    console.log($(URLli).html())
     $('#edit_url').focus();
+
+    $(document).on("blur", '#edit_url', function () {
+        var urlText = $(this).val();
+        var selectedURLid = $(this).attr('urlid');
+        let request = $.ajax({
+            type: 'post',
+            url: "/edit_url/" + selectedUTubID + "/" + selectedURLid
+        });
+        console.log($('#edit_url'))
+        request.done(function (response, textStatus, xhr) {
+            if (xhr.status == 200) {
+            }
+        }
+        )
+    });
 }

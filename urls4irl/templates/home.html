@@ -1,131 +1,134 @@
 {% extends "layout.html" %}
 {% block content %}
-<!-- Personalized welcome tagline -->
-<div id="demo" class="d-flex justify-content-center flex-row">
-    <h1 id="welcome" user_id="{{current_user.id}}">Hello there  {{current_user.username}}.</h1>
+
+<!-- Left Side Panel -->
+<div id="leftPanel" class="panel col-md-2 pt-5">
+
+    <!-- UPR LH Panel, UTubs ("red") -->
+    <div id="UTubDeck" class="deck row h-50 mb-md-1 p-3">
+        <h2>UTubs</h2>
+        <div class="deckContent form-group">
+            {% if not utubs_for_this_user %}
+            <div class="d-flex justify-content-center flex-row">
+                <a class="btn btn-primary mx-3" href="{{url_for('create_utub')}}">Add UTub!</a>
+            </div>
+            {% else %}
+            <form>
+                {% for single_utub in utubs_for_this_user %}
+                <label for="UTub{{loop.index}}">
+                    <input type="radio" id="{{single_utub.id}}" name="UTubSelection" value="{{single_utub.name}}">
+                    {{single_utub.name}}
+                </label>
+                {% endfor %}
+            </form>
+            <div class="d-flex justify-content-center flex-row">
+                <a class="btn btn-primary mx-3" href="{{url_for('create_utub')}}">+</a>
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+
+    <!-- LWR LH Panel, Tags ("orange") -->
+    <!-- Will be alpha ordered -->
+    <div id="TagDeck" class="deck row h-50 p-3">
+        <h2>Tags</h2>
+        <div class="deckContent form-group">
+            <form id="listTags">
+                <h5>No UTub Selected</h5>
+            </form>
+        </div>
+    </div>
 </div>
 
-<div class="row align-items-left content">
-    <!-- Left Side Panel -->
-    <div id="leftPanel" class="col-md-2 order-2 order-md-1">
+<!-- Center Panel, URLs ("gray")-->
 
-        <!-- UPR LH Panel, UTubs ("red") -->
-        <div id="UTubDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
-            <div class="form-group">
-                <h2>UTubs</h2>
-                    {% if not utubs_for_this_user %}
-                        <div class="d-flex justify-content-center flex-row">
-                            <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Add UTub!</a>
-                        </div>
-                    {% else %}
-                        <form>
-                            {% for single_utub in utubs_for_this_user %}
-                                <label for="UTub{{loop.index}}">
-                                    <input type="radio" id="{{single_utub.id}}" name="UTubSelection" value="{{single_utub.name}}">
-                                    {{single_utub.name}}
-                                </label>
-                            {% endfor %}
-                        </form>
-                        <div class="d-flex justify-content-center flex-row">
-                            <a class="btn btn-primary col-7 mx-3" href="{{url_for('create_utub')}}">Create New UTub!</a>
-                        </div>
-                    {% endif %}
-            </div>
-        </div>
-
-        
-        <!-- LWR LH Panel, Tags ("orange") -->
-        <!-- Will be alpha ordered -->
-        <div id="TagDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
-            <div class="form-group">
-                <h2>Tags</h2>
-                <form id=listTags>                
-                    <h5>No UTub Selected</h5>
-                </form>
-            </div>
-        </div>
-    </div>
-
-    <!-- Center Panel, URLs ("gray")-->
-
-    <div id="centerPanel" class="col-md-5 text-left order-2 order-md-1 mb-md-1 px-0 py-3 panel">
-        <div class="row justify-content-center">
-            <div class="col-10 col-lg-8 mb-md-0">
-                <h2 id="UTubHeader">Select a UTub</h2>
-                <img id="TubImage" src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80" alt="Select a Tub!">
-                <!-- Figure out Font Awesome icons... -->
-                <!-- <i class="fas fa-bath"></i>
+<div id="centerPanel" class="panel col-md-7 pt-5">
+    <div id="UTubContent" class="deck row justify-content-center h-100 mb-md-1 p-3">
+        <h2 id="UTubHeader">Select a UTub</h2><br>
+        <p><a id="addURL" class="btn btn-success btn-sm mb-3 mx-3" href="#">Add a URL</a></p>
+        <div class="deckContent col-lg-10">
+            <img id="TubImage"
+                src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80"
+                alt="Select a Tub!">
+            <!-- Figure out Font Awesome icons... -->
+            <!-- <i class="fas fa-bath"></i>
                 <i class="fa fa-flask"></i> -->
-                {% if not utubs_for_this_user %}
-                    <img src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80" alt="Create a Tub!">
-                {% else %}
-                    <ul id="listURLs">
-                        <!-- Current selected UTub's URLs will be displayed here -->
-                    </ul>
-                    <a id="addURL" class="btn btn-success btn-sm mb-3 mx-3" href="#">Add a URL</a>
-                {% endif %}       
+            {% if not utubs_for_this_user %}
+            <img src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80"
+                alt="Create a Tub!">
+            {% else %}
+            <div id="listURLs" class="row list-content">
+                <!-- Current selected UTub's URLs will be displayed here -->
             </div>
+            {% endif %}
         </div>
     </div>
+</div>
 
-    <!-- Right Side Panel -->
+<!-- Right Side Panel -->
 
-    <div id="rightPanel" class="col-md-5 order-3 order-md-3 panel">
-        <div id="UTubInfoDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
+<div id="rightPanel" class="panel col-md-3 pt-5">
+    <div id="UTubInfoDeck" class="deck row h-25 mb-md-1 p-3">
 
-            <h2>UTub Information</h2>
+        <h2>UTub Information</h2>
 
-            <h5>Owner</h5> 
-            <span id="UTubOwner"></span>
-            
-            <h5>Users</h5> 
-            <select id="UTubUsers">
-                <option disabled selected value> -- Select a UTub -- </option>
-            </select>
+        <h5>Owner</h5>
+        <span id="UTubOwner"></span>
 
-            <div id="UTubActions">
-                <h5>Actions</h5> 
-                <a id="addUser" class="btn btn-success btn-sm mb-3 mx-1" href="#">Add a User</a>
-                
-                <div class="modal fade" id="removeUserModal" tabindex="-1" role="dialog" aria-labelledby="removeUserModalLabel" aria-hidden="true">
-                    <div class="modal-dialog modal-dialog-centered" role="document">
-                        <div class="modal-content">
-                            <div class="modal-header">
-                            <h5 class="modal-title" id="removeUserModalLabel">Are you sure you want to remove this user?</h5>
+        <h5>Users</h5>
+        <select id="UTubUsers">
+            <option disabled selected value> -- Select a UTub -- </option>
+        </select>
+
+        <div id="UTubActions" class="row">
+            <h5>Actions</h5>
+            <a id="addUser" class="btn btn-success btn-sm mb-3 mx-1" href="#">Add a User</a>
+
+            <div class="modal fade" id="removeUserModal" tabindex="-1" role="dialog"
+                aria-labelledby="removeUserModalLabel" aria-hidden="true">
+                <div class="modal-dialog modal-dialog-centered" role="document">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="removeUserModalLabel">Are you sure you want to remove this
+                                user?</h5>
                             <a type="a" class="close" data-dismiss="modal" aria-label="Close">
                                 <span aria-hidden="true">&times;</span>
                             </a>
-                            </div>
-                            <div class="modal-body">
-                                This user will no longer have the ability to view or add URLs in the UTub.
-                            </div>
-                            <div class="modal-footer">
-                            <button type="a" class="btn btn-secondary" data-dismiss="modal">I Changed My Mind</button>
+                        </div>
+                        <div class="modal-body">
+                            This user will no longer have the ability to view or add URLs in the UTub.
+                        </div>
+                        <div class="modal-footer">
+                            <button type="a" class="btn btn-secondary" data-dismiss="modal">I Changed My
+                                Mind</button>
                             <button type="a" id="removeUser" href="#" class="btn btn-danger">Remove User</button>
-                            </div>
                         </div>
                     </div>
                 </div>
+            </div>
 
-                <button class="btn btn-warning btn-sm mb-3 mx-1" data-toggle="modal" data-target="#removeUserModal">Remove this User</button>
-                
-                <!-- <form id="removeUserTemp" action="#" method="post">
+            <button class="btn btn-warning btn-sm mb-3 mx-1" data-toggle="modal" data-target="#removeUserModal">Remove
+                this User</button>
+
+            <!-- <form id="removeUserTemp" action="#" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     button
                 </form> -->
 
-                <!-- <form action="#" method="post">
+            <!-- <form action="#" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     Modal
                     div.modal
                 </form> -->
-                
-                <form id="deleteUTubTemp" action="#" method="post">
-                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
-                    <button class="btn btn-danger btn-sm mb-3 mx-1" data-toggle="modal" data-target="#removeUTubModal" href="#">Delete this UTub</button>
-                </form>
-                
-                <!-- <form action="#" method="post">
+
+            <form id="deleteUTubTemp" action="#" method="post">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+                <button class="btn btn-danger btn-sm mb-3 mx-1" data-toggle="modal" data-target="#removeUTubModal"
+                    href="#">Delete this UTub</button>
+            </form>
+
+            <!-- <form action="#" method="post">
                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
                     Modal
                     <div class="modal fade" id="deleteUTubModal" tabindex="-1" role="dialog" aria-labelledby="deleteUTubModalLabel" aria-hidden="true">
@@ -148,64 +151,62 @@
                         </div>
                     </div>
                 </form> -->
-            </div>
-           
-            <h5>Description</h5>
-            <p id="UTubInfo" class="lead" contentEditable="true">
-                Storing email addresses in a PostGreSQL database
-
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
-                beatae, maiores deserunt
-                in voluptatibus
-                aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
-                repellat eveniet quidem
-                voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
-                autem nam ex deserunt debitis
-                eaque ratione! Nobis, quidem assumenda.
-            </p>
         </div>
 
-        <div id="URLInfoDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
-            
-            <h2>URL Information</h2>
+        <h5>Description</h5>
+        <p id="UTubInfo" class="lead" contentEditable="true">
+            Storing email addresses in a PostGreSQL database
 
-            <h5>Actions</h5> 
+            Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
+            beatae, maiores deserunt
+            in voluptatibus
+            aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
+            repellat eveniet quidem
+            voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
+            autem nam ex deserunt debitis
+            eaque ratione! Nobis, quidem assumenda.
+        </p>
+    </div>
+
+    <div id="URLInfoDeck" class="deck row h-50 mb-md-1 p-3" style="display:block">
+
+        <h2>URL Information</h2>
+
+        <div class="justify-content-center row">
             <button id="URLLink" class="btn btn-success btn-sm mb-3 mx-1" onclick="accessLink()">Access URL</button>
             <a id="addTags" class="btn btn-info btn-sm mb-3 mx-1" href="#">Add tags</a>
             <button id="EditURL" class="btn btn-primary btn-sm mb-3 mx-1" onclick="editURL()">Edit URL</button>
             <a id="DeleteURL" class="btn btn-danger btn-sm mb-3 mx-1" href="#">Delete this URL</a>
-
-            <h5>Description</h5>
-            <p id="URLInfo" class="lead" contentEditable="true">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
-                beatae, maiores deserunt
-            </p>
         </div>
-        
 
+        <h5>Description</h5>
+        <p id="URLInfo" class="lead" contentEditable="true">
+            Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
+            beatae, maiores deserunt
+        </p>
+    </div>
 
-        <div id="ChatDeck" class="col-12 col-lg-12 mb-md-1 p-3 panel">
-            <h2>Chat</h2>
-            <p class="lead">
-                Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
-                beatae, maiores deserunt
-                in voluptatibus
-                aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
-                repellat eveniet quidem
-                voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
-                autem nam ex deserunt debitis
-                eaque ratione! Nobis, quidem assumenda.
-            </p>
-        </div>
+    <div id="ChatDeck" class="deck row h-25 p-3">
+        <h2>Chat</h2>
+        <p class="lead">
+            Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
+            beatae, maiores deserunt
+            in voluptatibus
+            aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
+            repellat eveniet quidem
+            voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
+            autem nam ex deserunt debitis
+            eaque ratione! Nobis, quidem assumenda.
+        </p>
     </div>
 </div>
 
-    
-    <!-- Home Page JS -->
-    <script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
+
+<!-- Home Page JS -->
+<script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
 
 {% endblock %}
 
 {% block modal_extender %}
-    {{ super() }}
+{{ super() }}
 {% endblock %}
