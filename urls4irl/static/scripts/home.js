@@ -26,9 +26,10 @@ $(document).ready(function () {
 
     // Selected URL
     $('#centerPanel').on('click', '#listURLs', function (e) {
-        $(this).children().css("color", "black");    // Reset all to default color
-        if ($(e.target)[0].style.color == 'black') {
-            $(e.target).css("color", "blue");      // Highlight new focus URL
+        $(this).children().css("background", "black");    // Reset all to default color
+        console.log($(e.target)[0])
+        if ($(e.target)[0].style.background == 'black') {
+            $(e.target).css("background", "blue");      // Highlight new focus URL
         }
 
         var selectedURLid = $(e.target).attr("urlid");
@@ -145,12 +146,15 @@ function buildUTub(selectedUTub) {
 
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
-    let html = '';
-    let cardHead = '<div class="col-md-12 col-lg-6 col-xl-4 mb-3"><div class="card"',
-    cardInt1 = '><img class="card-img-top" src="..." alt="Card image cap"><div class="card-body"><h5 class="card-title">',
-    cardInt2 = '</h5><p class="card-text">',
-    cardInt3 = '</p></div></div></div>';
+    let card = document.createElement('div');
+    setAttributes(card, { "id": "-group", "class": "board-list", "ondrop": "dropIt(event)", "ondragover": "allowDrop(event)", "ondragstart": "dragStart(event)" });
     
+    let html = '';
+    let cardHead = '<div class="col-md-12 col-lg-4 col-xl-3 mb-3"><div class="card url" draggable="true"',
+        cardInt1 = '><img class="card-img-top" src="..." alt="Card image cap"><div class="card-body"><h5 class="card-title">',
+        cardInt2 = '</h5><p class="card-text">',
+        cardInt3 = '</p></div></div></div>';
+
     for (let i in dictURLs) {
         // Build tag html strings 
         let tagArray = dictURLs[i].url_tags;
@@ -167,14 +171,19 @@ function buildURLDeck(dictURLs, dictTags) {
         // Assemble url list items
         html += cardHead + 'urlid="' + dictURLs[i].url_id + '" ' + cardInt1 + dictURLs[i].url_string + cardInt2 + tagString + cardInt3;
     }
+    card.innerHTML = html;
+
+    // $("#boardlists")[0].insertBefore(card, $("#boardlists")[0].firstChild);
+
     $('#listURLs')[0].innerHTML = html;
 }
 
 function updateURLDeck(activeTagIDs) {
-    let urlList = $('li.url');
+    let urlList = $('div.url');
     for (let i = 0; i < urlList.length; i++) {
         // Default hide URL
         let hideURLBool = true;
+        console.log($(urlList[i])[0].children[1].children[1].children)
         for (let j = 0; j < $(urlList[i])[0].children.length; j++) {
             // If at least one tag <span> for given url <li> exists in activeTagsIDs, negate default hide boolean (show URL)
             if (activeTagIDs.includes(parseInt($($(urlList[i])[0].children[j])[0].attributes.tagid.value))) {

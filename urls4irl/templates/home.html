@@ -2,7 +2,7 @@
 {% block content %}
 
 <!-- Left Side Panel -->
-<div id="leftPanel" class="panel col-md-2 pt-5">
+<div id="leftPanel" class="panel col-md-2">
 
     <!-- UPR LH Panel, UTubs ("red") -->
     <div id="UTubDeck" class="deck row h-50 mb-md-1 p-3">
@@ -43,11 +43,11 @@
 
 <!-- Center Panel, URLs ("gray")-->
 
-<div id="centerPanel" class="panel col-md-7 pt-5">
-    <div id="UTubContent" class="deck row justify-content-center h-100 mb-md-1 p-3">
-        <h2 id="UTubHeader">Select a UTub</h2><br>
-        <p><a id="addURL" class="btn btn-success btn-sm mb-3 mx-3" href="#">Add a URL</a></p>
-        <div class="deckContent col-lg-10">
+<div id="centerPanel" class="panel col-md-7">
+    <div id="UTubContent" class="deck  h-100 mb-md-1 p-3">
+        <h2 id="UTubHeader">Select a UTub</h2>
+        <a id="addURL" class="btn btn-success btn-sm mb-3 justify-content-center" href="#">Add a URL</a>
+        <div class="deckContent row justify-content-center">
             <img id="TubImage"
                 src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80"
                 alt="Select a Tub!">
@@ -58,7 +58,7 @@
             <img src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80"
                 alt="Create a Tub!">
             {% else %}
-            <div id="listURLs" class="row list-content">
+            <div id="listURLs" class="row list-content justify-content-center">
                 <!-- Current selected UTub's URLs will be displayed here -->
             </div>
             {% endif %}
@@ -68,8 +68,8 @@
 
 <!-- Right Side Panel -->
 
-<div id="rightPanel" class="panel col-md-3 pt-5">
-    <div id="UTubInfoDeck" class="deck row h-25 mb-md-1 p-3">
+<div id="rightPanel" class="panel col-md-3">
+    <div id="UTubInfoDeck" class="deck row h-25 mb-md-1 p-3" style="display:block">
 
         <h2>UTub Information</h2>
 
@@ -204,6 +204,7 @@
 
 <!-- Home Page JS -->
 <script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/dragdropswap.js') }}"></script>
 
 {% endblock %}
 
