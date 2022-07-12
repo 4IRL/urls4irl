@@ -10,7 +10,11 @@ $(document).ready(function () {
 
     currentUserID = $('#welcome').attr('user_id');
 
-    $('input:radio').click(function () {
+
+    $('#UTubDeck').on('click', '.deckContent', function (e) {
+        if (e.target.localName == 'label') {
+            $(e.target).find('input[type=radio]').prop('checked', true);
+        }
         // Reset
         $('#TubImage').remove();
 
@@ -26,13 +30,12 @@ $(document).ready(function () {
 
     // Selected URL
     $('#centerPanel').on('click', '#listURLs', function (e) {
-        $(this).children().css("background", "black");    // Reset all to default color
-        console.log($(e.target)[0])
-        if ($(e.target)[0].style.background == 'black') {
-            $(e.target).css("background", "blue");      // Highlight new focus URL
-        }
+        $(this).find('div.card').removeClass("selected");
+        var selectedCard = $(e.target).closest('div.card');
+        selectedCard.addClass("selected");
+        console.log(selectedCard.attr('urlid'))
 
-        var selectedURLid = $(e.target).attr("urlid");
+        var selectedURLid = selectedCard.attr("urlid");
         var dictURLs = selectedUTub.urls;
         selectedURL = dictURLs.find(function (e) {
             if (e.url_id == selectedURLid) {
@@ -41,12 +44,6 @@ $(document).ready(function () {
         });
 
         selectURL(selectedUTubID);
-
-        // // Attempt to avoid error when tag is clicked. Currently "children()" gives all children under ul#listURLs
-        // console.log($(this).children().hasClass('url'))
-        // if ($(this).children().hasClass('url')) {
-
-        // }
     });
 
     // Selected Tag
@@ -148,18 +145,19 @@ function buildUTub(selectedUTub) {
 function buildURLDeck(dictURLs, dictTags) {
     let card = document.createElement('div');
     setAttributes(card, { "id": "-group", "class": "board-list", "ondrop": "dropIt(event)", "ondragover": "allowDrop(event)", "ondragstart": "dragStart(event)" });
-    
+
     let html = '';
     let cardHead = '<div class="col-md-12 col-lg-4 col-xl-3 mb-3"><div class="card url" draggable="true"',
-        cardInt1 = '><img class="card-img-top" src="..." alt="Card image cap"><div class="card-body"><h5 class="card-title">',
-        cardInt2 = '</h5><p class="card-text">',
-        cardInt3 = '</p></div></div></div>';
+        cardInt1 = '><img class="card-img-top" src="..." alt="Card image cap">', // Potential option to show static image preview of destination site
+        cardInt2 = '><div class="card-body"><h5 class="card-title">',
+        cardInt3 = '</h5><p class="card-text">',
+        cardInt4 = '</p></div></div></div>';
 
     for (let i in dictURLs) {
         // Build tag html strings 
         let tagArray = dictURLs[i].url_tags;
         let tagString = '';
-        for (let j in tagArray) {
+        for (let j in tagArray) { // Find applicable tags in dictionary to apply to URL card
             let tag = dictTags.find(function (e) {
                 if (e.id === tagArray[j]) {
                     return e.tag_string
@@ -169,7 +167,7 @@ function buildURLDeck(dictURLs, dictTags) {
         }
 
         // Assemble url list items
-        html += cardHead + 'urlid="' + dictURLs[i].url_id + '" ' + cardInt1 + dictURLs[i].url_string + cardInt2 + tagString + cardInt3;
+        html += cardHead + 'urlid="' + dictURLs[i].url_id + '" ' + cardInt2 + dictURLs[i].url_string + cardInt3 + tagString + cardInt4;
     }
     card.innerHTML = html;
 
@@ -180,21 +178,23 @@ function buildURLDeck(dictURLs, dictTags) {
 
 function updateURLDeck(activeTagIDs) {
     let urlList = $('div.url');
+    console.log(activeTagIDs)
     for (let i = 0; i < urlList.length; i++) {
         // Default hide URL
-        let hideURLBool = true;
-        console.log($(urlList[i])[0].children[1].children[1].children)
+        let hideURLBool = true; // Default boolean (hide URL)
         for (let j = 0; j < $(urlList[i])[0].children.length; j++) {
-            // If at least one tag <span> for given url <li> exists in activeTagsIDs, negate default hide boolean (show URL)
-            if (activeTagIDs.includes(parseInt($($(urlList[i])[0].children[j])[0].attributes.tagid.value))) {
+            // If at least one tag <span> for given url <div.card.url> exists in activeTagsIDs, negate default boolean (show URL)
+            console.log(parseInt($($(urlList[i])[0].children[j]).find('span.tag').attr('tagid')))
+            if (activeTagIDs.includes(parseInt($($(urlList[i])[0].children[j]).find('span.tag').attr('tagid')))) {
                 hideURLBool = false;
-                break;
             }
         }
-        // If url <li> has no tag <span>s in activeTagIDs, hide <li>
-        if (hideURLBool) { $(urlList[i]).hide(); }
+        console.log(i)
+        console.log(hideURLBool)
+        // If url <div.card.url> has no tag <span>s in activeTagIDs, hide card column (so other cards shift into its position)
+        if (hideURLBool) { $(urlList[i]).parent().hide(); }
         // If tag reactivated, show URL
-        else { $(urlList[i]).show(); }
+        else { $(urlList[i]).parent().show(); }
     }
 }
 
