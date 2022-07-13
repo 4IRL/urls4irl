@@ -1,49 +1,37 @@
-var currentUserID;
-var selectedURL;
-
 // UI Interactions
-$(document).ready(function () {
-    // Selected UTub
-    var selectedUTubID;
-    var selectedUTub;
-    var activeTagIDs;
+$(document).ready(function() {
 
-    currentUserID = $('#welcome').attr('user_id');
+    // Instantiate UTubDeck with user's accessible UTubs
+    radioHTML = '';
+    for (i in UTubs) {
+        radioHTML += '<label for="UTub' + UTubs[i].id + '"><input type="radio" id="UTub' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '">' + UTubs[i].name + '</label>';
+    }
+    $('#UTubDeck').find('form')[0].innerHTML = radioHTML;
 
-
-    $('#UTubDeck').on('click', '.deckContent', function (e) {
-        if (e.target.localName == 'label') {
-            $(e.target).find('input[type=radio]').prop('checked', true);
-        }
+    // User selected a UTub, display data
+    $('input[type=radio]').on('click', function() {
         // Reset
         $('#TubImage').remove();
 
-        radioButton = $('input[type=radio]:checked')[0];
-        $('#UTubHeader')[0].innerHTML = radioButton.value;
-        selectedUTubID = radioButton.id;
-        $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) {
-            selectedUTub = UTubJSON;
-            activeTagIDs = selectedUTub.tags.map(i => i.id);
-            buildUTub(UTubJSON);
-        });
+        // Find which UTub was requested
+        let selectedUTubID = findUTubID();
+
+        // Pull data from db
+        $.getJSON('/home?UTubID=' + selectedUTubID, function(UTubJSON) { buildUTub(UTubJSON) });
     })
 
     // Selected URL
-    $('#centerPanel').on('click', '#listURLs', function (e) {
-        $(this).find('div.card').removeClass("selected");
+    $('#centerPanel').on('click', function (e) {
         var selectedCard = $(e.target).closest('div.card');
-        selectedCard.addClass("selected");
-        console.log(selectedCard.attr('urlid'))
+        if (selectedCard.hasClass("selected")) {    // Already selected, user would like to unselect
+            selectedCard.removeClass("selected");
+        } else {                                    // Unselected, user would like to select a different URL
+            $('#centerPanel').find('div.card').removeClass("selected");
+            selectedCard.addClass("selected");
+        }
+        console.log(selectedCard.attr("urlid"))
 
-        var selectedURLid = selectedCard.attr("urlid");
-        var dictURLs = selectedUTub.urls;
-        selectedURL = dictURLs.find(function (e) {
-            if (e.url_id == selectedURLid) {
-                return e
-            }
-        });
-
-        selectURL(selectedUTubID);
+        selectURL();
     });
 
     // Selected Tag
@@ -111,11 +99,29 @@ $(document).ready(function () {
 
 // Functions
 
+function findUTubID() {
+    // Find which UTub was requested
+    radioButton = $('input[type=radio]:checked')[0];
+    $('#UTubHeader')[0].innerHTML = radioButton.value;
+    str = radioButton.id;
+    return str.charAt(str.length - 1);
+}
+
+function dictURLs() {
+    let URLs = $('#listURLs').find('.card-title').map(i => i.innerHTML)
+    return 1
+}
+
+function dictURLs() {
+    return $('#listURLs').find('.card-title').map(i => i.innerHTML)
+}
+
 function buildUTub(selectedUTub) {
 
     //Use local variables, pass them in to the subsequent functions as required
     var selectedUTubID = selectedUTub.id;
     var dictURLs = selectedUTub.urls;
+    console.log(dictURLs)
     var dictTags = selectedUTub.tags;
     var dictUsers = selectedUTub.members;
     var creator = selectedUTub.created_by;
@@ -134,6 +140,8 @@ function buildUTub(selectedUTub) {
     // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
 
     gatherUsers(dictUsers, creator);
+
+    let currentUserID = $('#welcome').attr('user_id');
 
     // Update hrefs
     $('#addURL').attr("href", "/add_url/" + selectedUTubID);
@@ -244,10 +252,11 @@ function gatherUsers(dictUsers, creator) {
     $('#UTubUsers')[0].innerHTML = html;
 }
 
-function selectURL(selectedUTubID) {
+function selectURL() {
     // Find notes for selected URL
     $('#URLInfo')[0].innerHTML = selectedURL.notes;
     var selectedURLid = selectedURL.url_id;
+    let selectedUTubID = findUTubID();
 
     // Update hrefs
     $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURLid);

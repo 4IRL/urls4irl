@@ -1,6 +1,11 @@
 {% extends "layout.html" %}
 {% block content %}
 
+<!-- Backend load of UTub JSON data -->
+<script type="text/javascript">
+    var UTubs = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
+</script>
+
 <!-- Left Side Panel -->
 <div id="leftPanel" class="panel col-md-2">
 
@@ -8,23 +13,10 @@
     <div id="UTubDeck" class="deck row h-50 mb-md-1 p-3">
         <h2>UTubs</h2>
         <div class="deckContent form-group">
-            {% if not utubs_for_this_user %}
-            <div class="d-flex justify-content-center flex-row">
-                <a class="btn btn-primary mx-3" href="{{url_for('create_utub')}}">Add UTub!</a>
-            </div>
-            {% else %}
-            <form>
-                {% for single_utub in utubs_for_this_user %}
-                <label for="UTub{{loop.index}}">
-                    <input type="radio" id="{{single_utub.id}}" name="UTubSelection" value="{{single_utub.name}}">
-                    {{single_utub.name}}
-                </label>
-                {% endfor %}
-            </form>
+            <form></form>
             <div class="d-flex justify-content-center flex-row">
                 <a class="btn btn-primary mx-3" href="{{url_for('create_utub')}}">+</a>
             </div>
-            {% endif %}
         </div>
     </div>
 
