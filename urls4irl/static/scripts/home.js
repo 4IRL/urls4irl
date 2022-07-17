@@ -1,15 +1,15 @@
 // UI Interactions
-$(document).ready(function() {
+$(document).ready(function () {
 
     // Instantiate UTubDeck with user's accessible UTubs
     radioHTML = '';
     for (i in UTubs) {
-        radioHTML += '<label for="UTub' + UTubs[i].id + '"><input type="radio" id="UTub' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '">' + UTubs[i].name + '</label>';
+        radioHTML += '<label for="UTub' + UTubs[i].id + '"><input type="radio" id="UTub' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
     }
     $('#UTubDeck').find('form')[0].innerHTML = radioHTML;
 
     // User selected a UTub, display data
-    $('input[type=radio]').on('click', function() {
+    $('input[type=radio]').on('click', function () {
         // Reset
         $('#TubImage').remove();
 
@@ -17,7 +17,7 @@ $(document).ready(function() {
         let selectedUTubID = findUTubID();
 
         // Pull data from db
-        $.getJSON('/home?UTubID=' + selectedUTubID, function(UTubJSON) { buildUTub(UTubJSON) });
+        $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) { buildUTub(UTubJSON) });
     })
 
     // Selected URL
@@ -29,40 +29,50 @@ $(document).ready(function() {
             $('#centerPanel').find('div.card').removeClass("selected");
             selectedCard.addClass("selected");
         }
-        console.log(selectedCard.attr("urlid"))
 
-        selectURL();
+        var selectedURLid = selectedCard.attr("urlid")
+
+        selectURL(selectedURLid);
     });
 
     // Selected Tag
-    $('#TagDeck').on('click', '#listTags', function (e) {
+    $('#TagDeck').on('click', function (e) {
+        let label;
+        let input;
         let clickedTagID;
-
-        // Handle checkbox display
         if (e.target.nodeName.toLowerCase() == 'label') {
-            // Label clicked. Also toggles checkbox and assigns clickedTagID
-            let input = $(e.target).children();
+            // Label clicked. Reset input var. Also toggles checkbox and assigns clickedTagID
+            label = $(e.target);
+            input = label.children();
             input.prop("checked", !input.prop("checked"));
-            clickedTagID = $(e.target).attr("tagid");
         } else {
-            // Checkbox clicked. Default functionality
-            clickedTagID = $(e.target).parent().attr("tagid")
-        }
-        clickedTagID = parseInt(clickedTagID);
-
-        // Hide/Show corresponding tag span
-        spanObjs = $('span[tagid="' + clickedTagID + '"]')
-        $($(spanObjs)).toggle()
-
-        // If unchecked, remove from activeTagIDs. Else, tag was checked and needs to be readded to activeTagIDs
-        const i = activeTagIDs.indexOf(clickedTagID);
-        if (i > -1) {
-            activeTagIDs.splice(i, 1);
-        } else {
-            activeTagIDs.push(clickedTagID)
+            // Input clicked
+            input = $(e.target);
+            label = input.parent();
         }
 
-        updateURLDeck(activeTagIDs);
+        if (input[0].id == 'selectAll') {
+
+            if (e.target.nodeName.toLowerCase() == 'label') {
+                e.preventDefault();
+            }
+
+            // Toggle all filter tags
+            $('input[type=checkbox]').prop("checked", input[0].checked);
+
+            // Hide/Show all tag spans
+            spanObjs = $('span.tag')
+            $($(spanObjs)).toggle()
+        } else {
+            clickedTagID = parseInt(label.attr("tagid"));
+
+            // Hide/Show corresponding tag span
+            spanObjs = $('span[tagid="' + clickedTagID + '"]')
+            $($(spanObjs)).toggle()
+        }
+
+        // Update URLs displayed as a result of checkbox filtering
+        updateURLDeck();
     });
 
     // Selected User (only if creator)
@@ -121,7 +131,6 @@ function buildUTub(selectedUTub) {
     //Use local variables, pass them in to the subsequent functions as required
     var selectedUTubID = selectedUTub.id;
     var dictURLs = selectedUTub.urls;
-    console.log(dictURLs)
     var dictTags = selectedUTub.tags;
     var dictUsers = selectedUTub.members;
     var creator = selectedUTub.created_by;
@@ -184,21 +193,25 @@ function buildURLDeck(dictURLs, dictTags) {
     $('#listURLs')[0].innerHTML = html;
 }
 
-function updateURLDeck(activeTagIDs) {
+function updateURLDeck() {
     let urlList = $('div.url');
-    console.log(activeTagIDs)
     for (let i = 0; i < urlList.length; i++) {
-        // Default hide URL
-        let hideURLBool = true; // Default boolean (hide URL)
-        for (let j = 0; j < $(urlList[i])[0].children.length; j++) {
-            // If at least one tag <span> for given url <div.card.url> exists in activeTagsIDs, negate default boolean (show URL)
-            console.log(parseInt($($(urlList[i])[0].children[j]).find('span.tag').attr('tagid')))
-            if (activeTagIDs.includes(parseInt($($(urlList[i])[0].children[j]).find('span.tag').attr('tagid')))) {
-                hideURLBool = false;
-            }
-        }
-        console.log(i)
-        console.log(hideURLBool)
+        let tagList = $(urlList[i]).find('span.tag');
+
+        // If no tags associated with this URL, ignore. Unaffected by filter functionality
+        if (tagList.length === 0) { continue; }
+
+        // If all tags for given URL are style="display: none;", hide parent URL card
+        let inactiveTagBool = tagList.map(i => tagList[i].style.display == 'none' ? true : false)
+        // Manipulate mapped Object
+        let boolArray = Object.entries(inactiveTagBool);
+        boolArray.pop();
+        boolArray.pop();
+
+        // Default to hide URL
+        let hideURLBool = true;
+        boolArray.forEach(e => hideURLBool &= e[1])
+
         // If url <div.card.url> has no tag <span>s in activeTagIDs, hide card column (so other cards shift into its position)
         if (hideURLBool) { $(urlList[i]).parent().hide(); }
         // If tag reactivated, show URL
@@ -252,10 +265,10 @@ function gatherUsers(dictUsers, creator) {
     $('#UTubUsers')[0].innerHTML = html;
 }
 
-function selectURL() {
+function selectURL(selectedURLid) {
+    // Need to implement URL description display in card when selected
     // Find notes for selected URL
-    $('#URLInfo')[0].innerHTML = selectedURL.notes;
-    var selectedURLid = selectedURL.url_id;
+    // $('#URLInfo')[0].innerHTML = selectedURL.notes;
     let selectedUTubID = findUTubID();
 
     // Update hrefs
