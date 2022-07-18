@@ -11,12 +11,16 @@
 
     <!-- UPR LH Panel, UTubs ("red") -->
     <div id="UTubDeck" class="deck row h-50 mb-md-1 p-3">
-        <h2>UTubs</h2>
-        <div class="deckContent form-group">
-            <form></form>
+        <div class="col-9 col-lg-9 mb-md-0">
+            <h2>UTubs</h2>
+        </div>
+        <div class="col-3 col-lg-3 mb-md-0 text-right">
             <div class="d-flex justify-content-center flex-row">
                 <a class="btn btn-primary mx-3" href="{{url_for('create_utub')}}">+</a>
             </div>
+        </div>
+        <div class="deckContent">
+            <form></form>
         </div>
     </div>
 
@@ -37,8 +41,15 @@
 
 <div id="centerPanel" class="panel col-md-7">
     <div id="UTubContent" class="deck h-100 mb-md-1 p-3">
-        <h2 id="UTubHeader">Select a UTub</h2>
-        <a id="addURL" class="btn btn-success btn-sm mb-3 justify-content-center" href="#">Add a URL</a>
+        <div class="row justify-content-center mx-2">
+            <div class="col-9 col-lg-9 mb-md-0">
+                <h2 id="UTubHeader">Select a UTub</h2>
+            </div>
+            <div class="col-3 col-lg-3 mb-md-0 text-right">
+                <a type="button" id="addURL" class="btn btn-success btn-sm mb-3 justify-content-center"
+                    href="#">Add a URL</a>
+            </div>
+        </div>
         <div class="deckContent justify-content-center">
             <img id="TubImage"
                 src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80"

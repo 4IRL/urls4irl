@@ -98,7 +98,21 @@
     </main>
 
     <!-- Main Panel View -->
+
+    {% block modal_extender %}
+    <!-- Modal -->
+
+    <div class="modal fade" id="Modal" tabindex="-1" role="dialog" aria-labelledby="FormModal" aria-hidden="true">
+        <div class="modal-dialog" role="document">
+            <div class="modal-content">
+                <!-- MODAL CONTENT HERE -->
+            </div>
+        </div>
     </div>
+
+    <!-- Modal -->
+    {% endblock %}
+
 </body>
 
 </html>
