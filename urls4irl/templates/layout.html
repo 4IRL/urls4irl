@@ -46,7 +46,7 @@
                 </li>
                 {% if current_user.is_authenticated %}
                 <li class="nav-item user">
-                    <a class="nav-link" href="#">{% print(current_user) %}</a>
+                    <a class="nav-link" href="#">{% print(current_user.user) %}</a>
                 </li>
                 {% endif %}
                 <li class="nav-item">
