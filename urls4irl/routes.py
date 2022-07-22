@@ -62,7 +62,7 @@ def home():
         
         utub_members = {"members": utub_data_serialized['members']}
         utub_url_details = {"urls": utub_data_serialized['urls']}
-        utub_url_tag_details = {"tags": utub_data_serialized['utub_tags']}
+        utub_url_tag_details = {"tags": utub_data_serialized['tags']}
         
         utub_details = {
             'created_by': utub.utub_creator,
@@ -72,6 +72,8 @@ def home():
         }
 
         utub_details = utub_details | utub_url_details | utub_url_tag_details | utub_members
+        # utub_details = utub_details | utub_url_details | utub_members
+        print(utub_details)
 
         return jsonify(utub_details)
 
@@ -158,7 +160,6 @@ def create_utub():
     https://docs.sqlalchemy.org/en/14/orm/basic_relationships.html#many-to-many
     
     """
-    print("made it to the route")
 
     utub_form = UTubForm()
 
@@ -377,7 +378,7 @@ def add_url(utub_id: int):
         flash(f"Added {url_string} to {utub.name}", category="info")
         return redirect(url_for('home'))
         
-    return render_template('add_url_to_utub.html', utub_new_url_form=utub_new_url_form)
+    return render_template('_add_url_form.html', utub_new_url_form=utub_new_url_form)
 
 """#####################        END URL INVOLVED ROUTES        ###################"""
 

@@ -5,7 +5,7 @@ $(document).ready(function () {
     radioHTML = '';
     buttonHTML = '';
     for (i in UTubs) {
-        radioHTML += '<label for="UTub' + UTubs[i].id + '" class="draw"><input type="radio" id="UTub' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
+        radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" id="UTub-' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
         buttonHTML += '<button type="button" class="UTub btn btn-secondary text-left m-1" id="UTub' + UTubs[i].id + '"><b>' + UTubs[i].name + '</b></button>';
     }
     $('#UTubDeck').find('form')[0].innerHTML = radioHTML;
@@ -20,6 +20,8 @@ $(document).ready(function () {
 
         // Find which UTub was requested
         let selectedUTubID = findUTubID();
+
+        $('#addURL').attr('modal-target', "/add_url/" + selectedUTubID);
 
         // Pull data from db
         $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) { buildUTub(UTubJSON) });
@@ -185,6 +187,7 @@ function buildUTub(selectedUTub) {
     var selectedUTubID = selectedUTub.id;
     var dictURLs = selectedUTub.urls;
     var dictTags = selectedUTub.tags;
+    console.log(selectedUTub)
     var dictUsers = selectedUTub.members;
     var creator = selectedUTub.created_by;
 
@@ -394,6 +397,66 @@ function openModal(formRoute) {
     console.log(formRoute)
     $.get(formRoute, function (formHtml) {
         $('#Modal .modal-content').html(formHtml);
-        $('#Modal').modal('show');
+        $('#Modal').modal('show'); $('#submit').click(function (event) {
+            event.preventDefault();
+            // $('.modal-flasher').prop({'hidden': true});
+            let request = $.ajax({
+                url: formRoute,
+                type: "POST",
+                data: $('#ModalForm').serialize(),
+            });
+
+            request.done(function (response, textStatus, xhr) {
+                if (xhr.status == 200) {
+                    $('#Modal').modal('hide');
+                    // const flashElem = flashMessageBanner(response.message, response.category);
+                    // flashElem.insertBefore($('.main-content'));
+
+                    let utubRadio = $('<input>');
+                    utubRadio.addClass('form-check-input');
+                    utubRadio.attr({
+                        'type': 'radio',
+                        'name': 'utub-name',
+                        'id': 'utub' + response.UTubID,
+                        'value': 'utub' + response.UTubID
+                    });
+                    let utubLabel = $('<label></label>');
+                    utubLabel.addClass('form-check-label');
+                    utubLabel.attr({ 'for': 'utub' + response.UTubID });
+                    utubLabel.html('<b>' + response.UTub_Name + '</b>');
+
+                    let newUtubNameDiv = $('<div></div>');
+                    newUtubNameDiv.addClass('utub-names-radios');
+
+                    newUtubNameDiv.append(utubRadio);
+                    newUtubNameDiv.append(utubLabel);
+                    $(".utub-names-ids").append(newUtubNameDiv);
+                    utubRadio.prop('checked', true);
+                    getUtubInfo(response.UTubID);
+                };
+            });
+
+            request.fail(function (xhr, textStatus, error) {
+                if (xhr.status == 409) {
+                    const flashMessage = xhr.responseJSON.error;
+                    const flashCategory = xhr.responseJSON.category;
+
+                    let flashElem = flashMessageBanner(flashMessage, flashCategory);
+                    flashElem.insertBefore('#modal-body').show();
+                } else if (xhr.status == 404) {
+                    $('.invalid-feedback').remove();
+                    $('.alert').remove();
+                    $('.form-control').removeClass('is-invalid');
+                    const error = JSON.parse(xhr.responseJSON);
+                    for (var key in error) {
+                        $('<div class="invalid-feedback"><span>' + error[key] + '</span></div>')
+                            .insertAfter('#' + key).show();
+                        $('#' + key).addClass('is-invalid');
+                    };
+                };
+                console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
+                console.log("Error: " + error);
+            })
+        });
     })
 }
