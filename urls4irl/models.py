@@ -35,6 +35,14 @@ class Utub_Users(db.Model):
     def serialized(self):
         return self.to_user.serialized
 
+    @property
+    def serialized_on_initial_load(self):
+        """Returns the serialized object on initial load for this user, including UTub name and id."""
+        return {
+            "id": self.to_utub.id,
+            "name": self.to_utub.name
+        }
+
 
 class Utub_Urls(db.Model):
     """
@@ -59,10 +67,17 @@ class Utub_Urls(db.Model):
     @property
     def serialized(self):
         """Returns serialized object."""
+
+        # Only return tags for the requested UTub
+        url_tags = []
+        for tag in self.url_in_utub.url_tags:
+            if int(tag.utub_id) == int(self.utub_id):
+                url_tags.append(tag.tag_id)
+
         return {
             "url_id": self.url_in_utub.serialized_for_utub['id'],
             "url_string": self.url_in_utub.serialized_for_utub['url'],
-            "url_tags": self.url_in_utub.serialized_for_utub['tags'],
+            "url_tags": url_tags,
             "added_by": self.user_that_added_url.serialized['id'],
             "notes": self.url_notes
         }
@@ -117,6 +132,15 @@ class User(db.Model, UserMixin):
             'username': self.username,
         }
 
+    @property
+    def serialized_on_initial_load(self):
+        """Returns object in serialized for, with only the utub id and Utub name the user is a member of."""
+        utubs_for_user = []
+        for utub in self.utubs_is_member_of:
+            utubs_for_user.append(utub.serialized_on_initial_load)
+
+        return utubs_for_user
+
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
 
@@ -130,7 +154,7 @@ class Utub(db.Model):
     name = db.Column(db.String(30), nullable=False) # Note that multiple UTubs can have the same name, maybe verify this per user?
     utub_creator = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    #utub_description = db.Column(db.String(500), nullable=True)
+    utub_description = db.Column(db.String(500), nullable=True)
     utub_url_tags = db.relationship("Url_Tags", back_populates="utub_containing_this_tag", cascade='all, delete')
     utub_urls = db.relationship('Utub_Urls', back_populates="utub", cascade='all, delete')
     members = db.relationship('Utub_Users', back_populates="to_utub", cascade='all, delete, delete-orphan')
@@ -144,17 +168,19 @@ class Utub(db.Model):
         utub_tags = []
         for tag in self.utub_url_tags:
             tag_object = tag.tag_item.serialized
+            
             if tag_object not in utub_tags:
                 utub_tags.append(tag_object)
 
         return {
             'id': self.id,
             'name': self.name,
-            'creator': self.utub_creator,
+            'created_by': self.utub_creator,
             'created_at': self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
+            'description': self.utub_description if self.utub_description is not None else "",
             'members': [member.serialized for member in self.members],
             'urls': [url.serialized for url in self.utub_urls],
-            'utub_tags': utub_tags
+            'tags': utub_tags
         }
 
 
@@ -164,7 +190,7 @@ class URLS(db.Model):
 
     __tablename__ = 'Urls'
     id = db.Column(db.Integer, primary_key=True)
-    url_string = db.Column(db.String(2000), nullable=False) # Note that multiple UTubs can have the same URL
+    url_string = db.Column(db.String(2000), nullable=False, unique=True) # Note that multiple UTubs can have the same URL
     created_by = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     url_tags = db.relationship("Url_Tags", back_populates="tagged_url")

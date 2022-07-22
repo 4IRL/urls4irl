@@ -158,6 +158,7 @@ def create_utub():
     https://docs.sqlalchemy.org/en/14/orm/basic_relationships.html#many-to-many
     
     """
+    print("made it to the route")
 
     utub_form = UTubForm()
 
@@ -172,7 +173,7 @@ def create_utub():
         return redirect(url_for('home'))
 
     flash("Okay let's get you a new UTub!", category="primary")
-    return render_template('create_utub.html', utub_form=utub_form)
+    return render_template('_create_utub_form.html', utub_form=utub_form)
 
 @app.route('/add_user/<int:utub_id>', methods=["GET", "POST"])
 @login_required

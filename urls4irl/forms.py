@@ -71,8 +71,20 @@ class UTubForm(FlaskForm):
     """
     
     name = StringField('UTub Name', validators=[InputRequired(), Length(min=1, max=30)])
+    description = StringField('UTub Description', validators=[Length(max=500)])
 
     submit = SubmitField('Create UTub!')
+
+class UTubDescriptionForm(FlaskForm):
+    """Form to add a description to the UTub.
+
+    Fields:
+        utub_description (Stringfield): Maximum 500 chars? TODO
+    """
+    
+    utub_description = StringField('UTub Description', validators=[Length(max=500)])
+
+    submit = SubmitField('Add Description To UTub!')
 
 
 class UTubNewUserForm(FlaskForm):
