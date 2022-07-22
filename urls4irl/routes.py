@@ -38,7 +38,6 @@ def home():
             utub_name = a_utub.to_utub.name
             utub_id = a_utub.to_utub.id
             utub_details.append({"id":utub_id, "name": utub_name})
-        print(utub_details)
         return (render_template('home.html', utubs_for_this_user=utub_details))
 
     elif len(request.args) > 1:

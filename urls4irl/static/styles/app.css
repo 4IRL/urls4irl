@@ -5,6 +5,11 @@ html, body {
     overflow-y: hidden;
 }
 
+h1 {
+    font-weight: 300;
+    font-size: 2.5em;
+}
+
 p {
     color: white;
 }
@@ -19,8 +24,10 @@ form {
     width: 100%;
     height: 100%;
     overflow-y: scroll;
-    padding-right: 17px; /* Increase/decrease this value for cross-browser compatibility */
-    box-sizing: content-box; /* So the width will be 100% + 17px */
+    padding-right: 17px;
+    /* Increase/decrease this value for cross-browser compatibility */
+    box-sizing: content-box;
+    /* So the width will be 100% + 17px */
 }
 
 img {
@@ -56,11 +63,30 @@ input[type=checkbox]:hover {
 }
 
 input[type=radio] {
+    display: none;
+    background: none;
+    border: 0;
+    box-sizing: border-box;
+    box-shadow: inset 0 0 0 2px #60daaa;
+    color: #60daaa;
+    font-size: inherit;
+    font-weight: 700;
+    margin: 1em;
+    padding: 1em 2em;
+    text-align: center;
+    text-transform: capitalize;
+    width: 100%;
+    position: relative;
+    vertical-align: middle;
+}
+
+/* input[type=radio] {
     margin-left: 5px;
     margin-right: 5px;
     padding-left: 5px;
     padding-right: 5px;
     border-radius: 15px;
+    display: none;
 
     -webkit-appearance: button;
 
@@ -73,16 +99,22 @@ input[type=radio] {
 
     width: 15px;
     height: 15px;
-}
-
+} 
 input[type=radio]:checked {
     background-color: #000;
     border-left-color: #06F;
     border-right-color: #06F;
 }
-
 input[type=radio]:hover {
     box-shadow: 0px 0px 5px #1300ff;
+} */
+
+input[type=radio]::before, input[type=radio]::after {
+    box-sizing: border-box;
+    content: '';
+    position: absolute;
+    width: 100%;
+    height: 100%;
 }
 
 span.tag {
@@ -315,6 +347,50 @@ span.tag {
     left: 8px;
 }
 
+/* Draw transition */
+.draw {
+    transition: color 0.25s;
+}
+
+.draw::before, .draw::after {
+    border: 2px solid transparent;
+    width: 0;
+    height: 0;
+}
+
+.draw::before {
+    top: 0;
+    left: 0;
+}
+
+.draw::after {
+    bottom: 0;
+    right: 0;
+}
+
+.draw.active {
+    color: #f45e61;
+}
+
+.draw.active::before, .draw.active::after {
+    width: 100%;
+    height: 100%;
+}
+
+.draw.active::before {
+    border-top-color: #60daaa;
+    border-right-color: #60daaa;
+    transition: width 0.25s ease-out, height 0.25s ease-out 0.25s;
+}
+
+.draw.active::after {
+    border-bottom-color: #60daaa;
+    border-left-color: #60daaa;
+    transition: border-color 0s ease-out 0.5s, width 0.25s ease-out 0.5s, height 0.25s ease-out 0.75s;
+}
+
+/* ID sepcific */
+
 #body {
     min-height: 380px;
     position: relative;
@@ -336,7 +412,8 @@ span.tag {
 }
 
 #UTubDeck {
-    background: red;
+    background: #1E202D;
+    color: #60daaa;
 }
 
 #TagDeck {

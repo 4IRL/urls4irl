@@ -5,13 +5,16 @@ $(document).ready(function () {
     radioHTML = '';
     buttonHTML = '';
     for (i in UTubs) {
-        radioHTML += '<label for="UTub' + UTubs[i].id + '"><input type="radio" id="UTub' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
+        radioHTML += '<label for="UTub' + UTubs[i].id + '" class="draw"><input type="radio" id="UTub' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
         buttonHTML += '<button type="button" class="UTub btn btn-secondary text-left m-1" id="UTub' + UTubs[i].id + '"><b>' + UTubs[i].name + '</b></button>';
     }
     $('#UTubDeck').find('form')[0].innerHTML = radioHTML;
 
     // User selected a UTub, display data
     $('input[type=radio]').on('click', function () {
+        $('.active').toggleClass('active');
+        $(this).parent().toggleClass('active');
+
         // Reset
         $('#TubImage').remove();
 
@@ -91,7 +94,7 @@ $(document).ready(function () {
     //         $('#Modal').modal();
     //         $('#submit').click(function (event) {
     //             event.preventDefault();
-    
+
     //             $('.invalid-feedback').remove();
     //             $('.alert').remove();
     //             $('.form-control').removeClass('is-invalid');
@@ -100,19 +103,19 @@ $(document).ready(function () {
     //                 type: "POST",
     //                 data: $('#ModalForm').serialize(),
     //             });
-    
+
     //             request.done(function(addUrlSuccess, textStatus, xhr) {
     //                 if (xhr.status == 200) {
     //                     $('#Modal').modal('hide');
     //                     getUtubInfo(addUrlSuccess.utubID);
     //                 }; 
     //             });
-            
+
     //             request.fail(function(xhr, textStatus, error) {
     //                 if (xhr.status == 409 || xhr.status == 400) {
     //                     const flashMessage = xhr.responseJSON.error;
     //                     const flashCategory = xhr.responseJSON.category;
-    
+
     //                     let flashElem = flashMessageBanner(flashMessage, flashCategory);
     //                     flashElem.insertBefore('#modal-body').show();
     //                 } else if (xhr.status == 404) {
@@ -385,4 +388,12 @@ function editURL(selectedUTubID, selectedURLid) {
         }
         )
     });
+}
+
+function openModal(formRoute) {
+    console.log(formRoute)
+    $.get(formRoute, function (formHtml) {
+        $('#Modal .modal-content').html(formHtml);
+        $('#Modal').modal('show');
+    })
 }
