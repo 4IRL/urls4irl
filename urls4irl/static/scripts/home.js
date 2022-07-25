@@ -2,29 +2,18 @@
 $(document).ready(function () {
 
     // Instantiate UTubDeck with user's accessible UTubs
-    radioHTML = '';
-    buttonHTML = '';
-    for (i in UTubs) {
-        radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" id="UTub-' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
-        buttonHTML += '<button type="button" class="UTub btn btn-secondary text-left m-1" id="UTub' + UTubs[i].id + '"><b>' + UTubs[i].name + '</b></button>';
-    }
-    $('#UTubDeck').find('form')[0].innerHTML = radioHTML;
+    buildUTubDeck(UTubs);
 
     // User selected a UTub, display data
     $('input[type=radio]').on('click', function () {
+
         $('.active').toggleClass('active');
         $(this).parent().toggleClass('active');
 
-        // Reset
+        // Reset. Gotta figure out how to hide addURL '+' until first click, then always keep. And only call $('#TubImage').remove() once at the beginning and never again.
         $('#TubImage').remove();
 
-        // Find which UTub was requested
-        let selectedUTubID = findUTubID();
-
-        $('#addURL').attr('modal-target', "/add_url/" + selectedUTubID);
-
-        // Pull data from db
-        $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) { buildUTub(UTubJSON) });
+        getUtubInfo();
     })
 
     // Selected URL
@@ -53,7 +42,7 @@ $(document).ready(function () {
             input = label.children();
             input.prop("checked", !input.prop("checked"));
         } else {
-            // Input clicked
+            // Input clicked. Already toggles checkbox
             input = $(e.target);
             label = input.parent();
         }
@@ -69,8 +58,25 @@ $(document).ready(function () {
 
             // Hide/Show all tag spans
             spanObjs = $('span.tag')
-            $($(spanObjs)).toggle()
+            if (input[0].checked) {
+                $($(spanObjs)).show()
+            } else {
+                $($(spanObjs)).hide()
+            }
         } else {
+
+            let selectAllBool = true;
+            $('input[type=checkbox]').each(function (i) {
+                if (i !== 0) {
+                    console.log($(this));
+                    console.log(this.checked);
+                    selectAllBool &= $(this).prop("checked");
+                }
+            })
+
+            console.log(selectAllBool);
+            $('#selectAll').prop("checked", selectAllBool);
+
             clickedTagID = parseInt(label.attr("tagid"));
 
             // Hide/Show corresponding tag span
@@ -82,53 +88,19 @@ $(document).ready(function () {
         updateURLDeck();
     });
 
-    // Modal show/hide
-    // $('.btn').on('click', function (e) {
-    //     let href = e.target.href;
-    //     console.log(href)
-    //     let param = href.split("/").slice(3,href.length)
-    //     let str = '/';
-    //     param.map(i => str += i + "/")
-    //     console.log(str)
-
-    //     let addUrl = $.get(str, function (formHtml) {
-    //         $('#Modal .modal-content').html(formHtml);
-    //         $('#Modal').modal();
-    //         $('#submit').click(function (event) {
-    //             event.preventDefault();
-
-    //             $('.invalid-feedback').remove();
-    //             $('.alert').remove();
-    //             $('.form-control').removeClass('is-invalid');
-    //             let request = $.ajax({
-    //                 url: "/add_url/" + utubID,
-    //                 type: "POST",
-    //                 data: $('#ModalForm').serialize(),
-    //             });
-
-    //             request.done(function(addUrlSuccess, textStatus, xhr) {
-    //                 if (xhr.status == 200) {
-    //                     $('#Modal').modal('hide');
-    //                     getUtubInfo(addUrlSuccess.utubID);
-    //                 }; 
-    //             });
-
-    //             request.fail(function(xhr, textStatus, error) {
-    //                 if (xhr.status == 409 || xhr.status == 400) {
-    //                     const flashMessage = xhr.responseJSON.error;
-    //                     const flashCategory = xhr.responseJSON.category;
-
-    //                     let flashElem = flashMessageBanner(flashMessage, flashCategory);
-    //                     flashElem.insertBefore('#modal-body').show();
-    //                 } else if (xhr.status == 404) {
-    //                     ModalFormErrorGenerator(xhr.responseJSON);
-    //                 }; 
-    //                 console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
-    //                 console.log("Error: " + error);
-    //             });
-    //         });
-    //     });
-    // })
+    // Listen for click on toggle checkbox
+    $('#selectAll').click(function (event) {
+        if (this.checked) {
+            // Iterate each checkbox
+            $(':checkbox').each(function () {
+                this.checked = true;
+            });
+        } else {
+            $(':checkbox').each(function () {
+                this.checked = false;
+            });
+        }
+    });
 
     // Selected User (only if creator)
     $('select').change(function () {
@@ -164,6 +136,15 @@ $(document).ready(function () {
 
 // Functions
 
+function buildUTubDeck(UTubs) {
+    // Instantiate UTubDeck with user's accessible UTubs
+    radioHTML = '';
+    for (i in UTubs) {
+        radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" id="UTub-' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
+    }
+    $('#UTubDeck').find('form')[0].innerHTML = radioHTML;
+}
+
 function findUTubID() {
     // Find which UTub was requested
     radioButton = $('input[type=radio]:checked')[0];
@@ -172,17 +153,14 @@ function findUTubID() {
     return str.charAt(str.length - 1);
 }
 
-function dictURLs() {
-    let URLs = $('#listURLs').find('.card-title').map(i => i.innerHTML)
-    return 1
-}
+function getUtubInfo() {
+    let selectedUTubID = findUTubID();
 
-function dictURLs() {
-    return $('#listURLs').find('.card-title').map(i => i.innerHTML)
+    // Pull data from db
+    return $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) { buildUTub(UTubJSON) });
 }
 
 function buildUTub(selectedUTub) {
-
     //Use local variables, pass them in to the subsequent functions as required
     var selectedUTubID = selectedUTub.id;
     var dictURLs = selectedUTub.urls;
@@ -190,9 +168,15 @@ function buildUTub(selectedUTub) {
     console.log(selectedUTub)
     var dictUsers = selectedUTub.members;
     var creator = selectedUTub.created_by;
+    let currentUserID = $('#welcome').attr('user_id');
 
     // Clear 
     resetUTubs();
+
+    // Update modal-targets
+    $('#addURL').attr('modal-target', "/add_url/" + selectedUTubID);
+    $('#addUser').attr('modal-target', "/add_user/" + selectedUTubID);
+    $('#deleteUTubTemp').attr('modal-target', "/delete_utub/" + selectedUTubID + "/" + currentUserID);
 
     // Center panel
     buildURLDeck(dictURLs, dictTags);
@@ -205,14 +189,18 @@ function buildUTub(selectedUTub) {
     // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
 
     gatherUsers(dictUsers, creator);
-
-    let currentUserID = $('#welcome').attr('user_id');
-
-    // Update hrefs
-    $('#addURL').attr("href", "/add_url/" + selectedUTubID);
-    $('#addUser').attr("href", "/add_user/" + selectedUTubID);
-    $('#deleteUTubTemp').attr("action", "/delete_utub/" + selectedUTubID + "/" + currentUserID);
 }
+
+function dictURLs() {
+    let URLs = $('#listURLs').find('.card-title').map(i => i.innerHTML)
+    return 1
+}
+
+function dictURLs() {
+    return $('#listURLs').find('.card-title').map(i => i.innerHTML)
+}
+
+
 
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
@@ -277,7 +265,7 @@ function updateURLDeck() {
 
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
-    let html = '<label for="selectAll"><input id="selectAll" type="checkbox" name="selectAll" checked> Select All </label>';
+    let html = '<label for="selectAll"><input id="selectAll" type="checkbox" name="selectAll" checked="true"> Select All </label>';
 
     // Alpha sort tags based on tag_string
     dictTags.sort(function (a, b) {
@@ -299,7 +287,7 @@ function buildTagDeck(dictTags) {
         for (let i in dictTags) {
             let tagText = dictTags[i].tag_string;
             let tagID = dictTags[i].id;
-            html += '<label for="' + tagText + '" tagid=' + tagID + '><input class="tagCheckbox" type="checkbox" name="' + tagText + '" checked> ' + tagText + ' </label>';
+            html += '<label for="' + tagText + '" tagid=' + tagID + '><input class="tagCheckbox" type="checkbox" name="' + tagText + '" checked="true"> ' + tagText + ' </label>';
         }
     } else {
         html += '<h5>No Tags Applied to any URLs in this UTub</h5>'     // No tags in UTub
@@ -397,7 +385,8 @@ function openModal(formRoute) {
     console.log(formRoute)
     $.get(formRoute, function (formHtml) {
         $('#Modal .modal-content').html(formHtml);
-        $('#Modal').modal('show'); $('#submit').click(function (event) {
+        $('#Modal').modal('show');
+        $('#submit').click(function (event) {
             event.preventDefault();
             // $('.modal-flasher').prop({'hidden': true});
             let request = $.ajax({
@@ -412,6 +401,11 @@ function openModal(formRoute) {
                     // const flashElem = flashMessageBanner(response.message, response.category);
                     // flashElem.insertBefore($('.main-content'));
 
+
+                    radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" id="UTub-' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
+
+
+                    newUtubNameDiv.append(utubLabel);
                     let utubRadio = $('<input>');
                     utubRadio.addClass('form-check-input');
                     utubRadio.attr({
@@ -432,7 +426,7 @@ function openModal(formRoute) {
                     newUtubNameDiv.append(utubLabel);
                     $(".utub-names-ids").append(newUtubNameDiv);
                     utubRadio.prop('checked', true);
-                    getUtubInfo(response.UTubID);
+                    getUtubInfo();
                 };
             });
 

@@ -389,7 +389,6 @@ def add_url(utub_id: int):
 
     if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
         flash("Not authorized to add a URL to this UTub", category="danger")
-
         return home(), 403
 
     utub_new_url_form = UTubNewURLForm()
