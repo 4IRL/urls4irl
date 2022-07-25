@@ -379,7 +379,6 @@ function editURL(selectedUTubID, selectedURLid) {
 }
 
 function openModal(formRoute) {
-    console.log(formRoute)
     $.get(formRoute, function (formHtml) {
         $('#Modal .modal-content').html(formHtml);
         $('#Modal').modal('show');
