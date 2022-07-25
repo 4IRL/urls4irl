@@ -68,13 +68,10 @@ $(document).ready(function () {
             let selectAllBool = true;
             $('input[type=checkbox]').each(function (i) {
                 if (i !== 0) {
-                    console.log($(this));
-                    console.log(this.checked);
                     selectAllBool &= $(this).prop("checked");
                 }
             })
 
-            console.log(selectAllBool);
             $('#selectAll').prop("checked", selectAllBool);
 
             clickedTagID = parseInt(label.attr("tagid"));
