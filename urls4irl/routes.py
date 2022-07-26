@@ -163,11 +163,27 @@ def create_utub():
         creator_to_utub.to_user = current_user
         new_utub.members.append(creator_to_utub)
         db.session.commit()
-        flash(f"Successfully made your UTub named {name}", category="success")
-        return redirect(url_for('home'))
+        # flash(f"Successfully made your UTub named {name}", category="success")
+        return jsonify({"UtubID" : f"{new_utub.id}", "UtubName" : f"{new_utub.name}"})
 
-    flash("Okay let's get you a new UTub!", category="primary")
+    # flash("Okay let's get you a new UTub!", category="primary")
     return render_template('_create_utub_form.html', utub_form=utub_form)
+
+@app.route('/delete_utub', methods=["GET"])
+@login_required
+def delete_utub_form():
+    utub_form = UTubForm()
+    
+    if utub_form.validate_on_submit():
+        name = utub_form.name.data
+        new_utub = Utub(name=name, utub_creator=current_user.get_id())
+        creator_to_utub = Utub_Users()
+        creator_to_utub.to_user = current_user
+        new_utub.members.append(creator_to_utub)
+        db.session.commit()
+        return jsonify({"UtubID" : f"{new_utub.id}", "UtubName" : f"{new_utub.name}"})
+    
+    return render_template('_delete_utub_form.html', utub_form=utub_form)
 
 @app.route('/delete_utub/<int:utub_id>', methods=["POST"])
 @login_required

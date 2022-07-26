@@ -13,7 +13,7 @@ $(document).ready(function () {
         // Reset. Gotta figure out how to hide addURL '+' until first click, then always keep. And only call $('#TubImage').remove() once at the beginning and never again.
         $('#TubImage').remove();
 
-        getUtubInfo();
+        getUtubInfo(findUTubID());
     })
 
     // Selected URL
@@ -147,12 +147,10 @@ function findUTubID() {
     radioButton = $('input[type=radio]:checked')[0];
     $('#UTubHeader')[0].innerHTML = radioButton.value;
     str = radioButton.id;
-    return str.charAt(str.length - 1);
+    return str.split('-')[1];
 }
 
-function getUtubInfo() {
-    let selectedUTubID = findUTubID();
-
+function getUtubInfo(selectedUTubID) {
     // Pull data from db
     return $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) { buildUTub(UTubJSON) });
 }
@@ -165,7 +163,7 @@ function buildUTub(selectedUTub) {
     console.log(selectedUTub)
     var dictUsers = selectedUTub.members;
     var creator = selectedUTub.created_by;
-    let currentUserID = $('#welcome').attr('user_id');
+    let currentUserID = $('.user').attr('id');
 
     // Clear 
     resetUTubs();
@@ -173,7 +171,8 @@ function buildUTub(selectedUTub) {
     // Update modal-targets
     $('#addURL').attr('modal-target', "/add_url/" + selectedUTubID);
     $('#addUser').attr('modal-target', "/add_user/" + selectedUTubID);
-    $('#deleteUTubTemp').attr('modal-target', "/delete_utub/" + selectedUTubID + "/" + currentUserID);
+    // $('#deleteUTub').attr('modal-target', "/delete_utub/" + selectedUTubID + "/" + currentUserID);
+    $('#deleteUTub').attr('modal-target', "/delete_utub/" + selectedUTubID);
 
     // Center panel
     buildURLDeck(dictURLs, dictTags);
@@ -313,9 +312,9 @@ function selectURL(selectedURLid) {
     let selectedUTubID = findUTubID();
 
     // Update hrefs
-    $('#addTags').attr("href", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
+    $('#addTags').attr("modal-target", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
     $('#EditURL').attr("onclick", "editURL(" + selectedUTubID + "," + selectedURLid + ")");
-    $('#DeleteURL').attr("href", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
+    $('#DeleteURL').attr("modal-target", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
 }
 
 function resetUTubs() {
@@ -327,12 +326,11 @@ function resetUTubs() {
 
     // Empty TagsDeck
     $('#listTags')[0].innerHTML = '';
-    tagsObj = {};
 
     // Update hrefs
-    $('#addTags').attr("href", "#");
-    $('#EditURL').attr("href", "#");
-    $('#DeleteURL').attr("href", "#");
+    $('#addTags').attr("modal-target", "#");
+    $('#EditURL').attr("modal-target", "#");
+    $('#DeleteURL').attr("modal-target", "#");
 }
 
 function accessLink() {
@@ -378,15 +376,20 @@ function editURL(selectedUTubID, selectedURLid) {
     });
 }
 
-function openModal(formRoute) {
+function openModal(route) {
+    if (route.startsWith('/delete_utub')) {
+        formRoute = '/delete_utub';
+    } else { formRoute = route; }
+    console.log(formRoute)
     $.get(formRoute, function (formHtml) {
+        console.log(route)
         $('#Modal .modal-content').html(formHtml);
         $('#Modal').modal('show');
         $('#submit').click(function (event) {
             event.preventDefault();
             // $('.modal-flasher').prop({'hidden': true});
             let request = $.ajax({
-                url: formRoute,
+                url: route,
                 type: "POST",
                 data: $('#ModalForm').serialize(),
             });
@@ -397,32 +400,18 @@ function openModal(formRoute) {
                     // const flashElem = flashMessageBanner(response.message, response.category);
                     // flashElem.insertBefore($('.main-content'));
 
+                    let rootRoute = route.split('/')[1];
 
-                    radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" id="UTub-' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
-
-
-                    newUtubNameDiv.append(utubLabel);
-                    let utubRadio = $('<input>');
-                    utubRadio.addClass('form-check-input');
-                    utubRadio.attr({
-                        'type': 'radio',
-                        'name': 'utub-name',
-                        'id': 'utub' + response.UTubID,
-                        'value': 'utub' + response.UTubID
-                    });
-                    let utubLabel = $('<label></label>');
-                    utubLabel.addClass('form-check-label');
-                    utubLabel.attr({ 'for': 'utub' + response.UTubID });
-                    utubLabel.html('<b>' + response.UTub_Name + '</b>');
-
-                    let newUtubNameDiv = $('<div></div>');
-                    newUtubNameDiv.addClass('utub-names-radios');
-
-                    newUtubNameDiv.append(utubRadio);
-                    newUtubNameDiv.append(utubLabel);
-                    $(".utub-names-ids").append(newUtubNameDiv);
-                    utubRadio.prop('checked', true);
-                    getUtubInfo();
+                    switch (rootRoute) {
+                        case 'create_utub':
+                            createUTub(response.UtubID, response.UtubName);
+                            break;
+                        case 'delete_utub':
+                            deleteUTub(route.split('/')[2])
+                            break;
+                        default:
+                            console.log('Unimplemented route')
+                    }
                 };
             });
 
@@ -449,4 +438,17 @@ function openModal(formRoute) {
             })
         });
     })
+}
+
+function createUTub(id, name) {
+    getUtubInfo(id)
+    radioHTML = '<label for="UTub-' + id + '" class="UTub draw active"><input type="radio" id="UTub-' + id + '" name="UTubSelection" value="' + name + '"><b>' + name + '</b></label>';
+    $('#UTubDeck').find('form')[0].innerHTML += radioHTML;
+    $('#UTub-' + id).prop('checked', true);
+}
+
+function deleteUTub(id) {
+    console.log('#UTub-' + id)
+    console.log($('#UTub-' + id).parent())
+    $('#UTub-' + id).parent().remove();
 }

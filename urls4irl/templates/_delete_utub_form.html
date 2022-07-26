@@ -1,0 +1,27 @@
+<script type="text/javascript">
+    if (document.querySelector('head').childElementCount === 1) {
+        window.location.href = '/home';
+    };
+</script>
+
+<form id="ModalForm" name="stepForm" class="form" method="post" action="" novalidate>
+    <div class="modal-header">
+        <h4 class="modal-title">Are you sure you want to delete this
+            UTub?</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body" id="modal-body">
+        {{ utub_form.hidden_tag() }}
+        <fieldset class="form-group">
+            <div class="form-group">
+                This action cannot be undone.
+            </div>
+        </fieldset>
+    </div>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        <input type="submit" id="submit" name="submit" class="btn btn-danger" value="Delete this UTub!">
+    </div>
+</form>

@@ -44,11 +44,6 @@
                 <li class="nav-item active">
                     <a class="nav-link" href="{{url_for('home')}}">Home</a>
                 </li>
-                {% if current_user.is_authenticated %}
-                <li class="nav-item user">
-                    <a class="nav-link" href="#">{% print(current_user.user) %}</a>
-                </li>
-                {% endif %}
                 <li class="nav-item">
                     <a class="nav-link" href="#">Link</a>
                 </li>
@@ -66,6 +61,9 @@
         <div class="navbar-collapse collapse w-100 order-3 dual-collapse2">
             <ul class="navbar-nav ml-auto">
                 {% if current_user.is_authenticated %}
+                <li id="{{current_user.id}}" class="nav-item user">
+                    <a class="nav-link" href="#"> Logged in as {{current_user.username}}</a>
+                </li>
                 <li class="nav-item">
                     <a class="nav-link" href="{{url_for('logout')}}">Logout</a>
                 </li>
