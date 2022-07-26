@@ -1,14 +1,12 @@
-from audioop import cross
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request, jsonify, abort
 from urls4irl import app, db
-from urls4irl.forms import (UserRegistrationForm, LoginForm, UTubForm, 
+from urls4irl.forms import (UserRegistrationForm, LoginForm, UTubForm, UTubDeleteForm, 
                             UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm, UTubDescriptionForm)
 from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, Utub_Users
 from flask_login import login_user, login_required, current_user, logout_user
 from urls4irl.url_validation import InvalidURLError, check_request_head
 from flask_cors import cross_origin
-import sys
 
 """#####################        MAIN ROUTES        ###################"""
 
@@ -167,25 +165,9 @@ def create_utub():
         return jsonify({"UtubID" : f"{new_utub.id}", "UtubName" : f"{new_utub.name}"})
 
     # flash("Okay let's get you a new UTub!", category="primary")
-    return render_template('_create_utub_form.html', utub_form=utub_form)
+    return render_template('_create_utub_form.html', utub_form=utub_form)   
 
-@app.route('/delete_utub', methods=["GET"])
-@login_required
-def delete_utub_form():
-    utub_form = UTubForm()
-    
-    if utub_form.validate_on_submit():
-        name = utub_form.name.data
-        new_utub = Utub(name=name, utub_creator=current_user.get_id())
-        creator_to_utub = Utub_Users()
-        creator_to_utub.to_user = current_user
-        new_utub.members.append(creator_to_utub)
-        db.session.commit()
-        return jsonify({"UtubID" : f"{new_utub.id}", "UtubName" : f"{new_utub.name}"})
-    
-    return render_template('_delete_utub_form.html', utub_form=utub_form)
-
-@app.route('/delete_utub/<int:utub_id>', methods=["POST"])
+@app.route('/delete_utub/<int:utub_id>', methods=["GET", "POST"])
 @login_required
 def delete_utub(utub_id: int):
     """
@@ -197,19 +179,27 @@ def delete_utub(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub to be deleted
     """
-    utub = Utub.query.get(int(utub_id))
+    utub_delete_form = UTubDeleteForm()
 
-    if int(current_user.get_id()) != int(utub.created_by.id):
-        flash("You do not have permission to delete this UTub.", category="danger")
-        return home(), 403
-    
+    if request.method == "GET":
+        return render_template('_delete_utub_form.html', utub_delete_form=utub_delete_form)
+
     else:
-        utub = Utub.query.get(int(utub_id))
-        db.session.delete(utub)
-        db.session.commit()
-        flash("You successfully deleted this UTub.", category="danger")
+        try:
+            utub_id_to_delete = int(utub_id)
+        except ValueError: 
+            return jsonify({"Error": "You don't have permission to delete this UTub!"}), 404
 
-        return redirect(url_for('home'))
+        utub = Utub.query.get_or_404(utub_id_to_delete)
+            
+        if int(current_user.get_id()) != int(utub.created_by.id):  
+            return jsonify({"Error": "You don't have permission to delete this UTub!"}), 403
+        
+        else:
+            utub = Utub.query.get(int(utub_id))
+            db.session.delete(utub)
+            db.session.commit()
+            return jsonify({"UtubID" : f"{utub.id}", "UtubName" : f"{utub.name}"})
 
 @app.route('/update_utub_desc/<int:utub_id>', methods=["GET", "POST"])
 @login_required

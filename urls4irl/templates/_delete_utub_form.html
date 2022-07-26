@@ -13,7 +13,7 @@
         </button>
     </div>
     <div class="modal-body" id="modal-body">
-        {{ utub_form.hidden_tag() }}
+        {{ utub_delete_form.hidden_tag() }}
         <fieldset class="form-group">
             <div class="form-group">
                 This action cannot be undone.
@@ -22,6 +22,6 @@
     </div>
     <div class="modal-footer">
         <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-        <input type="submit" id="submit" name="submit" class="btn btn-danger" value="Delete this UTub!">
+        {{ utub_delete_form.submit(class="btn btn-danger")}}
     </div>
 </form>

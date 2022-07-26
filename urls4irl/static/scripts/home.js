@@ -376,12 +376,9 @@ function editURL(selectedUTubID, selectedURLid) {
     });
 }
 
-function openModal(route) {
-    if (route.startsWith('/delete_utub')) {
-        formRoute = '/delete_utub';
-    } else { formRoute = route; }
-    console.log(formRoute)
-    $.get(formRoute, function (formHtml) {
+function openModal(route) {    
+    console.log(route)
+    $.get(route, function (formHtml) {
         console.log(route)
         $('#Modal .modal-content').html(formHtml);
         $('#Modal').modal('show');

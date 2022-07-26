@@ -75,6 +75,12 @@ class UTubForm(FlaskForm):
 
     submit = SubmitField('Create UTub!')
 
+class UTubDeleteForm(FlaskForm):
+    """Form to delete a UTub.
+    """
+
+    submit = SubmitField('Delete this UTub!')
+
 class UTubDescriptionForm(FlaskForm):
     """Form to add a description to the UTub.
 
