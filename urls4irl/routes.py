@@ -191,7 +191,7 @@ def delete_utub(utub_id: int):
             return jsonify({"Error": "You don't have permission to delete this UTub!"}), 404
 
         utub = Utub.query.get_or_404(utub_id_to_delete)
-            
+
         if int(current_user.get_id()) != int(utub.created_by.id):  
             return jsonify({"Error": "You don't have permission to delete this UTub!"}), 403
         
@@ -351,6 +351,7 @@ def delete_url(utub_id: int, url_id: int):
     """
     utub = Utub.query.get(int(utub_id))
     owner_id = int(utub.created_by.id)
+    print("here")
     
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
     url_added_by = [url_in_utub.user_that_added_url.id for url_in_utub in utub.utub_urls if int(url_in_utub.url_id) == int(url_id)]

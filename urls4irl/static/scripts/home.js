@@ -8,28 +8,71 @@ $(document).ready(function () {
     $('input[type=radio]').on('click', function () {
 
         $('.active').toggleClass('active');
+        console.log($('.active'))
         $(this).parent().toggleClass('active');
-
-        // Reset. Gotta figure out how to hide addURL '+' until first click, then always keep. And only call $('#TubImage').remove() once at the beginning and never again.
-        $('#TubImage').remove();
 
         getUtubInfo(findUTubID());
     })
 
     // Selected URL
     $('#centerPanel').on('click', function (e) {
-        var selectedCard = $(e.target).closest('div.card');
-        if (selectedCard.hasClass("selected")) {    // Already selected, user would like to unselect
-            selectedCard.removeClass("selected");
-        } else {                                    // Unselected, user would like to select a different URL
-            $('#centerPanel').find('div.card').removeClass("selected");
-            selectedCard.addClass("selected");
+        if (e.target.localName === 'i') {
+            let card = $(e.target).closest('.card');
+            let deleteURLID = card.attr('urlid');
+            let request = $.ajax({
+                type: 'post',
+                url: "/delete_url/" + findUTubID() + "/" + deleteURLID
+            });
+
+            request.done(function (response, textStatus, xhr) {
+                if (xhr.status == 200) {
+                }
+            })
+
+            request.fail(function (xhr, textStatus, error) {
+                if (xhr.status == 409) {
+                    console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
+                    // const flashMessage = xhr.responseJSON.error;
+                    // const flashCategory = xhr.responseJSON.category;
+
+                    // let flashElem = flashMessageBanner(flashMessage, flashCategory);
+                    // flashElem.insertBefore('#modal-body').show();
+                } else if (xhr.status == 404) {
+                    $('.invalid-feedback').remove();
+                    $('.alert').remove();
+                    $('.form-control').removeClass('is-invalid');
+                    const error = JSON.parse(xhr.responseJSON);
+                    for (var key in error) {
+                        $('<div class="invalid-feedback"><span>' + error[key] + '</span></div>')
+                            .insertAfter('#' + key).show();
+                        $('#' + key).addClass('is-invalid');
+                    };
+                };
+                console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
+                console.log("Error: " + error);
+            })
+            card.fadeOut();
+            card.remove();
+        } else {
+            var selectedCard = $(e.target).closest('div.card');
+            if (selectedCard.hasClass("selected")) {    // Already selected, user would like to unselect
+                selectedCard.removeClass("selected");
+                $('.close-icon').hide();
+            } else {                                    // Unselected, user would like to select a different URL
+                $('#centerPanel').find('div.card').removeClass("selected");
+                $('.close-icon').hide();
+                selectedCard.addClass("selected");
+                selectedCard.find('.close-icon').show();
+            }
+
+            var selectedURLid = selectedCard.attr("urlid")
+
+            selectURL(selectedURLid);
         }
-
-        var selectedURLid = selectedCard.attr("urlid")
-
-        selectURL(selectedURLid);
     });
+
+    $('.close-icon').on('click', function () {
+    })
 
     // Selected Tag
     $('#TagDeck').on('click', function (e) {
@@ -145,12 +188,15 @@ function buildUTubDeck(UTubs) {
 function findUTubID() {
     // Find which UTub was requested
     radioButton = $('input[type=radio]:checked')[0];
-    $('#UTubHeader')[0].innerHTML = radioButton.value;
+    $('#UTubHeader')[0].innerHTML = radioButton.value;  // Update center panel header
     str = radioButton.id;
     return str.split('-')[1];
 }
 
 function getUtubInfo(selectedUTubID) {
+    // Just to make sure hidden, if coming from "/create_utub"
+    $('#TubImage').hide();
+
     // Pull data from db
     return $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) { buildUTub(UTubJSON) });
 }
@@ -160,7 +206,6 @@ function buildUTub(selectedUTub) {
     var selectedUTubID = selectedUTub.id;
     var dictURLs = selectedUTub.urls;
     var dictTags = selectedUTub.tags;
-    console.log(selectedUTub)
     var dictUsers = selectedUTub.members;
     var creator = selectedUTub.created_by;
     let currentUserID = $('.user').attr('id');
@@ -187,30 +232,65 @@ function buildUTub(selectedUTub) {
     gatherUsers(dictUsers, creator);
 }
 
-function dictURLs() {
-    let URLs = $('#listURLs').find('.card-title').map(i => i.innerHTML)
-    return 1
-}
-
-function dictURLs() {
-    return $('#listURLs').find('.card-title').map(i => i.innerHTML)
-}
-
-
-
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
-    let card = document.createElement('div');
-    setAttributes(card, { "id": "-group", "class": "board-list", "ondrop": "dropIt(event)", "ondragover": "allowDrop(event)", "ondragstart": "dragStart(event)" });
-
-    let html = '';
-    let cardHead = '<div class="col-md-12 col-lg-4 col-xl-3 mb-3"><div class="card url" draggable="true"',
-        cardInt1 = '><img class="card-img-top" src="..." alt="Card image cap">', // Potential option to show static image preview of destination site
-        cardInt2 = '><div class="card-body"><h5 class="card-title">',
-        cardInt3 = '</h5><p class="card-text">',
-        cardInt4 = '</p></div></div></div>';
+    $('#listURLs')[0].innerHTML = '';
 
     for (let i in dictURLs) {
+        let col = document.createElement('div');
+        let card = document.createElement('div');
+        let deleteSpan = document.createElement('span');
+        let deleteButton = document.createElement('i');
+        // let cardImg = document.createElement('img');
+        let cardBody = document.createElement('div');
+        let cardTitle = document.createElement('h5');
+        let cardText = document.createElement('p');
+
+        $(col).attr({ 'class': 'col-md-12 col-lg-4 col-xl-3 mb-3' })
+
+        $(card).attr({
+            'urlid': dictURLs[i].url_id,
+            'class': 'card url',
+            'draggable': 'true',
+            'ondrop': 'dropIt(event)',
+            'ondragover': 'allowDrop(event)',
+            'ondragstart': 'dragStart(event)'
+        })
+
+        $(deleteSpan).attr({
+            'class': 'pull-right clickable close-icon',
+            'data-effect': 'fadeOut',
+            'style': 'display: none'
+        })
+
+        $(deleteButton).attr({
+            'class': 'fa fa-times',
+            'data-effect': 'fadeOut'
+        })
+
+        // $(cardImg).attr({
+        //     'class': 'card-img-top',
+        //     'src': '...',
+        //     'alt': '"Card image cap'
+        // })
+
+        $(cardBody).attr({ 'class': 'card-body' })
+
+        $(cardTitle).attr({ 'class': 'card-title' })
+        cardTitle.innerHTML = dictURLs[i].url_string
+
+        $(cardText).attr({ 'class': 'card-text' })
+
+        // Assemble url list items
+        $(col).append(card);
+        // $(card).append(cardImg);
+        $(card).append(deleteSpan);
+        $(deleteSpan).append(deleteButton);
+        $(card).append(cardBody);
+        $(cardBody).append(cardTitle);
+        $(cardBody).append(cardText);
+
+
         // Build tag html strings 
         let tagArray = dictURLs[i].url_tags;
         let tagString = '';
@@ -220,23 +300,25 @@ function buildURLDeck(dictURLs, dictTags) {
                     return e.tag_string
                 }
             });
-            tagString += '<span class="tag" tagid="' + tag.id + '">' + tag.tag_string + '</span>';
+
+            let tagSpan = document.createElement('span');
+            $(tagSpan).attr({
+                'class': 'tag',
+                'tagid': tag[j].id,
+                'value': tag[j].tag_string
+            })
+            $(cardText).append(tagSpan)
         }
 
-        // Assemble url list items
-        html += cardHead + 'urlid="' + dictURLs[i].url_id + '" ' + cardInt2 + dictURLs[i].url_string + cardInt3 + tagString + cardInt4;
+
+        $('#listURLs').append(col);
     }
-    card.innerHTML = html;
-
-    // $("#boardlists")[0].insertBefore(card, $("#boardlists")[0].firstChild);
-
-    $('#listURLs')[0].innerHTML = html;
 }
 
 function updateURLDeck() {
-    let urlList = $('div.url');
-    for (let i = 0; i < urlList.length; i++) {
-        let tagList = $(urlList[i]).find('span.tag');
+    let URLcardst = $('div.url');
+    for (let i = 0; i < URLcardst.length; i++) {
+        let tagList = $(URLcardst[i]).find('span.tag');
 
         // If no tags associated with this URL, ignore. Unaffected by filter functionality
         if (tagList.length === 0) { continue; }
@@ -253,14 +335,15 @@ function updateURLDeck() {
         boolArray.forEach(e => hideURLBool &= e[1])
 
         // If url <div.card.url> has no tag <span>s in activeTagIDs, hide card column (so other cards shift into its position)
-        if (hideURLBool) { $(urlList[i]).parent().hide(); }
+        if (hideURLBool) { $(URLcardst[i]).parent().hide(); }
         // If tag reactivated, show URL
-        else { $(urlList[i]).parent().show(); }
+        else { $(URLcardst[i]).parent().show(); }
     }
 }
 
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
+
     let html = '<label for="selectAll"><input id="selectAll" type="checkbox" name="selectAll" checked="true"> Select All </label>';
 
     // Alpha sort tags based on tag_string
@@ -329,7 +412,7 @@ function resetUTubs() {
 
     // Update hrefs
     $('#addTags').attr("modal-target", "#");
-    $('#EditURL').attr("modal-target", "#");
+    $('#EditURL').attr("onclick", "#");
     $('#DeleteURL').attr("modal-target", "#");
 }
 
@@ -342,44 +425,43 @@ function accessLink() {
 }
 
 function editURL(selectedUTubID, selectedURLid) {
-    var URLli = "li[urlid=" + selectedURLid + "]";   // Find URL HTML with selected ID
-    var liHTML = $(URLli).html().split('<span');     // Store pre-edit values
-    var URLString = liHTML[0];
+    var URLcard = "div.url.selected[urlid=" + selectedURLid + "]";   // Find URL HTML with selected ID
+    var liHTML = $(URLcard).find('h5.card-title');                   // Store pre-edit values
+    var URLString = liHTML[0].innerHTML;
+    console.log(URLString)
     var tags = liHTML.slice(1);
     tags = tags.map(i => '<span' + i)
     var tagString = liHTML.slice(1).map(i => '<span' + i).join('');
 
-    $(URLli).html('');                               // Clear li
+    $(URLcard).html('');                               // Clear li
     $('<input></input>').attr({                      // Replace with temporary input
         'type': 'text',
         'id': 'edit_url',
         'urlid': selectedURLid,
         'size': '30',
         'value': URLString
-    }).appendTo($(URLli));
-    $(URLli).html($(URLli).html() + tagString);
+    }).appendTo($(URLcard));
+    $(URLcard).html($(URLcard).html() + tagString);
     $('#edit_url').focus();
 
     $(document).on("blur", '#edit_url', function () {
+        console.log($('#edit_url'))
         var urlText = $(this).val();
         var selectedURLid = $(this).attr('urlid');
         let request = $.ajax({
             type: 'post',
             url: "/edit_url/" + selectedUTubID + "/" + selectedURLid
         });
-        console.log($('#edit_url'))
         request.done(function (response, textStatus, xhr) {
             if (xhr.status == 200) {
             }
-        }
-        )
+        })
     });
 }
 
-function openModal(route) {    
+function openModal(route) {
     console.log(route)
     $.get(route, function (formHtml) {
-        console.log(route)
         $('#Modal .modal-content').html(formHtml);
         $('#Modal').modal('show');
         $('#submit').click(function (event) {
@@ -400,25 +482,33 @@ function openModal(route) {
                     let rootRoute = route.split('/')[1];
 
                     switch (rootRoute) {
+                        default:
+                            console.log('Unimplemented route')
                         case 'create_utub':
                             createUTub(response.UtubID, response.UtubName);
                             break;
                         case 'delete_utub':
                             deleteUTub(route.split('/')[2])
                             break;
-                        default:
-                            console.log('Unimplemented route')
+                        case 'add_url':
+                            getUtubInfo(route.split('/')[2])
+                            $('#urlNote').hide();
+                            break;
+                        case 'add_tag':
+                            getUtubInfo(route.split('/')[2])
+                            $('#urlNote').hide();
+                            break;
                     }
                 };
             });
 
             request.fail(function (xhr, textStatus, error) {
                 if (xhr.status == 409) {
-                    const flashMessage = xhr.responseJSON.error;
-                    const flashCategory = xhr.responseJSON.category;
+                    // const flashMessage = xhr.responseJSON.error;
+                    // const flashCategory = xhr.responseJSON.category;
 
-                    let flashElem = flashMessageBanner(flashMessage, flashCategory);
-                    flashElem.insertBefore('#modal-body').show();
+                    // let flashElem = flashMessageBanner(flashMessage, flashCategory);
+                    // flashElem.insertBefore('#modal-body').show();
                 } else if (xhr.status == 404) {
                     $('.invalid-feedback').remove();
                     $('.alert').remove();
@@ -438,14 +528,27 @@ function openModal(route) {
 }
 
 function createUTub(id, name) {
-    getUtubInfo(id)
     radioHTML = '<label for="UTub-' + id + '" class="UTub draw active"><input type="radio" id="UTub-' + id + '" name="UTubSelection" value="' + name + '"><b>' + name + '</b></label>';
     $('#UTubDeck').find('form')[0].innerHTML += radioHTML;
+    $('input[type=radio]').prop('checked', false);
+    $('.UTub').removeClass('active');
     $('#UTub-' + id).prop('checked', true);
+    $('#UTub-' + id).closest('.UTub').addClass('active');
+
+    $('#UTubHeader')[0].innerHTML = "";
+    $("<p id='urlNote'>Add a URL</p>").insertAfter("#UTubHeader");
+
+    getUtubInfo(findUTubID())
 }
 
 function deleteUTub(id) {
-    console.log('#UTub-' + id)
-    console.log($('#UTub-' + id).parent())
+    // Update UTub Deck
     $('#UTub-' + id).parent().remove();
+
+    // Clear URL Deck
+    $('#listURLs')[0].innerHTML = "";
+
+    // Update UTub center panel
+    $('#TubImage').show();
+    $('#UTubHeader')[0].innerHTML = "Select a UTub";
 }
