@@ -349,9 +349,9 @@ def delete_url(utub_id: int, url_id: int):
         utub_id (int): The ID of the UTub that contains the URL to be deleted
         url_id (int): The ID of the URL to be deleted
     """
+    print("here")
     utub = Utub.query.get(int(utub_id))
     owner_id = int(utub.created_by.id)
-    print("here")
     
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
     url_added_by = [url_in_utub.user_that_added_url.id for url_in_utub in utub.utub_urls if int(url_in_utub.url_id) == int(url_id)]

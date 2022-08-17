@@ -7,6 +7,7 @@ function dragStart(ev) {
 }
 function dropIt(ev) {
   // Origin data
+  console.log(ev)
   let cardID = ev.dataTransfer.getData("text/plain");
   let cardEl = document.getElementById(cardID);
   let originEl = cardEl.parentElement;

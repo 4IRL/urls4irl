@@ -1,5 +1,15 @@
 // UI Interactions
 $(document).ready(function () {
+    
+    // CSRF token initialization for non-modal POST requests
+    var csrftoken = $('meta[name=csrf-token]').attr('content');
+    $.ajaxSetup({
+        beforeSend: function(xhr, settings) {
+            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+                xhr.setRequestHeader("X-CSRFToken", csrftoken);
+            }
+        }
+    });
 
     // Instantiate UTubDeck with user's accessible UTubs
     buildUTubDeck(UTubs);
@@ -8,51 +18,18 @@ $(document).ready(function () {
     $('input[type=radio]').on('click', function () {
 
         $('.active').toggleClass('active');
-        console.log($('.active'))
         $(this).parent().toggleClass('active');
 
         getUtubInfo(findUTubID());
-    })
+    });
 
     // Selected URL
     $('#centerPanel').on('click', function (e) {
-        if (e.target.localName === 'i') {
+        if (e.target.localName === 'button') {
             let card = $(e.target).closest('.card');
             let deleteURLID = card.attr('urlid');
-            let request = $.ajax({
-                type: 'post',
-                url: "/delete_url/" + findUTubID() + "/" + deleteURLID
-            });
 
-            request.done(function (response, textStatus, xhr) {
-                if (xhr.status == 200) {
-                }
-            })
-
-            request.fail(function (xhr, textStatus, error) {
-                if (xhr.status == 409) {
-                    console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
-                    // const flashMessage = xhr.responseJSON.error;
-                    // const flashCategory = xhr.responseJSON.category;
-
-                    // let flashElem = flashMessageBanner(flashMessage, flashCategory);
-                    // flashElem.insertBefore('#modal-body').show();
-                } else if (xhr.status == 404) {
-                    $('.invalid-feedback').remove();
-                    $('.alert').remove();
-                    $('.form-control').removeClass('is-invalid');
-                    const error = JSON.parse(xhr.responseJSON);
-                    for (var key in error) {
-                        $('<div class="invalid-feedback"><span>' + error[key] + '</span></div>')
-                            .insertAfter('#' + key).show();
-                        $('#' + key).addClass('is-invalid');
-                    };
-                };
-                console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
-                console.log("Error: " + error);
-            })
-            card.fadeOut();
-            card.remove();
+            deleteURL(deleteURLID)
         } else {
             var selectedCard = $(e.target).closest('div.card');
             if (selectedCard.hasClass("selected")) {    // Already selected, user would like to unselect
@@ -240,7 +217,8 @@ function buildURLDeck(dictURLs, dictTags) {
         let col = document.createElement('div');
         let card = document.createElement('div');
         let deleteSpan = document.createElement('span');
-        let deleteButton = document.createElement('i');
+        // let deleteButton = document.createElement('i'); // commented out for local dev
+        let deleteButton = document.createElement('button');
         // let cardImg = document.createElement('img');
         let cardBody = document.createElement('div');
         let cardTitle = document.createElement('h5');
@@ -264,9 +242,12 @@ function buildURLDeck(dictURLs, dictTags) {
         })
 
         $(deleteButton).attr({
-            'class': 'fa fa-times',
-            'data-effect': 'fadeOut'
+            // 'class': 'fa fa-times',
+            'type': 'button',
+            'class': 'btn btn-default'
+            // 'data-effect': 'fadeOut'
         })
+        deleteButton.innerHTML = '<b>X</b>'
 
         // $(cardImg).attr({
         //     'class': 'card-img-top',
@@ -310,9 +291,20 @@ function buildURLDeck(dictURLs, dictTags) {
             $(cardText).append(tagSpan)
         }
 
-
         $('#listURLs').append(col);
     }
+}
+
+function selectURL(selectedURLid) {
+    // Need to implement URL description display in card when selected
+    // Find notes for selected URL
+    // $('#URLInfo')[0].innerHTML = selectedURL.notes;
+    let selectedUTubID = findUTubID();
+
+    // Update hrefs
+    $('#addTags').attr("modal-target", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
+    $('#EditURL').attr("onclick", "editURL(" + selectedUTubID + "," + selectedURLid + ")");
+    $('#DeleteURL').attr("modal-target", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
 }
 
 function updateURLDeck() {
@@ -388,18 +380,6 @@ function gatherUsers(dictUsers, creator) {
     $('#UTubUsers')[0].innerHTML = html;
 }
 
-function selectURL(selectedURLid) {
-    // Need to implement URL description display in card when selected
-    // Find notes for selected URL
-    // $('#URLInfo')[0].innerHTML = selectedURL.notes;
-    let selectedUTubID = findUTubID();
-
-    // Update hrefs
-    $('#addTags').attr("modal-target", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
-    $('#EditURL').attr("onclick", "editURL(" + selectedUTubID + "," + selectedURLid + ")");
-    $('#DeleteURL').attr("modal-target", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
-}
-
 function resetUTubs() {
     // Reset tag deck
     tags = [];
@@ -470,7 +450,7 @@ function openModal(route) {
             let request = $.ajax({
                 url: route,
                 type: "POST",
-                data: $('#ModalForm').serialize(),
+                data: $('#ModalForm').serialize()
             });
 
             request.done(function (response, textStatus, xhr) {
@@ -551,4 +531,42 @@ function deleteUTub(id) {
     // Update UTub center panel
     $('#TubImage').show();
     $('#UTubHeader')[0].innerHTML = "Select a UTub";
+}
+
+function deleteURL(id) {
+    let request = $.ajax({
+        type: 'post',
+        url: "/delete_url/" + findUTubID() + "/" + id
+    });
+
+    request.done(function (response, textStatus, xhr) {
+        if (xhr.status == 200) {
+            let card = $('input[urlid=' + id + ']').parent()
+            card.fadeOut();
+            card.remove();
+        }
+    })
+
+    request.fail(function (xhr, textStatus, error) {
+        if (xhr.status == 409) {
+            console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
+            // const flashMessage = xhr.responseJSON.error;
+            // const flashCategory = xhr.responseJSON.category;
+
+            // let flashElem = flashMessageBanner(flashMessage, flashCategory);
+            // flashElem.insertBefore('#modal-body').show();
+        } else if (xhr.status == 404) {
+            $('.invalid-feedback').remove();
+            $('.alert').remove();
+            $('.form-control').removeClass('is-invalid');
+            const error = JSON.parse(xhr.responseJSON);
+            for (var key in error) {
+                $('<div class="invalid-feedback"><span>' + error[key] + '</span></div>')
+                    .insertAfter('#' + key).show();
+                $('#' + key).addClass('is-invalid');
+            };
+        };
+        console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
+        console.log("Error: " + error);
+    })
 }
