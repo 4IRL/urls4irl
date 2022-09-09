@@ -261,6 +261,7 @@ function buildURLDeck(dictURLs, dictTags) {
         cardTitle.innerHTML = dictURLs[i].url_string
 
         $(cardText).attr({ 'class': 'card-text' })
+        cardText.innerHTML = dictURLs[i].url_description ? dictURLs[i].url_description : ''
 
         // Assemble url list items
         $(col).append(card);
@@ -383,9 +384,6 @@ function gatherUsers(dictUsers, creator) {
 function resetUTubs() {
     // Reset tag deck
     tags = [];
-
-    // Empty URL description
-    $('#URLInfo')[0].innerHTML = '';
 
     // Empty TagsDeck
     $('#listTags')[0].innerHTML = '';
