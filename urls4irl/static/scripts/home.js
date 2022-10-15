@@ -1,10 +1,10 @@
 // UI Interactions
 $(document).ready(function () {
-    
+
     // CSRF token initialization for non-modal POST requests
     var csrftoken = $('meta[name=csrf-token]').attr('content');
     $.ajaxSetup({
-        beforeSend: function(xhr, settings) {
+        beforeSend: function (xhr, settings) {
             if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
                 xhr.setRequestHeader("X-CSRFToken", csrftoken);
             }
@@ -31,24 +31,20 @@ $(document).ready(function () {
 
             deleteURL(deleteURLID)
         } else {
-            var selectedCard = $(e.target).closest('div.card');
-            if (selectedCard.hasClass("selected")) {    // Already selected, user would like to unselect
-                selectedCard.removeClass("selected");
-                $('.close-icon').hide();
-            } else {                                    // Unselected, user would like to select a different URL
-                $('#centerPanel').find('div.card').removeClass("selected");
-                $('.close-icon').hide();
-                selectedCard.addClass("selected");
-                selectedCard.find('.close-icon').show();
-            }
+            var clickedCardCol = $(e.target).closest('.cardCol');
+            var clickedCard = clickedCardCol.find('.card');
 
-            var selectedURLid = selectedCard.attr("urlid")
-
-            selectURL(selectedURLid);
+            if (clickedCard.hasClass("selected")) {
+                $('.cardCol').each(function() {
+                    $('#UPRRow').append(this)
+                })
+                deselectURL(clickedCardCol);
+            } else selectURL(clickedCardCol);
         }
     });
 
-    $('.close-icon').on('click', function () {
+    $('.close').on('click', function () {
+        $(this).closest('.card').fadeOut();
     })
 
     // Selected Tag
@@ -102,7 +98,7 @@ $(document).ready(function () {
         }
 
         // Update URLs displayed as a result of checkbox filtering
-        updateURLDeck();
+        filterURLDeck();
     });
 
     // Listen for click on toggle checkbox
@@ -211,20 +207,32 @@ function buildUTub(selectedUTub) {
 
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
-    $('#listURLs')[0].innerHTML = '';
+    let selectedUTubID = findUTubID();
+
+    let UPRRow = document.createElement('div');
+    let focusRow = document.createElement('div');
+    let LWRRow = document.createElement('div');
+
+    $(UPRRow).attr({ 'id': 'UPRRow', 'class': 'row list-content justify-content-center board-list' })
+    $(focusRow).attr({ 'id': 'URLFocusRow', 'class': 'row list-content justify-content-center board-list' })
+    $(LWRRow).attr({ 'id': 'LWRRow', 'class': 'row list-content justify-content-center board-list' })
 
     for (let i in dictURLs) {
         let col = document.createElement('div');
         let card = document.createElement('div');
-        let deleteSpan = document.createElement('span');
-        // let deleteButton = document.createElement('i'); // commented out for local dev
+        // let deleteButton = document.createElement('i'); // commented out for local dev, need to solve FavIcon for appearance
         let deleteButton = document.createElement('button');
+        let deleteSpan = document.createElement('span');
         // let cardImg = document.createElement('img');
         let cardBody = document.createElement('div');
         let cardTitle = document.createElement('h5');
         let cardText = document.createElement('p');
+        let cardButtons = document.createElement('div');
+        let accessURL = document.createElement('button');
+        let addTag = document.createElement('button');
+        let editURL = document.createElement('button');
 
-        $(col).attr({ 'class': 'col-md-12 col-lg-4 col-xl-3 mb-3' })
+        $(col).attr({ 'class': 'cardCol mb-3 col-md-10 col-lg-4 col-xl-3' })
 
         $(card).attr({
             'urlid': dictURLs[i].url_id,
@@ -235,19 +243,18 @@ function buildURLDeck(dictURLs, dictTags) {
             'ondragstart': 'dragStart(event)'
         })
 
-        $(deleteSpan).attr({
-            'class': 'pull-right clickable close-icon',
-            'data-effect': 'fadeOut',
+        $(deleteButton).attr({
+            'class': 'close',
+            'type': 'button',
+            'modal-target': "/delete_url/" + selectedUTubID + "/" + dictURLs[i].url_id,
+            'aria-label': "Close",
             'style': 'display: none'
         })
 
-        $(deleteButton).attr({
-            // 'class': 'fa fa-times',
-            'type': 'button',
-            'class': 'btn btn-default'
-            // 'data-effect': 'fadeOut'
+        $(deleteSpan).attr({
+            'aria-hidden': "true"
         })
-        deleteButton.innerHTML = '<b>X</b>'
+        deleteSpan.innerHTML = '&times;'
 
         // $(cardImg).attr({
         //     'class': 'card-img-top',
@@ -258,19 +265,51 @@ function buildURLDeck(dictURLs, dictTags) {
         $(cardBody).attr({ 'class': 'card-body' })
 
         $(cardTitle).attr({ 'class': 'card-title' })
-        cardTitle.innerHTML = dictURLs[i].url_string
+        cardTitle.innerHTML = dictURLs[i].url_description ? dictURLs[i].url_description : ''
 
         $(cardText).attr({ 'class': 'card-text' })
-        cardText.innerHTML = dictURLs[i].url_description ? dictURLs[i].url_description : ''
+        let url = dictURLs[i].url_string
+        dispURL = url.substring(0, url.length - 1)
+        cardText.innerHTML = dispURL.split('https://')[1]
+
+        $(cardButtons).attr({ 'class': 'card-body URLOptions', 'style': 'display: none' })
+
+        $(accessURL).attr({
+            'id': 'accessURL',
+            'class': 'card-link btn btn-primary',
+            'type': 'button',
+            'onclick': "accessLink(" + url + ")"
+        })
+        accessURL.innerHTML = "Access Link"
+
+        $(addTag).attr({
+            'id': 'addTags',
+            'class': 'card-link btn btn-info',
+            'type': 'button',
+            'onclick': "addTag(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
+        })
+        addTag.innerHTML = "Add Tag"
+
+        $(editURL).attr({
+            'id': 'EditURL',
+            'class': 'card-link btn btn-warning',
+            'type': 'button',
+            'onclick': "editURL(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
+        })
+        editURL.innerHTML = "Edit URL"
 
         // Assemble url list items
         $(col).append(card);
         // $(card).append(cardImg);
-        $(card).append(deleteSpan);
-        $(deleteSpan).append(deleteButton);
+        $(card).append(deleteButton);
+        $(deleteButton).append(deleteSpan);
         $(card).append(cardBody);
         $(cardBody).append(cardTitle);
         $(cardBody).append(cardText);
+        $(card).append(cardButtons);
+        $(cardButtons).append(accessURL);
+        $(cardButtons).append(addTag);
+        $(cardButtons).append(editURL);
 
 
         // Build tag html strings 
@@ -292,23 +331,54 @@ function buildURLDeck(dictURLs, dictTags) {
             $(cardText).append(tagSpan)
         }
 
-        $('#listURLs').append(col);
+        UPRRow.append(col);
+    }
+
+    $('#listURLs').append(UPRRow);
+    $('#listURLs').append(focusRow);
+    $('#listURLs').append(LWRRow);
+}
+
+// A URL is already selected, user would like to unselect (potentially select another)
+function deselectURL(deselectedCardCol) {
+    var card = deselectedCardCol.find('.card');
+    deselectedCardCol.addClass('col-lg-4 col-xl-3');
+    deselectedCardCol.removeClass('col-lg-10 col-xl-10');
+    card.removeClass('selected');
+    card.find('.close').css('display', 'none');
+    card.find('.URLOptions').css('display', 'none');
+}
+
+// User selects a URL
+function selectURL(selectedCardCol) {
+    var selectedURLid = selectedCardCol.find('.card').attr('urlid')
+
+    var cardCols = $('.cardCol');
+
+    let rowToggle = 1; // ? Add to UPR row : Add to LWR row
+    var activeRow = $('#UPRRow');
+
+    for (let i = 0; i < cardCols.length; i++) {
+        let card = $(cardCols[i]).find('.card');
+        let URLid = card.attr('urlid');
+
+        if (URLid == selectedURLid) {
+            $('#URLFocusRow').append(cardCols[i]);
+            $(cardCols[i]).toggleClass('col-lg-10 col-lg-4 col-xl-10 col-xl-3')
+            card.addClass('selected')
+            card.find('.close').css('display', '');
+            card.find('.URLOptions').css('display', '');
+            rowToggle = 0;
+        } else {
+            deselectURL($(cardCols[i]))
+            activeRow.append(cardCols[i]);
+        }
+
+        activeRow = rowToggle ? $('#UPRRow') : $('#LWRRow');
     }
 }
 
-function selectURL(selectedURLid) {
-    // Need to implement URL description display in card when selected
-    // Find notes for selected URL
-    // $('#URLInfo')[0].innerHTML = selectedURL.notes;
-    let selectedUTubID = findUTubID();
-
-    // Update hrefs
-    $('#addTags').attr("modal-target", "/add_tag/" + selectedUTubID + "/" + selectedURLid);
-    $('#EditURL').attr("onclick", "editURL(" + selectedUTubID + "," + selectedURLid + ")");
-    $('#DeleteURL').attr("modal-target", "/delete_url/" + selectedUTubID + "/" + selectedURLid);
-}
-
-function updateURLDeck() {
+function filterURLDeck() {
     let URLcardst = $('div.url');
     for (let i = 0; i < URLcardst.length; i++) {
         let tagList = $(URLcardst[i]).find('span.tag');
@@ -394,12 +464,48 @@ function resetUTubs() {
     $('#DeleteURL').attr("modal-target", "#");
 }
 
-function accessLink() {
-    if (!selectedURL.url_string.startsWith('https://')) {
+function accessLink(url_string) {
+    // Take user to a new tab with interstitial page warning they are now leaving U4I
+    if (!url_string.startsWith('https://')) {
         window.open('https://' + selectedURL.url_string, "_blank");
     } else {
-        window.open(selectedURL.url_string, "_blank");
+        window.open(url_string, "_blank");
     }
+}
+
+function addTag(selectedUTubID, selectedURLid) {
+    var URLcard = "div.url.selected[urlid=" + selectedURLid + "]";   // Find URL HTML with selected ID
+    var liHTML = $(URLcard).find('h5.card-title');                   // Store pre-edit values
+    var URLString = liHTML[0].innerHTML;
+    console.log(URLString)
+    var tags = liHTML.slice(1);
+    tags = tags.map(i => '<span' + i)
+    var tagString = liHTML.slice(1).map(i => '<span' + i).join('');
+
+    $(URLcard).html('');                               // Clear li
+    $('<input></input>').attr({                      // Replace with temporary input
+        'type': 'text',
+        'id': 'edit_url',
+        'urlid': selectedURLid,
+        'size': '30',
+        'value': URLString
+    }).appendTo($(URLcard));
+    $(URLcard).html($(URLcard).html() + tagString);
+    $('#edit_url').focus();
+
+    $(document).on("blur", '#edit_url', function () {
+        console.log($('#edit_url'))
+        var urlText = $(this).val();
+        var selectedURLid = $(this).attr('urlid');
+        let request = $.ajax({
+            type: 'post',
+            url: "/add_tag/" + selectedUTubID + "/" + selectedURLid
+        });
+        request.done(function (response, textStatus, xhr) {
+            if (xhr.status == 200) {
+            }
+        })
+    });
 }
 
 function editURL(selectedUTubID, selectedURLid) {

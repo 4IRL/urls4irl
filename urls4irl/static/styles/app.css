@@ -165,10 +165,34 @@ span.tag {
 
 .selected {
     border: 5px solid rgb(13, 255, 0);
+    transition: 250ms;
 }
 
-.close-icon {
+.col-lg-10 {
+    flex-grow: 1;
+    transition: all 250ms ease;
+}
+
+.col-lg-4 {
+    width: 0;
+    flex-shrink: 1;
+    transition: all 250ms ease;
+}
+
+.col-xl-10 {
+    flex-grow: 1;
+    transition: all 250ms ease;
+}
+
+.col-xl-3 {
+    width: 0;
+    flex-shrink: 1;
+    transition: all 250ms ease;
+}
+
+.close {
     cursor: pointer;
+    display: flex;
 }
 
 .fa-arrow-down {
