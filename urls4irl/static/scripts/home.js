@@ -207,15 +207,11 @@ function buildUTub(selectedUTub) {
 
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
+    $('#UPRRow').empty();
+    $('#URLFocusRow').empty();
+    $('#LWRRow').empty();
+
     let selectedUTubID = findUTubID();
-
-    let UPRRow = document.createElement('div');
-    let focusRow = document.createElement('div');
-    let LWRRow = document.createElement('div');
-
-    $(UPRRow).attr({ 'id': 'UPRRow', 'class': 'row list-content justify-content-center board-list' })
-    $(focusRow).attr({ 'id': 'URLFocusRow', 'class': 'row list-content justify-content-center board-list' })
-    $(LWRRow).attr({ 'id': 'LWRRow', 'class': 'row list-content justify-content-center board-list' })
 
     for (let i in dictURLs) {
         let col = document.createElement('div');
@@ -311,7 +307,6 @@ function buildURLDeck(dictURLs, dictTags) {
         $(cardButtons).append(addTag);
         $(cardButtons).append(editURL);
 
-
         // Build tag html strings 
         let tagArray = dictURLs[i].url_tags;
         let tagString = '';
@@ -333,10 +328,6 @@ function buildURLDeck(dictURLs, dictTags) {
 
         UPRRow.append(col);
     }
-
-    $('#listURLs').append(UPRRow);
-    $('#listURLs').append(focusRow);
-    $('#listURLs').append(LWRRow);
 }
 
 // A URL is already selected, user would like to unselect (potentially select another)
