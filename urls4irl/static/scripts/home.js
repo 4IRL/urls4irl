@@ -23,25 +23,35 @@ $(document).ready(function () {
         getUtubInfo(findUTubID());
     });
 
+
     // Selected URL
-    $('#centerPanel').on('click', function (e) {
-        if (e.target.localName === 'button') {
+    $(document).on('click', 'div.card', function (e) {
+        e.stopPropagation();
+        var clickedCardCol = $(e.target).closest('.cardCol');
+        var clickedCard = clickedCardCol.find('.card');
+
+        if (clickedCard.hasClass("selected")) {
+            $('.cardCol').each(function () {
+                $('#UPRRow').append(this)
+            })
+            deselectURL(clickedCardCol);
+        } else selectURL(clickedCardCol);
+    });
+
+    // Modifying selected URL
+    $(document).on('click', '.selected.button', function (e) {
+        e.stopPropagation();
+        console.log(e.target)
+        if (e.target.localName === 'button') {                      // User wants to delete URL from UTub
             let card = $(e.target).closest('.card');
             let deleteURLID = card.attr('urlid');
 
             deleteURL(deleteURLID)
-        } else {
-            var clickedCardCol = $(e.target).closest('.cardCol');
-            var clickedCard = clickedCardCol.find('.card');
+        } else if (e.target.localName === 'input') {                // User wants to edit URL Info
 
-            if (clickedCard.hasClass("selected")) {
-                $('.cardCol').each(function() {
-                    $('#UPRRow').append(this)
-                })
-                deselectURL(clickedCardCol);
-            } else selectURL(clickedCardCol);
         }
     });
+
 
     $('.close').on('click', function () {
         $(this).closest('.card').fadeOut();
@@ -216,17 +226,16 @@ function buildURLDeck(dictURLs, dictTags) {
     for (let i in dictURLs) {
         let col = document.createElement('div');
         let card = document.createElement('div');
-        // let deleteButton = document.createElement('i'); // commented out for local dev, need to solve FavIcon for appearance
-        let deleteButton = document.createElement('button');
-        let deleteSpan = document.createElement('span');
         // let cardImg = document.createElement('img');
-        let cardBody = document.createElement('div');
-        let cardTitle = document.createElement('h5');
-        let cardText = document.createElement('p');
-        let cardButtons = document.createElement('div');
+        let urlInfo = document.createElement('div');
+        let urlDescription = document.createElement('h5');
+        let urlString = document.createElement('p');
+        let urlTags = document.createElement('div');
+        let urlOptions = document.createElement('div');
         let accessURL = document.createElement('button');
         let addTag = document.createElement('button');
         let editURL = document.createElement('button');
+        let delURL = document.createElement('button');
 
         $(col).attr({ 'class': 'cardCol mb-3 col-md-10 col-lg-4 col-xl-3' })
 
@@ -239,78 +248,28 @@ function buildURLDeck(dictURLs, dictTags) {
             'ondragstart': 'dragStart(event)'
         })
 
-        $(deleteButton).attr({
-            'class': 'close',
-            'type': 'button',
-            'modal-target': "/delete_url/" + selectedUTubID + "/" + dictURLs[i].url_id,
-            'aria-label': "Close",
-            'style': 'display: none'
-        })
-
-        $(deleteSpan).attr({
-            'aria-hidden': "true"
-        })
-        deleteSpan.innerHTML = '&times;'
-
         // $(cardImg).attr({
         //     'class': 'card-img-top',
         //     'src': '...',
         //     'alt': '"Card image cap'
         // })
 
-        $(cardBody).attr({ 'class': 'card-body' })
+        $(urlInfo).attr({ 'class': 'card-body URLInfo' })
 
-        $(cardTitle).attr({ 'class': 'card-title' })
-        cardTitle.innerHTML = dictURLs[i].url_description ? dictURLs[i].url_description : ''
+        $(urlDescription).attr({ 'class': 'card-title' })
+        urlDescription.innerHTML = dictURLs[i].url_description ? dictURLs[i].url_description : ''
 
-        $(cardText).attr({ 'class': 'card-text' })
+        $(urlString).attr({ 'class': 'card-text' })
         let url = dictURLs[i].url_string
         dispURL = url.substring(0, url.length - 1)
-        cardText.innerHTML = dispURL.split('https://')[1]
+        urlString.innerHTML = dispURL.split('https://')[1]
 
-        $(cardButtons).attr({ 'class': 'card-body URLOptions', 'style': 'display: none' })
-
-        $(accessURL).attr({
-            'id': 'accessURL',
-            'class': 'card-link btn btn-primary',
-            'type': 'button',
-            'onclick': "accessLink(" + url + ")"
-        })
-        accessURL.innerHTML = "Access Link"
-
-        $(addTag).attr({
-            'id': 'addTags',
-            'class': 'card-link btn btn-info',
-            'type': 'button',
-            'onclick': "addTag(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
-        })
-        addTag.innerHTML = "Add Tag"
-
-        $(editURL).attr({
-            'id': 'EditURL',
-            'class': 'card-link btn btn-warning',
-            'type': 'button',
-            'onclick': "editURL(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
-        })
-        editURL.innerHTML = "Edit URL"
-
-        // Assemble url list items
-        $(col).append(card);
-        // $(card).append(cardImg);
-        $(card).append(deleteButton);
-        $(deleteButton).append(deleteSpan);
-        $(card).append(cardBody);
-        $(cardBody).append(cardTitle);
-        $(cardBody).append(cardText);
-        $(card).append(cardButtons);
-        $(cardButtons).append(accessURL);
-        $(cardButtons).append(addTag);
-        $(cardButtons).append(editURL);
+        $(urlTags).attr({ 'class': 'card-body URLTags', 'style': 'display: none' })
 
         // Build tag html strings 
         let tagArray = dictURLs[i].url_tags;
-        let tagString = '';
         for (let j in tagArray) { // Find applicable tags in dictionary to apply to URL card
+            console.log("Tag")
             let tag = dictTags.find(function (e) {
                 if (e.id === tagArray[j]) {
                     return e.tag_string
@@ -323,12 +282,85 @@ function buildURLDeck(dictURLs, dictTags) {
                 'tagid': tag[j].id,
                 'value': tag[j].tag_string
             })
-            $(cardText).append(tagSpan)
+            $(urlTags).append(tagSpan)
         }
+
+        $(urlOptions).attr({ 'class': 'card-body URLOptions', 'style': 'display: none' })
+
+        $(accessURL).attr({
+            'class': 'card-link btn btn-primary',
+            'type': 'button',
+            'onclick': "accessLink(" + url + ")"
+        })
+        accessURL.innerHTML = "Access Link"
+
+        $(addTag).attr({
+            'class': 'card-link btn btn-info',
+            'type': 'button',
+            'onclick': "addTag(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
+        })
+        addTag.innerHTML = "Add Tag"
+
+        $(editURL).attr({
+            'class': 'card-link btn btn-warning',
+            'type': 'button',
+            'onclick': "editURL(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
+        })
+        editURL.innerHTML = "Edit URL"
+
+        $(delURL).attr({
+            'class': 'card-link btn btn-danger',
+            'type': 'button',
+            'onclick': "delURL(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
+            // "/delete_url/" + selectedUTubID + "/" + dictURLs[i].url_id
+        })
+        delURL.innerHTML = "Delete URL"
+
+        // Assemble url list items
+        $(col).append(card);
+        // $(card).append(cardImg);
+        $(card).append(urlInfo);
+        $(urlInfo).append(urlDescription);
+        $(urlInfo).append(urlString);
+        $(card).append(urlTags);
+        $(card).append(urlOptions);
+        $(urlOptions).append(accessURL);
+        $(urlOptions).append(addTag);
+        $(urlOptions).append(editURL);
+        $(urlOptions).append(delURL);
 
         UPRRow.append(col);
     }
 }
+
+/**
+ * @function tagBadgeBuilder
+ * Generates a tag badge with the given tag details, and returns it.
+ * @param {number} utubID - ID of this UTub
+ * @param {number} urlID - ID of this URL
+ * @param {Object} tagDetails - Contains:
+ *      "id" -> THe ID of the tag
+ *      "tag_string" -> A string of the tag itself
+ * @returns - A tag badge HTML element.
+ */
+function tagBadgeBuilder(utubID, urlID, tagDetails) {
+    const tagElem = $('<span></span>').addClass('badge badge-pill badge-light tag-badge');
+    const tagID = tagDetails.id;
+    const tag = tagDetails.tag_string;
+    const tagNameElem = $('<span></span>').text(tag);
+    const closeButtonOuter = $('<span></span>').prop('aria-hidden', false).attr('id', 'tag' + tagID);
+    const closeButtonInner = $('<a></a>').addClass('btn btn-sm btn-outline-link border-0 tag-del').html('&times;').prop('href', '#');
+    closeButtonOuter.append(closeButtonInner);
+    tagElem.append(tagNameElem);
+    tagElem.append(closeButtonOuter);
+
+    tagElem.attr({
+        'id': utubID + "-" + urlID + "-" + tagID,
+        'tag': tagID
+    });
+
+    return tagElem;
+};
 
 // A URL is already selected, user would like to unselect (potentially select another)
 function deselectURL(deselectedCardCol) {
@@ -337,6 +369,7 @@ function deselectURL(deselectedCardCol) {
     deselectedCardCol.removeClass('col-lg-10 col-xl-10');
     card.removeClass('selected');
     card.find('.close').css('display', 'none');
+    card.find('.URLTags').css('display', 'none');
     card.find('.URLOptions').css('display', 'none');
 }
 
@@ -358,6 +391,7 @@ function selectURL(selectedCardCol) {
             $(cardCols[i]).toggleClass('col-lg-10 col-lg-4 col-xl-10 col-xl-3')
             card.addClass('selected')
             card.find('.close').css('display', '');
+            card.find('.URLTags').css('display', '');
             card.find('.URLOptions').css('display', '');
             rowToggle = 0;
         } else {
@@ -465,61 +499,60 @@ function accessLink(url_string) {
 }
 
 function addTag(selectedUTubID, selectedURLid) {
-    var URLcard = "div.url.selected[urlid=" + selectedURLid + "]";   // Find URL HTML with selected ID
-    var liHTML = $(URLcard).find('h5.card-title');                   // Store pre-edit values
-    var URLString = liHTML[0].innerHTML;
-    console.log(URLString)
-    var tags = liHTML.slice(1);
-    tags = tags.map(i => '<span' + i)
-    var tagString = liHTML.slice(1).map(i => '<span' + i).join('');
-
-    $(URLcard).html('');                               // Clear li
-    $('<input></input>').attr({                      // Replace with temporary input
+    // Create temporary, editable element
+    let tagInput = document.createElement('input');
+    $(tagInput).attr({
         'type': 'text',
-        'id': 'edit_url',
-        'urlid': selectedURLid,
-        'size': '30',
-        'value': URLString
-    }).appendTo($(URLcard));
-    $(URLcard).html($(URLcard).html() + tagString);
-    $('#edit_url').focus();
+        'id': 'newTag',
+        'class': 'tag'
+    })
+    $('.selected.URLTags').append(tagInput)
 
-    $(document).on("blur", '#edit_url', function () {
-        console.log($('#edit_url'))
-        var urlText = $(this).val();
-        var selectedURLid = $(this).attr('urlid');
+    $(document).on("blur", '#newTag', function (event) {
+        event.preventDefault();
+        console.log($('#newTag'))
+        var tagText = $(this).val();
+        console.log(tagText)
         let request = $.ajax({
-            type: 'post',
-            url: "/add_tag/" + selectedUTubID + "/" + selectedURLid
+            url: "/add_tag/" + selectedUTubID + "/" + selectedURLid,
+            type: 'POST',
+            data: tagText
         });
         request.done(function (response, textStatus, xhr) {
             if (xhr.status == 200) {
+
+                // Create final display element
+                let tagSpan = document.createElement('span');
+                $(tagSpan).attr({
+                    'class': 'tag',
+                    'tagid': response.id,
+                    'value': response.tag_string
+                })
+                $('.selected.URLTags').append(tagSpan)
             }
         })
-    });
+    })
+
 }
 
 function editURL(selectedUTubID, selectedURLid) {
-    var URLcard = "div.url.selected[urlid=" + selectedURLid + "]";   // Find URL HTML with selected ID
-    var liHTML = $(URLcard).find('h5.card-title');                   // Store pre-edit values
-    var URLString = liHTML[0].innerHTML;
-    console.log(URLString)
-    var tags = liHTML.slice(1);
-    tags = tags.map(i => '<span' + i)
-    var tagString = liHTML.slice(1).map(i => '<span' + i).join('');
+    var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";  // Find URL HTML with selected ID          
+    var URLStringField = $(jQuerySel).find('p.card-text');  // Find URL HTML with selected ID          
+    var url = URLStringField[0].innerHTML;    // Store pre-edit values
+    console.log(url)
 
-    $(URLcard).html('');                               // Clear li
-    $('<input></input>').attr({                      // Replace with temporary input
+    $(URLStringField).html('');     // Clear url card-text
+    $('<input></input>').attr({     // Replace with temporary input
         'type': 'text',
         'id': 'edit_url',
         'urlid': selectedURLid,
         'size': '30',
-        'value': URLString
-    }).appendTo($(URLcard));
-    $(URLcard).html($(URLcard).html() + tagString);
+        'value': url
+    }).appendTo($(URLStringField));
     $('#edit_url').focus();
 
-    $(document).on("blur", '#edit_url', function () {
+    // await response somehow...second click edit button inserts html into input text field instead of URL
+    await($(document).on("blur", '#edit_url', function () {
         console.log($('#edit_url'))
         var urlText = $(this).val();
         var selectedURLid = $(this).attr('urlid');
@@ -531,7 +564,7 @@ function editURL(selectedUTubID, selectedURLid) {
             if (xhr.status == 200) {
             }
         })
-    });
+    }))
 }
 
 function openModal(route) {
