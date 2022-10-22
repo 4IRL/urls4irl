@@ -23,19 +23,19 @@ $(document).ready(function () {
         getUtubInfo(findUTubID());
     });
 
-
     // Selected URL
-    $(document).on('click', 'div.card', function (e) {
-        e.stopPropagation();
+    $(document).on('click', '.card', function (e) {
         var clickedCardCol = $(e.target).closest('.cardCol');
         var clickedCard = clickedCardCol.find('.card');
 
-        if (clickedCard.hasClass("selected")) {
-            $('.cardCol').each(function () {
-                $('#UPRRow').append(this)
-            })
-            deselectURL(clickedCardCol);
-        } else selectURL(clickedCardCol);
+        if (!$(e.target).is('button')) {
+            if (clickedCard.hasClass("selected")) {
+                $('.cardCol').each(function () {
+                    $('#UPRRow').append(this)
+                })
+                deselectURL(clickedCardCol);
+            } else selectURL(clickedCardCol);
+        }
     });
 
     // Modifying selected URL
@@ -51,11 +51,6 @@ $(document).ready(function () {
 
         }
     });
-
-
-    $('.close').on('click', function () {
-        $(this).closest('.card').fadeOut();
-    })
 
     // Selected Tag
     $('#TagDeck').on('click', function (e) {
