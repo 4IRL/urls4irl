@@ -10,8 +10,11 @@ from flask_cors import CORS
 
 app = Flask(__name__)
 app.config.from_object(Config)
-app.config['SQLALCHEMY_DATABASE_URI'] = "sqlite:///urls4irl_db.db"
-Session(app)
+
+if app.config['FLASK_ENV'] == 'development':
+    app.config['DEBUG'] = True 
+
+sess = Session(app)
 
 """
 To get Flask-Migrate / alembic to work with SQLite, need to perform the following
