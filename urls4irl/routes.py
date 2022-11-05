@@ -16,9 +16,11 @@ import sys
 
 @app.route('/')
 def splash():
+    """Splash page for either an unlogged in user.
+
     """
-    Splash page for an unlogged in user
-    """
+
+    # Test code until splash page built in
 
     # Test code until splash page built in
     username = 'Giovanni'
