@@ -28,20 +28,19 @@ $(document).ready(function () {
         var clickedCardCol = $(e.target).closest('.cardCol');
         var clickedCard = clickedCardCol.find('.card');
 
-        if (!$(e.target).is('button')) {
-            if (clickedCard.hasClass("selected")) {
+        if (clickedCard.hasClass("selected")) {
+            if (!$(e.target).is('button') && !$(e.target).is('input')) {
                 $('.cardCol').each(function () {
                     $('#UPRRow').append(this)
                 })
                 deselectURL(clickedCardCol);
-            } else selectURL(clickedCardCol);
-        }
+            }
+        } else selectURL(clickedCardCol);
     });
 
     // Modifying selected URL
     $(document).on('click', '.selected.button', function (e) {
         e.stopPropagation();
-        console.log(e.target)
         if (e.target.localName === 'button') {                      // User wants to delete URL from UTub
             let card = $(e.target).closest('.card');
             let deleteURLID = card.attr('urlid');
@@ -285,7 +284,7 @@ function buildURLDeck(dictURLs, dictTags) {
         $(accessURL).attr({
             'class': 'card-link btn btn-primary',
             'type': 'button',
-            'onclick': "accessLink(" + url + ")"
+            'onclick': "accessLink('" + url + "')"
         })
         accessURL.innerHTML = "Access Link"
 
@@ -486,6 +485,7 @@ function resetUTubs() {
 
 function accessLink(url_string) {
     // Take user to a new tab with interstitial page warning they are now leaving U4I
+    console.log(url_string)
     if (!url_string.startsWith('https://')) {
         window.open('https://' + selectedURL.url_string, "_blank");
     } else {
@@ -494,38 +494,54 @@ function accessLink(url_string) {
 }
 
 function addTag(selectedUTubID, selectedURLid) {
+    let urlTagDeck = $('.selected').find('.URLTags');
     // Create temporary, editable element
     let tagInput = document.createElement('input');
+    let newTag = document.createElement('span');
     $(tagInput).attr({
         'type': 'text',
         'id': 'newTag',
         'class': 'tag'
     })
-    $('.selected.URLTags').append(tagInput)
+    urlTagDeck.append(tagInput);
+    $('#newTag').focus();
 
-    $(document).on("blur", '#newTag', function (event) {
-        event.preventDefault();
-        console.log($('#newTag'))
+    $('#newTag').bind('blur keyup', function (e) {
         var tagText = $(this).val();
-        console.log(tagText)
-        let request = $.ajax({
-            url: "/add_tag/" + selectedUTubID + "/" + selectedURLid,
-            type: 'POST',
-            data: tagText
-        });
-        request.done(function (response, textStatus, xhr) {
-            if (xhr.status == 200) {
+        if (tagText == '') return;
+        if (e.type === 'blur') {
+            let request = $.ajax({
+                url: "/add_tag/" + selectedUTubID + "/" + selectedURLid,
+                type: 'POST',
+                data: tagText
+            });
 
-                // Create final display element
-                let tagSpan = document.createElement('span');
-                $(tagSpan).attr({
-                    'class': 'tag',
-                    'tagid': response.id,
-                    'value': response.tag_string
-                })
-                $('.selected.URLTags').append(tagSpan)
-            }
-        })
+            // $(newTag).attr({
+            //     'tagid': '1',
+            //     'class': 'tag'
+            // })
+
+            // newTag.innerHTML = tagText;
+            // console.log(newTag.innerHTML)
+            // $('#newTag').remove();
+            // urlTagDeck.append(newTag);
+
+            request.done(function (response, textStatus, xhr) {
+                if (xhr.status == 200) {
+                    console.log(response)
+
+                    // Create final display element
+                    let tagSpan = document.createElement('span');
+                    $(tagSpan).attr({
+                        'tagid': '1',
+                        'class': 'tag',
+                        'tagid': response.id,
+                        'value': response.tag_string
+                    })
+                    $('.selected.URLTags').append(tagSpan)
+                }
+            })
+        }
     })
 
 }
@@ -534,7 +550,6 @@ function editURL(selectedUTubID, selectedURLid) {
     var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";  // Find URL HTML with selected ID          
     var URLStringField = $(jQuerySel).find('p.card-text');  // Find URL HTML with selected ID          
     var url = URLStringField[0].innerHTML;    // Store pre-edit values
-    console.log(url)
 
     $(URLStringField).html('');     // Clear url card-text
     $('<input></input>').attr({     // Replace with temporary input
@@ -546,20 +561,26 @@ function editURL(selectedUTubID, selectedURLid) {
     }).appendTo($(URLStringField));
     $('#edit_url').focus();
 
-    // await response somehow...second click edit button inserts html into input text field instead of URL
-    await($(document).on("blur", '#edit_url', function () {
-        console.log($('#edit_url'))
-        var urlText = $(this).val();
-        var selectedURLid = $(this).attr('urlid');
-        let request = $.ajax({
-            type: 'post',
-            url: "/edit_url/" + selectedUTubID + "/" + selectedURLid
-        });
-        request.done(function (response, textStatus, xhr) {
-            if (xhr.status == 200) {
-            }
-        })
-    }))
+    $('#edit_url').bind('blur keyup', function (e) {
+        if (e.type === 'blur') {
+            var updatedURLText = $(this).val(); // Need to send this back to the db somehow
+            var selectedURLid = $(this).attr('urlid');
+            let request = $.ajax({
+                type: 'post',
+                url: "/edit_url/" + selectedUTubID + "/" + selectedURLid,
+                data: updatedURLText
+            });
+
+            console.log(URLStringField[0].innerHTML)
+            URLStringField[0].innerHTML = updatedURLText;
+
+            request.done(function (response, textStatus, xhr) {
+                if (xhr.status == 200) {
+                    URLStringField[0].innerHTML = updatedURLText;
+                }
+            })
+        }
+    })
 }
 
 function openModal(route) {

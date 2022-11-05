@@ -118,7 +118,7 @@ input[type=radio]::before, input[type=radio]::after {
 }
 
 span.tag {
-    color: rgb(1, 254, 1);
+    color: rgb(254, 115, 1);
     background: white;
     margin-left: 2px;
     margin-right: 2px;
