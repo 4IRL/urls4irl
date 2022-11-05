@@ -1,12 +1,16 @@
+from audioop import cross
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request, jsonify, abort
 from urls4irl import app, db
 from urls4irl.forms import (UserRegistrationForm, LoginForm, UTubForm, UTubDeleteForm, 
+
                             UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm, UTubDescriptionForm)
 from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, Utub_Users
 from flask_login import login_user, login_required, current_user, logout_user
 from urls4irl.url_validation import InvalidURLError, check_request_head
 from flask_cors import cross_origin
+
+import sys
 
 """#####################        MAIN ROUTES        ###################"""
 
@@ -36,6 +40,7 @@ def home():
     Returns:
         - All UTubIDs if no args
         - Requested UTubID if a valid arg
+
     """
     if not request.args:
         # User got here without any arguments in the URL
@@ -295,6 +300,127 @@ def delete_user(utub_id: int, user_id: int):
 
     return redirect(url_for('home', UTubID=utub_id))
 
+@app.route('/delete_utub/<int:utub_id>', methods=["POST"])
+@login_required
+def delete_utub(utub_id: int):
+    """
+    Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
+    URLS and users.
+
+    https://docs.sqlalchemy.org/en/13/orm/cascades.html#delete
+
+    Args:
+        utub_id (int): The ID of the UTub to be deleted
+    """
+    utub = Utub.query.get(int(utub_id))
+
+    if int(current_user.get_id()) != int(utub.created_by.id):
+        flash("You do not have permission to delete this UTub.", category="danger")
+        return home(), 403
+    
+    else:
+        utub = Utub.query.get(int(utub_id))
+        db.session.delete(utub)
+        db.session.commit()
+        flash("You successfully deleted this UTub.", category="danger")
+
+        return redirect(url_for('home'))
+
+@app.route('/update_utub_desc/<int:utub_id>', methods=["GET", "POST"])
+@login_required
+def update_utub_desc(utub_id: int):
+    """
+    Creator wants to update their UTub description.
+    Description limit is 500 characters.
+    Form data required to be sent from the frontend with a parameter "url_description".
+    
+    On GET:
+            The previous UTub's description is sent as JSON to be included in the form for editing.
+
+    On POST:
+            The new description is saved to the database for that UTub.
+        Requires a JSON in the POST request body.
+    Example:
+    {
+        "utub_description": "New UTub description."
+    }
+
+    Args:
+        utub_id (int): The ID of the UTub that will have its description updated
+    """
+    current_utub = Utub.query.get(int(utub_id))
+    
+    if int(current_user.get_id()) not in [int(member.user_id) for member in current_utub.members]:
+        flash("Not authorized to add a description to this UTub.", category="danger")
+        return home(), 403
+
+    current_utub_description = current_utub.utub_description
+
+    if current_utub_description is None:
+        current_utub_description = ""
+
+    utub_desc_form = UTubDescriptionForm()
+
+    if utub_desc_form.validate_on_submit():
+        new_utub_description = utub_desc_form.utub_description.data
+
+        if new_utub_description != current_utub_description:
+            current_utub.utub_description = new_utub_description
+            db.session.commit()
+
+        return redirect(url_for('home', UTubID=utub_id))
+
+    utub_description_for_get = {
+        "utub_description": current_utub_description
+    }
+    return render_template('add_desc_to_utub.html', desc_form=utub_desc_form, current_utub_desc=utub_description_for_get)
+
+"""#####################        END UTUB INVOLVED ROUTES        ###################"""
+
+"""#####################        USER INVOLVED ROUTES        ###################"""
+
+@app.route('/delete_user/<int:utub_id>/<int:user_id>',  methods=["POST"])
+@login_required
+def delete_user(utub_id: int, user_id: int):
+    """
+    Delete a user from a Utub. The creator of the Utub can delete anyone but themselves.
+    Any user can remove themselves from a UTub they did not create.
+
+    Args:
+        utub_id (int): ID of the UTub to remove the user from
+        user_id (int): ID of the User to remove from the UTub
+    """
+    current_utub = Utub.query.get(int(utub_id))
+
+    if int(user_id) == int(current_utub.created_by.id):
+        # Creator tried to delete themselves
+        flash("Creator of a UTub cannot be removed.", category="danger")
+        return home(), 400
+
+    current_user_ids_in_utub = [int(member.user_id) for member in current_utub.members]
+
+    if int(user_id) not in current_user_ids_in_utub:
+        # User not in this Utub
+        flash("Can't remove a user that isn't in this UTub.", category="danger")
+        return home(), 400
+
+    if int(current_user.get_id()) == int(current_utub.created_by.id):
+        # Creator of utub wants to delete someone
+        user_to_delete_in_utub = [member_to_delete for member_to_delete in current_utub.members if int(user_id) == (member_to_delete.user_id)][0]
+
+    elif int(current_user.get_id()) in current_user_ids_in_utub and int(user_id) == int(current_user.get_id()):
+        # User in this UTub and user wants to remove themself
+        user_to_delete_in_utub = [member_to_delete for member_to_delete in current_utub.members if int(user_id) == (member_to_delete.user_id)][0]
+
+    else:
+        flash("Error: Only the creator of a UTub can delete other users. Only you can remove yourself.", category="danger")
+        return home, 403
+    
+    current_utub.members.remove(user_to_delete_in_utub)
+    db.session.commit()
+
+    return redirect(url_for('home', UTubID=utub_id))
+
 @app.route('/add_user/<int:utub_id>', methods=["GET", "POST"])
 @login_required
 def add_user(utub_id: int):
@@ -348,7 +474,6 @@ def delete_url(utub_id: int, url_id: int):
         utub_id (int): The ID of the UTub that contains the URL to be deleted
         url_id (int): The ID of the URL to be deleted
     """
-    print("here")
     utub = Utub.query.get(int(utub_id))
     owner_id = int(utub.created_by.id)
     
@@ -395,6 +520,7 @@ def add_url(utub_id: int):
 
     if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
         flash("Not authorized to add a URL to this UTub", category="danger")
+
         return home(), 403
 
     utub_new_url_form = UTubNewURLForm()
@@ -408,6 +534,7 @@ def add_url(utub_id: int):
         except InvalidURLError:
             flash(f"Invalid URL.", category="danger")
             return render_template('_add_url_form.html', utub_new_url_form=utub_new_url_form), 400
+
 
         else: 
             # Get URL if already created
@@ -423,7 +550,9 @@ def add_url(utub_id: int):
                 if already_created_url in urls_in_utub:
                     # URL already in UTUB
                     flash(f"URL already in UTub", category="info")
+
                     return render_template('_add_url_form.html', utub_new_url_form=utub_new_url_form), 400
+
 
                 url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
 

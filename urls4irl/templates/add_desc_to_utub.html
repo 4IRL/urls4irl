@@ -3,24 +3,25 @@
 
 <div class="d-flex justify-content-center">
     <form method="POST" action="" novalidate>
-        {{ url_tag_form.hidden_tag() }}
+        {{ desc_form.hidden_tag() }}
         <fieldset class="form-group">
-            <legend class="border-bottom mb-4">Add a URL tag to this UTub!</legend>
+            <legend class="border-bottom mb-4">Add a Description to this UTub!</legend>
+            <legend class="border-bottom mb-4">Current Utub Desc: {{ current_utub_desc }}</legend>
             <div class="form-group">
-                {{ url_tag_form.tag_string.label(class="form-control-label")}}
-                {% if url_tag_form.tag_string.errors %}
-                    {{ url_tag_form.tag_string(class="form-control form-control-lg is-invalid") }}
+                {{ desc_form.utub_description.label(class="form-control-label")}}
+                {% if desc_form.utub_description.errors %}
+                    {{ desc_form.utub_description(class="form-control form-control-lg is-invalid") }}
                     <div class="invalid-feedback">
-                        {% for error in url_tag_form.tag_string.errors %}
+                        {% for error in desc_form.utub_description.errors %}
                             <span>{{ error }}</span>
                         {% endfor %}
                     </div>
                 {% else %}
-                    {{ url_tag_form.tag_string(class="form-control form-control-lg")}}
+                    {{ desc_form.utub_description(class="form-control form-control-lg")}}
                 {% endif %}
             </div>
         <div class="form-group d-flex justify-content-center">
-            {{ url_tag_form.submit(class="btn btn-primary col-12")}}
+            {{ desc_form.submit(class="btn btn-primary col-12")}}
         </div>
     </form>
 </div>
