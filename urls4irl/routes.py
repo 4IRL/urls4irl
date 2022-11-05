@@ -21,7 +21,6 @@ def splash():
     user = User.query.filter_by(username=username).first()
     login_user(user) 
     return redirect(url_for('home'))
-    #return render_template('splash.html')
 
 @app.route('/home', methods=["GET"])
 @login_required
