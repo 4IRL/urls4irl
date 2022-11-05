@@ -1,11 +1,19 @@
-{% extends "layout.html" %}
-{% block content %}
+<script type="text/javascript">
+    if (document.querySelector('head').childElementCount === 1) {
+        window.location.href = '/home';
+    };
+</script>
 
-<div class="d-flex justify-content-center">
-    <form method="POST" action="" novalidate>
+<form id="ModalForm" name="stepForm" class="form" method="post" action="" novalidate>
+    <div class="modal-header" >
+        <h4 class="modal-title">Add a URL!</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body" id="modal-body">        
         {{ utub_new_url_form.hidden_tag() }}
         <fieldset class="form-group">
-            <legend class="border-bottom mb-4">Add a URL to this UTub!</legend>
             <div class="form-group">
                 {{ utub_new_url_form.url_string.label(class="form-control-label")}}
                 {% if utub_new_url_form.url_string.errors %}
@@ -19,23 +27,10 @@
                     {{ utub_new_url_form.url_string(class="form-control form-control-lg")}}
                 {% endif %}
             </div>
-            <!-- insert field for tags -->
-        <div class="form-group d-flex justify-content-center">
-            {{ utub_new_url_form.submit(class="btn btn-primary col-12")}}
-        </div>
-    </form>
-</div>
-<div class="d-flex justify-content-center">
-    <div class="border-top pt-3 px-3">
-        <small class="text-muted">
-            <a href="{{url_for('home')}}">Back to Home</a>
-        </small>
+        </fieldset>
     </div>
-    <div class="border-top pt-3 px-3">
-        <small class="text-muted">
-            <a href="{{url_for('logout')}}">Logout</a>
-        </small>
+    <div class="modal-footer">
+        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
+        {{ utub_new_url_form.submit(class="btn btn-success")}}
     </div>
-</div>
-
-{% endblock content %}
+</form>
