@@ -1,6 +1,10 @@
 // UI Interactions
 $(document).ready(function () {
 
+    $(document).click(function (e) {
+        console.log($(e.target)[0])
+    });
+
     // CSRF token initialization for non-modal POST requests
     var csrftoken = $('meta[name=csrf-token]').attr('content');
     $.ajaxSetup({
@@ -25,29 +29,20 @@ $(document).ready(function () {
 
     // Selected URL
     $(document).on('click', '.card', function (e) {
-        var clickedCardCol = $(e.target).closest('.cardCol');
-        var clickedCard = clickedCardCol.find('.card');
+        var el = e.target.type;                                 // Element type
+        var clickedCardCol = $(e.target).closest('.cardCol');   // Card column
+        var clickedCard = clickedCardCol.find('.card');         // Card
 
-        if (clickedCard.hasClass("selected")) {
-            if (!$(e.target).is('button') && !$(e.target).is('input')) {
+        console.log(el)
+        if (el == 'button' || el == 'text') {
+            // Do nothing. onclick function will handle user inputs
+        } else {
+            if (clickedCard.hasClass("selected")) {
                 $('.cardCol').each(function () {
                     $('#UPRRow').append(this)
                 })
                 deselectURL(clickedCardCol);
-            }
-        } else selectURL(clickedCardCol);
-    });
-
-    // Modifying selected URL
-    $(document).on('click', '.selected.button', function (e) {
-        e.stopPropagation();
-        if (e.target.localName === 'button') {                      // User wants to delete URL from UTub
-            let card = $(e.target).closest('.card');
-            let deleteURLID = card.attr('urlid');
-
-            deleteURL(deleteURLID)
-        } else if (e.target.localName === 'input') {                // User wants to edit URL Info
-
+            } else selectURL(clickedCardCol);
         }
     });
 
@@ -291,14 +286,14 @@ function buildURLDeck(dictURLs, dictTags) {
         $(addTag).attr({
             'class': 'card-link btn btn-info',
             'type': 'button',
-            'onclick': "addTag(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
+            'onclick': "cardEdit(" + selectedUTubID + "," + dictURLs[i].url_id + ",'tag')"
         })
         addTag.innerHTML = "Add Tag"
 
         $(editURL).attr({
             'class': 'card-link btn btn-warning',
             'type': 'button',
-            'onclick': "editURL(" + selectedUTubID + "," + dictURLs[i].url_id + ")"
+            'onclick': "cardEdit(" + selectedUTubID + "," + dictURLs[i].url_id + ",'url')"
         })
         editURL.innerHTML = "Edit URL"
 
@@ -356,35 +351,33 @@ function tagBadgeBuilder(utubID, urlID, tagDetails) {
     return tagElem;
 };
 
-// A URL is already selected, user would like to unselect (potentially select another)
+// A URL is already selected, user would like to unselect (or potentially select another)
 function deselectURL(deselectedCardCol) {
     var card = deselectedCardCol.find('.card');
     deselectedCardCol.addClass('col-lg-4 col-xl-3');
     deselectedCardCol.removeClass('col-lg-10 col-xl-10');
     card.removeClass('selected');
-    card.find('.close').css('display', 'none');
     card.find('.URLTags').css('display', 'none');
     card.find('.URLOptions').css('display', 'none');
 }
 
-// User selects a URL
+// User selects a URL. All other URLs are deselected. This function places all URLs prior to selected URL into #UPRRow, inserts selected URL into a separate #URLFocusRow, and places all subsequent URLs into #LWRRow. It also adjusts css displays accordingly
 function selectURL(selectedCardCol) {
     var selectedURLid = selectedCardCol.find('.card').attr('urlid')
-
     var cardCols = $('.cardCol');
 
     let rowToggle = 1; // ? Add to UPR row : Add to LWR row
     var activeRow = $('#UPRRow');
 
+    // Loop through all cardCols and add to UPR row until selected URL card, then subsequent cardCols are added to LWR row
     for (let i = 0; i < cardCols.length; i++) {
         let card = $(cardCols[i]).find('.card');
         let URLid = card.attr('urlid');
 
-        if (URLid == selectedURLid) {
+        if (URLid == selectedURLid) {               //
             $('#URLFocusRow').append(cardCols[i]);
             $(cardCols[i]).toggleClass('col-lg-10 col-lg-4 col-xl-10 col-xl-3')
             card.addClass('selected')
-            card.find('.close').css('display', '');
             card.find('.URLTags').css('display', '');
             card.find('.URLOptions').css('display', '');
             rowToggle = 0;
@@ -493,95 +486,224 @@ function accessLink(url_string) {
     }
 }
 
-function addTag(selectedUTubID, selectedURLid) {
-    let urlTagDeck = $('.selected').find('.URLTags');
-    // Create temporary, editable element
-    let tagInput = document.createElement('input');
-    let newTag = document.createElement('span');
-    $(tagInput).attr({
-        'type': 'text',
-        'id': 'newTag',
-        'class': 'tag'
-    })
-    urlTagDeck.append(tagInput);
-    $('#newTag').focus();
+// function addTag(selectedUTubID, selectedURLid) {
+//     let urlTagDeck = $('.selected').find('.URLTags');
+//     // Create temporary, editable element
+//     let tagInput = document.createElement('input');
+//     let newTag = document.createElement('span');
+//     $(tagInput).attr({
+//         'type': 'text',
+//         'id': 'newTag',
+//         'class': 'tag'
+//     })
+//     urlTagDeck.append(tagInput);
+//     $('#newTag').focus();
 
-    $('#newTag').bind('blur keyup', function (e) {
-        var tagText = $(this).val();
-        if (tagText == '') return;
-        if (e.type === 'blur') {
+//     $('#newTag').bind('blur keyup', function (e) {
+//         var tagText = $(this).val();
+//         if (tagText == '') return;
+//         if (e.type === 'blur') {
+//             let request = $.ajax({
+//                 url: "/add_tag/" + selectedUTubID + "/" + selectedURLid,
+//                 type: 'POST',
+//                 data: tagText
+//             });
+
+//             // $(newTag).attr({
+//             //     'tagid': '1',
+//             //     'class': 'tag'
+//             // })
+
+//             // newTag.innerHTML = tagText;
+//             // console.log(newTag.innerHTML)
+//             // $('#newTag').remove();
+//             // urlTagDeck.append(newTag);
+
+//             request.done(function (response, textStatus, xhr) {
+//                 if (xhr.status == 200) {
+//                     console.log(response)
+
+//                     // Create final display element
+//                     let tagSpan = document.createElement('span');
+//                     $(tagSpan).attr({
+//                         'tagid': '1',
+//                         'class': 'tag',
+//                         'tagid': response.id,
+//                         'value': response.tag_string
+//                     })
+//                     $('.selected.URLTags').append(tagSpan)
+//                 }
+//             })
+//         }
+//     })
+
+// }
+
+function addTag(selectedUTubID, selectedURLid) {
+    var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID          
+    var cardTagDeck = $(jQuerySel).find('div.URLTags');                 // Find appropriate card element
+
+    if ($('#new_tag').length) $('#new_tag').focus()
+    else {
+        $('<input></input>').attr({     // Replace with temporary input
+            'type': 'text',
+            'id': 'new_tag',
+            'size': '30'
+        }).appendTo($(cardTagDeck));
+        $('#new_tag').focus()
+    }
+
+    $('#new_tag').bind('blur keyup', function (e) {
+        var keycode = (e.keyCode ? e.keyCode : e.which);
+        if (e.type === 'blur' || keycode == '13') {
+            var tagText = $(this).val();                    // Need to send this back to the db somehow
             let request = $.ajax({
+                type: 'post',
                 url: "/add_tag/" + selectedUTubID + "/" + selectedURLid,
-                type: 'POST',
                 data: tagText
             });
 
-            // $(newTag).attr({
-            //     'tagid': '1',
-            //     'class': 'tag'
-            // })
-
-            // newTag.innerHTML = tagText;
-            // console.log(newTag.innerHTML)
-            // $('#newTag').remove();
-            // urlTagDeck.append(newTag);
-
             request.done(function (response, textStatus, xhr) {
                 if (xhr.status == 200) {
-                    console.log(response)
-
-                    // Create final display element
-                    let tagSpan = document.createElement('span');
-                    $(tagSpan).attr({
-                        'tagid': '1',
-                        'class': 'tag',
-                        'tagid': response.id,
-                        'value': response.tag_string
-                    })
-                    $('.selected.URLTags').append(tagSpan)
-                }
-            })
-        }
-    })
-
-}
-
-function editURL(selectedUTubID, selectedURLid) {
-    var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";  // Find URL HTML with selected ID          
-    var URLStringField = $(jQuerySel).find('p.card-text');  // Find URL HTML with selected ID          
-    var url = URLStringField[0].innerHTML;    // Store pre-edit values
-
-    $(URLStringField).html('');     // Clear url card-text
-    $('<input></input>').attr({     // Replace with temporary input
-        'type': 'text',
-        'id': 'edit_url',
-        'urlid': selectedURLid,
-        'size': '30',
-        'value': url
-    }).appendTo($(URLStringField));
-    $('#edit_url').focus();
-
-    $('#edit_url').bind('blur keyup', function (e) {
-        if (e.type === 'blur') {
-            var updatedURLText = $(this).val(); // Need to send this back to the db somehow
-            var selectedURLid = $(this).attr('urlid');
-            let request = $.ajax({
-                type: 'post',
-                url: "/edit_url/" + selectedUTubID + "/" + selectedURLid,
-                data: updatedURLText
-            });
-
-            console.log(URLStringField[0].innerHTML)
-            URLStringField[0].innerHTML = updatedURLText;
-
-            request.done(function (response, textStatus, xhr) {
-                if (xhr.status == 200) {
+                    cardTagDeck[0].innerHTML = updatedURLText;
+                } else {
+                    console.log("Didn't work yet but I'll let it slide for now (needs POST route)")
                     URLStringField[0].innerHTML = updatedURLText;
                 }
             })
         }
     })
 }
+
+function cardEdit(selectedUTubID, selectedURLid, infoType) {
+    var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID   
+    if (infoType == 'tag') {
+        var inputParent = $(jQuerySel).find('div.URLTags');     // Find appropriate card element
+        var initString = '';
+        var inputEl = $('#new_tag');                            // Temporary input text element
+        var inputID = 'new_tag';
+        var postURL = '/add_tag/';
+    } else {
+        var inputParent = $(jQuerySel).find('p.card-text');     // Find appropriate card element         
+        var initString = inputParent[0].innerText;              // Store pre-edit values
+        var originalURL = inputParent[0].innerText;             // Store pre-edit values
+        $(inputParent).html('');                                // Clear url card-text
+        var inputEl = $('#edit_url');                           // Temporary input text element
+        var inputID = 'edit_url';
+        var postURL = '/edit_url/';
+    }
+
+    if (inputEl.length > 0) {
+        let end = inputEl[0].value.length;
+        inputEl.focus();
+        inputEl[0].setSelectionRange(0, end);
+    } else {
+        $('<input></input>').attr({     // Replace with temporary input
+            'type': 'text',
+            'id': inputID,
+            'size': '30',
+            'value': initString
+        }).appendTo($(inputParent));
+
+        inputEl = $('#' + inputID);
+        let end = inputEl[0].value.length;
+        inputEl.focus();
+        inputEl[0].setSelectionRange(0, end);
+    }
+
+    inputEl.bind('keyup', function (e) {
+        if (e.keyCode === 13) {
+            e.target.blur();
+        }
+    })
+
+    inputEl.bind('blur', function (e) {
+        // Still need to handle corner case where user clicks another button while inputEl is empty
+
+        // Following code needs to be moved into request.done once routes are set up
+        if (infoType == 'url') {
+            if (inputEl[0].value == "") {
+                inputParent[0].innerHTML = originalURL;
+            } else {
+                inputParent[0].innerHTML = inputEl[0].value;
+            }
+        } else {
+            if (inputEl[0].value != "") {
+                $('<span></span>').attr({     // Replace with temporary input
+                    'class': 'tag',
+                    'tagid': 0,
+                }).appendTo($(inputParent));
+                $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value
+            }
+
+            inputEl.remove();
+        }
+
+        if (inputEl[0].value != "") {
+            let request = $.ajax({
+                type: 'post',
+                url: postURL + selectedUTubID + "/" + selectedURLid,
+                data: inputEl[0].value
+            });
+
+            request.done(function (response, textStatus, xhr) {
+                if (xhr.status == 200) {
+                    // Code after $.ajax needs to be here.
+                }
+            })
+        }
+    })
+}
+
+// function editURL(selectedUTubID, selectedURLid) {
+//     var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID          
+//     var URLStringEl = $(jQuerySel).find('p.card-text');                 // Find appropriate card element         
+//     var URLString = URLStringEl[0].innerHTML;                           // Store pre-edit values
+//     var inputEl = $('#edit_url');                                       // Temporary input text element
+
+//     if (inputEl.length) {
+//         let end = inputEl[0].value.length;
+//         inputEl.focus();
+//         inputEl[0].setSelectionRange(0, end);
+//     } else {
+//         $(URLStringEl).html('');        // Clear url card-text
+//         $('<input></input>').attr({     // Replace with temporary input
+//             'type': 'text',
+//             'id': 'edit_url',
+//             'size': '20',
+//             'value': URLString
+//         }).appendTo($(URLStringEl));
+
+//         inputEl = $('#edit_url');
+//         let end = inputEl[0].value.length;
+//         inputEl.focus();
+//         inputEl[0].setSelectionRange(0, end);
+//     }
+
+//     inputEl.bind('keyup', function (e) {
+//         if (e.keyCode === 13) {
+//             e.target.blur();
+//         }
+//     })
+
+//     inputEl.bind('blur', function (e) {
+//         var updatedURLText = $(this).val();             // Need to send this back to the db somehow
+//         let request = $.ajax({
+//             type: 'post',
+//             url: "/edit_url/" + selectedUTubID + "/" + selectedURLid,
+//             data: updatedURLText
+//         });
+
+//         URLStringEl[0].innerHTML = updatedURLText;
+
+//         request.done(function (response, textStatus, xhr) {
+//             console.log(updatedURLText)
+//             if (xhr.status == 200) {
+//                 URLStringEl[0].innerHTML = updatedURLText;
+//             }
+//         })
+//     })
+// }
 
 function openModal(route) {
     console.log(route)
