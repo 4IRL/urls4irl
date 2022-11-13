@@ -1,11 +1,3 @@
-"""
-Forms that are needed to be built here:
-UTub building form
-URL Creation form
-Tag form?
-
-"""
-
 from flask import Flask
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
@@ -78,6 +70,7 @@ class UTubForm(FlaskForm):
 
     submit = SubmitField('Create UTub!')
 
+
 class UTubNewNameForm(FlaskForm):
     """
     Form to edit a UTub name. Inherits from FlaskForm. All fields require data.
@@ -89,13 +82,7 @@ class UTubNewNameForm(FlaskForm):
     name = StringField('UTub Name', validators=[InputRequired(), Length(min=1, max=30)])
 
     submit = SubmitField('Edit UTub title!')
-    
-class UTubDeleteForm(FlaskForm):
-    """
-    Form to delete a UTub.
-    """
 
-    submit = SubmitField('Delete this UTub!')
 
 class UTubDescriptionForm(FlaskForm):
     """
@@ -131,6 +118,7 @@ class UTubNewUserForm(FlaskForm):
 
         if not username_exists:
             raise ValidationError('That user does not exist. Note this is case sensitive.')
+
 
 class UTubRemoveUserForm(FlaskForm):
     """
@@ -169,6 +157,7 @@ class UTubNewURLForm(FlaskForm):
 
     #TODO Add validation for the URL here..
 
+
 class UTubEditURLForm(FlaskForm):
     """
     Form to edit a URL in this UTub. Inherits from FlaskForm.
@@ -183,6 +172,7 @@ class UTubEditURLForm(FlaskForm):
 
     #TODO Add validation for the URL here..
 
+
 class UTubEditURLDescriptionForm(FlaskForm):
     """
     Form to edit a URL in this UTub. Inherits from FlaskForm.
@@ -194,13 +184,6 @@ class UTubEditURLDescriptionForm(FlaskForm):
     url_description = StringField('URL Description', validators=[Length(min=1, max=100)])
 
     submit = SubmitField('Edit URL Description!')
-
-class UTubRemoveURLForm(FlaskForm):
-    """
-    Form to remove a URL in this UTub. Inherits from FlaskForm.
-    """
-
-    submit = SubmitField('Remove URL!')
 
 
 class UTubNewUrlTagForm(FlaskForm):
