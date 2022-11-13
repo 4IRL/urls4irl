@@ -14,7 +14,8 @@ from urls4irl.models import User, URLS
 
 
 class UserRegistrationForm(FlaskForm):
-    """Form to register users. Inherits from FlaskForm. All fields require data.
+    """
+    Form to register users. Inherits from FlaskForm. All fields require data.
 
     Fields:
         username (StringField): Length Requirements? Must be a unique username
@@ -49,7 +50,8 @@ class UserRegistrationForm(FlaskForm):
         
 
 class LoginForm(FlaskForm):
-    """Form to login users. Inherits from FlaskForm. All fields require data.
+    """
+    Form to login users. Inherits from FlaskForm. All fields require data.
 
     Fields:
         ### TODO Email or username to login? (Stringfield): The user
@@ -64,7 +66,8 @@ class LoginForm(FlaskForm):
 
 
 class UTubForm(FlaskForm):
-    """Form to create a UTub. Inherits from FlaskForm. All fields require data.
+    """
+    Form to create a UTub. Inherits from FlaskForm. All fields require data.
 
     Fields:
         name (Stringfield): Maximum 30 chars? TODO
@@ -74,15 +77,32 @@ class UTubForm(FlaskForm):
     description = StringField('UTub Description', validators=[Length(max=500)])
 
     submit = SubmitField('Create UTub!')
+
+class UTubNewNameForm(FlaskForm):
+    """
+    Form to edit a UTub name. Inherits from FlaskForm. All fields require data.
+
+    Fields:
+        name (Stringfield): Maximum 30 chars? TODO
+    """
+    
+    name = StringField('UTub Name', validators=[InputRequired(), Length(min=1, max=30)])
+
+    submit = SubmitField('Edit UTub title!')
     
 class UTubDeleteForm(FlaskForm):
-    """Form to delete a UTub.
+    """
+    Form to delete a UTub.
     """
 
     submit = SubmitField('Delete this UTub!')
 
 class UTubDescriptionForm(FlaskForm):
-    """Form to add a description to the UTub.
+    """
+    Form to add a description to the UTub.
+
+    To pre-populate forms:
+    https://stackoverflow.com/questions/35892144/pre-populate-an-edit-form-with-wtforms-and-flask
 
     Fields:
         utub_description (Stringfield): Maximum 500 chars? TODO
@@ -94,7 +114,8 @@ class UTubDescriptionForm(FlaskForm):
 
 
 class UTubNewUserForm(FlaskForm):
-    """Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.
+    """
+    Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.
 
     Fields:
         username (Stringfield): Maximum 30 chars? TODO
@@ -111,23 +132,80 @@ class UTubNewUserForm(FlaskForm):
         if not username_exists:
             raise ValidationError('That user does not exist. Note this is case sensitive.')
 
-
-class UTubNewURLForm(FlaskForm):
-    """Form to add a URL to a UTub. Inherits from FlaskForm. All fields require data.
+class UTubRemoveUserForm(FlaskForm):
+    """
+    Form to remove user to a UTub. Inherits from FlaskForm. All fields require data.
 
     Fields:
-        URL (Stringfield): Maximum 2000 chars? TODO
+        username (Stringfield): Maximum 30 chars? TODO
+    """
+    
+    # IN PROGRESS TODO
+    username = StringField('Username', validators=[InputRequired(), Length(min=1, max=30)])
+
+    submit = SubmitField('Add to this UTub!')
+
+    def validate_username(self, username):
+        """Validates username is unique in the db"""
+        username_exists = User.query.filter_by(username=username.data).first()
+
+        if not username_exists:
+            raise ValidationError('That user does not exist. Note this is case sensitive.')
+
+
+class UTubNewURLForm(FlaskForm):
+    """
+    Form to add a URL to a UTub. Inherits from FlaskForm.
+
+    Fields:
+        URL (Stringfield): Required. Maximum 2000 chars? TODO
+        URL Description (Stringfield): Not required. Maximum 100 chars? TODO
     """
     
     url_string = StringField('URL', validators=[InputRequired(), Length(min=1, max=2000)])
+    url_description = StringField('URL Description', validators=[Length(min=1, max=100)])
 
     submit = SubmitField('Add URL to this UTub!')
 
     #TODO Add validation for the URL here..
 
+class UTubEditURLForm(FlaskForm):
+    """
+    Form to edit a URL in this UTub. Inherits from FlaskForm.
+
+    Fields:
+        URL (Stringfield): Required. Maximum 2000 chars? TODO
+    """
+    
+    url_string = StringField('URL', validators=[Length(min=1, max=2000)])
+
+    submit = SubmitField('Edit URL!')
+
+    #TODO Add validation for the URL here..
+
+class UTubEditURLDescriptionForm(FlaskForm):
+    """
+    Form to edit a URL in this UTub. Inherits from FlaskForm.
+
+    Fields:
+        URL (Stringfield): Required. Maximum 2000 chars? TODO
+    """
+    
+    url_description = StringField('URL Description', validators=[Length(min=1, max=100)])
+
+    submit = SubmitField('Edit URL Description!')
+
+class UTubRemoveURLForm(FlaskForm):
+    """
+    Form to remove a URL in this UTub. Inherits from FlaskForm.
+    """
+
+    submit = SubmitField('Remove URL!')
+
 
 class UTubNewUrlTagForm(FlaskForm):
-    """Form to add a tag to a URL in a Utub.
+    """
+    Form to add a tag to a URL in a Utub.
 
     Fields:
         tag_string (Stringfield): Maximum 30 chars? TODO
