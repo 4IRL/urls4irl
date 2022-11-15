@@ -1,8 +1,7 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request, jsonify, abort
 from urls4irl import app, db
-from urls4irl.forms import (UserRegistrationForm, LoginForm, UTubForm, UTubDeleteForm, 
-
+from urls4irl.forms import (UserRegistrationForm, LoginForm, UTubForm, 
                             UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm, UTubDescriptionForm)
 from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, Utub_Users
 from flask_login import login_user, login_required, current_user, logout_user
