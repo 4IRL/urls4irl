@@ -166,7 +166,7 @@ def create_utub():
     # flash("Okay let's get you a new UTub!", category="primary")
     return render_template('_create_utub_form.html', utub_form=utub_form)   
 
-@app.route('/delete_utub/<int:utub_id>', methods=["GET", "POST"])
+@app.route('/delete_utub/<int:utub_id>', methods=["POST"])
 @login_required
 def delete_utub(utub_id: int):
     """
@@ -178,27 +178,21 @@ def delete_utub(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub to be deleted
     """
-    utub_delete_form = UTubDeleteForm()
+    try:
+        utub_id_to_delete = int(utub_id)
+    except ValueError: 
+        return jsonify({"Error": "You don't have permission to delete this UTub!"}), 404
 
-    if request.method == "GET":
-        return render_template('_delete_utub_form.html', utub_delete_form=utub_delete_form)
+    utub = Utub.query.get_or_404(utub_id_to_delete)
 
+    if int(current_user.get_id()) != int(utub.created_by.id):  
+        return jsonify({"Error": "You don't have permission to delete this UTub!"}), 403
+    
     else:
-        try:
-            utub_id_to_delete = int(utub_id)
-        except ValueError: 
-            return jsonify({"Error": "You don't have permission to delete this UTub!"}), 404
-
-        utub = Utub.query.get_or_404(utub_id_to_delete)
-
-        if int(current_user.get_id()) != int(utub.created_by.id):  
-            return jsonify({"Error": "You don't have permission to delete this UTub!"}), 403
-        
-        else:
-            utub = Utub.query.get(int(utub_id))
-            db.session.delete(utub)
-            db.session.commit()
-            return jsonify({"UtubID" : f"{utub.id}", "UtubName" : f"{utub.name}"})
+        utub = Utub.query.get(int(utub_id))
+        db.session.delete(utub)
+        db.session.commit()
+        return jsonify({"UtubID" : f"{utub.id}", "UtubName" : f"{utub.name}"})
 
 @app.route('/update_utub_desc/<int:utub_id>', methods=["GET", "POST"])
 @login_required
