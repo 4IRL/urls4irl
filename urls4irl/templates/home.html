@@ -24,6 +24,17 @@
         <div class="deckContent">
             <form></form>
         </div>
+
+        <div id="UTubActions" class="row">
+            <div class="col-6 col-lg-6">
+                <a class="btn btn-danger mx-3" id="deleteUTub" modal-target="#"
+                    onclick="openModal(this.getAttribute('modal-target'))"><b>Delete UTub</b></a>
+            </div>
+            <div class="col-6 col-lg-6">
+                <a class="btn btn-danger mx-3" id="editUTub" modal-target="#"
+                    onclick="openModal(this.getAttribute('modal-target'))"><b>Edit UTub</b></a>
+            </div>
+        </div>
     </div>
 
 
@@ -116,10 +127,6 @@
             <div class="col-4 col-lg-4 text-center">
                 <a class="btn btn-warning mx-3" id="removeUser" modal-target="#"
                     onclick="openModal(this.getAttribute('modal-target'))"><b>Remove Selected User</b></a>
-            </div>
-            <div class="col-4 col-lg-4 text-right">
-                <a class="btn btn-danger mx-3" id="deleteUTub" modal-target="#"
-                    onclick="openModal(this.getAttribute('modal-target'))"><b>Delete Current UTub</b></a>
             </div>
         </div>
 

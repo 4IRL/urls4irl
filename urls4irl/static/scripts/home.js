@@ -249,9 +249,7 @@ function buildURLDeck(dictURLs, dictTags) {
         urlDescription.innerHTML = dictURLs[i].url_description ? dictURLs[i].url_description : ''
 
         $(urlString).attr({ 'class': 'card-text' })
-        let url = dictURLs[i].url_string
-        dispURL = url.substring(0, url.length - 1)
-        urlString.innerHTML = dispURL.split('https://')[1]
+        urlString.innerHTML = dictURLs[i].url_string;
 
         $(urlTags).attr({ 'class': 'card-body URLTags', 'style': 'display: none' })
 
@@ -279,7 +277,7 @@ function buildURLDeck(dictURLs, dictTags) {
         $(accessURL).attr({
             'class': 'card-link btn btn-primary',
             'type': 'button',
-            'onclick': "accessLink('" + url + "')"
+            'onclick': "accessLink('" + dictURLs[i].url_string + "')"
         })
         accessURL.innerHTML = "Access Link"
 
@@ -598,6 +596,11 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
         inputEl.focus();
         inputEl[0].setSelectionRange(0, end);
     } else {
+        var route = postURL + selectedUTubID + "/" + selectedURLid;
+        $.get(route, function (formHtml) {
+
+        })
+
         $('<input></input>').attr({     // Replace with temporary input
             'type': 'text',
             'id': inputID,
@@ -633,7 +636,7 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
                     'class': 'tag',
                     'tagid': 0,
                 }).appendTo($(inputParent));
-                $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value
+                $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value  // here's where things go to shit
             }
 
             inputEl.remove();
