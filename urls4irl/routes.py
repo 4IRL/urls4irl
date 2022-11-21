@@ -1,8 +1,7 @@
 from werkzeug.security import check_password_hash, generate_password_hash
 from flask import render_template, url_for, redirect, flash, request, jsonify, abort
 from urls4irl import app, db
-from urls4irl.forms import (UserRegistrationForm, LoginForm, UTubForm, UTubDeleteForm, 
-
+from urls4irl.forms import (UserRegistrationForm, LoginForm, UTubForm,
                             UTubNewUserForm, UTubNewURLForm, UTubNewUrlTagForm, UTubDescriptionForm)
 from urls4irl.models import User, Utub, URLS, Utub_Urls, Tags, Url_Tags, Utub_Users
 from flask_login import login_user, login_required, current_user, logout_user
@@ -139,7 +138,7 @@ def register_user():
 
 """#####################        UTUB INVOLVED ROUTES        ###################"""
 
-@app.route('/create_utub', methods=["GET", "POST"])
+@app.route('/utub/new', methods=["POST"])
 @login_required
 def create_utub():
     """
@@ -153,21 +152,29 @@ def create_utub():
 
     if utub_form.validate_on_submit():
         print(utub_form)
-        print(dir(utub_form))
-        print(utub_form.is_submitted())
         name = utub_form.name.data
-        new_utub = Utub(name=name, utub_creator=current_user.get_id())
+        description = utub_form.description.data
+        new_utub = Utub(name=name, utub_creator=current_user.get_id(), utub_description=description)
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = current_user
         new_utub.members.append(creator_to_utub)
         db.session.commit()
-        # flash(f"Successfully made your UTub named {name}", category="success")
-        return jsonify({"UtubID" : f"{new_utub.id}", "UtubName" : f"{new_utub.name}"})
+        
+        # Add time made?
+        return jsonify({
+            "Status": "Success",
+            "UTub_ID" : f"{new_utub.id}", 
+            "UTub_name" : f"{new_utub.name}",
+            "UTub_description" : f"{description}",
+            "UTub_creator_id": f"{current_user.get_id()}"
+        }), 200
 
-    # flash("Okay let's get you a new UTub!", category="primary")
-    return render_template('_create_utub_form.html', utub_form=utub_form)   
+    return jsonify({
+        "Status": "Failure",
+        "Message" : "Unable to generate a new UTub with that information."
+    }), 404  
 
-@app.route('/delete_utub/<int:utub_id>', methods=["GET", "POST"])
+@app.route('/utub/delete/<int:utub_id>', methods=["POST"])
 @login_required
 def delete_utub(utub_id: int):
     """
@@ -179,29 +186,38 @@ def delete_utub(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub to be deleted
     """
-    utub_delete_form = UTubDeleteForm()
+    try:
+        # Is this necessary?
+        utub_id_to_delete = int(utub_id)
 
-    if request.method == "GET":
-        return render_template('_delete_utub_form.html', utub_delete_form=utub_delete_form)
+    except ValueError: 
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "You don't have permission to delete this UTub!"
+        }), 404
 
+    utub = Utub.query.get_or_404(utub_id_to_delete)
+
+    if int(current_user.get_id()) != int(utub.created_by.id):  
+        return jsonify({
+            "Status" : "Failure",
+            "Message": "You don't have permission to delete this UTub!"
+        }), 403
+    
     else:
-        try:
-            utub_id_to_delete = int(utub_id)
-        except ValueError: 
-            return jsonify({"Error": "You don't have permission to delete this UTub!"}), 404
+        utub = Utub.query.get(int(utub_id))
+        db.session.delete(utub)
+        db.session.commit()
 
-        utub = Utub.query.get_or_404(utub_id_to_delete)
+        return jsonify({
+            "Status" : "Success",
+            "Message" : "UTub deleted",
+            "Utub_ID" : f"{utub.id}", 
+            "Utub_name" : f"{utub.name}",
+            "UTub_description" : f"{utub.utub_description}",
+        }), 200
 
-        if int(current_user.get_id()) != int(utub.created_by.id):  
-            return jsonify({"Error": "You don't have permission to delete this UTub!"}), 403
-        
-        else:
-            utub = Utub.query.get(int(utub_id))
-            db.session.delete(utub)
-            db.session.commit()
-            return jsonify({"UtubID" : f"{utub.id}", "UtubName" : f"{utub.name}"})
-
-@app.route('/update_utub_desc/<int:utub_id>', methods=["GET", "POST"])
+@app.route('/utub/edit_description/<int:utub_id>', methods=["POST"])
 @login_required
 def update_utub_desc(utub_id: int):
     """
@@ -209,16 +225,8 @@ def update_utub_desc(utub_id: int):
     Description limit is 500 characters.
     Form data required to be sent from the frontend with a parameter "url_description".
     
-    On GET:
-            The previous UTub's description is sent as JSON to be included in the form for editing.
-
     On POST:
-            The new description is saved to the database for that UTub.
-        Requires a JSON in the POST request body.
-    Example:
-    {
-        "utub_description": "New UTub description."
-    }
+        The new description is saved to the database for that UTub.
 
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
@@ -226,13 +234,13 @@ def update_utub_desc(utub_id: int):
     current_utub = Utub.query.get(int(utub_id))
     
     if int(current_user.get_id()) not in [int(member.user_id) for member in current_utub.members]:
-        flash("Not authorized to add a description to this UTub.", category="danger")
-        return home(), 403
+        return jsonify({
+            "Status" : "Failure",
+            "Message": "You do not have permission to edit this UTub's description",
+            "UTub_description": f"{current_utub.utub_description}"
+        }), 403
 
-    current_utub_description = current_utub.utub_description
-
-    if current_utub_description is None:
-        current_utub_description = ""
+    current_utub_description = "" if current_utub.utub_description is None else current_utub.utub_description
 
     utub_desc_form = UTubDescriptionForm()
 
@@ -243,19 +251,22 @@ def update_utub_desc(utub_id: int):
             current_utub.utub_description = new_utub_description
             db.session.commit()
 
-        return redirect(url_for('home', UTubID=utub_id))
+        return jsonify({
+            "Status": "Success",
+            "UTub_ID": f"{current_utub.id}",
+            "UTub_description": f"{current_utub.utub_description}"
+        }), 200
 
-    # This shouldn't be the only way to pre-populate a form...
-    utub_description_for_get = {
-        "utub_description": current_utub_description
-    }
-    return render_template('_edit_utub_description.html', desc_form=utub_desc_form, current_utub_desc=utub_description_for_get)
+    return jsonify({
+        "Status" : "Failure",
+        "Message" : "Unable to modify this UTub's description"
+    }), 404
 
 """#####################        END UTUB INVOLVED ROUTES        ###################"""
 
 """#####################        USER INVOLVED ROUTES        ###################"""
 
-@app.route('/delete_user/<int:utub_id>/<int:user_id>',  methods=["POST"])
+@app.route('/utub/user/remove/<int:utub_id>/<int:user_id>',  methods=["POST"])
 @login_required
 def delete_user(utub_id: int, user_id: int):
     """
@@ -270,13 +281,19 @@ def delete_user(utub_id: int, user_id: int):
 
     if int(user_id) == int(current_utub.created_by.id):
         # Creator tried to delete themselves, not allowed
-        return home(), 400
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "UTub creator cannot remove themselves"
+        }), 400
 
     current_user_ids_in_utub = [int(member.user_id) for member in current_utub.members]
 
     if int(user_id) not in current_user_ids_in_utub:
         # User not in this Utub
-        return home(), 400
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "User not found in this UTub"
+        }), 400
 
     if int(current_user.get_id()) == int(current_utub.created_by.id):
         # Creator of utub wants to delete someone
@@ -288,14 +305,23 @@ def delete_user(utub_id: int, user_id: int):
 
     else:
         # Only creator of UTub can delete other users, only you can remove yourself
-        return home, 403
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Not allowed to remove a user from this UTub"
+            }), 403
     
     current_utub.members.remove(user_to_delete_in_utub)
     db.session.commit()
 
-    return redirect(url_for('home', UTubID=utub_id))
+    return jsonify({
+        "Status" : "Success",
+        "Message" : "User removed",
+        "User_ID" : f"{user_id}",
+        "UTub_ID" : f"{utub_id}",
+        "UTub_name" : f"{current_user.name}",
+    }), 200
 
-@app.route('/add_user/<int:utub_id>', methods=["GET", "POST"])
+@app.route('/utub/user/add/<int:utub_id>', methods=["POST"])
 @login_required
 def add_user(utub_id: int):
     """
@@ -308,7 +334,10 @@ def add_user(utub_id: int):
 
     if int(utub.created_by.id) != int(current_user.get_id()):
         # User not authorized to add a user to this UTub
-        return abort(403)
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Not authorized"
+        }), 403
 
     utub_new_user_form = UTubNewUserForm()
 
@@ -319,8 +348,11 @@ def add_user(utub_id: int):
         already_in_utub = [member for member in utub.members if int(member.user_id) == int(new_user.id)]
 
         if already_in_utub:
-            # User already exists
-            return home(), 400
+            # User already exists in UTub
+            return jsonify({
+                "Status" : "Failure",
+                "Message" : "User already in UTub"
+            }), 400
         
         else:
             new_user_to_utub = Utub_Users()
@@ -329,16 +361,25 @@ def add_user(utub_id: int):
             db.session.commit()
             
             # Successfully added user to UTub
-            return redirect(url_for('home', UTubID=utub_id))
+            return jsonify({
+                "Status" : "Success",
+                "Message" : "User added",
+                "User_ID" : f"{new_user.id}",
+                "UTub_ID" : f"{utub_id}",
+                "UTub_name" : f"{current_user.name}",
+            }), 200
 
-    return render_template('_add_user_to_utub.html', utub_new_user_form=utub_new_user_form)
+    return jsonify({
+        "Status" : "Failure",
+        "Message" : "Unable to add that user to this UTub"
+    }), 404
 
 """#####################        END USER INVOLVED ROUTES        ###################"""
 
 """#####################        URL INVOLVED ROUTES        ###################"""
 
 
-@app.route('/delete_url/<int:utub_id>/<int:url_id>', methods=["GET", "POST"])
+@app.route('/utub/url/remove/<int:utub_id>/<int:url_id>', methods=["POST"])
 @login_required
 def delete_url(utub_id: int, url_id: int):
     """
@@ -357,7 +398,11 @@ def delete_url(utub_id: int, url_id: int):
 
     if len(url_added_by) != 1 or not url_added_by:
         # No user added this URL, or multiple users did...
-        return abort(404)
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Unable to remove this URL",
+            "Error_code": 1
+        }), 404
 
     # Otherwise, only one user should've added this url - retrieve them
     url_added_by = url_added_by[0]
@@ -368,19 +413,33 @@ def delete_url(utub_id: int, url_id: int):
 
         if len(utub_url_user_row) > 1:
             # How did this happen? URLs are unique to each UTub, so should only return one
-            return abort(404)
+            return jsonify({
+                "Status" : "Failure",
+                "Message" : "Unable to remove this URL",
+                "Error_code": 2
+            }), 404
 
         db.session.delete(utub_url_user_row[0])
         db.session.commit()
-        flash("You successfully deleted the URL from the UTub.", category="danger")
-        return redirect(url_for('home', UTubID=utub_id))
+        
+        return jsonify({
+            "Status" : "Success",
+            "Message": "URL removed from this UTub",
+            "URL" : jsonify(URLS.query.get_or_404(url_id).serialized),
+            "UTub_ID" : f"{utub.id}",
+            "UTub_name" : f"{utub.name}"
+        }), 200
 
     else:
-        flash("Can only delete URLs you added, or if you are the creator of this UTub.", category="danger")
-        return home(), 403
+        # Can only delete URLs you added, or if you are the creator of this UTub
+        return jsonify({
+                "Status" : "Failure",
+                "Message" : "Unable to remove this URL",
+                "Error_code": 3
+            }), 403
 
 
-@app.route('/add_url/<int:utub_id>', methods=["GET", "POST"])
+@app.route('/utub/url/add/<int:utub_id>', methods=["POST"])
 @login_required
 def add_url(utub_id: int):
     """
@@ -393,7 +452,11 @@ def add_url(utub_id: int):
 
     if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
         # Not authorized to add URL to this UTub
-        return home(), 403
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Unable to add this URL",
+            "Error_code": 1
+        }), 403
 
     utub_new_url_form = UTubNewURLForm()
 
@@ -404,7 +467,11 @@ def add_url(utub_id: int):
             validated_url = check_request_head(url_string)
         
         except InvalidURLError:
-            return render_template('_add_url.html', utub_new_url_form=utub_new_url_form), 400
+            return jsonify({
+                "Status" : "Failure",
+                "Message" : "Unable to add this URL",
+                "Error_code": 2
+            }), 400
 
         else: 
             # Get URL if already created
@@ -419,10 +486,15 @@ def add_url(utub_id: int):
                 #URL already generated, now confirm if within UTUB or not
                 if already_created_url in urls_in_utub:
                     # URL already in UTUB
-                    return render_template('_add_url.html', utub_new_url_form=utub_new_url_form), 400
+                    return jsonify({
+                        "Status" : "Failure",
+                        "Message" : "Unable to add this URL",
+                        "Error_code": 3
+                    }), 400
 
 
                 url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
+                url_id = already_created_url.id
 
             else:
                 # Else create new URL and append to the UTUB
@@ -430,17 +502,32 @@ def add_url(utub_id: int):
                 db.session.add(new_url)
                 db.session.commit()
                 url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=new_url.id, user_id=int(current_user.get_id()))
+                url_id = new_url.id
                 
             db.session.add(url_utub_user_add)
             db.session.commit()
 
             # Successfully added URL to UTub
-            return redirect(url_for('home', UTubID=utub_id))
+            return jsonify({
+                "Status" : "Success",
+                "Message" : "URL added to UTub",
+                "URL" : {
+                    "url_string": f"{validated_url}",
+                    "url_ID" : f"{url_id}"
+                },
+                "UTub_ID" : f"{utub_id}",
+                "UTub_name" : f"{utub.name}",
+                "Added_by" : f"{current_user.get_id()}"
+            }), 200
         
-    return render_template('_add_url.html', utub_new_url_form=utub_new_url_form)
+    return jsonify({
+        "Status" : "Failure",
+        "Message" : "Unable to add this URL",
+        "Error_code": 4
+    }), 404
 
 
-@app.route('/edit_url/<int:utub_id>/<int:url_id>', methods=["POST"])
+@app.route('/utub/url/edit/<int:utub_id>/<int:url_id>', methods=["POST"])
 @login_required
 def edit_url(utub_id: int, url_id: int):
     """
@@ -452,13 +539,13 @@ def edit_url(utub_id: int, url_id: int):
         If the new URL does not exist in the URLS table, first add it there.
     """
     print(request.data)
-    return jsonify({"Response" : "Success"}), 200
+    return jsonify({"Status" : "Success"}), 200
 
 """#####################        END URL INVOLVED ROUTES        ###################"""
 
 """#####################        TAG INVOLVED ROUTES        ###################"""
 
-@app.route('/add_tag/<int:utub_id>/<int:url_id>', methods=["GET", "POST"])
+@app.route('/utub/url/tag/add/<int:utub_id>/<int:url_id>', methods=["POST"])
 @login_required
 def add_tag(utub_id: int, url_id: int):
     """
@@ -475,7 +562,11 @@ def add_tag(utub_id: int, url_id: int):
     if not user_in_utub or not utub_url:
         # How did a user not in this utub get access to add a tag to this URL?
         # How did a user try to add a tag to a URL not contained within the UTub?
-        return home(), 404
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Unable to add tag to this URL",
+            "Error_code" : 1
+        }), 404
        
     url_tag_form = UTubNewUrlTagForm()
 
@@ -488,7 +579,10 @@ def add_tag(utub_id: int, url_id: int):
 
         if len(tags_already_on_this_url) > 4:
                 # Cannot have more than 5 tags on a URL
-                return home(), 400
+                return jsonify({
+                    "Status" : "Failure",
+                    "Message" : "URLs can only have 5 tags max"
+                }), 400
 
         # If not a tag already, create it
         tag_already_created = Tags.query.filter_by(tag_string=tag_to_add).first()
@@ -499,10 +593,14 @@ def add_tag(utub_id: int, url_id: int):
 
             if this_tag_is_already_on_this_url:
                 # Tag is already on this URL
-                return render_template('add_tag_to_url.html', url_tag_form=url_tag_form), 400
+                return jsonify({
+                    "Status" : "Failure",
+                    "Message" : "URL already has this tag"
+                }), 400
 
             # Associate with the UTub and URL
             utub_url_tag = Url_Tags(utub_id=utub_id, url_id=url_id, tag_id=tag_already_created.id)
+            tag_id = tag_already_created.id
 
         else:
             # Create tag, then associate with this UTub and URL
@@ -510,21 +608,37 @@ def add_tag(utub_id: int, url_id: int):
             db.session.add(new_tag)
             db.session.commit()
             utub_url_tag = Url_Tags(utub_id=utub_id, url_id=url_id, tag_id=new_tag.id)
+            tag_id = new_tag.id
 
         db.session.add(utub_url_tag)
         db.session.commit()
 
         # Successfully added tag to URL on UTub
 
-        return redirect(url_for('home', UTubID=utub_id))
+        return jsonify({
+            "Status" : "Success",
+            "Message" : "Tag added to this URL",
+            "Tag" : {
+                "tag_ID" : f"{tag_id}",
+                "tag_string" : f"{tag_to_add}"
+            },
+            "URL_ID" : f"{url_id}",
+            "UTub_ID" : f"{utub_id}"
+        }), 200
 
-    return render_template('_add_tag.html', url_tag_form=url_tag_form)
+    return jsonify({
+        "Status" : "Failure",
+        "Message" : "Unable to add tag to this URL",
+        "Error_code" : 2
+    }), 404
 
-@app.route('/remove_tag/<int:utub_id>/<int:url_id>/<int:tag_id>', methods=["POST"])
+@app.route('/utub/url/tag/remove/<int:utub_id>/<int:url_id>/<int:tag_id>', methods=["POST"])
 @login_required
 def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
     User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
+
+    TODO -> Owner + URL owner can remove tag?
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted
@@ -541,8 +655,17 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         db.session.delete(tag_for_url_in_utub)
         db.session.commit()
         flash("You successfully deleted the tag from the URL.", category="danger")
-        return redirect(url_for('home', UTubID=utub_id))
+        return jsonify({
+            "Status" : "Success",
+            "Message" : "Tag removed from URL",
+            "tag_ID": f"{tag_id}",
+            "URL_ID": f"{url_id}",
+            "UTub_ID": f"{utub_id}" 
+        }), 200
 
-    return home(), 403
+    return jsonify({
+        "Status" : "Failure",
+        "Message" : "Only UTub owners can remove tags"
+    }), 403
 
 """#####################        END TAG INVOLVED ROUTES        ###################"""
