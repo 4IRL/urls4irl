@@ -1,5 +1,6 @@
-from urls4irl import app
-import create_db
+from urls4irl import create_app
+
+app = create_app()
 
 if __name__ == "__main__":
     app.run()
