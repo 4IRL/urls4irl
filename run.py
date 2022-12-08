@@ -6,7 +6,7 @@ from urls4irl.config import TestingConfig
 load_dotenv()
 
 if environ.get('TESTING').lower() == 'true':
-    app = create_app(TestingConfig)
+    app = create_app(TestingConfig, True)
 else:
     app = create_app()
 

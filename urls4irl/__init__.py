@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_session import Session, SqlAlchemySessionInterface
 from flask_sqlalchemy import SQLAlchemy
-from urls4irl.config import Config, TestingConfig
+from urls4irl.config import Config
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_migrate import Migrate
@@ -20,7 +20,7 @@ login_manager.login_message_category = 'info'
 
 cors_sess = CORS()
 
-def create_app(config_class=Config):
+def create_app(config_class: Config = Config, testing:bool = False):
     app = Flask(__name__)
     app.config.from_object(config_class)
     
@@ -44,10 +44,11 @@ def create_app(config_class=Config):
     app.register_blueprint(urls)
     app.register_blueprint(tags)
 
-    migrate.init_app(app)
+    if not testing:
+        migrate.init_app(app)
     
     with app.app_context():
-        if config_class.TESTING:
+        if testing:
             db.drop_all()
         db.create_all()
         app.session_interface.db.create_all()
