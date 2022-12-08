@@ -15,19 +15,6 @@ def login():
 
     response_code = 200
 
-    if not User.query.filter().all():
-        """!!! Added users for testing !!!"""
-        password = generate_password_hash('abcdefg', method='pbkdf2:sha512', salt_length=16)
-        password2 = generate_password_hash('rehreh', method='pbkdf2:sha512', salt_length=16)
-        password3 = generate_password_hash('bobob', method='pbkdf2:sha512', salt_length=16)
-        new_user = User(username="Giovanni", email='gio@g.com', email_confirm=False, password=password)
-        new_user2 = User(username="Rehan", email='Reh@reh.com', email_confirm=False, password=password2)
-        new_user3 = User(username="Bobo", email='Bob@bob.com', email_confirm=False, password=password3)
-        db.session.add(new_user)
-        db.session.add(new_user2)
-        db.session.add(new_user3)
-        db.session.commit()
-
     login_form = LoginForm()
 
     if login_form.validate_on_submit():

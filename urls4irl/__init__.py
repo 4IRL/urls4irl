@@ -1,7 +1,7 @@
 from flask import Flask
 from flask_session import Session, SqlAlchemySessionInterface
 from flask_sqlalchemy import SQLAlchemy
-from urls4irl.config import Config
+from urls4irl.config import Config, TestingConfig
 from flask_login import LoginManager
 from flask_wtf.csrf import CSRFProtect
 from flask_migrate import Migrate
@@ -10,7 +10,7 @@ from flask_cors import CORS
 sess = Session()
 
 db = SQLAlchemy()
-migrate = Migrate(db, render_as_batch=True)
+migrate = Migrate(db=db, render_as_batch=True)
 
 csrf = CSRFProtect()
 
@@ -22,14 +22,11 @@ cors_sess = CORS()
 
 def create_app(config_class=Config):
     app = Flask(__name__)
-    app.config.from_object(Config)
-    if app.config['FLASK_ENV'] == 'development':
-        app.config['DEBUG'] = True 
+    app.config.from_object(config_class)
     
     sess.init_app(app)
-    create_db(app, sess)
-    
-    migrate.init_app(app)
+    db.init_app(app)
+
     csrf.init_app(app)
     login_manager.init_app(app)
 
@@ -47,10 +44,12 @@ def create_app(config_class=Config):
     app.register_blueprint(urls)
     app.register_blueprint(tags)
 
-    return app
-
-def create_db(app, sess):
-    with app.test_request_context():
-        db.init_app(app)
+    migrate.init_app(app)
+    
+    with app.app_context():
+        if config_class.TESTING:
+            db.drop_all()
         db.create_all()
+        app.session_interface.db.create_all()
 
+    return app
