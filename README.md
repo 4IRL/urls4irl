@@ -80,3 +80,18 @@ flask db init
 ```
 
 Now the migrations folder is setup.
+
+
+---
+
+### **Running Tests**
+
+From this directory, run the following command:
+
+```
+python -m pytest -sv
+```
+
+This will print out a log as well as whether or not tests passed.
+
+All tests are included in the *tests* directory

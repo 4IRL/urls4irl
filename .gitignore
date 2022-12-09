@@ -5,5 +5,5 @@ __pycache__/
 .vscode/
 flask_session/
 *.db
-testing/
+miscellaneous/
 *.DS_Store

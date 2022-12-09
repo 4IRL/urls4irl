@@ -13,8 +13,6 @@ def login():
     if current_user.is_authenticated:
         return redirect(url_for('main.home'))
 
-    response_code = 200
-
     login_form = LoginForm()
 
     if login_form.validate_on_submit():
@@ -27,9 +25,9 @@ def login():
 
             return redirect(next_page) if next_page else redirect(url_for('main.home'))
         else:
-            response_code = 400
+            return render_template('login.html', login_form=login_form), 400
 
-    return render_template('login.html', login_form=login_form), response_code
+    return render_template('login.html', login_form=login_form)
 
 @users.route('/logout')
 def logout():
