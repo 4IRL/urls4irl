@@ -6,6 +6,7 @@ Contains database models for URLS4IRL.
 from datetime import datetime
 from urls4irl import db, login_manager
 from flask_login import UserMixin
+from werkzeug.security import check_password_hash, generate_password_hash
 
 
 @login_manager.user_loader
@@ -124,6 +125,24 @@ class User(db.Model, UserMixin):
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     utubs_is_member_of = db.relationship("Utub_Users", back_populates='to_user')
     
+    def __init__(self, username: str, email: str, plaintext_password: str, email_confirm: bool = False ):
+        """
+        Create new user object per the following parameters
+
+        Args:
+            username (str): Username from user input
+            email (str): Email from user input
+            email_confirm (bool): Whether user's email has been confirmed yet
+            plaintext_password (str): Plaintext password to be hashed
+        """
+        self.username = username
+        self.email = email
+        self.password = generate_password_hash(plaintext_password)
+        self.email_confirm = email_confirm
+
+    def is_password_correct(self, plaintext_password: str) -> bool:
+        return check_password_hash(self.password, plaintext_password)
+
     @property
     def serialized(self):
         """Return object in serialized form."""

@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify, redirect, url_for, render_template, request
-from werkzeug.security import check_password_hash, generate_password_hash
+from werkzeug.security import check_password_hash
 from flask_login import current_user, login_required, login_user, logout_user
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Users, User
@@ -19,7 +19,7 @@ def login():
         username = login_form.username.data
         user = User.query.filter_by(username=username).first()
 
-        if user and check_password_hash(user.password, login_form.password.data):
+        if user and user.is_password_correct(login_form.password.data):
             login_user(user)    # Can add Remember Me functionality here
             next_page = request.args.get('next')    # Takes user to the page they wanted to originally before being logged in
 
@@ -46,8 +46,8 @@ def register_user():
     if register_form.validate_on_submit():
         username = register_form.username.data
         email = register_form.email.data
-        password = generate_password_hash(register_form.password.data, method='pbkdf2:sha512', salt_length=16)
-        new_user = User(username=username, email=email, email_confirm=False, password=password)
+        plain_password = register_form.password.data
+        new_user = User(username=username, email=email, plaintext_password=plain_password, email_confirm=False)
         db.session.add(new_user)
         db.session.commit()
         user = User.query.filter_by(username=username).first()
