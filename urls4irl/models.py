@@ -7,7 +7,7 @@ from datetime import datetime
 from urls4irl import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
-
+from urls4irl.url_validation import check_request_head, InvalidURLError
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -20,10 +20,7 @@ A new entry is created on creation of a UTub for the creator, and whomver the cr
 To query:
 https://stackoverflow.com/questions/12593421/sqlalchemy-and-flask-how-to-query-many-to-many-relationship/12594203
 """
-# utub_users = db.Table('UtubUsers',
-#     db.Column('utub_id', db.Integer, db.ForeignKey('Utub.id'), primary_key=True),
-#     db.Column('user_id', db.Integer, db.ForeignKey('User.id'), primary_key=True)            
-# )
+
 class Utub_Users(db.Model):
     __tablename__ = 'UtubUsers'
     utub_id = db.Column(db.Integer, db.ForeignKey('Utub.id'), primary_key=True)
@@ -213,6 +210,17 @@ class URLS(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     url_tags = db.relationship("Url_Tags", back_populates="tagged_url")
+
+    def __init__(self, normalized_url: str, current_user_id: int):
+        self.url_string = self.verify_url(normalized_url)
+        self.created_by = int(current_user_id)
+
+    def verify_url(self, url_to_verify: str) -> str:
+        try:
+            return check_request_head(url_to_verify)
+        
+        except InvalidURLError as e:
+            raise InvalidURLError from e
 
     @property
     def serialized(self):

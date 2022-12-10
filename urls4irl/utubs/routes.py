@@ -19,7 +19,6 @@ def create_utub():
     utub_form = UTubForm()
 
     if utub_form.validate_on_submit():
-        print(utub_form)
         name = utub_form.name.data
         description = utub_form.description.data
         new_utub = Utub(name=name, utub_creator=current_user.get_id(), utub_description=description)
@@ -73,7 +72,7 @@ def delete_utub(utub_id: int):
         }), 403
     
     else:
-        utub = Utub.query.get(int(utub_id))
+        utub = Utub.query.get_or_404(int(utub_id))
         db.session.delete(utub)
         db.session.commit()
 
@@ -99,7 +98,7 @@ def update_utub_desc(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub = Utub.query.get(int(utub_id))
+    current_utub = Utub.query.get_or_404(int(utub_id))
     
     if int(current_user.get_id()) not in [int(member.user_id) for member in current_utub.members]:
         return jsonify({

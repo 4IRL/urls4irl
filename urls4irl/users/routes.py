@@ -67,7 +67,7 @@ def delete_user(utub_id: int, user_id: int):
         utub_id (int): ID of the UTub to remove the user from
         user_id (int): ID of the User to remove from the UTub
     """
-    current_utub = Utub.query.get(int(utub_id))
+    current_utub = Utub.query.get_or_404(int(utub_id))
 
     if int(user_id) == int(current_utub.created_by.id):
         # Creator tried to delete themselves, not allowed
@@ -120,7 +120,7 @@ def add_user(utub_id: int):
     Args:
         utub_id (int): The utub that this user is being added to
     """
-    utub = Utub.query.get(utub_id)
+    utub = Utub.query.get_or_404(utub_id)
 
     if int(utub.created_by.id) != int(current_user.get_id()):
         # User not authorized to add a user to this UTub
