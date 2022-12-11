@@ -122,7 +122,7 @@ class User(db.Model, UserMixin):
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     utubs_is_member_of = db.relationship("Utub_Users", back_populates='to_user')
     
-    def __init__(self, username: str, email: str, plaintext_password: str, email_confirm: bool = False ):
+    def __init__(self, username: str, email: str, plaintext_password: str, email_confirm: bool = False):
         """
         Create new user object per the following parameters
 
@@ -175,6 +175,11 @@ class Utub(db.Model):
     utub_urls = db.relationship('Utub_Urls', back_populates="utub", cascade='all, delete')
     members = db.relationship('Utub_Users', back_populates="to_utub", cascade='all, delete, delete-orphan')
 
+    def __init__(self, name: str, utub_creator: int, utub_description: str):
+        self.name = name
+        self.utub_creator = utub_creator
+        self.utub_description = utub_description
+
     @property
     def serialized(self):
         """Return object in serialized form."""
@@ -212,15 +217,8 @@ class URLS(db.Model):
     url_tags = db.relationship("Url_Tags", back_populates="tagged_url")
 
     def __init__(self, normalized_url: str, current_user_id: int):
-        self.url_string = self.verify_url(normalized_url)
+        self.url_string = normalized_url
         self.created_by = int(current_user_id)
-
-    def verify_url(self, url_to_verify: str) -> str:
-        try:
-            return check_request_head(url_to_verify)
-        
-        except InvalidURLError as e:
-            raise InvalidURLError from e
 
     @property
     def serialized(self):

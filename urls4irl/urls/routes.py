@@ -3,7 +3,7 @@ from flask_login import current_user, login_required
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Urls, URLS
 from urls4irl.urls.forms import UTubNewURLForm, UTubEditURLForm, UTubEditURLDescriptionForm
-from urls4irl.url_validation import InvalidURLError, normalize_url
+from urls4irl.url_validation import InvalidURLError, check_request_head
 
 urls = Blueprint('urls', __name__)
 
@@ -90,7 +90,7 @@ def add_url(utub_id: int):
 
     if utub_new_url_form.validate_on_submit():
         url_string = utub_new_url_form.url_string.data
-        normalized_url = normalize_url(url_string)
+        normalized_url = check_request_head(url_string)
 
         # Check if URL already exists
         already_created_url = URLS.query.filter_by(url_string=normalized_url).first()
