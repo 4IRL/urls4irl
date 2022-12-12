@@ -6,7 +6,8 @@ Contains database models for URLS4IRL.
 from datetime import datetime
 from urls4irl import db, login_manager
 from flask_login import UserMixin
-
+from werkzeug.security import check_password_hash, generate_password_hash
+from urls4irl.url_validation import check_request_head, InvalidURLError
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -19,10 +20,7 @@ A new entry is created on creation of a UTub for the creator, and whomver the cr
 To query:
 https://stackoverflow.com/questions/12593421/sqlalchemy-and-flask-how-to-query-many-to-many-relationship/12594203
 """
-# utub_users = db.Table('UtubUsers',
-#     db.Column('utub_id', db.Integer, db.ForeignKey('Utub.id'), primary_key=True),
-#     db.Column('user_id', db.Integer, db.ForeignKey('User.id'), primary_key=True)            
-# )
+
 class Utub_Users(db.Model):
     __tablename__ = 'UtubUsers'
     utub_id = db.Column(db.Integer, db.ForeignKey('Utub.id'), primary_key=True)
@@ -124,6 +122,24 @@ class User(db.Model, UserMixin):
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     utubs_is_member_of = db.relationship("Utub_Users", back_populates='to_user')
     
+    def __init__(self, username: str, email: str, plaintext_password: str, email_confirm: bool = False):
+        """
+        Create new user object per the following parameters
+
+        Args:
+            username (str): Username from user input
+            email (str): Email from user input
+            email_confirm (bool): Whether user's email has been confirmed yet
+            plaintext_password (str): Plaintext password to be hashed
+        """
+        self.username = username
+        self.email = email
+        self.password = generate_password_hash(plaintext_password)
+        self.email_confirm = email_confirm
+
+    def is_password_correct(self, plaintext_password: str) -> bool:
+        return check_password_hash(self.password, plaintext_password)
+
     @property
     def serialized(self):
         """Return object in serialized form."""
@@ -158,6 +174,11 @@ class Utub(db.Model):
     utub_url_tags = db.relationship("Url_Tags", back_populates="utub_containing_this_tag", cascade='all, delete')
     utub_urls = db.relationship('Utub_Urls', back_populates="utub", cascade='all, delete')
     members = db.relationship('Utub_Users', back_populates="to_utub", cascade='all, delete, delete-orphan')
+
+    def __init__(self, name: str, utub_creator: int, utub_description: str):
+        self.name = name
+        self.utub_creator = utub_creator
+        self.utub_description = utub_description
 
     @property
     def serialized(self):
@@ -195,6 +216,10 @@ class URLS(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     url_tags = db.relationship("Url_Tags", back_populates="tagged_url")
 
+    def __init__(self, normalized_url: str, current_user_id: int):
+        self.url_string = normalized_url
+        self.created_by = int(current_user_id)
+
     @property
     def serialized(self):
         """Returns object in serialized form."""
@@ -211,6 +236,7 @@ class URLS(db.Model):
             'url': self.url_string,
             'tags': [int(tag.tag_item.serialized['id']) for tag in self.url_tags]
         }
+
 
 class Tags(db.Model):
     """Class represents a tag, more specifically a tag for a URL. A tag is added by a single user, but can be used as a tag for any URL. """
