@@ -48,8 +48,6 @@ def create_app(config_class: Config = Config, testing:bool = False):
         migrate.init_app(app)
     
     with app.app_context():
-        if testing:
-            db.drop_all()
         db.create_all()
         app.session_interface.db.create_all()
 

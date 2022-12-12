@@ -31,8 +31,8 @@ def home():
     if not request.args:
         # User got here without any arguments in the URL
         # Therefore, only provide UTub name and UTub ID
-        utub_details = current_user.serialized_on_initial_load
-        return render_template('home.html', utubs_for_this_user=utub_details)
+        utub_details = jsonify(current_user.serialized_on_initial_load)
+        return render_template('home.html', utubs_for_this_user=utub_details.json)
 
     elif len(request.args) > 1:
         # Too many args in URL

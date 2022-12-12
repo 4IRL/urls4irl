@@ -7,3 +7,4 @@ flask_session/
 *.db
 miscellaneous/
 *.DS_Store
+.pytest_cache/

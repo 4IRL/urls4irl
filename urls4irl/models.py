@@ -237,6 +237,7 @@ class URLS(db.Model):
             'tags': [int(tag.tag_item.serialized['id']) for tag in self.url_tags]
         }
 
+
 class Tags(db.Model):
     """Class represents a tag, more specifically a tag for a URL. A tag is added by a single user, but can be used as a tag for any URL. """
 
