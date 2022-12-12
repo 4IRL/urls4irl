@@ -63,7 +63,7 @@
         <div class="navbar-collapse collapse w-100 order-1 order-md-0 dual-collapse2">
             <ul class="navbar-nav mr-auto">
                 <li class="nav-item active">
-                    <a class="nav-link" href="{{url_for('home')}}">Home</a>
+                    <a class="nav-link" href="{{url_for('main.home')}}">Home</a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link" href="#">Link</a>
@@ -86,17 +86,17 @@
                     <a class="nav-link" href="#"> Logged in as {{current_user.username}}</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link" href="{{url_for('logout')}}">Logout</a>
+                    <a class="nav-link" href="{{url_for('users.logout')}}">Logout</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link to_register" href="{{url_for('register_user')}}">Register</a>
+                    <a class="nav-link to_register" href="{{url_for('users.register_user')}}">Register</a>
                 </li>
                 {% else %}
                 <li class="nav-item">
-                    <a class="nav-link" href="{{url_for('login')}}">Login</a>
+                    <a class="nav-link" href="{{url_for('users.login')}}">Login</a>
                 </li>
                 <li class="nav-item">
-                    <a class="nav-link to_register" href="{{url_for('register_user')}}">Register</a>
+                    <a class="nav-link to_register" href="{{url_for('users.register_user')}}">Register</a>
                 </li>
                 {% endif %}
             </ul>

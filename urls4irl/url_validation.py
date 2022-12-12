@@ -30,7 +30,7 @@ class InvalidURLError(Exception):
     """Error if the URL returns a bad status code."""
     pass
 
-def _parse_url(url: str) -> str:
+def normalize_url(url: str) -> str:
     """
     Uses the url_normalize package to 'normalize' the URL as much as possible.
     It then sets all http protocols to https.
@@ -80,7 +80,7 @@ def check_request_head(url: str) -> str:
         str: Either the redirected URL, or the original URL used in the request head method
     """
     
-    url = _parse_url(url)
+    url = normalize_url(url)
     
     try:
         response = requests.head(url)
