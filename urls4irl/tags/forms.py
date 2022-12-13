@@ -15,3 +15,4 @@ class UTubNewUrlTagForm(FlaskForm):
     submit = SubmitField('Add tag to this URL!')
 
     #TODO Add tag validation (PG filter?)
+    

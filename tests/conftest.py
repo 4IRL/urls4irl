@@ -3,7 +3,7 @@ from utils_for_test import get_csrf_token
 from urls4irl import create_app, db
 from urls4irl.config import TestingConfig
 from urls4irl.models import User
-from models_for_test import valid_user_1
+from models_for_test import valid_user_1, valid_user_2, valid_user_3
 from flask_login import FlaskLoginClient
 
 
@@ -54,3 +54,18 @@ def login_first_user(app, register_first_user):
         
     with app.test_client(user=user_to_login) as logged_in_client:
         yield logged_in_client, user_to_login
+
+@pytest.fixture
+def register_multiple_users(app):
+    # Add multiple users for testing
+    all_users = (valid_user_1, valid_user_2, valid_user_3,)
+    with app.app_context():
+        for user in all_users:
+            new_user = User(username=user["username"],
+                            email=user["email"],
+                            plaintext_password=user["password"])
+                        
+            db.session.add(new_user)
+            db.session.commit()
+        
+    yield all_users

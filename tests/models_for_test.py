@@ -2,7 +2,6 @@
 Users used for testing logging in correctly
 Models follow what is on a valid registration form
 """
-
 valid_user_1 = {
     "csrf_token": None,
     "username": "FakeUserName1234",
@@ -42,3 +41,17 @@ invalid_user_1= {
     "confirm_password": "NeverPassByMe1234"
 }
 
+"""
+Valid tags used for testing 
+"""
+valid_tag_1 = {
+    'tag_string': 'Exciting!'
+}
+
+valid_tag_2 = {
+    'tag_string': 'Funny'
+}
+
+valid_tag_3 = {
+    'tag_string': 'Ugh'
+}

@@ -7,7 +7,6 @@ from datetime import datetime
 from urls4irl import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
-from urls4irl.url_validation import check_request_head, InvalidURLError
 
 @login_manager.user_loader
 def load_user(user_id):

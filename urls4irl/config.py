@@ -18,3 +18,4 @@ class Config:
 class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_DATABASE_URI = environ.get("DATABASE_URL_TEST")
+    

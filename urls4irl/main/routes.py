@@ -54,3 +54,4 @@ def home():
         utub_data_serialized = utub.serialized
 
         return jsonify(utub_data_serialized)
+        
