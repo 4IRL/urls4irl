@@ -622,24 +622,6 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
     inputEl.bind('blur', function (e) {
         // Still need to handle corner case where user clicks another button while inputEl is empty
 
-        // Following code needs to be moved into request.done once routes are set up
-        if (infoType == 'url') {
-            if (inputEl[0].value == "") {
-                inputParent[0].innerHTML = originalURL;
-            } else {
-                inputParent[0].innerHTML = inputEl[0].value;
-            }
-        } else {
-            if (inputEl[0].value != "") {
-                $('<span></span>').attr({     // Replace with temporary input
-                    'class': 'tag',
-                    'tagid': 0,
-                }).appendTo($(inputParent));
-                $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value  // here's where things go to shit
-            }
-
-            inputEl.remove();
-        }
 
         if (inputEl[0].value != "") {
             let request = $.ajax({
@@ -650,7 +632,24 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
 
             request.done(function (response, textStatus, xhr) {
                 if (xhr.status == 200) {
-                    // Code after $.ajax needs to be here.
+                    // Following code needs to be moved into request.done once routes are set up
+                    if (infoType == 'url') {
+                        if (inputEl[0].value == "") {
+                            inputParent[0].innerHTML = originalURL;
+                        } else {
+                            inputParent[0].innerHTML = inputEl[0].value;
+                        }
+                    } else {
+                        if (inputEl[0].value != "") {
+                            $('<span></span>').attr({     // Replace with temporary input
+                                'class': 'tag',
+                                'tagid': response.Tag.tag_ID,
+                            }).appendTo($(inputParent));
+                            $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value  // here's where things go to shit
+                        }
+
+                        inputEl.remove();
+                    }
                 }
             })
         }
