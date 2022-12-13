@@ -181,6 +181,7 @@ function buildUTub(selectedUTub) {
     var dictUsers = selectedUTub.members;
     var creator = selectedUTub.created_by;
     let currentUserID = $('.user').attr('id');
+    console.log(dictTags)
 
     // Clear 
     resetUTubs();
@@ -259,17 +260,18 @@ function buildURLDeck(dictURLs, dictTags) {
             console.log("Tag")
             let tag = dictTags.find(function (e) {
                 if (e.id === tagArray[j]) {
-                    return e.tag_string
+                    console.log(e.tag_string)
+                    return e
                 }
             });
 
             let tagSpan = document.createElement('span');
             $(tagSpan).attr({
                 'class': 'tag',
-                'tagid': tag[j].id,
-                'value': tag[j].tag_string
-            })
-            $(urlTags).append(tagSpan)
+                'tagid': tag.id,
+            });
+            tagSpan.innerHTML = tag.tag_string;
+            $(urlTags).append(tagSpan);
         }
 
         $(urlOptions).attr({ 'class': 'card-body URLOptions', 'style': 'display: none' })
@@ -557,7 +559,7 @@ function addTag(selectedUTubID, selectedURLid) {
             var tagText = $(this).val();                    // Need to send this back to the db somehow
             let request = $.ajax({
                 type: 'post',
-                url: "/add_tag/" + selectedUTubID + "/" + selectedURLid,
+                url: "/tag/add/" + selectedUTubID + "/" + selectedURLid,
                 data: tagText
             });
 
@@ -580,7 +582,7 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
         var initString = '';
         var inputEl = $('#new_tag');                            // Temporary input text element
         var inputID = 'new_tag';
-        var postURL = '/add_tag/';
+        var postURL = '/tag/add/';
     } else {
         var inputParent = $(jQuerySel).find('p.card-text');     // Find appropriate card element         
         var initString = inputParent[0].innerText;              // Store pre-edit values
@@ -588,7 +590,7 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
         $(inputParent).html('');                                // Clear url card-text
         var inputEl = $('#edit_url');                           // Temporary input text element
         var inputID = 'edit_url';
-        var postURL = '/edit_url/';
+        var postURL = '/url/edit/';
     }
 
     if (inputEl.length > 0) {
@@ -597,9 +599,6 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
         inputEl[0].setSelectionRange(0, end);
     } else {
         var route = postURL + selectedUTubID + "/" + selectedURLid;
-        $.get(route, function (formHtml) {
-
-        })
 
         $('<input></input>').attr({     // Replace with temporary input
             'type': 'text',
@@ -646,7 +645,7 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
             let request = $.ajax({
                 type: 'post',
                 url: postURL + selectedUTubID + "/" + selectedURLid,
-                data: inputEl[0].value
+                data: { tag_string: inputEl[0].value }
             });
 
             request.done(function (response, textStatus, xhr) {
