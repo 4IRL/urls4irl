@@ -11,6 +11,7 @@ tags = Blueprint('tags', __name__)
 def add_tag(utub_id: int, url_id: int):
     """
     User wants to add a tag to a URL. 5 tags per URL.
+    # TODO: Do not allow empty tags
     
     Args:
         utub_id (int): The utub that this user is being added to
@@ -42,7 +43,8 @@ def add_tag(utub_id: int, url_id: int):
                 # Cannot have more than 5 tags on a URL
                 return jsonify({
                     "Status" : "Failure",
-                    "Message" : "URLs can only have 5 tags max"
+                    "Message" : "URLs can only have 5 tags max",
+                    "Error_code" : 4
                 }), 400
 
         # If not a tag already, create it
@@ -56,7 +58,8 @@ def add_tag(utub_id: int, url_id: int):
                 # Tag is already on this URL
                 return jsonify({
                     "Status" : "Failure",
-                    "Message" : "URL already has this tag"
+                    "Message" : "URL already has this tag",
+                    "Error_code" : 3
                 }), 400
 
             # Associate with the UTub and URL
@@ -99,7 +102,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
     User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
 
-    TODO -> Owner + URL owner can remove tag?
+    TODO -> Have everybody remove tag!
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted
