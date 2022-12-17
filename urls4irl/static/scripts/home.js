@@ -1,6 +1,7 @@
 // UI Interactions
 $(document).ready(function () {
 
+    // Dev tracking of click-triggered objects
     $(document).click(function (e) {
         console.log($(e.target)[0])
     });
@@ -149,26 +150,28 @@ $(document).ready(function () {
 // Functions
 
 function buildUTubDeck(UTubs) {
-    // Instantiate UTubDeck with user's accessible UTubs
-    radioHTML = '';
-    for (i in UTubs) {
-        radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" id="UTub-' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
+    if (UTubs.length == 0) {
+        $('#UTubHeader')[0].innerHTML = "<------------------------- Oops, no UTubs! Create one!";  // User has no UTubs 
+    } else {
+            // Instantiate UTubDeck with UTubs accessible to current user
+            radioHTML = '';
+            for (i in UTubs) {
+                radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" id="UTub-' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
+            }
+            $('#UTubDeck').find('form')[0].innerHTML = radioHTML;
     }
-    $('#UTubDeck').find('form')[0].innerHTML = radioHTML;
 }
 
 function findUTubID() {
     // Find which UTub was requested
     radioButton = $('input[type=radio]:checked')[0];
     $('#UTubHeader')[0].innerHTML = radioButton.value;  // Update center panel header
+    $('#editUTub').show();  // Show edit button
     str = radioButton.id;
     return str.split('-')[1];
 }
 
 function getUtubInfo(selectedUTubID) {
-    // Just to make sure hidden, if coming from "/create_utub"
-    $('#TubImage').hide();
-
     // Pull data from db
     return $.getJSON('/home?UTubID=' + selectedUTubID, function (UTubJSON) { buildUTub(UTubJSON) });
 }
@@ -706,73 +709,73 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
 //     })
 // }
 
-function openModal(route) {
-    console.log(route)
-    $.get(route, function (formHtml) {
-        $('#Modal .modal-content').html(formHtml);
-        $('#Modal').modal('show');
-        $('#submit').click(function (event) {
-            event.preventDefault();
-            // $('.modal-flasher').prop({'hidden': true});
-            let request = $.ajax({
-                url: route,
-                type: "POST",
-                data: $('#ModalForm').serialize()
-            });
+// function openModal(route) {
+//     console.log(route)
+//     $.get(route, function (formHtml) {
+//         $('#Modal .modal-content').html(formHtml);
+//         $('#Modal').modal('show');
+//         $('#submit').click(function (event) {
+//             event.preventDefault();
+//             // $('.modal-flasher').prop({'hidden': true});
+//             let request = $.ajax({
+//                 url: route,
+//                 type: "POST",
+//                 data: $('#ModalForm').serialize()
+//             });
 
-            request.done(function (response, textStatus, xhr) {
-                if (xhr.status == 200) {
-                    $('#Modal').modal('hide');
-                    // const flashElem = flashMessageBanner(response.message, response.category);
-                    // flashElem.insertBefore($('.main-content'));
+//             request.done(function (response, textStatus, xhr) {
+//                 if (xhr.status == 200) {
+//                     $('#Modal').modal('hide');
+//                     // const flashElem = flashMessageBanner(response.message, response.category);
+//                     // flashElem.insertBefore($('.main-content'));
 
-                    let rootRoute = route.split('/')[1];
+//                     let rootRoute = route.split('/')[1];
 
-                    switch (rootRoute) {
-                        default:
-                            console.log('Unimplemented route')
-                        case 'create_utub':
-                            createUTub(response.UtubID, response.UtubName);
-                            break;
-                        case 'delete_utub':
-                            deleteUTub(route.split('/')[2])
-                            break;
-                        case 'add_url':
-                            getUtubInfo(route.split('/')[2])
-                            $('#urlNote').hide();
-                            break;
-                        case 'add_tag':
-                            getUtubInfo(route.split('/')[2])
-                            $('#urlNote').hide();
-                            break;
-                    }
-                };
-            });
+//                     switch (rootRoute) {
+//                         default:
+//                             console.log('Unimplemented route')
+//                         case 'create_utub':
+//                             createUTub(response.UtubID, response.UtubName);
+//                             break;
+//                         case 'delete_utub':
+//                             deleteUTub(route.split('/')[2])
+//                             break;
+//                         case 'add_url':
+//                             getUtubInfo(route.split('/')[2])
+//                             $('#urlNote').hide();
+//                             break;
+//                         case 'add_tag':
+//                             getUtubInfo(route.split('/')[2])
+//                             $('#urlNote').hide();
+//                             break;
+//                     }
+//                 };
+//             });
 
-            request.fail(function (xhr, textStatus, error) {
-                if (xhr.status == 409) {
-                    // const flashMessage = xhr.responseJSON.error;
-                    // const flashCategory = xhr.responseJSON.category;
+//             request.fail(function (xhr, textStatus, error) {
+//                 if (xhr.status == 409) {
+//                     // const flashMessage = xhr.responseJSON.error;
+//                     // const flashCategory = xhr.responseJSON.category;
 
-                    // let flashElem = flashMessageBanner(flashMessage, flashCategory);
-                    // flashElem.insertBefore('#modal-body').show();
-                } else if (xhr.status == 404) {
-                    $('.invalid-feedback').remove();
-                    $('.alert').remove();
-                    $('.form-control').removeClass('is-invalid');
-                    const error = JSON.parse(xhr.responseJSON);
-                    for (var key in error) {
-                        $('<div class="invalid-feedback"><span>' + error[key] + '</span></div>')
-                            .insertAfter('#' + key).show();
-                        $('#' + key).addClass('is-invalid');
-                    };
-                };
-                console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
-                console.log("Error: " + error);
-            })
-        });
-    })
-}
+//                     // let flashElem = flashMessageBanner(flashMessage, flashCategory);
+//                     // flashElem.insertBefore('#modal-body').show();
+//                 } else if (xhr.status == 404) {
+//                     $('.invalid-feedback').remove();
+//                     $('.alert').remove();
+//                     $('.form-control').removeClass('is-invalid');
+//                     const error = JSON.parse(xhr.responseJSON);
+//                     for (var key in error) {
+//                         $('<div class="invalid-feedback"><span>' + error[key] + '</span></div>')
+//                             .insertAfter('#' + key).show();
+//                         $('#' + key).addClass('is-invalid');
+//                     };
+//                 };
+//                 console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
+//                 console.log("Error: " + error);
+//             })
+//         });
+//     })
+// }
 
 function createUTub(id, name) {
     radioHTML = '<label for="UTub-' + id + '" class="UTub draw active"><input type="radio" id="UTub-' + id + '" name="UTubSelection" value="' + name + '"><b>' + name + '</b></label>';
