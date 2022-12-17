@@ -36,9 +36,19 @@ def create_utub():
             "UTub_creator_id": f"{current_user.get_id()}"
         }), 200
 
+    # Invalid form inputs
+    if utub_form.errors is not None:
+        return jsonify({
+            "Status": "Failure",
+            "Message" : "Unable to generate a new UTub with that information.",
+            "Error_code": 2,
+            "Errors": utub_form.errors
+        }), 404
+
     return jsonify({
         "Status": "Failure",
-        "Message" : "Unable to generate a new UTub with that information."
+        "Message" : "Unable to generate a new UTub with that information.",
+        "Error_code": 1
     }), 404  
 
 @utubs.route('/utub/delete/<int:utub_id>', methods=["POST"])

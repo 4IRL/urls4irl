@@ -73,7 +73,8 @@ def delete_user(utub_id: int, user_id: int):
         # Creator tried to delete themselves, not allowed
         return jsonify({
             "Status" : "Failure",
-            "Message" : "UTub creator cannot remove themselves"
+            "Message" : "UTub creator cannot remove themselves",
+            "Error_code": 1
         }), 400
 
     current_user_ids_in_utub = [int(member.user_id) for member in current_utub.members]
@@ -82,7 +83,8 @@ def delete_user(utub_id: int, user_id: int):
         # User not in this Utub
         return jsonify({
             "Status" : "Failure",
-            "Message" : "User not found in this UTub"
+            "Message" : "User not found in this UTub",
+            "Error_code": 2
         }), 400
 
     if int(current_user.get_id()) == int(current_utub.created_by.id):
@@ -97,7 +99,8 @@ def delete_user(utub_id: int, user_id: int):
         # Only creator of UTub can delete other users, only you can remove yourself
         return jsonify({
             "Status" : "Failure",
-            "Message" : "Not allowed to remove a user from this UTub"
+            "Message" : "Not allowed to remove a user from this UTub",
+            "Error_code": 3
             }), 403
     
     current_utub.members.remove(user_to_delete_in_utub)
@@ -126,7 +129,8 @@ def add_user(utub_id: int):
         # User not authorized to add a user to this UTub
         return jsonify({
             "Status" : "Failure",
-            "Message" : "Not authorized"
+            "Message" : "Not authorized",
+            "Error_code": 1
         }), 403
 
     utub_new_user_form = UTubNewUserForm()
@@ -141,7 +145,8 @@ def add_user(utub_id: int):
             # User already exists in UTub
             return jsonify({
                 "Status" : "Failure",
-                "Message" : "User already in UTub"
+                "Message" : "User already in UTub",
+                "Error_code": 2
             }), 400
         
         else:
@@ -159,7 +164,17 @@ def add_user(utub_id: int):
                 "UTub_name" : f"{current_user.name}",
             }), 200
 
+    if utub_new_user_form.errors is not None:
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Unable to add that user to this UTub",
+            "Error_code": 3,
+            "Errors": utub_new_user_form.errors
+        }), 404
+
+
     return jsonify({
         "Status" : "Failure",
-        "Message" : "Unable to add that user to this UTub"
+        "Message" : "Unable to add that user to this UTub",
+        "Error_code": 4
     }), 404

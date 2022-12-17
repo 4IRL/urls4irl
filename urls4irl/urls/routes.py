@@ -122,7 +122,7 @@ def add_url(utub_id: int):
                 # Successfully added a URL, and associated it to a UTub
                 return jsonify({
                     "Status" : "Success",
-                    "Message" : "URL added to UTub",
+                    "Message" : "New URL created and added to UTub",
                     "URL" : {
                         "url_string": f"{normalized_url}",
                         "url_ID" : f"{url_id}"
@@ -163,10 +163,19 @@ def add_url(utub_id: int):
                 }), 400
 
     # Invalid form input
+    if utub_new_url_form.errors is not None:
+        return jsonify({
+            "Status": "Failure",
+            "Message": "Unable to add this URL, please check inputs",
+            "Error_code": 4,
+            "Errors": utub_new_url_form.errors
+        }), 404
+
+    # Something else went wrong
     return jsonify({
         "Status" : "Failure",
         "Message" : "Unable to add this URL",
-        "Error_code": 4
+        "Error_code": 5
     }), 404
 
 

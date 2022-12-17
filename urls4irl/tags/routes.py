@@ -44,7 +44,7 @@ def add_tag(utub_id: int, url_id: int):
                 return jsonify({
                     "Status" : "Failure",
                     "Message" : "URLs can only have 5 tags max",
-                    "Error_code" : 4
+                    "Error_code" : 2
                 }), 400
 
         # If not a tag already, create it
@@ -90,10 +90,19 @@ def add_tag(utub_id: int, url_id: int):
             "UTub_ID" : f"{utub_id}"
         }), 200
 
+    # Input form errors
+    if url_tag_form.errors is not None:
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Unable to add tag to this URL",
+            "Error_code" : 4,
+            "Errors": url_tag_form.errors
+        }), 404
+
     return jsonify({
         "Status" : "Failure",
         "Message" : "Unable to add tag to this URL",
-        "Error_code" : 2
+        "Error_code" : 5
     }), 404
 
 @tags.route('/tag/remove/<int:utub_id>/<int:url_id>/<int:tag_id>', methods=["POST"])
