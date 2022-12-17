@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify, request
 from flask_login import current_user, login_required
 from urls4irl import db
-from urls4irl.models import Utub, Utub_Urls, URLS
+from urls4irl.models import Utub, Utub_Urls, URLS, Url_Tags
 from urls4irl.urls.forms import UTubNewURLForm, UTubEditURLForm, UTubEditURLDescriptionForm
 from urls4irl.url_validation import InvalidURLError, check_request_head
 
@@ -39,21 +39,17 @@ def delete_url(utub_id: int, url_id: int):
         # User is creator of this UTub, or added the URL
         utub_url_user_row = Utub_Urls.query.filter_by(utub_id=utub_id, url_id=url_id).first_or_404()
 
-        if len(utub_url_user_row) > 1:
-            # How did this happen? URLs are unique to each UTub, so should only return one
-            return jsonify({
-                "Status" : "Failure",
-                "Message" : "Unable to remove this URL",
-                "Error_code": 2
-            }), 404
+        db.session.delete(utub_url_user_row)
 
-        db.session.delete(utub_url_user_row[0])
+        # Remove all tags associated with this URL in this UTub as well
+        Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).delete()
+
         db.session.commit()
         
         return jsonify({
             "Status" : "Success",
             "Message": "URL removed from this UTub",
-            "URL" : jsonify(URLS.query.get_or_404(url_id).serialized),
+            "URL" : URLS.query.get_or_404(url_id).serialized_on_url_remove,
             "UTub_ID" : f"{utub.id}",
             "UTub_name" : f"{utub.name}"
         }), 200
@@ -63,7 +59,7 @@ def delete_url(utub_id: int, url_id: int):
         return jsonify({
                 "Status" : "Failure",
                 "Message" : "Unable to remove this URL",
-                "Error_code": 3
+                "Error_code": 2
             }), 403
 
 
@@ -90,47 +86,47 @@ def add_url(utub_id: int):
 
     if utub_new_url_form.validate_on_submit():
         url_string = utub_new_url_form.url_string.data
-        normalized_url = check_request_head(url_string)
+
+        try:
+            normalized_url = check_request_head(url_string)
+        except InvalidURLError:
+            # URL was unable to be verified as a valid URL
+            return jsonify({
+                    "Status" : "Failure",
+                    "Message" : "Unable to add this URL",
+                    "Error_code": 2
+            }), 400
 
         # Check if URL already exists
         already_created_url = URLS.query.filter_by(url_string=normalized_url).first()
 
         if not already_created_url:
             # If URL does not exist, add it and then associate it with the UTub
-            try:
-                new_url = URLS(normalized_url=normalized_url, current_user_id=current_user.get_id())
+            
+            new_url = URLS(normalized_url=normalized_url, current_user_id=current_user.get_id())
 
-            except InvalidURLError:
-                # URL was unable to be verified as a valid URL
-                return jsonify({
-                    "Status" : "Failure",
-                    "Message" : "Unable to add this URL",
-                    "Error_code": 2
-                }), 400
+            # Commit new URL to the database
+            db.session.add(new_url)
+            db.session.commit()
 
-            else:
-                # Commit new URL to the database
-                db.session.add(new_url)
-                db.session.commit()
+            # Associate URL with given UTub
+            url_id = new_url.id
+            url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=url_id, user_id=int(current_user.get_id()))
+            db.session.add(url_utub_user_add)
+            db.session.commit()
 
-                # Associate URL with given UTub
-                url_id = new_url.id
-                url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=url_id, user_id=int(current_user.get_id()))
-                db.session.add(url_utub_user_add)
-                db.session.commit()
-
-                # Successfully added a URL, and associated it to a UTub
-                return jsonify({
-                    "Status" : "Success",
-                    "Message" : "New URL created and added to UTub",
-                    "URL" : {
-                        "url_string": f"{normalized_url}",
-                        "url_ID" : f"{url_id}"
-                    },
-                    "UTub_ID" : f"{utub_id}",
-                    "UTub_name" : f"{utub.name}",
-                    "Added_by" : f"{current_user.get_id()}"
-                }), 200
+            # Successfully added a URL, and associated it to a UTub
+            return jsonify({
+                "Status" : "Success",
+                "Message" : "New URL created and added to UTub",
+                "URL" : {
+                    "url_string": f"{normalized_url}",
+                    "url_ID" : f"{url_id}"
+                },
+                "UTub_ID" : f"{utub_id}",
+                "UTub_name" : f"{utub.name}",
+                "Added_by" : f"{current_user.get_id()}"
+            }), 200
         
         else:
             # If URL does already exist, check if associated with UTub

@@ -71,9 +71,11 @@ class Utub_Urls(db.Model):
             if int(tag.utub_id) == int(self.utub_id):
                 url_tags.append(tag.tag_id)
 
+        url_data = self.url_in_utub.serialized_for_utub
+
         return {
-            "url_id": self.url_in_utub.serialized_for_utub['id'],
-            "url_string": self.url_in_utub.serialized_for_utub['url'],
+            "url_id": url_data['id'],
+            "url_string": url_data['url'],
             "url_tags": url_tags,
             "added_by": self.user_that_added_url.serialized['id'],
             "notes": self.url_notes
@@ -220,7 +222,7 @@ class URLS(db.Model):
         self.created_by = int(current_user_id)
 
     @property
-    def serialized(self):
+    def serialized_on_url_remove(self):
         """Returns object in serialized form."""
         return {
             'id': self.id,

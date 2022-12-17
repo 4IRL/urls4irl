@@ -16,8 +16,7 @@ class UTubNewUrlTagForm(FlaskForm):
     
     def validate_tag_string(self, tag_string):
         """Validates tag is not empty strings"""
-
-        if tag_string.replace(' ', '') == '':
+        if tag_string.data.replace(' ', '') == '':
             raise ValidationError('Tag must not be empty.')
             
     #TODO Add tag validation (PG filter?)
