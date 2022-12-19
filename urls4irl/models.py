@@ -71,7 +71,7 @@ class Utub_Urls(db.Model):
             if int(tag.utub_id) == int(self.utub_id):
                 url_tags.append(tag.tag_id)
 
-        url_data = self.url_in_utub.serialized_for_utub
+        url_data = self.url_in_utub.serialized_url
 
         return {
             "url_id": url_data['id'],
@@ -105,7 +105,7 @@ class Url_Tags(db.Model):
         """Returns serialized object."""
         return {
             'tag': self.tag_item.serialized,
-            'tagged_url': self.tagged_url.serialized
+            'tagged_url': self.tagged_url.serialized_url
         }
 
 
@@ -222,8 +222,8 @@ class URLS(db.Model):
         self.created_by = int(current_user_id)
 
     @property
-    def serialized_on_url_remove(self):
-        """Returns object in serialized form."""
+    def _serialized_on_url_remove(self):
+        """Includes an array of tags with the tag data serialized. Not in use yet."""
         return {
             'id': self.id,
             'url': self.url_string,
@@ -231,7 +231,8 @@ class URLS(db.Model):
         }
 
     @property
-    def serialized_for_utub(self):
+    def serialized_url(self):
+        """Includes an array of tag IDs for all ID's on this url"""
         return {
             'id': self.id,
             'url': self.url_string,

@@ -49,7 +49,7 @@ def delete_url(utub_id: int, url_id: int):
         return jsonify({
             "Status" : "Success",
             "Message": "URL removed from this UTub",
-            "URL" : URLS.query.get_or_404(url_id).serialized_on_url_remove,
+            "URL" : URLS.query.get_or_404(url_id).serialized_url,
             "UTub_ID" : f"{utub.id}",
             "UTub_name" : f"{utub.name}"
         }), 200
