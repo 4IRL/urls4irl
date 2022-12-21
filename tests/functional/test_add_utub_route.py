@@ -1,10 +1,6 @@
 import pytest
-import json
-from urls4irl import db
-
-from models_for_test import valid_user_1, valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3
-from flask_login import current_user
-from urls4irl.models import Utub
+from models_for_test import valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3
+from urls4irl.models import Utub, Utub_Users
 
 
 def test_requests_add_utub_with_valid_form(logged_in_user_on_home_page, app):
@@ -29,6 +25,12 @@ def test_requests_add_utub_with_valid_form(logged_in_user_on_home_page, app):
     }
     """
     client, user, csrf_token  = logged_in_user_on_home_page
+
+    # Make sure database is empty of UTubs and associated users
+    with app.app_context():
+        assert len(Utub.query.all()) == 0
+        assert len(Utub_Users.query.all()) == 0
+
     new_utub_form = {
         "csrf_token": csrf_token,
         "name": valid_empty_utub_1["name"],
@@ -67,6 +69,14 @@ def test_requests_add_utub_with_valid_form(logged_in_user_on_home_page, app):
         
         # Assert no tags associated with this UTub
         assert len(utub_from_db.utub_url_tags) == 0
+
+        # Assert only one user and UTub association
+        assert len(Utub_Users.query.all()) == 1
+
+        # Assert the only Utub-User association is valid
+        current_utub_user_association = Utub_Users.query.all()
+        assert current_utub_user_association[0].utub_id == utub_id
+        assert current_utub_user_association[0].user_id == user.id
 
 def test_requests_add_utub_with_get_request(logged_in_user_on_home_page, app):
     """
@@ -194,5 +204,5 @@ def test_requests_add_multiple_valid_utubs(logged_in_user_on_home_page, app):
             # Assert no tags associated with this UTub
             assert len(utub_from_db.utub_url_tags) == 0
     
+    # Check for all 3 test utubs added
     assert len(Utub.query.all()) == len(valid_utubs)
-
