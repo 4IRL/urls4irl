@@ -20,7 +20,7 @@ def create_utub():
 
     if utub_form.validate_on_submit():
         name = utub_form.name.data
-        description = utub_form.description.data
+        description = utub_form.description.data if utub_form.description.data is not None else ''
         new_utub = Utub(name=name, utub_creator=current_user.get_id(), utub_description=description)
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = current_user
@@ -30,10 +30,10 @@ def create_utub():
         # Add time made?
         return jsonify({
             "Status": "Success",
-            "UTub_ID" : f"{new_utub.id}", 
+            "UTub_ID" : int(new_utub.id), 
             "UTub_name" : f"{new_utub.name}",
             "UTub_description" : f"{description}",
-            "UTub_creator_id": f"{current_user.get_id()}"
+            "UTub_creator_id": int(current_user.get_id())
         }), 200
 
     # Invalid form inputs
@@ -41,14 +41,14 @@ def create_utub():
         return jsonify({
             "Status": "Failure",
             "Message" : "Unable to generate a new UTub with that information.",
-            "Error_code": 2,
+            "Error_code": 1,
             "Errors": utub_form.errors
         }), 404
 
     return jsonify({
         "Status": "Failure",
         "Message" : "Unable to generate a new UTub with that information.",
-        "Error_code": 1
+        "Error_code": 2
     }), 404  
 
 @utubs.route('/utub/delete/<int:utub_id>', methods=["POST"])
