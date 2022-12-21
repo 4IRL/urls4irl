@@ -56,6 +56,13 @@ def login_first_user(app, register_first_user):
         yield logged_in_client, user_to_login
 
 @pytest.fixture
+def logged_in_user_on_home_page(app, login_first_user):
+    client, user = login_first_user
+    get_home_response = client.get("/home")
+    csrf_token_string = get_csrf_token(get_home_response.get_data(), meta_tag=True)
+    yield client, user, csrf_token_string
+
+@pytest.fixture
 def register_multiple_users(app):
     # Add multiple users for testing
     all_users = (valid_user_1, valid_user_2, valid_user_3,)

@@ -112,17 +112,20 @@ Valid UTubs for testing, empty
 """
 valid_empty_utub_1 = {
     "id": 0,
-    "name": "Test UTub 1,"
+    "name": "Test UTub 1",
+    "utub_description": "First Test UTub"
 }
 
 valid_empty_utub_2 = {
     "id": 1,
-    "name": "Test UTub 2,"
+    "name": "Test UTub 2",
+    "utub_description": "Second Test UTub"
 }
 
 valid_empty_utub_3 = {
     "id": 2,
-    "name": "Test UTub 3,"
+    "name": "Test UTub 3",
+    "utub_description": "Third Test UTub"
 }
 
 """
@@ -202,5 +205,3 @@ valid_utub_serialization_with_members_urls_tags = {
         "id": tag["id"],
         "tag_string": tag["tag_string"]} for tag in (valid_tag_1, valid_tag_2, valid_tag_3)]
 }
-
-print(valid_utub_serialization_with_members_urls_tags)
