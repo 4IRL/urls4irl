@@ -45,7 +45,7 @@ def register_first_user(app):
     yield valid_user_1    
 
 @pytest.fixture
-def login_first_user(app, register_first_user):
+def login_first_user_with_register(app, register_first_user):
     """ https://flask-login.readthedocs.io/en/latest/#automated-testing """
 
     app.test_client_class = FlaskLoginClient
@@ -53,14 +53,27 @@ def login_first_user(app, register_first_user):
         user_to_login = User.query.get(1)
         
     with app.test_client(user=user_to_login) as logged_in_client:
-        yield logged_in_client, user_to_login
+        yield logged_in_client, user_to_login, app
 
 @pytest.fixture
-def logged_in_user_on_home_page(app, login_first_user):
-    client, user = login_first_user
+def login_first_user_without_register(app):
+    """ https://flask-login.readthedocs.io/en/latest/#automated-testing """
+
+    app.test_client_class = FlaskLoginClient
+    with app.app_context():
+        user_to_login = User.query.get(1)
+        
+    with app.test_client(user=user_to_login) as logged_in_client:
+        logged_in_response = logged_in_client.get("/home")
+        csrf_token_string = get_csrf_token(logged_in_response.get_data(), meta_tag=True)
+        yield logged_in_client, csrf_token_string, user_to_login, app
+
+@pytest.fixture
+def logged_in_user_on_home_page(login_first_user_with_register):
+    client, user, app = login_first_user_with_register
     get_home_response = client.get("/home")
     csrf_token_string = get_csrf_token(get_home_response.get_data(), meta_tag=True)
-    yield client, user, csrf_token_string
+    yield client, user, csrf_token_string, app
 
 @pytest.fixture
 def register_multiple_users(app):
