@@ -89,8 +89,8 @@ def delete_utub(utub_id: int):
         return jsonify({
             "Status" : "Success",
             "Message" : "UTub deleted",
-            "Utub_ID" : f"{utub.id}", 
-            "Utub_name" : f"{utub.name}",
+            "UTub_ID" : f"{utub.id}", 
+            "UTub_name" : f"{utub.name}",
             "UTub_description" : f"{utub.utub_description}",
         }), 200
 
