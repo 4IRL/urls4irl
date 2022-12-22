@@ -138,7 +138,7 @@ def add_user(utub_id: int):
     if utub_new_user_form.validate_on_submit():
         username = utub_new_user_form.username.data
         
-        new_user = User.query.filter_by(username=username).first()
+        new_user = User.query.filter_by(username=username).first_or_404()
         already_in_utub = [member for member in utub.members if int(member.user_id) == int(new_user.id)]
 
         if already_in_utub:

@@ -63,15 +63,7 @@ def delete_utub(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub to be deleted
     """
-    try:
-        # Is this necessary?
-        utub_id_to_delete = int(utub_id)
-
-    except ValueError: 
-        return jsonify({
-            "Status" : "Failure",
-            "Message" : "You don't have permission to delete this UTub!"
-        }), 404
+    utub_id_to_delete = int(utub_id)
 
     utub = Utub.query.get_or_404(utub_id_to_delete)
 
