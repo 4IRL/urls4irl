@@ -60,14 +60,14 @@ def test_login_unregistered_user(load_login_page):
     assert current_user.get_id() is None
     assert current_user.is_active is False
 
-def test_already_logged_in_user_to_splash_page(login_first_user):
+def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
     """
     GIVEN a registered and logged in user
     WHEN "/" is GET after user is already logged on
     THEN ensure redirection occurs and user is brought to their home page
         - Note: Two redirects, from "/" -> "/login" -> "/home"
     """
-    client, logged_in_user = login_first_user
+    client, logged_in_user, app = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/", follow_redirects = True)
@@ -90,14 +90,14 @@ def test_already_logged_in_user_to_splash_page(login_first_user):
     assert current_user.email == logged_in_user.email
     assert int(current_user.get_id()) == logged_in_user.id
 
-def test_already_logged_in_user_to_login_page(login_first_user):
+def test_already_logged_in_user_to_login_page(login_first_user_with_register):
     """
     GIVEN a registered and logged in user
     WHEN "/login" is GET after user is already logged on
     THEN ensure redirection occurs and user is brought to their home page
         - Note: Redirects are "/login" -> "/home"
     """
-    client, logged_in_user = login_first_user
+    client, logged_in_user, app = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/login", follow_redirects = True)
@@ -118,14 +118,14 @@ def test_already_logged_in_user_to_login_page(login_first_user):
     assert current_user.email == logged_in_user.email
     assert int(current_user.get_id()) == logged_in_user.id
 
-def test_already_logged_in_user_to_register_page(login_first_user):
+def test_already_logged_in_user_to_register_page(login_first_user_with_register):
     """
     GIVEN a registered and logged in user
     WHEN "/register" is GET after user is already logged on
     THEN ensure redirection occurs and user is brought to their home page
         - Note: Redirects are "/register" -> "/home"
     """
-    client, logged_in_user = login_first_user
+    client, logged_in_user, app = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/register", follow_redirects = True)
@@ -146,13 +146,13 @@ def test_already_logged_in_user_to_register_page(login_first_user):
     assert current_user.email == logged_in_user.email
     assert int(current_user.get_id()) == logged_in_user.id
 
-def test_already_logged_in_user_to_home_page(login_first_user):
+def test_already_logged_in_user_to_home_page(login_first_user_with_register):
     """
     GIVEN a registered and logged in user
     WHEN "/home" is GET after user is already logged on
     THEN ensure 200 and user is brought to their home page
     """
-    client, logged_in_user = login_first_user
+    client, logged_in_user, app = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/home", follow_redirects = True)
@@ -169,13 +169,13 @@ def test_already_logged_in_user_to_home_page(login_first_user):
 
     assert bytes(f'Logged in as {current_user.username}', 'utf-8') in response.data
     
-def test_user_can_logout_after_login(login_first_user):
+def test_user_can_logout_after_login(login_first_user_with_register):
     """
     GIVEN a registered and logged in user
     WHEN "/logout" is GET after user is already logged on
     THEN ensure 200, user is brought to login page, user no longer logged in
     """
-    client, logged_in_user = login_first_user
+    client, logged_in_user, app = login_first_user_with_register
 
     # Ensure logout is successful
     response = client.get("/logout", follow_redirects = True)
@@ -198,13 +198,13 @@ def test_user_can_logout_after_login(login_first_user):
     assert current_user.get_id() is None
     assert current_user.is_active is False
 
-def test_user_can_login_logout_login(login_first_user):
+def test_user_can_login_logout_login(login_first_user_with_register):
     """
     GIVEN a registered and logged in user
     WHEN they logout via GET "/logout"
     THEN ensure they can login in again successfully
     """
-    client, logged_in_user = login_first_user
+    client, logged_in_user, app = login_first_user_with_register
 
     # Ensure logout is successful
     response = client.get("/logout", follow_redirects = True)
