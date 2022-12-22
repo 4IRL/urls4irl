@@ -3,7 +3,7 @@ from models_for_test import valid_empty_utub_1, valid_empty_utub_2, valid_empty_
 from urls4irl.models import Utub, Utub_Users
 
 
-def test_requests_add_utub_with_valid_form(logged_in_user_on_home_page, app):
+def test_requests_add_utub_with_valid_form(logged_in_user_on_home_page):
     """
     GIVEN a valid logged in user on the home page
     WHEN they make a new UTub for themselves and do a POST to "/utub/new" with valid form data
@@ -24,7 +24,7 @@ def test_requests_add_utub_with_valid_form(logged_in_user_on_home_page, app):
         "UTub_creator_id": Integer indicating the ID of the user who made this UTub"
     }
     """
-    client, user, csrf_token  = logged_in_user_on_home_page
+    client, user, csrf_token, app  = logged_in_user_on_home_page
 
     # Make sure database is empty of UTubs and associated users
     with app.app_context():
@@ -78,14 +78,16 @@ def test_requests_add_utub_with_valid_form(logged_in_user_on_home_page, app):
         assert current_utub_user_association[0].utub_id == utub_id
         assert current_utub_user_association[0].user_id == user.id
 
-def test_requests_add_utub_with_get_request(logged_in_user_on_home_page, app):
+    #TODO test new UTub displayed on user's UTub deck
+
+def test_requests_add_utub_with_get_request(logged_in_user_on_home_page):
     """
     GIVEN a valid logged in user on the home page
     WHEN they make a new UTub for themselves and do a GET to "/utub/new" with valid form data
     THEN verify that the server responds with a 405 invalid request status code, and that no
         UTubs are added to the database
     """
-    client, user, csrf_token  = logged_in_user_on_home_page
+    client, user, csrf_token, app  = logged_in_user_on_home_page
     new_utub_form = {
         "csrf_token": csrf_token,
         "name": valid_empty_utub_1["name"],
@@ -101,7 +103,7 @@ def test_requests_add_utub_with_get_request(logged_in_user_on_home_page, app):
     with app.app_context():
         assert len(Utub.query.all()) == 0
 
-def test_requests_add_utub_with_invalid_form(logged_in_user_on_home_page, app):
+def test_requests_add_utub_with_invalid_form(logged_in_user_on_home_page):
     """
     GIVEN a valid logged in user on the home page
     WHEN they make a new UTub for themselves and do a POST to "/utub/new" with invalid form data
@@ -121,7 +123,7 @@ def test_requests_add_utub_with_invalid_form(logged_in_user_on_home_page, app):
             ]
     }
     """
-    client, user, csrf_token = logged_in_user_on_home_page
+    client, user, csrf_token, app = logged_in_user_on_home_page
     new_utub_form = {
         "csrf_token": csrf_token,
         "utub_name": valid_empty_utub_1["name"],    # Invalid form name, s/b  "name"
@@ -151,16 +153,22 @@ def test_requests_add_utub_with_no_csrf_token(logged_in_user_on_home_page):
     THEN ensure it returns with a 404 and page response indicates CSRF token is missing
     """
     
-    client, user, csrf_token = logged_in_user_on_home_page
+    client, user, csrf_token, app = logged_in_user_on_home_page
 
-    invalid_new_utub_response = client.post("/utub/new", data={"csrf_token": csrf_token})
+    invalid_new_utub_response = client.post("/utub/new")
 
     # Assert invalid response code
     assert invalid_new_utub_response.status_code == 400
     assert b'<p>The CSRF token is missing.</p>' in invalid_new_utub_response.data
 
-def test_requests_add_multiple_valid_utubs(logged_in_user_on_home_page, app):
-    client, user, csrf_token  = logged_in_user_on_home_page
+def test_requests_add_multiple_valid_utubs(logged_in_user_on_home_page):
+    """
+    GIVEN a valid user on the home page
+    WHEN they make multiple empty UTubs by POST'ing to "/utub/new" with valid UTub form data
+    THEN ensure that the correct 200 status code and JSON response is given, as well as ensuring
+        the UTub data is stored as well as the UTub-User association data
+    """
+    client, user, csrf_token, app  = logged_in_user_on_home_page
     valid_utubs = (valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3,)
 
     for valid_utub in valid_utubs:
