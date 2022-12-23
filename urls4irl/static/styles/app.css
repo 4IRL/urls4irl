@@ -3,11 +3,16 @@ html, body {
     margin: 0;
     padding: 0;
     overflow-y: hidden;
+    background-color: #1f2424;
 }
 
 h1 {
     font-weight: 300;
     font-size: 2.5em;
+}
+
+h2 {
+    color: #2ecc71;
 }
 
 p {
@@ -143,7 +148,10 @@ span.tag {
     width: 100%;
     height: 100%;
     margin: 0px;
+    background: #1f2424;
+    border: 2px solid #343c3d;
     border-radius: 30px;
+    color: #60daaa;
     overflow: hidden;
 }
 
@@ -155,12 +163,20 @@ span.tag {
 }
 
 .card {
-    background: rgb(84, 84, 84);
+    background-color: #282f2f;
     height: 100%;
     margin: 2px;
-    border: 5px solid rgb(84, 84, 84);
+    border: 2px solid #343c3d;
     border-radius: 20px;
     cursor: pointer;
+}
+
+.card-title {
+    color: #1abc9c;
+}
+
+.card-text {
+    color: #8c9b9d;
 }
 
 .selected {
@@ -438,18 +454,18 @@ span.tag {
     margin: 0;
     height: 100vh;
 }
-
+/* 
 #UTubDeck {
-    background: #1E202D;
-    color: #60daaa;
 }
 
 #TagDeck {
     background: orange;
+    color: #60daaa;
 }
 
 #UTubContent {
     background: gray;
+    color: #60daaa;
 }
 
 #MembersDeck {
@@ -464,4 +480,4 @@ span.tag {
 #ChatDeck {
     background: green;
     overflow-y: auto;
-}
+} */

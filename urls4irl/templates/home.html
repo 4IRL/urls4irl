@@ -16,12 +16,12 @@
         </div>
         <div class="col-3 col-lg-3 mb-md-0 text-right">
             <div class="d-flex justify-content-center flex-row">
-                <i id="createUTub" class="bi bi-plus-square-fill fa-2x text-success mx-1"></i>
+                <i id="createUTub" class="bi bi-plus-square-fill fa-2x text-success mx-1" onclick="createUTub()"></i>
                 <i id="deleteUTub" class="bi bi-x-square-fill fa-2x text-danger mx-1"></i>
             </div>
         </div>
         <div class="deckContent">
-            <form></form>
+            <form id="listUTubs"></form>
         </div>
     </div>
 
@@ -57,6 +57,11 @@
             </div>
             <div class="col-3 col-lg-3 mb-md-0 text-right">
                 <i id="addURL" class="bi bi-plus-square-fill fa-2x text-success mx-1"></i>
+            </div>
+        </div>
+        <div class="row justify-content-center mx-2">
+            <div class="col-12 col-lg-12 mb-md-0 text-left">
+                <h2 id="UTubDescription" style="display: inline-block"></h2>
             </div>
         </div>
         <div class="deckContent justify-content-center">
