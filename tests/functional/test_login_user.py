@@ -11,12 +11,12 @@ def test_login_registered_user(app, register_first_user, load_login_page):
     WHEN "/login" is POST'd with filled in correctly with form data
     THEN ensure login does occur
     """
-    registered_user = register_first_user
+    registered_user_data, _ = register_first_user
     client, csrf_token_str = load_login_page
 
-    registered_user["csrf_token"] = csrf_token_str    
+    registered_user_data["csrf_token"] = csrf_token_str    
 
-    response = client.post("/login", data=registered_user, follow_redirects = True)
+    response = client.post("/login", data=registered_user_data, follow_redirects = True)
 
     # Correctly redirects to home page
     assert response.history[0].status_code == 302
@@ -25,13 +25,13 @@ def test_login_registered_user(app, register_first_user, load_login_page):
     assert len(response.history) == 1
     
     # Test if user logged in
-    assert current_user.username == registered_user["username"]
-    assert current_user.password != registered_user["password"]
-    assert current_user.email == registered_user["email"]
+    assert current_user.username == registered_user_data["username"]
+    assert current_user.password != registered_user_data["password"]
+    assert current_user.email == registered_user_data["email"]
 
     # Ensure user id's match with  database
     with app.app_context():
-        registered_db_user = User.query.filter_by(username=registered_user["username"]).first()
+        registered_db_user = User.query.filter_by(username=registered_user_data["username"]).first()
 
     assert registered_db_user.id == int(current_user.get_id())
 

@@ -1,43 +1,10 @@
 import pytest
-from models_for_test import valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3
+from models_for_test import valid_empty_utub_1
 from flask_login import current_user
-from urls4irl.models import Utub, Utub_Users, User
+from urls4irl.models import Utub, Utub_Users
 from urls4irl import db
 
-@pytest.fixture
-def add_single_utub_as_user(logged_in_user_on_home_page):
-    client, valid_user, csrf_token, app = logged_in_user_on_home_page
-
-    with app.app_context():
-        new_utub = Utub(name=valid_empty_utub_1["name"], 
-                utub_creator=valid_user.id, 
-                utub_description=valid_empty_utub_1["utub_description"])
-
-        creator_to_utub = Utub_Users()
-        creator_to_utub.to_user = current_user
-        new_utub.members.append(creator_to_utub)
-        db.session.commit()
-
-        new_utub_id = new_utub.id
-    
-    yield client, new_utub_id, csrf_token, app
-
-@pytest.fixture
-def every_user_makes_a_unique_utub(register_multiple_users, app):
-    with app.app_context():
-        # Get all other users who aren't logged in
-        other_users = User.query.all()
-        for other_user in other_users:
-            new_utub = Utub(name=valid_empty_utub_1["name"], 
-                    utub_creator=other_user.id, 
-                    utub_description=valid_empty_utub_1["utub_description"])
-
-            creator_to_utub = Utub_Users()
-            creator_to_utub.to_user = other_user
-            new_utub.members.append(creator_to_utub)
-            db.session.commit()
-
-def test_delete_existing_utub_as_creator(add_single_utub_as_user):
+def test_delete_existing_utub_as_creator(add_single_utub_as_user_after_logging_in):
     """
     GIVEN a valid existing user and a UTub they have created
     WHEN the user requests to delete the UTub via a POST to "/utub/delete/<int: utub_id>"
@@ -55,7 +22,7 @@ def test_delete_existing_utub_as_creator(add_single_utub_as_user):
         "UTub_name": String representing the name of the deleted UTub,
     }
     """
-    client, utub_id, csrf_token, app = add_single_utub_as_user
+    client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
 
     delete_utub_response = client.post(f"/utub/delete/{utub_id}", data={"csrf_token": csrf_token})
 
@@ -191,6 +158,7 @@ def test_delete_utub_as_member_only(every_user_makes_a_unique_utub, login_first_
         for utub in all_utubs:
             assert len(Utub_Users.query.filter(Utub_Users.user_id == current_user.id, Utub_Users.utub_id == utub.id).all()) == 1
 
+    # The logged in user should now be a member of the utubs they weren't a part of before
     only_member_in_these_utubs = user_not_in_these_utubs
 
     for utub_not_in in only_member_in_these_utubs:

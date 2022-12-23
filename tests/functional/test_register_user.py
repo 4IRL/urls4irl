@@ -60,13 +60,13 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     THEN ensure they are not logged in and not registered again
     """
     client, csrf_token_string = load_register_page
-    already_registered_user = register_first_user
+    already_registered_user_data, _ = register_first_user
 
-    already_registered_user["csrf_token"] = csrf_token_string
+    already_registered_user_data["csrf_token"] = csrf_token_string
 
     # Ensure user already exists
     with app.app_context():
-        new_db_user = User.query.filter_by(username=already_registered_user["username"]).first()
+        new_db_user = User.query.filter_by(username=already_registered_user_data["username"]).first()
 
     assert new_db_user is not None
 
@@ -74,7 +74,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     assert current_user.get_id() is None
     assert current_user.is_active is False
 
-    response = client.post("/register", data=already_registered_user, follow_redirects = True)
+    response = client.post("/register", data=already_registered_user_data, follow_redirects = True)
 
     # Check that does not reroute
     assert response.status_code == 200

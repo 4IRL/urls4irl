@@ -175,7 +175,6 @@ def add_user(utub_id: int):
             "Errors": utub_new_user_form.errors
         }), 404
 
-
     return jsonify({
         "Status" : "Failure",
         "Message" : "Unable to add that user to this UTub",
