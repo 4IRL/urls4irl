@@ -102,16 +102,18 @@ def delete_user(utub_id: int, user_id: int):
             "Message" : "Not allowed to remove a user from this UTub",
             "Error_code": 3
             }), 403
-    
+
     current_utub.members.remove(user_to_delete_in_utub)
     db.session.commit()
 
     return jsonify({
         "Status" : "Success",
         "Message" : "User removed",
-        "User_ID" : f"{user_id}",
+        "User_ID_removed" : f"{user_id}",
+        "Username": f"{user_to_delete_in_utub.username}",
         "UTub_ID" : f"{utub_id}",
-        "UTub_name" : f"{current_user.name}",
+        "UTub_name" : f"{current_utub.name}",
+        "UTub_users": [user.to_user.username for user in current_utub.members]
     }), 200
 
 @users.route('/user/add/<int:utub_id>', methods=["POST"])
@@ -119,7 +121,7 @@ def delete_user(utub_id: int, user_id: int):
 def add_user(utub_id: int):
     """
     Creater of utub wants to add a user to the utub.
-    
+
     Args:
         utub_id (int): The utub that this user is being added to
     """
@@ -137,7 +139,7 @@ def add_user(utub_id: int):
 
     if utub_new_user_form.validate_on_submit():
         username = utub_new_user_form.username.data
-        
+
         new_user = User.query.filter_by(username=username).first_or_404()
         already_in_utub = [member for member in utub.members if int(member.user_id) == int(new_user.id)]
 
@@ -148,20 +150,21 @@ def add_user(utub_id: int):
                 "Message" : "User already in UTub",
                 "Error_code": 2
             }), 400
-        
+
         else:
             new_user_to_utub = Utub_Users()
             new_user_to_utub.to_user = new_user
             utub.members.append(new_user_to_utub)
             db.session.commit()
-            
+
             # Successfully added user to UTub
             return jsonify({
                 "Status" : "Success",
                 "Message" : "User added",
-                "User_ID" : f"{new_user.id}",
-                "UTub_ID" : f"{utub_id}",
-                "UTub_name" : f"{current_user.name}",
+                "User_ID_added" : int(new_user.id),
+                "UTub_ID" : int(utub_id),
+                "UTub_name" : f"{utub.name}",
+                "UTub_users": [user.to_user.username for user in utub.members]
             }), 200
 
     if utub_new_user_form.errors is not None:
