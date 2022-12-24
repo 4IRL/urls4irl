@@ -67,7 +67,7 @@ def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
     THEN ensure redirection occurs and user is brought to their home page
         - Note: Two redirects, from "/" -> "/login" -> "/home"
     """
-    client, logged_in_user, app = login_first_user_with_register
+    client, csrf_token, logged_in_user, app = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/", follow_redirects = True)
@@ -97,7 +97,7 @@ def test_already_logged_in_user_to_login_page(login_first_user_with_register):
     THEN ensure redirection occurs and user is brought to their home page
         - Note: Redirects are "/login" -> "/home"
     """
-    client, logged_in_user, app = login_first_user_with_register
+    client, csrf_token, logged_in_user, app = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/login", follow_redirects = True)
@@ -125,7 +125,7 @@ def test_already_logged_in_user_to_register_page(login_first_user_with_register)
     THEN ensure redirection occurs and user is brought to their home page
         - Note: Redirects are "/register" -> "/home"
     """
-    client, logged_in_user, app = login_first_user_with_register
+    client, csrf_token, logged_in_user, app = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/register", follow_redirects = True)
@@ -152,7 +152,7 @@ def test_already_logged_in_user_to_home_page(login_first_user_with_register):
     WHEN "/home" is GET after user is already logged on
     THEN ensure 200 and user is brought to their home page
     """
-    client, logged_in_user, app = login_first_user_with_register
+    client, csrf_token, logged_in_user, app = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/home", follow_redirects = True)
@@ -175,7 +175,7 @@ def test_user_can_logout_after_login(login_first_user_with_register):
     WHEN "/logout" is GET after user is already logged on
     THEN ensure 200, user is brought to login page, user no longer logged in
     """
-    client, logged_in_user, app = login_first_user_with_register
+    client, csrf_token, logged_in_user, app = login_first_user_with_register
 
     # Ensure logout is successful
     response = client.get("/logout", follow_redirects = True)
@@ -184,7 +184,7 @@ def test_user_can_logout_after_login(login_first_user_with_register):
     assert response.history[0].status_code == 302
     assert response.history[0].request.path == url_for("users.logout")
 
-    # Ensure lands on splash page
+    # Ensure lands on login page
     assert response.status_code == 200
     assert request.path == url_for("users.login")
 
@@ -204,13 +204,16 @@ def test_user_can_login_logout_login(login_first_user_with_register):
     WHEN they logout via GET "/logout"
     THEN ensure they can login in again successfully
     """
-    client, logged_in_user, app = login_first_user_with_register
+    client, csrf_token, logged_in_user, app = login_first_user_with_register
 
     # Ensure logout is successful
     response = client.get("/logout", follow_redirects = True)
 
     # Ensure on login page
     assert b'<input id="csrf_token" name="csrf_token" type="hidden" value=' in response.data
+    assert b'<input class="form-control form-control-lg" id="username" name="username" required type="text" value="">' in response.data
+    assert b'<input class="form-control form-control-lg" id="password" name="password" required type="password" value="">' in response.data
+    assert request.path == url_for("users.login")
 
     # Grab csrf token from login page
     valid_user_1["csrf_token"] = get_csrf_token(response.data)
@@ -222,12 +225,12 @@ def test_user_can_login_logout_login(login_first_user_with_register):
         "password": valid_user_1["password"]
     }, follow_redirects = True)
 
-    # Ensure logged in user landed on home page
+    # Ensure redirect starts on login page
     assert len(response.history) == 1
     assert response.history[0].status_code == 302
     assert response.history[0].request.path == url_for("users.login")
 
-    # Ensure lands on splash page
+    # Ensure lands on home page
     assert response.status_code == 200
     assert request.path == url_for("main.home")
 

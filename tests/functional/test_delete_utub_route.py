@@ -43,13 +43,13 @@ def test_delete_existing_utub_as_creator(add_single_utub_as_user_after_logging_i
         assert len(Utub_Users.query.all()) == 0
     #TODO Test UTub deleted from user's home page
 
-def test_delete_nonexistent_utub(logged_in_user_on_home_page):
+def test_delete_nonexistent_utub(login_first_user_with_register):
     """
     GIVEN a valid existing user and a nonexistent UTub
     WHEN the user requests to delete the UTub via a POST to "/utub/delete/1"
     THEN ensure that a 404 status code response is given when the UTub cannot be found in the database
     """
-    client, valid_user, csrf_token, app = logged_in_user_on_home_page
+    client, csrf_token, valid_user, app = login_first_user_with_register
 
     # Assert no UTubs exist before nonexistent UTub is attempted to be removed
     with app.app_context():
@@ -60,7 +60,7 @@ def test_delete_nonexistent_utub(logged_in_user_on_home_page):
     # Ensure 404 sent back after invalid UTub id is requested
     assert delete_utub_response.status_code == 404
 
-def test_delete_utub_with_invalid_route(logged_in_user_on_home_page):
+def test_delete_utub_with_invalid_route(login_first_user_with_register):
     """
     GIVEN a valid existing user
     WHEN the user requests to delete a UTub via a POST to "/utub/delete/InvalidRouteArgument"
@@ -69,7 +69,7 @@ def test_delete_utub_with_invalid_route(logged_in_user_on_home_page):
     Correct url should be: "/utub/delete/<int: utub_id>" Where utub_id is an integer representing the ID of the UTub
         to delete
     """
-    client, valid_user, csrf_token, app = logged_in_user_on_home_page
+    client, csrf_token, valid_user, app = login_first_user_with_register
 
     # Assert no UTubs exist before nonexistent UTub is attempted to be removed
     with app.app_context():
@@ -79,6 +79,24 @@ def test_delete_utub_with_invalid_route(logged_in_user_on_home_page):
 
     # Ensure 404 sent back after invalid UTub id is requested
     assert delete_utub_response.status_code == 404
+
+def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in):
+    """
+    GIVEN a valid existing user with a single UTub, utub ID == 1
+    WHEN the user requests to delete a UTub via a POST to "/utub/delete/1" without a CSRF token included
+    THEN ensure that a 400 status code response is given due to not including the CSRF
+    """
+    client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
+
+    # Assert no UTubs exist before nonexistent UTub is attempted to be removed
+    with app.app_context():
+        assert len(Utub.query.all()) == 1
+
+    delete_utub_response = client.post(f"/utub/delete/{utub_id}")
+
+    # Ensure 400 sent back after no csrf token included
+    assert delete_utub_response.status_code == 400
+    assert b"<p>The CSRF token is missing.</p>" in delete_utub_response.data
 
 def test_delete_utub_as_not_member_or_creator(every_user_makes_a_unique_utub, login_first_user_without_register):
     """

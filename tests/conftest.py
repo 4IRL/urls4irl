@@ -84,7 +84,9 @@ def login_first_user_with_register(app, register_first_user):
         user_to_login = User.query.get(1)
         
     with app.test_client(user=user_to_login) as logged_in_client:
-        yield logged_in_client, user_to_login, app
+        logged_in_response = logged_in_client.get("/home")
+        csrf_token_string = get_csrf_token(logged_in_response.get_data(), meta_tag=True)
+        yield logged_in_client, csrf_token_string, user_to_login, app
 
 @pytest.fixture
 def login_first_user_without_register(app):
@@ -111,13 +113,6 @@ def login_second_user_without_register(app):
         yield logged_in_client, csrf_token_string, user_to_login, app
 
 @pytest.fixture
-def logged_in_user_on_home_page(login_first_user_with_register):
-    client, user, app = login_first_user_with_register
-    get_home_response = client.get("/home")
-    csrf_token_string = get_csrf_token(get_home_response.get_data(), meta_tag=True)
-    yield client, user, csrf_token_string, app
-
-@pytest.fixture
 def add_single_utub_as_user_without_logging_in(app, register_first_user):
     first_user_dict, first_user_object = register_first_user
     with app.app_context():
@@ -131,8 +126,8 @@ def add_single_utub_as_user_without_logging_in(app, register_first_user):
         db.session.commit()
 
 @pytest.fixture
-def add_single_utub_as_user_after_logging_in(logged_in_user_on_home_page):
-    client, valid_user, csrf_token, app = logged_in_user_on_home_page
+def add_single_utub_as_user_after_logging_in(login_first_user_with_register):
+    client, csrf_token, valid_user, app = login_first_user_with_register
 
     with app.app_context():
         new_utub = Utub(name=valid_empty_utub_1["name"], 
