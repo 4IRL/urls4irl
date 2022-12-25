@@ -135,6 +135,25 @@ span.tag {
     white-space: nowrap;
 }
 
+.tag-del {
+    padding: 0rem;
+    vertical-align: unset;
+    padding-left: 5px;
+    display: none;
+}
+
+span.tag:hover .tag-del {
+    display: inline-block;
+    line-height: 100%;
+    height: 100%;
+    font-size: 100%;
+}
+
+.tag-del:focus {
+    outline: none;
+    box-shadow: none;
+}
+
 .panel {
     height: 100%;
     padding-top: 50px;
@@ -454,6 +473,11 @@ span.tag {
     margin: 0;
     height: 100vh;
 }
+
+#ModalForm {
+    overflow: hidden;
+}
+
 /* 
 #UTubDeck {
 }
