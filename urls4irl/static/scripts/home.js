@@ -17,7 +17,7 @@ $(document).ready(function () {
     });
 
     // Instantiate UTubDeck with user's accessible UTubs
-    buildUTubDeck(UTubs);
+    buildUTubDeck(UTubsList);
 
     // User selected a UTub, display data
     $('input[type=radio]').on('click', function () {
@@ -27,20 +27,46 @@ $(document).ready(function () {
         $(this).parent().toggleClass('active');
         $('#UTubHeader')[0].innerHTML = $(this)[0].value;
 
-        getUtubInfo(currentUTubID());
+        var selectedUTubID = currentUTubID();
+        getUtubInfo(selectedUTubID).then(function (selectedUTub) {
+            //Use local variables, pass them in to the subsequent functions as required
+            var dictURLs = selectedUTub.urls;
+            var dictTags = selectedUTub.tags;
+            var dictUsers = selectedUTub.members;
+            var creator = selectedUTub.created_by;
+            let currentUserID = $('.user').attr('id');
+
+            resetURLDeck();
+
+            // Center panel
+            buildURLDeck(dictURLs, dictTags);
+
+            // LH panels
+            buildTagDeck(dictTags);
+
+            // RH panels
+            // Update UTub description, not yet implemented on backend
+            // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
+
+            gatherUsers(dictUsers, creator);
+        })
     });
 
-    // Selected URL
+    // Selected URL. Hide/show the card, if nothing "important" in card was clicked)
     $(document).on('click', '.card', function (e) {
-        var el = e.target.type;                                 // Element type
-        var clickedCardCol = $(e.target).closest('.cardCol');   // Card column
-        var clickedCard = clickedCardCol.find('.card');         // Card
-        var selectedURLid = clickedCard.attr('urlid');          // URL ID
+        // e.stopPropagation();
+        // e.stopImmediatePropagation();
+        // Triage click
+        var el = $(e.target);
 
-        console.log(el)
-        if (el == 'button' || el == 'text') {
-            // Do nothing. onclick function will handle user inputs
+        var importantBool = el.hasClass('btn') || el.hasClass('tag') || el[0].type == 'text';
+        if (importantBool) {
+            // "Important" thing clicked. Do nothing. onclick function will handle user inputs
         } else {
+            var clickedCardCol = $(e.target).closest('.cardCol');   // Card column
+            var clickedCard = clickedCardCol.find('.card');         // Card
+            var selectedURLid = clickedCard.attr('urlid');          // URL ID
+
             if (clickedCard.hasClass("selected")) {
                 $('.cardCol').each(function () {
                     $('#UPRRow').append(this)
@@ -120,12 +146,33 @@ $(document).ready(function () {
     });
 
     // Remove tag from URL
-    $('.tag-del').on('click',  function(e) {
-        e.stopPropagation();
-        const tagToRemove = $(this).parent().remove();
-        const tagData = tagToRemove.attr('id');
-        removeTag(tagToRemove, tagData);
+    $('.tag-del').click(function (e) {
+        console.log("Tag deletion initiated")
+        e.stopImmediatePropagation();
+        const tagToRemove = $(this).parent();
+        const tagID = tagToRemove.attr('tagid');
+        removeTag(tagToRemove, tagID);
     });
+
+
+    $(document).on('keyup', function (e) {
+        if ($('#URLFocusRow').length > 0) {     // Some URL is selected
+            var keycode = (e.keyCode ? e.keyCode : e.which);
+            var prev = keycode == 37 || keycode == 38;
+            var next = keycode == 39 || keycode == 40;
+            var UPRcards = $('#UPRRow').children('.cardCol').length;
+            var LWRcards = $('#LWRRow').children('.cardCol').length;
+
+            console.log(UPRcards)
+            console.log(LWRcards)
+
+            if (prev && UPRcards > 0) {              // User wants to highlight previous URL
+                selectURL($($('#UPRRow').children('.cardCol')[UPRcards - 1]).attr('urlid'))
+            } else if (next && LWRcards > 0) {       // User wants to highlight next URL
+                selectURL($($('#LWRRow').children('.cardCol')[0]).attr('urlid'))
+            }
+        }
+    })
 
     // Selected User (only if creator)
     $('select').change(function () {
@@ -164,50 +211,57 @@ $(document).ready(function () {
 function findUTubID() {
     // Find which UTub was requested
     var currentUTub = $('.UTub.active');
-    
+
     var URLID = $('.url.selected').attr('urlid');
-    
+
     var radioButton = currentUTub.find('input')[0];
-    str = radioButton.id;
-    return str.split('-')[1];
+    return radioButton.attr('utubid');
 }
 
-// Simple function to simplify the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
+// Simple function to streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function currentUTubID() {
-    return $('.UTub.active').attr('for').split('-')[1];
+    return $('.UTub.active').find('input').attr('utubid');
 }
 
-// Simple function to simplify the jQuery selector extraction of URL ID. And makes it easier in case the ID is encoded in a new location in the future
-function seletedURLID() {
-    return $('.url.selected').attr('urlid').split('-')[1];
+// Simple function to streamline the jQuery selector extraction of URL ID. And makes it easier in case the ID is encoded in a new location in the future
+function selectedURLID() {
+    console.log($('.url.selected').attr('urlid'))
+    return $('.url.selected').attr('urlid');
 }
 
+// Simple function to streamline the AJAX call to db for updated info
 function getUtubInfo(selectedUTubID) {
     // Pull data from db
-    $.getJSON('/home?UTubID=' + selectedUTubID, function (selectedUTub) {
-        //Use local variables, pass them in to the subsequent functions as required
-        var selectedUTubID = selectedUTub.id;
-        var dictURLs = selectedUTub.urls;
-        var dictTags = selectedUTub.tags;
-        var dictUsers = selectedUTub.members;
-        var creator = selectedUTub.created_by;
-        let currentUserID = $('.user').attr('id');
+    return $.getJSON('/home?UTubID=' + selectedUTubID)
+    // $.getJSON('/home?UTubID=' + selectedUTubID, function (selectedUTub) {
+    //     console.log(selectedUTub)
 
-        // Clear URL Deck and prep for new UTub data
-        resetURLDeck();
+    //     return selectedUTub
 
-        // Center panel
-        buildURLDeck(dictURLs, dictTags);
+    // Maybe rebuild elsewhere as required
+    //Use local variables, pass them in to the subsequent functions as required
+    // var selectedUTubID = selectedUTub.id;
+    // var dictURLs = selectedUTub.urls;
+    // var dictTags = selectedUTub.tags;
+    // var dictUsers = selectedUTub.members;
+    // var creator = selectedUTub.created_by;
+    // let currentUserID = $('.user').attr('id');
 
-        // LH panels
-        buildTagDeck(dictTags);
+    // // Clear URL Deck and prep for new UTub data
+    // resetURLDeck();
 
-        // RH panels
-        // Update UTub description, not yet implemented on backend
-        // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
+    // // Center panel
+    // buildURLDeck(dictURLs, dictTags);
 
-        gatherUsers(dictUsers, creator);
-    })
+    // // LH panels
+    // buildTagDeck(dictTags);
+
+    // // RH panels
+    // // Update UTub description, not yet implemented on backend
+    // // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
+
+    // gatherUsers(dictUsers, creator);
+    // })
 }
 
 function buildUTubDeck(UTubs) {
@@ -218,7 +272,7 @@ function buildUTubDeck(UTubs) {
         // Instantiate UTubDeck (top left panel) with UTubs accessible to current user
         radioHTML = '';
         for (i in UTubs) {
-            radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" id="UTub-' + UTubs[i].id + '" name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
+            radioHTML += '<label for="UTub-' + UTubs[i].id + '" class="UTub draw"><input type="radio" name="UTub-' + UTubs[i].id + '" id="UTub-' + UTubs[i].id + '" utubid=' + UTubs[i].id + ' name="UTubSelection" value="' + UTubs[i].name + '"><b>' + UTubs[i].name + '</b></label>';
         }
         $('#listUTubs')[0].innerHTML = radioHTML;
     }
@@ -259,7 +313,7 @@ function buildTagDeck(dictTags) {
 
 // Build center panel URL-tag list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
-    
+
     $('#editUTub').show();
     $('#addURL').show();
     $('#UTubDescription').show();
@@ -323,9 +377,12 @@ function buildURLDeck(dictURLs, dictTags) {
                 'class': 'tag',
                 'tagid': tag.id,
             });
-            tagSpan.innerHTML = tag.tag_string; 
-            
-            $(closeButton).attr({ 'class': 'btn btn-sm btn-outline-link border-0 tag-del' });
+            tagSpan.innerHTML = tag.tag_string;
+
+            $(closeButton).attr({
+                'class': 'btn btn-sm btn-outline-link border-0 tag-del',
+                'onclick': 'removeTag(' + tag.id + ')'
+            });
             closeButton.innerHTML = '&times;';
 
             $(tagSpan).append(closeButton);
@@ -344,7 +401,8 @@ function buildURLDeck(dictURLs, dictTags) {
         $(addTag).attr({
             'class': 'card-link btn btn-info',
             'type': 'button',
-            'onclick': "cardEdit(" + selectedUTubID + "," + dictURLs[i].url_id + ",'tag')"
+            'onclick': "reqInput('addTag')"
+            // 'onclick': "cardEdit(" + selectedUTubID + "," + dictURLs[i].url_id + ",'tag')"
         })
         addTag.innerHTML = "Add Tag"
 
@@ -358,7 +416,7 @@ function buildURLDeck(dictURLs, dictTags) {
         $(delURL).attr({
             'class': 'card-link btn btn-danger',
             'type': 'button',
-            'onclick': "deleteURL(" + dictURLs[i].url_id + ")"
+            'onclick': "deleteURL()"
             // "/delete_url/" + selectedUTubID + "/" + dictURLs[i].url_id
         })
         delURL.innerHTML = "Delete URL"
@@ -387,21 +445,31 @@ function reqInput(handle) {
         case 'createUTub':
             var inputParent = $('#listUTubs');
             var initString = '';
-            var placeholder = 'New UTub Name'
+            var placeholder = 'New UTub Name';
             break;
         case 'editUTubDescription':
             var inputParent = $('#UTubDescription');
             var initString = '';
-            var placeholder = 'Describe the contents of your UTub (optional)'
+            var placeholder = 'Describe the contents of your UTub (optional)';
             break;
         case 'addTag':
             var inputParent = $('#listTags');
             var initString = '';
-            var placeholder = 'New Tag Name'
+            var placeholder = 'New Tag Name';
+            break;
+        case 'addTagtoURL':
+            var inputParent = $('#listTags');
+            var initString = '';
+            var placeholder = 'New Tag Name';
             break;
         case 'editURL':
-            var inputParent = $('#listUTubs');
-            var initString = '';
+            var inputParent = $('#listURLs');
+            var initString = $('.url.selected').find('card-text').innerHTML;
+            var placeholder = '';
+            break;
+        case 'editURLDescription':
+            var inputParent = $('#listURLs');
+            var initString = $('.url.selected').find('card-title').innerHTML;
             var placeholder = 'New UTub Name'
             break;
         default:
@@ -427,7 +495,7 @@ function reqInput(handle) {
     $("#listUTubs").submit(function (e) {
         e.target.blur();
     })
-    // inputEl.bind('keyup', function (e) {
+    // inputEl.on('keyup', function (e) {
     //     if (e.keyCode === 13) {
     //         e.preventDefault();
     //         console.log("Enter was pressed")
@@ -452,7 +520,7 @@ function reqInput(handle) {
 
     // User submitted a card edit
     // If it's empty (or otherwise invalid), do not POST and simply remove the input element
-    inputEl.bind('blur', function (e) {
+    inputEl.on('blur', function (e) {
 
         if (inputEl[0].value) {
             postData(inputEl[0].value, handle)
@@ -534,7 +602,7 @@ function addTag(selectedUTubID, selectedURLid) {
         $('#new_tag').focus()
     }
 
-    $('#new_tag').bind('blur keyup', function (e) {
+    $('#new_tag').on('blur keyup', function (e) {
         var keycode = (e.keyCode ? e.keyCode : e.which);
         if (e.type === 'blur' || keycode == '13') {
             var tagText = $(this).val();                    // Need to send this back to the db somehow
@@ -571,7 +639,7 @@ function addURL(selectedUTubID) {
         $('#new_tag').focus()
     }
 
-    $('#new_tag').bind('blur keyup', function (e) {
+    $('#new_tag').on('blur keyup', function (e) {
         var keycode = (e.keyCode ? e.keyCode : e.which);
         if (e.type === 'blur' || keycode == '13') {
             var tagText = $(this).val();                    // Need to send this back to the db somehow
@@ -620,29 +688,26 @@ function filterURLDeck() {
 }
 
 // Remove tag from selected URL
-function removeTag(tagid) {
+function removeTag(tagID) {
     var UTubID = currentUTubID();
-    var URLID = $('.url.selected').attr('urlid');
+    var URLID = selectedURLID();
 
     let request = $.ajax({
         type: 'post',
-        url: '/tag/remove/' + UTubID + '/' + URLID + '/' + tagid
+        url: '/tag/remove/' + UTubID + '/' + URLID + '/' + tagID
     });
 
     request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
-            
+            console.log($('div.url[urlid=' + URLID + ']'))
+            console.log($('div.url[urlid=' + URLID + ']').find('span.tag[' + tagID + ']'))
+            $('div.url[urlid=' + URLID + ']').find('span.tag[tagid=' + tagID + ']').remove();
         }
     })
 
     request.fail(function (xhr, textStatus, error) {
         if (xhr.status == 409) {
             console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
-            // const flashMessage = xhr.responseJSON.error;
-            // const flashCategory = xhr.responseJSON.category;
-
-            // let flashElem = flashMessageBanner(flashMessage, flashCategory);
-            // flashElem.insertBefore('#modal-body').show();
         } else if (xhr.status == 404) {
             $('.invalid-feedback').remove();
             $('.alert').remove();
@@ -685,6 +750,7 @@ function selectURL(selectedURLid) {
             $('#URLFocusRow').append(cardCols[i]);
             $(cardCols[i]).toggleClass('col-lg-10 col-lg-4 col-xl-10 col-xl-3')
             card.addClass('selected')
+            card.attr('draggable', '')
             card.find('.URLTags').css('display', '');
             card.find('.URLOptions').css('display', '');
             rowToggle = 0;
@@ -745,7 +811,7 @@ function accessLink(url_string) {
 //     urlTagDeck.append(tagInput);
 //     $('#newTag').focus();
 
-//     $('#newTag').bind('blur keyup', function (e) {
+//     $('#newTag').on('blur keyup', function (e) {
 //         var tagText = $(this).val();
 //         if (tagText == '') return;
 //         if (e.type === 'blur') {
@@ -820,14 +886,14 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
     inputEl.focus();
     inputEl[0].setSelectionRange(0, end);
 
-    inputEl.bind('keyup', function (e) {        // Pressing enter is the same as blur, and submission
+    inputEl.on('keyup', function (e) {        // Pressing enter is the same as blur, and submission
         if (e.keyCode === 13) {
             e.target.blur();
         }
     })
 
     // User submitted a card edit
-    inputEl.bind('blur', function (e) {
+    inputEl.on('blur', function (e) {
 
         if (inputEl[0].value != "") {
             let request = $.ajax({
@@ -957,9 +1023,9 @@ function deleteURL() {
 
     request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
-            let card = $('input[urlid=' + URLID + ']').parent()
-            card.fadeOut();
-            card.remove();
+            let cardCol = $('div[urlid=' + URLID + ']').parent()
+            cardCol.fadeOut();
+            cardCol.remove();
         }
     })
 
