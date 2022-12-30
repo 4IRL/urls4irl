@@ -1,5 +1,4 @@
 import pytest
-
 from flask import url_for, request
 
 def test_get_home_screen_not_logged_in(client):

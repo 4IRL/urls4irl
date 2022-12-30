@@ -1,6 +1,7 @@
 import pytest
-from urls4irl import db
 from flask_sqlalchemy import inspect
+
+from urls4irl import db
 
 def test_db_created_correctly(app):
     """

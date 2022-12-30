@@ -1,7 +1,7 @@
 import pytest
 from flask import url_for, request
 from flask_login import current_user
-from urls4irl import db
+
 from models_for_test import valid_user_1
 from urls4irl.models import User
 

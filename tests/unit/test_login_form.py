@@ -1,7 +1,6 @@
 import pytest
 from flask import url_for, request
 
-
 def test_login_no_password(load_login_page):
     """
     GIVEN an unregistered user

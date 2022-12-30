@@ -1,4 +1,7 @@
-import pytest, json
+import json
+
+import pytest
+
 import models_for_test as v_models
 from urls4irl.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
 

@@ -1,4 +1,5 @@
 import pytest
+
 from models_for_test import valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3
 from urls4irl.models import Utub, Utub_Users
 
@@ -150,7 +151,7 @@ def test_requests_add_utub_with_no_csrf_token(login_first_user_with_register):
     """
     GIVEN a valid logged in user
     WHEN they make a POST request to make a new UTub without including a form
-    THEN ensure it returns with a 404 and page response indicates CSRF token is missing
+    THEN ensure it returns with a 400 and page response indicates CSRF token is missing
     """
     
     client, csrf_token, user, app  = login_first_user_with_register

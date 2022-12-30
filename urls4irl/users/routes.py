@@ -67,9 +67,9 @@ def delete_user(utub_id: int, user_id: int):
         utub_id (int): ID of the UTub to remove the user from
         user_id (int): ID of the User to remove from the UTub
     """
-    current_utub = Utub.query.get_or_404(int(utub_id))
+    current_utub = Utub.query.get_or_404(utub_id)
 
-    if int(user_id) == int(current_utub.created_by.id):
+    if user_id == current_utub.created_by.id:
         # Creator tried to delete themselves, not allowed
         return jsonify({
             "Status" : "Failure",
@@ -77,40 +77,41 @@ def delete_user(utub_id: int, user_id: int):
             "Error_code": 1
         }), 400
 
-    current_user_ids_in_utub = [int(member.user_id) for member in current_utub.members]
+    current_user_ids_in_utub = [member.user_id for member in current_utub.members]
+    current_user_id = current_user.id
 
-    if int(user_id) not in current_user_ids_in_utub:
-        # User not in this Utub
-        return jsonify({
-            "Status" : "Failure",
-            "Message" : "User not found in this UTub",
-            "Error_code": 2
-        }), 400
-
-    if int(current_user.get_id()) == int(current_utub.created_by.id):
-        # Creator of utub wants to delete someone
-        user_to_delete_in_utub = [member_to_delete for member_to_delete in current_utub.members if int(user_id) == (member_to_delete.user_id)][0]
-
-    elif int(current_user.get_id()) in current_user_ids_in_utub and int(user_id) == int(current_user.get_id()):
-        # User in this UTub and user wants to remove themself
-        user_to_delete_in_utub = [member_to_delete for member_to_delete in current_utub.members if int(user_id) == (member_to_delete.user_id)][0]
-
-    else:
-        # Only creator of UTub can delete other users, only you can remove yourself
+    # User can't remove if current user is not in this current UTub's members
+    # User can't remove if current user is not creator of UTub and requested user is not same as current user
+    current_user_not_in_utub = current_user_id not in current_user_ids_in_utub
+    member_trying_to_remove_another_member = current_user_id != current_utub.created_by.id and user_id != current_user_id
+    
+    if current_user_not_in_utub or member_trying_to_remove_another_member:
         return jsonify({
             "Status" : "Failure",
             "Message" : "Not allowed to remove a user from this UTub",
-            "Error_code": 3
+            "Error_code": 2
             }), 403
 
-    current_utub.members.remove(user_to_delete_in_utub)
+    if user_id not in current_user_ids_in_utub:
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "User does not exist or not found in this UTub",
+            "Error_code": 3
+        }), 404
+
+    user_to_delete_in_utub = Utub_Users.query.filter(Utub_Users.utub_id == utub_id, Utub_Users.user_id == user_id).first_or_404()
+
+    deleted_user = User.query.get(user_id)
+    deleted_user_username = deleted_user.username
+
+    db.session.delete(user_to_delete_in_utub)
     db.session.commit()
 
     return jsonify({
         "Status" : "Success",
         "Message" : "User removed",
         "User_ID_removed" : f"{user_id}",
-        "Username": f"{user_to_delete_in_utub.username}",
+        "Username": f"{deleted_user_username}",
         "UTub_ID" : f"{utub_id}",
         "UTub_name" : f"{current_utub.name}",
         "UTub_users": [user.to_user.username for user in current_utub.members]

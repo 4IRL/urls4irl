@@ -1,7 +1,8 @@
 import pytest
 from flask import url_for, request
-from models_for_test import invalid_user_1, valid_user_1
 from flask_login import current_user
+
+from models_for_test import invalid_user_1, valid_user_1
 from urls4irl.models import User
 from utils_for_test import get_csrf_token
 
