@@ -86,6 +86,8 @@ valid_url_without_tag_3 = {
     "tags": []
 }
 
+valid_url_strings = [url["url"] for url in (valid_url_without_tag_1, valid_url_without_tag_2, valid_url_without_tag_3)]
+
 """
 Valid URLs used for testing, with tags    
 """

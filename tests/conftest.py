@@ -5,9 +5,9 @@ from flask_login import FlaskLoginClient, current_user
 from utils_for_test import get_csrf_token
 from urls4irl import create_app, db
 from urls4irl.config import TestingConfig
-from urls4irl.models import User, Utub, Utub_Users
+from urls4irl.models import User, Utub, Utub_Users, URLS, Utub_Urls
 from models_for_test import (valid_user_1, valid_user_2, valid_user_3, 
-                                valid_empty_utub_1)
+                                valid_empty_utub_1, valid_url_strings)
 
 @pytest.fixture()
 def app():
@@ -50,7 +50,6 @@ def load_login_page(client):
     """
     with client:
         get_register_response = client.get("/login")
-        print(type(client))
         csrf_token_string = get_csrf_token(get_register_response.get_data())
         yield client, csrf_token_string
 
@@ -368,3 +367,77 @@ def every_user_in_every_utub(app, every_user_makes_a_unique_utub):
                     utub.members.append(new_utub_user_association)
 
         db.session.commit()
+
+@pytest.fixture
+def add_urls_to_database(app, every_user_makes_a_unique_utub):
+    """ 
+    After registering multiple users with ID's 1, 2, 3, and ensuring each User has their own UTub, 
+    now creates three unique URLs.
+    Each of the three URL's has ID == 1, 2, 3.
+    See 'models_for_test.py' for URL definition.
+    Each User added one of each URL. The ID of the User corresponds with the ID of the URL.
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        every_user_makes_a_unique_utub (pytest fixture): Has each User make their own UTub
+    """
+    with app.app_context():
+        for idx, url in enumerate(valid_url_strings):
+            new_url = URLS(normalized_url=url, current_user_id=idx + 1)
+            db.session.add(new_url)
+        db.session.commit()
+
+@pytest.fixture
+def add_one_url_to_each_utub_no_tags(app, add_urls_to_database):
+    """ 
+    Add a single valid URL to each UTub already generated.
+    The ID of the UTub, User, and related URL are all the same.
+
+    Utub with ID of 1, created by User ID of 1, with URL ID of 1
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        every_user_makes_a_unique_utub (pytest fixture): Has each User make their own UTub
+    """
+    with app.app_context():
+        all_urls = URLS.query.all()
+        all_utubs = Utub.query.all()
+        all_users = User.query.all()
+
+        for user, url, utub in zip(all_users, all_urls, all_utubs):
+            new_utub_url_user_association = Utub_Urls()
+
+            new_utub_url_user_association.url_in_utub = url
+            new_utub_url_user_association.url_id = url.id
+
+            new_utub_url_user_association.utub = utub
+            new_utub_url_user_association.utub_id = utub.id
+
+            new_utub_url_user_association.user_that_added_url = user
+            new_utub_url_user_association.user_id = user.id
+            
+            new_utub_url_user_association.url_notes = f"This is {url.url_string}"
+
+            db.session.add(new_utub_url_user_association)
+        
+        db.session.commit()
+        
+@pytest.fixture
+def add_one_url_and_all_users_to_each_utub_no_tags(app, add_one_url_to_each_utub_no_tags):
+    with app.app_context():
+        # Ensure each UTub has only one member
+        current_utubs = Utub.query.all()
+        current_users = User.query.all()
+
+        for utub in current_utubs:
+            current_utub_members = [user.to_user for user in utub.members]
+
+            for user in current_users:
+                if user not in current_utub_members:
+                    # Found a missing User who should be in a UTub
+                    new_utub_user_association = Utub_Users()
+                    new_utub_user_association.to_user = user
+                    utub.members.append(new_utub_user_association)
+
+        db.session.commit()
+    

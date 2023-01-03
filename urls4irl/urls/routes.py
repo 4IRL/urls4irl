@@ -18,28 +18,22 @@ def delete_url(utub_id: int, url_id: int):
         utub_id (int): The ID of the UTub that contains the URL to be deleted
         url_id (int): The ID of the URL to be deleted
     """
-    utub = Utub.query.get_or_404(int(utub_id))
-    owner_id = int(utub.created_by.id)
+    utub = Utub.query.get_or_404(utub_id)
+    utub_owner_id = int(utub.created_by.id)
     
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
-    url_added_by = [url_in_utub.user_that_added_url.id for url_in_utub in utub.utub_urls if int(url_in_utub.url_id) == int(url_id)]
+    url_in_utub = Utub_Urls.query.filter(Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id).first_or_404()
 
-    if len(url_added_by) != 1 or not url_added_by:
-        # No user added this URL, or multiple users did...
+    if not url_in_utub:
+        # No user added this URL
         return jsonify({
             "Status" : "Failure",
             "Message" : "Unable to remove this URL",
             "Error_code": 1
         }), 404
 
-    # Otherwise, only one user should've added this url - retrieve them
-    url_added_by = url_added_by[0]
-
-    if int(current_user.get_id()) == owner_id or int(current_user.get_id()) == url_added_by:
-        # User is creator of this UTub, or added the URL
-        utub_url_user_row = Utub_Urls.query.filter_by(utub_id=utub_id, url_id=url_id).first_or_404()
-
-        db.session.delete(utub_url_user_row)
+    if current_user.id == utub_owner_id or current_user.id == url_in_utub.user_id:
+        db.session.delete(url_in_utub)
 
         # Remove all tags associated with this URL in this UTub as well
         Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).delete()
@@ -72,9 +66,9 @@ def add_url(utub_id: int):
     Args:
         utub_id (int): The Utub to add this URL to
     """
-    utub = Utub.query.get_or_404(int(utub_id))
+    utub = Utub.query.get_or_404(utub_id)
 
-    if int(current_user.get_id()) not in [int(member.user_id) for member in utub.members]:
+    if current_user.id not in [member.user_id for member in utub.members]:
         # Not authorized to add URL to this UTub
         return jsonify({
             "Status" : "Failure",
@@ -102,7 +96,6 @@ def add_url(utub_id: int):
 
         if not already_created_url:
             # If URL does not exist, add it and then associate it with the UTub
-            
             new_url = URLS(normalized_url=normalized_url, current_user_id=current_user.get_id())
 
             # Commit new URL to the database
@@ -111,7 +104,7 @@ def add_url(utub_id: int):
 
             # Associate URL with given UTub
             url_id = new_url.id
-            url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=url_id, user_id=int(current_user.get_id()))
+            url_utub_user_add = Utub_Urls(utub_id=utub_id, url_id=url_id, user_id=current_user.id)
             db.session.add(url_utub_user_add)
             db.session.commit()
 
@@ -131,13 +124,15 @@ def add_url(utub_id: int):
         else:
             # If URL does already exist, check if associated with UTub
             url_id = already_created_url.id
-            utub_url_if_already_exists = Utub_Urls.query.filter_by(utub_id=int(utub_id), url_id=url_id).first()
+            utub_url_if_already_exists = Utub_Urls.query.filter_by(utub_id=utub_id, url_id=url_id).first()
 
-            if utub_url_if_already_exists is  None:
+            if utub_url_if_already_exists is None:
                 # URL exists and is not associated with a UTub, so associate this URL with this UTub
-                new_url_utub_association = Utub_Urls(utub_id=utub_id, url_id=already_created_url.id, user_id=int(current_user.get_id()))
+                new_url_utub_association = Utub_Urls(utub_id=utub_id, url_id=already_created_url.id, user_id=current_user.id)
                 db.session.add(new_url_utub_association)
                 db.session.commit()
+
+                # Succesfully associated the URL with a new UTub
                 return jsonify({
                     "Status" : "Success",
                     "Message" : "URL added to UTub",
