@@ -9,38 +9,46 @@
 <!-- Left Side Panel -->
 <div id="leftPanel" class="panel col-md-2">
 
-    <!-- UPR LH Panel, UTubs ("red") -->
+    <!-- UPR LH Panel, UTubs -->
     <div id="UTubDeck" class="deck row h-50 mb-md-1 p-3">
         <div class="col-9 col-lg-9 mb-md-0">
-            <h2>UTubs</h2>
+            <h2></h2>
         </div>
         <div class="col-3 col-lg-3 mb-md-0 text-right">
             <div class="d-flex justify-content-center flex-row">
-                <i id="createUTub" class="bi bi-plus-square-fill fa-2x text-success mx-1" onclick="reqInput('createUTub')"></i>
-                <i id="deleteUTub" class="bi bi-x-square-fill fa-2x text-danger mx-1" onclick="confirmModal('deleteUTub')"></i>
+                <i id="createUTubButton" class="bi bi-plus-square-fill fa-2x text-success mx-1"
+                    onclick="reqInput('createUTub')"></i>
+                <i id="deleteUTubButton" class="bi bi-x-square-fill fa-2x text-danger mx-1"
+                    onclick="confirmModal('deleteUTub')"></i>
             </div>
         </div>
+
         <div class="deckContent">
-            <form id="listUTubs"></form>
+            <form id="listUTubs">
+                <!-- <input type="text" id="createUTub" class="userInput" size="30" placeholder="New UTub name" value=""
+                    style="display: none"> -->
+            </form>
         </div>
     </div>
 
 
-    <!-- LWR LH Panel, Tags ("orange") -->
+    <!-- LWR LH Panel, Tags -->
     <!-- Will be alpha ordered -->
     <div id="TagDeck" class="deck row h-50 p-3">
         <div class="col-9 col-lg-9 mb-md-0">
-            <h2>Tags</h2>
+            <h2>No UTub Selected</h2>
         </div>
         <div class="col-3 col-lg-3 mb-md-0 text-right">
             <div class="d-flex justify-content-center flex-row">
-                <i class="bi bi-plus-square-fill fa-2x text-success mx-1" id="createTag"></i>
+                <i class="bi bi-plus-square-fill fa-2x text-success mx-1" id="createTagButton"
+                    onclick="reqInput('createTag')"></i>
                 <i class="bi bi-pencil-square fa-2x text-warning mx-1" id="editTags"></i>
             </div>
         </div>
         <div class="deckContent form-group">
             <form id="listTags">
-                <h5>No UTub Selected</h5>
+                <input type="text" id="createTag" class="userInput" size="30" placeholder="New Tag name" value=""
+                    style="display: none">
             </form>
         </div>
     </div>
@@ -53,15 +61,21 @@
         <div class="row justify-content-center mx-2">
             <div class="col-9 col-lg-9 mb-md-0 text-left">
                 <h2 id="UTubHeader" style="display: inline-block">Select a UTub</h2>
-                <i id="editUTub" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454"></i>
+                <input type="text" id="editUTubName" class="userInput" size="30" placeholder="" value=""
+                    style="display: none">
+                <i id="editUTub" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454"
+                    onclick="editUTub()"></i>
             </div>
             <div class="col-3 col-lg-3 mb-md-0 text-right">
-                <i id="addURL" class="bi bi-plus-square-fill fa-2x text-success mx-1"></i>
+                <i id="addURL" class="bi bi-plus-square-fill fa-2x text-success mx-1"
+                    onclick="reqInput('createURL')"></i>
             </div>
         </div>
         <div class="row justify-content-center mx-2">
             <div class="col-12 col-lg-12 mb-md-0 text-left">
-                <h2 id="UTubDescription" style="display: inline-block"></h2>
+                <p id="UTubDescription" style="display: inline-block"></p>
+                <input type="text" id="editUTubDescriptionInput" class="userInput" size="30"
+                    placeholder="Describe the contents of your UTub (optional)" value="" style="display: none">
             </div>
         </div>
         <div class="deckContent justify-content-center">
@@ -72,6 +86,25 @@
                 </div>
                 <div id="URLFocusRow" class="row list-content justify-content-center board-list">
                     <!-- Selected URL will be highlighted here -->
+
+                    <!-- Creation of new URL block -->
+                    <div id="createURL" class="cardCol mb-3 col-md-10 col-lg-4 col-xl-3" style="display: none">
+                        <div urlid="0" class="card url selected">
+                            <div class="card-body URLInfo">
+                                <input type="text" class="userInput card-title" size="30"
+                                    placeholder="New URL Description" value="">
+                                <input type="text" class="userInput card-text" size="30" placeholder="New URL" value="">
+                            </div>
+                            <div class="card-body URLTags">
+                            </div>
+                            <div class="card-body URLOptions">
+                                <button class="card-link btn btn-info" type="button" onclick="reqInput('addTag')">Add
+                                    Tag</button>
+                                <button class="card-link btn btn-danger" type="button" onclick="deleteURL()">Delete
+                                    URL</button>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div id="LWRRow" class="row list-content justify-content-center board-list">
                     <!-- URLs below selected URL will be displayed here -->
