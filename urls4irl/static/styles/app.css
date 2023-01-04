@@ -124,6 +124,8 @@ input[type=radio]::before, input[type=radio]::after {
     height: 100%;
 }
 
+/* Class specific */
+
 span.tag {
     color: rgb(254, 115, 1);
     background: white;
@@ -144,7 +146,9 @@ span.tag:hover .tag-del {
     font-size: 100%;
 }
 
-/* Class specific */
+i.fa-check-square {
+    float: right;
+}
 
 .tag-del {
     padding: 0rem;
@@ -201,15 +205,6 @@ span.tag:hover .tag-del {
 .card-text {
     color: #8c9b9d;
 }
-
-/* .checkbox-container {
-    border: 1px solid transparent;
-    text-align: left;
-} */
-
-/* input.checkbox  {
-    float: left;
-} */
 
 .selected {
     border: 5px solid rgb(13, 255, 0);
@@ -489,9 +484,4 @@ span.tag:hover .tag-del {
 
 #ModalForm {
     overflow: hidden;
-}
-
-#listTags {
-    display: inline-block;
-    white-space: nowrap;
 }
