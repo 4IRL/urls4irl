@@ -1,3 +1,45 @@
+// UI Interactions
+
+$(document).ready(function () {
+
+    // Instantiate UTubDeck with user's accessible UTubs
+    buildUTubDeck(UTubsList);
+
+    // User selected a UTub, display data
+    $('input[type=radio]').on('click', function () {
+        console.log("New Utub selected")
+
+        $('#listUTubs').find('.active').removeClass('active');
+        $(this).parent().toggleClass('active');
+        $('#UTubHeader')[0].innerHTML = $(this)[0].value;
+
+        var selectedUTubID = currentUTubID();
+        getUtubInfo(selectedUTubID).then(function (selectedUTub) {
+            //Use local variables, pass them in to the subsequent functions as required
+            var dictURLs = selectedUTub.urls;
+            var dictTags = selectedUTub.tags;
+            var dictUsers = selectedUTub.members;
+            var creator = selectedUTub.created_by;
+            let currentUserID = $('.user').attr('id');
+
+            resetTagDeck();
+            resetURLDeck();
+
+            // LH panel
+            buildTagDeck(dictTags);
+
+            // Center panel
+            buildURLDeck(dictURLs, dictTags);
+
+            // RH panels
+            // Update UTub description, not yet implemented on backend
+            // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
+
+            gatherUsers(dictUsers, creator);
+        })
+    });
+});
+
 // UTub Related Functions
 
 function findUTubID() {

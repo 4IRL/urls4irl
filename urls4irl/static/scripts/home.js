@@ -16,43 +16,7 @@ $(document).ready(function () {
         }
     });
 
-    // Instantiate UTubDeck with user's accessible UTubs
-    buildUTubDeck(UTubsList);
-
-    // User selected a UTub, display data
-    $('input[type=radio]').on('click', function () {
-        console.log("New Utub selected")
-
-        $('#listUTubs').find('.active').removeClass('active');
-        $(this).parent().toggleClass('active');
-        $('#UTubHeader')[0].innerHTML = $(this)[0].value;
-
-        var selectedUTubID = currentUTubID();
-        getUtubInfo(selectedUTubID).then(function (selectedUTub) {
-            //Use local variables, pass them in to the subsequent functions as required
-            var dictURLs = selectedUTub.urls;
-            var dictTags = selectedUTub.tags;
-            var dictUsers = selectedUTub.members;
-            var creator = selectedUTub.created_by;
-            let currentUserID = $('.user').attr('id');
-
-            resetTagDeck();
-            resetURLDeck();
-
-            // LH panel
-            buildTagDeck(dictTags);
-
-            // Center panel
-            buildURLDeck(dictURLs, dictTags);
-
-            // RH panels
-            // Update UTub description, not yet implemented on backend
-            // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
-
-            gatherUsers(dictUsers, creator);
-        })
-    });
-
+    // Submission of user input data
     $('input.active').on('blur', function () {
         console.log("Blur caught")
         var inputEl = $(this);
@@ -79,149 +43,6 @@ $(document).ready(function () {
         }
     })
 
-    // Selected URL. Hide/show the card, if nothing "important" in card was clicked)
-    $(document).on('click', '.card', function (e) {
-        // e.stopPropagation();
-        // e.stopImmediatePropagation();
-        // Triage click
-        var el = $(e.target);
-
-        var importantBool = el.hasClass('btn') || el.hasClass('tag') || el[0].type == 'text';
-        if (importantBool) {
-            // "Important" thing clicked. Do nothing. onclick function will handle user inputs
-        } else {
-            var clickedCardCol = $(e.target).closest('.cardCol');   // Card column
-            var clickedCard = clickedCardCol.find('.card');         // Card
-            var selectedURLid = clickedCard.attr('urlid');          // URL ID
-
-            if (clickedCard.hasClass("selected")) {
-                $('.cardCol').each(function () {
-                    $('#UPRRow').append(this)
-                })
-                deselectURL(clickedCardCol);
-            } else selectURL(selectedURLid);
-        }
-    });
-
-    // Selected Tag
-    $('#TagDeck').on('click', function (e) {
-        // Refactor into separate function at some point
-        let label;
-        let input;
-        let clickedTagID;
-        if (e.target.nodeName.toLowerCase() == 'label') {
-            // Label clicked. Reset input var. Also toggles checkbox and assigns clickedTagID
-            label = $(e.target);
-            input = label.children();
-            input.prop("checked", !input.prop("checked"));
-        } else {
-            // Input clicked. Already toggles checkbox
-            input = $(e.target);
-            label = input.parent();
-        }
-
-        if (input[0].id == 'selectAll') {
-
-            if (e.target.nodeName.toLowerCase() == 'label') {
-                e.preventDefault();
-            }
-
-            // Toggle all filter tags
-            $('input[type=checkbox]').prop("checked", input[0].checked);
-
-            // Hide/Show all tag spans
-            spanObjs = $('span.tag')
-            if (input[0].checked) {
-                $($(spanObjs)).show()
-            } else {
-                $($(spanObjs)).hide()
-            }
-        } else {
-
-            let selectAllBool = true;
-            $('input[type=checkbox]').each(function (i) {
-                if (i !== 0) {
-                    selectAllBool &= $(this).prop("checked");
-                }
-            })
-
-            $('#selectAll').prop("checked", selectAllBool);
-
-            clickedTagID = parseInt(label.attr("tagid"));
-
-            // Hide/Show corresponding tag span
-            spanObjs = $('span[tagid="' + clickedTagID + '"]')
-            $($(spanObjs)).toggle()
-        }
-
-        // Update URLs displayed as a result of checkbox filtering
-        filterURLDeck();
-    });
-
-    // Listen for click on toggle checkbox
-    $('#selectAll').click(function (event) {
-        if (this.checked) {
-            // Iterate each checkbox
-            $(':checkbox').each(function () {
-                this.checked = true;
-            });
-        } else {
-            $(':checkbox').each(function () {
-                this.checked = false;
-            });
-        }
-    });
-
-    // Remove tag from URL
-    $('.tag-del').click(function (e) {
-        console.log("Tag deletion initiated")
-        e.stopImmediatePropagation();
-        const tagToRemove = $(this).parent();
-        const tagID = tagToRemove.attr('tagid');
-        removeTag(tagToRemove, tagID);
-    });
-
-
-    $(document).on('keyup', function (e) {
-        if ($('#URLFocusRow').length > 0) {     // Some URL is selected
-            var keycode = (e.keyCode ? e.keyCode : e.which);
-            var prev = keycode == 37 || keycode == 38;
-            var next = keycode == 39 || keycode == 40;
-            var UPRcards = $('#UPRRow').children('.cardCol').length;
-            var LWRcards = $('#LWRRow').children('.cardCol').length;
-
-            console.log(prev)
-            console.log(UPRcards)
-            console.log(next)
-            console.log(LWRcards)
-
-            if (prev && UPRcards > 0) {              // User wants to highlight previous URL
-                var cardCol = $($('#UPRRow').children('.cardCol')[UPRcards - 1]);
-                console.log(cardCol[0].children[0])
-                selectURL(cardCol.children.attr('urlid'))
-            } else if (next && LWRcards > 0) {       // User wants to highlight next URL
-                console.log($($('#LWRRow').children('.cardCol')))
-                selectURL($($('#LWRRow').children('.cardCol')[0]).attr('urlid'))
-            }
-        }
-    })
-
-    // Selected User (only if creator)
-    $('select').change(function () {
-        // Update href
-        $('#removeUserTemp').attr("action", '/remove_user/' + selectedUTubID + '/' + $(this)[0].value)
-    })
-
-    // Update UTub description (only if creator)
-    $('#UTubInfo').on('input', function () {
-        //handle update in db
-    })
-
-    // Update URL description
-    $('#URLInfo').on('input', function () {
-        //handle update in db
-    })
-
     // Navbar animation
     $('.first-button').on('click', function () {
 
@@ -246,7 +67,7 @@ function showInput(handle) {
     inputEl.show();
     inputEl.addClass('active');
 
-    inputEl.focus();
+    inputEl.find('input').focus();
     inputEl[0].setSelectionRange(0, inputEl[0].value.length);
 
     // // Pressing enter is the same as blur, implying submission. Not currently working 
@@ -262,13 +83,6 @@ function showInput(handle) {
     // })
 
     // // NICE TO HAVE: Prevent other click behaviors on page only ONCE while editing. This will avoid behaviors like card minimizing/deselecting immediately after editing card
-    // // $(document).click(function (e) {
-    // //     console.log("Don't do anything else")
-    // //     console.log(e)
-    // //     e.stopImmediatePropagation();
-    // //     e.target.blur();
-    // // });
-
     // // $(document).on('click', function (e) {
     // //     console.log("Don't do anything else")
     // //     console.log(e)
@@ -277,6 +91,7 @@ function showInput(handle) {
     // // });
 }
 
+// Hide input field if focus element is not another input
 function hideInput(e) {
     $(e.target).parent().hide();
     console.log(e.target.value)

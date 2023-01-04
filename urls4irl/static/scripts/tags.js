@@ -1,3 +1,77 @@
+// UI Interactions
+
+$(document).ready(function () {
+
+    // Selected Tag
+    $('#TagDeck').on('click', function (e) {
+        // Refactor into separate function at some point
+        let label;
+        let input;
+        let clickedTagID;
+        if (e.target.nodeName.toLowerCase() == 'label') {
+            // Label clicked. Reset input var. Also toggles checkbox and assigns clickedTagID
+            label = $(e.target);
+            input = label.children();
+            input.prop("checked", !input.prop("checked"));
+        } else {
+            // Input clicked. Already toggles checkbox
+            input = $(e.target);
+            label = input.parent();
+        }
+
+        if (input[0].id == 'selectAll') {
+
+            if (e.target.nodeName.toLowerCase() == 'label') {
+                e.preventDefault();
+            }
+
+            // Toggle all filter tags
+            $('input[type=checkbox]').prop("checked", input[0].checked);
+
+            // Hide/Show all tag spans
+            spanObjs = $('span.tag')
+            if (input[0].checked) {
+                $($(spanObjs)).show()
+            } else {
+                $($(spanObjs)).hide()
+            }
+        } else {
+
+            let selectAllBool = true;
+            $('input[type=checkbox]').each(function (i) {
+                if (i !== 0) {
+                    selectAllBool &= $(this).prop("checked");
+                }
+            })
+
+            $('#selectAll').prop("checked", selectAllBool);
+
+            clickedTagID = parseInt(label.attr("tagid"));
+
+            // Hide/Show corresponding tag span
+            spanObjs = $('span[tagid="' + clickedTagID + '"]')
+            $($(spanObjs)).toggle()
+        }
+
+        // Update URLs displayed as a result of checkbox filtering
+        filterURLDeck();
+    });
+
+    // Listen for click on toggle checkbox
+    $('#selectAll').click(function (event) {
+        if (this.checked) {
+            // Iterate each checkbox
+            $(':checkbox').each(function () {
+                this.checked = true;
+            });
+        } else {
+            $(':checkbox').each(function () {
+                this.checked = false;
+            });
+        }
+    });
+});
+
 // Tags Functions
 
 // Build LH panel tag list in selectedUTub

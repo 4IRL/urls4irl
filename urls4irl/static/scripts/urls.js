@@ -1,3 +1,67 @@
+// UI Interactions
+
+
+$(document).ready(function () {
+
+    // Selected URL. Hide/show the card, if nothing "important" in card was clicked)
+    $(document).on('click', '.card', function (e) {
+        // e.stopPropagation();
+        // e.stopImmediatePropagation();
+        // Triage click
+        var el = $(e.target);
+
+        var importantBool = el.hasClass('btn') || el.hasClass('tag') || el[0].type == 'text';
+        if (importantBool) {
+            // "Important" thing clicked. Do nothing. onclick function will handle user inputs
+        } else {
+            var clickedCardCol = $(e.target).closest('.cardCol');   // Card column
+            var clickedCard = clickedCardCol.find('.card');         // Card
+            var selectedURLid = clickedCard.attr('urlid');          // URL ID
+
+            if (clickedCard.hasClass("selected")) {
+                $('.cardCol').each(function () {
+                    $('#UPRRow').append(this)
+                })
+                deselectURL(clickedCardCol);
+            } else selectURL(selectedURLid);
+        }
+    });
+
+    // Remove tag from URL
+    $('.tag-remove').click(function (e) {
+        console.log("Tag removal initiated")
+        e.stopImmediatePropagation();
+        const tagToRemove = $(this).parent();
+        const tagID = tagToRemove.attr('tagid');
+        removeTag(tagToRemove, tagID);
+    });
+
+    // Keyboard navigation between selected URLs
+    $(document).on('keyup', function (e) {
+        if ($('#URLFocusRow').length > 0) {     // Some URL is selected
+            var keycode = (e.keyCode ? e.keyCode : e.which);
+            var prev = keycode == 37 || keycode == 38;
+            var next = keycode == 39 || keycode == 40;
+            var UPRcards = $('#UPRRow').children('.cardCol').length;
+            var LWRcards = $('#LWRRow').children('.cardCol').length;
+
+            console.log(prev)
+            console.log(UPRcards)
+            console.log(next)
+            console.log(LWRcards)
+
+            if (prev && UPRcards > 0) {              // User wants to highlight previous URL
+                var cardCol = $($('#UPRRow').children('.cardCol')[UPRcards - 1]);
+                console.log(cardCol[0].children[0])
+                selectURL(cardCol.children.attr('urlid'))
+            } else if (next && LWRcards > 0) {       // User wants to highlight next URL
+                console.log($($('#LWRRow').children('.cardCol')))
+                selectURL($($('#LWRRow').children('.cardCol')[0]).attr('urlid'))
+            }
+        }
+    })
+});
+
 // URLs Functions
 
 // Simple function to streamline the jQuery selector extraction of URL ID. And makes it easier in case the ID is encoded in a new location in the future
@@ -75,7 +139,7 @@ function buildURLDeck(dictURLs, dictTags) {
             tagSpan.innerHTML = tag.tag_string;
 
             $(closeButton).attr({
-                'class': 'btn btn-sm btn-outline-link border-0 tag-del',
+                'class': 'btn btn-sm btn-outline-link border-0 tag-remove',
                 'onclick': 'removeTag(' + tag.id + ')'
             });
             closeButton.innerHTML = '&times;';
@@ -223,7 +287,6 @@ function buildURLDeck(dictURLs, dictTags) {
     $(urlOptions).append(editURL);
     $(urlOptions).append(delURL);
 
-    console.log(URLFocusRow)
     URLFocusRow.append(col);
 }
 

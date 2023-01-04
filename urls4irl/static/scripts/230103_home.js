@@ -1,12 +1,12 @@
 // UI Interactions
 $(document).ready(function () {
 
-    // Dev tracking of click-triggered objects
+    // Home -- Dev tracking of click-triggered objects
     $(document).click(function (e) {
         console.log($(e.target)[0])
     });
 
-    // CSRF token initialization for non-modal POST requests
+    // Home -- CSRF token initialization for non-modal POST requests
     var csrftoken = $('meta[name=csrf-token]').attr('content');
     $.ajaxSetup({
         beforeSend: function (xhr, settings) {
@@ -16,10 +16,10 @@ $(document).ready(function () {
         }
     });
 
-    // Instantiate UTubDeck with user's accessible UTubs
+    // UTubs -- Instantiate UTubDeck with user's accessible UTubs
     buildUTubDeck(UTubsList);
 
-    // User selected a UTub, display data
+    // UTubs -- User selected a UTub, display data
     $('input[type=radio]').on('click', function () {
         console.log("New Utub selected")
 
@@ -53,6 +53,7 @@ $(document).ready(function () {
         })
     });
 
+    // Home -- Submission of user input data
     $('input.active').on('blur', function () {
         console.log("Blur caught")
         var inputEl = $(this);
@@ -79,7 +80,7 @@ $(document).ready(function () {
         }
     })
 
-    // Selected URL. Hide/show the card, if nothing "important" in card was clicked)
+    // URLs -- Selected URL. Hide/show the card, if nothing "important" in card was clicked)
     $(document).on('click', '.card', function (e) {
         // e.stopPropagation();
         // e.stopImmediatePropagation();
@@ -103,7 +104,7 @@ $(document).ready(function () {
         }
     });
 
-    // Selected Tag
+    // Tags -- Selected Tag
     $('#TagDeck').on('click', function (e) {
         // Refactor into separate function at some point
         let label;
@@ -158,7 +159,7 @@ $(document).ready(function () {
         filterURLDeck();
     });
 
-    // Listen for click on toggle checkbox
+    // Tags -- Listen for click on toggle checkbox
     $('#selectAll').click(function (event) {
         if (this.checked) {
             // Iterate each checkbox
@@ -172,7 +173,7 @@ $(document).ready(function () {
         }
     });
 
-    // Remove tag from URL
+    // URLs -- Remove tag from URL
     $('.tag-del').click(function (e) {
         console.log("Tag deletion initiated")
         e.stopImmediatePropagation();
@@ -181,7 +182,7 @@ $(document).ready(function () {
         removeTag(tagToRemove, tagID);
     });
 
-
+    // URLs -- Keyboard navigation between selected URLs
     $(document).on('keyup', function (e) {
         if ($('#URLFocusRow').length > 0) {     // Some URL is selected
             var keycode = (e.keyCode ? e.keyCode : e.which);
@@ -204,22 +205,6 @@ $(document).ready(function () {
                 selectURL($($('#LWRRow').children('.cardCol')[0]).attr('urlid'))
             }
         }
-    })
-
-    // Selected User (only if creator)
-    $('select').change(function () {
-        // Update href
-        $('#removeUserTemp').attr("action", '/remove_user/' + selectedUTubID + '/' + $(this)[0].value)
-    })
-
-    // Update UTub description (only if creator)
-    $('#UTubInfo').on('input', function () {
-        //handle update in db
-    })
-
-    // Update URL description
-    $('#URLInfo').on('input', function () {
-        //handle update in db
     })
 
     // Navbar animation
