@@ -396,7 +396,6 @@ def test_remove_invalid_user_from_utub_as_member(add_single_user_to_utub_without
     assert remove_user_response_json["Message"] == "Not allowed to remove a user from this UTub"
     assert int(remove_user_response_json["Error_code"]) == 2
 
-
 def test_remove_another_member_from_same_utub_as_member(add_multiple_users_to_utub_without_logging_in, login_second_user_without_register):
     """
     GIVEN a logged in user who is a member of a UTub with another member and the creator

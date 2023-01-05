@@ -18,11 +18,12 @@ def test_remove_url_as_utub_creator_no_tags(add_one_url_to_each_utub_no_tags, lo
         "Message": "URL removed from this UTub",
         "URL" : Serialized information of the URL that was removed, as follows:
         {
-            "id": Integer representing ID of the URL,
-            "url": String representing the URL itself,
-            "tags": Array containing the tag ID's associated with this URL in this UTub, that were removed
-                Empty array if not tags were associated with the URL in this UTub
-        
+            "url_id": Integer representing ID of the URL,
+            "url_string": String representing the URL itself,
+            "url_tags": Array containing the tag ID's associated with this URL in this UTub, that were removed
+                Empty array if not tags were associated with the URL in this UTub,
+            "added_by": Integer representing ID of user who added this,
+            "notes": String representing the URL description in this UTub
         }
         "UTub_ID" : Integer representing the UTub ID where the URL was removed from,
         "UTub_name" : String representing the name of the UTub removed"
@@ -41,13 +42,18 @@ def test_remove_url_as_utub_creator_no_tags(add_one_url_to_each_utub_no_tags, lo
         assert len(current_user_utub.utub_urls) == 1
 
         url_utub_user_association = current_user_utub.utub_urls[0]
-        url_to_remove_serialized = url_utub_user_association.url_in_utub.serialized_url
         url_id_to_remove = url_utub_user_association.url_id
 
         # Assert the single UTUB-URL-USER association exists
         assert len(Utub_Urls.query.filter(Utub_Urls.url_id == url_id_to_remove, 
                                         Utub_Urls.user_id == current_user.id,
                                         Utub_Urls.utub_id == current_user_utub.id).all()) == 1
+
+
+        # Store the serialized data of this URL for later
+        url_utub_user_association = Utub_Urls.query.filter(Utub_Urls.utub_id == current_user_utub.id, Utub_Urls.url_id == url_id_to_remove).first()
+        url_to_remove_serialized = url_utub_user_association.serialized
+
 
     # Remove URL from UTub as UTub creator
     remove_url_response = client.post(f"/url/remove/{current_user_utub.id}/{url_id_to_remove}", data={"csrf_token": csrf_token_string})
@@ -67,7 +73,6 @@ def test_remove_url_as_utub_creator_no_tags(add_one_url_to_each_utub_no_tags, lo
     with app.app_context():
         # Assert url still in database
         assert URLS.query.get(url_id_to_remove) is not None
-        assert URLS.query.get(url_id_to_remove).serialized_url == url_to_remove_serialized
 
         # Assert the URL-USER-UTUB association is deleted
         assert len(Utub_Urls.query.filter(Utub_Urls.url_id == url_id_to_remove, 
@@ -91,11 +96,12 @@ def test_remove_url_as_utub_member_no_tags(add_one_url_and_all_users_to_each_utu
         "Message": "URL removed from this UTub",
         "URL" : Serialized information of the URL that was removed, as follows:
         {
-            "id": Integer representing ID of the URL,
-            "url": String representing the URL itself,
-            "tags": Array containing the tag ID's associated with this URL in this UTub, that were removed
-                Empty array if not tags were associated with the URL in this UTub
-        
+            "url_id": Integer representing ID of the URL,
+            "url_string": String representing the URL itself,
+            "url_tags": Array containing the tag ID's associated with this URL in this UTub, that were removed
+                Empty array if not tags were associated with the URL in this UTub,
+            "added_by": Integer representing ID of user who added this,
+            "notes": String representing the URL description in this UTub
         }
         "UTub_ID" : Integer representing the UTub ID where the URL was removed from,
         "UTub_name" : String representing the name of the UTub removed"
@@ -124,7 +130,6 @@ def test_remove_url_as_utub_member_no_tags(add_one_url_and_all_users_to_each_utu
                                                 Utub_Urls.utub_id != current_user_utub.id).first()
 
         missing_url = missing_url_association.url_in_utub
-        missing_url_serialized = missing_url.serialized_url
 
         # Have current user add the missing URL to the current UTub
         new_utub_url_user_association = Utub_Urls()
@@ -137,6 +142,10 @@ def test_remove_url_as_utub_member_no_tags(add_one_url_and_all_users_to_each_utu
 
         db.session.add(new_utub_url_user_association)
         db.session.commit()
+
+        # Store the serialized data of this URL for later
+        missing_url_utub_association = Utub_Urls.query.filter(Utub_Urls.utub_id == current_user_utub.id, Utub_Urls.url_id == missing_url.id).first()
+        missing_url_serialized = missing_url_utub_association.serialized
 
         # Assert this URL was added
         current_user_utub = Utub.query.get(current_user_utub.id)
@@ -154,6 +163,7 @@ def test_remove_url_as_utub_member_no_tags(add_one_url_and_all_users_to_each_utu
 
     # Ensure JSON response is correct
     remove_url_response_json = remove_url_response.json
+
     assert remove_url_response_json["Status"] == "Success"
     assert remove_url_response_json["Message"] == "URL removed from this UTub"
     assert remove_url_response_json["URL"] == missing_url_serialized
@@ -164,11 +174,9 @@ def test_remove_url_as_utub_member_no_tags(add_one_url_and_all_users_to_each_utu
     with app.app_context():
         # Assert url still in database
         assert URLS.query.get(missing_url.id) is not None
-        assert URLS.query.get(missing_url.id).serialized_url == missing_url_serialized
 
-        # Assert the URL-USER-UTUB association is deleted
+        # Assert the URL-UTUB association is deleted
         assert len(Utub_Urls.query.filter(Utub_Urls.url_id == missing_url.id, 
-                                        Utub_Urls.user_id == current_user.id,
                                         Utub_Urls.utub_id == current_user_utub.id).all()) == 0
 
         # Ensure UTub has one left
@@ -310,11 +318,146 @@ def test_remove_invalid_nonexistant_url_as_utub_member(add_one_url_and_all_users
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_current_user_member_of,
                                         Utub_Urls.url_id == id_of_url_to_remove).all()) == 0
 
-# def test_remove_url_as_utub_creator_with_tags(add_one_url_and_all_users_to_each_utub_with_tags, login_first_user_without_register):
-#     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
-    
-#     with app.app_context():
-#         print(Tags.query.all())
+def test_remove_url_as_utub_creator_with_tags(add_all_urls_and_users_to_each_utub_with_one_tag, login_first_user_without_register):
+    """
+    GIVEN a logged-in creator of a UTub who has a valid URL in their UTub, with tags
+    WHEN the creator wishes to remove the URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    THEN the server responds with a 200 HTTP status code, the UTub-User-URL association is removed from the database,
+        the UTub-URL-Tag association is removed from the database, and the server sends back the correct JSON reponse
 
-#TODO: Remove URL as creator of UTub, with tags
-#TODO: Remove URL as user who added URL to UTub, with tags
+    Proper JSON response is as follows:
+    {
+        "Status" : "Success",
+        "Message": "URL removed from this UTub",
+        "URL" : Serialized information of the URL that was removed, as follows:
+        {
+            "url_id": Integer representing ID of the URL,
+            "url_string": String representing the URL itself,
+            "url_tags": Array containing the tag ID's associated with this URL in this UTub, that were removed
+                Empty array if not tags were associated with the URL in this UTub,
+            "added_by": Integer representing ID of user who added this,
+            "notes": String representing the URL description in this UTub
+        }
+        "UTub_ID" : Integer representing the UTub ID where the URL was removed from,
+        "UTub_name" : String representing the name of the UTub removed"
+    }
+    """
+    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    
+    with app.app_context():
+        # Find current user's UTub
+        current_utub = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+
+        # Find a URL with tags on it in this UTub
+        current_utub_url_tags = current_utub.utub_url_tags
+        current_url_in_utub_with_tags = current_utub_url_tags[0]
+
+        # Ensure this URL has tags associated with it
+        assert len(Url_Tags.query.filter(
+                    Url_Tags.utub_id == current_utub.id,
+                    Url_Tags.url_id == current_url_in_utub_with_tags.url_id).all()) > 0
+
+        # Get the Utub-URL association
+        url_in_utub = Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub.id, Utub_Urls.url_id == current_url_in_utub_with_tags.url_id).first()
+        url_in_utub_serialized = url_in_utub.serialized
+
+        url_id_to_remove = current_url_in_utub_with_tags.url_id
+        utub_id_to_remove_url_from = current_utub.id
+        utub_name_to_remove_url_from = current_utub.name
+
+    # Attempt to remove URL that contains tag from UTub as creator of UTub
+    remove_url_response = client.post(f"/url/remove/{utub_id_to_remove_url_from}/{url_id_to_remove}", data={"csrf_token": csrf_token_string})
+
+    # Ensure JSON response is correct
+    remove_url_response_json = remove_url_response.json
+    assert remove_url_response_json["Status"] == "Success"
+    assert remove_url_response_json["Message"] == "URL removed from this UTub"
+    assert remove_url_response_json["URL"] == url_in_utub_serialized
+    assert int(remove_url_response_json["UTub_ID"]) == utub_id_to_remove_url_from
+    assert remove_url_response_json["UTub_name"] == utub_name_to_remove_url_from
+
+    # Ensure proper removal from database
+    with app.app_context():
+        # Assert url still in database
+        assert URLS.query.get(url_id_to_remove) is not None
+
+        # Assert the URL-USER-UTUB association is deleted
+        assert len(Utub_Urls.query.filter(Utub_Urls.url_id == url_id_to_remove, 
+                                        Utub_Urls.user_id == current_user.id,
+                                        Utub_Urls.utub_id == utub_id_to_remove_url_from).all()) == 0
+
+        # Assert the UTUB-URL-TAG association is deleted
+        assert len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_to_remove_url_from,
+                                            Url_Tags.url_id == url_id_to_remove).all()) == 0
+
+def test_remove_url_as_utub_member_with_tags(add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register):
+    """
+    GIVEN a logged-in member of a UTub who has added a valid URL to their UTub, with tags
+    WHEN the creator wishes to remove the URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    THEN the server responds with a 200 HTTP status code, the UTub-User-URL association is removed from the database,
+        the UTub-URL-Tag association is removed from the database, and the server sends back the correct JSON reponse
+
+    Proper JSON response is as follows:
+    {
+        "Status" : "Success",
+        "Message": "URL removed from this UTub",
+        "URL" : Serialized information of the URL that was removed, as follows:
+        {
+            "url_id": Integer representing ID of the URL,
+            "url_string": String representing the URL itself,
+            "url_tags": Array containing the tag ID's associated with this URL in this UTub, that were removed
+                Empty array if not tags were associated with the URL in this UTub,
+            "added_by": Integer representing ID of user who added this,
+            "notes": String representing the URL description in this UTub
+        }
+        "UTub_ID" : Integer representing the UTub ID where the URL was removed from,
+        "UTub_name" : String representing the name of the UTub removed"
+    }
+    """
+    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get first UTub where current logged in user is not the creator
+        current_user_utub = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+
+        # Ensure current user is not the creator
+        assert current_user_utub.created_by != current_user
+
+        # Assert there is a URL in the UTub
+        assert len(current_user_utub.utub_urls) > 0
+
+        # Find a URL this user has added
+        current_url_in_utub = Utub_Urls.query.filter(Utub_Urls.utub_id == current_user_utub.id,
+                                                        Utub_Urls.user_id == current_user.id).first()
+
+        # Make sure this URL has tags on it
+        assert len(Url_Tags.query.filter(Url_Tags.utub_id == current_user_utub.id,
+                                            Url_Tags.url_id == current_url_in_utub.url_id).all()) > 0
+
+        utub_id_to_remove_url_from = current_user_utub.id
+        url_id_to_remove = current_url_in_utub.url_id
+        url_in_utub_serialized = current_url_in_utub.serialized
+
+    # Remove URL from UTub as UTub member
+    remove_url_response = client.post(f"/url/remove/{utub_id_to_remove_url_from}/{url_id_to_remove}", data={"csrf_token": csrf_token_string})
+
+    # Ensure 200 HTTP status code response
+    assert remove_url_response.status_code == 200
+
+    # Ensure JSON response is correct
+    remove_url_response_json = remove_url_response.json
+
+    assert remove_url_response_json["Status"] == "Success"
+    assert remove_url_response_json["Message"] == "URL removed from this UTub"
+    assert remove_url_response_json["URL"] == url_in_utub_serialized
+    assert int(remove_url_response_json["UTub_ID"]) == utub_id_to_remove_url_from
+    assert remove_url_response_json["UTub_name"] == current_user_utub.name
+
+    # Ensure proper removal from database
+    with app.app_context():
+        # Assert url still in database
+        assert URLS.query.get(url_id_to_remove) is not None
+
+        # Assert the URL-USER-UTUB association is deleted
+        assert len(Utub_Urls.query.filter(Utub_Urls.url_id == url_id_to_remove, 
+                                        Utub_Urls.utub_id == utub_id_to_remove_url_from).all()) == 0

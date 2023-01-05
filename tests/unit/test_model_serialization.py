@@ -137,7 +137,7 @@ def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_data
         for utub, url, verified_url in zip(all_utubs, all_urls, verified_urls):
             url_with_tags = Utub_Urls.query.filter(Utub_Urls.url_id == url.id, Utub_Urls.utub_id == utub.id).first()
         
-            assert json.dumps(verified_url) == json.dumps(url_with_tags.url_in_utub.serialized_url)
+            assert json.dumps(verified_url) == json.dumps(url_with_tags.serialized)
             
 def test_user_serialization_as_member_of_utub():
     """

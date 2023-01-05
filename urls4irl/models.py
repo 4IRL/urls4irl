@@ -201,7 +201,7 @@ class Utub(db.Model):
             'created_at': self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
             'description': self.utub_description if self.utub_description is not None else "",
             'members': [member.serialized for member in self.members],
-            'urls': [url.serialized for url in self.utub_urls],
+            'urls': [url_in_utub.serialized for url_in_utub in self.utub_urls],
             'tags': utub_tags
         }
 
@@ -220,23 +220,14 @@ class URLS(db.Model):
     def __init__(self, normalized_url: str, current_user_id: int):
         self.url_string = normalized_url
         self.created_by = int(current_user_id)
-
-    @property
-    def _serialized_on_url_remove(self):
-        """Includes an array of tags with the tag data serialized. Not in use yet."""
-        return {
-            'id': self.id,
-            'url': self.url_string,
-            'tags': [tag.tag_item.serialized for tag in self.url_tags]
-        }
-
+        
     @property
     def serialized_url(self):
         """Includes an array of tag IDs for all ID's on this url"""
         return {
             'id': self.id,
             'url': self.url_string,
-            'tags': [int(tag.tag_item.serialized['id']) for tag in self.url_tags]
+            'tags': [tag.tag_item.serialized for tag in self.url_tags]
         }
 
 

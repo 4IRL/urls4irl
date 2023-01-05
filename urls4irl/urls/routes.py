@@ -25,6 +25,9 @@ def delete_url(utub_id: int, url_id: int):
     url_in_utub = Utub_Urls.query.filter(Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id).first_or_404()
 
     if current_user.id == utub_owner_id or current_user.id == url_in_utub.user_id:
+        # Store serialized data from URL association with UTub and associated tags
+        serialized_url_in_utub = url_in_utub.serialized
+
         # Can only delete URLs as the creator of UTub, or as the adder of that URL
         db.session.delete(url_in_utub)
 
@@ -36,7 +39,7 @@ def delete_url(utub_id: int, url_id: int):
         return jsonify({
             "Status" : "Success",
             "Message": "URL removed from this UTub",
-            "URL" : URLS.query.get_or_404(url_id).serialized_url,
+            "URL" : serialized_url_in_utub,
             "UTub_ID" : f"{utub.id}",
             "UTub_name" : f"{utub.name}"
         }), 200
