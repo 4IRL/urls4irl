@@ -2,7 +2,7 @@ import pytest
 from flask_login import current_user
 
 from urls4irl import db
-from urls4irl.models import URLS, Utub_Urls, Utub, Utub_Users, User
+from urls4irl.models import URLS, Utub_Urls, Utub, Utub_Users, User, Tags, Url_Tags
 from models_for_test import valid_url_strings
 
 def test_remove_url_as_utub_creator_no_tags(add_one_url_to_each_utub_no_tags, login_first_user_without_register):
@@ -175,10 +175,146 @@ def test_remove_url_as_utub_member_no_tags(add_one_url_and_all_users_to_each_utu
         current_user_utub = Utub.query.get(current_user_utub.id)
         assert len(current_user_utub.utub_urls) == 1
 
+def test_remove_url_from_utub_not_member_of(add_one_url_to_each_utub_no_tags, login_first_user_without_register):
+    """
+    GIVEN a logged-in member of a UTub, with two other UTub the user is not a part of that also contains URLs
+    WHEN the user wishes to remove the URL from another UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    THEN the server responds with a 403 HTTP status code, the UTub-User-URL association is not removed from the database,
+        and the server sends back the correct JSON reponse
 
+    Proper JSON response is as follows:
+    {
+        "Status" : "Failure",
+        "Message" : "Unable to remove this URL"
+    }
+    """
+    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+
+    # Find the first UTub the logged in user is not a creator of
+    with app.app_context():
+        utub_current_user_not_part_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+
+        # Ensure the currently logged in user is not in this UTub and is not the creator of this UTub
+        assert current_user != utub_current_user_not_part_of.created_by
+        assert current_user not in [user.to_user for user in utub_current_user_not_part_of.members]
+
+        # Ensure there exists a URL in this UTub
+        assert len(utub_current_user_not_part_of.utub_urls) > 0
+        current_num_of_urls_in_utub = len(utub_current_user_not_part_of.utub_urls)
+
+        # Get the URL to remove
+        url_to_remove_in_utub = Utub_Urls.query.filter(Utub_Urls.utub_id == utub_current_user_not_part_of.id).first()
+        url_to_remove = url_to_remove_in_utub.url_in_utub
+        url_to_remove_id = url_to_remove.id
+
+    # Remove the URL from the other user's UTub while logged in as member of another UTub
+    remove_url_response = client.post(f"/url/remove/{utub_current_user_not_part_of.id}/{url_to_remove_id}", data={"csrf_token": csrf_token_string})
+
+    # Ensure 200 HTTP status code response
+    assert remove_url_response.status_code == 403
+
+    # Ensure JSON response is correct
+    remove_url_response_json = remove_url_response.json
+    assert remove_url_response_json["Status"] == "Failure"
+    assert remove_url_response_json["Message"] == "Unable to remove this URL"
+
+    # Ensure database is not affected
+    with app.app_context():
+        utub_current_user_not_part_of = Utub.query.filter(Utub.id == utub_current_user_not_part_of.id).first()
+
+        assert len(utub_current_user_not_part_of.utub_urls) == current_num_of_urls_in_utub
+        current_utub_urls_id = [url.url_id for url in utub_current_user_not_part_of.utub_urls]
+        assert url_to_remove_id in current_utub_urls_id
+
+def test_remove_invalid_nonexistant_url_as_utub_creator(add_one_url_to_each_utub_no_tags, login_first_user_without_register):
+    """
+    GIVEN a logged-in creator of a UTub
+    WHEN the user wishes to remove a nonexistant URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    THEN the server responds with a 404 HTTP status code, and the database has no changes
+    """
+    
+    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+
+    # Find the first UTub this logged in user is a creator of
+    with app.app_context():
+        utub_current_user_creator_of = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        id_of_utub_current_user_creator_of = utub_current_user_creator_of.id
+
+        # Ensure this user is the creator
+        assert current_user == utub_current_user_creator_of.created_by
+
+        all_urls = URLS.query.all()
+        all_url_ids = [url.id for url in all_urls]
+        all_urls_in_utub = Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_current_user_creator_of).all()
+        all_urls_ids_in_utub = [url.url_id for url in all_urls_in_utub]
+
+        # Find ID of URL that doesn't exist as URL or in UTub
+        id_of_url_to_remove = 0
+        while id_of_url_to_remove in all_url_ids and id_of_url_to_remove in all_urls_ids_in_utub:
+            id_of_url_to_remove += 1
+
+        # Ensure not in UTub and nonexistant
+        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_current_user_creator_of,
+                                        Utub_Urls.url_id == id_of_url_to_remove).all()) == 0
+
+    # Attempt to remove nonexistant URL from UTub as creator of UTub
+    remove_url_response = client.post(f"/url/remove/{id_of_utub_current_user_creator_of}/{id_of_url_to_remove}", data={"csrf_token": csrf_token_string})
+
+    # Ensure 200 HTTP status code response
+    assert remove_url_response.status_code == 404
+
+    with app.app_context():
+        # Ensure not in UTub and nonexistant
+        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_current_user_creator_of,
+                                        Utub_Urls.url_id == id_of_url_to_remove).all()) == 0
+
+def test_remove_invalid_nonexistant_url_as_utub_member(add_one_url_and_all_users_to_each_utub_no_tags, login_first_user_without_register):
+    """
+    GIVEN a logged-in creator of a UTub
+    WHEN the user wishes to remove a nonexistant URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    THEN the server responds with a 404 HTTP status code, and the database has no changes
+    """
+    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+
+    # Find the first UTub this logged in user is a creator of
+    with app.app_context():
+        utub_current_user_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        id_of_utub_current_user_member_of = utub_current_user_member_of.id
+
+        # Ensure this user is not the creator but is in the UTub
+        assert current_user != utub_current_user_member_of.created_by
+        assert current_user in [member.to_user for member in utub_current_user_member_of.members]
+
+        all_urls = URLS.query.all()
+        all_url_ids = [url.id for url in all_urls]
+        all_urls_in_utub = Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_current_user_member_of).all()
+        all_urls_ids_in_utub = [url.url_id for url in all_urls_in_utub]
+
+        # Find ID of URL that doesn't exist as URL or in UTub
+        id_of_url_to_remove = 0
+        while id_of_url_to_remove in all_url_ids and id_of_url_to_remove in all_urls_ids_in_utub:
+            id_of_url_to_remove += 1
+
+        # Ensure not in UTub and nonexistant
+        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_current_user_member_of,
+                                        Utub_Urls.url_id == id_of_url_to_remove).all()) == 0
+
+    # Attempt to remove nonexistant URL from UTub as creator of UTub
+    remove_url_response = client.post(f"/url/remove/{id_of_utub_current_user_member_of}/{id_of_url_to_remove}", data={"csrf_token": csrf_token_string})
+
+    # Ensure 200 HTTP status code response
+    assert remove_url_response.status_code == 404
+
+    with app.app_context():
+        # Ensure not in UTub and nonexistant
+        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_current_user_member_of,
+                                        Utub_Urls.url_id == id_of_url_to_remove).all()) == 0
+
+# def test_remove_url_as_utub_creator_with_tags(add_one_url_and_all_users_to_each_utub_with_tags, login_first_user_without_register):
+#     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    
+#     with app.app_context():
+#         print(Tags.query.all())
 
 #TODO: Remove URL as creator of UTub, with tags
 #TODO: Remove URL as user who added URL to UTub, with tags
-#TODO: Remove URL as not member of UTub
-#TODO: Remove nonexistent URL as creator of UTub
-#TODO: Remove nonexistent URL as member of UTub

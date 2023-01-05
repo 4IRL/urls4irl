@@ -24,15 +24,8 @@ def delete_url(utub_id: int, url_id: int):
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
     url_in_utub = Utub_Urls.query.filter(Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id).first_or_404()
 
-    if not url_in_utub:
-        # No user added this URL
-        return jsonify({
-            "Status" : "Failure",
-            "Message" : "Unable to remove this URL",
-            "Error_code": 1
-        }), 404
-
     if current_user.id == utub_owner_id or current_user.id == url_in_utub.user_id:
+        # Can only delete URLs as the creator of UTub, or as the adder of that URL
         db.session.delete(url_in_utub)
 
         # Remove all tags associated with this URL in this UTub as well
@@ -53,7 +46,6 @@ def delete_url(utub_id: int, url_id: int):
         return jsonify({
                 "Status" : "Failure",
                 "Message" : "Unable to remove this URL",
-                "Error_code": 2
             }), 403
 
 

@@ -249,6 +249,10 @@ class Tags(db.Model):
     created_by = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
+    def __init__(self, tag_string: str, created_by: int):
+        self.tag_string = tag_string
+        self.created_by = created_by
+
     @property
     def serialized(self):
         """Returns serialized object."""

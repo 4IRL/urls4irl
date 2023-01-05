@@ -606,6 +606,3 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(add_multiple_
         first_user = User.query.get(1)
 
         assert first_user in [user.to_user for user in third_user_utub.members]
-
-
-#TODO remove nonexistent user from same UTub as member with valid form

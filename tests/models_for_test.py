@@ -5,7 +5,7 @@ Users used for testing logging in correctly
 Models follow what is on a valid registration form
 """
 valid_user_1 = {
-    "id": 0,
+    "id": 1,
     "csrf_token": None,
     "username": "FakeUserName1234",
     "email": "FakeUserName123@email.com",
@@ -15,7 +15,7 @@ valid_user_1 = {
 }
 
 valid_user_2 = {
-    "id": 1,
+    "id": 2,
     "csrf_token": None,
     "username": "CenturyUser1234",
     "email": "CenturyUser@email.com",
@@ -25,7 +25,7 @@ valid_user_2 = {
 }
 
 valid_user_3 = {
-    "id": 2,
+    "id": 3,
     "csrf_token": None,
     "username": "PersonalEntry1234",
     "email": "PersonalEntry@email.com",
@@ -33,6 +33,8 @@ valid_user_3 = {
     "password": "PersonalPassword1234",
     "confirm_password": "PersonalPassword1234"
 }
+
+valid_users = (valid_user_1, valid_user_2, valid_user_3,)
 
 """
 User who will never be added to the database
@@ -50,41 +52,44 @@ invalid_user_1= {
 Valid tags used for testing 
 """
 valid_tag_1 = {
-    'id': 0,
+    'id': 1,
     'tag_string': 'Exciting!'
 }
 
 valid_tag_2 = {
-    'id': 1,
+    'id': 2,
     'tag_string': 'Funny'
 }
 
 valid_tag_3 = {
-    'id': 2,
+    'id': 3,
     'tag_string': 'Ugh'
 }
 valid_tag_ids = [tag["id"] for tag in (valid_tag_1, valid_tag_2, valid_tag_3)]
+all_tags = (valid_tag_1, valid_tag_2, valid_tag_3,)
 
 """
 Valid URLs used for testing, without tags    
 """
 valid_url_without_tag_1 = {
-    "id": 0,
+    "id": 1,
     "url": 'https://www.google.com',
     "tags": []
 }
 
 valid_url_without_tag_2 = {
-    "id": 1,
+    "id": 2,
     "url": 'https://www.facebook.com',
     "tags": []
 }
 
 valid_url_without_tag_3 = {
-    "id": 2,
+    "id": 3,
     "url": 'https://www.microsoft.com',
     "tags": []
 }
+
+all_urls_no_tags = (valid_url_without_tag_1, valid_url_without_tag_2, valid_url_without_tag_3,)
 
 valid_url_strings = [url["url"] for url in (valid_url_without_tag_1, valid_url_without_tag_2, valid_url_without_tag_3)]
 
@@ -92,19 +97,19 @@ valid_url_strings = [url["url"] for url in (valid_url_without_tag_1, valid_url_w
 Valid URLs used for testing, with tags    
 """
 valid_url_with_tag_1 = {
-    "id": 0,
+    "id": 1,
     "url": 'https://www.google.com',
     "tags": valid_tag_ids
 }
 
 valid_url_with_tag_2 = {
-    "id": 1,
+    "id": 2,
     "url": 'https://www.facebook.com',
     "tags": valid_tag_ids
 }
 
 valid_url_with_tag_3 = {
-    "id": 2,
+    "id": 3,
     "url": 'https://www.microsoft.com',
     "tags": valid_tag_ids
 }
@@ -113,97 +118,99 @@ valid_url_with_tag_3 = {
 Valid UTubs for testing, empty    
 """
 valid_empty_utub_1 = {
-    "id": 0,
+    "id": 1,
     "name": "Test UTub 1",
     "utub_description": "First Test UTub"
 }
 
 valid_empty_utub_2 = {
-    "id": 1,
+    "id": 2,
     "name": "Test UTub 2",
     "utub_description": "Second Test UTub"
 }
 
 valid_empty_utub_3 = {
-    "id": 2,
+    "id": 3,
     "name": "Test UTub 3",
     "utub_description": "Third Test UTub"
 }
 
+all_empty_utubs = (valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3,)
+
 """
 UTub serialized data for testing
 """
-valid_utub_serialization_empty = {
-    'id': 0,
-    'name': "Test UTub 1",
-    'created_by': None,
-    'created_at': datetime.utcnow(),
-    'description': "",
-    'members': [],
-    'urls': [],
-    'tags': []
-}
+# UTub serialized data with only creator
+valid_utub_serializations_with_only_creator = []
+for utub, user in zip(all_empty_utubs, valid_users):
+    valid_utub_serializations_with_only_creator.append({
+        'id': utub["id"],
+        'name': utub["name"],
+        'created_by': utub["id"],
+        'created_at': None,
+        'description': utub["utub_description"],
+        'members': [{
+            "id": user["id"],
+            "username": user["username"]}],
+        'urls': [],
+        'tags': []
+    })
 
-valid_utub_serialization_with_only_creator = {
-    'id': 0,
-    'name': "Test UTub 1",
-    'created_by': valid_user_1["id"],
-    'created_at': datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S"),
-    'description': "",
-    'members': [{
-        "id": user["id"],
-        "username": user["username"]} for user in (valid_user_1,)],
-    'urls': [],
-    'tags': []
-}
+# UTub serialized data with only creator and all members
+valid_utub_serializations_with_members = []
+for utub, user in zip(all_empty_utubs, valid_users):
+    valid_utub_serializations_with_members.append({
+        'id': utub["id"],
+        'name': utub["name"],
+        'created_by': utub["id"],
+        'created_at': None,
+        'description': utub["utub_description"],
+        'members': [{
+            "id": all_user["id"],
+            "username": all_user["username"]} for all_user in valid_users],
+        'urls': [],
+        'tags': []
+    })
 
-valid_utub_serialization_with_creator_and_member = {
-    'id': 0,
-    'name': "Test UTub 1",
-    'created_by': valid_user_1["id"],
-    'created_at': datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S"),
-    'description': "",
-    'members': [{
-        "id": user["id"],
-        "username": user["username"]} for user in (valid_user_1, valid_user_2)],
-    'urls': [],
-    'tags': []
-}
+# UTub serialized data with all members and one URL - URL ID == UTub ID, Url added by ID == UTub ID
+valid_utub_serializations_with_members_and_url = []
+for utub, user, url in zip(all_empty_utubs, valid_users, all_urls_no_tags):
+    valid_utub_serializations_with_members_and_url.append({
+        'id': utub["id"],
+        'name': utub["name"],
+        'created_by': utub["id"],
+        'created_at': None,
+        'description': utub["utub_description"],
+        'members': [{
+            "id": all_user["id"],
+            "username": all_user["username"]} for all_user in valid_users],
+        'urls': [{
+            "url_id": url["id"],
+            "url_string": url["url"],
+            "url_tags": [],
+            "added_by": user["id"], 
+            "notes": f"This is {url['url']}"}],
+        'tags': []
+        })
 
-valid_utub_serialization_with_members_urls_no_tags = {
-    'id': 0,
-    'name': "Test UTub 1",
-    'created_by': valid_user_1["id"],
-    'created_at': datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S"),
-    'description': "",
-    'members': [{
-        "id": user["id"],
-        "username": user["username"]} for user in (valid_user_1, valid_user_2)],
-    'urls': [{
-        "url_id": url["id"],
-        "url_string": url["url"],
-        "url_tags": [],
-        "added_by": 1,  # second user added these for testing
-        "notes": ""} for url in (valid_url_without_tag_1, valid_url_without_tag_2, valid_url_without_tag_3,)],
-    'tags': []
-}
-
-valid_utub_serialization_with_members_urls_tags = {
-    'id': 0,
-    'name': "Test UTub 1",
-    'created_by': valid_user_1["id"],
-    'created_at': datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S"),
-    'description': "",
-    'members': [{
-        "id": user["id"],
-        "username": user["username"]} for user in (valid_user_1, valid_user_2)],
-    'urls': [{
-        "url_id": url["id"],
-        "url_string": url["url"],
-        "url_tags": [url["id"]],
-        "added_by": 1,  # second user added these for testing
-        "notes": ""} for url in (valid_url_without_tag_1, valid_url_without_tag_2, valid_url_without_tag_3,)],
-    'tags': [{
-        "id": tag["id"],
-        "tag_string": tag["tag_string"]} for tag in (valid_tag_1, valid_tag_2, valid_tag_3)]
-}
+# UTub serialized data with all members, URLs, and all tags applied to each URL
+# URL added by same ID as URL
+valid_utub_serializations_with_members_and_url_and_tags = []
+for utub in all_empty_utubs:
+    valid_utub_serializations_with_members_and_url_and_tags.append({
+        'id': utub["id"],
+        'name': utub["name"],
+        'created_by': utub["id"],
+        'created_at': None,
+        'description': utub["utub_description"],
+        'members': [{
+            "id": all_user["id"],
+            "username": all_user["username"]} for all_user in valid_users],
+        'urls': [{
+            "url_id": url["id"],
+            "url_string": url["url"],
+            "url_tags": [tag["id"] for tag in all_tags],
+            "added_by": url["id"], 
+            "notes": f"This is {url['url']}"} for url in all_urls_no_tags],
+        'tags': [tag for tag in all_tags]
+        })

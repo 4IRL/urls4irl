@@ -1,9 +1,10 @@
 import json
-
+from datetime import datetime
 import pytest
 
 import models_for_test as v_models
 from urls4irl.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
+from urls4irl import db
 
 """
 Serializations to test
@@ -16,7 +17,7 @@ Serializations to test
 5) UTub object serialized, which is a giant JSON of all the info pertaining to that UTub
 """
 
-def test_tag_serialization():
+def test_tag_serialization(app, register_multiple_users):
     """
     GIVEN a set of valid tags
     WHEN they are generally requested from the frontend, tags data is sent, serialized as JSON 
@@ -28,19 +29,22 @@ def test_tag_serialization():
         "tag_string": String representing the tag itself
     }
     """
-    valid_tags = []
     input_tags = (v_models.valid_tag_1, v_models.valid_tag_2, v_models.valid_tag_3)
 
-    for tag in input_tags:
-        new_tag = Tags(tag_string=tag["tag_string"], id=tag['id'])
-        valid_tags.append(new_tag)
+    with app.app_context():
+        for idx, tag in enumerate(input_tags):
+            new_tag = Tags(tag_string=tag["tag_string"], created_by=idx+1)
+            db.session.add(new_tag)
+        db.session.commit()
 
-    for idx, tag in enumerate(valid_tags):
-        json_tag = json.dumps(tag.serialized)
-        valid_json_tag = json.dumps({
-            "id": idx,
-            "tag_string": input_tags[idx]["tag_string"]
-        })
+    with app.app_context():
+        all_tags = Tags.query.all()
+        for idx, tag in enumerate(all_tags):
+            json_tag = json.dumps(tag.serialized)
+            valid_json_tag = json.dumps({
+                "id": idx+1,
+                "tag_string": input_tags[idx]["tag_string"]
+            })
 
         assert valid_json_tag == json_tag
 
@@ -71,7 +75,7 @@ def test_url_serialization_without_tags():
 
         assert json.dumps(new_url.serialized_url) == valid_url_for_json
 
-def test_url_serialization_with_tags():
+def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_database):
     """
     GIVEN a valid set of URLs with tags contained within a UTub
     WHEN frontend requests a UTub's data, or if they wish to remove a URL, the backend sends
@@ -87,28 +91,54 @@ def test_url_serialization_with_tags():
     }
     """
     verified_urls = (v_models.valid_url_with_tag_1, v_models.valid_url_with_tag_2, v_models.valid_url_with_tag_3)
-    valid_tags = (v_models.valid_tag_1, v_models.valid_tag_2, v_models.valid_tag_3)
-    
-    current_user_id = 0
-    new_urls = []
 
-    for v_url in verified_urls:
-        new_url = URLS(normalized_url=v_url['url'], current_user_id=current_user_id)
-        new_url.id = v_url['id']
+    # UTub - URL associations
+    with app.app_context():
+        all_utubs = Utub.query.all()
+        all_urls = URLS.query.all()
 
-        for tag in valid_tags:
-            new_tag = Tags(tag_string=tag["tag_string"], id=tag['id'])
+        for utub, url in zip(all_utubs, all_urls):
+            new_utub_url = Utub_Urls()
+            new_utub_url.utub = utub
+            new_utub_url.utub_id = utub.id
+            new_utub_url.url_id = url.id
+            new_utub_url.url_in_utub = url
+            new_utub_url.user_id = utub.id
 
-            # Add the tag association to the URL
-            new_url_tag = Url_Tags()
-            new_url_tag.tag_item = new_tag
-            new_url.url_tags.append(new_url_tag)
+            db.session.add(new_utub_url)
+        
+        db.session.commit()
 
-        new_urls.append(new_url)
+    # UTub-URL-Tag associations
+    with app.app_context():
+        all_utubs = Utub.query.all()
+        all_urls = URLS.query.all()
+        all_tags = Tags.query.all()
+        
+        for utub, url in zip(all_utubs, all_urls):
 
-    for idx, verified_url in enumerate(verified_urls):
-        assert json.dumps(verified_url) == json.dumps(new_urls[idx].serialized_url)
+            for tag in all_tags:
+                new_url_tag = Url_Tags()
+                new_url_tag.utub_containing_this_tag = utub
+                new_url_tag.utub_id = utub.id
+                new_url_tag.url_id = url.id
+                new_url_tag.tagged_url = url
+                new_url_tag.tag_item = tag
+                new_url_tag.tag_id = tag.id
 
+                db.session.add(new_url_tag)
+        
+        db.session.commit()
+
+    with app.app_context():
+        all_utubs = Utub.query.all()
+        all_urls = URLS.query.all()
+
+        for utub, url, verified_url in zip(all_utubs, all_urls, verified_urls):
+            url_with_tags = Utub_Urls.query.filter(Utub_Urls.url_id == url.id, Utub_Urls.utub_id == utub.id).first()
+        
+            assert json.dumps(verified_url) == json.dumps(url_with_tags.url_in_utub.serialized_url)
+            
 def test_user_serialization_as_member_of_utub():
     """
     GIVEN a set of valid users that are members of a UTub
@@ -181,9 +211,9 @@ def test_user_utub_data_serialized_on_initial_load():
 
     assert json.dumps(valid_utubs) == json.dumps(new_user.serialized_on_initial_load)
 
-def test_utub_data_when_user_requests():
+def test_utub_serialized_only_creator_no_urls_no_tags(app, every_user_makes_a_unique_utub):
     """
-    GIVEN a valid UTub that a user if a member or creator of
+    GIVEN a valid UTub that a user is a creator of, with no urls, no other members, and no no tags
     WHEN the user selects the UTub of interest, the backend sends JSON containing all relevant details of that
         UTub for the frontend to layout. 
     THEN ensure the correctly serialized data is output as JSON.
@@ -221,84 +251,169 @@ def test_utub_data_when_user_requests():
         ]
     }   
     """
-    # Start with empty UTub
-    empty_utub = v_models.valid_utub_serialization_empty
+    with app.app_context():
+        all_utubs = Utub.query.all()
 
-    # Create user
-    valid_user = v_models.valid_user_1
-    new_user = User(username=valid_user["username"],
-                email=valid_user["email"],
-                plaintext_password=valid_user["password"])
-    new_user.id = valid_user["id"]
+        for test_utub, utub in zip(v_models.valid_utub_serializations_with_only_creator, all_utubs):
+            test_utub["created_at"] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            assert json.dumps(test_utub) == json.dumps(utub.serialized)
 
-    # Create the UTub
-    new_utub = Utub(name=empty_utub["name"], utub_creator=valid_user["id"], utub_description="")
-    new_utub.id = empty_utub["id"]
-    new_utub.utub_creator = valid_user["id"]
-    new_utub.created_at = empty_utub["created_at"]
+def test_utub_serialized_creator_and_members_no_urls_no_tags(app, every_user_in_every_utub):
+    """
+    GIVEN a valid UTub that a user is a creator of and has members in it, with no urls and no tags
+    WHEN the user selects the UTub of interest, the backend sends JSON containing all relevant details of that
+        UTub for the frontend to layout. 
+    THEN ensure the correctly serialized data is output as JSON.
 
-    # Add the valid user to the utub
-    new_utub_user = Utub_Users()
-    new_utub_user.to_user = new_user
-    new_utub.members.append(new_utub_user)
+    Format of the serialized JSON data is as follows:
+    {
+    'id': Integer representing UTub ID,
+    'name': String representing UTub name,
+    'created_by': Integer representing creator ID,
+    'created_at': Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    'description': String representing UTub description, "" if empty,
+    'members': Array containing each members information, in the following format:
+        [
+            {
+                'id': Integer representing the user's ID,
+                'username': String representing the user's username
+            }
+        ]
+    'urls': Array containing all the URL information for this UTub, in the following format:
+        [
+            {
+                "url_id": Integer repsenting the URL ID,
+                "url_string": String representing the URL,
+                "url_tags": Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                "added_by": Integer ID of user identifying who added this,
+                "notes": String representing a description of this URL in this UTub
+            }
+        ]
+    'tags': Array containing all tag information for tags used in this UTub, in the following format:
+        [
+            {
+                "id": Integer representing the tag ID,
+                "tag_string": "String representing the tag itself
+            }
+        ]
+    }   
+    """
+    with app.app_context():
+        all_utubs = Utub.query.all()
 
-    # Test serialization of UTub with only creator
-    assert json.dumps(v_models.valid_utub_serialization_with_only_creator) == json.dumps(new_utub.serialized)
+        for test_utub, utub in zip(v_models.valid_utub_serializations_with_members, all_utubs):
+            test_utub["created_at"] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            
+            # Array of members needs to be sorted by ID's to match
+            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized["members"] = sorted(utub_in_data_serialized["members"], key=lambda test_user: test_user["id"])
+            
+            assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
-    # Add another member
-    second_user_model = v_models.valid_user_2
-    second_user = User(username=second_user_model["username"],
-                email=second_user_model["email"],
-                plaintext_password=second_user_model["password"])
-    second_user.id = second_user_model["id"]
+def test_utub_serialized_creator_and_members_and_url_no_tags(app, add_one_url_and_all_users_to_each_utub_no_tags):
+    """
+    GIVEN a valid UTub that a user is a creator of and has members in it, with one url in it and no tags
+    WHEN the user selects the UTub of interest, the backend sends JSON containing all relevant details of that
+        UTub for the frontend to layout. 
+    THEN ensure the correctly serialized data is output as JSON.
 
-    # Add the second valid user to the utub
-    new_utub_user = Utub_Users()
-    new_utub_user.to_user = second_user
-    new_utub.members.append(new_utub_user)
+    Format of the serialized JSON data is as follows:
+    {
+    'id': Integer representing UTub ID,
+    'name': String representing UTub name,
+    'created_by': Integer representing creator ID,
+    'created_at': Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    'description': String representing UTub description, "" if empty,
+    'members': Array containing each members information, in the following format:
+        [
+            {
+                'id': Integer representing the user's ID,
+                'username': String representing the user's username
+            }
+        ]
+    'urls': Array containing all the URL information for this UTub, in the following format:
+        [
+            {
+                "url_id": Integer repsenting the URL ID,
+                "url_string": String representing the URL,
+                "url_tags": Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                "added_by": Integer ID of user identifying who added this,
+                "notes": String representing a description of this URL in this UTub
+            }
+        ]
+    'tags': Array containing all tag information for tags used in this UTub, in the following format:
+        [
+            {
+                "id": Integer representing the tag ID,
+                "tag_string": "String representing the tag itself
+            }
+        ]
+    }   
+    """
+    with app.app_context():
+        all_utubs = Utub.query.all()
 
-    # Test serialization of UTub with creator and new member
-    assert json.dumps(v_models.valid_utub_serialization_with_creator_and_member) == json.dumps(new_utub.serialized)
+        for test_utub, utub in zip(v_models.valid_utub_serializations_with_members_and_url, all_utubs):
+            test_utub["created_at"] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            
+            # Array of members needs to be sorted by ID's to match
+            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized["members"] = sorted(utub_in_data_serialized["members"], key=lambda test_user: test_user["id"])
 
-    # Add three URLs without tags to the UTub model
-    valid_urls_without_tags = (v_models.valid_url_without_tag_1, v_models.valid_url_without_tag_2, v_models.valid_url_without_tag_3)
-    
-    all_urls = []
-    for no_tag_url in valid_urls_without_tags:
-        new_url_without_tags = URLS(normalized_url=no_tag_url["url"], current_user_id=second_user.id)
-        new_url_without_tags.id = no_tag_url["id"]
+            assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
-        all_urls.append(new_url_without_tags)
+def test_utub_serialized_creator_and_members_and_urls_and_tags(app, add_all_urls_and_users_to_each_utub_with_all_tags):
+    """
+    GIVEN a valid UTub that a user is a creator of and has members in it, with all urls and 3 tags per url
+    WHEN the user selects the UTub of interest, the backend sends JSON containing all relevant details of that
+        UTub for the frontend to layout. 
+    THEN ensure the correctly serialized data is output as JSON.
 
-        new_url = Utub_Urls()
-        new_url.url_id = no_tag_url["id"]
-        new_url.utub_id = new_utub.id
-        new_url.url_in_utub = new_url_without_tags
-        new_url.user_that_added_url = second_user
-        new_url.url_notes = ""
-        new_utub.utub_urls.append(new_url)
+    Format of the serialized JSON data is as follows:
+    {
+    'id': Integer representing UTub ID,
+    'name': String representing UTub name,
+    'created_by': Integer representing creator ID,
+    'created_at': Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    'description': String representing UTub description, "" if empty,
+    'members': Array containing each members information, in the following format:
+        [
+            {
+                'id': Integer representing the user's ID,
+                'username': String representing the user's username
+            }
+        ]
+    'urls': Array containing all the URL information for this UTub, in the following format:
+        [
+            {
+                "url_id": Integer repsenting the URL ID,
+                "url_string": String representing the URL,
+                "url_tags": Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                "added_by": Integer ID of user identifying who added this,
+                "notes": String representing a description of this URL in this UTub
+            }
+        ]
+    'tags': Array containing all tag information for tags used in this UTub, in the following format:
+        [
+            {
+                "id": Integer representing the tag ID,
+                "tag_string": "String representing the tag itself
+            }
+        ]
+    }   
+    """
+    with app.app_context():
+        all_utubs = Utub.query.all()
 
-    # Test serialization of UTub with creator, member, and urls without tags
-    assert json.dumps(v_models.valid_utub_serialization_with_members_urls_no_tags) == json.dumps(new_utub.serialized)
+        for test_utub, utub in zip(v_models.valid_utub_serializations_with_members_and_url_and_tags, all_utubs):
+            test_utub["created_at"] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            
+            # Array of members needs to be sorted by ID's to match
+            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized["members"] = sorted(utub_in_data_serialized["members"], key=lambda test_user: test_user["id"])
 
-    # Add tags to each URL, id of tag will be equal to id of URL to add it to for testing
-    all_tags = (v_models.valid_tag_1, v_models.valid_tag_2, v_models.valid_tag_3)
+            # Array of tag IDs must also be sorted
+            for idx in range(len(utub_in_data_serialized["urls"])):
+                utub_in_data_serialized["urls"][idx]["url_tags"].sort()
 
-    for tag in all_tags:
-        new_tag = Tags(tag_string=tag["tag_string"], id=tag['id'])
-
-        # Add the tag association to the URL
-        new_url_tag = Url_Tags()
-        new_url_tag.tag_item = new_tag
-
-        url_to_add_to = all_urls[tag["id"]]
-
-        new_url_tag.tagged_url = url_to_add_to
-        new_url_tag.utub_containing_this_tag = new_utub
-        new_url_tag.utub_id = new_utub.id
-        new_url_tag.tag_id = tag["id"]
-        
-        new_url_tag.utub_containing_this_tag = new_utub
-
-    # Test serialization of UTub with creator, member, urls, and associated tags
-    assert json.dumps(v_models.valid_utub_serialization_with_members_urls_tags) == json.dumps(new_utub.serialized)
+            assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
