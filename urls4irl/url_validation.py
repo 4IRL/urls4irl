@@ -111,7 +111,4 @@ def check_request_head(url: str) -> str:
         else:
             # Redirect was found, provide the redirect URL
             return location
-
-
-if __name__ == "__main__":
-    check_request_head("https://flask-limiter.readthedocs.io")
+            

@@ -12,7 +12,7 @@ class UTubNewURLForm(FlaskForm):
     """
     
     url_string = StringField('URL', validators=[InputRequired(), Length(min=1, max=2000)])
-    url_description = StringField('URL Description', validators=[Length(min=1, max=100)])
+    url_description = StringField('URL Description', validators=[InputRequired(), Length(min=1, max=100)])
 
     submit = SubmitField('Add URL to this UTub!')
 

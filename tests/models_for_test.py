@@ -73,19 +73,19 @@ Valid URLs used for testing, without tags
 """
 valid_url_without_tag_1 = {
     "id": 1,
-    "url": 'https://www.google.com',
+    "url": 'https://www.google.com/',
     "tags": []
 }
 
 valid_url_without_tag_2 = {
     "id": 2,
-    "url": 'https://www.facebook.com',
+    "url": 'https://www.facebook.com/',
     "tags": []
 }
 
 valid_url_without_tag_3 = {
     "id": 3,
-    "url": 'https://www.microsoft.com',
+    "url": 'https://www.microsoft.com/',
     "tags": []
 }
 
@@ -98,7 +98,7 @@ Valid URLs used for testing, with tags
 """
 valid_url_with_tag_1 = {
     "url_id": 1,
-    "url_string": 'https://www.google.com',
+    "url_string": 'https://www.google.com/',
     "url_tags": valid_tag_ids,
     "added_by": 1,
     "notes": ""
@@ -106,7 +106,7 @@ valid_url_with_tag_1 = {
 
 valid_url_with_tag_2 = {
     "url_id": 2,
-    "url_string": 'https://www.facebook.com',
+    "url_string": 'https://www.facebook.com/',
     "url_tags": valid_tag_ids,
     "added_by": 2,
     "notes": ""
@@ -114,7 +114,7 @@ valid_url_with_tag_2 = {
 
 valid_url_with_tag_3 = {
     "url_id": 3,
-    "url_string": 'https://www.microsoft.com',
+    "url_string": 'https://www.microsoft.com/',
     "url_tags": valid_tag_ids,
     "added_by": 3,
     "notes": ""
