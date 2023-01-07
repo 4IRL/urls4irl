@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_login import current_user, login_required
 from urls4irl import db
-from urls4irl.models import Utub, Url_Tags, Tags
+from urls4irl.models import Utub, Url_Tags, Tags, Utub_Urls
 from urls4irl.tags.forms import UTubNewUrlTagForm
 
 tags = Blueprint('tags', __name__)
@@ -17,7 +17,7 @@ def add_tag(utub_id: int, url_id: int):
         utub_id (int): The utub that this user is being added to
         url_id (int): The URL this user wants to add a tag to
     """
-    utub = Utub.query.get(utub_id)
+    utub = Utub.query.get_or_404(utub_id)
     utub_url = [url_in_utub for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id]
     user_in_utub = [int(member.user_id) for member in utub.members if int(member.user_id) == int(current_user.get_id())]
 
@@ -78,15 +78,14 @@ def add_tag(utub_id: int, url_id: int):
         db.session.commit()
 
         # Successfully added tag to URL on UTub
+        url_utub_association = Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id,
+                                                        Utub_Urls.url_id == url_id).first_or_404()
 
         return jsonify({
             "Status" : "Success",
             "Message" : "Tag added to this URL",
-            "Tag" : {
-                "tag_ID" : f"{tag_id}",
-                "tag_string" : f"{tag_to_add}"
-            },
-            "URL_ID" : f"{url_id}",
+            "Tag" : new_tag.serialized,  # Can I just serialize the Tag model here instead?
+            "URL_ID" : url_utub_association.serialized, # Can I just serialize the Url_Utub model here instead?
             "UTub_ID" : f"{utub_id}"
         }), 200
 
@@ -118,25 +117,30 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         url_id (int): The ID of the URL to be deleted
         tag_id (int): The ID of the tag
     """
-    utub = Utub.query.get(int(utub_id))
-    owner_id = utub.utub_creator
+    utub = Utub.query.get_or_404(int(utub_id))
 
-    if int(current_user.get_id()) == owner_id:
+    if int(current_user.get_id()) in [int(user.id) for user in utub.members]:
         # User is creator of this UTub
-        tag_for_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).first()
+        tag_for_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).first_or_404()
+        tag_to_remove = tag_for_url_in_utub.tag_item
+        url_to_remove_tag_from = tag_for_url_in_utub.tagged_url
 
         db.session.delete(tag_for_url_in_utub)
         db.session.commit()
 
+        url_utub_association = Utub_Urls.query.filter(Utub_Urls.utub_id == utub.id, 
+                                                        Utub_Urls.url_id == url_to_remove_tag_from.id).first_or_404()
+
         return jsonify({
             "Status" : "Success",
             "Message" : "Tag removed from URL",
-            "tag_ID": f"{tag_id}",
-            "URL_ID": f"{url_id}",
-            "UTub_ID": f"{utub_id}" 
+            "Tag": tag_to_remove.serialized,
+            "URL": url_utub_association.serialized,
+            "UTub_ID": f"{utub_id}",
+            "UTub_name": f"{utub.name}" 
         }), 200
 
     return jsonify({
         "Status" : "Failure",
-        "Message" : "Only UTub owners can remove tags"
+        "Message" : "Only UTub members can remove tags"
     }), 403

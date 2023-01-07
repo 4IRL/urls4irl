@@ -763,3 +763,53 @@ def test_add_url_missing_url_description(add_urls_to_database, every_user_in_eve
 
     with app.app_context():
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all()) == 0
+
+def test_add_url_missing_csrf_token(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database but not associated with any UTubs
+    WHEN the user tries to add a URL with an empty 'url_description' field in the form
+    THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
+        is sent by the server
+
+    Proper JSON response is as follows:
+    {
+        "Status": "Failure",
+        "Message": "Unable to add this URL, please check inputs",
+        "Error_code": 4,
+        "Errors": {
+            "url_description": ["This field is required."]
+        }
+    }
+    """
+    client, csrf_token, logged_in_user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        assert current_user in [user.to_user for user in current_utub_member_of.members]
+
+        # Ensure no URLs in this UTub
+        assert len(current_utub_member_of.utub_urls) == 0
+        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub_member_of.id).all()) == 0
+        
+        # Grab a URL to add
+        url_to_add = URLS.query.first()
+        url_string_to_add = url_to_add.url_string
+        url_description_to_add = f"This is {url_string_to_add}"
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Add the URL to the UTub
+    add_url_form = {
+        "url_string" : url_string_to_add,
+        "url_description" : ""
+    }
+    
+    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+
+    # Assert invalid response code
+    assert add_url_response.status_code == 400
+    assert b'<p>The CSRF token is missing.</p>' in add_url_response.data
+
+    with app.app_context():
+        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all()) == 0
