@@ -154,7 +154,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(add_all_urls_and_use
     }
 
     added_user_response = client.post(f"/user/add/{utub_user_created.id}", data=add_user_form)
-    
+
     # Assert correct status code
     assert added_user_response.status_code == 200
     added_user_response_json = added_user_response.json
@@ -555,4 +555,3 @@ def test_add_user_to_utub_missing_csrf_token(add_single_utub_as_user_without_log
         # Ensure correct count of Utub-User associations
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
     
-# TODO - Test removing user then adding them again
