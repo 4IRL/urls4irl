@@ -120,7 +120,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
     utub = Utub.query.get_or_404(utub_id)
 
-    if int(current_user.get_id()) in [int(user.id) for user in utub.members]:
+    if int(current_user.get_id()) in [user.user_id for user in utub.members]:
         # User is creator of this UTub
         tag_for_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).first_or_404()
         url_to_remove_tag_from = tag_for_url_in_utub.tagged_url
@@ -137,8 +137,8 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
             "Message" : "Tag removed from URL",
             "Tag": tag_to_remove.serialized,
             "URL": url_utub_association.serialized,
-            "UTub_ID": f"{utub_id}",
-            "UTub_name": f"{utub.name}" 
+            "UTub_ID": utub_id,
+            "UTub_name": utub.name 
         }), 200
 
     return jsonify({

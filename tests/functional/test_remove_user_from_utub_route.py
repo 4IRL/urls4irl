@@ -42,6 +42,9 @@ def test_remove_valid_user_from_utub_as_creator(add_single_user_to_utub_without_
 
         # Ensure second user in this UTub
         assert second_user_in_utub in [user.to_user for user in current_utub.members]
+
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())
         
     # Remove second user
     remove_user_response = client.post(f"/user/remove/{current_utub.id}/{second_user_in_utub.id}", data={"csrf_token": csrf_token_string})
@@ -66,6 +69,9 @@ def test_remove_valid_user_from_utub_as_creator(add_single_user_to_utub_without_
 
         # Ensure second user not in this UTub
         assert second_user_in_utub not in [user.to_user for user in current_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs - 1
 
 def test_remove_self_from_utub_as_member(add_single_user_to_utub_without_logging_in, login_second_user_without_register):
     """
@@ -102,6 +108,9 @@ def test_remove_self_from_utub_as_member(add_single_user_to_utub_without_logging
         # Ensure second user in this UTub
         assert current_user in [user.to_user for user in current_utub.members]
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
+
     # Remove self from UTub
     remove_user_response = client.post(f"/user/remove/{current_utub.id}/{current_user.id}", data={"csrf_token": csrf_token_string})
 
@@ -125,6 +134,9 @@ def test_remove_self_from_utub_as_member(add_single_user_to_utub_without_logging
 
         # Ensure logged in user not in this UTub
         assert current_user not in [user.to_user for user in current_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs - 1
 
 def test_remove_self_from_utub_as_creator(add_single_user_to_utub_without_logging_in, login_first_user_without_register):
     """
@@ -158,6 +170,9 @@ def test_remove_self_from_utub_as_creator(add_single_user_to_utub_without_loggin
         # Ensure current user also in this UTub
         assert current_user in [user.to_user for user in current_utub.members]
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
+
     # Remove self from UTub
     remove_user_response = client.post(f"/user/remove/{current_utub.id}/{current_user.id}", data={"csrf_token": csrf_token_string})
 
@@ -179,6 +194,9 @@ def test_remove_self_from_utub_as_creator(add_single_user_to_utub_without_loggin
 
         # Ensure logged in user still in this UTub
         assert current_user in [user.to_user for user in current_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
 def test_remove_self_from_utub_no_csrf_token_as_member(add_single_user_to_utub_without_logging_in, login_second_user_without_register):
     """
@@ -205,6 +223,9 @@ def test_remove_self_from_utub_no_csrf_token_as_member(add_single_user_to_utub_w
         # Ensure second user in this UTub
         assert current_user in [user.to_user for user in current_utub.members]
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
+
     # Remove self from UTub
     remove_user_response = client.post(f"/user/remove/{current_utub.id}/{current_user.id}")
 
@@ -219,6 +240,9 @@ def test_remove_self_from_utub_no_csrf_token_as_member(add_single_user_to_utub_w
 
         # Ensure logged in user still in this UTub
         assert current_user in [user.to_user for user in current_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
 def test_remove_valid_user_from_utub_no_csrf_token_as_creator(add_single_user_to_utub_without_logging_in, login_first_user_without_register):
     """
@@ -248,6 +272,9 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(add_single_user_to
 
         # Ensure second user in this UTub
         assert second_user_in_utub in [user.to_user for user in current_utub.members]
+
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
         
     # Remove second user
     remove_user_response = client.post(f"/user/remove/{current_utub.id}/{second_user_in_utub.id}")
@@ -266,6 +293,9 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(add_single_user_to
 
         # Ensure second user still in this UTub
         assert second_user_in_utub in [user.to_user for user in current_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
 def test_remove_valid_user_from_invalid_utub_as_member_or_creator(add_single_user_to_utub_without_logging_in, login_second_user_without_register):
     """
@@ -288,6 +318,9 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(add_single_use
         # Ensure given UTub does not exist 
         assert invalid_utub_id not in [utub.id for utub in all_current_utubs]
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
+
     # Remove self from UTub
     remove_user_response = client.post(f"/user/remove/{invalid_utub_id}/{current_user.id}", data={"csrf_token": csrf_token_string})
 
@@ -300,6 +333,10 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(add_single_use
 
         # Ensure 404 HTTP status code response
         assert remove_user_response.status_code == 404
+
+    with app.app_context():
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
 def test_remove_invalid_user_from_utub_as_creator(add_single_user_to_utub_without_logging_in, login_first_user_without_register):
     """
@@ -335,6 +372,9 @@ def test_remove_invalid_user_from_utub_as_creator(add_single_user_to_utub_withou
         # Ensure invalid user is not in this UTub
         assert user_id_not_in_utub not in [user.user_id for user in current_utub.members]
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
+
     # Remove self from UTub
     remove_user_response = client.post(f"/user/remove/{current_utub.id}/{user_id_not_in_utub}", data={"csrf_token": csrf_token_string})
 
@@ -346,6 +386,10 @@ def test_remove_invalid_user_from_utub_as_creator(add_single_user_to_utub_withou
     assert remove_user_response_json["Status"] == "Failure"
     assert remove_user_response_json["Message"] == "User does not exist or not found in this UTub"
     assert int(remove_user_response_json["Error_code"]) == 3
+
+    with app.app_context():
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
 def test_remove_invalid_user_from_utub_as_member(add_single_user_to_utub_without_logging_in, login_second_user_without_register):
     """
@@ -384,6 +428,9 @@ def test_remove_invalid_user_from_utub_as_member(add_single_user_to_utub_without
         # Ensure invalid user is not in this UTub
         assert user_id_not_in_utub not in [user.user_id for user in current_utub.members]
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
+
     # Remove self from UTub
     remove_user_response = client.post(f"/user/remove/{current_utub.id}/{user_id_not_in_utub}", data={"csrf_token": csrf_token_string})
 
@@ -395,6 +442,10 @@ def test_remove_invalid_user_from_utub_as_member(add_single_user_to_utub_without
     assert remove_user_response_json["Status"] == "Failure"
     assert remove_user_response_json["Message"] == "Not allowed to remove a user from this UTub"
     assert int(remove_user_response_json["Error_code"]) == 2
+
+    with app.app_context():
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
 def test_remove_another_member_from_same_utub_as_member(add_multiple_users_to_utub_without_logging_in, login_second_user_without_register):
     """
@@ -433,6 +484,9 @@ def test_remove_another_member_from_same_utub_as_member(add_multiple_users_to_ut
             if user != current_user and user != current_utub.created_by:
                 other_utub_member = user.to_user
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())                
+
     # Attempt to remove other user from UTub as a member
     remove_user_response = client.post(f"/user/remove/{current_utub.id}/{other_utub_member.id}", data={"csrf_token": csrf_token_string})
 
@@ -456,6 +510,9 @@ def test_remove_another_member_from_same_utub_as_member(add_multiple_users_to_ut
 
         # Ensure the bystander member is still in the UTub
         assert other_utub_member in [user.to_user for user in current_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs
   
 def test_remove_member_from_another_utub_as_creator_of_another_utub(every_user_makes_a_unique_utub, login_first_user_without_register):
     """
@@ -507,6 +564,9 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(every_user_m
         # Ensure logged in user is not in the second user's UTub
         assert current_user not in [user.to_user for user in second_user_utub.members]
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
+
     # Try to remove the third user from second user's UTub as the first user
     remove_user_response = client.post(f"/user/remove/{second_user_utub.id}/{third_user.id}", data={"csrf_token": csrf_token_string})
 
@@ -525,6 +585,9 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(every_user_m
         third_user = User.query.get(3)
 
         assert third_user in [user.to_user for user in second_user_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
 def test_remove_member_from_another_utub_as_member_of_another_utub(add_multiple_users_to_utub_without_logging_in, login_second_user_without_register):
     """
@@ -587,6 +650,9 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(add_multiple_
         all_utub_users = Utub_Users.query.filter(Utub_Users.user_id == current_user.id).all()
         assert len(all_utub_users) > 0
 
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())        
+
     # Try to remove the first user from second user's UTub as the first user
     remove_user_response = client.post(f"/user/remove/{new_utub_from_third_user.id}/{first_user.id}", data={"csrf_token": csrf_token_string})
 
@@ -605,3 +671,6 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(add_multiple_
         first_user = User.query.get(1)
 
         assert first_user in [user.to_user for user in third_user_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs

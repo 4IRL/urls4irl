@@ -9,6 +9,7 @@ def test_add_valid_url_as_utub_member(add_urls_to_database, every_user_in_every_
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a (previously generated) URL to a UTub they are a part of
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Url_UTub-User association exists where it didn't before
 
@@ -50,6 +51,9 @@ def test_add_valid_url_as_utub_member(add_urls_to_database, every_user_in_every_
                                             Utub_Urls.url_id == url_id_to_add,
                                             Utub_Urls.user_id == current_user.id).all()) == 0
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())
+
     # Add the URL to the UTub
     add_url_form = {
         "csrf_token" : csrf_token,
@@ -85,12 +89,15 @@ def test_add_valid_url_as_utub_member(add_urls_to_database, every_user_in_every_
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
                                             Utub_Urls.url_id == url_id_to_add,
                                             Utub_Urls.user_id == current_user.id).all()) == 1
+
+        assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
 
 def test_add_valid_url_as_utub_creator(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a (previously generated) URL to a UTub they are a creator of
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Url_UTub-User association exists where it didn't before
 
@@ -132,6 +139,9 @@ def test_add_valid_url_as_utub_creator(add_urls_to_database, every_user_in_every
                                             Utub_Urls.url_id == url_id_to_add,
                                             Utub_Urls.user_id == current_user.id).all()) == 0
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())                                            
+
     # Add the URL to the UTub
     add_url_form = {
         "csrf_token" : csrf_token,
@@ -168,11 +178,14 @@ def test_add_valid_url_as_utub_creator(add_urls_to_database, every_user_in_every
                                             Utub_Urls.url_id == url_id_to_add,
                                             Utub_Urls.user_id == current_user.id).all()) == 1
 
+        assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
+
 def test_add_invalid_url_as_utub_member(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a nonexistant URL to a UTub they are a part of
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new new Url_UTub-User association exists
 
@@ -203,6 +216,9 @@ def test_add_invalid_url_as_utub_member(add_urls_to_database, every_user_in_ever
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
                                             Utub_Urls.user_id == current_user.id).all()) == 0
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())
+
     # Try to add the URL to the UTub
     add_url_form = {
         "csrf_token" : csrf_token,
@@ -233,11 +249,14 @@ def test_add_invalid_url_as_utub_member(add_urls_to_database, every_user_in_ever
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
                                             Utub_Urls.user_id == current_user.id).all()) == 0
 
+        assert len(Utub_Urls.query.all()) == initial_utub_urls                                            
+
 def test_add_invalid_url_as_utub_creator(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a nonexistant URL to a UTub they are a creator of
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new new Url_UTub-User association exists
 
@@ -268,6 +287,9 @@ def test_add_invalid_url_as_utub_creator(add_urls_to_database, every_user_in_eve
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
                                             Utub_Urls.user_id == current_user.id).all()) == 0
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())
+
     # Try to add the URL to the UTub
     add_url_form = {
         "csrf_token" : csrf_token,
@@ -298,11 +320,14 @@ def test_add_invalid_url_as_utub_creator(add_urls_to_database, every_user_in_eve
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
                                             Utub_Urls.user_id == current_user.id).all()) == 0
 
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
+
 def test_add_valid_url_to_nonexistent_utub(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a (previously generated) URL to a nonexistent UTub
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code
     """
     client, csrf_token, logged_in_user, app = login_first_user_without_register
@@ -319,6 +344,8 @@ def test_add_valid_url_to_nonexistent_utub(add_urls_to_database, every_user_in_e
         valid_url_string = valid_url_to_add.url_string
         valid_url_description = f"This is {valid_url_string}"
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())        
 
     # Add the URL to the UTub
     add_url_form = {
@@ -331,11 +358,15 @@ def test_add_valid_url_to_nonexistent_utub(add_urls_to_database, every_user_in_e
 
     assert add_url_response.status_code == 404
 
+    with app.app_context():
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
+
 def test_add_valid_url_to_utub_not_a_member_of(add_urls_to_database, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with only the creators in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a (previously generated) URL to a UTub the user is not a part of
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 403 HTTP status code, the server sends back the proper
         JSON response, and no new Url-UTub-User associations are added
 
@@ -364,6 +395,9 @@ def test_add_valid_url_to_utub_not_a_member_of(add_urls_to_database, login_first
         assert len(utub_not_member_of.utub_urls) == 0
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_not_member_of).all()) == 0
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())        
+
     # Add the URL to the UTub
     add_url_form = {
         "csrf_token" : csrf_token,
@@ -387,11 +421,14 @@ def test_add_valid_url_to_utub_not_a_member_of(add_urls_to_database, login_first
         assert len(utub_not_member_of.utub_urls) == 0
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_not_member_of).all()) == 0
 
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
+
 def test_add_fresh_url_to_utub(every_user_makes_a_unique_utub, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and no URLs
         currently in the database or associated with the UTubs
     WHEN the user tries to add a fresh and valid URL to a UTub they are a creator of
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Url_UTub-User association exists, and that a new URL entity is created
 
@@ -427,6 +464,9 @@ def test_add_fresh_url_to_utub(every_user_makes_a_unique_utub, login_first_user_
         # Ensure no Url-Utub-User association exists
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
                                             Utub_Urls.user_id == current_user.id).all()) == 0
+
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())                                            
 
     # Add the URL to the UTub
     add_url_form = {
@@ -464,11 +504,14 @@ def test_add_fresh_url_to_utub(every_user_makes_a_unique_utub, login_first_user_
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
                                             Utub_Urls.user_id == current_user.id).all()) == 1
 
+        assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
+
 def test_add_duplicate_url_to_utub_as_same_user_who_added_url(add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that they already added the URL to, as the creator of the UTub
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
@@ -497,6 +540,9 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(add_all_urls_and_u
 
         number_of_urls_in_utub = len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of).all())
         number_of_urls_in_db = len(URLS.query.all())
+
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())        
 
     # Add the URL to the UTub
     add_url_form = {
@@ -527,11 +573,14 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(add_all_urls_and_u
         # Ensure same number of URLs as before
         assert len(URLS.query.all()) == number_of_urls_in_db
 
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
+
 def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that someone else added, as the creator of the UTub
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
@@ -561,6 +610,9 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(add_all_urls
         number_of_urls_in_utub = len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of).all())
         number_of_urls_in_db = len(URLS.query.all())
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())
+
     # Add the URL to the UTub
     add_url_form = {
         "csrf_token" : csrf_token,
@@ -589,11 +641,14 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(add_all_urls
         # Ensure same number of URLs as before
         assert len(URLS.query.all()) == number_of_urls_in_db
 
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
+
 def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that someone else added, as the member of the UTub
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
@@ -626,6 +681,9 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(add_all_urls_
         number_of_urls_in_utub = len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_member_of).all())
         number_of_urls_in_db = len(URLS.query.all())
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())        
+
     # Add the URL to the UTub
     add_url_form = {
         "csrf_token" : csrf_token,
@@ -653,12 +711,15 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(add_all_urls_
 
         # Ensure same number of URLs as before
         assert len(URLS.query.all()) == number_of_urls_in_db
+
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
     
 def test_add_url_missing_url(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a URL with an empty 'url_string' field in the form
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID 
     THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
         is sent by the server
 
@@ -689,6 +750,9 @@ def test_add_url_missing_url(add_urls_to_database, every_user_in_every_utub, log
         url_description_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
 
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())        
+
     # Add the URL to the UTub
     add_url_form = {
         "csrf_token" : csrf_token,
@@ -708,6 +772,8 @@ def test_add_url_missing_url(add_urls_to_database, every_user_in_every_utub, log
 
     with app.app_context():
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all()) == 0
+
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
 
 def test_add_url_missing_url_description(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
     """
@@ -741,8 +807,10 @@ def test_add_url_missing_url_description(add_urls_to_database, every_user_in_eve
         # Grab a URL to add
         url_to_add = URLS.query.first()
         url_string_to_add = url_to_add.url_string
-        url_description_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
+
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())        
 
     # Add the URL to the UTub
     add_url_form = {
@@ -764,11 +832,14 @@ def test_add_url_missing_url_description(add_urls_to_database, every_user_in_eve
     with app.app_context():
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all()) == 0
 
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
+
 def test_add_url_missing_csrf_token(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a URL with an empty 'url_description' field in the form
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
         is sent by the server
 
@@ -796,8 +867,10 @@ def test_add_url_missing_csrf_token(add_urls_to_database, every_user_in_every_ut
         # Grab a URL to add
         url_to_add = URLS.query.first()
         url_string_to_add = url_to_add.url_string
-        url_description_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
+
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
@@ -813,3 +886,5 @@ def test_add_url_missing_csrf_token(add_urls_to_database, every_user_in_every_ut
 
     with app.app_context():
         assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all()) == 0
+
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
