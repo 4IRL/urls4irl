@@ -1,7 +1,7 @@
 from flask import Blueprint, jsonify
 from flask_login import current_user, login_required
 from urls4irl import db
-from urls4irl.models import Utub, Url_Tags, Tags, Utub_Urls
+from urls4irl.models import Utub, Url_Tags, Tags, Utub_Urls, URLS
 from urls4irl.tags.forms import UTubNewUrlTagForm
 
 tags = Blueprint('tags', __name__)
@@ -17,13 +17,13 @@ def add_tag(utub_id: int, url_id: int):
         utub_id (int): The utub that this user is being added to
         url_id (int): The URL this user wants to add a tag to
     """
-    utub = Utub.query.get_or_404(utub_id)
-    utub_url = [url_in_utub for url_in_utub in utub.utub_urls if url_in_utub.url_id == url_id]
+    utub_url_association = Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id).first_or_404()
+    utub = utub_url_association.utub
+
     user_in_utub = [int(member.user_id) for member in utub.members if int(member.user_id) == int(current_user.get_id())]
 
-    if not user_in_utub or not utub_url:
+    if not user_in_utub:
         # How did a user not in this utub get access to add a tag to this URL?
-        # How did a user try to add a tag to a URL not contained within the UTub?
         return jsonify({
             "Status" : "Failure",
             "Message" : "Unable to add tag to this URL",
@@ -54,7 +54,7 @@ def add_tag(utub_id: int, url_id: int):
             # Check if tag already on url
             this_tag_is_already_on_this_url = [tags for tags in tags_already_on_this_url if int(tags.tag_id) == int(tag_already_created.id)]
 
-            if this_tag_is_already_on_this_url:
+            if len(this_tag_is_already_on_this_url) == 1:
                 # Tag is already on this URL
                 return jsonify({
                     "Status" : "Failure",
@@ -64,7 +64,7 @@ def add_tag(utub_id: int, url_id: int):
 
             # Associate with the UTub and URL
             utub_url_tag = Url_Tags(utub_id=utub_id, url_id=url_id, tag_id=tag_already_created.id)
-            tag_id = tag_already_created.id
+            tag_model = tag_already_created
 
         else:
             # Create tag, then associate with this UTub and URL
@@ -72,7 +72,7 @@ def add_tag(utub_id: int, url_id: int):
             db.session.add(new_tag)
             db.session.commit()
             utub_url_tag = Url_Tags(utub_id=utub_id, url_id=url_id, tag_id=new_tag.id)
-            tag_id = new_tag.id
+            tag_model = new_tag
 
         db.session.add(utub_url_tag)
         db.session.commit()
@@ -84,9 +84,10 @@ def add_tag(utub_id: int, url_id: int):
         return jsonify({
             "Status" : "Success",
             "Message" : "Tag added to this URL",
-            "Tag" : new_tag.serialized,  # Can I just serialize the Tag model here instead?
-            "URL_ID" : url_utub_association.serialized, # Can I just serialize the Url_Utub model here instead?
-            "UTub_ID" : f"{utub_id}"
+            "Tag" : tag_model.serialized,  # Can I just serialize the Tag model here instead?
+            "URL" : url_utub_association.serialized, # Can I just serialize the Url_Utub model here instead?
+            "UTub_ID" : utub.id,
+            "UTub_name": utub.name
         }), 200
 
     # Input form errors
@@ -117,13 +118,13 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         url_id (int): The ID of the URL to be deleted
         tag_id (int): The ID of the tag
     """
-    utub = Utub.query.get_or_404(int(utub_id))
+    utub = Utub.query.get_or_404(utub_id)
 
     if int(current_user.get_id()) in [int(user.id) for user in utub.members]:
         # User is creator of this UTub
         tag_for_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).first_or_404()
-        tag_to_remove = tag_for_url_in_utub.tag_item
         url_to_remove_tag_from = tag_for_url_in_utub.tagged_url
+        tag_to_remove = tag_for_url_in_utub.tag_item
 
         db.session.delete(tag_for_url_in_utub)
         db.session.commit()

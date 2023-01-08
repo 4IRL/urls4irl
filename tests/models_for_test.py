@@ -65,8 +65,10 @@ valid_tag_3 = {
     'id': 3,
     'tag_string': 'Ugh'
 }
-valid_tag_ids = [tag["id"] for tag in (valid_tag_1, valid_tag_2, valid_tag_3)]
+
 all_tags = (valid_tag_1, valid_tag_2, valid_tag_3,)
+valid_tag_ids = [tag["id"] for tag in all_tags]
+all_tag_strings = [tag["tag_string"] for tag in all_tags]
 
 """
 Valid URLs used for testing, without tags    

@@ -556,3 +556,20 @@ def add_all_urls_and_users_to_each_utub_with_all_tags(app, add_all_urls_and_user
 
         db.session.commit()
     
+@pytest.fixture
+def add_five_tags_to_db_from_same_user(app, add_one_url_and_all_users_to_each_utub_no_tags):
+    """
+    Adds five additional tags to the database without associating them with any URLs. Assumes they are
+    all added by User ID == 1
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_one_url_and_all_users_to_each_utub_no_tags (pytest fixture): Adds all users to all UTubs, each UTub containing
+            a single URL added by the creator
+    """
+    five_tags_to_add = ("Hello", "Good", "Bad", "yes", "no")
+    with app.app_context():
+        for tag in five_tags_to_add:
+            new_tag = Tags(tag_string=tag, created_by=1)
+            db.session.add(new_tag)
+        db.session.commit()
