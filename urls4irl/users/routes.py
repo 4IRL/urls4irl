@@ -67,48 +67,54 @@ def delete_user(utub_id: int, user_id: int):
         utub_id (int): ID of the UTub to remove the user from
         user_id (int): ID of the User to remove from the UTub
     """
-    current_utub = Utub.query.get_or_404(int(utub_id))
+    current_utub = Utub.query.get_or_404(utub_id)
 
-    if int(user_id) == int(current_utub.created_by.id):
+    if user_id == current_utub.created_by.id:
         # Creator tried to delete themselves, not allowed
         return jsonify({
             "Status" : "Failure",
-            "Message" : "UTub creator cannot remove themselves"
+            "Message" : "UTub creator cannot remove themselves",
+            "Error_code": 1
         }), 400
 
-    current_user_ids_in_utub = [int(member.user_id) for member in current_utub.members]
+    current_user_ids_in_utub = [member.user_id for member in current_utub.members]
+    current_user_id = current_user.id
 
-    if int(user_id) not in current_user_ids_in_utub:
-        # User not in this Utub
-        return jsonify({
-            "Status" : "Failure",
-            "Message" : "User not found in this UTub"
-        }), 400
-
-    if int(current_user.get_id()) == int(current_utub.created_by.id):
-        # Creator of utub wants to delete someone
-        user_to_delete_in_utub = [member_to_delete for member_to_delete in current_utub.members if int(user_id) == (member_to_delete.user_id)][0]
-
-    elif int(current_user.get_id()) in current_user_ids_in_utub and int(user_id) == int(current_user.get_id()):
-        # User in this UTub and user wants to remove themself
-        user_to_delete_in_utub = [member_to_delete for member_to_delete in current_utub.members if int(user_id) == (member_to_delete.user_id)][0]
-
-    else:
-        # Only creator of UTub can delete other users, only you can remove yourself
-        return jsonify({
-            "Status" : "Failure",
-            "Message" : "Not allowed to remove a user from this UTub"
-            }), 403
+    # User can't remove if current user is not in this current UTub's members
+    # User can't remove if current user is not creator of UTub and requested user is not same as current user
+    current_user_not_in_utub = current_user_id not in current_user_ids_in_utub
+    member_trying_to_remove_another_member = current_user_id != current_utub.created_by.id and user_id != current_user_id
     
-    current_utub.members.remove(user_to_delete_in_utub)
+    if current_user_not_in_utub or member_trying_to_remove_another_member:
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Not allowed to remove a user from this UTub",
+            "Error_code": 2
+            }), 403
+
+    if user_id not in current_user_ids_in_utub:
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "User does not exist or not found in this UTub",
+            "Error_code": 3
+        }), 404
+
+    user_to_delete_in_utub = Utub_Users.query.filter(Utub_Users.utub_id == utub_id, Utub_Users.user_id == user_id).first_or_404()
+
+    deleted_user = User.query.get(user_id)
+    deleted_user_username = deleted_user.username
+
+    db.session.delete(user_to_delete_in_utub)
     db.session.commit()
 
     return jsonify({
         "Status" : "Success",
         "Message" : "User removed",
-        "User_ID" : f"{user_id}",
+        "User_ID_removed" : f"{user_id}",
+        "Username": f"{deleted_user_username}",
         "UTub_ID" : f"{utub_id}",
-        "UTub_name" : f"{current_user.name}",
+        "UTub_name" : f"{current_utub.name}",
+        "UTub_users": [user.to_user.username for user in current_utub.members]
     }), 200
 
 @users.route('/user/add/<int:utub_id>', methods=["POST"])
@@ -116,7 +122,7 @@ def delete_user(utub_id: int, user_id: int):
 def add_user(utub_id: int):
     """
     Creater of utub wants to add a user to the utub.
-    
+
     Args:
         utub_id (int): The utub that this user is being added to
     """
@@ -126,41 +132,52 @@ def add_user(utub_id: int):
         # User not authorized to add a user to this UTub
         return jsonify({
             "Status" : "Failure",
-            "Message" : "Not authorized"
+            "Message" : "Not authorized",
+            "Error_code": 1
         }), 403
 
     utub_new_user_form = UTubNewUserForm()
 
     if utub_new_user_form.validate_on_submit():
         username = utub_new_user_form.username.data
-        
-        new_user = User.query.filter_by(username=username).first()
+
+        new_user = User.query.filter_by(username=username).first_or_404()
         already_in_utub = [member for member in utub.members if int(member.user_id) == int(new_user.id)]
 
         if already_in_utub:
             # User already exists in UTub
             return jsonify({
                 "Status" : "Failure",
-                "Message" : "User already in UTub"
+                "Message" : "User already in UTub",
+                "Error_code": 2
             }), 400
-        
+
         else:
             new_user_to_utub = Utub_Users()
             new_user_to_utub.to_user = new_user
             utub.members.append(new_user_to_utub)
             db.session.commit()
-            
+
             # Successfully added user to UTub
             return jsonify({
                 "Status" : "Success",
                 "Message" : "User added",
-                "User_ID" : f"{new_user.id}",
-                "UTub_ID" : f"{utub_id}",
-                "UTub_name" : f"{current_user.name}",
+                "User_ID_added" : int(new_user.id),
+                "UTub_ID" : int(utub_id),
+                "UTub_name" : f"{utub.name}",
+                "UTub_users": [user.to_user.username for user in utub.members]
             }), 200
+
+    if utub_new_user_form.errors is not None:
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Unable to add that user to this UTub",
+            "Error_code": 3,
+            "Errors": utub_new_user_form.errors
+        }), 404
 
     return jsonify({
         "Status" : "Failure",
-        "Message" : "Unable to add that user to this UTub"
+        "Message" : "Unable to add that user to this UTub",
+        "Error_code": 4
     }), 404
-

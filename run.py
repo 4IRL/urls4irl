@@ -5,7 +5,7 @@ from urls4irl.config import TestingConfig
 
 load_dotenv(override=True)
 
-if environ.get('TESTING').lower() == 'true':
+if environ.get('TESTING') is not None and environ.get('TESTING').lower() == 'true':
     print("In testing")
     app = create_app(TestingConfig, True)
 else:
@@ -14,3 +14,4 @@ else:
 
 if __name__ == "__main__":
     app.run()
+    

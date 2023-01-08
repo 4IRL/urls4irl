@@ -7,7 +7,6 @@ from datetime import datetime
 from urls4irl import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
-from urls4irl.url_validation import check_request_head, InvalidURLError
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -72,9 +71,11 @@ class Utub_Urls(db.Model):
             if int(tag.utub_id) == int(self.utub_id):
                 url_tags.append(tag.tag_id)
 
+        url_data = self.url_in_utub.serialized_url
+
         return {
-            "url_id": self.url_in_utub.serialized_for_utub['id'],
-            "url_string": self.url_in_utub.serialized_for_utub['url'],
+            "url_id": url_data['id'],
+            "url_string": url_data['url'],
             "url_tags": url_tags,
             "added_by": self.user_that_added_url.serialized['id'],
             "notes": self.url_notes
@@ -104,7 +105,7 @@ class Url_Tags(db.Model):
         """Returns serialized object."""
         return {
             'tag': self.tag_item.serialized,
-            'tagged_url': self.tagged_url.serialized
+            'tagged_url': self.tagged_url.serialized_url
         }
 
 
@@ -200,7 +201,7 @@ class Utub(db.Model):
             'created_at': self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
             'description': self.utub_description if self.utub_description is not None else "",
             'members': [member.serialized for member in self.members],
-            'urls': [url.serialized for url in self.utub_urls],
+            'urls': [url_in_utub.serialized for url_in_utub in self.utub_urls],
             'tags': utub_tags
         }
 
@@ -219,22 +220,14 @@ class URLS(db.Model):
     def __init__(self, normalized_url: str, current_user_id: int):
         self.url_string = normalized_url
         self.created_by = int(current_user_id)
-
+        
     @property
-    def serialized(self):
-        """Returns object in serialized form."""
+    def serialized_url(self):
+        """Includes an array of tag IDs for all ID's on this url"""
         return {
             'id': self.id,
             'url': self.url_string,
             'tags': [tag.tag_item.serialized for tag in self.url_tags]
-        }
-
-    @property
-    def serialized_for_utub(self):
-        return {
-            'id': self.id,
-            'url': self.url_string,
-            'tags': [int(tag.tag_item.serialized['id']) for tag in self.url_tags]
         }
 
 
@@ -246,6 +239,10 @@ class Tags(db.Model):
     tag_string = db.Column(db.String(30), nullable=False) # Note that multiple URLs can have the same tag
     created_by = db.Column(db.Integer, db.ForeignKey('User.id'), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def __init__(self, tag_string: str, created_by: int):
+        self.tag_string = tag_string
+        self.created_by = created_by
 
     @property
     def serialized(self):
