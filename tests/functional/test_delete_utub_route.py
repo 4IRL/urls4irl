@@ -25,6 +25,10 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(add_single_utub_as
     """
     client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
 
+    with app.app_context():
+        # Get initial count of UTubs
+        initial_num_utubs = len(Utub.query.all())
+
     delete_utub_response = client.post(f"/utub/delete/{utub_id}", data={"csrf_token": csrf_token})
 
     assert delete_utub_response.status_code == 200
@@ -40,7 +44,7 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(add_single_utub_as
 
     with app.app_context():
         # Assert no UTubs and no UTub-User associations exist in the database after deletion
-        assert len(Utub.query.all()) == 0
+        assert len(Utub.query.all()) == initial_num_utubs - 1
         assert len(Utub_Users.query.all()) == 0
 
 def test_delete_existing_utub_with_members_but_no_urls_no_tags(every_user_in_every_utub, login_first_user_without_register):
@@ -79,6 +83,8 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(every_user_in_eve
         num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
         initial_num_of_url_tag_associations = len(Url_Tags.query.all())
 
+        initial_num_utubs = len(Utub.query.all())
+
     delete_utub_response = client.post(f"/utub/delete/{utub_id_to_delete}", data={"csrf_token": csrf_token})
 
     assert delete_utub_response.status_code == 200
@@ -102,6 +108,8 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(every_user_in_eve
         
         assert len(Url_Tags.query.all()) == initial_num_of_url_tag_associations - num_of_tags_in_utub
         assert len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_to_delete).all()) == 0
+
+        assert len(Utub.query.all()) == initial_num_utubs - 1
 
 def test_delete_existing_utub_with_urls_no_tags(add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register):
     """
@@ -139,6 +147,8 @@ def test_delete_existing_utub_with_urls_no_tags(add_all_urls_and_users_to_each_u
         num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
         initial_num_of_url_tag_associations = len(Url_Tags.query.all())
 
+        initial_num_utubs = len(Utub.query.all())        
+
     delete_utub_response = client.post(f"/utub/delete/{utub_id_to_delete}", data={"csrf_token": csrf_token})
 
     assert delete_utub_response.status_code == 200
@@ -162,6 +172,8 @@ def test_delete_existing_utub_with_urls_no_tags(add_all_urls_and_users_to_each_u
         
         assert len(Url_Tags.query.all()) == initial_num_of_url_tag_associations - num_of_tags_in_utub
         assert len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_to_delete).all()) == 0
+
+        assert len(Utub.query.all()) == initial_num_utubs - 1
 
 def test_delete_existing_utub_with_urls_and_tags(add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register):
     """
@@ -199,6 +211,8 @@ def test_delete_existing_utub_with_urls_and_tags(add_all_urls_and_users_to_each_
         num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
         initial_num_of_url_tag_associations = len(Url_Tags.query.all())
 
+        initial_num_utubs = len(Utub.query.all())        
+
     delete_utub_response = client.post(f"/utub/delete/{utub_id_to_delete}", data={"csrf_token": csrf_token})
 
     assert delete_utub_response.status_code == 200
@@ -223,6 +237,8 @@ def test_delete_existing_utub_with_urls_and_tags(add_all_urls_and_users_to_each_
         assert len(Url_Tags.query.all()) == initial_num_of_url_tag_associations - num_of_tags_in_utub
         assert len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_to_delete).all()) == 0
 
+        assert len(Utub.query.all()) == initial_num_utubs - 1
+
 def test_delete_nonexistent_utub(login_first_user_with_register):
     """
     GIVEN a valid existing user and a nonexistent UTub
@@ -239,6 +255,10 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
 
     # Ensure 404 sent back after invalid UTub id is requested
     assert delete_utub_response.status_code == 404
+
+    # Assert no UTub exists after nonexistent UTub is attempted to be removed
+    with app.app_context():
+        assert len(Utub.query.all()) == 0      
 
 def test_delete_utub_with_invalid_route(login_first_user_with_register):
     """
@@ -260,6 +280,10 @@ def test_delete_utub_with_invalid_route(login_first_user_with_register):
     # Ensure 404 sent back after invalid UTub id is requested
     assert delete_utub_response.status_code == 404
 
+    # Assert no UTub exists after nonexistent UTub is attempted to be removed
+    with app.app_context():
+        assert len(Utub.query.all()) == 0       
+
 def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in):
     """
     GIVEN a valid existing user with a single UTub, utub ID == 1
@@ -268,7 +292,7 @@ def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in
     """
     client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
 
-    # Assert no UTubs exist before nonexistent UTub is attempted to be removed
+    # Assert 1 UTub exists before nonexistent UTub is attempted to be removed
     with app.app_context():
         assert len(Utub.query.all()) == 1
 
@@ -277,6 +301,10 @@ def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in
     # Ensure 400 sent back after no csrf token included
     assert delete_utub_response.status_code == 400
     assert b"<p>The CSRF token is missing.</p>" in delete_utub_response.data
+
+    # Assert 1 UTub exists after nonexistent UTub is attempted to be removed
+    with app.app_context():
+        assert len(Utub.query.all()) == 1    
 
 def test_delete_utub_as_not_member_or_creator(every_user_makes_a_unique_utub, login_first_user_without_register):
     """
@@ -295,7 +323,9 @@ def test_delete_utub_as_not_member_or_creator(every_user_makes_a_unique_utub, lo
     with app.app_context():
         # Get the UTubs from the database that this member is not a part of
         user_not_in_these_utubs = Utub_Users.query.filter(Utub_Users.user_id != current_user.id).with_entities(Utub_Users.utub_id).all()
-        
+        assert len(Utub.query.all()) == 3
+        assert len(Utub_Users.query.all()) == 3
+
         # Make sure that only 2 utubs-user associations exist, one for each utub/user combo
         assert len(user_not_in_these_utubs) == 2    
 
@@ -356,6 +386,8 @@ def test_delete_utub_as_member_only(every_user_makes_a_unique_utub, login_first_
         for utub in all_utubs:
             assert len(Utub_Users.query.filter(Utub_Users.user_id == current_user.id, Utub_Users.utub_id == utub.id).all()) == 1
 
+        initial_num_utubs = len(Utub.query.all())            
+
     # The logged in user should now be a member of the utubs they weren't a part of before
     only_member_in_these_utubs = user_not_in_these_utubs
 
@@ -374,4 +406,4 @@ def test_delete_utub_as_member_only(every_user_makes_a_unique_utub, login_first_
             
     with app.app_context():
         # Make sure all 3 test UTubs are still available in the database
-        assert len(Utub.query.all()) == 3
+        assert len(Utub.query.all()) == initial_num_utubs

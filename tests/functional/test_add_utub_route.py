@@ -3,7 +3,6 @@ import pytest
 from models_for_test import valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3
 from urls4irl.models import Utub, Utub_Users
 
-
 def test_requests_add_utub_with_valid_form(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page
@@ -54,6 +53,7 @@ def test_requests_add_utub_with_valid_form(login_first_user_with_register):
     utub_id = int(new_utub_response_json["UTub_ID"])
     with app.app_context():
         utub_from_db = Utub.query.get_or_404(utub_id)
+        assert len(Utub.query.all()) == 1
 
         # Assert database creator is the same one who made it
         assert utub_from_db.utub_creator == user.id

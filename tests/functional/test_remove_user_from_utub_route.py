@@ -2,11 +2,11 @@ import pytest
 from flask_login import current_user
 
 from urls4irl import db
-from urls4irl.models import Utub, Utub_Users, User
+from urls4irl.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags
 
 def test_remove_valid_user_from_utub_as_creator(add_single_user_to_utub_without_logging_in, login_first_user_without_register):
     """
-    GIVEN a logged in user who is creator of a UTub that has another member in it
+    GIVEN a logged in user who is creator of a UTub that has another member in it, with no URLs or tags in the UTub
     WHEN the logged in user tries to remove second user by POST to "/user/remove/<int: utub_id>/<int: user_id>" with valid 
         information and a valid CSRF token
     THEN ensure the user gets removed from the UTub by checking UTub-User associations, that the server responds with a
@@ -23,7 +23,6 @@ def test_remove_valid_user_from_utub_as_creator(add_single_user_to_utub_without_
         "UTub_users": Array of string usernames of all members of UTub after the user was removed
     }
     """
-    
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
 
     with app.app_context():
@@ -137,6 +136,102 @@ def test_remove_self_from_utub_as_member(add_single_user_to_utub_without_logging
 
         # Ensure counts of Utub-User associations is correct
         assert len(Utub_Users.query.all()) == initial_num_user_utubs - 1
+
+def test_remove_valid_user_with_urls_from_utub_as_creator(add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register):
+    """
+    GIVEN a logged in user who is creator of a UTub that has another member in it, and this user has added URLs that also have tags
+        associated with them
+    WHEN the logged in user tries to remove second user by POST to "/user/remove/<int: utub_id>/<int: user_id>" with valid 
+        information and a valid CSRF token
+    THEN ensure the user gets removed from the UTub by checking UTub-User associations, that the server responds with a
+        200 HTTP status code, and that the server sends back the proper JSON response
+
+    Proper JSON response is as follows:
+    {
+        "Status" : "Success",
+        "Message" : "User removed",
+        "User_ID_removed" : Integer representing ID of user removed,
+        "Username": Username of user deleted,
+        "UTub_ID" : Interger representing ID of UTub the user was removed from,
+        "UTub_name" : String representing name of UTub removed,
+        "UTub_users": Array of string usernames of all members of UTub after the user was removed
+    }
+    """    
+    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get this creator's UTub
+        current_utub = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+
+        # Ensure creator is currently logged in
+        assert current_utub.created_by == current_user
+
+        # Ensure multiple users in this Utub
+        assert len(current_utub.members) > 1
+
+        # Grab another user from the members
+        second_user_in_utub_association = Utub_Users.query.filter(Utub_Users.utub_id == current_utub.id, Utub_Users.user_id != current_user.id).first()
+        second_user_in_utub = second_user_in_utub_association.to_user
+
+        # Ensure this user has URLs associated with them in UTub
+        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub.id, Utub_Urls.user_id == second_user_in_utub.id).all()) > 0
+        example_url_of_user = Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub.id, Utub_Urls.user_id == second_user_in_utub.id).first()
+
+        # Ensure this user has URLs that have tags associated with them
+        assert len(Url_Tags.query.filter(Url_Tags.utub_id == current_utub.id, Url_Tags.url_id == example_url_of_user.url_id).all()) > 0
+
+        # Get initial counts of URLs, Tags, and relative associations in the database
+        current_num_of_urls_in_utub = len(current_utub.utub_urls)
+        current_num_of_url_tags_in_utub = len(current_utub.utub_url_tags)
+
+        all_urls_utub_associations = len(Utub_Urls.query.all())
+        all_urls_tag_associations = len(Url_Tags.query.all())
+
+        # Ensure second user in this UTub
+        assert second_user_in_utub in [user.to_user for user in current_utub.members]
+
+        # Count all user-utub associations in db
+        initial_num_user_utubs = len(Utub_Users.query.all())
+
+    # Remove second user
+    remove_user_response = client.post(f"/user/remove/{current_utub.id}/{second_user_in_utub.id}", data={"csrf_token": csrf_token_string})
+
+    # Ensure HTTP response code is correct
+    assert remove_user_response.status_code == 200
+
+    # Ensore JSON response is correct
+    remove_user_response_json = remove_user_response.json
+    assert remove_user_response_json["Status"] == "Success"
+    assert remove_user_response_json["Message"] == "User removed"
+    assert int(remove_user_response_json["User_ID_removed"]) == second_user_in_utub.id
+    assert remove_user_response_json["Username"] == second_user_in_utub.username
+    assert int(remove_user_response_json["UTub_ID"]) == current_utub.id
+    assert remove_user_response_json["UTub_name"] == current_utub.name
+
+    current_users_in_utub = remove_user_response_json["UTub_users"]
+
+    # Ensure database is correctly updated
+    with app.app_context():
+        current_utub = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+
+        # Ensure proper serialization of user usernames that are left in the UTub
+        assert current_users_in_utub == [user.to_user.username for user in current_utub.members]
+
+        # Ensure second user not in this UTub
+        assert second_user_in_utub.id not in [user.user_id for user in current_utub.members]
+
+        # Ensure counts of Utub-User associations is correct
+        assert len(Utub_Users.query.all()) == initial_num_user_utubs - 1       
+
+        # Ensure URL-UTub associations aren't removed
+        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub.id).all()) == current_num_of_urls_in_utub 
+
+        # Ensure URL-Tag associations aren't removed
+        assert len(Url_Tags.query.filter(Url_Tags.utub_id == current_utub.id).all()) == current_num_of_url_tags_in_utub
+
+        # Ensure all associations still correct
+        assert len(Url_Tags.query.all()) == all_urls_tag_associations
+        assert len(Utub_Urls.query.all()) == all_urls_utub_associations
 
 def test_remove_self_from_utub_as_creator(add_single_user_to_utub_without_logging_in, login_first_user_without_register):
     """
@@ -674,3 +769,4 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(add_multiple_
 
         # Ensure counts of Utub-User associations is correct
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
+
