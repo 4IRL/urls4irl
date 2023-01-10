@@ -1,4 +1,4 @@
-// UI Interactions
+// UTub UI Interactions
 
 $(document).ready(function () {
 
@@ -108,7 +108,7 @@ function buildUTubDeck(UTubs) {
             'class': 'userInput',
             'placeholder': 'New UTub name',
             'size': '30',
-            'onblur': 'hideInput(event)'
+            'onblur': 'postData(event, "createUTub")'
         })
 
         $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
@@ -148,7 +148,7 @@ function createUTub(id, name) {
     $('#UPRRow')[0].innerHTML = "Add a URL";
 }
 
-// Edit UTub name and description. Should automatically run after creation of a new UTub to offer the option of including a UTub description.
+// Edit UTub name and description. Should also automatically run after creation of a new UTub to offer the option of including a UTub description.
 function editUTub() {
     showInput('editUTub')
     showInput('editUTubDescription')

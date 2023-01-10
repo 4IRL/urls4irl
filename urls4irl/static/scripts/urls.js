@@ -1,4 +1,4 @@
-// UI Interactions
+// URL UI Interactions
 
 
 $(document).ready(function () {
@@ -36,33 +36,10 @@ $(document).ready(function () {
         removeTag(tagToRemove, tagID);
     });
 
-    // Keyboard navigation between selected URLs
-    $(document).on('keyup', function (e) {
-        if ($('#URLFocusRow').length > 0) {     // Some URL is selected
-            var keycode = (e.keyCode ? e.keyCode : e.which);
-            var prev = keycode == 37 || keycode == 38;
-            var next = keycode == 39 || keycode == 40;
-            var UPRcards = $('#UPRRow').children('.cardCol').length;
-            var LWRcards = $('#LWRRow').children('.cardCol').length;
-
-            console.log(prev)
-            console.log(UPRcards)
-            console.log(next)
-            console.log(LWRcards)
-
-            if (prev && UPRcards > 0) {              // User wants to highlight previous URL
-                var cardCol = $($('#UPRRow').children('.cardCol')[UPRcards - 1]);
-                console.log(cardCol[0].children[0])
-                selectURL(cardCol.children.attr('urlid'))
-            } else if (next && LWRcards > 0) {       // User wants to highlight next URL
-                console.log($($('#LWRRow').children('.cardCol')))
-                selectURL($($('#LWRRow').children('.cardCol')[0]).attr('urlid'))
-            }
-        }
-    })
+    
 });
 
-// URLs Functions
+// URL Functions
 
 // Simple function to streamline the jQuery selector extraction of URL ID. And makes it easier in case the ID is encoded in a new location in the future
 function selectedURLID() {

@@ -1,4 +1,4 @@
-// UI Interactions
+// Tag UI Interactions
 
 $(document).ready(function () {
 
@@ -72,7 +72,7 @@ $(document).ready(function () {
     });
 });
 
-// Tags Functions
+// Tag Functions
 
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
