@@ -100,9 +100,9 @@ def update_utub_desc(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub = Utub.query.get_or_404(int(utub_id))
+    current_utub = Utub.query.get_or_404(utub_id)
     
-    if int(current_user.get_id()) not in [int(member.user_id) for member in current_utub.members]:
+    if int(current_user.get_id()) != current_utub.created_by.id:
         return jsonify({
             "Status" : "Failure",
             "Message": "You do not have permission to edit this UTub's description",
@@ -122,8 +122,9 @@ def update_utub_desc(utub_id: int):
 
         return jsonify({
             "Status": "Success",
-            "UTub_ID": f"{current_utub.id}",
-            "UTub_description": f"{current_utub.utub_description}"
+            "UTub_ID": current_utub.id,
+            "UTub_name": current_utub.name,
+            "UTub_description": current_utub.utub_description,
         }), 200
 
     return jsonify({
