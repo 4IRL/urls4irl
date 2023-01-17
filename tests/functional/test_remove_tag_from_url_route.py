@@ -796,14 +796,13 @@ def test_remove_tag_from_nonexistent_url_utub(add_all_urls_and_users_to_each_utu
 def test_remove_tag_with_no_csrf_token(add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register):
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
-    WHEN the user tries to remove a a tag from a URL within a nonexistent
+    WHEN the user tries to remove a tag from a URL without including the CSRF token
         - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
-    THEN ensure that the server responds with a 403 HTTP status code, that the proper JSON response
-        is sent by the server, and that the Tag-URL-UTub association still exists,
-        that the tag still exists, and that the association between URL, UTub, and Tag is recorded properly
+    THEN ensure that the server responds with a 400 HTTP status code, that the server sends back the proper
+        HTML element indicating a missing CSRF token, and that all valid associations still exist for the tags
 
     Proper JSON response is as follows:
     {
