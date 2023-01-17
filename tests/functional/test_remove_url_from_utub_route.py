@@ -515,3 +515,50 @@ def test_remove_url_as_utub_member_with_tags(add_all_urls_and_users_to_each_utub
         # Ensure counts of Url-Utub-Tag associations are correct
         assert len(Utub_Urls.query.all()) == initial_utub_urls - 1
         assert len(Url_Tags.query.all()) == initial_tag_urls - tags_on_url_in_utub
+
+def test_remove_url_from_utub_no_csrf_token(add_one_url_to_each_utub_no_tags, login_first_user_without_register):
+    """
+    GIVEN a logged-in member of a UTub, with two other UTub the user is not a part of that also contains URLs
+    WHEN the user wishes to remove the URL from another UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>",
+        where the POST does not contain a valid CSRF token
+    THEN the server responds with a 400 HTTP status code, the UTub-User-URL association is not removed from the database,
+        and the server sends back an HTML element indicating a missing CSRF token
+    """
+    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+
+    # Find the first UTub the logged in user is not a creator of
+    with app.app_context():
+        utub_current_user_not_part_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+
+        # Ensure the currently logged in user is not in this UTub and is not the creator of this UTub
+        assert current_user != utub_current_user_not_part_of.created_by
+        assert current_user not in [user.to_user for user in utub_current_user_not_part_of.members]
+
+        # Ensure there exists a URL in this UTub
+        assert len(utub_current_user_not_part_of.utub_urls) > 0
+        current_num_of_urls_in_utub = len(utub_current_user_not_part_of.utub_urls)
+
+        # Get the URL to remove
+        url_to_remove_in_utub = Utub_Urls.query.filter(Utub_Urls.utub_id == utub_current_user_not_part_of.id).first()
+        url_to_remove = url_to_remove_in_utub.url_in_utub
+        url_to_remove_id = url_to_remove.id
+
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = len(Utub_Urls.query.all())    
+
+    # Remove the URL from the other user's UTub while logged in as member of another UTub
+    remove_url_response = client.post(f"/url/remove/{utub_current_user_not_part_of.id}/{url_to_remove_id}", data={})
+
+    # Ensure 200 HTTP status code response
+    assert remove_url_response.status_code == 400
+    assert b'<p>The CSRF token is missing.</p>' in remove_url_response.data
+
+    # Ensure database is not affected
+    with app.app_context():
+        utub_current_user_not_part_of = Utub.query.filter(Utub.id == utub_current_user_not_part_of.id).first()
+
+        assert len(utub_current_user_not_part_of.utub_urls) == current_num_of_urls_in_utub
+        current_utub_urls_id = [url.url_id for url in utub_current_user_not_part_of.utub_urls]
+        assert url_to_remove_id in current_utub_urls_id
+
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
