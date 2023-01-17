@@ -92,7 +92,11 @@ def update_utub_desc(utub_id: int):
     """
     Creator wants to update their UTub description.
     Description limit is 500 characters.
-    Form data required to be sent from the frontend with a parameter "url_description".
+    Form data required to be sent from the frontend with a parameter "utub_description".
+
+    Members cannot update UTub descriptions. Creators of other UTubs cannot update another
+    UTub's name. The "utub_description" field must be contained in the form. The description
+    can be made blank if desired.
     
     On POST:
         The new description is saved to the database for that UTub.
@@ -106,7 +110,8 @@ def update_utub_desc(utub_id: int):
         return jsonify({
             "Status" : "Failure",
             "Message": "You do not have permission to edit this UTub's description",
-            "UTub_description": f"{current_utub.utub_description}"
+            "Error_code": 1,
+            "UTub_description": current_utub.utub_description
         }), 403
 
     current_utub_description = "" if current_utub.utub_description is None else current_utub.utub_description
@@ -115,6 +120,13 @@ def update_utub_desc(utub_id: int):
 
     if utub_desc_form.validate_on_submit():
         new_utub_description = utub_desc_form.utub_description.data
+
+        if new_utub_description is None:
+            return jsonify({
+                "Status" : "Failure",
+                "Message": "Invalid form",
+                "Error_code": 2,
+            }), 404     
 
         if new_utub_description != current_utub_description:
             current_utub.utub_description = new_utub_description
@@ -126,6 +138,15 @@ def update_utub_desc(utub_id: int):
             "UTub_name": current_utub.name,
             "UTub_description": current_utub.utub_description,
         }), 200
+
+    # Invalid form input
+    if utub_desc_form.errors is not None:
+        return jsonify({
+            "Status": "Failure",
+            "Message": "UTub description is too long",
+            "Error_code": 3,
+            "Errors": utub_desc_form.errors
+        }), 404
 
     return jsonify({
         "Status" : "Failure",

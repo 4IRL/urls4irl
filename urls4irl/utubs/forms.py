@@ -43,3 +43,10 @@ class UTubDescriptionForm(FlaskForm):
     utub_description = StringField('UTub Description', validators=[Length(max=500)])
 
     submit = SubmitField('Add Description To UTub!')
+
+    def validate_utub_description(self, utub_description):
+        if utub_description.data is None:
+            return
+
+        if utub_description.data.replace(" ", "") == "":
+            utub_description.data = ""
