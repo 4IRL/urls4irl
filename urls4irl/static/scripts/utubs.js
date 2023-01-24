@@ -77,7 +77,8 @@ function buildUTubDeck(UTubs) {
 
             $(label).attr({
                 'for': 'UTub-' + UTubs[i].id,
-                'class': 'UTub draw'
+                'class': 'UTub draw',
+                'onclick': "changeUTub(" + UTubs[i].id + ")"
             })
             label.innerHTML = '<b>' + UTubs[i].name + '</b>';
 
@@ -100,7 +101,7 @@ function buildUTubDeck(UTubs) {
 
         $(wrapper).attr({
             'id': 'createUTub',
-            'style': 'display: none'
+            'style': 'display: none; width: 80%'
         })
 
         $(input).attr({
@@ -119,6 +120,40 @@ function buildUTubDeck(UTubs) {
     }
 }
 
+// User selected a UTub, display data
+function changeUTub(selectedUTubID) {
+    console.log("New Utub selected")
+
+    $('#listUTubs').find('.active').removeClass('active');
+    var selectedUTubRadio = $('input[utubid=' + selectedUTubID + ']');
+    selectedUTubRadio.parent().toggleClass('active');
+    $('#UTubHeader')[0].innerHTML = selectedUTubRadio[0].value;
+
+    getUtubInfo(selectedUTubID).then(function (selectedUTub) {
+        //Use local variables, pass them in to the subsequent functions as required
+        var dictURLs = selectedUTub.urls;
+        var dictTags = selectedUTub.tags;
+        var dictUsers = selectedUTub.members;
+        var creator = selectedUTub.created_by;
+        let currentUserID = $('.user').attr('id');
+
+        resetTagDeck();
+        resetURLDeck();
+
+        // LH panel
+        buildTagDeck(dictTags);
+
+        // Center panel
+        buildURLDeck(dictURLs, dictTags);
+
+        // RH panels
+        // Update UTub description, not yet implemented on backend
+        // $('#UTubInfo')[0].innerHTML = selectedUTub.description;
+
+        gatherUsers(dictUsers, creator);
+    })
+}
+
 // Handle all display changes related to creating a new UTub
 function createUTub(id, name) {
 
@@ -127,7 +162,8 @@ function createUTub(id, name) {
 
     $(label).attr({
         'for': 'UTub-' + id,
-        'class': 'UTub draw active'
+        'class': 'UTub draw active',
+        'onclick': "changeUTub(" + id + ")"
     })
     label.innerHTML = '<b>' + name + '</b>';
 
@@ -140,10 +176,14 @@ function createUTub(id, name) {
     })
 
     $(label).append(radio);
+    let UTubList = $('#listUTubs').children();
+    const createUTubEl = $(UTubList[UTubList.length-1]).detach();
     $('#listUTubs').append(label);
+    $('#listUTubs').append(createUTubEl);
 
     $('#UTub-' + id).prop('checked', true);
 
+    $('#addURL').show();
     $('#UTubHeader')[0].innerHTML = name;
     $('#UPRRow')[0].innerHTML = "Add a URL";
 }
