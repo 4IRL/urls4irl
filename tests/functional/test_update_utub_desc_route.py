@@ -617,7 +617,7 @@ def test_update_utub_description_too_long(add_all_urls_and_users_to_each_utub_wi
         "Message": "UTub description is too long",
         "Error_code": 3,
         "Errors": Objects representing the incorrect field, and an array of errors associated with that field.
-            For example, with the missing username field:
+            For example, with the missing or empty utub_description field:
             {
                 "utub_description": ['This field is required.']
             }
