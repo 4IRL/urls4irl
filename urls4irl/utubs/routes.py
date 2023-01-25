@@ -135,14 +135,14 @@ def update_utub_name(utub_id: int):
         return jsonify({
             "Status": "Failure",
             "Message": "Invalid form",
-            "Error_code": 3,
+            "Error_code": 2,
             "Errors": utub_name_form.errors
         }), 404
 
     return jsonify({
         "Status" : "Failure",
         "Message" : "Unable to modify this UTub's name",
-        "Error_code": 4
+        "Error_code": 3
     }), 404
 
 @utubs.route('/utub/edit_description/<int:utub_id>', methods=["POST"])

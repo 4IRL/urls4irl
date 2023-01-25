@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SubmitField, ValidationError
 from wtforms.validators import Length, InputRequired
 
 class UTubForm(FlaskForm):
@@ -15,6 +15,10 @@ class UTubForm(FlaskForm):
 
     submit = SubmitField('Create UTub!')
 
+    def validate_name(self, name):
+        if name.data.replace(" ", "") == "":
+            raise ValidationError("Name cannot contain only spaces or be empty.")
+
 
 class UTubNewNameForm(FlaskForm):
     """
@@ -27,6 +31,10 @@ class UTubNewNameForm(FlaskForm):
     name = StringField('UTub Name', validators=[InputRequired(), Length(min=1, max=30)])
 
     submit = SubmitField('Edit UTub title!')
+
+    def validate_name(self, name):
+        if name.data.replace(" ", "") == "":
+            raise ValidationError("Name cannot contain only spaces or be empty.")
 
 
 class UTubDescriptionForm(FlaskForm):
