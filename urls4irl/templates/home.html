@@ -58,8 +58,9 @@
         <div class="row justify-content-center mx-2">
             <div class="col-9 col-lg-9 mb-md-0 text-left">
                 <h2 id="UTubHeader" style="display: inline-block">Select a UTub</h2>
-                <input type="text" id="editUTub" class="userInput" size="30" placeholder="" value=""
-                    style="display: none">
+                <div id="editUTub" style="display: none">
+                    <input type="text" class="userInput" size="30" placeholder="" value="" >
+                </div>
                 <i id="editUTubButton" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454"
                     onclick="editUTub()"></i>
             </div>
@@ -71,8 +72,10 @@
         <div class="row justify-content-center mx-2">
             <div class="col-12 col-lg-12 mb-md-0 text-left">
                 <p id="UTubDescription" style="display: inline-block"></p>
-                <input type="text" id="editUTubDescriptionInput" class="userInput" size="30"
-                    placeholder="Describe the contents of your UTub (optional)" value="" style="display: none">
+                <div id="editUTubDescription" style="display: none">
+                    <input type="text" class="userInput" size="30"
+                        placeholder="Describe the contents of your UTub (optional)" value="">
+                </div>
             </div>
         </div>
         <div class="deckContent justify-content-center">
@@ -85,7 +88,7 @@
                     <!-- Selected URL will be highlighted here -->
 
                     <!-- Creation of new URL block -->
-                 
+
                 </div>
                 <div id="LWRRow" class="row list-content justify-content-center board-list">
                     <!-- URLs below selected URL will be displayed here -->

@@ -177,7 +177,8 @@ function postData(e, handle) {
                     createURLCard.find('#newURL')[0].value = '';
                     createURLCard.find('#newURLDescription')[0].value = '';
 
-                    createURL(response.URL.url_ID, response.url_string, URLDescription, [], []) 
+                    createURL(response.URL.url_ID, response.url_string, URLDescription, [], [])
+
                     break;
                 case 'createTag':
                     console.log('Unimplemented')
@@ -218,82 +219,82 @@ function gatherUsers(dictUsers, creator) {
 
 
 function cardEdit(selectedUTubID, selectedURLid, infoType) {
-    //     var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID   
-    //     if (infoType == 'tag') {
-    //         var inputParent = $(jQuerySel).find('div.URLTags');     // Find appropriate card element
-    //         var initString = '';
-    //         var inputEl = $('#new_tag');                            // Temporary input text element
-    //         var inputID = 'new_tag';
-    //         var postURL = '/tag/add/';
-    //     } else {
-    //         var inputParent = $(jQuerySel).find('p.card-text');     // Find appropriate card element         
-    //         var initString = inputParent[0].innerText;              // Store pre-edit values
-    //         var originalURL = inputParent[0].innerText;             // Store pre-edit values
-    //         $(inputParent).html('');                                // Clear url card-text
-    //         var inputEl = $('#edit_url');                           // Temporary input text element
-    //         var inputID = 'edit_url';
-    //         var postURL = '/url/edit/';
-    //     }
+        var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID   
+        if (infoType == 'tag') {
+            var inputParent = $(jQuerySel).find('div.URLTags');     // Find appropriate card element
+            var initString = '';
+            var inputEl = $('#new_tag');                            // Temporary input text element
+            var inputID = 'new_tag';
+            var postURL = '/tag/add/';
+        } else {
+            var inputParent = $(jQuerySel).find('p.card-text');     // Find appropriate card element         
+            var initString = inputParent[0].innerText;              // Store pre-edit values
+            var originalURL = inputParent[0].innerText;             // Store pre-edit values
+            $(inputParent).html('');                                // Clear url card-text
+            var inputEl = $('#edit_url');                           // Temporary input text element
+            var inputID = 'edit_url';
+            var postURL = '/url/edit/';
+        }
 
-    //     if (inputEl.length == 0) { // Temporary input text element does not exist, create one and inject
-    //         var route = postURL + selectedUTubID + "/" + selectedURLid;
+        if (inputEl.length == 0) { // Temporary input text element does not exist, create one and inject
+            var route = postURL + selectedUTubID + "/" + selectedURLid;
 
-    //         $('<input></input>').attr({     // Replace with temporary input
-    //             'type': 'text',
-    //             'id': inputID,
-    //             'size': '30',
-    //             'value': initString
-    //         }).appendTo($(inputParent));
+            $('<input></input>').attr({     // Replace with temporary input
+                'type': 'text',
+                'id': inputID,
+                'size': '30',
+                'value': initString
+            }).appendTo($(inputParent));
 
-    //         inputEl = $('#' + inputID);
-    //     }
+            inputEl = $('#' + inputID);
+        }
 
-    //     let end = inputEl[0].value.length;
-    //     inputEl.focus();
-    //     inputEl[0].setSelectionRange(0, end);
+        let end = inputEl[0].value.length;
+        inputEl.focus();
+        inputEl[0].setSelectionRange(0, end);
 
-    //     inputEl.on('keyup', function (e) {        // Pressing enter is the same as blur, and submission
-    //         if (e.keyCode === 13) {
-    //             e.target.blur();
-    //         }
-    //     })
+        inputEl.on('keyup', function (e) {        // Pressing enter is the same as blur, and submission
+            if (e.keyCode === 13) {
+                e.target.blur();
+            }
+        })
 
-    //     // User submitted a card edit
-    //     inputEl.on('blur', function (e) {
+        // User submitted a card edit
+        inputEl.on('blur', function (e) {
 
-    //         if (inputEl[0].value != "") {
-    //             let request = $.ajax({
-    //                 type: 'post',
-    //                 url: postURL + selectedUTubID + "/" + selectedURLid,
-    //                 data: { tag_string: inputEl[0].value }
-    //             });
+            if (inputEl[0].value != "") {
+                let request = $.ajax({
+                    type: 'post',
+                    url: postURL + selectedUTubID + "/" + selectedURLid,
+                    data: { tag_string: inputEl[0].value }
+                });
 
-    //             request.done(function (response, textStatus, xhr) {
-    //                 if (xhr.status == 200) {
-    //                     if (infoType == 'url') {
-    //                         if (inputEl[0].value == "") {
-    //                             inputParent[0].innerHTML = originalURL;
-    //                         } else {
-    //                             inputParent[0].innerHTML = inputEl[0].value;
-    //                         }
-    //                     } else {
-    //                         if (inputEl[0].value != "") {
-    //                             $('<span></span>').attr({     // Replace with temporary input
-    //                                 'class': 'tag',
-    //                                 'tagid': response.Tag.tag_ID,
-    //                             }).appendTo($(inputParent));
-    //                             $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value  // here's where things go to shit
-    //                         }
-    //                     }
-    //                     console.log("finished edit")
-    //                     // getUtubInfo(selectedUTubID);
-    //                     // console.log("starting to select")
-    //                     // selectURL(selectedURLid);
-    //                     // console.log("done selecting")
-    //                 }
-    //             })
-    //         }
+                request.done(function (response, textStatus, xhr) {
+                    if (xhr.status == 200) {
+                        if (infoType == 'url') {
+                            if (inputEl[0].value == "") {
+                                inputParent[0].innerHTML = originalURL;
+                            } else {
+                                inputParent[0].innerHTML = inputEl[0].value;
+                            }
+                        } else {
+                            if (inputEl[0].value != "") {
+                                $('<span></span>').attr({     // Replace with temporary input
+                                    'class': 'tag',
+                                    'tagid': response.Tag.tag_ID,
+                                }).appendTo($(inputParent));
+                                $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value  // here's where things go to shit
+                            }
+                        }
+                        console.log("finished edit")
+                        // getUtubInfo(selectedUTubID);
+                        // console.log("starting to select")
+                        // selectURL(selectedURLid);
+                        // console.log("done selecting")
+                    }
+                })
+            }
 
-    //         inputEl.remove();
-    //     })
+            inputEl.remove();
+        })
 }

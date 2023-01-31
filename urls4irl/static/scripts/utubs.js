@@ -28,6 +28,8 @@ function getUtubInfo(selectedUTubID) {
 }
 
 function buildUTubDeck(UTubs) {
+    const parent = $('#listUTubs')
+
     if (UTubs.length == 0) {
         // User has no UTubs
         $('#UTubHeader')[0].innerHTML = "<------------------------- Oops, no UTubs! Create one!";
@@ -35,8 +37,6 @@ function buildUTubDeck(UTubs) {
     } else {
         // Instantiate UTubDeck (top left panel) with UTubs accessible to current user
         $('#UTubDeck').find('h2')[0].innerHTML = "UTubs";
-
-        const parent = $('#listUTubs')
 
         for (i in UTubs) {
             let label = document.createElement('label');
@@ -60,40 +60,46 @@ function buildUTubDeck(UTubs) {
             $(label).append(radio);
             parent.append(label);
         }
-
-        // New UTub input text field. Initially hidden, shown when create UTub is requested. Input field recreated here to ensure at the end of list after creation of new UTubs
-        let wrapper = document.createElement('div');
-        let input = document.createElement('input');
-        let submit = document.createElement('i');
-
-        $(wrapper).attr({
-            'id': 'createUTub',
-            'style': 'display: none'
-        })
-
-        $(input).attr({
-            'type': 'text',
-            'class': 'userInput',
-            'placeholder': 'New UTub name',
-            'onblur': 'postData(event, "createUTub")'
-        })
-
-        $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
-
-        wrapper.append(input);
-        wrapper.append(submit);
-        parent.append(wrapper);
     }
+
+    // New UTub input text field. Initially hidden, shown when create UTub is requested. Input field recreated here to ensure at the end of list after creation of new UTubs
+    let wrapper = document.createElement('div');
+    let input = document.createElement('input');
+    let submit = document.createElement('i');
+
+    $(wrapper).attr({
+        'id': 'createUTub',
+        'style': 'display: none'
+    })
+
+    $(input).attr({
+        'type': 'text',
+        'class': 'userInput',
+        'placeholder': 'New UTub name',
+        'onblur': 'postData(event, "createUTub")'
+    })
+
+    $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
+
+    wrapper.append(input);
+    wrapper.append(submit);
+    parent.append(wrapper);
 }
 
 // User selected a UTub, display data
 function changeUTub(selectedUTubID) {
+    // Unselect any already selected UTub
     $('#listUTubs').find('.active').removeClass('active');
+
     var selectedUTubRadio = $('input[utubid=' + selectedUTubID + ']');
     selectedUTubRadio.parent().toggleClass('active');
-    $('#UTubHeader')[0].innerHTML = selectedUTubRadio[0].value;
+    var UTubName = selectedUTubRadio[0].value;
+    $('#UTubHeader')[0].innerHTML = UTubName;
+    $('#editUTub')[0].value = UTubName;
 
     getUtubInfo(selectedUTubID).then(function (selectedUTub) {
+        console.log(selectedUTub)
+
         //Use local variables, pass them in to the subsequent functions as required
         var dictURLs = selectedUTub.urls;
         var dictTags = selectedUTub.tags;
@@ -155,6 +161,7 @@ function createUTub(id, name) {
 // Edit UTub name and description. Should also automatically run after creation of a new UTub to offer the option of including a UTub description.
 function editUTub() {
     showInput('editUTub')
+    console.log("showinput complete")
     showInput('editUTubDescription')
 }
 

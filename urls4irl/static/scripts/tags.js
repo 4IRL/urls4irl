@@ -79,7 +79,7 @@ function buildTagDeck(dictTags) {
     if (dictTags.length == 0) {
         // User has no Tags in this UTub
         $('#TagDeck').find('h2')[0].innerHTML = "Create a Tag";
-        $('#listTags')[0].innerHTML = '<h5>No Tags Applied to any URLs in this UTub</h5>'; // I still want this to show if user creates a new tag but has not yet applied them to any URLs
+        $('#listTags')[0].innerHTML = '<h5>No tags applied to any URLs in this UTub</h5>'; // I still want this to show if user creates a new tag but has not yet applied them to any URLs
     } else {
         // Instantiate UTubDeck (top left panel) with UTubs accessible to current user
         $('#TagDeck').find('h2')[0].innerHTML = "Tags";
@@ -139,7 +139,7 @@ function buildTagDeck(dictTags) {
                 'id': 'Tag-' + tagID,
                 'tagid': tagID,
                 'name': 'Tag' + i,
-                'checked': 'true'
+                'checked': 'checked'
             })
 
             $(label).append(checkbox);
