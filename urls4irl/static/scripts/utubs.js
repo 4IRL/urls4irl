@@ -146,11 +146,14 @@ function createUTub(id, name) {
     })
 
     $(label).append(radio);
+
+    // Move "createUTub" element to the end of list
     let UTubList = $('#listUTubs').children();
     const createUTubEl = $(UTubList[UTubList.length-1]).detach();
     $('#listUTubs').append(label);
     $('#listUTubs').append(createUTubEl);
 
+    $('#UTubDeck').find('h2')[0].innerHTML = "Create a UTub";
     $('#UTub-' + id).prop('checked', true);
 
     $('#addURL').show();
