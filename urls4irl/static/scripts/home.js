@@ -21,7 +21,7 @@ $(document).ready(function () {
     $('form').on('submit', function () { return false; })
 
     // Submission of user input data
-    $('input.active').on('blur', function () {
+    $('.activeInput').on('blur', function () {
         console.log("Blur caught")
         var inputEl = $(this);
         console.log(inputEl)
@@ -68,7 +68,7 @@ $(document).ready(function () {
             } else {
                 deselectURL($('url.selected').parent())
             }
-            
+
         } else {
             var prev = keycode == 38;
             var next = keycode == 40;
@@ -96,11 +96,11 @@ $(document).ready(function () {
 function showInput(handle) {
 
     var inputDiv = $('#' + handle);
-    var inputEl = inputDiv.find('input')
+    var inputEl = inputDiv.find('input');
 
     // Show temporary input text element
     inputDiv.show();
-    inputDiv.addClass('active');
+    inputEl.addClass('activeInput');
 
     inputEl.focus();
     inputEl[0].setSelectionRange(0, inputEl[0].value.length);
@@ -108,84 +108,99 @@ function showInput(handle) {
 
 // Once valid data is received from the user, this function processes it and attempts a POST request
 function postData(e, handle) {
-    $(e.target).parent().hide();
-    var userInput = e.target.value;
+    console.log("postData initiated")
 
-    if (e.target.value) {
-        switch (handle) {
-            case 'createUTub':
-                var postURL = '/utub/new';
-                var data = { name: userInput }
-                break;
-            case 'createURL':
-                console.log('Unimplemented')
-                break;
-            case 'createTag':
-                var postURL = '/tag/new';
-                var data = { name: userInput }
-                break;
-            case 'editUTubDescription':
-                console.log('Unimplemented')
-                break;
-            case 'addTag':
-                var postURL = '/tag/new/[urlid?]';
-                var data = { name: userInput }
-                break;
-            case 'editURL':
-                var postURL = '/url/edit';
-                console.log('Unimplemented')
-                break;
-            case 'editURLDescription':
-                console.log('Unimplemented')
-                break;
-            default:
-                console.log('Unimplemented')
-        }
-
-        let request = $.ajax({
-            type: 'post',
-            url: postURL,
-            data: data
-        });
-
-        request.done(function (response, textStatus, xhr) {
-            if (xhr.status == 200) {
-                e.target.value = ''; // Clear form and get ready for new input
-
-                switch (handle) {
-                    case 'createUTub':
-                        // Deselect current UTub
-                        $('.UTub').removeClass('active');
-                        $('input[type=radio]').prop('checked', false);
-
-                        createUTub(response.UTub_ID, response.UTub_name)
-
-                        break;
-                    case 'createURL':
-                        console.log('Unimplemented')
-                        break;
-                    case 'createTag':
-                        console.log('Unimplemented')
-                        break;
-                    case 'editUTubDescription':
-                        console.log('Unimplemented')
-                        break;
-                    case 'addTag':
-                        console.log('Unimplemented')
-                        break;
-                    case 'editURL':
-                        console.log('Unimplemented')
-                        break;
-                    case 'editURLDescription':
-                        console.log('Unimplemented')
-                        break;
-                    default:
-                        console.log('Unimplemented')
-                }
+    switch (handle) {
+        case 'createUTub':
+            var postURL = '/utub/new';
+            var newUTubName = e.target.value;
+            var data = { name: newUTubName }
+            $(e.target).parent().hide();
+            break;
+        case 'createURL':
+            console.log("createURL attempted")
+            var postURL = '/url/add/' + currentUTubID();
+            var createURLCard = $(e.target).parent().parent();
+            var newURL = createURLCard.find('#newURL')[0].value;
+            var newURLDescription = createURLCard.find('#newURLDescription')[0].value;
+            var data = {
+                url_string: newURL,
+                url_description: newURLDescription
             }
-        })
+            break;
+        case 'createTag':
+            var postURL = '/tag/new';
+            var data = { name: userInput }
+            break;
+        case 'editUTubDescription':
+            console.log('Unimplemented')
+            break;
+        case 'addTag':
+            var postURL = '/tag/new/[urlid?]';
+            var data = { name: userInput }
+            break;
+        case 'editURL':
+            var postURL = '/url/edit';
+            console.log('Unimplemented')
+            break;
+        case 'editURLDescription':
+            console.log('Unimplemented')
+            break;
+        default:
+            console.log('Unimplemented')
     }
+
+    let request = $.ajax({
+        type: 'post',
+        url: postURL,
+        data: data
+    });
+
+    request.done(function (response, textStatus, xhr) {
+        
+        if (xhr.status == 200) {
+            switch (handle) {
+                case 'createUTub':
+                    // Clear form and get ready for new input
+                    e.target.value = ''; 
+                    // Deselect current UTub
+                    $('.UTub').removeClass('active');
+                    $('input[type=radio]').prop('checked', false);
+
+                    createUTub(response.UTub_ID, response.UTub_name)
+
+                    break;
+                case 'createURL':
+                    // Clear form and get ready for new input
+                    var createURLCard = $(e.target).parent().parent();
+                    var URLDescription = createURLCard.find('#newURLDescription')[0].value;
+                    createURLCard.find('#newURL')[0].value = '';
+                    createURLCard.find('#newURLDescription')[0].value = '';
+
+                    createURL(response.URL.url_ID, response.url_string, URLDescription, [], []) 
+                    break;
+                case 'createTag':
+                    console.log('Unimplemented')
+                    break;
+                case 'editUTubDescription':
+                    console.log('Unimplemented')
+                    break;
+                case 'addTag':
+                    console.log('Unimplemented')
+                    break;
+                case 'editURL':
+                    console.log('Unimplemented')
+                    break;
+                case 'editURLDescription':
+                    console.log('Unimplemented')
+                    break;
+                default:
+                    console.log('Unimplemented')
+            }
+        }
+    })
 }
+
 
 // Creates option dropdown menu of users in RH UTub information panel
 function gatherUsers(dictUsers, creator) {
