@@ -16,9 +16,6 @@ class UTubNewURLForm(FlaskForm):
 
     submit = SubmitField('Add URL to this UTub!')
 
-    #TODO Add validation for the URL here..
-
-
 class UTubEditURLForm(FlaskForm):
     """
     Form to edit a URL in this UTub. Inherits from FlaskForm.
@@ -28,10 +25,9 @@ class UTubEditURLForm(FlaskForm):
     """
     
     url_string = StringField('URL', validators=[Length(min=1, max=2000)])
+    url_description = StringField('URL Description', validators=[Length(min=1, max=100)])
 
     submit = SubmitField('Edit URL!')
-
-    #TODO Add validation for the URL here..
 
 
 class UTubEditURLDescriptionForm(FlaskForm):

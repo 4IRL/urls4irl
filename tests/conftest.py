@@ -461,6 +461,39 @@ def add_one_url_and_all_users_to_each_utub_no_tags(app, add_one_url_to_each_utub
         db.session.commit()
 
 @pytest.fixture
+def add_one_url_and_all_users_to_each_utub_with_all_tags(app, add_one_url_and_all_users_to_each_utub_no_tags, add_tags_to_database):
+    """
+    After each user has made their own UTub, with one URL added by that user to each UTub,
+    now add all other users as members to each UTub.
+
+    Utub with ID of 1, created by User ID of 1, with URL ID of 1, now has members 2 and 3 included
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_one_url_to_each_utub_no_tags (pytest fixture): Has each User make their own UTub, and has
+            that user add a URL to their UTub
+    """
+    with app.app_context():
+        current_utubs = Utub.query.all()
+        current_tags = Tags.query.all()
+
+        # Add all missing users to this UTub
+        for utub in current_utubs:
+            current_utub_url = [utub_url.url_in_utub for utub_url in utub.utub_urls].pop()
+
+            for tag in current_tags:
+                new_tag_url_utub_association = Url_Tags()
+                new_tag_url_utub_association.utub_containing_this_tag = utub
+                new_tag_url_utub_association.tagged_url = current_utub_url
+                new_tag_url_utub_association.tag_item = tag
+                new_tag_url_utub_association.utub_id = utub.id
+                new_tag_url_utub_association.url_id = current_utub_url.id
+                new_tag_url_utub_association.tag_id = tag.id
+                utub.utub_url_tags.append(new_tag_url_utub_association)
+
+        db.session.commit()
+
+@pytest.fixture
 def add_all_urls_and_users_to_each_utub_no_tags(app, add_one_url_and_all_users_to_each_utub_no_tags):
     """
     Adds two other URLs to a UTub that contains all 3 test members, but does not have any tags associated with these URLs
