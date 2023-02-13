@@ -185,7 +185,7 @@ def edit_url_and_description(utub_id: int, url_id: int):
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
     url_in_utub = Utub_Urls.query.filter(Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id).first_or_404()
 
-    if current_user.id != utub_owner_id or current_user.id != url_in_utub.user_id:
+    if current_user.id != utub_owner_id and current_user.id != url_in_utub.user_id:
         # Can only modify URLs you added, or if you are the creator of this UTub
         return jsonify({
                 "Status" : "Failure",
