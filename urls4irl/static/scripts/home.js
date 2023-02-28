@@ -8,7 +8,7 @@ $(document).ready(function () {
     });
 
     // CSRF token initialization for non-modal POST requests
-    var csrftoken = $('meta[name=csrf-token]').attr('content');
+    let csrftoken = $('meta[name=csrf-token]').attr('content');
     $.ajaxSetup({
         beforeSend: function (xhr, settings) {
             if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
@@ -23,9 +23,9 @@ $(document).ready(function () {
     // Submission of user input data
     $('.activeInput').on('blur', function () {
         console.log("Blur caught")
-        var inputEl = $(this);
+        let inputEl = $(this);
         console.log(inputEl)
-        var handle = inputEl.attr('id');
+        let handle = inputEl.attr('id');
         console.log(handle)
 
         if (document.activeElement.localname == 'input') {
@@ -53,25 +53,25 @@ $(document).ready(function () {
     // Keyboard navigation between selected UTubs or URLs
     $(document).on('keyup', function (e) {
         if ($('#URLFocusRow').length > 0) {     // Some URL is selected
-            var keycode = (e.keyCode ? e.keyCode : e.which);
-            var prev = keycode == 37 || keycode == 38;
-            var next = keycode == 39 || keycode == 40;
-            var UPRcards = $('#UPRRow').children('.cardCol').length;
-            var LWRcards = $('#LWRRow').children('.cardCol').length;
+            let keycode = (e.keyCode ? e.keyCode : e.which);
+            let prev = keycode == 37 || keycode == 38;
+            let next = keycode == 39 || keycode == 40;
+            let UPRcards = $('#UPRRow').children('.cardCol').length;
+            let LWRcards = $('#LWRRow').children('.cardCol').length;
 
             if (prev && UPRcards > 0) {              // User wants to highlight previous URL
-                var cardCol = $($('#UPRRow').children('.cardCol')[UPRcards - 1]);
+                let cardCol = $($('#UPRRow').children('.cardCol')[UPRcards - 1]);
                 selectURL($(cardCol[0].children).attr('urlid'))
             } else if (next && LWRcards > 0) {       // User wants to highlight next URL
-                var cardCol = $($('#LWRRow').children('.cardCol')[0]);
+                let cardCol = $($('#LWRRow').children('.cardCol')[0]);
                 selectURL($(cardCol[0].children).attr('urlid'))
             } else {
                 deselectURL($('url.selected').parent())
             }
 
         } else {
-            var prev = keycode == 38;
-            var next = keycode == 40;
+            let prev = keycode == 38;
+            let next = keycode == 40;
         }
     })
 
@@ -95,8 +95,8 @@ $(document).ready(function () {
 // Request user text input by placing a text input element in the appropriate location and await valid input
 function showInput(handle) {
 
-    var inputDiv = $('#' + handle);
-    var inputEl = inputDiv.find('input');
+    let inputEl = $('#' + handle);
+    let inputDiv = inputEl.closest('div');
 
     // Show temporary input text element
     inputDiv.show();
@@ -109,38 +109,41 @@ function showInput(handle) {
 // Once valid data is received from the user, this function processes it and attempts a POST request
 function postData(e, handle) {
     console.log("postData initiated")
+    let postURL; let data;
 
     switch (handle) {
         case 'createUTub':
-            var postURL = '/utub/new';
-            var newUTubName = e.target.value;
-            var data = { name: newUTubName }
+            postURL = '/utub/new';
+            let newUTubName = e.target.value;
+            data = { name: newUTubName }
             $(e.target).parent().hide();
             break;
         case 'createURL':
             console.log("createURL attempted")
-            var postURL = '/url/add/' + currentUTubID();
-            var createURLCard = $(e.target).parent().parent();
-            var newURL = createURLCard.find('#newURL')[0].value;
-            var newURLDescription = createURLCard.find('#newURLDescription')[0].value;
-            var data = {
+            postURL = '/url/add/' + currentUTubID();
+            let createURLCard = $(e.target).parent().parent();
+            let newURL = createURLCard.find('#newURL')[0].value;
+            let newURLDescription = createURLCard.find('#newURLDescription')[0].value;
+            data = {
                 url_string: newURL,
                 url_description: newURLDescription
             }
             break;
         case 'createTag':
-            var postURL = '/tag/new';
-            var data = { name: userInput }
+            postURL = '/tag/new';
+            let newTagName = e.target.value;
+            data = { name: newTagName }
+            $(e.target).parent().hide();
             break;
         case 'editUTubDescription':
             console.log('Unimplemented')
             break;
         case 'addTag':
-            var postURL = '/tag/new/[urlid?]';
-            var data = { name: userInput }
+            postURL = '/tag/new/[urlid?]';
+            data = { name: userInput }
             break;
         case 'editURL':
-            var postURL = '/url/edit';
+            postURL = '/url/edit';
             console.log('Unimplemented')
             break;
         case 'editURLDescription':
@@ -157,12 +160,12 @@ function postData(e, handle) {
     });
 
     request.done(function (response, textStatus, xhr) {
-        
+
         if (xhr.status == 200) {
             switch (handle) {
                 case 'createUTub':
                     // Clear form and get ready for new input
-                    e.target.value = ''; 
+                    e.target.value = '';
                     // Deselect current UTub
                     $('.UTub').removeClass('active');
                     $('input[type=radio]').prop('checked', false);
@@ -172,12 +175,18 @@ function postData(e, handle) {
                     break;
                 case 'createURL':
                     // Clear form and get ready for new input
-                    var createURLCard = $(e.target).parent().parent();
-                    var URLDescription = createURLCard.find('#newURLDescription')[0].value;
+                    let createURLCard = $(e.target).parent().parent();
+                    let URLDescription = createURLCard.find('#newURLDescription')[0].value;
                     createURLCard.find('#newURL')[0].value = '';
                     createURLCard.find('#newURLDescription')[0].value = '';
 
-                    createURL(response.URL.url_ID, response.url_string, URLDescription, [], [])
+                    let URLID = response.URL.url_ID;
+
+                    let URLcol = createURL(URLID, response.URL.url_string, URLDescription, [], []);
+                    $(URLcol).insertAfter('.url.selected');
+                    deselectURL($('.url.selected').parent());
+                    $('.url.selected').parent().hide();
+                    selectURL(URLID);
 
                     break;
                 case 'createTag':
@@ -198,6 +207,33 @@ function postData(e, handle) {
                 default:
                     console.log('Unimplemented')
             }
+        } else {
+            switch (handle) {
+                case 'createUTub':
+                    console.log('Unimplemented')
+                    break;
+                case 'createURL':
+                    console.log('Unimplemented')
+                    break;
+                case 'createTag':
+                    console.log('Unimplemented')
+                    break;
+                case 'editUTubDescription':
+                    console.log('Unimplemented')
+                    break;
+                case 'addTag':
+                    console.log('Unimplemented')
+                    break;
+                case 'editURL':
+                    console.log('Unimplemented')
+                    break;
+                case 'editURLDescription':
+                    console.log('Unimplemented')
+                    break;
+                default:
+                    console.log('Unimplemented')
+            }
+
         }
     })
 }
@@ -219,82 +255,88 @@ function gatherUsers(dictUsers, creator) {
 
 
 function cardEdit(selectedUTubID, selectedURLid, infoType) {
-        var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID   
-        if (infoType == 'tag') {
-            var inputParent = $(jQuerySel).find('div.URLTags');     // Find appropriate card element
-            var initString = '';
-            var inputEl = $('#new_tag');                            // Temporary input text element
-            var inputID = 'new_tag';
-            var postURL = '/tag/add/';
-        } else {
-            var inputParent = $(jQuerySel).find('p.card-text');     // Find appropriate card element         
-            var initString = inputParent[0].innerText;              // Store pre-edit values
-            var originalURL = inputParent[0].innerText;             // Store pre-edit values
-            $(inputParent).html('');                                // Clear url card-text
-            var inputEl = $('#edit_url');                           // Temporary input text element
-            var inputID = 'edit_url';
-            var postURL = '/url/edit/';
+    let jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID
+    let inputParent; let initString;
+    let inputEl; let inputID;
+    let postURL; let originalURL;
+
+    if (infoType == 'tag') {
+        inputParent = $(jQuerySel).find('div.URLTags');     // Find appropriate card element
+        initString = '';
+        inputEl = $('#new_tag');                            // Temporary input text element
+        inputID = 'new_tag';
+        postURL = '/tag/add/';
+    } else {
+        inputParent = $(jQuerySel).find('p.card-text');     // Find appropriate card element         
+        initString = inputParent[0].innerText;              // Store pre-edit values
+        originalURL = inputParent[0].innerText;             // Store pre-edit values
+        $(inputParent).html('');                                // Clear url card-text
+        inputEl = $('#edit_url');                           // Temporary input text element
+        inputID = 'edit_url';
+        postURL = '/url/edit/';
+    }
+
+    let route;
+
+    if (inputEl.length == 0) { // Temporary input text element does not exist, create one and inject
+        route = postURL + selectedUTubID + "/" + selectedURLid;
+
+        $('<input></input>').attr({     // Replace with temporary input
+            'type': 'text',
+            'id': inputID,
+            'size': '30',
+            'value': initString
+        }).appendTo($(inputParent));
+
+        inputEl = $('#' + inputID);
+    }
+
+    let end = inputEl[0].value.length;
+    inputEl.focus();
+    inputEl[0].setSelectionRange(0, end);
+
+    inputEl.on('keyup', function (e) {        // Pressing enter is the same as blur, and submission
+        if (e.keyCode === 13) {
+            e.target.blur();
         }
+    })
 
-        if (inputEl.length == 0) { // Temporary input text element does not exist, create one and inject
-            var route = postURL + selectedUTubID + "/" + selectedURLid;
+    // User submitted a card edit
+    inputEl.on('blur', function (e) {
 
-            $('<input></input>').attr({     // Replace with temporary input
-                'type': 'text',
-                'id': inputID,
-                'size': '30',
-                'value': initString
-            }).appendTo($(inputParent));
+        if (inputEl[0].value != "") {
+            let request = $.ajax({
+                type: 'post',
+                url: postURL + selectedUTubID + "/" + selectedURLid,
+                data: { tag_string: inputEl[0].value }
+            });
 
-            inputEl = $('#' + inputID);
-        }
-
-        let end = inputEl[0].value.length;
-        inputEl.focus();
-        inputEl[0].setSelectionRange(0, end);
-
-        inputEl.on('keyup', function (e) {        // Pressing enter is the same as blur, and submission
-            if (e.keyCode === 13) {
-                e.target.blur();
-            }
-        })
-
-        // User submitted a card edit
-        inputEl.on('blur', function (e) {
-
-            if (inputEl[0].value != "") {
-                let request = $.ajax({
-                    type: 'post',
-                    url: postURL + selectedUTubID + "/" + selectedURLid,
-                    data: { tag_string: inputEl[0].value }
-                });
-
-                request.done(function (response, textStatus, xhr) {
-                    if (xhr.status == 200) {
-                        if (infoType == 'url') {
-                            if (inputEl[0].value == "") {
-                                inputParent[0].innerHTML = originalURL;
-                            } else {
-                                inputParent[0].innerHTML = inputEl[0].value;
-                            }
+            request.done(function (response, textStatus, xhr) {
+                if (xhr.status == 200) {
+                    if (infoType == 'url') {
+                        if (inputEl[0].value == "") {
+                            inputParent[0].innerHTML = originalURL;
                         } else {
-                            if (inputEl[0].value != "") {
-                                $('<span></span>').attr({     // Replace with temporary input
-                                    'class': 'tag',
-                                    'tagid': response.Tag.tag_ID,
-                                }).appendTo($(inputParent));
-                                $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value  // here's where things go to shit
-                            }
+                            inputParent[0].innerHTML = inputEl[0].value;
                         }
-                        console.log("finished edit")
-                        // getUtubInfo(selectedUTubID);
-                        // console.log("starting to select")
-                        // selectURL(selectedURLid);
-                        // console.log("done selecting")
+                    } else {
+                        if (inputEl[0].value != "") {
+                            $('<span></span>').attr({     // Replace with temporary input
+                                'class': 'tag',
+                                'tagid': response.Tag.tag_ID,
+                            }).appendTo($(inputParent));
+                            $('.tag')[$('.tag').length - 1].innerText = inputEl[0].value  // here's where things go to shit
+                        }
                     }
-                })
-            }
+                    console.log("finished edit")
+                    // getUtubInfo(selectedUTubID);
+                    // console.log("starting to select")
+                    // selectURL(selectedURLid);
+                    // console.log("done selecting")
+                }
+            })
+        }
 
-            inputEl.remove();
-        })
+        inputEl.remove();
+    })
 }

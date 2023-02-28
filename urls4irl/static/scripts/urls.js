@@ -84,6 +84,7 @@ function buildURLDeck(dictURLs, dictTags) {
     })
 
     $(card).attr({
+        'urlid': 0,
         'class': 'card url selected',
         'draggable': 'true',
         'ondrop': 'dropIt(event)',
@@ -224,7 +225,7 @@ function createURL(URLID, URLString, URLDescription, URLTags, dictTags) {
         });
 
         let tagSpan = document.createElement('span');
-        let closeButton = document.createElement('a');
+        let removeButton = document.createElement('a');
 
         $(tagSpan).attr({
             'class': 'tag',
@@ -232,13 +233,13 @@ function createURL(URLID, URLString, URLDescription, URLTags, dictTags) {
         });
         tagSpan.innerHTML = tag.tag_string;
 
-        $(closeButton).attr({
+        $(removeButton).attr({
             'class': 'btn btn-sm btn-outline-link border-0 tag-remove',
             'onclick': 'removeTag(' + tag.id + ')'
         });
-        closeButton.innerHTML = '&times;';
+        removeButton.innerHTML = '&times;';
 
-        $(tagSpan).append(closeButton);
+        $(tagSpan).append(removeButton);
         $(urlTags).append(tagSpan);
     }
 
@@ -288,7 +289,6 @@ function createURL(URLID, URLString, URLDescription, URLTags, dictTags) {
     $(urlOptions).append(delURL);
 
     return col;
-    
 }
 
 // Update URL deck to reflect changes in response to a user change of tag options
@@ -330,6 +330,7 @@ function deselectURL(deselectedCardCol) {
 
 // User selects a URL. All other URLs are deselected. This function places all URLs prior to selected URL into #UPRRow, inserts selected URL into a separate #URLFocusRow, and places all subsequent URLs into #LWRRow. It also adjusts css displays accordingly
 function selectURL(selectedURLid) {
+    console.log($('#LWRRow').children())
     var cardCols = $('.cardCol');
 
     let rowToggle = 1; // ? Add to UPR row : Add to LWR row
@@ -341,16 +342,23 @@ function selectURL(selectedURLid) {
         let URLid = card.attr('urlid');
 
         if (URLid == selectedURLid) {
+            // Reorder createURL card to before selected URL
+            var createCardCol = $('#createURL').detach();
+            // console.log(createCardCol)
+            createCardCol.appendTo('#URLFocusRow')
+
+            // console.log($('#URLFocusRow').append($('#createURL').detach()));
+
+            // console.log($('#URLFocusRow').children())
+            // console.log($('#LWRRow').children())
+
+            // Expand and highlight selected URL
             $('#URLFocusRow').append(cardCols[i]);
             $(cardCols[i]).toggleClass('col-lg-10 col-lg-4 col-xl-10 col-xl-3')
             card.addClass('selected')
             card.attr('draggable', '')
-            card.find('.URLTags').css('display', '');
-            card.find('.URLOptions').css('display', '');
-
-            // Reorder create URL card to before selected URL
-            $('#createURL').detach();
-            activeRow.append($('#createURL'));
+            card.find('.URLTags').show();
+            card.find('.URLOptions').show();
 
             rowToggle = 0;
         } else {

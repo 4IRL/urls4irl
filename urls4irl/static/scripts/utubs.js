@@ -68,12 +68,12 @@ function buildUTubDeck(UTubs) {
     let submit = document.createElement('i');
 
     $(wrapper).attr({
-        'id': 'createUTub',
         'style': 'display: none'
     })
 
     $(input).attr({
         'type': 'text',
+        'id': 'createUTub',
         'class': 'userInput',
         'placeholder': 'New UTub name',
         'onblur': 'postData(event, "createUTub")'
@@ -153,12 +153,14 @@ function createUTub(id, name) {
     $('#listUTubs').append(label);
     $('#listUTubs').append(createUTubEl);
 
-    $('#UTubDeck').find('h2')[0].innerHTML = "Create a UTub";
+    $('#UTubDeck').find('h2')[0].innerHTML = "UTubs";
     $('#UTub-' + id).prop('checked', true);
 
     $('#addURL').show();
     $('#UTubHeader')[0].innerHTML = name;
     $('#UPRRow')[0].innerHTML = "Add a URL";
+
+    changeUTub(id)
 }
 
 // Edit UTub name and description. Should also automatically run after creation of a new UTub to offer the option of including a UTub description.

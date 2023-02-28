@@ -58,23 +58,22 @@
         <div class="row justify-content-center mx-2">
             <div class="col-9 col-lg-9 mb-md-0 text-left">
                 <h2 id="UTubHeader" style="display: inline-block">Select a UTub</h2>
-                <div id="editUTub" style="display: none">
-                    <input type="text" class="userInput" size="30" placeholder="" value="" >
+                <div style="display: none">
+                    <input type="text" id="editUTub" class="userInput">
                 </div>
                 <i id="editUTubButton" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454"
                     onclick="editUTub()"></i>
             </div>
             <div class="col-3 col-lg-3 mb-md-0 text-right">
                 <i id="addURL" class="bi bi-plus-square-fill fa-2x text-success mx-1"
-                    onclick="showInput('createURL')"></i>
+                    onclick="showInput('createURL'); selectURL(0)"></i>
             </div>
         </div>
         <div class="row justify-content-center mx-2">
             <div class="col-12 col-lg-12 mb-md-0 text-left">
                 <p id="UTubDescription" style="display: inline-block"></p>
-                <div id="editUTubDescription" style="display: none">
-                    <input type="text" class="userInput" size="30"
-                        placeholder="Describe the contents of your UTub (optional)" value="">
+                <div style="display: none">
+                    <textarea cols="40" rows="5" id="editUTubDescription" class="userInput" placeholder="Describe the contents of your UTub (optional)"></textarea>
                 </div>
             </div>
         </div>
@@ -121,20 +120,6 @@
                     onclick="openModal(this.getAttribute('modal-target'))"><b>Remove Selected User</b></a>
             </div>
         </div>
-
-        <h5>Description</h5>
-        <p id="UTubInfo" class="lead" contentEditable="true">
-            Storing email addresses in a PostGreSQL database
-
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
-            beatae, maiores deserunt
-            in voluptatibus
-            aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
-            repellat eveniet quidem
-            voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
-            autem nam ex deserunt debitis
-            eaque ratione! Nobis, quidem assumenda.
-        </p>
     </div>
 
     <div id="ChatDeck" class="deck row h-50 p-3">
