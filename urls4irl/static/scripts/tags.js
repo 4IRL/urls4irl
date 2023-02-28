@@ -79,7 +79,7 @@ function buildTagDeck(dictTags) {
     if (dictTags.length == 0) {
         // User has no Tags in this UTub
         $('#TagDeck').find('h2')[0].innerHTML = "Create a Tag";
-        $('#listTags')[0].innerHTML = '<h5>No Tags Applied to any URLs in this UTub</h5>'; // I still want this to show if user creates a new tag but has not yet applied them to any URLs
+        $('#listTags')[0].innerHTML = '<h5>No tags applied to any URLs in this UTub</h5>'; // I still want this to show if user creates a new tag but has not yet applied them to any URLs
     } else {
         // Instantiate UTubDeck (top left panel) with UTubs accessible to current user
         $('#TagDeck').find('h2')[0].innerHTML = "Tags";
@@ -139,7 +139,7 @@ function buildTagDeck(dictTags) {
                 'id': 'Tag-' + tagID,
                 'tagid': tagID,
                 'name': 'Tag' + i,
-                'checked': 'true'
+                'checked': 'checked'
             })
 
             $(label).append(checkbox);
@@ -154,16 +154,15 @@ function buildTagDeck(dictTags) {
         let submit = document.createElement('i');
 
         $(wrapper).attr({
-            'id': 'createTag',
             'style': 'display: none'
         })
 
         $(input).attr({
             'type': 'text',
+            'id': 'createTag',
             'class': 'userInput',
             'placeholder': 'New Tag name',
-            'size': '30',
-            'onblur': 'hideInput(event)'
+            'onblur': 'postData(event, "createTag")'
         })
 
         $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
@@ -174,6 +173,49 @@ function buildTagDeck(dictTags) {
     }
 }
 
+// Handle all display changes related to creating a new UTub
+function createTag(id, name) {
+
+    let div = document.createElement('div');
+    let label = document.createElement('label');
+    let checkbox = document.createElement('input');
+
+    
+    $(div).attr({ 'class': 'checkbox-container' })
+
+    $(label).attr({
+        'for': 'UTub-' + id,
+        'class': 'UTub draw active',
+        'onclick': "changeUTub(" + id + ")"
+    })
+    label.innerHTML = '<b>' + name + '</b>';
+
+    $(checkbox).attr({
+        'type': 'radio',
+        // 'name': 'UTub' + i, need to extract the length of current UTubs list, increment and document here
+        'id': 'UTub-' + id,
+        'utubid': id,
+        'value': name
+    })
+
+    $(label).append(checkbox);
+    $(div).append(label);
+
+    // Move "createUTub" element to the end of list
+    let UTubList = $('#listUTubs').children();
+    const createUTubEl = $(UTubList[UTubList.length-1]).detach();
+    $('#listUTubs').append(label);
+    $('#listUTubs').append(createUTubEl);
+
+    $('#UTubDeck').find('h2')[0].innerHTML = "Create a UTub";
+    $('#UTub-' + id).prop('checked', true);
+
+    $('#addURL').show();
+    $('#UTubHeader')[0].innerHTML = name;
+    $('#UPRRow')[0].innerHTML = "Add a URL";
+}
+
+
 // Add a tag to the selected URL
 function addTag(selectedUTubID, selectedURLid) {
     var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID          
@@ -181,7 +223,7 @@ function addTag(selectedUTubID, selectedURLid) {
 
     if ($('#new_tag').length) $('#new_tag').focus()
     else {
-        $('<input></input>').attr({     // Replace with temporary input
+        $('<input></input>').attr({                                     // Replace with temporary input
             'type': 'text',
             'id': 'new_tag',
             'size': '30'
@@ -192,7 +234,7 @@ function addTag(selectedUTubID, selectedURLid) {
     $('#new_tag').on('blur keyup', function (e) {
         var keycode = (e.keyCode ? e.keyCode : e.which);
         if (e.type === 'blur' || keycode == '13') {
-            var tagText = $(this).val();                    // Need to send this back to the db somehow
+            var tagText = $(this).val();                                // Need to send this back to the db somehow
             let request = $.ajax({
                 type: 'post',
                 url: "/tag/add/" + selectedUTubID + "/" + selectedURLid,
