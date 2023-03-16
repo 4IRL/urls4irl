@@ -291,33 +291,6 @@ function createURL(URLID, URLString, URLDescription, URLTags, dictTags) {
     return col;
 }
 
-// Update URL deck to reflect changes in response to a user change of tag options
-function filterURLDeck() {
-    let URLcardst = $('div.url');
-    for (let i = 0; i < URLcardst.length; i++) {
-        let tagList = $(URLcardst[i]).find('span.tag');
-
-        // If no tags associated with this URL, ignore. Unaffected by filter functionality
-        if (tagList.length === 0) { continue; }
-
-        // If all tags for given URL are style="display: none;", hide parent URL card
-        let inactiveTagBool = tagList.map(i => tagList[i].style.display == 'none' ? true : false)
-        // Manipulate mapped Object
-        let boolArray = Object.entries(inactiveTagBool);
-        boolArray.pop();
-        boolArray.pop();
-
-        // Default to hide URL
-        let hideURLBool = true;
-        boolArray.forEach(e => hideURLBool &= e[1])
-
-        // If url <div.card.url> has no tag <span>s in activeTagIDs, hide card column (so other cards shift into its position)
-        if (hideURLBool) { $(URLcardst[i]).parent().hide(); }
-        // If tag reactivated, show URL
-        else { $(URLcardst[i]).parent().show(); }
-    }
-}
-
 // A URL is already selected, user would like to unselect (or potentially select another)
 function deselectURL(deselectedCardCol) {
     var card = deselectedCardCol.find('.card');
