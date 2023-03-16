@@ -92,7 +92,7 @@ function buildTagDeck(dictTags) {
         $('#editTagButton').hide();
         parent[0].innerHTML = '<h5>No tags applied to any URLs in this UTub</h5>'; // I still want this to show if user creates a new tag but has not yet applied them to any URLs
     } else {
-        // Instantiate UTubDeck (top left panel) with UTubs accessible to current user
+        // Instantiate TagDeck (bottom left panel) with tags in current UTub
         $('#TagDeck').find('h2')[0].innerHTML = "Tags";
         $('#editTagButton').show();
 
