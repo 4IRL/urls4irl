@@ -195,16 +195,24 @@ def edit_url_and_description(utub_id: int, url_id: int):
 
     edit_url_form = UTubEditURLForm()
 
-    if edit_url_form.validate_on_submit():
+    if edit_url_form.validate_on_submit() and edit_url_form.url_description.data is not None:
         url_to_change_to = edit_url_form.url_string.data.replace(" ", "")
-        url_description_to_change_to = edit_url_form.url_description.data.strip()
+
+        if url_to_change_to == "":
+            return jsonify({
+                    "Status" : "Failure",
+                    "Message" : "URL cannot be empty",
+                    "Error_code": 2
+            }), 400
+        
+        url_description_to_change_to = edit_url_form.url_description.data
         serialized_url_in_utub = url_in_utub.serialized
 
-        if url_to_change_to == url_in_utub.url_in_utub.url_string or url_to_change_to == "":
-            # Empty url or identical URL
+        if url_to_change_to == url_in_utub.url_in_utub.url_string:
+            # Identical URL
 
-            if url_description_to_change_to == url_in_utub.url_notes or url_description_to_change_to == "":
-                # Empty description or identical description
+            if url_description_to_change_to == url_in_utub.url_notes:
+                # Identical description
                 return jsonify({
                     "Status" : "No change",
                     "Message": "URL and URL description were not modified",
@@ -235,7 +243,7 @@ def edit_url_and_description(utub_id: int, url_id: int):
             return jsonify({
                     "Status" : "Failure",
                     "Message" : "Unable to add this URL",
-                    "Error_code": 2
+                    "Error_code": 3
             }), 400
 
         # Now check if url already in database
@@ -254,8 +262,8 @@ def edit_url_and_description(utub_id: int, url_id: int):
         # Now check if this normalized URL is the same as the original, just in case
         if url_in_database == url_to_change_to:
             # Same URL after normalizing
-            if url_description_to_change_to == url_in_utub.url_notes or url_description_to_change_to == "":
-                # Empty description or identical description
+            if url_description_to_change_to == url_in_utub.url_notes:
+                # Identical description
                 return jsonify({
                     "Status" : "No change",
                     "Message": "URL and URL description were not modified",
@@ -283,7 +291,7 @@ def edit_url_and_description(utub_id: int, url_id: int):
         url_in_utub.url_in_utub = url_in_database        
 
         # Finally check and update the description
-        if url_description_to_change_to != "" and url_description_to_change_to != url_in_utub.url_notes:
+        if url_description_to_change_to != url_in_utub.url_notes:
             url_in_utub.url_notes = url_description_to_change_to
 
         # Find tags associated with URL
@@ -296,9 +304,6 @@ def edit_url_and_description(utub_id: int, url_id: int):
 
         db.session.commit()
 
-        # TODO - Make sure all tags that were pointing towards this one are now pointing towards the new one?
-            # This should only be dependent on... URL ID, UTUB ID
-        
         return jsonify({
             "Status" : "Success",
             "Message": "URL and/or URL Description modified",
@@ -307,12 +312,21 @@ def edit_url_and_description(utub_id: int, url_id: int):
             "UTub_name" : f"{utub.name}"
         }), 200
 
-        # Invalid form input
-    if edit_url_form.errors is not None:
+    # Missing URL description field
+    if edit_url_form.url_description.data is None:
         return jsonify({
             "Status": "Failure",
             "Message": "Unable to modify this URL, please check inputs",
             "Error_code": 4,
+            "Errors": {"url_description" : ["This field is required."]}
+        }), 404
+
+    # Invalid form input
+    if edit_url_form.errors is not None:
+        return jsonify({
+            "Status": "Failure",
+            "Message": "Unable to modify this URL, please check inputs",
+            "Error_code": 5,
             "Errors": edit_url_form.errors
         }), 404
 
@@ -320,5 +334,5 @@ def edit_url_and_description(utub_id: int, url_id: int):
     return jsonify({
         "Status" : "Failure",
         "Message" : "Unable to modify this URL",
-        "Error_code": 5
+        "Error_code": 6
     }), 404
