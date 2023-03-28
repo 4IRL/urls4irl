@@ -1151,7 +1151,6 @@ def test_update_valid_url_with_same_url_and_empty_desc_as_utub_creator(add_one_u
 
     edit_url_string_desc_form = client.post(f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}", data=edit_url_string_desc_form)
 
-    print(edit_url_string_desc_form.json)
     assert edit_url_string_desc_form.status_code == 200
 
     # Assert JSON response from server is valid
@@ -1682,11 +1681,10 @@ def test_update_valid_url_with_missing_url_field_and_valid_desc_as_utub_creator(
         # Check associated tags
         assert len(Url_Tags.query.filter_by(utub_id=utub_creator_of.id, url_id=id_of_url_in_utub).all()) == len(associated_tags)
 
-# TODO: Try to update without description field
 def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(add_one_url_and_all_users_to_each_utub_with_all_tags, login_first_user_without_register):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with a missing URL vield and valid url description, via a POST to
+    WHEN the creator attempts to modify the URL with a missing URL field and valid url description, via a POST to
         "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
             "csrf_token": String containing CSRF token for validation
             "url_string": String of URL to add
@@ -1756,4 +1754,63 @@ def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(
 
         # Check associated tags
         assert len(Url_Tags.query.filter_by(utub_id=utub_creator_of.id, url_id=id_of_url_in_utub).all()) == len(associated_tags)
+
 # TODO: Try to update without csrf token
+def test_update_valid_url_with_valid_url_and_valid_desc_missing_csrf(add_one_url_and_all_users_to_each_utub_with_all_tags, login_first_user_without_register):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with a missing CSRF token, and a valid URL and valid url description, via a POST to
+        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+            "url_string": String of URL to add
+            "url_description": String of URL description to add
+    THEN the UTub-user-URL associations are consistent across the change, all UTub descriptions are kept consistent, 
+        the server sends back a 400 HTTP status code, and the server sends back the appropriate HTML element
+        indicating the CSRF token is missing
+    """
+    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+
+    NEW_URL = "github.com"
+    with app.app_context():
+        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+
+        # Verify logged in user is creator of this UTub
+        assert utub_creator_of.utub_creator == current_user.id
+
+        # Grab URL that already exists in this UTub
+        url_already_in_utub = Utub_Urls.query.filter_by(utub_id=utub_creator_of.id, user_id=current_user.id).first()
+        id_of_url_in_utub = url_already_in_utub.url_id
+        url_in_utub_string = url_already_in_utub.url_in_utub.url_string
+        current_desc = url_already_in_utub.url_notes
+
+        num_of_url_utub_associations = len(Utub_Urls.query.filter_by(utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id, url_notes=current_desc).all())
+        assert num_of_url_utub_associations == 1
+        
+        # Find associated tags with this url already in UTub
+        associated_tags = Url_Tags.query.filter_by(utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id).all()
+
+        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_urls = len(URLS.query.all())
+        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+
+    edit_url_string_desc_form = {
+        "url_string": NEW_URL, 
+        "url_description": "My new description"
+    }
+
+    edit_url_string_desc_form = client.post(f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}", data=edit_url_string_desc_form)
+
+    # Ensure valid reponse
+    assert edit_url_string_desc_form.status_code == 400
+    assert b'<p>The CSRF token is missing.</p>' in edit_url_string_desc_form.data
+
+    with app.app_context():
+        # Assert database is consistent after newly modified URL
+        assert num_of_urls == len(URLS.query.all())
+        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+
+        # Assert previous entity exists
+        assert len(Utub_Urls.query.filter_by(utub_id=utub_creator_of.id, url_id=id_of_url_in_utub, url_notes=current_desc).all()) == 1
+
+        # Check associated tags
+        assert len(Url_Tags.query.filter_by(utub_id=utub_creator_of.id, url_id=id_of_url_in_utub).all()) == len(associated_tags)
