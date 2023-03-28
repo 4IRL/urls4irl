@@ -74,7 +74,6 @@ def delete_utub(utub_id: int):
         }), 403
     
     else:
-        utub = Utub.query.get_or_404(int(utub_id))
         db.session.delete(utub)
         db.session.commit()
 

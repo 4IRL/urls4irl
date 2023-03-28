@@ -5,7 +5,7 @@ from urls4irl.models import Utub, Utub_Urls, Utub_Users, Url_Tags
 
 def test_update_valid_utub_description_as_creator(add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register):
     """
-    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
     WHEN the creator attempts to modify the UTub description to a new description, via a POST to
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
             "csrf_token": String containing CSRF token for validation
