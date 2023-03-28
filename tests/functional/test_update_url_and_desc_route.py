@@ -1,7 +1,7 @@
 import pytest
 from flask_login import current_user
 
-from urls4irl.models import Utub, Utub_Urls, Utub_Users, Url_Tags, URLS
+from urls4irl.models import Utub, Utub_Urls,  Url_Tags, URLS
 from urls4irl.url_validation import check_request_head
 
 def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(add_one_url_and_all_users_to_each_utub_with_all_tags, login_first_user_without_register):
@@ -32,7 +32,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(add_one_u
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_FRESH_URL = "github.com"
     with app.app_context():
@@ -126,7 +126,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(add_all_url
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_FRESH_URL = "github.com"
     with app.app_context():
@@ -221,7 +221,7 @@ def test_update_url_description_with_fresh_valid_url_as_utub_creator(add_one_url
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_FRESH_URL = "github.com"
     NEW_DESCRIPTION = "This is my newest github.com!"
@@ -316,7 +316,7 @@ def test_update_url_description_with_fresh_valid_url_as_url_adder(add_all_urls_a
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_FRESH_URL = "github.com"
     NEW_DESCRIPTION = "This is my newest github.com!"
@@ -411,7 +411,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(add_one_url_
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
@@ -506,7 +506,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(add_two_url_and
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         all_utubs_urls = Utub_Urls.query.all()
@@ -540,7 +540,6 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(add_two_url_and
         num_of_url_tag_assocs = len(Url_Tags.query.all())
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
-
 
     edit_url_string_desc_form = {
         "csrf_token": csrf_token_string,
@@ -607,7 +606,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(add_one_url_and_all_user
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
@@ -693,7 +692,7 @@ def test_update_valid_url_with_same_url_as_url_adder(add_two_url_and_all_users_t
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         all_utubs_urls = Utub_Urls.query.all()
@@ -785,7 +784,7 @@ def test_update_valid_url_with_same_url_and_new_desc_as_utub_creator(add_one_url
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_DESCRIPTION = "THIS IS THE NEW DESCRIPTION."
     with app.app_context():
@@ -875,7 +874,7 @@ def test_update_valid_url_with_same_url_new_description_as_url_adder(add_two_url
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_DESCRIPTION = "THIS IS MY NEW DESCRIPTION."
     with app.app_context():
@@ -962,7 +961,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(add_one_url_and_all_u
         "Error_code": 3
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
@@ -1031,8 +1030,9 @@ def test_update_valid_url_with_invalid_url_as_url_adder(add_two_url_and_all_user
         "Error_code": 3
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
+    INVALID_URL = "AAAAA"
     with app.app_context():
         all_utubs_urls = Utub_Urls.query.all()
         for utub_urls in all_utubs_urls:
@@ -1048,7 +1048,6 @@ def test_update_valid_url_with_invalid_url_as_url_adder(add_two_url_and_all_user
                 url_in_this_utub = utub_urls
                 url_id_of_url_in_this_utub = url_in_this_utub.url_id
                 current_desc = url_in_this_utub.url_notes
-                url_string_of_url_in_utub = url_in_this_utub.url_in_utub.url_string
                 break
 
         num_of_url_utub_associations = len(Utub_Urls.query.filter_by(utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id, url_notes=current_desc).all())
@@ -1064,7 +1063,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(add_two_url_and_all_user
 
     edit_url_string_desc_form = {
         "csrf_token": csrf_token_string,
-        "url_string": "AAAAA",
+        "url_string": INVALID_URL,
         "url_description": current_desc
     }
 
@@ -1117,7 +1116,7 @@ def test_update_valid_url_with_same_url_and_empty_desc_as_utub_creator(add_one_u
         "UTub_name" : Name of UTub where this
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_DESCRIPTION = ""
     with app.app_context():
@@ -1202,7 +1201,7 @@ def test_update_valid_url_with_empty_url_and_empty_desc_as_utub_creator(add_one_
         }
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_DESCRIPTION = NEW_URL = ""
     with app.app_context():
@@ -1277,7 +1276,7 @@ def test_update_valid_url_with_empty_url_and_valid_desc_as_utub_creator(add_one_
         }
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_URL = ""
     NEW_DESCRIPTION = "My New Description."
@@ -1351,7 +1350,7 @@ def test_update_url_description_with_fresh_valid_url_as_another_current_utub_mem
         "Error_code" : 1
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_FRESH_URL = "github.com"
     NEW_DESCRIPTION = "This is my newest github.com!"
@@ -1434,7 +1433,7 @@ def test_update_url_description_with_fresh_valid_url_as_other_utub_member(add_fi
         "Error_code" : 1
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_FRESH_URL = "github.com"
     NEW_DESCRIPTION = "This is my newest github.com!"
@@ -1526,7 +1525,7 @@ def test_update_url_description_with_fresh_valid_url_as_other_utub_creator(add_t
         "Error_code" : 1
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_FRESH_URL = "github.com"
     NEW_DESCRIPTION = "This is my newest github.com!"
@@ -1628,7 +1627,7 @@ def test_update_valid_url_with_missing_url_field_and_valid_desc_as_utub_creator(
         }
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_DESCRIPTION = "My New Description."
     with app.app_context():
@@ -1688,7 +1687,7 @@ def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(
         "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
             "csrf_token": String containing CSRF token for validation
             "url_string": String of URL to add
-    THEN verify that the url-utub-user associations and url-tag are unmodified, all other URL associations are kept consistent, 
+    THEN verify that the url-utub-user associations and url-tags are unmodified, all other URL associations are kept consistent, 
         the server sends back a 404 HTTP status code, and the server sends back the appropriate JSON response
 
     Proper JSON is as follows:
@@ -1702,7 +1701,7 @@ def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(
         }
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_URL = "github.com"
     with app.app_context():
@@ -1755,7 +1754,6 @@ def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(
         # Check associated tags
         assert len(Url_Tags.query.filter_by(utub_id=utub_creator_of.id, url_id=id_of_url_in_utub).all()) == len(associated_tags)
 
-# TODO: Try to update without csrf token
 def test_update_valid_url_with_valid_url_and_valid_desc_missing_csrf(add_one_url_and_all_users_to_each_utub_with_all_tags, login_first_user_without_register):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
@@ -1763,11 +1761,11 @@ def test_update_valid_url_with_valid_url_and_valid_desc_missing_csrf(add_one_url
         "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
             "url_string": String of URL to add
             "url_description": String of URL description to add
-    THEN the UTub-user-URL associations are consistent across the change, all UTub descriptions are kept consistent, 
+    THEN the UTub-user-URL associations are consistent across the change, all URLs/URL descriptions descriptions are kept consistent, 
         the server sends back a 400 HTTP status code, and the server sends back the appropriate HTML element
         indicating the CSRF token is missing
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, _, _, app = login_first_user_without_register
 
     NEW_URL = "github.com"
     with app.app_context():
