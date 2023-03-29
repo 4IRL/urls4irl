@@ -129,6 +129,8 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         db.session.delete(tag_for_url_in_utub)
         db.session.commit()
 
+        num_left_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, tag_id=tag_id).count()
+
         url_utub_association = Utub_Urls.query.filter(Utub_Urls.utub_id == utub.id, 
                                                         Utub_Urls.url_id == url_to_remove_tag_from.id).first_or_404()
 
@@ -138,7 +140,8 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
             "Tag": tag_to_remove.serialized,
             "URL": url_utub_association.serialized,
             "UTub_ID": utub_id,
-            "UTub_name": utub.name 
+            "UTub_name": utub.name,
+            "Count_in_UTub": num_left_in_utub 
         }), 200
 
     return jsonify({
