@@ -474,6 +474,8 @@ def add_two_users_and_all_urls_to_each_utub_no_tags(app, add_one_url_to_each_utu
 
             db.session.add(new_utub_url_user_association)
 
+        db.session.commit()
+
 @pytest.fixture
 def add_first_user_to_second_utub_and_add_tags_remove_first_utub(app, add_one_url_to_each_utub_no_tags, add_tags_to_database):
     """
@@ -520,6 +522,44 @@ def add_first_user_to_second_utub_and_add_tags_remove_first_utub(app, add_one_ur
                 new_tag_url_utub_association.url_id = url_id
                 new_tag_url_utub_association.tag_id = tag.id
                 second_utub.utub_url_tags.append(new_tag_url_utub_association)
+
+        db.session.commit()
+
+@pytest.fixture
+def add_two_users_and_all_urls_to_each_utub_with_one_tag(app, add_two_users_and_all_urls_to_each_utub_no_tags, add_tags_to_database):
+    """
+    After each user has made their own UTub, with one URL added by that user to each UTub,
+    with one other member and URL in each UTub, now add one tag to each URL in each UTub
+
+    Utub with ID of 1, created by User ID of 1, with URL ID of 1, now has member 2 and URL with ID of 2 included
+    And each tag is now associated with each URL in each UTUb
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_two_users_and_all_urls_to_each_utub_no_tags (pytest fixture): Has each User make their own UTub, and has
+            that user add a URL to their UTub, and has one additional user added to each UTub, with that user adding
+            the URL with a matching ID to their user id, to this UTub
+        add_tags_to_database (pytest.fixture): Adds all tags to the database for easy adding to URLs
+    """
+    with app.app_context():
+        one_tag = Tags.query.first()
+        all_utubs = Utub.query.all()
+
+        for utub in all_utubs:
+            urls_in_utub = [utub_url for utub_url in utub.utub_urls]
+
+            for url_in_utub in urls_in_utub:
+                url_id = url_in_utub.url_id
+                url_in_this_utub = url_in_utub.url_in_utub
+
+                new_tag_url_utub_association = Url_Tags()
+                new_tag_url_utub_association.utub_containing_this_tag = utub
+                new_tag_url_utub_association.tagged_url = url_in_this_utub
+                new_tag_url_utub_association.tag_item = one_tag
+                new_tag_url_utub_association.utub_id = utub.id
+                new_tag_url_utub_association.url_id = url_id
+                new_tag_url_utub_association.tag_id = one_tag.id
+                utub.utub_url_tags.append(new_tag_url_utub_association)
 
         db.session.commit()
 
