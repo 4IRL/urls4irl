@@ -405,7 +405,7 @@ def add_one_url_to_each_utub_no_tags(app, add_urls_to_database):
 
     Args:
         app (Flask): The Flask client providing an app context
-        every_user_makes_a_unique_utub (pytest fixture): Has each User make their own UTub
+        add_urls_to_database (pytest fixture): Adds all the test URLs to the database
     """
     with app.app_context():
         all_urls = URLS.query.all()
@@ -428,6 +428,39 @@ def add_one_url_to_each_utub_no_tags(app, add_urls_to_database):
 
             db.session.add(new_utub_url_user_association)
         
+        db.session.commit()
+
+@pytest.fixture
+def add_one_url_to_each_utub_one_tag(app, add_one_url_to_each_utub_no_tags, add_tags_to_database):
+    """ 
+    Add a single valid tag to each URL in each UTub.
+    The ID of the UTub, User, and related URL, and tag are all the same.
+
+    Utub with ID of 1, created by User ID of 1, with URL ID of 1, with tag ID of 1
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        add_one_url_to_each_utub_no_tags (pytest fixture): Adds one url to each UTub with same ID as creator
+        add_tags_to_database (pytest fixture): Adds all test tags to the database
+    """
+    with app.app_context():
+        all_utubs = Utub.query.all()
+        tag = Tags.query.first()
+
+        for utub in all_utubs:
+            url_in_utub = utub.utub_urls[0]
+            url_item_in_utub = url_in_utub.url_in_utub
+            url_id_in_utub = url_item_in_utub.id
+
+            new_tag_url_utub_association = Url_Tags()
+            new_tag_url_utub_association.utub_containing_this_tag = utub
+            new_tag_url_utub_association.tagged_url = url_item_in_utub
+            new_tag_url_utub_association.tag_item = tag
+            new_tag_url_utub_association.utub_id = utub.id
+            new_tag_url_utub_association.url_id = url_id_in_utub
+            new_tag_url_utub_association.tag_id = tag.id
+            utub.utub_url_tags.append(new_tag_url_utub_association)
+
         db.session.commit()
         
 @pytest.fixture
