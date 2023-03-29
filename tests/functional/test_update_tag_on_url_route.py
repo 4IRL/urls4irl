@@ -2,7 +2,7 @@ import pytest
 from flask_login import current_user
 
 from urls4irl import db
-from urls4irl.models import Utub, URLS, Utub_Urls, Utub_Users, Tags, Url_Tags
+from urls4irl.models import Utub, Utub_Urls, Tags, Url_Tags
 from models_for_test import all_tag_strings
 
 def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(add_two_users_and_all_urls_to_each_utub_with_tags, login_first_user_without_register):
@@ -577,7 +577,6 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(add_two_users_and_
 
         utub_user_is_member_of = utubs_user_is_not_creator_of[i]
         utub_id_user_is_member_of = utub_user_is_member_of.id
-        utub_name_user_is_member_of = utub_user_is_member_of.name
 
         # Ensure user is in this UTub
         assert current_user in [user.to_user for user in utub_user_is_member_of.members]
@@ -629,6 +628,94 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(add_two_users_and_
 
         # Ensure tag still exists attached to this URL
         assert len(Url_Tags.query.filter_by(utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url).all()) == 1
+
+def test_modify_tag_with_tag_already_on_url_as_utub_creator(add_two_users_and_all_urls_to_each_utub_with_tags, login_first_user_without_register):
+    """
+    GIVEN 3 users and 3 UTubs, with only the creator and member of the UTub in each UTub, with two URLs added, one per user,
+        with all tags on each URL, and the currently logged in user is a creator of a UTub, and one
+        URL exists in each UTub, added by the creator
+    WHEN the user tries to modify a URL's tag by changing it to a tag already on the URL 
+        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+            "utub_id" : An integer representing UTub ID,
+            "url_id": An integer representing URL ID to add tag to
+            "tag_id": An integer representing the tag currently on the URL
+    THEN ensure that the server responds with a 404 HTTP status code, that the proper JSON response
+        is sent by the server, and that a new Tag does not exist, the Tag-URL-UTub association is modified,
+        and that the association between URL and Tag is recorded properly
+
+    Proper JSON response is as follows:
+    {
+        "Status" : "Failure",
+        "Message" : "Tag already on URL",
+        "Error_code": 2
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find UTub this current user is creator of
+        utub_user_is_creator_of = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Ensure user is in this UTub
+        assert current_user in [user.to_user for user in utub_user_is_creator_of.members]
+
+        # Get URL that is in this UTub
+        url_utub_association =  Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_user_is_creator_of).first()
+        url_in_this_utub = url_utub_association.url_in_utub
+        url_id_to_add_tag_to = url_in_this_utub.id
+
+        # Find number of tags on this URL in this UTub
+        num_of_tags_on_url = len(Url_Tags.query.filter_by(utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to).all())
+
+        # Get a tag on this URL
+        tag_on_url = Url_Tags.query.filter_by(utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to).first()
+        tag_string_on_url = tag_on_url.tag_item.tag_string
+        curr_tag_id_on_url = tag_on_url.tag_id
+
+        # Get tag to change to on this URL
+        tag_to_change_to_on_url = Url_Tags.query.filter(
+                                    Url_Tags.utub_id == utub_id_user_is_creator_of, 
+                                    Url_Tags.url_id == url_id_to_add_tag_to,
+                                    Url_Tags.tag_id != curr_tag_id_on_url).first()
+
+        tag_to_change_to_string = tag_to_change_to_on_url.tag_item.tag_string
+
+        # Get initial num of Url-Tag associations
+        initial_num_url_tag_associations = len(Url_Tags.query.all())
+
+        # Get initial number of tags
+        num_tags = len(Tags.query.all())
+
+    # Add tag to this URL
+    add_tag_form = {
+        "csrf_token" : csrf_token,
+        "tag_string" : tag_to_change_to_string
+    }
+
+    modify_tag_response = client.post(f"/tag/url/modify/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}", data=add_tag_form)
+
+    assert modify_tag_response.status_code == 404
+
+    # Ensure json response from server is valid
+    modify_tag_response_json = modify_tag_response.json
+    assert modify_tag_response_json["Status"] == "Failure"
+    assert modify_tag_response_json["Message"] == "Tag already on URL"
+    assert int(modify_tag_response_json["Error_code"]) == 2
+
+    with app.app_context():
+        # Ensure no new tag exists
+        assert len(Tags.query.all()) == num_tags
+
+        # Ensure number of Tag-URL association do not change on this URL in this UTub
+        assert len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_user_is_creator_of,
+                                            Url_Tags.url_id == url_id_to_add_tag_to).all()) == num_of_tags_on_url 
+
+        # Ensure correct count of Url-Tag associations
+        assert len(Url_Tags.query.all()) == initial_num_url_tag_associations
+
+        # Ensure tag still exists attached to this URL
+        assert len(Url_Tags.query.filter_by(utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url).all()) == 1
 
 def test_modify_tag_on_another_utub_url(add_two_users_and_all_urls_to_each_utub_with_one_tag, login_first_user_without_register):
     """
@@ -830,7 +917,7 @@ def test_modify_tag_with_missing_tag_field(add_two_users_and_all_urls_to_each_ut
     {
         "Status" : "Failure",
         "Message" : "Unable to add tag to this URL",
-        "Error_code" : 2,
+        "Error_code" : 3,
         "Errors": Object representing array of errors pertaining to relevant fields
         {
             "tag_string" : Array of errors associated with tag_string field
@@ -884,7 +971,7 @@ def test_modify_tag_with_missing_tag_field(add_two_users_and_all_urls_to_each_ut
     modify_tag_response_json = modify_tag_response.json
     assert modify_tag_response_json["Status"] == "Failure"
     assert modify_tag_response_json["Message"] == "Unable to add tag to this URL"
-    assert int(modify_tag_response_json["Error_code"]) == 2
+    assert int(modify_tag_response_json["Error_code"]) == 3
     assert modify_tag_response_json["Errors"]["tag_string"] == ["This field is required."]
 
     with app.app_context():
@@ -973,3 +1060,4 @@ def test_modify_tag_with_missing_csrf_token(add_two_users_and_all_urls_to_each_u
 
         # Ensure tag still exists attached to this URL
         assert len(Url_Tags.query.filter_by(utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url).all()) == 1
+        

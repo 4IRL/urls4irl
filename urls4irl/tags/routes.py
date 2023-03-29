@@ -191,6 +191,16 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
             db.session.commit()
 
             tag_that_already_exists = new_tag
+
+        else:
+            # Check if tag already on URL
+            tag_on_url = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_that_already_exists.id).first()
+            if tag_on_url is not None:
+                return jsonify({
+                    "Status" : "Failure", 
+                    "Message" : "Tag already on URL",
+                    "Error_code" : 2
+                }), 404
             
         tag_on_url_in_utub.tag_id = tag_that_already_exists.id
         tag_on_url_in_utub.tag_item = tag_that_already_exists
@@ -212,13 +222,13 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         return jsonify({
             "Status" : "Failure",
             "Message" : "Unable to add tag to this URL",
-            "Error_code" : 2,
+            "Error_code" : 3,
             "Errors": url_tag_form.errors
         }), 404
 
     return jsonify({
         "Status" : "Failure",
         "Message" : "Unable to add tag to this URL",
-        "Error_code" : 3
+        "Error_code" : 4
     }), 404
     
