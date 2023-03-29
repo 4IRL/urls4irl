@@ -1193,7 +1193,8 @@ def test_update_valid_url_with_empty_url_and_empty_desc_as_utub_creator(add_one_
     Proper JSON is as follows:
     {
         "Status" : "Failure",
-        "Message": "Unable to modify this URL, please check inputs",
+        "Message" : "Unable to modify this URL, please check inputs",
+        "Error_code" : 5
         "Errors" : Object representing the errors found in the form, with the following fields 
         {
             "url_string": Array of errors associated with the url_string field,
@@ -1268,7 +1269,8 @@ def test_update_valid_url_with_empty_url_and_valid_desc_as_utub_creator(add_one_
     Proper JSON is as follows:
     {
         "Status" : "Failure",
-        "Message": "Unable to modify this URL, please check inputs",
+        "Message" : "Unable to modify this URL, please check inputs",
+        "Error_code" : 5
         "Errors" : Object representing the errors found in the form, with the following fields 
         {
             "url_string": Array of errors associated with the url_string field,

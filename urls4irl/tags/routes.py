@@ -111,17 +111,17 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
     User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
 
-    TODO -> Have everybody remove tag!
-
+    # TODO : Indicate that tag no longer exists in UTub
+    
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted
-        url_id (int): The ID of the URL to be deleted
-        tag_id (int): The ID of the tag
+        url_id (int): The ID of the URL containing tag to be deleted
+        tag_id (int): The ID of the tag to be deleted
     """
     utub = Utub.query.get_or_404(utub_id)
 
     if int(current_user.get_id()) in [user.user_id for user in utub.members]:
-        # User is creator of this UTub
+        # User is member of this UTub
         tag_for_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).first_or_404()
         url_to_remove_tag_from = tag_for_url_in_utub.tagged_url
         tag_to_remove = tag_for_url_in_utub.tag_item
@@ -145,3 +145,80 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         "Status" : "Failure",
         "Message" : "Only UTub members can remove tags"
     }), 403
+
+@tags.route('/tag/url/modify/<int:utub_id>/<int:url_id>/<int:tag_id>', methods=["POST"])
+@login_required
+def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
+    """
+    User wants to modify an existing tag on a URL
+
+    Args:
+        utub_id (int): The ID of the UTub that contains the URL to be modified
+        url_id (int): The ID of the URL containing tag to be modified
+        tag_id (int): The ID of the tag to be modified
+    """
+    utub = Utub.query.get_or_404(utub_id)
+
+    # Verify user is in UTub
+    if int(current_user.get_id()) not in [user.user_id for user in utub.members]:
+        return jsonify({
+            "Status" : "Failure", 
+            "Message" : "Only UTub members can modify tags",
+            "Error_code" : 1
+        }), 404
+
+    tag_on_url_in_utub = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id, tag_id=tag_id).first_or_404()
+
+    url_tag_form = UTubNewUrlTagForm()
+
+    if url_tag_form.validate_on_submit():
+        new_tag = url_tag_form.tag_string.data
+
+        # Identical tag
+        if new_tag == tag_on_url_in_utub.tag_item.tag_string:
+            return jsonify({
+                "Status" : "No change",
+                "Message" : "Tag was not modified on this URL"
+            }), 200
+
+        tag_that_already_exists = Tags.query.filter_by(tag_string=new_tag).first()
+
+        # Check if tag already in database
+        if tag_that_already_exists is None:
+            # Need to make a new tag
+            new_tag = Tags(tag_string=new_tag, created_by=current_user.id)
+            db.session.add(new_tag)
+            db.session.commit()
+
+            tag_that_already_exists = new_tag
+            
+        tag_on_url_in_utub.tag_id = tag_that_already_exists.id
+        tag_on_url_in_utub.tag_item = tag_that_already_exists
+
+        url_utub_association = Utub_Urls.query.filter(Utub_Urls.utub_id == utub.id, 
+                                                        Utub_Urls.url_id == url_id).first_or_404()
+
+        return jsonify({
+            "Status" : "Success",
+            "Message" : "Tag modified on URL",
+            "Tag" : tag_that_already_exists.serialized,
+            "URL": url_utub_association.serialized,
+            "UTub_ID": utub_id,
+            "UTub_name": utub.name 
+        }), 200
+
+    # Input form errors
+    if url_tag_form.errors is not None:
+        return jsonify({
+            "Status" : "Failure",
+            "Message" : "Unable to add tag to this URL",
+            "Error_code" : 2,
+            "Errors": url_tag_form.errors
+        }), 404
+
+    return jsonify({
+        "Status" : "Failure",
+        "Message" : "Unable to add tag to this URL",
+        "Error_code" : 3
+    }), 404
+    
