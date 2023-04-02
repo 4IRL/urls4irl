@@ -1,88 +1,67 @@
-// General UI Interactions
+$(document).ready(function() {
+    $('.to-register').off('click').on('click', function() {
+        modalOpener("/register")
+    })
 
-$(document).ready(function () {
+    $('.to-login').off('click').on('click', function() {
+        modalOpener("/login")
+    })
 
-    // Dev tracking of click-triggered objects
-    $(document).click(function (e) {
-        console.log($(e.target)[0])
-    });
-
-    // CSRF token initialization for non-modal POST requests
-    let csrftoken = $('meta[name=csrf-token]').attr('content');
-    $.ajaxSetup({
-        beforeSend: function (xhr, settings) {
-            if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
-                xhr.setRequestHeader("X-CSRFToken", csrftoken);
-            }
-        }
-    });
-
+    // $('.edit-modal-opener').click(function() {
+    //     let url = $(this).data('for-modal');
+    //     modalOpener(url)
+    // });
+    
 });
 
-// General Functions
+function modalOpener(url) {
+    $.get(url, function (data) {
+        $('#loginRegisterModal .modal-content').html(data);
+        $('#loginRegisterModal').modal();
+        $('#submit').click(function (event) {
+            event.preventDefault();
+            let request = $.ajax({
+                url: url,
+                type: "POST",
+                data: $('#ModalForm').serialize()
+            });
 
-// Function 1 description
-function function1(handle) {
+            request.done(function(response, textStatus, xhr) {
+                if (xhr.status == 200) {
+                    $('#loginRegisterModal').modal('hide');
+                    window.location = response;
+                };
+            });
 
-}
-
-// Once valid data is received from the user, this function processes it and attempts a POST request
-function createNewUser(e, handle) {
-    console.log("postData initiated")
-    let postURL; let data;
-
-    postURL = '/user/new';
-    data = { name: newUserName }
-
-    let request = $.ajax({
-        type: 'post',
-        url: postURL,
-        data: data
+            request.fail(function(xhr, textStatus, error) {
+                if (xhr.status == 422) {
+                    console.log("422 error")
+                    let errorResponse = JSON.parse(xhr.responseJSON);
+                    $('.invalid-feedback').remove();
+                    $('.alert').remove();
+                    $('.form-control').removeClass('is-invalid');
+                    for (let key in errorResponse) {
+                        switch (key) {
+                            case "username":
+                            case "password":
+                            case "email":
+                            case "confirm_email":
+                            case "confirm_password":
+                                let errorMessage = errorResponse[key];
+                                $('<div class="invalid-feedback"><span>' + errorMessage + '</span></div>' )
+                                .insertAfter('#' + key).show();
+                                $('#' + key).addClass('is-invalid');
+                                break;
+                            default:
+                                const flashMessage = errorResponse.flash.flashMessage
+                                const flashCategory = errorResponse.flash.flashCategory
+                                $('<div class="alert alert-' + flashCategory + ' alert-dismissible fade show" role="alert">' + flashMessage + '<button type="button" class="close" data-dismiss="alert" aria-label="Close"><span aria-hidden="false">&times;</span></button></div>')
+                                .insertBefore('#modal-body').show();
+                                $('.alert-' + flashCategory).css("margin-bottom", "0rem")
+                        }
+                    }
+                }
+            });
+        });
     });
-
-    request.done(function (response, textStatus, xhr) {
-
-        if (xhr.status == 200) {
-            createUTub(response.UTub_ID, response.UTub_name)
-        }
-
-    })
-
-    request.fail(function (xhr, textStatus, error) {
-
-        if (xhr.status == 404) {
-            // Reroute to custom U4I 404 error page
-        } else {
-            console.log('Unimplemented')
-        }
-    })
-}
-
-// Text input template
-function buildInput() {
-    
-    const parent = $('#') //container
-
-    // New input text field
-    let wrapper = document.createElement('div');
-    let input = document.createElement('input');
-    let submit = document.createElement('i');
-
-    $(wrapper).attr({
-        'style': 'display: none'
-    })
-
-    $(input).attr({
-        'type': 'text',
-        'id': 'createUTub',
-        'class': 'userInput',
-        'placeholder': 'New UTub name',
-        'onblur': 'postData(event, "createUTub")'
-    })
-
-    $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
-
-    wrapper.append(input);
-    wrapper.append(submit);
-    parent.append(wrapper); 
-}
+};

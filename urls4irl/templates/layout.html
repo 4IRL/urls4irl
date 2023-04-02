@@ -106,7 +106,8 @@
     </nav>
     <!-- Navigation Bar -->
 
-
+{% block mainbody %}
+    {% if current_user.is_authenticated %}
     <!-- Main Panel View -->
 
     <main id="mainPanel" class="mx-0 bt-4 pt-0">
@@ -122,13 +123,16 @@
         {% endwith %}
 
         <div id="pageContent" class="row">
-            {% block content %}
+            {% block utubhome %}
             {% endblock %}
         </div>
 
     </main>
 
     <!-- Main Panel View -->
+
+    {% endif %}
+{% endblock %}
 
     {% block modal_extender %}
     <!-- Modal -->
@@ -161,7 +165,7 @@
             </div>
         </div>
     </div>
-
+    
     <!-- Modal -->
     {% endblock %}
 

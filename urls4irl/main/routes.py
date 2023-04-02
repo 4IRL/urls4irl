@@ -9,8 +9,9 @@ def splash():
     """Splash page for either an unlogged in user.
 
     """
-
-    return redirect(url_for('users.login'))
+    if current_user.is_authenticated:
+        return redirect(url_for('main.home'))
+    return render_template('splash.html')
 
 @main.route('/home', methods=["GET"])
 @login_required
@@ -36,6 +37,7 @@ def home():
 
     elif len(request.args) > 1:
         # Too many args in URL
+        print("Too many arguments?")
         return abort(404)
 
     else:

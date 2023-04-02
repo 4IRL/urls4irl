@@ -19,11 +19,17 @@ def test_login_registered_user(app, register_first_user, load_login_page):
 
     response = client.post("/login", data=registered_user_data, follow_redirects = True)
 
-    # Correctly redirects to home page
-    assert response.history[0].status_code == 302
+    # print(response)
+    # print(response.data)
+    # print(response.location)
+    # print(response.status)
+    # print(response.status_code)
+    # print(response.response)
+    # print(response.path)
+
+    # Correctly responds with URL to home page
+    assert response.data == b'/home'
     assert response.status_code == 200
-    assert request.path == url_for("main.home")
-    assert len(response.history) == 1
     
     # Test if user logged in
     assert current_user.username == registered_user_data["username"]
