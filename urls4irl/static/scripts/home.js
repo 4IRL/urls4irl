@@ -138,16 +138,26 @@ function postData(e, handle) {
         case 'editUTubDescription':
             console.log('Unimplemented')
             break;
-        case 'addTag':
-            postURL = '/tag/new/[urlid?]';
-            data = { name: userInput }
-            break;
         case 'editURL':
             postURL = '/url/edit';
             console.log('Unimplemented')
             break;
         case 'editURLDescription':
             console.log('Unimplemented')
+            break;
+        case 'addTag':
+            postURL = '/tag/add/[urlid?]';
+            data = { name: userInput }
+            break;
+        case 'editTags':
+            // Send UTubID
+        let tagID = e[0];
+        let tagText = e[1];
+            postURL = '/tag/edit/' + tagID;
+            data = {
+                id: tagID,
+                tag_string: tagText
+            }
             break;
         default:
             console.log('Unimplemented')
@@ -207,6 +217,13 @@ function postData(e, handle) {
                 default:
                     console.log('Unimplemented')
             }
+        }
+    })
+
+    request.fail(function (xhr, textStatus, error) {
+
+        if (xhr.status == 404) {
+            // Reroute to custom U4I 404 error page
         } else {
             switch (handle) {
                 case 'createUTub':
@@ -233,11 +250,9 @@ function postData(e, handle) {
                 default:
                     console.log('Unimplemented')
             }
-
         }
     })
 }
-
 
 // Creates option dropdown menu of users in RH UTub information panel
 function gatherUsers(dictUsers, creator) {
@@ -270,7 +285,7 @@ function cardEdit(selectedUTubID, selectedURLid, infoType) {
         inputParent = $(jQuerySel).find('p.card-text');     // Find appropriate card element         
         initString = inputParent[0].innerText;              // Store pre-edit values
         originalURL = inputParent[0].innerText;             // Store pre-edit values
-        $(inputParent).html('');                                // Clear url card-text
+        $(inputParent).html('');                            // Clear url card-text
         inputEl = $('#edit_url');                           // Temporary input text element
         inputID = 'edit_url';
         postURL = '/url/edit/';

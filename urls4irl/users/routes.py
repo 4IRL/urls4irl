@@ -23,7 +23,7 @@ def login():
             login_user(user)    # Can add Remember Me functionality here
             next_page = request.args.get('next')    # Takes user to the page they wanted to originally before being logged in
 
-            return redirect(next_page) if next_page else redirect(url_for('main.home'))
+            return redirect(next_page) if next_page else url_for('main.home')
         else:
             return render_template('login.html', login_form=login_form), 400
 
@@ -52,7 +52,7 @@ def register_user():
         db.session.commit()
         user = User.query.filter_by(username=username).first()
         login_user(user)
-        return redirect(url_for('main.home'))
+        return url_for('main.home')
 
     return render_template('register_user.html', register_form=register_form)
 

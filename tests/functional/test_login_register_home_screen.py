@@ -10,11 +10,9 @@ def test_get_home_screen_not_logged_in(client):
     with client:
         response = client.get("/", follow_redirects = True)
         
-        # Currently redirects to login page, no splash page
-        assert response.history[0].status_code == 302
+        # Hits splash page
         assert response.status_code == 200
-        assert request.path == url_for("users.login")
-        assert len(response.history) == 1
+        assert bytes("A simple, clean way to permanently save and share URLs.", "utf-8") in response.data
 
 def test_post_home_screen_not_logged_in(client):
     """

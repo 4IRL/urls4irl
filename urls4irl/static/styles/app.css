@@ -2,7 +2,7 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow-y: hidden;
+    /* overflow-y: hidden; */
     background-color: #1f2424;
 }
 
@@ -13,7 +13,7 @@ h1 {
     font-size: 2.5em;
 }
 
-h2 {
+h2, .login-register-label {
     color: #2ecc71;
 }
 
@@ -36,6 +36,7 @@ form {
     box-sizing: content-box;
     /* So the width will be 100% + 17px */
 }
+
 
 img {
     max-width: 50%;
@@ -458,6 +459,58 @@ i.fa-check-square {
     border-bottom-color: #60daaa;
     border-left-color: #60daaa;
     transition: border-color 0s ease-out 0.5s, width 0.25s ease-out 0.5s, height 0.25s ease-out 0.75s;
+}
+
+/* Splash page stuff */
+.bg-img {
+    background: url("splash.jpg");
+    background-size: cover;
+    min-height: 380px;
+    position: relative;
+}
+
+.container-fluid {
+    padding-right: 0px;
+    padding-left: 0px;
+}
+
+.bg-cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    /* height: 100%; */
+    height: 100vh;
+}
+
+.jumbotron {
+    background: rgba(248, 248, 248, 0.74);
+    padding: 6rem 2rem;
+}
+
+.splash-button {
+    margin-top: 10px;
+}
+
+.login-register-label {
+    font-weight: 700;
+    font-size: 120%;
+}
+
+.modal-open {
+    height: 100%;
+}
+
+.modal-content {
+    width: max-content;
+}
+
+/* Remove the scroll bar from login/register forms */
+.login-register-form {
+    overflow-y: hidden;
+    padding-right: 0px;
+    width: 500px;
 }
 
 /* ID sepcific */

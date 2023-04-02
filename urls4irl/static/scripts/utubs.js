@@ -32,7 +32,7 @@ function buildUTubDeck(UTubs) {
 
     if (UTubs.length == 0) {
         // User has no UTubs
-        $('#UTubHeader')[0].innerHTML = "<------------------------- Oops, no UTubs! Create one!";
+        $('#UTubHeader')[0].innerHTML = "<----------- Oops, no UTubs! Create one!";
         $('#UTubDeck').find('h2')[0].innerHTML = "Create a UTub";
     } else {
         // Instantiate UTubDeck (top left panel) with UTubs accessible to current user
@@ -91,15 +91,20 @@ function changeUTub(selectedUTubID) {
     // Unselect any already selected UTub
     $('#listUTubs').find('.active').removeClass('active');
 
+    // UTub deck display updates
     var selectedUTubRadio = $('input[utubid=' + selectedUTubID + ']');
     selectedUTubRadio.parent().toggleClass('active');
     var UTubName = selectedUTubRadio[0].value;
+    $('#deleteUTubButton').show();
+
+    // Tag deck display updates
+    $('#createTagButton').show();
+
+    // URL deck display updates
     $('#UTubHeader')[0].innerHTML = UTubName;
     $('#editUTub')[0].value = UTubName;
 
     getUtubInfo(selectedUTubID).then(function (selectedUTub) {
-        console.log(selectedUTub)
-
         //Use local variables, pass them in to the subsequent functions as required
         var dictURLs = selectedUTub.urls;
         var dictTags = selectedUTub.tags;
@@ -149,7 +154,7 @@ function createUTub(id, name) {
 
     // Move "createUTub" element to the end of list
     let UTubList = $('#listUTubs').children();
-    const createUTubEl = $(UTubList[UTubList.length-1]).detach();
+    const createUTubEl = $(UTubList[UTubList.length - 1]).detach();
     $('#listUTubs').append(label);
     $('#listUTubs').append(createUTubEl);
 
@@ -189,6 +194,11 @@ function deleteUTub() {
 
             // Update UTub center panel
             $('#UTubHeader')[0].innerHTML = "Select a UTub";
+            $('#TagDeck').find('h2')[0].innerHTML = "No UTub Selected";
+            if ($('#listUTubs').children().length <= 1) {
+                $('#UTubHeader')[0].innerHTML = "<----------- Oops, no UTubs! Create one!";
+                $('#UTubDeck').find('h2')[0].innerHTML = "Create a UTub";
+            }
             $('#editUTub').hide();
             $('#addURL').hide();
             $('#UTubDescription').hide();

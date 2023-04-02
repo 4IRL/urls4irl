@@ -1,16 +1,17 @@
 import pytest
 from flask import url_for, request
 from flask_login import current_user
+from werkzeug.security import check_password_hash
 
 from models_for_test import invalid_user_1, valid_user_1
 from urls4irl.models import User
 from utils_for_test import get_csrf_token
 
-def test_login_registered_user(app, register_first_user, load_login_page):
+def test_login_registered_and_logged_in_user(app, register_first_user, load_login_page):
     """
-    GIVEN a registered user
-    WHEN "/login" is POST'd with filled in correctly with form data
-    THEN ensure login does occur
+    GIVEN a registered and logged in user
+    WHEN "/login" is POST'd with CSRF token
+    THEN ensure the user is redirected to the home page since they are already logged in
     """
     registered_user_data, _ = register_first_user
     client, csrf_token_str = load_login_page
@@ -19,15 +20,13 @@ def test_login_registered_user(app, register_first_user, load_login_page):
 
     response = client.post("/login", data=registered_user_data, follow_redirects = True)
 
-    # Correctly redirects to home page
-    assert response.history[0].status_code == 302
+    # Correctly responds with URL to home page
+    assert response.data == b'/home'
     assert response.status_code == 200
-    assert request.path == url_for("main.home")
-    assert len(response.history) == 1
     
     # Test if user logged in
     assert current_user.username == registered_user_data["username"]
-    assert current_user.password != registered_user_data["password"]
+    assert check_password_hash(current_user.password, registered_user_data["password"])
     assert current_user.email == registered_user_data["email"]
 
     # Ensure user id's match with  database
@@ -66,20 +65,18 @@ def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
     GIVEN a registered and logged in user
     WHEN "/" is GET after user is already logged on
     THEN ensure redirection occurs and user is brought to their home page
-        - Note: Two redirects, from "/" -> "/login" -> "/home"
+        - Note: One redirects, from "/" -> "/home"
     """
-    client, csrf_token, logged_in_user, app = login_first_user_with_register
+    client, _, logged_in_user, _ = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/", follow_redirects = True)
 
     # Correctly redirects first to login page
     # Since already logged in, redirects to home page
-    assert len(response.history) == 2
+    assert len(response.history) == 1
     assert response.history[0].status_code == 302
     assert response.history[0].request.path == url_for("main.splash")
-    assert response.history[1].status_code == 302
-    assert response.history[1].request.path == url_for("users.login")
 
     # Ensure lands on user's home page
     assert response.status_code == 200
@@ -205,7 +202,7 @@ def test_user_can_login_logout_login(login_first_user_with_register):
     WHEN they logout via GET "/logout"
     THEN ensure they can login in again successfully
     """
-    client, csrf_token, logged_in_user, app = login_first_user_with_register
+    client, _, logged_in_user, _ = login_first_user_with_register
 
     # Ensure logout is successful
     response = client.get("/logout", follow_redirects = True)
@@ -226,19 +223,51 @@ def test_user_can_login_logout_login(login_first_user_with_register):
         "password": valid_user_1["password"]
     }, follow_redirects = True)
 
-    # Ensure redirect starts on login page
-    assert len(response.history) == 1
-    assert response.history[0].status_code == 302
-    assert response.history[0].request.path == url_for("users.login")
-
-    # Ensure lands on home page
+    # Ensure backend sends url to home page for frontend to redirect to
     assert response.status_code == 200
-    assert request.path == url_for("main.home")
+    assert response.data == bytes(f"{url_for('main.home')}", 'utf-8')
 
-    # Test if user logged in
+    # test if user logged in
     assert current_user.username == logged_in_user.username
     assert current_user.password == logged_in_user.password
     assert current_user.email == logged_in_user.email
-    assert int(current_user.get_id()) == logged_in_user.id
 
-    assert bytes(f'Logged in as {current_user.username}', 'utf-8') in response.data
+def test_login_modal_is_shown(client):
+    """
+    GIVEN a non-logged in user visiting the splash page ("/")
+    WHEN the user makes a request to "/login"
+    THEN verify that the backends responds with a modal in the HTML
+    """
+    with client:
+        response = client.get("/")
+        response = client.get("/login")
+        assert b'<form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>' in response.data
+
+        # Ensure on login page
+        assert b'<input id="csrf_token" name="csrf_token" type="hidden" value=' in response.data
+        assert b'<input class="form-control form-control-lg" id="username" name="username" required type="text" value="">' in response.data
+        assert b'<input class="form-control form-control-lg" id="password" name="password" required type="password" value="">' in response.data
+        assert request.path == url_for("users.login")
+
+def test_login_modal_logs_user_in(client, register_first_user):
+    """
+    GIVEN a non-logged in user visiting the splash page ("/")
+    WHEN the user makes a GET request to "/login", and then a POST request with the applicable form info
+    THEN verify that the backends responds with URL to "/home" on response to the post 
+    """
+    registered_user_data, _ = register_first_user
+    with client:
+        response = client.get("/")
+        response = client.get("/login")
+        csrf_token = get_csrf_token(response.data)
+
+        registered_user_data["csrf_token"] = csrf_token
+
+        response = client.post("/login", data=registered_user_data)
+
+        assert response.status_code == 200
+        assert response.data == bytes(f"{url_for('main.home')}", "utf-8")
+
+        assert current_user.username == registered_user_data["username"]
+        assert check_password_hash(current_user.password, registered_user_data["password"])
+        assert current_user.email == registered_user_data["email"]
