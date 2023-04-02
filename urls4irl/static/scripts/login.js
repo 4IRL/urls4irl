@@ -29,7 +29,7 @@ function modalOpener(url) {
             request.done(function(response, textStatus, xhr) {
                 if (xhr.status == 200) {
                     $('#loginRegisterModal').modal('hide');
-                    window.location = response;
+                    window.location.replace(response);
                 };
             });
 
