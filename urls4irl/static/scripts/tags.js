@@ -345,11 +345,11 @@ function removeTag(tagID) {
 
 // Update tag display to reflect changes in response to a "Select All" filter request
 function filterTags(tagID) {
+
     $('div[tagid=' + tagID + ']').toggleClass('selected')
 
     let input = $('#selectAll');
     let tagList = $('.tag-input-container');
-
     console.log("filter tags")
     if (tagID == 'all') {
 
