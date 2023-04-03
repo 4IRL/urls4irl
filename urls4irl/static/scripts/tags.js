@@ -102,7 +102,8 @@ function buildTagDeck(dictTags) {
         let selAllCheck = document.createElement('input');
 
         $(container).attr({
-            'class': 'tag-input-container',
+            'id': 'selectAll',
+            'class': 'selected',
             'onclick': "filterTags('all'); filterURLDeck()"
         })
 
@@ -120,7 +121,7 @@ function buildTagDeck(dictTags) {
         })
 
         label.innerHTML = 'Select All';
-        $(container).append(selAllCheck);
+        // $(container).append(selAllCheck);
         $(container).append(label);
         parent.append(container);
         // gparent.insertBefore(container, parent);
@@ -148,7 +149,8 @@ function buildTagDeck(dictTags) {
             let checkbox = document.createElement('input');
 
             $(container).attr({
-                'class': 'tag-input-container',
+                'tagid': tagID,                
+                'class': 'tag-input-container selected',
                 'onclick': "filterTags(" + tagID + "); filterURLDeck()"
             })
 
@@ -163,7 +165,7 @@ function buildTagDeck(dictTags) {
             })
 
             label.innerHTML += tagText;
-            $(container).append(checkbox);
+            // $(container).append(checkbox);
             $(container).append(label);
             parent.append(container);
         }
@@ -343,23 +345,29 @@ function removeTag(tagID) {
 
 // Update tag display to reflect changes in response to a "Select All" filter request
 function filterTags(tagID) {
+    $('div[tagid=' + tagID + ']').toggleClass('selected')
+
+    let input = $('#selectAll');
+    let tagList = $('.tag-input-container');
+
     console.log("filter tags")
     if (tagID == 'all') {
 
         console.log("filter all tags")
-        let input = $('#selectAll');
-        console.log(!input[0].checked)
+        console.log(input.hasClass('selected'))
 
         // Toggle all filter tags to match "Select All" checked status
-        $('input[type=checkbox]').prop("checked", !input[0].checked);
+        input.toggleClass('selected')
+        input.hasClass('selected') ? tagList.addClass('selected') : tagList.removeClass('selected')
 
         let spanObjs = $('span.tag');
-        if (input[0].checked) {
+        if (input.hasClass('selected')) {
             spanObjs.show()
         } else {
             spanObjs.hide()
         }
     } else {
+        $('#selectAll').removeClass('selected')
         $('span[tagid=' + tagID + ']').toggle();
     }
 }
