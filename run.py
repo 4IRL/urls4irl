@@ -1,17 +1,22 @@
 from urls4irl import create_app
 from os import environ
 from dotenv import load_dotenv
-from urls4irl.config import TestingConfig
 
 load_dotenv(override=True)
 
-if environ.get('TESTING') is not None and environ.get('TESTING').lower() == 'true':
-    print("In testing")
-    app = create_app(TestingConfig, True)
-else:
-    print("Not in testing")
+if __name__ == "__main__":
+    if environ.get('PRODUCTION') is None:
+        print("Missing PRODUCTION environment variable.")
+        quit()
+
+    is_production = environ.get('PRODUCTION')
     app = create_app()
 
-if __name__ == "__main__":
-    app.run(host='0.0.0.0')
-    
+    if is_production.lower() == 'false':
+        print("Not in production.")
+        app.run(port=5000)
+    elif is_production.lower() == 'true':
+        print("In production.")
+        app.run(host='0.0.0.0')
+    else:
+        print("Invalid PRODUCTION environment variable.")
