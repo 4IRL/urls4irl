@@ -141,13 +141,16 @@ function buildTagDeck(dictTags) {
         });
 
         // 2b. Loop through all tags and provide checkbox input for filtering
-        for (let i in dictTags) {
-            
+        for (let i in dictTags) {            
             let tagDiv = createTaginDeck(dictTags[i].id, dictTags[i].tag_string)
+
+            $(container).attr({
+                'class': 'tag-input-container',
+                'onclick': "filterTags(" + tagID + "); filterURLDeck()"
+            })
 
             parent.append(tagDiv);
         }
-
     }
     // New Tag input text field. Initially hidden, shown when create Tag is requested. Input field recreated here to ensure at the end of list after creation of new Tag
     let wrapper = document.createElement('div');
@@ -335,11 +338,6 @@ function removeTag(tagID) {
 
 // Update tag display to reflect changes in response to a "Select All" filter request
 function filterTags(tagID) {
-    $('div[tagid=' + tagID + ']').toggleClass('selected')
-
-    let input = $('#selectAll');
-    let tagList = $('.tag-input-container');
-
     console.log("filter tags")
     if (tagID == 'all') {
 
@@ -352,11 +350,13 @@ function filterTags(tagID) {
 
         let spanObjs = $('span.tag');
         if (input.hasClass('selected')) {
+        if (input.hasClass('selected')) {
             spanObjs.show()
         } else {
             spanObjs.hide()
         }
     } else {
+        $('#selectAll').removeClass('selected')
         $('#selectAll').removeClass('selected')
         $('span[tagid=' + tagID + ']').toggle();
     }
