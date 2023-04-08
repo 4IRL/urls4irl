@@ -142,32 +142,10 @@ function buildTagDeck(dictTags) {
 
         // 2b. Loop through all tags and provide checkbox input for filtering
         for (let i in dictTags) {
-            let tagText = dictTags[i].tag_string;
-            let tagID = dictTags[i].id;
-            let container = document.createElement('div');
-            let label = document.createElement('label');
-            let checkbox = document.createElement('input');
+            
+            let tagDiv = createTaginDeck(dictTags[i].id, dictTags[i].tag_string)
 
-            $(container).attr({
-                'tagid': tagID,                
-                'class': 'tag-input-container selected',
-                'onclick': "filterTags(" + tagID + "); filterURLDeck()"
-            })
-
-            $(label).attr({ 'for': 'Tag-' + tagID })
-
-            $(checkbox).attr({
-                'type': 'checkbox',
-                'id': 'Tag-' + tagID,
-                'tagid': tagID,
-                'name': 'Tag' + i,
-                'checked': 'checked'
-            })
-
-            label.innerHTML += tagText;
-            // $(container).append(checkbox);
-            $(container).append(label);
-            parent.append(container);
+            parent.append(tagDiv);
         }
 
     }
@@ -195,37 +173,47 @@ function buildTagDeck(dictTags) {
     parent.append(wrapper);
 }
 
-// Handle all display changes related to creating a new UTub
-function createTag(id, name) {
+// Handle URL deck display changes related to creating a new tag
+function createTaginURL(tagid, string) {
 
-    let div = document.createElement('div');
+    let tagSpan = document.createElement('span');
+    let removeButton = document.createElement('a');
+
+    $(tagSpan).attr({
+        'class': 'tag',
+        'tagid': tagid,
+    });
+    tagSpan.innerHTML = string;
+
+    $(removeButton).attr({
+        'class': 'btn btn-sm btn-outline-link border-0 tag-remove',
+        'onclick': 'removeTag(' + tagid + ')'
+    });
+    removeButton.innerHTML = '&times;';
+
+    $(tagSpan).append(removeButton);
+
+    return tagSpan
+}
+
+// Handle tag deck display changes related to creating a new tag
+function createTaginDeck(tagid, string) {
+
+    let container = document.createElement('div');
     let label = document.createElement('label');
-    let checkbox = document.createElement('input');
 
-
-    $(div).attr({ 'class': 'checkbox-container' })
-
-    $(label).attr({
-        'for': 'UTub-' + id,
-        'class': 'UTub draw active',
-        'onclick': "changeUTub(" + id + ")"
-    })
-    label.innerHTML = '<b>' + name + '</b>';
-
-    $(checkbox).attr({
-        'type': 'radio',
-        // 'name': 'UTub' + i, need to extract the length of current UTubs list, increment and document here
-        'id': 'UTub-' + id,
-        'utubid': id,
-        'value': name
+    $(container).attr({
+        'tagid': tagid,
+        'class': 'tag-input-container selected',
+        'onclick': "filterTags(" + tagid + "); filterURLDeck()"
     })
 
-    $(label).append(checkbox);
-    $(div).append(label);
+    $(label).attr({ 'for': 'Tag-' + tagid })
+    label.innerHTML += string;
 
-    // Move "createUTub" element to the end of list
-    let UTubList = $('#listUTubs').children();
-    const createUTubEl = $(UTubList[UTubList.length - 1]).detach();
+    // Move "createTag" element to the end of list
+    let TagList = $('#listTags').children();
+    const createTagEl = $(UTubList[UTubList.length - 1]).detach();
     $('#listUTubs').append(label);
     $('#listUTubs').append(createUTubEl);
 
@@ -235,6 +223,8 @@ function createTag(id, name) {
     $('#addURL').show();
     $('#UTubHeader')[0].innerHTML = name;
     $('#UPRRow')[0].innerHTML = "Add a URL";
+
+    return container
 }
 
 // Allows user to edit all tags in the UTub 

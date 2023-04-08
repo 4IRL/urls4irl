@@ -128,25 +128,16 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
                 return e
             }
         });
+ 
+        let tagSpan = createTaginURL(tag.id, tag.tag_string)
 
-        let tagSpan = document.createElement('span');
-        let removeButton = document.createElement('a');
-
-        $(tagSpan).attr({
-            'class': 'tag',
-            'tagid': tag.id,
-        });
-        tagSpan.innerHTML = tag.tag_string;
-
-        $(removeButton).attr({
-            'class': 'btn btn-sm btn-outline-link border-0 tag-remove',
-            'onclick': 'removeTag(' + tag.id + ')'
-        });
-        removeButton.innerHTML = '&times;';
-
-        $(tagSpan).append(removeButton);
         $(urlTags).append(tagSpan);
     }
+    
+    // New tag create span    
+    let tagSpan = createTaginURL(0, '')
+
+    $(urlTags).append(tagSpan);
 
     $(urlOptions).attr({ 'class': 'card-body URLOptions' })
 
@@ -157,7 +148,8 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
 
     $(addTag).attr({
         'class': 'card-link btn btn-info',
-        'type': 'button'
+        'type': 'button',
+        'onclick': "showInput('addTag')"
     })
     addTag.innerHTML = "Add Tag"
 
@@ -204,7 +196,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         $(accessURL).attr({ 'onclick': 'postData(event, "createURL")' })
         $(accessURL).addClass('btn-success')
         accessURL.innerHTML = "Create URL"
-        $(addTag).attr({ 'onclick': "showInput('addTag')" })
+        // $(addTag).attr({ 'onclick': "showInput('addTag')" })
         $(editURL).attr({
             // Re-highlight input field?
             // 'onclick': "cardEdit(" + selectedUTubID + "," + dictURLs[i].url_id + ",'url')" should refocus on URL input
@@ -229,7 +221,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         $(accessURL).attr({ 'onclick': "accessLink('" + string + "')" })
         $(accessURL).addClass('btn-primary')
         accessURL.innerHTML = "Access Link"
-        $(addTag).attr({ 'onclick': "cardEdit(" + UTubID + "," + URLID + ",'tag')" })
+        // $(addTag).attr({ 'onclick': "cardEdit(" + UTubID + "," + URLID + ",'tag')" })
         $(editURL).attr({ 'onclick': "cardEdit(" + UTubID + "," + URLID + ",'url')" })
         $(delURL).attr({ 'onclick': "deleteURL()" })
         // "/delete_url/" + UTubID + "/" + dictURLs[i].url_id
