@@ -141,7 +141,7 @@ function buildTagDeck(dictTags) {
         });
 
         // 2b. Loop through all tags and provide checkbox input for filtering
-        for (let i in dictTags) {            
+        for (let i in dictTags) {
             let tagDiv = createTaginDeck(dictTags[i].id, dictTags[i].tag_string)
 
             $(container).attr({
@@ -350,15 +350,16 @@ function filterTags(tagID) {
 
         let spanObjs = $('span.tag');
         if (input.hasClass('selected')) {
-        if (input.hasClass('selected')) {
-            spanObjs.show()
+            if (input.hasClass('selected')) {
+                spanObjs.show()
+            } else {
+                spanObjs.hide()
+            }
         } else {
-            spanObjs.hide()
+            $('#selectAll').removeClass('selected')
+            $('#selectAll').removeClass('selected')
+            $('span[tagid=' + tagID + ']').toggle();
         }
-    } else {
-        $('#selectAll').removeClass('selected')
-        $('#selectAll').removeClass('selected')
-        $('span[tagid=' + tagID + ']').toggle();
     }
 }
 
