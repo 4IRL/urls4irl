@@ -169,6 +169,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         // New URL card and input text fields. Initially hidden, shown when create URL is requested. Input field recreated here to ensure at the end of list after creation of new URL
         $(col).attr({
             'id': 'createURL',
+            'class': 'createDiv',
             'style': 'display: none',
             'onblur': 'hideInput(event)'
         })
@@ -204,7 +205,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         })
         $(delURL).attr({
             // Cancel creation, reset fields?
-            //'onclick': "deleteURL()" 
+            'onclick': "$('#createURL').hide()" 
         })
         delURL.innerHTML = "Cancel"
     } else {

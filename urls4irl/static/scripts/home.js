@@ -96,7 +96,7 @@ $(document).ready(function () {
 function showInput(handle) {
 
     let inputEl = $('#' + handle);
-    let inputDiv = inputEl.closest('div');
+    let inputDiv = inputEl.closest('.createDiv');
 
     // Show temporary input text element
     inputDiv.show();

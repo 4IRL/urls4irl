@@ -68,6 +68,7 @@ function buildUTubDeck(UTubs) {
     let submit = document.createElement('i');
 
     $(wrapper).attr({
+        'class': 'createDiv',
         'style': 'display: none'
     })
 
@@ -99,11 +100,12 @@ function changeUTub(selectedUTubID) {
 
     // Tag deck display updates
     $('#createTagButton').show();
-
+    
     // URL deck display updates
     $('#UTubHeader')[0].innerHTML = UTubName;
     $('#editUTub')[0].value = UTubName;
-
+    $('#addURL').show();
+    
     getUtubInfo(selectedUTubID).then(function (selectedUTub) {
         //Use local variables, pass them in to the subsequent functions as required
         var dictURLs = selectedUTub.urls;

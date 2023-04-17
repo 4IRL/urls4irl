@@ -90,43 +90,19 @@ function buildTagDeck(dictTags) {
         // User has no Tags in this UTub
         $('#TagDeck').find('h2')[0].innerHTML = "Create a Tag";
         $('#editTagButton').hide();
-        parent[0].innerHTML = '<h5>No tags applied to any URLs in this UTub</h5>'; // I still want this to show if user creates a new tag but has not yet applied them to any URLs
+        parent[0].innerHTML = '<h5>No tags applied to any URLs in this UTub</h5>'; // We still want this to show if user creates a new tag but has not yet applied them to any URLs
     } else {
         // Instantiate TagDeck (bottom left panel) with tags in current UTub
         $('#TagDeck').find('h2')[0].innerHTML = "Tags";
         $('#editTagButton').show();
 
         // 1. Select all checkbox
-        let container = document.createElement('div');
-        let label = document.createElement('label');
-        let selAllCheck = document.createElement('input');
+        createTaginDeck(0, 'selectAll')
 
-        $(container).attr({
-            'id': 'selectAll',
-            'class': 'selected',
-            'onclick': "filterTags('all'); filterURLDeck()"
-        })
+        // 2. New Tag input text field. Initially hidden, shown when create Tag is requested  
+        createTaginDeck(0, 'newTag')
 
-        $(selAllCheck).attr({
-            'type': 'checkbox',
-            'id': 'selectAll',
-            'name': 'selectAll',
-            'checked': 'true',
-            // 'onclick': "filterTags('all'); filterURLDeck()"
-        })
-
-        $(label).attr({
-            'for': 'selectAll',
-            // 'onclick': "filterTags('all'); filterURLDeck()"
-        })
-
-        label.innerHTML = 'Select All';
-        // $(container).append(selAllCheck);
-        $(container).append(label);
-        parent.append(container);
-        // gparent.insertBefore(container, parent);
-
-        // 2a. Alpha sort tags based on tag_string
+        // 3a. Alpha sort tags based on tag_string
         dictTags.sort(function (a, b) {
             const tagA = a.tag_string.toUpperCase(); // ignore upper and lowercase
             const tagB = b.tag_string.toUpperCase(); // ignore upper and lowercase
@@ -140,63 +116,66 @@ function buildTagDeck(dictTags) {
             return 0;
         });
 
-        // 2b. Loop through all tags and provide checkbox input for filtering
+        // 3b. Loop through all tags and provide checkbox input for filtering
         for (let i in dictTags) {
-            let tagDiv = createTaginDeck(dictTags[i].id, dictTags[i].tag_string)
-
-            $(container).attr({
-                'class': 'tag-input-container',
-                'onclick': "filterTags(" + tagID + "); filterURLDeck()"
-            })
-
-            parent.append(tagDiv);
+            createTaginDeck(dictTags[i].id, dictTags[i].tag_string)
         }
     }
-    // New Tag input text field. Initially hidden, shown when create Tag is requested. Input field recreated here to ensure at the end of list after creation of new Tag
-    let wrapper = document.createElement('div');
-    let input = document.createElement('input');
-    let submit = document.createElement('i');
-
-    $(wrapper).attr({
-        'style': 'display: none'
-    })
-
-    $(input).attr({
-        'type': 'text',
-        'id': 'createTag',
-        'class': 'userInput',
-        'placeholder': 'New Tag name',
-        'onblur': 'postData(event, "createTag")'
-    })
-
-    $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
-
-    wrapper.append(input);
-    wrapper.append(submit);
-    parent.append(wrapper);
 }
 
 // Handle URL deck display changes related to creating a new tag
 function createTaginURL(tagid, string) {
 
-    let tagSpan = document.createElement('span');
-    let removeButton = document.createElement('a');
+    let tagEl;
 
-    $(tagSpan).attr({
-        'class': 'tag',
-        'tagid': tagid,
-    });
-    tagSpan.innerHTML = string;
+    // New tag creation specific items
+    if (tagid == 0) {
 
-    $(removeButton).attr({
-        'class': 'btn btn-sm btn-outline-link border-0 tag-remove',
-        'onclick': 'removeTag(' + tagid + ')'
-    });
-    removeButton.innerHTML = '&times;';
+        let container = document.createElement('div');
+        let input = document.createElement('input');
+        let submit = document.createElement('i');
 
-    $(tagSpan).append(removeButton);
+        $(container).attr({
+            'class': 'createDiv',
+            'style': 'display: none'
+        })
 
-    return tagSpan
+        $(input).attr({
+            'type': 'text',
+            'id': 'addTag',
+            'class': 'tag',
+            'size': '30'
+        });
+
+        $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
+
+        container.append(input);
+        container.append(submit);
+
+        tagEl = container;
+    } else { // Regular tag creation
+
+        let tagSpan = document.createElement('span');
+        let removeButton = document.createElement('a');
+
+        $(tagSpan).attr({
+            'class': 'tag',
+            'tagid': tagid,
+        });
+        tagSpan.innerHTML = string;
+
+        $(removeButton).attr({
+            'class': 'btn btn-sm btn-outline-link border-0 tag-remove',
+            'onclick': 'removeTag(' + tagid + ')'
+        });
+        removeButton.innerHTML = '&times;';
+
+        $(tagSpan).append(removeButton);
+
+        tagEl = tagSpan;
+    }
+
+    return tagEl
 }
 
 // Handle tag deck display changes related to creating a new tag
@@ -206,28 +185,63 @@ function createTaginDeck(tagid, string) {
     let label = document.createElement('label');
 
     $(container).attr({
-        'tagid': tagid,
-        'class': 'tag-input-container selected',
+        'class': 'selected',
         'onclick': "filterTags(" + tagid + "); filterURLDeck()"
     })
 
-    $(label).attr({ 'for': 'Tag-' + tagid })
-    label.innerHTML += string;
+    // Select all and new tag creation specific items
+    if (tagid == 0) {
+        if (string == 'selectAll') {
+            $(container).attr({
+                'id': 'selectAll'
+            })
+            $(label).attr({
+                'for': 'selectAll'
+            })
+            label.innerHTML = 'Select All';
 
-    // Move "createTag" element to the end of list
-    let TagList = $('#listTags').children();
-    const createTagEl = $(UTubList[UTubList.length - 1]).detach();
-    $('#listUTubs').append(label);
-    $('#listUTubs').append(createUTubEl);
+            $(container).append(label);
+        } else if (string == 'newTag') {
 
-    $('#UTubDeck').find('h2')[0].innerHTML = "Create a UTub";
-    $('#UTub-' + id).prop('checked', true);
+            let input = document.createElement('input');
+            let submit = document.createElement('i');
 
-    $('#addURL').show();
-    $('#UTubHeader')[0].innerHTML = name;
-    $('#UPRRow')[0].innerHTML = "Add a URL";
+            $(container).attr({
+                'class': 'createDiv',
+                'style': 'display: none'
+            })
 
-    return container
+            $(input).attr({
+                'type': 'text',
+                'id': 'createTag',
+                'class': 'userInput',
+                'placeholder': 'New Tag name',
+                'onblur': 'postData(event, "createTag")'
+            })
+
+            $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
+
+            container.append(input);
+            container.append(submit);
+        }
+        $('#listTags').append(container);
+    } else { // Regular tag creation
+
+        $(container).attr({
+            'tagid': tagid
+        })
+
+        $(label).attr({ 'for': 'Tag-' + tagid })
+        label.innerHTML += string;
+
+        $(container).append(label);
+
+        // Move "createTag" element to the end of list
+        let TagList = $('#listTags').children();
+        const createTagEl = $(TagList[TagList.length - 1]).detach();
+        $('#listTags').append(container);
+        $('#listTags').append(createTagEl);
+    }
 }
 
 // Allows user to edit all tags in the UTub 
@@ -265,7 +279,7 @@ function editTags(handle) {
 
 // Add a tag to the selected URL
 function addTag(selectedUTubID, selectedURLid) {
-    var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID          
+    var jQuerySel = 'div.url.selected[urlid=" + selectedURLid + "]';    // Find jQuery selector with selected ID          
     var cardTagDeck = $(jQuerySel).find('div.URLTags');                 // Find appropriate card element
 
     if ($('#new_tag').length) $('#new_tag').focus()
@@ -356,7 +370,6 @@ function filterTags(tagID) {
                 spanObjs.hide()
             }
         } else {
-            $('#selectAll').removeClass('selected')
             $('#selectAll').removeClass('selected')
             $('span[tagid=' + tagID + ']').toggle();
         }
