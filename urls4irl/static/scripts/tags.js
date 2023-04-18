@@ -91,6 +91,9 @@ function buildTagDeck(dictTags) {
         $('#TagDeck').find('h2')[0].innerHTML = "Create a Tag";
         $('#editTagButton').hide();
         parent[0].innerHTML = '<h5>No tags applied to any URLs in this UTub</h5>'; // We still want this to show if user creates a new tag but has not yet applied them to any URLs
+
+        // New Tag input text field. Initially hidden, shown when create Tag is requested  
+        createTaginDeck(0, 'newTag')
     } else {
         // Instantiate TagDeck (bottom left panel) with tags in current UTub
         $('#TagDeck').find('h2')[0].innerHTML = "Tags";
@@ -124,7 +127,7 @@ function buildTagDeck(dictTags) {
 }
 
 // Handle URL deck display changes related to creating a new tag
-function createTaginURL(tagid, string) {
+function createTaginURL(tagid, string, urlID) {
 
     let tagEl;
 
@@ -142,9 +145,10 @@ function createTaginURL(tagid, string) {
 
         $(input).attr({
             'type': 'text',
-            'id': 'addTag',
+            'id': 'addTag-' + urlID,
             'class': 'tag',
-            'size': '30'
+            'placeholder': 'Attribute Tag to URL',
+            'onblur': 'postData(event, "addTag")'
         });
 
         $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
@@ -185,15 +189,16 @@ function createTaginDeck(tagid, string) {
     let label = document.createElement('label');
 
     $(container).attr({
-        'class': 'selected',
-        'onclick': "filterTags(" + tagid + "); filterURLDeck()"
+        'class': 'tagFilter selected'
     })
 
     // Select all and new tag creation specific items
     if (tagid == 0) {
         if (string == 'selectAll') {
             $(container).attr({
-                'id': 'selectAll'
+                'id': 'selectAll',
+                'tagid': 'all',
+                'onclick': 'filterTags(event, "all"); filterURLDeck()'
             })
             $(label).attr({
                 'for': 'selectAll'
@@ -201,6 +206,7 @@ function createTaginDeck(tagid, string) {
             label.innerHTML = 'Select All';
 
             $(container).append(label);
+
         } else if (string == 'newTag') {
 
             let input = document.createElement('input');
@@ -228,7 +234,8 @@ function createTaginDeck(tagid, string) {
     } else { // Regular tag creation
 
         $(container).attr({
-            'tagid': tagid
+            'tagid': tagid,
+            'onclick': 'filterTags(event,' + tagid + '); filterURLDeck()'
         })
 
         $(label).attr({ 'for': 'Tag-' + tagid })
@@ -237,8 +244,8 @@ function createTaginDeck(tagid, string) {
         $(container).append(label);
 
         // Move "createTag" element to the end of list
-        let TagList = $('#listTags').children();
-        const createTagEl = $(TagList[TagList.length - 1]).detach();
+        let tagList = $('#listTags').children();
+        const createTagEl = $(tagList[tagList.length - 1]).detach();
         $('#listTags').append(container);
         $('#listTags').append(createTagEl);
     }
@@ -350,29 +357,54 @@ function removeTag(tagID) {
     })
 }
 
-// Update tag display to reflect changes in response to a "Select All" filter request
-function filterTags(tagID) {
-    console.log("filter tags")
+// Update tag display to reflect changes in response to a filter request
+function filterTags(e, tagID) {
+    let filteredTag = $(e.target).closest('div');
+    filteredTag.toggleClass('selected');
+
+    let selAll = $('#selectAll');
+    let tagList = $('.tagFilter');
+
     if (tagID == 'all') {
-
-        console.log("filter all tags")
-        console.log(input.hasClass('selected'))
-
         // Toggle all filter tags to match "Select All" checked status
-        input.toggleClass('selected')
-        input.hasClass('selected') ? tagList.addClass('selected') : tagList.removeClass('selected')
+        filteredTag.hasClass('selected') ? tagList.addClass('selected') : tagList.removeClass('selected')
 
+        // Handle filtering in URL deck
         let spanObjs = $('span.tag');
-        if (input.hasClass('selected')) {
-            if (input.hasClass('selected')) {
-                spanObjs.show()
-            } else {
-                spanObjs.hide()
+        if (filteredTag.hasClass('selected')) {
+            spanObjs.show()
+        } else {
+            spanObjs.hide()
+            selAll.removeClass('selected')
+        }
+    } else {
+        // Different conditions for selectAll behavior. If any other filters are unselected, then selectAll should be unselected. If all other filters are selected, then selectAll should be selected.
+        if (selAll.hasClass('selected')) {
+            if ($('.tagFilter').length > $('.tagFilter.selected').length) {
+                selAll.removeClass('selected')
             }
         } else {
-            $('#selectAll').removeClass('selected')
-            $('span[tagid=' + tagID + ']').toggle();
+            if ($('.tagFilter').length - 1 == $('.tagFilter.selected').length) {
+                selAll.addClass('selected')
+            }
         }
+
+        // Alternate formulation, does not work as of 04/17/23. selectAll select status should match the summed boolean select status of all other filters
+
+        // let selAllBool;
+
+        // for (let i in tagList) {
+        //     console.log(i)
+        //     console.log(tagList[i])
+        //     console.log($(tagList[i]))
+        //     selAllBool &= $(tagList[i]).hasClass('selected');
+        // }
+
+        // selAllBool ? selAll.addClass('selected') :
+        //     selAll.removeClass('selected')
+
+        // Handle filtering in URL deck
+        $('span[tagid=' + tagID + ']').toggle();
     }
 }
 

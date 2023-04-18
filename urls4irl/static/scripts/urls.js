@@ -43,8 +43,8 @@ $(document).ready(function () {
 
 // Simple function to streamline the jQuery selector extraction of URL ID. And makes it easier in case the ID is encoded in a new location in the future
 function selectedURLID() {
-    console.log($('.url.selected').attr('urlid'))
-    return $('.url.selected').attr('urlid');
+    console.log($('.url.selected').last().attr('urlid'))
+    return $('.url.selected').last().attr('urlid');
 }
 
 // Build center panel URL-tag list for selectedUTub
@@ -58,7 +58,7 @@ function buildURLDeck(dictURLs, dictTags) {
 
     for (let i in dictURLs) {
 
-        let URLcol = createURL(dictURLs[i].url_id, dictURLs[i].url_string, dictURLs[i].url_description, dictURLs[i].url_tags, selectedUTubID, dictTags)
+        let URLcol = createURL(dictURLs[i].url_id, dictURLs[i].url_string, dictURLs[i].notes, dictURLs[i].url_tags, selectedUTubID, dictTags)
 
         UPRRow.append(URLcol);
     }
@@ -88,7 +88,6 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     let delURL = document.createElement('button');
 
     $(col).attr({ 'class': 'cardCol mb-3 col-md-10' })
-
 
     $(card).attr({
         'urlid': URLID,
@@ -129,15 +128,15 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
             }
         });
  
-        let tagSpan = createTaginURL(tag.id, tag.tag_string)
+        let tagSpan = createTaginURL(tag.id, tag.tag_string, 0)
 
         $(urlTags).append(tagSpan);
     }
     
     // New tag create span    
-    let tagSpan = createTaginURL(0, '')
+    let tagInput = createTaginURL(0, '', URLID)
 
-    $(urlTags).append(tagSpan);
+    $(urlTags).append(tagInput);
 
     $(urlOptions).attr({ 'class': 'card-body URLOptions' })
 
@@ -149,7 +148,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     $(addTag).attr({
         'class': 'card-link btn btn-info',
         'type': 'button',
-        'onclick': "showInput('addTag')"
+        'onclick': "showInput('addTag-" + URLID + "')"
     })
     addTag.innerHTML = "Add Tag"
 
@@ -157,7 +156,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         'class': 'card-link btn btn-warning',
         'type': 'button'
     })
-    editURL.innerHTML = "Edit URL"
+    editURL.innerHTML = "Edit"
 
     $(delURL).attr({
         'class': 'card-link btn btn-danger',
@@ -181,7 +180,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
             'type': 'text',
             'id': 'newURLDescription',
             'placeholder': 'New URL description',
-            'size': '30'
+            'size': '50'
         })
         $(col).addClass('userInput')
 
@@ -189,7 +188,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
             'type': 'text',
             'id': 'newURL',
             'placeholder': 'New URL',
-            'size': '30'
+            'size': '50'
         })
         $(urlString).addClass('userInput')
 
@@ -226,7 +225,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         $(editURL).attr({ 'onclick': "cardEdit(" + UTubID + "," + URLID + ",'url')" })
         $(delURL).attr({ 'onclick': "deleteURL()" })
         // "/delete_url/" + UTubID + "/" + dictURLs[i].url_id
-        delURL.innerHTML = "Delete URL"
+        delURL.innerHTML = "Delete"
     }
 
     // Assemble url list items
@@ -310,7 +309,7 @@ function resetURLDeck() {
 function accessLink(url_string) {
     // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
     if (!url_string.startsWith('https://')) {
-        window.open('https://' + selectedURL.url_string, "_blank");
+        window.open('https://' + url_string, "_blank");
     } else {
         window.open(url_string, "_blank");
     }
