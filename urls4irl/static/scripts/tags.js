@@ -80,11 +80,17 @@ $(document).ready(function () {
 
 // Tag Functions
 
+// Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
+function currentTagDeckIDs() {
+    let tagList = $('.tagFilter');
+    // return tagList.map(i => console.log(tagList[i]));
+    return tagList.map(i => $(tagList[i]).attr('tagid'));
+}
+
+
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
     const parent = $('#listTags');
-    // const gparent = parent.parent();
-    // console.log(gparent)
 
     if (dictTags.length == 0) {
         // User has no Tags in this UTub
@@ -157,6 +163,7 @@ function createTaginURL(tagid, string, urlID) {
         container.append(submit);
 
         tagEl = container;
+
     } else { // Regular tag creation
 
         let tagSpan = document.createElement('span');
@@ -332,8 +339,8 @@ function removeTag(tagID) {
 
     request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
-            console.log($('div.url[urlid=' + URLID + ']'))
-            console.log($('div.url[urlid=' + URLID + ']').find('span.tag[' + tagID + ']'))
+            // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
+
             $('div.url[urlid=' + URLID + ']').find('span.tag[tagid=' + tagID + ']').remove();
         }
     })

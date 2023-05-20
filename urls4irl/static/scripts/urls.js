@@ -43,7 +43,6 @@ $(document).ready(function () {
 
 // Simple function to streamline the jQuery selector extraction of URL ID. And makes it easier in case the ID is encoded in a new location in the future
 function selectedURLID() {
-    console.log($('.url.selected').last().attr('urlid'))
     return $('.url.selected').last().attr('urlid');
 }
 
@@ -76,10 +75,13 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     let card = document.createElement('div');
     // let cardImg = document.createElement('img');
     let urlInfo = document.createElement(URLID == 0 ? 'form' : 'div');
+    let editURLInfoWrap = document.createElement('div'); //230517 still need to implement wrapper with class .createDiv to unhide when showInput('editURL') is called
     let urlDescriptionWrap = document.createElement('label');
     let urlDescription = document.createElement(URLID == 0 ? 'input' : 'h5');
+    let editURLDescription = document.createElement('input');
     let urlStringWrap = document.createElement('label');
     let urlString = document.createElement(URLID == 0 ? 'input' : 'p');
+    let editURLString = document.createElement('input');
     let urlTags = document.createElement('div');
     let urlOptions = document.createElement('div');
     let accessURL = document.createElement('button');
@@ -111,12 +113,16 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     })
 
     $(urlDescription).attr({ 'class': 'card-title' })
+    
+    $(editURLDescription).attr({ 'class': 'card-title' })
 
     $(urlStringWrap).attr({
         'for': 'newURL'
     })
 
     $(urlString).attr({ 'class': 'card-text' })
+
+    $(editURLString).attr({ 'class': 'card-text' })
 
     $(urlTags).attr({ 'class': 'card-body URLTags' })
 
@@ -182,7 +188,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
             'placeholder': 'New URL description',
             'size': '50'
         })
-        $(col).addClass('userInput')
+        $(urlDescription).addClass('userInput')
 
         $(urlString).attr({
             'type': 'text',
@@ -213,6 +219,24 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         urlDescription.innerHTML = description ? description : ''
         urlString.innerHTML = string;
 
+        $(editURLDescription).attr({
+            'type': 'text',
+            'id': 'newURLDescription',
+            'placeholder': 'New URL description',
+            'size': '50'
+        })
+        $(editURLDescription).addClass('userInput')
+
+        $(editURLString).attr({
+            'type': 'text',
+            'id': 'newURL',
+            'placeholder': 'New URL',
+            'size': '50'
+        })
+        $(editURLString).addClass('userInput')
+
+        $(urlOptions).append(accessURL);
+
         $(urlTags).attr({ 'style': 'display: none' })
 
         // Buttons
@@ -222,7 +246,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         $(accessURL).addClass('btn-primary')
         accessURL.innerHTML = "Access Link"
         // $(addTag).attr({ 'onclick': "cardEdit(" + UTubID + "," + URLID + ",'tag')" })
-        $(editURL).attr({ 'onclick': "cardEdit(" + UTubID + "," + URLID + ",'url')" })
+        $(editURL).attr({ 'onclick': "showInput('editURL')" })
         $(delURL).attr({ 'onclick': "deleteURL()" })
         // "/delete_url/" + UTubID + "/" + dictURLs[i].url_id
         delURL.innerHTML = "Delete"
@@ -258,7 +282,6 @@ function deselectURL(deselectedCardCol) {
 
 // User selects a URL. All other URLs are deselected. This function places all URLs prior to selected URL into #UPRRow, inserts selected URL into a separate #URLFocusRow, and places all subsequent URLs into #LWRRow. It also adjusts css displays accordingly
 function selectURL(selectedURLid) {
-    console.log($('#LWRRow').children())
     var cardCols = $('.cardCol');
 
     let rowToggle = 1; // ? Add to UPR row : Add to LWR row

@@ -9,14 +9,6 @@ $(document).ready(function () {
 
 // UTub Related Functions
 
-function findUTubID() {
-    // Find which UTub was requested
-    var currentUTub = $('.UTub.active');
-
-    var radioButton = currentUTub.find('input')[0];
-    return radioButton.attr('utubid');
-}
-
 // Simple function to streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function currentUTubID() {
     return $('.UTub.active').find('input').attr('utubid');

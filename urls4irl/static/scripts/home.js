@@ -134,7 +134,7 @@ function postData(e, handle) {
             break;
 
         case 'createURL':
-            
+
             postURL = '/url/add/' + currentUTubID();
             var createURLCardCol = $(e.target).parent().parent();
             let newURL = createURLCardCol.find('#newURL')[0].value;
@@ -148,9 +148,10 @@ function postData(e, handle) {
 
         case 'createTag':
 
+            // postURL unimplemented as of 05/17/23
             postURL = '/tag/new';
-            let newTagName = e.target.value;
-            data = { name: newTagName }
+            var newTagName = e.target.value;
+            data = { tag_string: newTagName }
 
             break;
 
@@ -161,7 +162,7 @@ function postData(e, handle) {
             break;
 
         case 'editURL':
-            
+
             postURL = '/url/edit';
             console.log('Unimplemented')
 
@@ -175,8 +176,11 @@ function postData(e, handle) {
 
         case 'addTag':
 
-            postURL = '/tag/add/' + urlid;
-            data = { name: userInput }
+            let urlid = $(e.target)[0].id.split('-')[1];
+
+            postURL = '/tag/add/' + currentUTubID() + '/' + urlid;
+            var newTagName = e.target.value;
+            data = { tag_string: newTagName }
 
             break;
 
@@ -224,8 +228,8 @@ function postData(e, handle) {
                     createURLCardCol.find('#newURLDescription')[0].value = '';
 
                     // Create and display new URL
-                    let URLDescription =  response.URL.url_description;
-                    let URLID = response.URL.url_ID;
+                    let URLDescription = response.URL.url_description;
+                    var URLID = response.URL.url_ID;
 
                     let URLcol = createURL(URLID, response.URL.url_string, URLDescription, [], []);
                     $(URLcol).insertAfter('.url.selected');
@@ -243,7 +247,23 @@ function postData(e, handle) {
                     break;
                 case 'addTag':
 
-                    createTaginURL(response.tag.tag_ID, response.tag.string)
+                    var URLID = response.URL.url_id
+                    let tagid = response.Tag.id;
+
+                    // Add tag to URL
+                    let tagSpan = createTaginURL(tagid, response.Tag.tag_string, URLID)
+
+                    $('div[urlid=' + URLID + ']').find('.URLTags').append(tagSpan);
+                    
+                    // Check to see if tag is new
+                    let tagIDArray = currentTagDeckIDs();
+                    let tagDeckBool = 0;
+                    // tagDeckBool set to true if tag exists in deck already
+                    for (let i in tagIDArray) {
+                        if (tagIDArray[i] == tagid) { tagDeckBool = 1; break }
+                    }
+                    // If tag does not exist in the Tag Deck (brand new tag), add to the Deck
+                    if (!tagDeckBool) createTaginDeck(tagid, response.Tag.tag_string)                 
 
                     break;
                 case 'editURL':
