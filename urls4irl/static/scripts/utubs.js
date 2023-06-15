@@ -179,6 +179,9 @@ function deleteUTub() {
 
     request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
+            // Close modal
+            $('#confirmModal').hide();
+
             // Clear URL Deck
             resetURLDeck();
             resetTagDeck();
@@ -230,6 +233,9 @@ function confirmModal(handle) {
         case 'deleteUTub':
             var modalTitle = 'Are you sure you want to delete this UTub?'
             break;
+        case 'deleteURL':
+            var modalTitle = 'Are you sure you want to delete this URL from the UTub?'
+            break;
         case 'deleteUser':
             var modalTitle = 'Are you sure you want to remove this user from the current UTub?'
             break;
@@ -246,6 +252,9 @@ function confirmModal(handle) {
         switch (handle) {
             case 'deleteUTub':
                 deleteUTub()
+                break;
+            case 'deleteURL':
+                deleteURL()
                 break;
             case 'deleteUser':
                 removeUser()
