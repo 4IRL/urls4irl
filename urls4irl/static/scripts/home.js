@@ -104,6 +104,8 @@ function showInput(handle) {
 
     let inputEl = $('#' + handle);
     let inputDiv = inputEl.closest('.createDiv');
+    console.log(inputEl)
+    console.log(inputDiv)
 
     if (handle == 'newURLDescription') {
         selectURL(inputDiv.find('.card').attr('urlid'))
