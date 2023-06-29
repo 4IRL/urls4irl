@@ -95,6 +95,8 @@ function changeUTub(selectedUTubID) {
     
     // URL deck display updates
     $('#UTubHeader')[0].innerHTML = UTubName;
+    $('#submitEditUTubButton').attr({ 'onclick': "postData(event, 'editUTub-" + selectedUTubID + "')" });
+    
     $('#editUTub')[0].value = UTubName;
     $('#addURL').show();
     
@@ -164,8 +166,11 @@ function createUTub(id, name) {
 
 // Edit UTub name and description. Should also automatically run after creation of a new UTub to offer the option of including a UTub description.
 function editUTub() {
+    $('#UTubHeader').hide()
+    $('#editUTubButton').hide()
+    $('#submitEditUTubButton').show()
+    $('#submitEditUTubButton').parent().css('display', 'flex')
     showInput('editUTub')
-    console.log("showinput complete")
     showInput('editUTubDescription')
 }
 

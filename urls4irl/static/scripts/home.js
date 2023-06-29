@@ -104,16 +104,33 @@ function showInput(handle) {
 
     let inputEl = $('#' + handle);
     let inputDiv = inputEl.closest('.createDiv');
-    console.log(inputEl)
-    console.log(inputDiv)
 
     if (handle == 'newURLDescription') {
         selectURL(inputDiv.find('.card').attr('urlid'))
     }
 
+
     // Show temporary div element containing input
     inputDiv.show('flex');
     inputEl.addClass('activeInput');
+
+    if (handle.startsWith('editURL')) {
+        // split handle, extract urlid, use it to find which inputs to unhide
+
+        let inputEl2 = $('#editURLDescription-' + handle.split('-')[1]);
+        let inputDiv2 = inputEl2.closest('.createDiv');
+        let URLInfoDiv = inputEl2.closest('.URLInfo');
+        let cardDiv = URLInfoDiv.closest('.card');
+        let URLOptionsDiv = cardDiv.find('.URLOptions');
+        
+        URLInfoDiv.find('h5').hide();
+        URLInfoDiv.find('p').hide();
+        URLOptionsDiv.find('.editBtn').hide();
+        URLOptionsDiv.find('i').show();
+        
+        inputDiv2.show('flex');
+        inputEl2.addClass('activeInput');
+    }
 
     inputEl.focus();
     inputEl[0].setSelectionRange(0, inputEl[0].value.length);
@@ -125,8 +142,14 @@ function postData(e, handle) {
     let postURL; let data;
     $(e.target).closest('.createDiv').hide();
 
+    switcher = handle;
+
+    if (handle.startsWith('editURL')) {
+        switcher = 'editURL';
+    }
+
     // Extract data to submit in POST request
-    switch (handle) {
+    switch (switcher) {
         case 'createUTub':
 
             postURL = '/utub/new';
@@ -139,8 +162,10 @@ function postData(e, handle) {
 
             postURL = '/url/add/' + currentUTubID();
             var createURLCardCol = $(e.target).parent().parent();
-            let newURL = createURLCardCol.find('#newURL')[0].value;
-            let newURLDescription = createURLCardCol.find('#newURLDescription')[0].value;
+            let newURL = createURLCardCol.find('.card-title')[0].value;
+            let newURLDescription = createURLCardCol.find('.card-text')[0].value;
+            console.log(newURL)
+            console.log(newURLDescription)
             data = {
                 url_string: newURL,
                 url_description: newURLDescription
@@ -164,15 +189,19 @@ function postData(e, handle) {
             break;
 
         case 'editURL':
+            let URLID = handle.split('-')[1];
 
-            postURL = '/url/edit';
-            console.log('Unimplemented')
+            postURL = '/url/edit/' + currentUTubID() + '/' + URLID;
 
-            break;
-
-        case 'editURLDescription':
-
-            console.log('Unimplemented')
+            var URLCardDiv = $(e.target).parent().parent();
+            var editedURLfield = URLCardDiv.find('#editURL-' + URLID)[0];
+            var editedURL = editedURLfield.value ? editedURLfield.value : editedURLfield.placeholder;
+            var editedURLDescriptionfield = URLCardDiv.find('#editURLDescription-' + URLID)[0];
+            var editedURLDescription = editedURLDescriptionfield.value ? editedURLDescriptionfield.value : editedURLDescriptionfield.placeholder;
+            data = {
+                url_string: editedURL,
+                url_description: editedURLDescription
+            }
 
             break;
 
@@ -212,8 +241,10 @@ function postData(e, handle) {
 
     request.done(function (response, textStatus, xhr) {
 
+        console.log("success")
+
         if (xhr.status == 200) {
-            switch (handle) {
+            switch (switcher) {
                 case 'createUTub':
                     // Clear form and get ready for new input
                     e.target.value = '';
@@ -224,6 +255,7 @@ function postData(e, handle) {
                     createUTub(response.UTub_ID, response.UTub_name)
 
                     break;
+
                 case 'createURL':
                     // Reset creation block, clear form and get ready for new input
                     createURLCardCol.find('#newURL')[0].value = '';
@@ -239,14 +271,19 @@ function postData(e, handle) {
                     selectURL(URLID);
 
                     break;
+
                 case 'createTag':
 
                     createTaginDeck(response.tag.tag_ID, response.tag.string)
 
                     break;
+
                 case 'editUTubDescription':
+
                     console.log('Unimplemented')
+
                     break;
+
                 case 'addTag':
 
                     var URLID = response.URL.url_id
@@ -256,7 +293,7 @@ function postData(e, handle) {
                     let tagSpan = createTaginURL(tagid, response.Tag.tag_string, URLID)
 
                     $('div[urlid=' + URLID + ']').find('.URLTags').append(tagSpan);
-                    
+
                     // Check to see if tag is new
                     let tagIDArray = currentTagDeckIDs();
                     let tagDeckBool = 0;
@@ -265,15 +302,23 @@ function postData(e, handle) {
                         if (tagIDArray[i] == tagid) { tagDeckBool = 1; break }
                     }
                     // If tag does not exist in the Tag Deck (brand new tag), add to the Deck
-                    if (!tagDeckBool) createTaginDeck(tagid, response.Tag.tag_string)                 
+                    if (!tagDeckBool) createTaginDeck(tagid, response.Tag.tag_string)
 
                     break;
+
                 case 'editURL':
-                    console.log('Unimplemented')
+                    
+                    // Refresh UTub
+                    changeUTub(currentUTubID())
+
                     break;
+
                 case 'editURLDescription':
+
                     console.log('Unimplemented')
+
                     break;
+
                 default:
                     console.log('Unimplemented')
             }
@@ -288,7 +333,7 @@ function postData(e, handle) {
         if (xhr.status == 404) {
             // Reroute to custom U4I 404 error page
         } else {
-            switch (handle) {
+            switch (switcher) {
                 case 'createUTub':
                     console.log('Unimplemented')
                     break;

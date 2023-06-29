@@ -152,7 +152,7 @@ function createTaginURL(tagid, string, urlID) {
         $(input).attr({
             'type': 'text',
             'id': 'addTag-' + urlID,
-            'class': 'tag',
+            'class': 'tag userInput',
             'placeholder': 'Attribute Tag to URL',
             'onblur': 'postData(event, "addTag")'
         });

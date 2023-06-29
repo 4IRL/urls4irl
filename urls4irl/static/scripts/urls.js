@@ -76,10 +76,10 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     // let cardImg = document.createElement('img');
     let urlInfo = document.createElement('div'); // This element holds the URL description and string
     let urlDescription = document.createElement('h5'); // This element displays the user-created description of the URL
-    let editURLDescriptionWrap = document.createElement('div'); // This element wraps the edit field for URL description
-    let editURLDescription = document.createElement('input'); // This element is instantiated with the URL description, or is blank for the creation block
     let urlString = document.createElement('p'); // This element displays the user's URL
-    let editURLStringWrap = document.createElement('div'); // This element wraps the edit field for URL
+    let editWrap1 = document.createElement('div'); // This element wraps the edit field for URL description
+    let editURLDescription = document.createElement('input'); // This element is instantiated with the URL description, or is blank for the creation block
+    let editWrap2; // This element wraps the edit field for URL string 
     let editURLString = document.createElement('input'); // This element is instantiated with the URL, or is blank for the creation block
     let urlTags = document.createElement('div');
     let urlOptions = document.createElement('div');
@@ -110,12 +110,12 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
 
     $(urlDescription).attr({ 'class': 'card-title' })
     urlDescription.innerHTML = description ? description : ''
-    
-    $(editURLDescriptionWrap).attr({
+
+    $(editWrap1).attr({
         'class': 'createDiv',
         'style': 'display: none'
     })
-    
+
     $(editURLDescription).attr({
         'type': 'text',
         'class': 'card-title userInput',
@@ -124,11 +124,6 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
 
     $(urlString).attr({ 'class': 'card-text' })
     urlString.innerHTML = string
-
-    $(editURLStringWrap).attr({
-        'class': 'createDiv',
-        'style': 'display: none'
-    })
 
     $(editURLString).attr({
         'type': 'text',
@@ -145,12 +140,12 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
                 return e
             }
         });
- 
+
         let tagSpan = createTaginURL(tag.id, tag.tag_string, 0)
 
         $(urlTags).append(tagSpan);
     }
-    
+
     // New tag create span    
     let tagInput = createTaginURL(0, '', URLID)
 
@@ -171,12 +166,17 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     addTag.innerHTML = "Add Tag"
 
     $(editURL).attr({
-        'class': 'card-link btn btn-warning',
+        'class': 'card-link btn btn-warning editBtn',
         'type': 'button'
     })
     editURL.innerHTML = "Edit"
 
-    $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
+    $(submit).attr({
+        'id': 'submitEditURL-'+ URLID ,
+        'class': 'fa fa-check-square fa-2x text-success mx-1',
+        'type': 'button',
+        'style': 'display: none'
+    })
 
     $(delURL).attr({
         'class': 'card-link btn btn-danger',
@@ -194,7 +194,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         })
 
         $(card).addClass('selected')
-        
+
         $(editURLDescription).attr({
             'id': 'newURLDescription',
             'placeholder': 'New URL description'
@@ -217,20 +217,27 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         })
         $(delURL).attr({
             // Cancel creation, reset fields?
-            'onclick': "$('#createURL').hide()" 
+            'onclick': "$('#createURL').hide()"
         })
         delURL.innerHTML = "Cancel"
     } else {
         $(col).addClass('col-lg-4 col-xl-3')
-       
+
+        let editURLDescriptionid = 'editURLDescription-' + URLID;
+        let editURLid = 'editURL-' + URLID;
+
         $(editURLDescription).attr({
-            'id': 'editURLDescription',
-            'placeholder': description ? description : ''
+            'id': editURLDescriptionid,
+            'value': description ? description : '',
+            'placeholder': 'Edit URL Description',
+            // 'onblur': "postData(event, '" + editURLid + "')"
         })
 
         $(editURLString).attr({
-            'id': 'editURL',
-            'placeholder': string
+            'id': editURLid,
+            'value': string,
+            'placeholder': 'Edit URL',
+            // 'onblur': "postData(event, '" + editURLid + "')"
         })
 
         $(urlOptions).append(accessURL);
@@ -244,12 +251,14 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
         $(accessURL).addClass('btn-primary')
         accessURL.innerHTML = "Access Link"
         // $(addTag).attr({ 'onclick': "cardEdit(" + UTubID + "," + URLID + ",'tag')" })
-        $(editURL).attr({ 'onclick': "showInput('editURL')" })
-        $(submit).attr({ 'onclick': 'postData(event, "editURL")' })
+        $(editURL).attr({ 'onclick': "showInput('" + editURLid + "')" })
         $(delURL).attr({ 'onclick': "confirmModal('deleteURL')" })
+        $(submit).attr({ 'onclick': "postData(event, '" + editURLid + "')" })
         // "/delete_url/" + UTubID + "/" + dictURLs[i].url_id
         delURL.innerHTML = "Delete"
     }
+
+    editWrap2 = editWrap1;
 
     // Assemble url list items
     $(col).append(card);
@@ -257,12 +266,12 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     $(card).append(urlInfo);
 
     $(urlInfo).append(urlDescription);
-    $(editURLDescriptionWrap).append(editURLDescription);
-    $(urlInfo).append(URLID == 0 ? editURLDescription : editURLDescriptionWrap);
-
     $(urlInfo).append(urlString);
-    $(editURLStringWrap).append(editURLString);
-    $(urlInfo).append(URLID == 0 ? editURLString : editURLStringWrap);
+
+    $(urlInfo).append(URLID == 0 ? editURLDescription : editWrap1);
+    $(editWrap1).append(editURLDescription);
+    $(urlInfo).append(URLID == 0 ? editURLString : editWrap2);
+    $(editWrap2).append(editURLString);
 
     $(card).append(urlTags);
     $(card).append(urlOptions);
@@ -270,6 +279,7 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     $(urlOptions).append(addTag);
     $(urlOptions).append(editURL);
     $(urlOptions).append(delURL);
+    $(urlOptions).append(submit);
 
     return col;
 }
@@ -355,7 +365,7 @@ function deleteURL() {
             let cardCol = $('div[urlid=' + URLID + ']').parent()
             cardCol.fadeOut();
             cardCol.remove();
-            
+
             // Close modal
             $('#confirmModal').hide();
         }
