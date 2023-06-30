@@ -20,27 +20,27 @@ $(document).ready(function () {
     // Prevent form refresh of page on submittal
     $('form').on('submit', function () { return false; })
 
+    // Lol realized this doesn't work the way I intended 04/17/23s
     // Submission of user input data
-    $('.activeInput').on('blur', function () {
-        console.log("Blur caught")
-        let inputEl = $(this);
-        console.log(inputEl)
-        let handle = inputEl.attr('id');
-        console.log(handle)
+    // $('.activeInput').on('blur', function () {
+    //     console.log("Blur caught")
+    //     let inputEl = $(this);
+    //     console.log(inputEl)
+    //     let handle = inputEl.attr('id');
+    //     console.log(handle)
 
-        if (document.activeElement.localname == 'input') {
-            return;
-        }
+    //     if (document.activeElement.localname == 'input') {
+    //         return;
+    //     }
 
-        if (inputEl[0].value) {
-            postData(inputEl[0].value, handle)
-        } else {
-            // Input is empty
-        }
-        inputEl.hide();
-        inputEl.removeClass('active');
-
-    })
+    //     if (inputEl[0].value) {
+    //         postData(inputEl[0].value, handle)
+    //     } else {
+    //         // Input is empty
+    //     }
+    //     inputEl.hide();
+    //     inputEl.removeClass('active');
+    // })
 
     // Trigger blur and submit data
     $(document).on('keyup', function (e) {
@@ -52,10 +52,13 @@ $(document).ready(function () {
 
     // Keyboard navigation between selected UTubs or URLs
     $(document).on('keyup', function (e) {
-        if ($('#URLFocusRow').length > 0) {     // Some URL is selected
-            let keycode = (e.keyCode ? e.keyCode : e.which);
-            let prev = keycode == 37 || keycode == 38;
-            let next = keycode == 39 || keycode == 40;
+
+        let keycode = (e.keyCode ? e.keyCode : e.which);
+        let prev = keycode == 37 || keycode == 38;
+        let next = keycode == 39 || keycode == 40;
+
+        if ($('#URLFocusRow').length > 0) {     // Some URL is selected, switch URLs
+
             let UPRcards = $('#UPRRow').children('.cardCol').length;
             let LWRcards = $('#LWRRow').children('.cardCol').length;
 
@@ -65,13 +68,17 @@ $(document).ready(function () {
             } else if (next && LWRcards > 0) {       // User wants to highlight next URL
                 let cardCol = $($('#LWRRow').children('.cardCol')[0]);
                 selectURL($(cardCol[0].children).attr('urlid'))
-            } else {
-                deselectURL($('url.selected').parent())
+            } else if (keycode == 27) {
+                let activeURLCard = $('.url.selected').last();
+                console.log(activeURLCard.attr('urlid'))
+                if (activeURLCard.attr('urlid') == 0) {
+                    activeURLCard.parent().hide();
+                } else {
+                    deselectURL(activeURLCard.parent())
+                }
             }
+        } else { // No URL selected, switch UTubs
 
-        } else {
-            let prev = keycode == 38;
-            let next = keycode == 40;
         }
     })
 
@@ -96,11 +103,34 @@ $(document).ready(function () {
 function showInput(handle) {
 
     let inputEl = $('#' + handle);
-    let inputDiv = inputEl.closest('div');
+    let inputDiv = inputEl.closest('.createDiv');
 
-    // Show temporary input text element
-    inputDiv.show();
+    if (handle == 'newURLDescription') {
+        selectURL(inputDiv.find('.card').attr('urlid'))
+    }
+
+
+    // Show temporary div element containing input
+    inputDiv.show('flex');
     inputEl.addClass('activeInput');
+
+    if (handle.startsWith('editURL')) {
+        // split handle, extract urlid, use it to find which inputs to unhide
+
+        let inputEl2 = $('#editURLDescription-' + handle.split('-')[1]);
+        let inputDiv2 = inputEl2.closest('.createDiv');
+        let URLInfoDiv = inputEl2.closest('.URLInfo');
+        let cardDiv = URLInfoDiv.closest('.card');
+        let URLOptionsDiv = cardDiv.find('.URLOptions');
+        
+        URLInfoDiv.find('h5').hide();
+        URLInfoDiv.find('p').hide();
+        URLOptionsDiv.find('.editBtn').hide();
+        URLOptionsDiv.find('i').show();
+        
+        inputDiv2.show('flex');
+        inputEl2.addClass('activeInput');
+    }
 
     inputEl.focus();
     inputEl[0].setSelectionRange(0, inputEl[0].value.length);
@@ -110,55 +140,93 @@ function showInput(handle) {
 function postData(e, handle) {
     console.log("postData initiated")
     let postURL; let data;
+    $(e.target).closest('.createDiv').hide();
 
-    switch (handle) {
+    switcher = handle;
+
+    if (handle.startsWith('editURL')) {
+        switcher = 'editURL';
+    }
+
+    // Extract data to submit in POST request
+    switch (switcher) {
         case 'createUTub':
+
             postURL = '/utub/new';
             let newUTubName = e.target.value;
             data = { name: newUTubName }
-            $(e.target).parent().hide();
+
             break;
+
         case 'createURL':
-            console.log("createURL attempted")
+
             postURL = '/url/add/' + currentUTubID();
-            let createURLCard = $(e.target).parent().parent();
-            let newURL = createURLCard.find('#newURL')[0].value;
-            let newURLDescription = createURLCard.find('#newURLDescription')[0].value;
+            var createURLCardCol = $(e.target).parent().parent();
+            let newURL = createURLCardCol.find('.card-title')[0].value;
+            let newURLDescription = createURLCardCol.find('.card-text')[0].value;
+            console.log(newURL)
+            console.log(newURLDescription)
             data = {
                 url_string: newURL,
                 url_description: newURLDescription
             }
+
             break;
+
         case 'createTag':
+
+            // postURL unimplemented as of 05/17/23
             postURL = '/tag/new';
-            let newTagName = e.target.value;
-            data = { name: newTagName }
-            $(e.target).parent().hide();
+            var newTagName = e.target.value;
+            data = { tag_string: newTagName }
+
             break;
+
         case 'editUTubDescription':
+
             console.log('Unimplemented')
+
             break;
+
         case 'editURL':
-            postURL = '/url/edit';
-            console.log('Unimplemented')
+            let URLID = handle.split('-')[1];
+
+            postURL = '/url/edit/' + currentUTubID() + '/' + URLID;
+
+            var URLCardDiv = $(e.target).parent().parent();
+            var editedURLfield = URLCardDiv.find('#editURL-' + URLID)[0];
+            var editedURL = editedURLfield.value ? editedURLfield.value : editedURLfield.placeholder;
+            var editedURLDescriptionfield = URLCardDiv.find('#editURLDescription-' + URLID)[0];
+            var editedURLDescription = editedURLDescriptionfield.value ? editedURLDescriptionfield.value : editedURLDescriptionfield.placeholder;
+            data = {
+                url_string: editedURL,
+                url_description: editedURLDescription
+            }
+
             break;
-        case 'editURLDescription':
-            console.log('Unimplemented')
-            break;
+
         case 'addTag':
-            postURL = '/tag/add/[urlid?]';
-            data = { name: userInput }
+
+            let urlid = $(e.target)[0].id.split('-')[1];
+
+            postURL = '/tag/add/' + currentUTubID() + '/' + urlid;
+            var newTagName = e.target.value;
+            data = { tag_string: newTagName }
+
             break;
+
         case 'editTags':
             // Send UTubID
-        let tagID = e[0];
-        let tagText = e[1];
+            let tagID = e[0];
+            let tagText = e[1];
             postURL = '/tag/edit/' + tagID;
             data = {
                 id: tagID,
                 tag_string: tagText
             }
+
             break;
+
         default:
             console.log('Unimplemented')
     }
@@ -169,10 +237,14 @@ function postData(e, handle) {
         data: data
     });
 
+    // Handle response
+
     request.done(function (response, textStatus, xhr) {
 
+        console.log("success")
+
         if (xhr.status == 200) {
-            switch (handle) {
+            switch (switcher) {
                 case 'createUTub':
                     // Clear form and get ready for new input
                     e.target.value = '';
@@ -183,49 +255,85 @@ function postData(e, handle) {
                     createUTub(response.UTub_ID, response.UTub_name)
 
                     break;
-                case 'createURL':
-                    // Clear form and get ready for new input
-                    let createURLCard = $(e.target).parent().parent();
-                    let URLDescription = createURLCard.find('#newURLDescription')[0].value;
-                    createURLCard.find('#newURL')[0].value = '';
-                    createURLCard.find('#newURLDescription')[0].value = '';
 
-                    let URLID = response.URL.url_ID;
+                case 'createURL':
+                    // Reset creation block, clear form and get ready for new input
+                    createURLCardCol.find('#newURL')[0].value = '';
+                    createURLCardCol.find('#newURLDescription')[0].value = '';
+
+                    // Create and display new URL
+                    let URLDescription = response.URL.url_description;
+                    var URLID = response.URL.url_ID;
 
                     let URLcol = createURL(URLID, response.URL.url_string, URLDescription, [], []);
                     $(URLcol).insertAfter('.url.selected');
-                    deselectURL($('.url.selected').parent());
-                    $('.url.selected').parent().hide();
+
                     selectURL(URLID);
 
                     break;
+
                 case 'createTag':
-                    console.log('Unimplemented')
+
+                    createTaginDeck(response.tag.tag_ID, response.tag.string)
+
                     break;
+
                 case 'editUTubDescription':
+
                     console.log('Unimplemented')
+
                     break;
+
                 case 'addTag':
-                    console.log('Unimplemented')
+
+                    var URLID = response.URL.url_id
+                    let tagid = response.Tag.id;
+
+                    // Add tag to URL
+                    let tagSpan = createTaginURL(tagid, response.Tag.tag_string, URLID)
+
+                    $('div[urlid=' + URLID + ']').find('.URLTags').append(tagSpan);
+
+                    // Check to see if tag is new
+                    let tagIDArray = currentTagDeckIDs();
+                    let tagDeckBool = 0;
+                    // tagDeckBool set to true if tag exists in deck already
+                    for (let i in tagIDArray) {
+                        if (tagIDArray[i] == tagid) { tagDeckBool = 1; break }
+                    }
+                    // If tag does not exist in the Tag Deck (brand new tag), add to the Deck
+                    if (!tagDeckBool) createTaginDeck(tagid, response.Tag.tag_string)
+
                     break;
+
                 case 'editURL':
-                    console.log('Unimplemented')
+                    
+                    // Refresh UTub
+                    changeUTub(currentUTubID())
+
                     break;
+
                 case 'editURLDescription':
+
                     console.log('Unimplemented')
+
                     break;
+
                 default:
                     console.log('Unimplemented')
             }
         }
     })
 
-    request.fail(function (xhr, textStatus, error) {
+    request.fail(function (response, textStatus, xhr) {
+
+        console.log("failed")
+        // console.log(response.responseJSON.Error_code)
 
         if (xhr.status == 404) {
             // Reroute to custom U4I 404 error page
         } else {
-            switch (handle) {
+            switch (switcher) {
                 case 'createUTub':
                     console.log('Unimplemented')
                     break;

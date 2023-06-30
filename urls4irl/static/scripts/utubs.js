@@ -9,14 +9,6 @@ $(document).ready(function () {
 
 // UTub Related Functions
 
-function findUTubID() {
-    // Find which UTub was requested
-    var currentUTub = $('.UTub.active');
-
-    var radioButton = currentUTub.find('input')[0];
-    return radioButton.attr('utubid');
-}
-
 // Simple function to streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function currentUTubID() {
     return $('.UTub.active').find('input').attr('utubid');
@@ -68,6 +60,7 @@ function buildUTubDeck(UTubs) {
     let submit = document.createElement('i');
 
     $(wrapper).attr({
+        'class': 'createDiv',
         'style': 'display: none'
     })
 
@@ -99,11 +92,14 @@ function changeUTub(selectedUTubID) {
 
     // Tag deck display updates
     $('#createTagButton').show();
-
+    
     // URL deck display updates
     $('#UTubHeader')[0].innerHTML = UTubName;
+    $('#submitEditUTubButton').attr({ 'onclick': "postData(event, 'editUTub-" + selectedUTubID + "')" });
+    
     $('#editUTub')[0].value = UTubName;
-
+    $('#addURL').show();
+    
     getUtubInfo(selectedUTubID).then(function (selectedUTub) {
         //Use local variables, pass them in to the subsequent functions as required
         var dictURLs = selectedUTub.urls;
@@ -170,8 +166,11 @@ function createUTub(id, name) {
 
 // Edit UTub name and description. Should also automatically run after creation of a new UTub to offer the option of including a UTub description.
 function editUTub() {
+    $('#UTubHeader').hide()
+    $('#editUTubButton').hide()
+    $('#submitEditUTubButton').show()
+    $('#submitEditUTubButton').parent().css('display', 'flex')
     showInput('editUTub')
-    console.log("showinput complete")
     showInput('editUTubDescription')
 }
 
@@ -185,6 +184,9 @@ function deleteUTub() {
 
     request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
+            // Close modal
+            $('#confirmModal').hide();
+
             // Clear URL Deck
             resetURLDeck();
             resetTagDeck();
@@ -236,6 +238,9 @@ function confirmModal(handle) {
         case 'deleteUTub':
             var modalTitle = 'Are you sure you want to delete this UTub?'
             break;
+        case 'deleteURL':
+            var modalTitle = 'Are you sure you want to delete this URL from the UTub?'
+            break;
         case 'deleteUser':
             var modalTitle = 'Are you sure you want to remove this user from the current UTub?'
             break;
@@ -252,6 +257,9 @@ function confirmModal(handle) {
         switch (handle) {
             case 'deleteUTub':
                 deleteUTub()
+                break;
+            case 'deleteURL':
+                deleteURL()
                 break;
             case 'deleteUser':
                 removeUser()

@@ -80,52 +80,38 @@ $(document).ready(function () {
 
 // Tag Functions
 
+// Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
+function currentTagDeckIDs() {
+    let tagList = $('.tagFilter');
+    // return tagList.map(i => console.log(tagList[i]));
+    return tagList.map(i => $(tagList[i]).attr('tagid'));
+}
+
+
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
     const parent = $('#listTags');
-    // const gparent = parent.parent();
-    // console.log(gparent)
 
     if (dictTags.length == 0) {
         // User has no Tags in this UTub
         $('#TagDeck').find('h2')[0].innerHTML = "Create a Tag";
         $('#editTagButton').hide();
-        parent[0].innerHTML = '<h5>No tags applied to any URLs in this UTub</h5>'; // I still want this to show if user creates a new tag but has not yet applied them to any URLs
+        parent[0].innerHTML = '<h5>No tags applied to any URLs in this UTub</h5>'; // We still want this to show if user creates a new tag but has not yet applied them to any URLs
+
+        // New Tag input text field. Initially hidden, shown when create Tag is requested  
+        createTaginDeck(0, 'newTag')
     } else {
         // Instantiate TagDeck (bottom left panel) with tags in current UTub
         $('#TagDeck').find('h2')[0].innerHTML = "Tags";
         $('#editTagButton').show();
 
         // 1. Select all checkbox
-        let container = document.createElement('div');
-        let label = document.createElement('label');
-        let selAllCheck = document.createElement('input');
+        createTaginDeck(0, 'selectAll')
 
-        $(container).attr({
-            'class': 'tag-input-container',
-            'onclick': "filterTags('all'); filterURLDeck()"
-        })
+        // 2. New Tag input text field. Initially hidden, shown when create Tag is requested  
+        createTaginDeck(0, 'newTag')
 
-        $(selAllCheck).attr({
-            'type': 'checkbox',
-            'id': 'selectAll',
-            'name': 'selectAll',
-            'checked': 'true',
-            // 'onclick': "filterTags('all'); filterURLDeck()"
-        })
-
-        $(label).attr({
-            'for': 'selectAll',
-            // 'onclick': "filterTags('all'); filterURLDeck()"
-        })
-
-        label.innerHTML = 'Select All';
-        $(container).append(selAllCheck);
-        $(container).append(label);
-        parent.append(container);
-        // gparent.insertBefore(container, parent);
-
-        // 2a. Alpha sort tags based on tag_string
+        // 3a. Alpha sort tags based on tag_string
         dictTags.sort(function (a, b) {
             const tagA = a.tag_string.toUpperCase(); // ignore upper and lowercase
             const tagB = b.tag_string.toUpperCase(); // ignore upper and lowercase
@@ -139,100 +125,137 @@ function buildTagDeck(dictTags) {
             return 0;
         });
 
-        // 2b. Loop through all tags and provide checkbox input for filtering
+        // 3b. Loop through all tags and provide checkbox input for filtering
         for (let i in dictTags) {
-            let tagText = dictTags[i].tag_string;
-            let tagID = dictTags[i].id;
-            let container = document.createElement('div');
-            let label = document.createElement('label');
-            let checkbox = document.createElement('input');
-
-            $(container).attr({
-                'class': 'tag-input-container',
-                'onclick': "filterTags(" + tagID + "); filterURLDeck()"
-            })
-
-            $(label).attr({ 'for': 'Tag-' + tagID })
-
-            $(checkbox).attr({
-                'type': 'checkbox',
-                'id': 'Tag-' + tagID,
-                'tagid': tagID,
-                'name': 'Tag' + i,
-                'checked': 'checked'
-            })
-
-            label.innerHTML += tagText;
-            $(container).append(checkbox);
-            $(container).append(label);
-            parent.append(container);
+            createTaginDeck(dictTags[i].id, dictTags[i].tag_string)
         }
-
     }
-    // New Tag input text field. Initially hidden, shown when create Tag is requested. Input field recreated here to ensure at the end of list after creation of new Tag
-    let wrapper = document.createElement('div');
-    let input = document.createElement('input');
-    let submit = document.createElement('i');
-
-    $(wrapper).attr({
-        'style': 'display: none'
-    })
-
-    $(input).attr({
-        'type': 'text',
-        'id': 'createTag',
-        'class': 'userInput',
-        'placeholder': 'New Tag name',
-        'onblur': 'postData(event, "createTag")'
-    })
-
-    $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
-
-    wrapper.append(input);
-    wrapper.append(submit);
-    parent.append(wrapper);
 }
 
-// Handle all display changes related to creating a new UTub
-function createTag(id, name) {
+// Handle URL deck display changes related to creating a new tag
+function createTaginURL(tagid, string, urlID) {
 
-    let div = document.createElement('div');
+    let tagEl;
+
+    // New tag creation specific items
+    if (tagid == 0) {
+
+        let container = document.createElement('div');
+        let input = document.createElement('input');
+        let submit = document.createElement('i');
+
+        $(container).attr({
+            'class': 'createDiv',
+            'style': 'display: none'
+        })
+
+        $(input).attr({
+            'type': 'text',
+            'id': 'addTag-' + urlID,
+            'class': 'tag userInput',
+            'placeholder': 'Attribute Tag to URL',
+            'onblur': 'postData(event, "addTag")'
+        });
+
+        $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
+
+        container.append(input);
+        container.append(submit);
+
+        tagEl = container;
+
+    } else { // Regular tag creation
+
+        let tagSpan = document.createElement('span');
+        let removeButton = document.createElement('a');
+
+        $(tagSpan).attr({
+            'class': 'tag',
+            'tagid': tagid,
+        });
+        tagSpan.innerHTML = string;
+
+        $(removeButton).attr({
+            'class': 'btn btn-sm btn-outline-link border-0 tag-remove',
+            'onclick': 'removeTag(' + tagid + ')'
+        });
+        removeButton.innerHTML = '&times;';
+
+        $(tagSpan).append(removeButton);
+
+        tagEl = tagSpan;
+    }
+
+    return tagEl
+}
+
+// Handle tag deck display changes related to creating a new tag
+function createTaginDeck(tagid, string) {
+
+    let container = document.createElement('div');
     let label = document.createElement('label');
-    let checkbox = document.createElement('input');
 
-
-    $(div).attr({ 'class': 'checkbox-container' })
-
-    $(label).attr({
-        'for': 'UTub-' + id,
-        'class': 'UTub draw active',
-        'onclick': "changeUTub(" + id + ")"
-    })
-    label.innerHTML = '<b>' + name + '</b>';
-
-    $(checkbox).attr({
-        'type': 'radio',
-        // 'name': 'UTub' + i, need to extract the length of current UTubs list, increment and document here
-        'id': 'UTub-' + id,
-        'utubid': id,
-        'value': name
+    $(container).attr({
+        'class': 'tagFilter selected'
     })
 
-    $(label).append(checkbox);
-    $(div).append(label);
+    // Select all and new tag creation specific items
+    if (tagid == 0) {
+        if (string == 'selectAll') {
+            $(container).attr({
+                'id': 'selectAll',
+                'tagid': 'all',
+                'onclick': 'filterTags(event, "all"); filterURLDeck()'
+            })
+            $(label).attr({
+                'for': 'selectAll'
+            })
+            label.innerHTML = 'Select All';
 
-    // Move "createUTub" element to the end of list
-    let UTubList = $('#listUTubs').children();
-    const createUTubEl = $(UTubList[UTubList.length - 1]).detach();
-    $('#listUTubs').append(label);
-    $('#listUTubs').append(createUTubEl);
+            $(container).append(label);
 
-    $('#UTubDeck').find('h2')[0].innerHTML = "Create a UTub";
-    $('#UTub-' + id).prop('checked', true);
+        } else if (string == 'newTag') {
 
-    $('#addURL').show();
-    $('#UTubHeader')[0].innerHTML = name;
-    $('#UPRRow')[0].innerHTML = "Add a URL";
+            let input = document.createElement('input');
+            let submit = document.createElement('i');
+
+            $(container).attr({
+                'class': 'createDiv',
+                'style': 'display: none'
+            })
+
+            $(input).attr({
+                'type': 'text',
+                'id': 'createTag',
+                'class': 'userInput',
+                'placeholder': 'New Tag name',
+                'onblur': 'postData(event, "createTag")'
+            })
+
+            $(submit).attr({ 'class': 'fa fa-check-square fa-2x text-success mx-1' })
+
+            container.append(input);
+            container.append(submit);
+        }
+        $('#listTags').append(container);
+    } else { // Regular tag creation
+
+        $(container).attr({
+            'tagid': tagid,
+            'onclick': 'filterTags(event,' + tagid + '); filterURLDeck()'
+        })
+
+        $(label).attr({ 'for': 'Tag-' + tagid })
+        label.innerHTML += string;
+
+        $(container).append(label);
+
+        // Move "createTag" element to the end of list
+        let tagList = $('#listTags').children();
+        const createTagEl = $(tagList[tagList.length - 1]).detach();
+        $('#listTags').append(container);
+        $('#listTags').append(createTagEl);
+    }
 }
 
 // Allows user to edit all tags in the UTub 
@@ -270,7 +293,7 @@ function editTags(handle) {
 
 // Add a tag to the selected URL
 function addTag(selectedUTubID, selectedURLid) {
-    var jQuerySel = "div.url.selected[urlid=" + selectedURLid + "]";    // Find jQuery selector with selected ID          
+    var jQuerySel = 'div.url.selected[urlid=" + selectedURLid + "]';    // Find jQuery selector with selected ID          
     var cardTagDeck = $(jQuerySel).find('div.URLTags');                 // Find appropriate card element
 
     if ($('#new_tag').length) $('#new_tag').focus()
@@ -316,8 +339,8 @@ function removeTag(tagID) {
 
     request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
-            console.log($('div.url[urlid=' + URLID + ']'))
-            console.log($('div.url[urlid=' + URLID + ']').find('span.tag[' + tagID + ']'))
+            // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
+
             $('div.url[urlid=' + URLID + ']').find('span.tag[tagid=' + tagID + ']').remove();
         }
     })
@@ -341,25 +364,53 @@ function removeTag(tagID) {
     })
 }
 
-// Update tag display to reflect changes in response to a "Select All" filter request
-function filterTags(tagID) {
-    console.log("filter tags")
+// Update tag display to reflect changes in response to a filter request
+function filterTags(e, tagID) {
+    let filteredTag = $(e.target).closest('div');
+    filteredTag.toggleClass('selected');
+
+    let selAll = $('#selectAll');
+    let tagList = $('.tagFilter');
+
     if (tagID == 'all') {
-
-        console.log("filter all tags")
-        let input = $('#selectAll');
-        console.log(!input[0].checked)
-
         // Toggle all filter tags to match "Select All" checked status
-        $('input[type=checkbox]').prop("checked", !input[0].checked);
+        filteredTag.hasClass('selected') ? tagList.addClass('selected') : tagList.removeClass('selected')
 
+        // Handle filtering in URL deck
         let spanObjs = $('span.tag');
-        if (input[0].checked) {
+        if (filteredTag.hasClass('selected')) {
             spanObjs.show()
         } else {
             spanObjs.hide()
+            selAll.removeClass('selected')
         }
     } else {
+        // Different conditions for selectAll behavior. If any other filters are unselected, then selectAll should be unselected. If all other filters are selected, then selectAll should be selected.
+        if (selAll.hasClass('selected')) {
+            if ($('.tagFilter').length > $('.tagFilter.selected').length) {
+                selAll.removeClass('selected')
+            }
+        } else {
+            if ($('.tagFilter').length - 1 == $('.tagFilter.selected').length) {
+                selAll.addClass('selected')
+            }
+        }
+
+        // Alternate formulation, does not work as of 04/17/23. selectAll select status should match the summed boolean select status of all other filters
+
+        // let selAllBool;
+
+        // for (let i in tagList) {
+        //     console.log(i)
+        //     console.log(tagList[i])
+        //     console.log($(tagList[i]))
+        //     selAllBool &= $(tagList[i]).hasClass('selected');
+        // }
+
+        // selAllBool ? selAll.addClass('selected') :
+        //     selAll.removeClass('selected')
+
+        // Handle filtering in URL deck
         $('span[tagid=' + tagID + ']').toggle();
     }
 }
