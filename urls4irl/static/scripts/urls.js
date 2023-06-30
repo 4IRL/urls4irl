@@ -259,6 +259,8 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
     }
 
     editWrap2 = editWrap1;
+    console.log(editWrap1)
+    console.log(editWrap2)
 
     // Assemble url list items
     $(col).append(card);
