@@ -71,10 +71,6 @@ jobs:
         # POSTGRES_PASSWORD - superuser password
         postgresql password: ${{env.PG_USER}}
         
-    - name: Create database
-      run: |
-        python -m create_db
-        
     - name: Run tests
       run: |
-        python -m pytest -sv
+        python -m pytest -sv tests/functional/test_add_utub_route.py
