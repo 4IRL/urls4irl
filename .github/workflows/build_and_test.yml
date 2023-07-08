@@ -11,12 +11,35 @@ env:
   POSTGRES_NAME: 'u4i_test_db'
     
 jobs:
-  test:
+  container-job:
     env:
       FLASK_ENV: 'development'
       SECRET_KEY: 'ABCDEFGH12345678'
-      
+    # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
+    # Docker Hub image that `container-job` executes in
+    container: node:3.10.12-bookworm
+
+    # Service containers to run with `container-job`
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+#   test:
+
+      
+#     runs-on: ubuntu-latest
     
     steps:
     - name: Set Postgres Environment Variables
