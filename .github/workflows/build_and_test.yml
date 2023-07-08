@@ -6,13 +6,15 @@ on:
   pull_request:
     branches: [backend, frontend, dev]
     
+env:
+  POSTGRES_USER: 'u4i_tester'
+  POSTGRES_NAME: 'u4i_test_db'
+    
 jobs:
   test:
     env:
       FLASK_ENV: 'development'
       SECRET_KEY: 'ABCDEFGH12345678'
-      PG_USER: 'u4i_tester'
-      PG_NAME: 'u4i_test_db'
       DATABASE_URL_DEV: format('postgresql://{0}:{0}@localhost/{1}', '${{env.PG_USER}}', '${{env.PG_NAME}}')
       
     runs-on: ubuntu-latest
