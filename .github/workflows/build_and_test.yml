@@ -21,7 +21,8 @@ jobs:
     steps:
     - name: Set Postgres Environment Variables
       run: |
-        echo "postgresql://${POSTGRES_USER}:${POSTGRES_USER}@localhost/$POSTGRES_NAME"
+        export DATABASE_URL_DEV="postgresql://${POSTGRES_USER}:${POSTGRES_USER}@localhost/$POSTGRES_NAME";
+        echo $DATABASE_URL_DEV
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Set up Python Environment
