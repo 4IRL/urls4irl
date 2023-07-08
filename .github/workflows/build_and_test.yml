@@ -22,7 +22,7 @@ jobs:
     - name: Set Postgres Environment Variables
       shell: bash
       run: |
-        echo "DATABASE_URL_DEV=postgresql://${POSTGRES_USER}:${POSTGRES_USER}@localhost/${POSTGRES_NAME}" >> $GITHUB_ENV
+        echo "DATABASE_URL_TEST=postgresql://${POSTGRES_USER}:${POSTGRES_USER}@localhost/${POSTGRES_NAME}" >> $GITHUB_ENV
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Set up Python Environment
