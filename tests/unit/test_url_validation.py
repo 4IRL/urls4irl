@@ -18,6 +18,15 @@ valid_urls = {
                                                             "flask-limiter.readthedocs.io/"]
 }
 
+invalid_urls = (
+    "w.google.com", "http://mw1.google.com/mw-earth-vectordb/kml-samples/gp/seattle/gigapxl/$[level]/r$[y]_c$[x].jpg",
+    "http://www.example.com/main.html", "/main.html", "http:\\www.example.com\\andhere.html"
+)
+
+unknown_urls = {
+    "https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862"
+}
+
 def test_valid_urls():
     """
     GIVEN valid URLs and their known final URL locations
@@ -29,10 +38,6 @@ def test_valid_urls():
         for url in urls_to_check:
             assert valid_url == url_valid.check_request_head(url)
 
-invalid_urls = (
-    "w.google.com", "http://mw1.google.com/mw-earth-vectordb/kml-samples/gp/seattle/gigapxl/$[level]/r$[y]_c$[x].jpg",
-    "http://www.example.com/main.html", "/main.html", "http:\\www.example.com\\andhere.html"
-)
 
 def test_invalid_urls():
     """
@@ -44,3 +49,12 @@ def test_invalid_urls():
         with pytest.raises(url_valid.InvalidURLError):
             url_valid.check_request_head(invalid_url)
             
+def test_unknown_urls():
+    """
+    GIVEN URLs that seeem to fail unknowingly...
+    WHEN the url validation function checks these invalid URLs
+    THEN ensure the request times out
+    """
+    for unknown_url in unknown_urls:
+        with pytest.raises(url_valid.InvalidURLError):
+            url_valid.check_request_head(unknown_url)
