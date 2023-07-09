@@ -35,6 +35,7 @@ jobs:
         git config --local user.name "{{ secrets.NAME }}"
         git commit -a -m "Add changes"
     - name: Push changes
+      if: steps.git-check.outputs.modified == 'true'
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
