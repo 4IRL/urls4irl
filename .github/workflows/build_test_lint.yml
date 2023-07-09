@@ -1,4 +1,4 @@
-name: Build and Test and Lint
+name: Build and Test
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   
     
 jobs:
-  container-job:
+  build-test-container:
     env:
       FLASK_ENV: 'development'
       PRODUCTION: 'false'
