@@ -3,15 +3,14 @@ from os import environ
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
+if environ.get('PRODUCTION') is None:
+    print("Missing PRODUCTION environment variable.")
+    quit()
+
+is_production = environ.get('PRODUCTION')
+app = create_app()
 
 if __name__ == "__main__":
-    if environ.get('PRODUCTION') is None:
-        print("Missing PRODUCTION environment variable.")
-        quit()
-
-    is_production = environ.get('PRODUCTION')
-    app = create_app()
-
     if is_production.lower() == 'false':
         print("Not in production.")
         app.run(port=5000)
