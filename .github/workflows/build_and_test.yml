@@ -5,16 +5,14 @@ on:
     branches: [backend, frontend, dev]
   pull_request:
     branches: [backend, frontend, dev]
-    
-env:
-  POSTGRES_USER: 'u4i_tester'
-  POSTGRES_NAME: 'u4i_test_db'
+  
     
 jobs:
   container-job:
     env:
       FLASK_ENV: 'development'
       SECRET_KEY: 'ABCDEFGH12345678'
+      DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/postgres
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
     # Docker Hub image that `container-job` executes in
@@ -26,6 +24,9 @@ jobs:
       postgres:
         # Docker Hub image
         image: postgres
+        # Map the ports
+        ports:
+          - 5432:5432
         # Provide the password for postgres
         env:
           POSTGRES_PASSWORD: postgres
@@ -35,17 +36,7 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
-
-#   test:
-
-      
-#     runs-on: ubuntu-latest
-    
     steps:
-    - name: Set Postgres Environment Variables
-      shell: bash
-      run: |
-        echo "DATABASE_URL_TEST=postgresql://${POSTGRES_USER}:${POSTGRES_USER}@localhost/${POSTGRES_NAME}" >> $GITHUB_ENV
     - name: Checkout code
       uses: actions/checkout@v2
     - name: Set up Python Environment
@@ -56,21 +47,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r requirements.txt
-        
-    - name: Setup PostgreSQL
-  # You may pin to the exact commit or the version.
-  # uses: Harmon758/postgresql-action@0be19fa37850b22cb4c9bbf28a03abbf44abd863
-      uses: Harmon758/postgresql-action@v1.0.0
-      with:
-        # Version of PostgreSQL to use
-        postgresql version: 14
-        # POSTGRES_DB - name for the default database that is created
-        postgresql db: ${{env.PG_NAME}}
-        # POSTGRES_USER - create the specified user with superuser power
-        postgresql user: ${{env.PG_USER}}
-        # POSTGRES_PASSWORD - superuser password
-        postgresql password: ${{env.PG_USER}}
-        
+
     - name: Run tests
       run: |
         python -m pytest -sv tests/functional/test_add_utub_route.py
