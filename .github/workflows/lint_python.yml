@@ -29,3 +29,8 @@ jobs:
     - name: Linting
       run: |
         black .
+
+    - name: Check Python with Black
+      uses: psf/black@stable
+      with:
+        options: "--check --verbose"
