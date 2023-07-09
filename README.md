@@ -67,3 +67,31 @@ How about we add some goals we need to hit before we can go fully public?
 
 - [ ] RestAPI developed for the backend
 - [ ] iOS app developed from the RestAPI
+
+---
+
+### **Setting Up Migrations**
+
+**FLASK_ENV** environment variable must be set to run while in the main directory.
+
+```
+set FLASK_ENV=run
+flask db init
+```
+
+Now the migrations folder is setup.
+
+
+---
+
+### **Running Tests**
+
+From this directory, run the following command:
+
+```
+python -m pytest -sv
+```
+
+This will print out a log as well as whether or not tests passed.
+
+All tests are included in the *tests* directory

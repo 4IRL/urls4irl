@@ -1,20 +1,11 @@
-"""
-Forms that are needed to be built here:
-UTub building form
-URL Creation form
-Tag form?
-
-"""
-
-from flask import Flask
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, InputRequired, ValidationError
-from urls4irl.models import User, URLS
-
+from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
+from urls4irl.models import User
 
 class UserRegistrationForm(FlaskForm):
-    """Form to register users. Inherits from FlaskForm. All fields require data.
+    """
+    Form to register users. Inherits from FlaskForm. All fields require data.
 
     Fields:
         username (StringField): Length Requirements? Must be a unique username
@@ -28,7 +19,7 @@ class UserRegistrationForm(FlaskForm):
     username = StringField('Username', validators=[InputRequired(), Length(min=4, max=20)])
     email = StringField('Email', validators=[InputRequired(), Email()])
     confirm_email = StringField('Confirm Email', validators=[InputRequired(), EqualTo('email')])
-    password = PasswordField('Password', validators=[InputRequired(), Length(min=12, max=30)])
+    password = PasswordField('Password', validators=[InputRequired(), Length(min=12, max=64)])
     confirm_password = PasswordField('Confirm Password', validators=[InputRequired(), EqualTo('password')])
 
     submit = SubmitField('Register')
@@ -49,7 +40,8 @@ class UserRegistrationForm(FlaskForm):
         
 
 class LoginForm(FlaskForm):
-    """Form to login users. Inherits from FlaskForm. All fields require data.
+    """
+    Form to login users. Inherits from FlaskForm. All fields require data.
 
     Fields:
         ### TODO Email or username to login? (Stringfield): The user
@@ -62,39 +54,9 @@ class LoginForm(FlaskForm):
 
     submit = SubmitField('Login')
 
-
-class UTubForm(FlaskForm):
-    """Form to create a UTub. Inherits from FlaskForm. All fields require data.
-
-    Fields:
-        name (Stringfield): Maximum 30 chars? TODO
-    """
-    
-    name = StringField('UTub Name', validators=[InputRequired(), Length(min=1, max=30)])
-    description = StringField('UTub Description', validators=[Length(max=500)])
-
-    submit = SubmitField('Create UTub!')
-    
-class UTubDeleteForm(FlaskForm):
-    """Form to delete a UTub.
-    """
-
-    submit = SubmitField('Delete this UTub!')
-
-class UTubDescriptionForm(FlaskForm):
-    """Form to add a description to the UTub.
-
-    Fields:
-        utub_description (Stringfield): Maximum 500 chars? TODO
-    """
-    
-    utub_description = StringField('UTub Description', validators=[Length(max=500)])
-
-    submit = SubmitField('Add Description To UTub!')
-
-
 class UTubNewUserForm(FlaskForm):
-    """Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.
+    """
+    Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.
 
     Fields:
         username (Stringfield): Maximum 30 chars? TODO
@@ -110,31 +72,3 @@ class UTubNewUserForm(FlaskForm):
 
         if not username_exists:
             raise ValidationError('That user does not exist. Note this is case sensitive.')
-
-
-class UTubNewURLForm(FlaskForm):
-    """Form to add a URL to a UTub. Inherits from FlaskForm. All fields require data.
-
-    Fields:
-        URL (Stringfield): Maximum 2000 chars? TODO
-    """
-    
-    url_string = StringField('URL', validators=[InputRequired(), Length(min=1, max=2000)])
-
-    submit = SubmitField('Add URL to this UTub!')
-
-    #TODO Add validation for the URL here..
-
-
-class UTubNewUrlTagForm(FlaskForm):
-    """Form to add a tag to a URL in a Utub.
-
-    Fields:
-        tag_string (Stringfield): Maximum 30 chars? TODO
-    """
-    
-    tag_string = StringField('Tag', validators=[InputRequired(), Length(min=1, max=30)])
-
-    submit = SubmitField('Add tag to this URL!')
-
-    #TODO Add tag validation (PG filter?)

@@ -2,12 +2,19 @@ html, body {
     height: 100%;
     margin: 0;
     padding: 0;
-    overflow-y: hidden;
+    /* overflow-y: hidden; */
+    background-color: #1f2424;
 }
+
+/* HTML Element */
 
 h1 {
     font-weight: 300;
     font-size: 2.5em;
+}
+
+h2, .login-register-label {
+    color: #2ecc71;
 }
 
 p {
@@ -29,6 +36,7 @@ form {
     box-sizing: content-box;
     /* So the width will be 100% + 17px */
 }
+
 
 img {
     max-width: 50%;
@@ -117,6 +125,8 @@ input[type=radio]::before, input[type=radio]::after {
     height: 100%;
 }
 
+/* Class specific */
+
 span.tag {
     color: rgb(254, 115, 1);
     background: white;
@@ -128,6 +138,29 @@ span.tag {
     padding-bottom: 1px;
     border-radius: 16px;
     white-space: nowrap;
+}
+
+span.tag:hover .tag-remove {
+    display: inline-block;
+    line-height: 100%;
+    height: 100%;
+    font-size: 100%;
+}
+
+i.fa-check-square {
+    float: right;
+}
+
+.tag-remove {
+    padding: 0rem;
+    vertical-align: unset;
+    padding-left: 5px;
+    display: none;
+}
+
+.tag-remove:focus {
+    outline: none;
+    box-shadow: none;
 }
 
 .panel {
@@ -143,7 +176,10 @@ span.tag {
     width: 100%;
     height: 100%;
     margin: 0px;
+    background: #1f2424;
+    border: 2px solid #343c3d;
     border-radius: 30px;
+    color: #60daaa;
     overflow: hidden;
 }
 
@@ -155,12 +191,20 @@ span.tag {
 }
 
 .card {
-    background: rgb(84, 84, 84);
+    background-color: #282f2f;
     height: 100%;
     margin: 2px;
-    border: 5px solid rgb(84, 84, 84);
+    border: 2px solid #343c3d;
     border-radius: 20px;
     cursor: pointer;
+}
+
+.card-title {
+    color: #1abc9c;
+}
+
+.card-text {
+    color: #8c9b9d;
 }
 
 .selected {
@@ -417,6 +461,58 @@ span.tag {
     transition: border-color 0s ease-out 0.5s, width 0.25s ease-out 0.5s, height 0.25s ease-out 0.75s;
 }
 
+/* Splash page stuff */
+.bg-img {
+    background: url("splash.jpg");
+    background-size: cover;
+    min-height: 380px;
+    position: relative;
+}
+
+.container-fluid {
+    padding-right: 0px;
+    padding-left: 0px;
+}
+
+.bg-cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    /* height: 100%; */
+    height: 100vh;
+}
+
+.jumbotron {
+    background: rgba(248, 248, 248, 0.74);
+    padding: 6rem 2rem;
+}
+
+.splash-button {
+    margin-top: 10px;
+}
+
+.login-register-label {
+    font-weight: 700;
+    font-size: 120%;
+}
+
+.modal-open {
+    height: 100%;
+}
+
+.modal-content {
+    width: max-content;
+}
+
+/* Remove the scroll bar from login/register forms */
+.login-register-form {
+    overflow-y: hidden;
+    padding-right: 0px;
+    width: 500px;
+}
+
 /* ID sepcific */
 
 #body {
@@ -439,29 +535,6 @@ span.tag {
     height: 100vh;
 }
 
-#UTubDeck {
-    background: #1E202D;
-    color: #60daaa;
-}
-
-#TagDeck {
-    background: orange;
-}
-
-#UTubContent {
-    background: gray;
-}
-
-#MembersDeck {
-    background: blue;
-    overflow-y: auto;
-}
-
-#URLInfoDeck {
-    background: purple;
-}
-
-#ChatDeck {
-    background: green;
-    overflow-y: auto;
+#ModalForm {
+    overflow: hidden;
 }
