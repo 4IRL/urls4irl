@@ -11,6 +11,7 @@ jobs:
   container-job:
     env:
       FLASK_ENV: 'development'
+      PRODUCTION: 'false'
       SECRET_KEY: 'ABCDEFGH12345678'
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
@@ -51,4 +52,4 @@ jobs:
       env: 
         DATABASE_URL_TEST: postgresql://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/postgres
       run: |
-        python -m pytest -sv tests/functional/test_add_utub_route.py
+        python -m pytest -sv
