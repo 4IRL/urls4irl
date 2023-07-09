@@ -26,11 +26,12 @@ jobs:
       id: git-check
       run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
     - name: Commit Lint Changes
-      if: steps.git-check.outputs.modified == 'true'
       run: |
-        git config --global user.name '${{ secrets.NAME }}'
-        git config --global user.email '${{ secrets.MY_EMAIL }}'
-        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
-        git branch
-      # git commit -am "Automated changes"
-      # git push
+        git config --local user.email "${{ secrets.MY_EMAIL }}"
+        git config --local user.name "{{ secrets.NAME }}"
+        git commit -a -m "Add changes"
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        branch: ${{ github.ref }}
