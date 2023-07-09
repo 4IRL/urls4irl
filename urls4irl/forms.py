@@ -9,7 +9,14 @@ Tag form?
 from flask import Flask
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
-from wtforms.validators import DataRequired, Length, Email, EqualTo, InputRequired, ValidationError
+from wtforms.validators import (
+    DataRequired,
+    Length,
+    Email,
+    EqualTo,
+    InputRequired,
+    ValidationError,
+)
 from urls4irl.models import User, URLS
 
 
@@ -25,28 +32,38 @@ class UserRegistrationForm(FlaskForm):
         submit (SubmitField): Represents the button to submit the form
     """
 
-    username = StringField('Username', validators=[InputRequired(), Length(min=4, max=20)])
-    email = StringField('Email', validators=[InputRequired(), Email()])
-    confirm_email = StringField('Confirm Email', validators=[InputRequired(), EqualTo('email')])
-    password = PasswordField('Password', validators=[InputRequired(), Length(min=12, max=30)])
-    confirm_password = PasswordField('Confirm Password', validators=[InputRequired(), EqualTo('password')])
+    username = StringField(
+        "Username", validators=[InputRequired(), Length(min=4, max=20)]
+    )
+    email = StringField("Email", validators=[InputRequired(), Email()])
+    confirm_email = StringField(
+        "Confirm Email", validators=[InputRequired(), EqualTo("email")]
+    )
+    password = PasswordField(
+        "Password", validators=[InputRequired(), Length(min=12, max=30)]
+    )
+    confirm_password = PasswordField(
+        "Confirm Password", validators=[InputRequired(), EqualTo("password")]
+    )
 
-    submit = SubmitField('Register')
+    submit = SubmitField("Register")
 
     def validate_username(self, username):
         """Validates username is unique in the db"""
         username_exists = User.query.filter_by(username=username.data).first()
 
         if username_exists:
-            raise ValidationError('That username is already taken. Please choose another.')
+            raise ValidationError(
+                "That username is already taken. Please choose another."
+            )
 
     def validate_email(self, email):
         """Validates username is unique in the db"""
         email_exists = User.query.filter_by(email=email.data).first()
 
         if email_exists:
-            raise ValidationError('That email address is already in use.')
-        
+            raise ValidationError("That email address is already in use.")
+
 
 class LoginForm(FlaskForm):
     """Form to login users. Inherits from FlaskForm. All fields require data.
@@ -57,10 +74,10 @@ class LoginForm(FlaskForm):
         submit (Submitfield): Represents the submit button to submit the form
     """
 
-    username = StringField('Username', validators=[InputRequired()])
-    password = PasswordField('Password', validators=[InputRequired()])
+    username = StringField("Username", validators=[InputRequired()])
+    password = PasswordField("Password", validators=[InputRequired()])
 
-    submit = SubmitField('Login')
+    submit = SubmitField("Login")
 
 
 class UTubForm(FlaskForm):
@@ -69,17 +86,18 @@ class UTubForm(FlaskForm):
     Fields:
         name (Stringfield): Maximum 30 chars? TODO
     """
-    
-    name = StringField('UTub Name', validators=[InputRequired(), Length(min=1, max=30)])
-    description = StringField('UTub Description', validators=[Length(max=500)])
 
-    submit = SubmitField('Create UTub!')
-    
+    name = StringField("UTub Name", validators=[InputRequired(), Length(min=1, max=30)])
+    description = StringField("UTub Description", validators=[Length(max=500)])
+
+    submit = SubmitField("Create UTub!")
+
+
 class UTubDeleteForm(FlaskForm):
-    """Form to delete a UTub.
-    """
+    """Form to delete a UTub."""
 
-    submit = SubmitField('Delete this UTub!')
+    submit = SubmitField("Delete this UTub!")
+
 
 class UTubDescriptionForm(FlaskForm):
     """Form to add a description to the UTub.
@@ -87,10 +105,10 @@ class UTubDescriptionForm(FlaskForm):
     Fields:
         utub_description (Stringfield): Maximum 500 chars? TODO
     """
-    
-    utub_description = StringField('UTub Description', validators=[Length(max=500)])
 
-    submit = SubmitField('Add Description To UTub!')
+    utub_description = StringField("UTub Description", validators=[Length(max=500)])
+
+    submit = SubmitField("Add Description To UTub!")
 
 
 class UTubNewUserForm(FlaskForm):
@@ -99,17 +117,21 @@ class UTubNewUserForm(FlaskForm):
     Fields:
         username (Stringfield): Maximum 30 chars? TODO
     """
-    
-    username = StringField('Username', validators=[InputRequired(), Length(min=1, max=30)])
 
-    submit = SubmitField('Add to this UTub!')
+    username = StringField(
+        "Username", validators=[InputRequired(), Length(min=1, max=30)]
+    )
+
+    submit = SubmitField("Add to this UTub!")
 
     def validate_username(self, username):
         """Validates username is unique in the db"""
         username_exists = User.query.filter_by(username=username.data).first()
 
         if not username_exists:
-            raise ValidationError('That user does not exist. Note this is case sensitive.')
+            raise ValidationError(
+                "That user does not exist. Note this is case sensitive."
+            )
 
 
 class UTubNewURLForm(FlaskForm):
@@ -118,12 +140,14 @@ class UTubNewURLForm(FlaskForm):
     Fields:
         URL (Stringfield): Maximum 2000 chars? TODO
     """
-    
-    url_string = StringField('URL', validators=[InputRequired(), Length(min=1, max=2000)])
 
-    submit = SubmitField('Add URL to this UTub!')
+    url_string = StringField(
+        "URL", validators=[InputRequired(), Length(min=1, max=2000)]
+    )
 
-    #TODO Add validation for the URL here..
+    submit = SubmitField("Add URL to this UTub!")
+
+    # TODO Add validation for the URL here..
 
 
 class UTubNewUrlTagForm(FlaskForm):
@@ -132,9 +156,9 @@ class UTubNewUrlTagForm(FlaskForm):
     Fields:
         tag_string (Stringfield): Maximum 30 chars? TODO
     """
-    
-    tag_string = StringField('Tag', validators=[InputRequired(), Length(min=1, max=30)])
 
-    submit = SubmitField('Add tag to this URL!')
+    tag_string = StringField("Tag", validators=[InputRequired(), Length(min=1, max=30)])
 
-    #TODO Add tag validation (PG filter?)
+    submit = SubmitField("Add tag to this URL!")
+
+    # TODO Add tag validation (PG filter?)
