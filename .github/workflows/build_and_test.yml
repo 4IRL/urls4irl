@@ -12,7 +12,7 @@ jobs:
     env:
       FLASK_ENV: 'development'
       SECRET_KEY: 'ABCDEFGH12345678'
-      DATABASE_URL_TEST: postgres://postgres:postgres@localhost:5432/postgres
+      DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:5432/postgres
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
     # Docker Hub image that `container-job` executes in
