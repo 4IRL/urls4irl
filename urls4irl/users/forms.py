@@ -1,14 +1,6 @@
-"""
-Forms that are needed to be built here:
-UTub building form
-URL Creation form
-Tag form?
-
-"""
-
-from flask import Flask
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
+<<<<<<< HEAD:urls4irl/forms.py
 from wtforms.validators import (
     DataRequired,
     Length,
@@ -19,9 +11,14 @@ from wtforms.validators import (
 )
 from urls4irl.models import User, URLS
 
+=======
+from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
+from urls4irl.models import User
+>>>>>>> backend:urls4irl/users/forms.py
 
 class UserRegistrationForm(FlaskForm):
-    """Form to register users. Inherits from FlaskForm. All fields require data.
+    """
+    Form to register users. Inherits from FlaskForm. All fields require data.
 
     Fields:
         username (StringField): Length Requirements? Must be a unique username
@@ -32,6 +29,7 @@ class UserRegistrationForm(FlaskForm):
         submit (SubmitField): Represents the button to submit the form
     """
 
+<<<<<<< HEAD:urls4irl/forms.py
     username = StringField(
         "Username", validators=[InputRequired(), Length(min=4, max=20)]
     )
@@ -45,6 +43,13 @@ class UserRegistrationForm(FlaskForm):
     confirm_password = PasswordField(
         "Confirm Password", validators=[InputRequired(), EqualTo("password")]
     )
+=======
+    username = StringField('Username', validators=[InputRequired(), Length(min=4, max=20)])
+    email = StringField('Email', validators=[InputRequired(), Email()])
+    confirm_email = StringField('Confirm Email', validators=[InputRequired(), EqualTo('email')])
+    password = PasswordField('Password', validators=[InputRequired(), Length(min=12, max=64)])
+    confirm_password = PasswordField('Confirm Password', validators=[InputRequired(), EqualTo('password')])
+>>>>>>> backend:urls4irl/users/forms.py
 
     submit = SubmitField("Register")
 
@@ -66,7 +71,8 @@ class UserRegistrationForm(FlaskForm):
 
 
 class LoginForm(FlaskForm):
-    """Form to login users. Inherits from FlaskForm. All fields require data.
+    """
+    Form to login users. Inherits from FlaskForm. All fields require data.
 
     Fields:
         ### TODO Email or username to login? (Stringfield): The user
@@ -79,6 +85,7 @@ class LoginForm(FlaskForm):
 
     submit = SubmitField("Login")
 
+<<<<<<< HEAD:urls4irl/forms.py
 
 class UTubForm(FlaskForm):
     """Form to create a UTub. Inherits from FlaskForm. All fields require data.
@@ -111,8 +118,11 @@ class UTubDescriptionForm(FlaskForm):
     submit = SubmitField("Add Description To UTub!")
 
 
+=======
+>>>>>>> backend:urls4irl/users/forms.py
 class UTubNewUserForm(FlaskForm):
-    """Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.
+    """
+    Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.
 
     Fields:
         username (Stringfield): Maximum 30 chars? TODO
@@ -129,6 +139,7 @@ class UTubNewUserForm(FlaskForm):
         username_exists = User.query.filter_by(username=username.data).first()
 
         if not username_exists:
+<<<<<<< HEAD:urls4irl/forms.py
             raise ValidationError(
                 "That user does not exist. Note this is case sensitive."
             )
@@ -162,3 +173,6 @@ class UTubNewUrlTagForm(FlaskForm):
     submit = SubmitField("Add tag to this URL!")
 
     # TODO Add tag validation (PG filter?)
+=======
+            raise ValidationError('That user does not exist. Note this is case sensitive.')
+>>>>>>> backend:urls4irl/users/forms.py

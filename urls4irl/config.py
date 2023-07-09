@@ -13,6 +13,7 @@ class Config:
     SESSION_PERMANENT = "False"
     SESSION_TYPE = "sqlalchemy"
     SQLALCHEMY_TRACK_MODIFICATIONS = False
+<<<<<<< HEAD
 
     if FLASK_ENV == "development":
         SQLALCHEMY_DATABASE_URI = environ.get("DATABASE_URL")
@@ -21,3 +22,12 @@ class Config:
         if postgres_uri.startswith("postgres://"):
             postgres_uri = postgres_uri.replace("postgres://", "postgresql://", 1)
         SQLALCHEMY_DATABASE_URI = postgres_uri
+=======
+    SQLALCHEMY_DATABASE_URI = environ.get("DATABASE_URL_DEV")
+    TESTING = False
+
+class TestingConfig(Config):
+    TESTING = True
+    SQLALCHEMY_DATABASE_URI = environ.get("DATABASE_URL_TEST")
+    
+>>>>>>> backend

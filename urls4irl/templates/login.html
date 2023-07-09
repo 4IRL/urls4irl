@@ -1,14 +1,20 @@
-{% extends "layout.html" %}
-{% block content %}
-
-
-<div class="d-flex justify-content-center">
-    <form method="POST" action="" novalidate>
+<script type="text/javascript">
+    if (document.querySelector('head').childElementCount === 1) {
+        window.location.href = '/';
+    };
+</script>
+<form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>
+    <div class="modal-header" >
+        <h4 class="modal-title">Login!</h4>
+        <button type="button" class="close" data-dismiss="modal" aria-label="close">
+            <span aria-hidden="true">&times;</span>
+        </button>
+    </div>
+    <div class="modal-body">
         {{ login_form.hidden_tag() }}
         <fieldset class="form-group">
-            <legend class="border-bottom mb-4">Login!</legend>
             <div class="form-group">
-                {{ login_form.username.label(class="form-control-label")}}
+                {{ login_form.username.label(class="form-control-label login-register-label")}}
                 {% if login_form.username.errors %}
                     {{ login_form.username(class="form-control form-control-lg is-invalid") }}
                     <div class="invalid-feedback">
@@ -21,7 +27,7 @@
                 {% endif %}
             </div>
             <div class="form-group">
-                {{ login_form.password.label(class="form-control-label")}}
+                {{ login_form.password.label(class="form-control-label login-register-label")}}
                 {% if login_form.password.errors %}
                     {{ login_form.password(class="form-control form-control-lg is-invalid") }}
                     <div class="invalid-feedback">
@@ -35,11 +41,12 @@
             </div>
         </fieldset>
         <div class="form-group d-flex">
-            {{ login_form.submit(class="btn btn-primary col-4 mr-4")}}
-            <a class="btn btn-primary col-7" href="{{url_for('register_user')}}">Register</a>
+            {{ login_form.submit(class="btn btn-success col-4 mr-4")}}
+            <a class="btn btn-success col-7 to-register" href="javascript:;">Register</a>
         </div>
-    </form>
+    </div>
+</form>
 
-</div>
-
-{% endblock content %}
+{% block scripts %}
+    <script src="{{ url_for('static', filename='scripts/login.js') }}"></script>
+{% endblock scripts %}

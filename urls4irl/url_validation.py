@@ -32,8 +32,12 @@ class InvalidURLError(Exception):
 
     pass
 
+<<<<<<< HEAD
 
 def _parse_url(url: str) -> str:
+=======
+def normalize_url(url: str) -> str:
+>>>>>>> backend
     """
     Uses the url_normalize package to 'normalize' the URL as much as possible.
     It then sets all http protocols to https.
@@ -83,6 +87,7 @@ def check_request_head(url: str) -> str:
     Returns:
         str: Either the redirected URL, or the original URL used in the request head method
     """
+<<<<<<< HEAD
 
     url = _parse_url(url)
 
@@ -92,20 +97,47 @@ def check_request_head(url: str) -> str:
     except requests.exceptions.ConnectionError:
         raise InvalidURLError
 
+=======
+    
+    url = normalize_url(url)
+    
+    try:
+        response = requests.get(url, timeout=10)
+
+    except requests.exceptions.ReadTimeout:
+        raise InvalidURLError
+    
+    except requests.exceptions.ConnectionError:
+        raise InvalidURLError
+
+    except requests.exceptions.MissingSchema:
+        raise InvalidURLError
+        
+>>>>>>> backend
     status_code = response.status_code
 
-    BAD_STATUS_CODES = (400, 404, 406, 410, 414, 451, 505)
-
-    if status_code in BAD_STATUS_CODES:
+    if status_code >= 400:
         raise InvalidURLError
 
     else:
+<<<<<<< HEAD
         location = response.headers.get("Location", None)
+=======
+        # Redirect or creation provides the Location header in http response
+        if status_code in range(300, 400) or status_code == 201:
+            location = response.headers.get('Location', None)
+
+        else:
+            location = response.url
+>>>>>>> backend
 
         if location is None:
-            # Can be a status code of 200 or other implying no redirect
+            # Can be a status code of 200 or other implying no redirect, or does not include Location header
             return url
 
         else:
             # Redirect was found, provide the redirect URL
             return location
+            
+if __name__ == "__main__":
+    check_request_head('https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862')

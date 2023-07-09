@@ -6,7 +6,7 @@ Contains database models for URLS4IRL.
 from datetime import datetime
 from urls4irl import db, login_manager
 from flask_login import UserMixin
-
+from werkzeug.security import check_password_hash, generate_password_hash
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -21,11 +21,6 @@ To query:
 https://stackoverflow.com/questions/12593421/sqlalchemy-and-flask-how-to-query-many-to-many-relationship/12594203
 """
 
-
-# utub_users = db.Table('UtubUsers',
-#     db.Column('utub_id', db.Integer, db.ForeignKey('Utub.id'), primary_key=True),
-#     db.Column('user_id', db.Integer, db.ForeignKey('User.id'), primary_key=True)
-# )
 class Utub_Users(db.Model):
     __tablename__ = "UtubUsers"
     utub_id = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
@@ -75,9 +70,11 @@ class Utub_Urls(db.Model):
             if int(tag.utub_id) == int(self.utub_id):
                 url_tags.append(tag.tag_id)
 
+        url_data = self.url_in_utub.serialized_url
+
         return {
-            "url_id": self.url_in_utub.serialized_for_utub["id"],
-            "url_string": self.url_in_utub.serialized_for_utub["url"],
+            "url_id": url_data['id'],
+            "url_string": url_data['url'],
             "url_tags": url_tags,
             "added_by": self.user_that_added_url.serialized["id"],
             "notes": self.url_notes,
@@ -107,8 +104,13 @@ class Url_Tags(db.Model):
     def serialized(self):
         """Returns serialized object."""
         return {
+<<<<<<< HEAD
             "tag": self.tag_item.serialized,
             "tagged_url": self.tagged_url.serialized,
+=======
+            'tag': self.tag_item.serialized,
+            'tagged_url': self.tagged_url.serialized_url
+>>>>>>> backend
         }
 
 
@@ -124,7 +126,29 @@ class User(db.Model, UserMixin):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     utubs_created = db.relationship("Utub", backref="created_by", lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
+<<<<<<< HEAD
     utubs_is_member_of = db.relationship("Utub_Users", back_populates="to_user")
+=======
+    utubs_is_member_of = db.relationship("Utub_Users", back_populates='to_user')
+    
+    def __init__(self, username: str, email: str, plaintext_password: str, email_confirm: bool = False):
+        """
+        Create new user object per the following parameters
+
+        Args:
+            username (str): Username from user input
+            email (str): Email from user input
+            email_confirm (bool): Whether user's email has been confirmed yet
+            plaintext_password (str): Plaintext password to be hashed
+        """
+        self.username = username
+        self.email = email
+        self.password = generate_password_hash(plaintext_password)
+        self.email_confirm = email_confirm
+
+    def is_password_correct(self, plaintext_password: str) -> bool:
+        return check_password_hash(self.password, plaintext_password)
+>>>>>>> backend
 
     @property
     def serialized(self):
@@ -169,6 +193,11 @@ class Utub(db.Model):
         "Utub_Users", back_populates="to_utub", cascade="all, delete, delete-orphan"
     )
 
+    def __init__(self, name: str, utub_creator: int, utub_description: str):
+        self.name = name
+        self.utub_creator = utub_creator
+        self.utub_description = utub_description
+
     @property
     def serialized(self):
         """Return object in serialized form."""
@@ -183,6 +212,7 @@ class Utub(db.Model):
                 utub_tags.append(tag_object)
 
         return {
+<<<<<<< HEAD
             "id": self.id,
             "name": self.name,
             "created_by": self.utub_creator,
@@ -193,6 +223,16 @@ class Utub(db.Model):
             "members": [member.serialized for member in self.members],
             "urls": [url.serialized for url in self.utub_urls],
             "tags": utub_tags,
+=======
+            'id': self.id,
+            'name': self.name,
+            'created_by': self.utub_creator,
+            'created_at': self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
+            'description': self.utub_description if self.utub_description is not None else "",
+            'members': [member.serialized for member in self.members],
+            'urls': [url_in_utub.serialized for url_in_utub in self.utub_urls],
+            'tags': utub_tags
+>>>>>>> backend
         }
 
 
@@ -209,15 +249,20 @@ class URLS(db.Model):
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     url_tags = db.relationship("Url_Tags", back_populates="tagged_url")
 
+    def __init__(self, normalized_url: str, current_user_id: int):
+        self.url_string = normalized_url
+        self.created_by = int(current_user_id)
+        
     @property
-    def serialized(self):
-        """Returns object in serialized form."""
+    def serialized_url(self):
+        """Includes an array of tag IDs for all ID's on this url"""
         return {
             "id": self.id,
             "url": self.url_string,
             "tags": [tag.tag_item.serialized for tag in self.url_tags],
         }
 
+<<<<<<< HEAD
     @property
     def serialized_for_utub(self):
         return {
@@ -225,6 +270,8 @@ class URLS(db.Model):
             "url": self.url_string,
             "tags": [int(tag.tag_item.serialized["id"]) for tag in self.url_tags],
         }
+=======
+>>>>>>> backend
 
 
 class Tags(db.Model):
@@ -237,6 +284,10 @@ class Tags(db.Model):
     )  # Note that multiple URLs can have the same tag
     created_by = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    def __init__(self, tag_string: str, created_by: int):
+        self.tag_string = tag_string
+        self.created_by = created_by
 
     @property
     def serialized(self):
