@@ -15,8 +15,8 @@ jobs:
 
 #     # Service containers to run with `container-job`
     steps:
-#     - name: Checkout code
-#       uses: actions/checkout@v3
+    - name: Checkout code
+      uses: actions/checkout@v3
 #     - name: Set up Python Environment
 #       uses: actions/setup-python@v2
 #       with:
