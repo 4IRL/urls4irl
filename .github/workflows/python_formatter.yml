@@ -7,7 +7,7 @@ on:
     branches: [backend, frontend, dev, main]
   
 jobs:
-  build-test-container:
+  python-formatter-container:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
 
