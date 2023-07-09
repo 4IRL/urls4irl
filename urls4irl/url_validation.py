@@ -26,9 +26,12 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 from url_normalize import url_normalize
 import requests
 
+
 class InvalidURLError(Exception):
     """Error if the URL returns a bad status code."""
+
     pass
+
 
 def _parse_url(url: str) -> str:
     """
@@ -50,13 +53,14 @@ def _parse_url(url: str) -> str:
     if http_prefix in return_val:
         return_val = return_val.replace(http_prefix, https_prefix)
 
-    if http_prefix + '/' in return_val:
-        return_val = return_val.replace(http_prefix + '/', http_prefix)
-    
-    elif https_prefix + '/' in return_val:
-        return_val = return_val.replace(https_prefix + '/', https_prefix)
+    if http_prefix + "/" in return_val:
+        return_val = return_val.replace(http_prefix + "/", http_prefix)
+
+    elif https_prefix + "/" in return_val:
+        return_val = return_val.replace(https_prefix + "/", https_prefix)
 
     return return_val
+
 
 def check_request_head(url: str) -> str:
     """
@@ -79,29 +83,29 @@ def check_request_head(url: str) -> str:
     Returns:
         str: Either the redirected URL, or the original URL used in the request head method
     """
-    
+
     url = _parse_url(url)
-    
+
     try:
         response = requests.head(url)
-    
+
     except requests.exceptions.ConnectionError:
         raise InvalidURLError
-        
+
     status_code = response.status_code
 
     BAD_STATUS_CODES = (400, 404, 406, 410, 414, 451, 505)
 
     if status_code in BAD_STATUS_CODES:
         raise InvalidURLError
-    
+
     else:
-        location = response.headers.get('Location', None)
+        location = response.headers.get("Location", None)
 
         if location is None:
             # Can be a status code of 200 or other implying no redirect
             return url
-        
+
         else:
             # Redirect was found, provide the redirect URL
             return location

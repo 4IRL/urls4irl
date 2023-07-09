@@ -11,8 +11,8 @@ from flask_cors import CORS
 app = Flask(__name__)
 app.config.from_object(Config)
 
-if app.config['FLASK_ENV'] == 'development':
-    app.config['DEBUG'] = True 
+if app.config["FLASK_ENV"] == "development":
+    app.config["DEBUG"] = True
 
 sess = Session(app)
 
@@ -26,11 +26,11 @@ Because SQLite does not support ALTER tables.
 """
 
 convention = {
-    "ix": 'ix_%(column_0_label)s',
+    "ix": "ix_%(column_0_label)s",
     "uq": "uq_%(table_name)s_%(column_0_name)s",
     "ck": "ck_%(table_name)s_%(constraint_name)s",
     "fk": "fk_%(table_name)s_%(column_0_name)s_%(referred_table_name)s",
-    "pk": "pk_%(table_name)s"
+    "pk": "pk_%(table_name)s",
 }
 
 metadata = MetaData(naming_convention=convention)
@@ -40,8 +40,8 @@ migrate = Migrate(app, db, render_as_batch=True)
 csrf = CSRFProtect(app)
 
 login_manager = LoginManager(app)
-login_manager.login_view = 'login'  # Where to send user if they aren't logged in but try to access a logged in page
-login_manager.login_message_category = 'info'
+login_manager.login_view = "login"  # Where to send user if they aren't logged in but try to access a logged in page
+login_manager.login_message_category = "info"
 
 CORS(app)
 
