@@ -4,7 +4,10 @@ from flask_login import current_user
 from urls4irl.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags
 from urls4irl import db
 
-def test_add_valid_users_to_utub_as_creator(every_user_makes_a_unique_utub, login_first_user_without_register):
+
+def test_add_valid_users_to_utub_as_creator(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
     """
     GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
     WHEN the user wants to add two other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
@@ -22,7 +25,7 @@ def test_add_valid_users_to_utub_as_creator(every_user_makes_a_unique_utub, logi
         "UTub_ID" : Integer representing ID of the UTub the user was added to,
         "UTub_name" : String representing name of the UTub the user was added to,
         "UTub_users": Array containing strings of all usernames in the UTub
-    }   
+    }
     """
     client, csrf_token, logged_in_user, app = login_first_user_without_register
 
@@ -33,14 +36,23 @@ def test_add_valid_users_to_utub_as_creator(every_user_makes_a_unique_utub, logi
         for utub in Utub.query.all():
             assert len(utub.members) == 1
 
-        other_usernames = User.query.filter(User.username!=current_user.username).all()
+        other_usernames = User.query.filter(
+            User.username != current_user.username
+        ).all()
         other_usernames = [other_user.username for other_user in other_usernames]
 
-        utub_of_current_user = Utub_Users.query.filter(Utub_Users.user_id==current_user.id).first()
+        utub_of_current_user = Utub_Users.query.filter(
+            Utub_Users.user_id == current_user.id
+        ).first()
         utub_id_of_current_user = utub_of_current_user.utub_id
 
         # Confirm number of users in the current user's UTub is 1
-        current_number_of_users_in_utub = len(Utub_Users.query.filter(Utub_Users.user_id==current_user.id, Utub_Users.utub_id==utub_of_current_user.utub_id).all())
+        current_number_of_users_in_utub = len(
+            Utub_Users.query.filter(
+                Utub_Users.user_id == current_user.id,
+                Utub_Users.utub_id == utub_of_current_user.utub_id,
+            ).all()
+        )
         assert current_number_of_users_in_utub == 1
 
         # Confirm current user is owner of utub
@@ -51,15 +63,14 @@ def test_add_valid_users_to_utub_as_creator(every_user_makes_a_unique_utub, logi
 
     # Add the other users to the current user's UTubs
     for other_user in other_usernames:
-        add_user_form = {
-            "csrf_token": csrf_token,
-            "username": other_user
-        }
+        add_user_form = {"csrf_token": csrf_token, "username": other_user}
 
         with app.app_context():
-            new_user = User.query.filter(User.username==other_user).first()
+            new_user = User.query.filter(User.username == other_user).first()
 
-        added_user_response = client.post(f"/user/add/{utub_id_of_current_user}", data=add_user_form)
+        added_user_response = client.post(
+            f"/user/add/{utub_id_of_current_user}", data=add_user_form
+        )
         current_number_of_users_in_utub += 1
 
         # Assert correct status code
@@ -71,26 +82,39 @@ def test_add_valid_users_to_utub_as_creator(every_user_makes_a_unique_utub, logi
         assert added_user_response_json["Message"] == "User added"
         assert int(added_user_response_json["User_ID_added"]) == new_user.id
         assert int(added_user_response_json["UTub_ID"]) == utub_id_of_current_user
-        assert added_user_response_json["UTub_name"] == utub_of_current_user.to_utub.name
-        assert len(added_user_response_json["UTub_users"]) == current_number_of_users_in_utub
+        assert (
+            added_user_response_json["UTub_name"] == utub_of_current_user.to_utub.name
+        )
+        assert (
+            len(added_user_response_json["UTub_users"])
+            == current_number_of_users_in_utub
+        )
         assert other_user in added_user_response_json["UTub_users"]
 
         # Assert database user-utub associations is up to date
         with app.app_context():
-            assert len(Utub.query.get(utub_id_of_current_user).members) == current_number_of_users_in_utub
+            assert (
+                len(Utub.query.get(utub_id_of_current_user).members)
+                == current_number_of_users_in_utub
+            )
             current_utub = Utub.query.get(utub_id_of_current_user)
             assert new_user in [user.to_user for user in current_utub.members]
-            current_users_in_utub = set([user.to_user.username for user in current_utub.members])
+            current_users_in_utub = set(
+                [user.to_user.username for user in current_utub.members]
+            )
             assert other_user in current_users_in_utub
 
             # Ensure correct count of Utub-User associations
             assert len(Utub_Users.query.all()) == initial_num_user_utubs + 1
             initial_num_user_utubs += 1
 
-def test_add_then_remove_then_add_user_who_has_urls_to_utub(add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register):
+
+def test_add_then_remove_then_add_user_who_has_urls_to_utub(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
     """
     GIVEN a logged-in user who is creator of a UTub that contains other members
-    WHEN the creator first removes another user who has added URLs, then wants to add the users back to their UTub by POST to 
+    WHEN the creator first removes another user who has added URLs, then wants to add the users back to their UTub by POST to
         "/user/add/<int: utub_id>" with correct form data, following the following format:
             "csrf_token": String containing CSRF token for validation
             "username": Username of the user to add
@@ -106,54 +130,82 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(add_all_urls_and_use
         "UTub_ID" : Integer representing ID of the UTub the user was added to,
         "UTub_name" : String representing name of the UTub the user was added to,
         "UTub_users": Array containing strings of all usernames in the UTub
-    }   
+    }
     """
     client, csrf_token, logged_in_user, app = login_first_user_without_register
 
     with app.app_context():
         # Get this user's UTub they created
-        utub_user_created = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        utub_user_created = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
 
         # Ensure other users in this UTub
         assert len(utub_user_created.members) > 1
 
         initial_num_of_users_in_utub = len(utub_user_created.members)
 
-        # Get initial array of usernames 
-        initial_usernames_in_utub = [user.to_user.username for user in utub_user_created.members]
+        # Get initial array of usernames
+        initial_usernames_in_utub = [
+            user.to_user.username for user in utub_user_created.members
+        ]
 
         # Grab a sample user
-        other_user_in_utub_with_urls = Utub_Users.query.filter(Utub_Users.user_id != current_user.id).first()
+        other_user_in_utub_with_urls = Utub_Users.query.filter(
+            Utub_Users.user_id != current_user.id
+        ).first()
         other_user_id_in_utub_with_urls = other_user_in_utub_with_urls.user_id
         other_user_username = other_user_in_utub_with_urls.to_user.username
 
         # Ensure this other user has URLs in the UTub
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_user_created.id, Utub_Urls.user_id == other_user_id_in_utub_with_urls).all()) > 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_user_created.id,
+                    Utub_Urls.user_id == other_user_id_in_utub_with_urls,
+                ).all()
+            )
+            > 0
+        )
 
         # Get number of URLs and tags in this UTub initially
-        initial_num_of_urls_in_utub = len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_user_created.id).all())
-        initial_num_of_url_tags_in_utub = len(Url_Tags.query.filter(Url_Tags.utub_id == utub_user_created.id).all())
+        initial_num_of_urls_in_utub = len(
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_user_created.id).all()
+        )
+        initial_num_of_url_tags_in_utub = len(
+            Url_Tags.query.filter(Url_Tags.utub_id == utub_user_created.id).all()
+        )
 
         all_urls_in_utubs = len(Utub_Urls.query.all())
         all_url_tags_in_utub = len(Url_Tags.query.all())
 
     # Remove this user first
-    remove_user_response = client.post(f"/user/remove/{utub_user_created.id}/{other_user_id_in_utub_with_urls}", data={"csrf_token": csrf_token})
+    remove_user_response = client.post(
+        f"/user/remove/{utub_user_created.id}/{other_user_id_in_utub_with_urls}",
+        data={"csrf_token": csrf_token},
+    )
 
     # Ensure HTTP response code is correct
-    assert remove_user_response.status_code == 200    
+    assert remove_user_response.status_code == 200
 
     # Ensure removed from UTub
     with app.app_context():
-        assert len(Utub_Users.query.filter(Utub_Users.utub_id == utub_user_created.id, Utub_Users.user_id == other_user_id_in_utub_with_urls).all()) == 0
+        assert (
+            len(
+                Utub_Users.query.filter(
+                    Utub_Users.utub_id == utub_user_created.id,
+                    Utub_Users.user_id == other_user_id_in_utub_with_urls,
+                ).all()
+            )
+            == 0
+        )
 
     # Add them back in
-    add_user_form = {
-        "csrf_token": csrf_token,
-        "username": other_user_username
-    }
+    add_user_form = {"csrf_token": csrf_token, "username": other_user_username}
 
-    added_user_response = client.post(f"/user/add/{utub_user_created.id}", data=add_user_form)
+    added_user_response = client.post(
+        f"/user/add/{utub_user_created.id}", data=add_user_form
+    )
 
     # Assert correct status code
     assert added_user_response.status_code == 200
@@ -162,7 +214,10 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(add_all_urls_and_use
     # Assert JSON response is valid and contains updated data
     assert added_user_response_json["Status"] == "Success"
     assert added_user_response_json["Message"] == "User added"
-    assert int(added_user_response_json["User_ID_added"]) == other_user_id_in_utub_with_urls
+    assert (
+        int(added_user_response_json["User_ID_added"])
+        == other_user_id_in_utub_with_urls
+    )
     assert int(added_user_response_json["UTub_ID"]) == utub_user_created.id
     assert added_user_response_json["UTub_name"] == utub_user_created.name
     assert len(added_user_response_json["UTub_users"]) == initial_num_of_users_in_utub
@@ -172,11 +227,21 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(add_all_urls_and_use
         # Ensure proper counts of all associations after removing then adding user who owned URLs in the UTub
         assert len(Utub_Urls.query.all()) == all_urls_in_utubs
         assert len(Url_Tags.query.all()) == all_url_tags_in_utub
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_user_created.id).all()) == initial_num_of_urls_in_utub
-        assert len(Url_Tags.query.filter(Url_Tags.utub_id == utub_user_created.id).all()) == initial_num_of_url_tags_in_utub
+        assert (
+            len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_user_created.id).all())
+            == initial_num_of_urls_in_utub
+        )
+        assert (
+            len(Url_Tags.query.filter(Url_Tags.utub_id == utub_user_created.id).all())
+            == initial_num_of_url_tags_in_utub
+        )
 
 
-def test_add_valid_users_to_utub_as_member(add_single_utub_as_user_without_logging_in, register_all_but_first_user, login_second_user_without_register):
+def test_add_valid_users_to_utub_as_member(
+    add_single_utub_as_user_without_logging_in,
+    register_all_but_first_user,
+    login_second_user_without_register,
+):
     """
     GIVEN a logged-in user who is member of a UTub
     WHEN the user wants to add another other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
@@ -190,7 +255,7 @@ def test_add_valid_users_to_utub_as_member(add_single_utub_as_user_without_loggi
         "Status" : "Failure",
         "Message" : "Not authorized",
         "Error_code": 1
-    }  
+    }
     """
     client, csrf_token_string, logged_in_user, app = login_second_user_without_register
     with app.app_context():
@@ -215,25 +280,25 @@ def test_add_valid_users_to_utub_as_member(add_single_utub_as_user_without_loggi
                 missing_user = user
 
         # Verify the missing user is in no utubs
-        assert len(Utub_Users.query.filter(Utub_Users.user_id == missing_user.id).all()) == 0
+        assert (
+            len(Utub_Users.query.filter(Utub_Users.user_id == missing_user.id).all())
+            == 0
+        )
 
         # Verify current user isn't creator of UTub
         assert only_utub.created_by != current_user.id
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Users.query.all())        
+        initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to add the missing member to the UTub
-    add_user_form = {
-        "csrf_token": csrf_token_string,
-        "username": missing_user.username
-    }
-        
+    add_user_form = {"csrf_token": csrf_token_string, "username": missing_user.username}
+
     missing_user_id = missing_user.id
     add_user_response = client.post(f"/user/add/{only_utub.id}", data=add_user_form)
 
     assert add_user_response.status_code == 403
-    
+
     add_user_response_json = add_user_response.json
 
     assert add_user_response_json["Status"] == "Failure"
@@ -241,12 +306,18 @@ def test_add_valid_users_to_utub_as_member(add_single_utub_as_user_without_loggi
     assert int(add_user_response_json["Error_code"]) == 1
 
     with app.app_context():
-        assert len(Utub_Users.query.filter(Utub_Users.user_id == missing_user_id).all()) == 0
+        assert (
+            len(Utub_Users.query.filter(Utub_Users.user_id == missing_user_id).all())
+            == 0
+        )
 
         # Ensure correct count of Utub-User associations
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
-def test_add_duplicate_user_to_utub(every_user_makes_a_unique_utub, login_first_user_without_register):
+
+def test_add_duplicate_user_to_utub(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
     """
     GIVEN a logged-in user who owns a UTub that has another user as a member
     WHEN the creator wants to add the same other user to their UTub by POST to "/user/add/<int: utub_id>" with
@@ -260,14 +331,16 @@ def test_add_duplicate_user_to_utub(every_user_makes_a_unique_utub, login_first_
         "Status" : "Failure",
         "Message" : "User already in UTub",
         "Error_code": 2
-    }  
+    }
     """
     client, csrf_token, logged_in_user, app = login_first_user_without_register
 
     # Add another user to first user's UTub
     with app.app_context():
         # Get this user's UTub
-        current_user_utub_user_association = Utub_Users.query.filter(Utub_Users.user_id==current_user.id).first()
+        current_user_utub_user_association = Utub_Users.query.filter(
+            Utub_Users.user_id == current_user.id
+        ).first()
         current_user_utub = current_user_utub_user_association.to_utub
         current_user_utub_id = current_user_utub.id
 
@@ -288,15 +361,14 @@ def test_add_duplicate_user_to_utub(every_user_makes_a_unique_utub, login_first_
         db.session.commit()
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Users.query.all())        
+        initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to the UTub again
-    add_user_form = {
-        "csrf_token": csrf_token,
-        "username": another_user_username
-    }
+    add_user_form = {"csrf_token": csrf_token, "username": another_user_username}
 
-    add_user_response = client.post(f"/user/add/{current_user_utub_id}", data=add_user_form)
+    add_user_response = client.post(
+        f"/user/add/{current_user_utub_id}", data=add_user_form
+    )
 
     assert add_user_response.status_code == 400
 
@@ -308,7 +380,15 @@ def test_add_duplicate_user_to_utub(every_user_makes_a_unique_utub, login_first_
 
     with app.app_context():
         # Ensure the user is only associated with the UTub once
-        assert len(Utub_Users.query.filter(Utub_Users.user_id == another_user_id, Utub_Users.utub_id == current_user_utub_id).all()) == 1
+        assert (
+            len(
+                Utub_Users.query.filter(
+                    Utub_Users.user_id == another_user_id,
+                    Utub_Users.utub_id == current_user_utub_id,
+                ).all()
+            )
+            == 1
+        )
 
         current_user_utub = Utub.query.get(current_user_utub_id)
         other_user = User.query.filter(User.username == another_user_username).first()
@@ -322,7 +402,10 @@ def test_add_duplicate_user_to_utub(every_user_makes_a_unique_utub, login_first_
         # Ensure correct count of Utub-User associations
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
-def test_add_user_to_nonexistant_utub(register_all_but_first_user, login_first_user_with_register):
+
+def test_add_user_to_nonexistant_utub(
+    register_all_but_first_user, login_first_user_with_register
+):
     """
     GIVEN a logged-in user and other valid registered users with no UTubs created
     WHEN the logged-in user wants to another user to a UTub (none exist) by POST to "/user/add/<int: utub_id>" with
@@ -345,13 +428,10 @@ def test_add_user_to_nonexistant_utub(register_all_but_first_user, login_first_u
         another_user = User.query.filter(User.id != current_user.id).first()
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Users.query.all())        
+        initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to a UTub
-    add_user_form = {
-        "csrf_token": csrf_token,
-        "username": another_user.username
-    }
+    add_user_form = {"csrf_token": csrf_token, "username": another_user.username}
 
     add_user_response = client.post(f"/user/add/1", data=add_user_form)
 
@@ -365,7 +445,10 @@ def test_add_user_to_nonexistant_utub(register_all_but_first_user, login_first_u
         # Ensure correct count of Utub-User associations
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
-def test_add_nonexistant_user_to_utub(add_single_utub_as_user_without_logging_in, login_first_user_without_register):
+
+def test_add_nonexistant_user_to_utub(
+    add_single_utub_as_user_without_logging_in, login_first_user_without_register
+):
     """
     GIVEN a logged-in user and their single UTub and no other registered users with no UTubs created
     WHEN the logged-in user wants to another user to their UTub by POST to "/user/add/<int: utub_id>" with
@@ -390,13 +473,10 @@ def test_add_nonexistant_user_to_utub(add_single_utub_as_user_without_logging_in
         only_utub = Utub.query.first()
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Users.query.all())        
+        initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to a UTub
-    add_user_form = {
-        "csrf_token": csrf_token,
-        "username": "Not a registered user"
-    }
+    add_user_form = {"csrf_token": csrf_token, "username": "Not a registered user"}
 
     add_user_response = client.post(f"/user/add/{only_utub.id}", data=add_user_form)
 
@@ -413,7 +493,10 @@ def test_add_nonexistant_user_to_utub(add_single_utub_as_user_without_logging_in
         # Ensure correct count of Utub-User associations
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
-def test_add_user_to_another_users_utub(every_user_makes_a_unique_utub, login_first_user_without_register):
+
+def test_add_user_to_another_users_utub(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
     """
     GIVEN three valid users, first one being logged in, and each user has their own UTub and themselves being the only member
     WHEN the logged-in user wants to add another user to another person's UTub by POST to "/user/add/<int: utub_id>" with
@@ -427,26 +510,32 @@ def test_add_user_to_another_users_utub(every_user_makes_a_unique_utub, login_fi
         "Status" : "Failure",
         "Message" : "Not authorized",
         "Error_code": 1
-    }  
+    }
     """
 
     client, csrf_token, logged_in_user, app = login_first_user_without_register
 
     with app.app_context():
         # Get logged in user's UTub
-        current_user_utub = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        current_user_utub = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
 
         # Make sure logged in user is only user in this UTub
         assert len(current_user_utub.members) == 1
         assert current_user in [user.to_user for user in current_user_utub.members]
 
         # Get another user's UTub
-        another_utub = Utub_Users.query.filter(Utub_Users.user_id != current_user.id).first()
+        another_utub = Utub_Users.query.filter(
+            Utub_Users.user_id != current_user.id
+        ).first()
         user_for_another_utub = another_utub.to_user
         another_utub = another_utub.to_utub
-        
+
         # Get another user to add this UTub
-        test_user_to_add = User.query.filter(User.id != user_for_another_utub.id, User.id != current_user.id).first()
+        test_user_to_add = User.query.filter(
+            User.id != user_for_another_utub.id, User.id != current_user.id
+        ).first()
         test_user_to_add = test_user_to_add
 
         # Make sure this user isn't in the second user's UTub
@@ -456,18 +545,15 @@ def test_add_user_to_another_users_utub(every_user_makes_a_unique_utub, login_fi
         assert current_user.id != another_utub.created_by
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Users.query.all())        
+        initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to add this third user to the second user's UTub, logged as the first user
-    add_user_form = {
-        "csrf_token": csrf_token,
-        "username": test_user_to_add.username
-    }
+    add_user_form = {"csrf_token": csrf_token, "username": test_user_to_add.username}
 
     add_user_response = client.post(f"/user/add/{another_utub.id}", data=add_user_form)
 
     assert add_user_response.status_code == 403
-    
+
     add_user_response_json = add_user_response.json
 
     assert add_user_response_json["Status"] == "Failure"
@@ -476,12 +562,23 @@ def test_add_user_to_another_users_utub(every_user_makes_a_unique_utub, login_fi
 
     # Confirm third user not in second user's UTub
     with app.app_context():
-        assert len(Utub_Users.query.filter(Utub_Users.user_id == test_user_to_add.id, Utub_Users.utub_id == another_utub.id).all()) == 0
+        assert (
+            len(
+                Utub_Users.query.filter(
+                    Utub_Users.user_id == test_user_to_add.id,
+                    Utub_Users.utub_id == another_utub.id,
+                ).all()
+            )
+            == 0
+        )
 
         # Ensure correct count of Utub-User associations
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
-def test_add_user_to_utub_invalid_form(add_single_utub_as_user_without_logging_in, login_first_user_without_register):
+
+def test_add_user_to_utub_invalid_form(
+    add_single_utub_as_user_without_logging_in, login_first_user_without_register
+):
     """
     GIVEN a logged-in user who is member of a UTub
     WHEN the user wants to add another other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
@@ -499,23 +596,25 @@ def test_add_user_to_utub_invalid_form(add_single_utub_as_user_without_logging_i
             {
                 "username": ['This field is required.']
             }
-    }  
+    }
     """
     client, csrf_token, logged_in_user, app = login_first_user_without_register
-    
+
     # Get logged in user's UTub
     with app.app_context():
-        current_user_utub = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        current_user_utub = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Users.query.all())        
+        initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to add this third user to the second user's UTub, logged as the first user
-    add_user_form = {
-        "csrf_token": csrf_token
-    }
+    add_user_form = {"csrf_token": csrf_token}
 
-    add_user_response = client.post(f"/user/add/{current_user_utub.id}", data=add_user_form)
+    add_user_response = client.post(
+        f"/user/add/{current_user_utub.id}", data=add_user_form
+    )
 
     assert add_user_response.status_code == 404
 
@@ -529,8 +628,11 @@ def test_add_user_to_utub_invalid_form(add_single_utub_as_user_without_logging_i
     with app.app_context():
         # Ensure correct count of Utub-User associations
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
-      
-def test_add_user_to_utub_missing_csrf_token(add_single_utub_as_user_without_logging_in, login_first_user_without_register):
+
+
+def test_add_user_to_utub_missing_csrf_token(
+    add_single_utub_as_user_without_logging_in, login_first_user_without_register
+):
     """
     GIVEN a logged-in user who is member of a UTub
     WHEN the user wants to add another other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
@@ -538,13 +640,15 @@ def test_add_user_to_utub_missing_csrf_token(add_single_utub_as_user_without_log
     THEN ensure that the backend responds with a 404 HTTP status code,and the correct JSON response
     """
     client, csrf_token, logged_in_user, app = login_first_user_without_register
-    
+
     # Get logged in user's UTub
     with app.app_context():
-        current_user_utub = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        current_user_utub = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Users.query.all())        
+        initial_num_user_utubs = len(Utub_Users.query.all())
 
     add_user_response = client.post(f"/user/add/{current_user_utub.id}")
 
@@ -554,4 +658,3 @@ def test_add_user_to_utub_missing_csrf_token(add_single_utub_as_user_without_log
     with app.app_context():
         # Ensure correct count of Utub-User associations
         assert len(Utub_Users.query.all()) == initial_num_user_utubs
-    
