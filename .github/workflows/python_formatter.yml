@@ -7,15 +7,7 @@ on:
     branches: [backend, frontend, dev, main]
   
 jobs:
-<<<<<<< HEAD
-<<<<<<< HEAD
   python-formatter-container:
-=======
-  build-test-container:
->>>>>>> 29629f2 (Adding Github Action Workflow for Python Formatter)
-=======
-  python-formatter-container:
->>>>>>> 2a8afb7 (fix naming on workflow jobs)
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
 
@@ -37,7 +29,6 @@ jobs:
       id: git-check
       run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
     - name: Commit Lint Changes
-<<<<<<< HEAD
       if: steps.git-check.outputs.modified == 'true'
       run: |
         git config --local user.email "${{ secrets.MY_EMAIL }}"
@@ -45,13 +36,6 @@ jobs:
         git commit -a -m "Formatted Python code - Black"
     - name: Push changes
       if: steps.git-check.outputs.modified == 'true'
-=======
-      run: |
-        git config --local user.email "${{ secrets.MY_EMAIL }}"
-        git config --local user.name "{{ secrets.NAME }}"
-        git commit -a -m "Add changes"
-    - name: Push changes
->>>>>>> 29629f2 (Adding Github Action Workflow for Python Formatter)
       uses: ad-m/github-push-action@master
       with:
         github_token: ${{ secrets.GITHUB_TOKEN }}
