@@ -1,8 +1,4 @@
-<<<<<<< HEAD
 name: Python Formatter
-=======
-name: Lint Python
->>>>>>> 29629f2 (Adding Github Action Workflow for Python Formatter)
 
 on:
   push:
@@ -12,10 +8,14 @@ on:
   
 jobs:
 <<<<<<< HEAD
+<<<<<<< HEAD
   python-formatter-container:
 =======
   build-test-container:
 >>>>>>> 29629f2 (Adding Github Action Workflow for Python Formatter)
+=======
+  python-formatter-container:
+>>>>>>> 2a8afb7 (fix naming on workflow jobs)
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
 
