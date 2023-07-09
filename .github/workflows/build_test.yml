@@ -1,0 +1,59 @@
+name: Build and Test
+
+on:
+  push:
+    branches: [backend, frontend, dev, main]
+  pull_request:
+    branches: [backend, frontend, dev, main]
+  
+    
+jobs:
+  build-test-container:
+    env:
+      FLASK_ENV: 'development'
+      PRODUCTION: 'false'
+      SECRET_KEY: 'ABCDEFGH12345678'
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+    # Docker Hub image that `container-job` executes in
+    container: python:3.10.12-bookworm
+
+    # Service containers to run with `container-job`
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: postgres
+        # Map the ports
+        ports:
+          - 5432:5432
+        # Provide the password for postgres
+        env:
+          POSTGRES_PASSWORD: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+    - name: Set up Python Environment
+      uses: actions/setup-python@v2
+      with:
+        python-version: '3.10'
+    - name: Install Dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install -r requirements.txt
+        
+    - name: Linting
+      run: |
+        black .
+
+    - name: Run tests
+      env: 
+        DATABASE_URL_TEST: postgresql://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/postgres
+      run: |
+        python -m pytest -sv
