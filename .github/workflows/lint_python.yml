@@ -10,10 +10,7 @@ jobs:
   build-test-container:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-#     # Docker Hub image that `container-job` executes in
-#     container: python:3.10.12-bookworm
 
-#     # Service containers to run with `container-job`
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -25,14 +22,13 @@ jobs:
       uses: psf/black@stable
       with:
         options: "--check --verbose"
-    - name: Extract branch name
-      shell: bash
-      run: echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> $GITHUB_OUTPUT
-      id: extract_branch
+    - name: Check for modified files
+      id: git-check
+      run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
     - name: Commit Lint Changes
-      uses: mikeal/publish-to-github-action@master
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        BRANCH_NAME: '${{ steps.extract_branch.outputs.branch }}' #optional defaults to master
-
-
+      if: steps.git-check.outputs.modified == 'true'
+      run: |
+        git config --global user.name 'Giovanni Propersi'
+        git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
+        git commit -am "Automated changes"
+        git push
