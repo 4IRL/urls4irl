@@ -4,54 +4,75 @@ from urls4irl import db
 from urls4irl.models import Utub, Utub_Users
 from urls4irl.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 
-utubs = Blueprint('utubs', __name__)
+utubs = Blueprint("utubs", __name__)
 
-@utubs.route('/utub/new', methods=["POST"])
+
+@utubs.route("/utub/new", methods=["POST"])
 @login_required
 def create_utub():
     """
     User wants to create a new utub.
     Assocation Object:
     https://docs.sqlalchemy.org/en/14/orm/basic_relationships.html#many-to-many
-    
+
     """
 
     utub_form = UTubForm()
 
     if utub_form.validate_on_submit():
         name = utub_form.name.data
-        description = utub_form.description.data if utub_form.description.data is not None else ''
-        new_utub = Utub(name=name, utub_creator=current_user.get_id(), utub_description=description)
+        description = (
+            utub_form.description.data if utub_form.description.data is not None else ""
+        )
+        new_utub = Utub(
+            name=name, utub_creator=current_user.get_id(), utub_description=description
+        )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = current_user
         new_utub.members.append(creator_to_utub)
         db.session.commit()
-        
+
         # Add time made?
-        return jsonify({
-            "Status": "Success",
-            "UTub_ID" : int(new_utub.id), 
-            "UTub_name" : f"{new_utub.name}",
-            "UTub_description" : f"{description}",
-            "UTub_creator_id": int(current_user.get_id())
-        }), 200
+        return (
+            jsonify(
+                {
+                    "Status": "Success",
+                    "UTub_ID": int(new_utub.id),
+                    "UTub_name": f"{new_utub.name}",
+                    "UTub_description": f"{description}",
+                    "UTub_creator_id": int(current_user.get_id()),
+                }
+            ),
+            200,
+        )
 
     # Invalid form inputs
     if utub_form.errors is not None:
-        return jsonify({
-            "Status": "Failure",
-            "Message" : "Unable to generate a new UTub with that information.",
-            "Error_code": 1,
-            "Errors": utub_form.errors
-        }), 404
+        return (
+            jsonify(
+                {
+                    "Status": "Failure",
+                    "Message": "Unable to generate a new UTub with that information.",
+                    "Error_code": 1,
+                    "Errors": utub_form.errors,
+                }
+            ),
+            404,
+        )
 
-    return jsonify({
-        "Status": "Failure",
-        "Message" : "Unable to generate a new UTub with that information.",
-        "Error_code": 2
-    }), 404  
+    return (
+        jsonify(
+            {
+                "Status": "Failure",
+                "Message": "Unable to generate a new UTub with that information.",
+                "Error_code": 2,
+            }
+        ),
+        404,
+    )
 
-@utubs.route('/utub/delete/<int:utub_id>', methods=["POST"])
+
+@utubs.route("/utub/delete/<int:utub_id>", methods=["POST"])
 @login_required
 def delete_utub(utub_id: int):
     """
@@ -67,25 +88,36 @@ def delete_utub(utub_id: int):
 
     utub = Utub.query.get_or_404(utub_id_to_delete)
 
-    if int(current_user.get_id()) != int(utub.created_by.id):  
-        return jsonify({
-            "Status" : "Failure",
-            "Message": "You don't have permission to delete this UTub!"
-        }), 403
-    
+    if int(current_user.get_id()) != int(utub.created_by.id):
+        return (
+            jsonify(
+                {
+                    "Status": "Failure",
+                    "Message": "You don't have permission to delete this UTub!",
+                }
+            ),
+            403,
+        )
+
     else:
         db.session.delete(utub)
         db.session.commit()
 
-        return jsonify({
-            "Status" : "Success",
-            "Message" : "UTub deleted",
-            "UTub_ID" : f"{utub.id}", 
-            "UTub_name" : f"{utub.name}",
-            "UTub_description" : f"{utub.utub_description}",
-        }), 200
+        return (
+            jsonify(
+                {
+                    "Status": "Success",
+                    "Message": "UTub deleted",
+                    "UTub_ID": f"{utub.id}",
+                    "UTub_name": f"{utub.name}",
+                    "UTub_description": f"{utub.utub_description}",
+                }
+            ),
+            200,
+        )
 
-@utubs.route('/utub/edit_name/<int:utub_id>', methods=["POST"])
+
+@utubs.route("/utub/edit_name/<int:utub_id>", methods=["POST"])
 @login_required
 def update_utub_name(utub_id: int):
     """
@@ -95,7 +127,7 @@ def update_utub_name(utub_id: int):
 
     Input is required and the new name cannot be empty. Members cannot update UTub names. Creators
     of other UTubs cannot update another UTub's name. The "name" field must be included in the form.
-    
+
     On POST:
         The new name is saved to the database for that UTub.
 
@@ -105,11 +137,16 @@ def update_utub_name(utub_id: int):
     current_utub = Utub.query.get_or_404(utub_id)
 
     if int(current_user.get_id()) != current_utub.created_by.id:
-        return jsonify({
-            "Status" : "Failure",
-            "Message": "You do not have permission to edit this UTub's name",
-            "Error_code": 1,
-        }), 403
+        return (
+            jsonify(
+                {
+                    "Status": "Failure",
+                    "Message": "You do not have permission to edit this UTub's name",
+                    "Error_code": 1,
+                }
+            ),
+            403,
+        )
 
     current_utub_name = current_utub.name
 
@@ -122,29 +159,45 @@ def update_utub_name(utub_id: int):
             current_utub.name = new_utub_name
             db.session.commit()
 
-        return jsonify({
-            "Status": "Success",
-            "UTub_ID": current_utub.id,
-            "UTub_name": current_utub.name,
-            "UTub_description": current_utub.utub_description,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "Status": "Success",
+                    "UTub_ID": current_utub.id,
+                    "UTub_name": current_utub.name,
+                    "UTub_description": current_utub.utub_description,
+                }
+            ),
+            200,
+        )
 
     # Invalid form errors
     if utub_name_form.errors is not None:
-        return jsonify({
-            "Status": "Failure",
-            "Message": "Invalid form",
-            "Error_code": 2,
-            "Errors": utub_name_form.errors
-        }), 404
+        return (
+            jsonify(
+                {
+                    "Status": "Failure",
+                    "Message": "Invalid form",
+                    "Error_code": 2,
+                    "Errors": utub_name_form.errors,
+                }
+            ),
+            404,
+        )
 
-    return jsonify({
-        "Status" : "Failure",
-        "Message" : "Unable to modify this UTub's name",
-        "Error_code": 3
-    }), 404
+    return (
+        jsonify(
+            {
+                "Status": "Failure",
+                "Message": "Unable to modify this UTub's name",
+                "Error_code": 3,
+            }
+        ),
+        404,
+    )
 
-@utubs.route('/utub/edit_description/<int:utub_id>', methods=["POST"])
+
+@utubs.route("/utub/edit_description/<int:utub_id>", methods=["POST"])
 @login_required
 def update_utub_desc(utub_id: int):
     """
@@ -155,7 +208,7 @@ def update_utub_desc(utub_id: int):
     Members cannot update UTub descriptions. Creators of other UTubs cannot update another
     UTub's name. The "utub_description" field must be contained in the form. The description
     can be made blank if desired.
-    
+
     On POST:
         The new description is saved to the database for that UTub.
 
@@ -163,16 +216,23 @@ def update_utub_desc(utub_id: int):
         utub_id (int): The ID of the UTub that will have its description updated
     """
     current_utub = Utub.query.get_or_404(utub_id)
-    
-    if int(current_user.get_id()) != current_utub.created_by.id:
-        return jsonify({
-            "Status" : "Failure",
-            "Message": "You do not have permission to edit this UTub's description",
-            "Error_code": 1,
-            "UTub_description": current_utub.utub_description
-        }), 403
 
-    current_utub_description = "" if current_utub.utub_description is None else current_utub.utub_description
+    if int(current_user.get_id()) != current_utub.created_by.id:
+        return (
+            jsonify(
+                {
+                    "Status": "Failure",
+                    "Message": "You do not have permission to edit this UTub's description",
+                    "Error_code": 1,
+                    "UTub_description": current_utub.utub_description,
+                }
+            ),
+            403,
+        )
+
+    current_utub_description = (
+        "" if current_utub.utub_description is None else current_utub.utub_description
+    )
 
     utub_desc_form = UTubDescriptionForm()
 
@@ -180,34 +240,54 @@ def update_utub_desc(utub_id: int):
         new_utub_description = utub_desc_form.utub_description.data
 
         if new_utub_description is None:
-            return jsonify({
-                "Status" : "Failure",
-                "Message": "Invalid form",
-                "Error_code": 2,
-            }), 404     
+            return (
+                jsonify(
+                    {
+                        "Status": "Failure",
+                        "Message": "Invalid form",
+                        "Error_code": 2,
+                    }
+                ),
+                404,
+            )
 
         if new_utub_description != current_utub_description:
             current_utub.utub_description = new_utub_description
             db.session.commit()
 
-        return jsonify({
-            "Status": "Success",
-            "UTub_ID": current_utub.id,
-            "UTub_name": current_utub.name,
-            "UTub_description": current_utub.utub_description,
-        }), 200
+        return (
+            jsonify(
+                {
+                    "Status": "Success",
+                    "UTub_ID": current_utub.id,
+                    "UTub_name": current_utub.name,
+                    "UTub_description": current_utub.utub_description,
+                }
+            ),
+            200,
+        )
 
     # Invalid form input
     if utub_desc_form.errors is not None:
-        return jsonify({
-            "Status": "Failure",
-            "Message": "UTub description is too long",
-            "Error_code": 3,
-            "Errors": utub_desc_form.errors
-        }), 404
+        return (
+            jsonify(
+                {
+                    "Status": "Failure",
+                    "Message": "UTub description is too long",
+                    "Error_code": 3,
+                    "Errors": utub_desc_form.errors,
+                }
+            ),
+            404,
+        )
 
-    return jsonify({
-        "Status" : "Failure",
-        "Message" : "Unable to modify this UTub's description",
-        "Error_code": 4
-    }), 404
+    return (
+        jsonify(
+            {
+                "Status": "Failure",
+                "Message": "Unable to modify this UTub's description",
+                "Error_code": 4,
+            }
+        ),
+        404,
+    )
