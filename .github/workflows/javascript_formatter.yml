@@ -18,8 +18,26 @@ jobs:
           # Make sure the actual branch is checked out when running on pull requests
           ref: ${{ github.head_ref }}
 
-      - name: Prettify code
-        uses: creyD/prettier_action@v4.3
+      - name: Setup node
+        uses: actions/setup-node@v3
         with:
-          # This part is also where you can pass other options, for example:
-          prettier_options: --write **/*.{js,md}
+          node-version: "16"
+      - name: Prettier
+        run: npx prettier --write **/*.js
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Check for modified files
+        id: git-check
+        run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
+      - name: Commit Lint Changes
+        if: steps.git-check.outputs.modified == 'true'
+        run: |
+          git config --local user.email "${{ secrets.MY_EMAIL }}"
+          git config --local user.name "{{ secrets.NAME }}"
+          git commit -a -m "Formatted javascript code - Prettier"
+      - name: Push changes
+        if: steps.git-check.outputs.modified == 'true'
+        uses: ad-m/github-push-action@master
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.head_ref }}
