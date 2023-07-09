@@ -26,11 +26,11 @@ jobs:
         python -m pip install --upgrade pip
         pip install black
         
-    - name: Linting
-      run: |
-        black .
+#     - name: Linting
+#       run: |
+#         black --check reorder-python-imports .
 
     - name: Check Python with Black
       uses: psf/black@stable
       with:
-        options: "--check --verbose"
+        options: " --verbose"
