@@ -1,5 +1,5 @@
 function allowDrop(ev) {
-  ev.preventDefault();  // default is not to allow drop
+  ev.preventDefault(); // default is not to allow drop
 }
 function dragStart(ev) {
   // Store id for transfer
@@ -7,7 +7,7 @@ function dragStart(ev) {
 }
 function dropIt(ev) {
   // Origin data
-  console.log(ev)
+  console.log(ev);
   let cardID = ev.dataTransfer.getData("text/plain");
   let cardEl = document.getElementById(cardID);
   let originEl = cardEl.parentElement;
@@ -26,47 +26,56 @@ function dropIt(ev) {
   if (destEl.id !== originEl.id) {
     // Append to the list
     destEl.appendChild(cardEl);
-
   } else {
     // Same list. Swap two cards
-    if (!(swapCardEl === undefined)) destEl.insertBefore(cardEl, swapCardEl)
+    if (!(swapCardEl === undefined)) destEl.insertBefore(cardEl, swapCardEl);
   }
 }
 
-$(".add-group").on('click', async function () {
+$(".add-group").on("click", async function () {
   // user input title
-  let input = document.createElement('input');
-  setAttributes(input, { "id": 'group-name-input' });
+  let input = document.createElement("input");
+  setAttributes(input, { id: "group-name-input" });
   $("#boardlists")[0].insertBefore(input, $("#boardlists")[0].firstChild);
   let inputEl = $("#group-name-input")[0];
   await awaitEnter();
 
-  var ids = $('#boardlists > .board-list').map(function () {
-    return this.id || null;
-  }).get();
+  var ids = $("#boardlists > .board-list")
+    .map(function () {
+      return this.id || null;
+    })
+    .get();
 
   // new group
-  let newTitle = inputEl.value === '' ? "New Group" : inputEl.value;
+  let newTitle = inputEl.value === "" ? "New Group" : inputEl.value;
   inputEl.remove();
-  let group = document.createElement('div');
-  setAttributes(group, { "id": '-group', "class": "board-list", "ondrop": "dropIt(event)", "ondragover": "allowDrop(event)" });
-  group.innerHTML = '<div class="list-title"><h2>' + newTitle + '</h2></div><button class="edit-group"><i class="large material-icons">edit</i></button><button class="remove-group"><i class="large material-icons">remove</i></button><div class="list-content"></div>'
+  let group = document.createElement("div");
+  setAttributes(group, {
+    id: "-group",
+    class: "board-list",
+    ondrop: "dropIt(event)",
+    ondragover: "allowDrop(event)",
+  });
+  group.innerHTML =
+    '<div class="list-title"><h2>' +
+    newTitle +
+    '</h2></div><button class="edit-group"><i class="large material-icons">edit</i></button><button class="remove-group"><i class="large material-icons">remove</i></button><div class="list-content"></div>';
 
   $("#boardlists")[0].insertBefore(group, $("#boardlists")[0].firstChild);
 });
 
-$(".edit-group").on('click', async function () {
-  console.log($(this)[0].parentNode)
+$(".edit-group").on("click", async function () {
+  console.log($(this)[0].parentNode);
   let listDiv = $(this)[0].parentNode.firstChild;
   let oldTitle = listDiv.innerText.split("editremove")[0];
   let groupDiv = listDiv.parentNode;
-  let input = document.createElement('input');
-  setAttributes(input, { "id": 'group-name-input' });
+  let input = document.createElement("input");
+  setAttributes(input, { id: "group-name-input" });
   $("#boardlists")[0].insertBefore(input, groupDiv);
   listDiv.style.display = "none";
   await awaitEnter();
 
-  listDiv.textContent = inputEl.value === '' ? oldTitle : inputEl.value;
+  listDiv.textContent = inputEl.value === "" ? oldTitle : inputEl.value;
   listDiv.style.display = "";
   var nodes = listDiv.childNodes;
   for (var i = 0; i < nodes.length; i++) {
@@ -83,10 +92,10 @@ function setAttributes(el, attrs) {
 
 function awaitEnter() {
   return new Promise((resolve) => {
-    document.addEventListener('keydown', onKeyHandler);
+    document.addEventListener("keydown", onKeyHandler);
     function onKeyHandler(e) {
       if (e.keyCode === 13) {
-        document.removeEventListener('keydown', onKeyHandler);
+        document.removeEventListener("keydown", onKeyHandler);
         resolve();
       }
     }
