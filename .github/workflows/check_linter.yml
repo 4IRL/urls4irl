@@ -1,4 +1,4 @@
-name: Lint
+name: Check Lint
 
 on:
   push:
@@ -12,7 +12,7 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
-      - name: Lint Python with Black
+      - name: Check Python with Black
         uses: psf/black@stable
         with:
           options: "--check --verbose"
