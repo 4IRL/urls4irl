@@ -28,7 +28,8 @@ jobs:
     - name: Commit Lint Changes
       if: steps.git-check.outputs.modified == 'true'
       run: |
-        git config --global user.name 'Giovanni Propersi'
+        git config --global user.name '${{ secrets.NAME }}'
+        git config --global user.email '${{ secrets.MY_EMAIL }}'
         git remote set-url origin https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}
         git commit -am "Automated changes"
         git push
