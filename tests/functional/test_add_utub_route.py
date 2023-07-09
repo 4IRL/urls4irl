@@ -4,6 +4,7 @@ from flask_login import current_user
 from models_for_test import valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3
 from urls4irl.models import Utub, Utub_Users
 
+
 def test_add_utub_with_valid_form(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page
@@ -25,7 +26,7 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         "UTub_creator_id": Integer indicating the ID of the user who made this UTub"
     }
     """
-    client, csrf_token, user, app  = login_first_user_with_register
+    client, csrf_token, user, app = login_first_user_with_register
 
     # Make sure database is empty of UTubs and associated users
     with app.app_context():
@@ -35,17 +36,20 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
     new_utub_form = {
         "csrf_token": csrf_token,
         "name": valid_empty_utub_1["name"],
-        "description": valid_empty_utub_1["utub_description"]
+        "description": valid_empty_utub_1["utub_description"],
     }
 
     new_utub_response = client.post("/utub/new", data=new_utub_form)
-    
+
     assert new_utub_response.status_code == 200
 
     # Validate the JSON response from the backend
     new_utub_response_json = new_utub_response.json
     assert new_utub_response_json["Status"] == "Success"
-    assert new_utub_response_json["UTub_description"] == valid_empty_utub_1["utub_description"]
+    assert (
+        new_utub_response_json["UTub_description"]
+        == valid_empty_utub_1["utub_description"]
+    )
     assert new_utub_response_json["UTub_name"] == valid_empty_utub_1["name"]
     assert new_utub_response_json["UTub_creator_id"] == user.id
     assert isinstance(new_utub_response_json["UTub_ID"], int)
@@ -68,7 +72,7 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
 
         # Assert no urls in this UTub
         assert len(utub_from_db.utub_urls) == 0
-        
+
         # Assert no tags associated with this UTub
         assert len(utub_from_db.utub_url_tags) == 0
 
@@ -80,9 +84,12 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         assert current_utub_user_association[0].utub_id == utub_id
         assert current_utub_user_association[0].user_id == user.id
 
-    #TODO test new UTub displayed on user's UTub deck
+    # TODO test new UTub displayed on user's UTub deck
 
-def test_add_utub_with_same_name(every_user_in_every_utub, login_first_user_without_register):
+
+def test_add_utub_with_same_name(
+    every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN a valid logged in user on the home page
     WHEN they make a new UTub for themselves with the same name as
@@ -104,7 +111,7 @@ def test_add_utub_with_same_name(every_user_in_every_utub, login_first_user_with
         "UTub_creator_id": Integer indicating the ID of the user who made this UTub"
     }
     """
-    client, csrf_token, user, app  = login_first_user_without_register
+    client, csrf_token, user, app = login_first_user_without_register
 
     # Make sure database is empty of UTubs and associated users
     with app.app_context():
@@ -116,17 +123,20 @@ def test_add_utub_with_same_name(every_user_in_every_utub, login_first_user_with
     new_utub_form = {
         "csrf_token": csrf_token,
         "name": current_utub_name,
-        "description": valid_empty_utub_1["utub_description"]
+        "description": valid_empty_utub_1["utub_description"],
     }
 
     new_utub_response = client.post("/utub/new", data=new_utub_form)
-    
+
     assert new_utub_response.status_code == 200
 
     # Validate the JSON response from the backend
     new_utub_response_json = new_utub_response.json
     assert new_utub_response_json["Status"] == "Success"
-    assert new_utub_response_json["UTub_description"] == valid_empty_utub_1["utub_description"]
+    assert (
+        new_utub_response_json["UTub_description"]
+        == valid_empty_utub_1["utub_description"]
+    )
     assert new_utub_response_json["UTub_name"] == valid_empty_utub_1["name"]
     assert new_utub_response_json["UTub_creator_id"] == user.id
     assert isinstance(new_utub_response_json["UTub_ID"], int)
@@ -149,9 +159,10 @@ def test_add_utub_with_same_name(every_user_in_every_utub, login_first_user_with
 
         # Assert no urls in this UTub
         assert len(utub_from_db.utub_urls) == 0
-        
+
         # Assert no tags associated with this UTub
         assert len(utub_from_db.utub_url_tags) == 0
+
 
 def test_add_utub_with_get_request(login_first_user_with_register):
     """
@@ -160,7 +171,7 @@ def test_add_utub_with_get_request(login_first_user_with_register):
     THEN verify that the server responds with a 405 invalid request status code, and that no
         UTubs are added to the database
     """
-    client, csrf_token, user, app  = login_first_user_with_register
+    client, csrf_token, user, app = login_first_user_with_register
     new_utub_form = {
         "csrf_token": csrf_token,
         "name": valid_empty_utub_1["name"],
@@ -168,13 +179,14 @@ def test_add_utub_with_get_request(login_first_user_with_register):
     }
 
     new_utub_response = client.get("/utub/new", data=new_utub_form)
-    
+
     # Get method is not allowed
     assert new_utub_response.status_code == 405
 
     # Make sure no UTub in database
     with app.app_context():
         assert len(Utub.query.all()) == 0
+
 
 def test_add_utub_with_invalid_form(login_first_user_with_register):
     """
@@ -196,10 +208,10 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
             ]
     }
     """
-    client, csrf_token, user, app  = login_first_user_with_register
+    client, csrf_token, user, app = login_first_user_with_register
     new_utub_form = {
         "csrf_token": csrf_token,
-        "utub_name": valid_empty_utub_1["name"],    # Invalid form name, s/b  "name"
+        "utub_name": valid_empty_utub_1["name"],  # Invalid form name, s/b  "name"
         "description": valid_empty_utub_1["utub_description"],
     }
 
@@ -212,12 +224,18 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
     invalid_new_utub_response_json = invalid_new_utub_response.json
     assert invalid_new_utub_response_json["Status"] == "Failure"
     assert invalid_new_utub_response_json["Error_code"] == 1
-    assert invalid_new_utub_response_json["Errors"]["name"][0] == "This field is required."
-    assert invalid_new_utub_response_json["Message"] == "Unable to generate a new UTub with that information."
+    assert (
+        invalid_new_utub_response_json["Errors"]["name"][0] == "This field is required."
+    )
+    assert (
+        invalid_new_utub_response_json["Message"]
+        == "Unable to generate a new UTub with that information."
+    )
 
     # Make sure no UTub in database
     with app.app_context():
         assert len(Utub.query.all()) == 0
+
 
 def test_add_utub_with_no_csrf_token(login_first_user_with_register):
     """
@@ -225,14 +243,15 @@ def test_add_utub_with_no_csrf_token(login_first_user_with_register):
     WHEN they make a POST request to make a new UTub without including a form
     THEN ensure it returns with a 400 and page response indicates CSRF token is missing
     """
-    
-    client, csrf_token, user, app  = login_first_user_with_register
+
+    client, csrf_token, user, app = login_first_user_with_register
 
     invalid_new_utub_response = client.post("/utub/new")
 
     # Assert invalid response code
     assert invalid_new_utub_response.status_code == 400
-    assert b'<p>The CSRF token is missing.</p>' in invalid_new_utub_response.data
+    assert b"<p>The CSRF token is missing.</p>" in invalid_new_utub_response.data
+
 
 def test_add_multiple_valid_utubs(login_first_user_with_register):
     """
@@ -241,25 +260,30 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
     THEN ensure that the correct 200 status code and JSON response is given, as well as ensuring
         the UTub data is stored as well as the UTub-User association data
     """
-    client, csrf_token, user, app  = login_first_user_with_register
-    valid_utubs = (valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3,)
+    client, csrf_token, user, app = login_first_user_with_register
+    valid_utubs = (
+        valid_empty_utub_1,
+        valid_empty_utub_2,
+        valid_empty_utub_3,
+    )
 
     for valid_utub in valid_utubs:
-
         new_utub_form = {
             "csrf_token": csrf_token,
             "name": valid_utub["name"],
-            "description": valid_utub["utub_description"]
+            "description": valid_utub["utub_description"],
         }
 
         new_utub_response = client.post("/utub/new", data=new_utub_form)
-        
+
         assert new_utub_response.status_code == 200
 
         # Validate the JSON response from the backend
         new_utub_response_json = new_utub_response.json
         assert new_utub_response_json["Status"] == "Success"
-        assert new_utub_response_json["UTub_description"] == valid_utub["utub_description"]
+        assert (
+            new_utub_response_json["UTub_description"] == valid_utub["utub_description"]
+        )
         assert new_utub_response_json["UTub_name"] == valid_utub["name"]
         assert new_utub_response_json["UTub_creator_id"] == user.id
         assert isinstance(new_utub_response_json["UTub_ID"], int)
@@ -281,9 +305,9 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
 
             # Assert no urls in this UTub
             assert len(utub_from_db.utub_urls) == 0
-            
+
             # Assert no tags associated with this UTub
             assert len(utub_from_db.utub_url_tags) == 0
-    
+
     # Check for all 3 test utubs added
     assert len(Utub.query.all()) == len(valid_utubs)

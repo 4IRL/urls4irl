@@ -4,7 +4,10 @@ from flask_login import current_user
 from urls4irl.models import Utub, User, URLS, Utub_Urls, Utub_Users
 from models_for_test import valid_url_strings
 
-def test_add_valid_url_as_utub_member(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+
+def test_add_valid_url_as_utub_member(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
@@ -30,13 +33,22 @@ def test_add_valid_url_as_utub_member(add_urls_to_database, every_user_in_every_
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
-        current_utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        current_utub_member_of = Utub.query.filter(
+            Utub.utub_creator != current_user.id
+        ).first()
         assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
         assert len(current_utub_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub_member_of.id).all()) == 0
-        
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == current_utub_member_of.id
+                ).all()
+            )
+            == 0
+        )
+
         # Grab a URL to add
         url_to_add = URLS.query.first()
         number_of_urls_in_db = len(URLS.query.all())
@@ -47,24 +59,31 @@ def test_add_valid_url_as_utub_member(add_urls_to_database, every_user_in_every_
         utub_name_to_add = current_utub_member_of.name
 
         # Ensure Url-Utub-User association does not exist
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
-                                            Utub_Urls.url_id == url_id_to_add,
-                                            Utub_Urls.user_id == current_user.id).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id_to_add_to,
+                    Utub_Urls.url_id == url_id_to_add,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 0
+        )
 
         # Get initial number of UTub-URL associations
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : url_string_to_add,
-        "url_description" : url_description_to_add
+        "csrf_token": csrf_token,
+        "url_string": url_string_to_add,
+        "url_description": url_description_to_add,
     }
-    
+
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 
     assert add_url_response.status_code == 200
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Success"
     assert add_url_json_response["Message"] == "URL added to UTub"
@@ -86,13 +105,23 @@ def test_add_valid_url_as_utub_member(add_urls_to_database, every_user_in_every_
         assert url_id_to_add in [url.url_id for url in current_utub_member_of.utub_urls]
 
         # Ensure Url-Utub-User association exists
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
-                                            Utub_Urls.url_id == url_id_to_add,
-                                            Utub_Urls.user_id == current_user.id).all()) == 1
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id_to_add_to,
+                    Utub_Urls.url_id == url_id_to_add,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 1
+        )
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
 
-def test_add_valid_url_as_utub_creator(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+
+def test_add_valid_url_as_utub_creator(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
@@ -118,13 +147,22 @@ def test_add_valid_url_as_utub_creator(add_urls_to_database, every_user_in_every
 
     with app.app_context():
         # Find a UTub this current user is a creator of
-        current_utub_member_of = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        current_utub_member_of = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
         assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
         assert len(current_utub_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub_member_of.id).all()) == 0
-        
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == current_utub_member_of.id
+                ).all()
+            )
+            == 0
+        )
+
         # Grab a URL to add
         url_to_add = URLS.query.first()
         number_of_urls_in_db = len(URLS.query.all())
@@ -135,24 +173,31 @@ def test_add_valid_url_as_utub_creator(add_urls_to_database, every_user_in_every
         utub_name_to_add = current_utub_member_of.name
 
         # Ensure Url-Utub-User association does not exist
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
-                                            Utub_Urls.url_id == url_id_to_add,
-                                            Utub_Urls.user_id == current_user.id).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id_to_add_to,
+                    Utub_Urls.url_id == url_id_to_add,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 0
+        )
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())                                            
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : url_string_to_add,
-        "url_description" : url_description_to_add
+        "csrf_token": csrf_token,
+        "url_string": url_string_to_add,
+        "url_description": url_description_to_add,
     }
-    
+
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 
     assert add_url_response.status_code == 200
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Success"
     assert add_url_json_response["Message"] == "URL added to UTub"
@@ -174,13 +219,23 @@ def test_add_valid_url_as_utub_creator(add_urls_to_database, every_user_in_every
         assert url_id_to_add in [url.url_id for url in current_utub_member_of.utub_urls]
 
         # Ensure Url-Utub-User association exists
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
-                                            Utub_Urls.url_id == url_id_to_add,
-                                            Utub_Urls.user_id == current_user.id).all()) == 1
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id_to_add_to,
+                    Utub_Urls.url_id == url_id_to_add,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 1
+        )
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
 
-def test_add_invalid_url_as_utub_member(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+
+def test_add_invalid_url_as_utub_member(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
@@ -200,36 +255,52 @@ def test_add_invalid_url_as_utub_member(add_urls_to_database, every_user_in_ever
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
-        current_utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        current_utub_member_of = Utub.query.filter(
+            Utub.utub_creator != current_user.id
+        ).first()
         assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
         assert len(current_utub_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub_member_of.id).all()) == 0
-        
-        # Get current number of URLs 
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == current_utub_member_of.id
+                ).all()
+            )
+            == 0
+        )
+
+        # Get current number of URLs
         number_of_urls_in_db = len(URLS.query.all())
 
         utub_id_to_add_to = current_utub_member_of.id
 
         # Ensure Url-Utub-User association does not exist
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
-                                            Utub_Urls.user_id == current_user.id).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id_to_add_to,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 0
+        )
 
         # Get initial number of UTub-URL associations
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Try to add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : "AAAA",
-        "url_description" : "This is AAAA"
+        "csrf_token": csrf_token,
+        "url_string": "AAAA",
+        "url_description": "This is AAAA",
     }
-    
+
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 
     assert add_url_response.status_code == 400
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Failure"
     assert add_url_json_response["Message"] == "Unable to add this URL"
@@ -246,12 +317,22 @@ def test_add_invalid_url_as_utub_member(add_urls_to_database, every_user_in_ever
         assert len(current_utub_member_of.utub_urls) == 0
 
         # Ensure Url-Utub-User association does not exist
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
-                                            Utub_Urls.user_id == current_user.id).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id_to_add_to,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 0
+        )
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls                                            
+        assert len(Utub_Urls.query.all()) == initial_utub_urls
 
-def test_add_invalid_url_as_utub_creator(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+
+def test_add_invalid_url_as_utub_creator(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
@@ -271,36 +352,52 @@ def test_add_invalid_url_as_utub_creator(add_urls_to_database, every_user_in_eve
 
     with app.app_context():
         # Find a UTub this current user is a creator of
-        current_utub_member_of = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        current_utub_member_of = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
         assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
         assert len(current_utub_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub_member_of.id).all()) == 0
-        
-        # Get current number of URLs 
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == current_utub_member_of.id
+                ).all()
+            )
+            == 0
+        )
+
+        # Get current number of URLs
         number_of_urls_in_db = len(URLS.query.all())
 
         utub_id_to_add_to = current_utub_member_of.id
 
         # Ensure Url-Utub-User association does not exist
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
-                                            Utub_Urls.user_id == current_user.id).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id_to_add_to,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 0
+        )
 
         # Get initial number of UTub-URL associations
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Try to add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : "AAAA",
-        "url_description" : "This is AAAA"
+        "csrf_token": csrf_token,
+        "url_string": "AAAA",
+        "url_description": "This is AAAA",
     }
-    
+
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 
     assert add_url_response.status_code == 400
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Failure"
     assert add_url_json_response["Message"] == "Unable to add this URL"
@@ -317,12 +414,22 @@ def test_add_invalid_url_as_utub_creator(add_urls_to_database, every_user_in_eve
         assert len(current_utub_member_of.utub_urls) == 0
 
         # Ensure Url-Utub-User association does not exist
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to,
-                                            Utub_Urls.user_id == current_user.id).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id_to_add_to,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 0
+        )
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls
 
-def test_add_valid_url_to_nonexistent_utub(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+
+def test_add_valid_url_to_nonexistent_utub(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
@@ -336,7 +443,9 @@ def test_add_valid_url_to_nonexistent_utub(add_urls_to_database, every_user_in_e
         # Find a UTub this current user is a member of (and not creator of)
         utub_id_to_add_to = 0
         utub_to_add_to = Utub.query.get(utub_id_to_add_to)
-        while utub_to_add_to is not None and current_user in [user.to_user for user in utub_to_add_to.members]:
+        while utub_to_add_to is not None and current_user in [
+            user.to_user for user in utub_to_add_to.members
+        ]:
             utub_id_to_add_to += 1
 
         # Get a valid URL
@@ -345,15 +454,15 @@ def test_add_valid_url_to_nonexistent_utub(add_urls_to_database, every_user_in_e
         valid_url_description = f"This is {valid_url_string}"
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())        
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : valid_url_string,
-        "url_description" : valid_url_description
+        "csrf_token": csrf_token,
+        "url_string": valid_url_string,
+        "url_description": valid_url_description,
     }
-    
+
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 
     assert add_url_response.status_code == 404
@@ -361,7 +470,10 @@ def test_add_valid_url_to_nonexistent_utub(add_urls_to_database, every_user_in_e
     with app.app_context():
         assert len(Utub_Urls.query.all()) == initial_utub_urls
 
-def test_add_valid_url_to_utub_not_a_member_of(add_urls_to_database, login_first_user_without_register):
+
+def test_add_valid_url_to_utub_not_a_member_of(
+    add_urls_to_database, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with only the creators in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
@@ -381,7 +493,9 @@ def test_add_valid_url_to_utub_not_a_member_of(add_urls_to_database, login_first
 
     with app.app_context():
         # Find a UTub this current user is not a member of
-        utub_not_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        utub_not_member_of = Utub.query.filter(
+            Utub.utub_creator != current_user.id
+        ).first()
         assert current_user not in [user.to_user for user in utub_not_member_of.members]
 
         id_of_utub_not_member_of = utub_not_member_of.id
@@ -393,19 +507,28 @@ def test_add_valid_url_to_utub_not_a_member_of(add_urls_to_database, login_first
 
         # Ensure URL not in UTub currently
         assert len(utub_not_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_not_member_of).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == id_of_utub_not_member_of
+                ).all()
+            )
+            == 0
+        )
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())        
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : valid_url_string,
-        "url_description" : valid_url_description
+        "csrf_token": csrf_token,
+        "url_string": valid_url_string,
+        "url_description": valid_url_description,
     }
-    
-    add_url_response = client.post(f"/url/add/{id_of_utub_not_member_of}", data=add_url_form)
+
+    add_url_response = client.post(
+        f"/url/add/{id_of_utub_not_member_of}", data=add_url_form
+    )
 
     assert add_url_response.status_code == 403
 
@@ -419,11 +542,21 @@ def test_add_valid_url_to_utub_not_a_member_of(add_urls_to_database, login_first
 
         # Ensure URL not in UTub currently
         assert len(utub_not_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_not_member_of).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == id_of_utub_not_member_of
+                ).all()
+            )
+            == 0
+        )
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls
 
-def test_add_fresh_url_to_utub(every_user_makes_a_unique_utub, login_first_user_without_register):
+
+def test_add_fresh_url_to_utub(
+    every_user_makes_a_unique_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and no URLs
         currently in the database or associated with the UTubs
@@ -445,40 +578,58 @@ def test_add_fresh_url_to_utub(every_user_makes_a_unique_utub, login_first_user_
         "Added_by" : Integer representing the ID of current user who added this URL to this UTub
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register 
+    client, csrf_token, logged_in_user, app = login_first_user_without_register
     valid_url_to_add = valid_url_strings[0]
 
     with app.app_context():
         # Get this user's UTub
-        utub_creator_of = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        utub_creator_of = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
         id_of_utub_that_is_creator_of = utub_creator_of.id
         name_of_utub_that_is_creator_of = utub_creator_of.name
 
         # Ensure URL not in UTub currently
         assert len(utub_creator_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of
+                ).all()
+            )
+            == 0
+        )
 
         # Ensure no URLs
         assert len(URLS.query.all()) == 0
 
         # Ensure no Url-Utub-User association exists
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                                            Utub_Urls.user_id == current_user.id).all()) == 0
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 0
+        )
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())                                            
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : valid_url_to_add,
-        "url_description" : f"This is {valid_url_to_add}"
+        "csrf_token": csrf_token,
+        "url_string": valid_url_to_add,
+        "url_description": f"This is {valid_url_to_add}",
     }
-    
-    add_url_response = client.post(f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form)
+
+    add_url_response = client.post(
+        f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form
+    )
 
     assert add_url_response.status_code == 200
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Success"
     assert add_url_json_response["Message"] == "New URL created and added to UTub"
@@ -501,12 +652,22 @@ def test_add_fresh_url_to_utub(every_user_makes_a_unique_utub, login_first_user_
         assert len(current_utub_creator_of.utub_urls) == 1
 
         # Ensure Url-Utub-User association exists
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                                            Utub_Urls.user_id == current_user.id).all()) == 1
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+                    Utub_Urls.user_id == current_user.id,
+                ).all()
+            )
+            == 1
+        )
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
 
-def test_add_duplicate_url_to_utub_as_same_user_who_added_url(add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register):
+
+def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
+    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
@@ -522,39 +683,49 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(add_all_urls_and_u
         "Error_code": 3
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register 
+    client, csrf_token, logged_in_user, app = login_first_user_without_register
 
     with app.app_context():
         # Get this user's UTub
-        utub_creator_of = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        utub_creator_of = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
         id_of_utub_that_is_creator_of = utub_creator_of.id
 
         # Find the first URL in this UTub that this user added
-        url_association_that_user_added = Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                                                                    Utub_Urls.user_id == current_user.id).first()
+        url_association_that_user_added = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
 
         url_that_user_added = url_association_that_user_added.url_in_utub
         url_id = url_that_user_added.id
         url_string_to_add = url_that_user_added.url_string
         url_description_to_add = url_association_that_user_added.url_notes
 
-        number_of_urls_in_utub = len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of).all())
+        number_of_urls_in_utub = len(
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == id_of_utub_that_is_creator_of
+            ).all()
+        )
         number_of_urls_in_db = len(URLS.query.all())
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())        
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : url_string_to_add,
-        "url_description" : url_description_to_add
+        "csrf_token": csrf_token,
+        "url_string": url_string_to_add,
+        "url_description": url_description_to_add,
     }
-    
-    add_url_response = client.post(f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form)
+
+    add_url_response = client.post(
+        f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form
+    )
 
     assert add_url_response.status_code == 400
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Failure"
     assert add_url_json_response["Message"] == "URL already in UTub"
@@ -566,16 +737,26 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(add_all_urls_and_u
         assert len(utub_to_check.utub_urls) == number_of_urls_in_utub
 
         # Ensure Url-UTub-UAser association still contains only the one associatisn
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                                            Utub_Urls.user_id == current_user.id,
-                                            Utub_Urls.url_id == url_id).all()) == 1
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+                    Utub_Urls.user_id == current_user.id,
+                    Utub_Urls.url_id == url_id,
+                ).all()
+            )
+            == 1
+        )
 
         # Ensure same number of URLs as before
         assert len(URLS.query.all()) == number_of_urls_in_db
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls
 
-def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register):
+
+def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
+    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
@@ -591,23 +772,31 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(add_all_urls
         "Error_code": 3
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register 
+    client, csrf_token, logged_in_user, app = login_first_user_without_register
 
     with app.app_context():
         # Get this user's UTub
-        utub_creator_of = Utub.query.filter(Utub.utub_creator == current_user.id).first()
+        utub_creator_of = Utub.query.filter(
+            Utub.utub_creator == current_user.id
+        ).first()
         id_of_utub_that_is_creator_of = utub_creator_of.id
 
         # Find the first URL in this UTub that this user added
-        url_association_that_user_did_not_add = Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                                                                    Utub_Urls.user_id != current_user.id).first()
+        url_association_that_user_did_not_add = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+            Utub_Urls.user_id != current_user.id,
+        ).first()
 
         url_that_user_did_not_add = url_association_that_user_did_not_add.url_in_utub
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
         url_description_to_add = url_association_that_user_did_not_add.url_notes
 
-        number_of_urls_in_utub = len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of).all())
+        number_of_urls_in_utub = len(
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == id_of_utub_that_is_creator_of
+            ).all()
+        )
         number_of_urls_in_db = len(URLS.query.all())
 
         # Get initial number of UTub-URL associations
@@ -615,15 +804,17 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(add_all_urls
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : url_string_to_add,
-        "url_description" : url_description_to_add
+        "csrf_token": csrf_token,
+        "url_string": url_string_to_add,
+        "url_description": url_description_to_add,
     }
-    
-    add_url_response = client.post(f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form)
+
+    add_url_response = client.post(
+        f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form
+    )
 
     assert add_url_response.status_code == 400
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Failure"
     assert add_url_json_response["Message"] == "URL already in UTub"
@@ -635,15 +826,25 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(add_all_urls
         assert len(utub_to_check.utub_urls) == number_of_urls_in_utub
 
         # Ensure Url-UTub-UAser association still contains only the one associatisn
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                                            Utub_Urls.url_id == url_id).all()) == 1
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+                    Utub_Urls.url_id == url_id,
+                ).all()
+            )
+            == 1
+        )
 
         # Ensure same number of URLs as before
         assert len(URLS.query.all()) == number_of_urls_in_db
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls
 
-def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register):
+
+def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
+    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
@@ -659,7 +860,7 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(add_all_urls_
         "Error_code": 3
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register 
+    client, csrf_token, logged_in_user, app = login_first_user_without_register
 
     with app.app_context():
         # Get this user's UTub
@@ -670,31 +871,39 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(add_all_urls_
         assert current_user in [user.to_user for user in utub_member_of.members]
 
         # Find the first URL in this UTub that this user added
-        url_association_that_user_did_not_add = Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_member_of,
-                                                                    Utub_Urls.user_id != current_user.id).first()
+        url_association_that_user_did_not_add = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_member_of,
+            Utub_Urls.user_id != current_user.id,
+        ).first()
 
         url_that_user_did_not_add = url_association_that_user_did_not_add.url_in_utub
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
         url_description_to_add = url_association_that_user_did_not_add.url_notes
 
-        number_of_urls_in_utub = len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_member_of).all())
+        number_of_urls_in_utub = len(
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == id_of_utub_that_is_member_of
+            ).all()
+        )
         number_of_urls_in_db = len(URLS.query.all())
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())        
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : url_string_to_add,
-        "url_description" : url_description_to_add
+        "csrf_token": csrf_token,
+        "url_string": url_string_to_add,
+        "url_description": url_description_to_add,
     }
-    
-    add_url_response = client.post(f"/url/add/{id_of_utub_that_is_member_of}", data=add_url_form)
+
+    add_url_response = client.post(
+        f"/url/add/{id_of_utub_that_is_member_of}", data=add_url_form
+    )
 
     assert add_url_response.status_code == 400
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Failure"
     assert add_url_json_response["Message"] == "URL already in UTub"
@@ -706,20 +915,30 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(add_all_urls_
         assert len(utub_to_check.utub_urls) == number_of_urls_in_utub
 
         # Ensure Url-UTub-UAser association still contains only the one associatisn
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == id_of_utub_that_is_member_of,
-                                            Utub_Urls.url_id == url_id).all()) == 1
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == id_of_utub_that_is_member_of,
+                    Utub_Urls.url_id == url_id,
+                ).all()
+            )
+            == 1
+        )
 
         # Ensure same number of URLs as before
         assert len(URLS.query.all()) == number_of_urls_in_db
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls
-    
-def test_add_url_missing_url(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+
+
+def test_add_url_missing_url(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a URL with an empty 'url_string' field in the form
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID 
+        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
         is sent by the server
 
@@ -737,13 +956,22 @@ def test_add_url_missing_url(add_urls_to_database, every_user_in_every_utub, log
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
-        current_utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        current_utub_member_of = Utub.query.filter(
+            Utub.utub_creator != current_user.id
+        ).first()
         assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
         assert len(current_utub_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub_member_of.id).all()) == 0
-        
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == current_utub_member_of.id
+                ).all()
+            )
+            == 0
+        )
+
         # Grab a URL to add
         url_to_add = URLS.query.first()
         url_string_to_add = url_to_add.url_string
@@ -751,31 +979,40 @@ def test_add_url_missing_url(add_urls_to_database, every_user_in_every_utub, log
         utub_id_to_add_to = current_utub_member_of.id
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())        
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : "",
-        "url_description" : url_description_to_add
+        "csrf_token": csrf_token,
+        "url_string": "",
+        "url_description": url_description_to_add,
     }
-    
+
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 
     assert add_url_response.status_code == 404
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Failure"
-    assert add_url_json_response["Message"] == "Unable to add this URL, please check inputs"
+    assert (
+        add_url_json_response["Message"]
+        == "Unable to add this URL, please check inputs"
+    )
     assert int(add_url_json_response["Error_code"]) == 4
     assert add_url_json_response["Errors"]["url_string"] == ["This field is required."]
 
     with app.app_context():
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all()) == 0
+        assert (
+            len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all())
+            == 0
+        )
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls
 
-def test_add_url_missing_url_description(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+
+def test_add_url_missing_url_description(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
@@ -797,44 +1034,64 @@ def test_add_url_missing_url_description(add_urls_to_database, every_user_in_eve
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
-        current_utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        current_utub_member_of = Utub.query.filter(
+            Utub.utub_creator != current_user.id
+        ).first()
         assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
         assert len(current_utub_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub_member_of.id).all()) == 0
-        
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == current_utub_member_of.id
+                ).all()
+            )
+            == 0
+        )
+
         # Grab a URL to add
         url_to_add = URLS.query.first()
         url_string_to_add = url_to_add.url_string
         utub_id_to_add_to = current_utub_member_of.id
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())        
+        initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token" : csrf_token,
-        "url_string" : url_string_to_add,
-        "url_description" : ""
+        "csrf_token": csrf_token,
+        "url_string": url_string_to_add,
+        "url_description": "",
     }
-    
+
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 
     assert add_url_response.status_code == 404
-    
+
     add_url_json_response = add_url_response.json
     assert add_url_json_response["Status"] == "Failure"
-    assert add_url_json_response["Message"] == "Unable to add this URL, please check inputs"
+    assert (
+        add_url_json_response["Message"]
+        == "Unable to add this URL, please check inputs"
+    )
     assert int(add_url_json_response["Error_code"]) == 4
-    assert add_url_json_response["Errors"]["url_description"] == ["This field is required."]
+    assert add_url_json_response["Errors"]["url_description"] == [
+        "This field is required."
+    ]
 
     with app.app_context():
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all()) == 0
+        assert (
+            len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all())
+            == 0
+        )
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls
 
-def test_add_url_missing_csrf_token(add_urls_to_database, every_user_in_every_utub, login_first_user_without_register):
+
+def test_add_url_missing_csrf_token(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
@@ -857,13 +1114,22 @@ def test_add_url_missing_csrf_token(add_urls_to_database, every_user_in_every_ut
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
-        current_utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        current_utub_member_of = Utub.query.filter(
+            Utub.utub_creator != current_user.id
+        ).first()
         assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
         assert len(current_utub_member_of.utub_urls) == 0
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub_member_of.id).all()) == 0
-        
+        assert (
+            len(
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == current_utub_member_of.id
+                ).all()
+            )
+            == 0
+        )
+
         # Grab a URL to add
         url_to_add = URLS.query.first()
         url_string_to_add = url_to_add.url_string
@@ -873,18 +1139,18 @@ def test_add_url_missing_csrf_token(add_urls_to_database, every_user_in_every_ut
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
-    add_url_form = {
-        "url_string" : url_string_to_add,
-        "url_description" : ""
-    }
-    
+    add_url_form = {"url_string": url_string_to_add, "url_description": ""}
+
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 
     # Assert invalid response code
     assert add_url_response.status_code == 400
-    assert b'<p>The CSRF token is missing.</p>' in add_url_response.data
+    assert b"<p>The CSRF token is missing.</p>" in add_url_response.data
 
     with app.app_context():
-        assert len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all()) == 0
+        assert (
+            len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all())
+            == 0
+        )
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls

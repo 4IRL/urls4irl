@@ -15,15 +15,16 @@ migrate = Migrate(db=db, render_as_batch=True)
 csrf = CSRFProtect()
 
 login_manager = LoginManager()
-login_manager.login_view = 'users.login'  # Where to send user if they aren't logged in but try to access a logged in page
-login_manager.login_message_category = 'info'
+login_manager.login_view = "users.login"  # Where to send user if they aren't logged in but try to access a logged in page
+login_manager.login_message_category = "info"
 
 cors_sess = CORS()
 
-def create_app(config_class: Config = Config, testing:bool = False):
+
+def create_app(config_class: Config = Config, testing: bool = False):
     app = Flask(__name__)
     app.config.from_object(config_class)
-    
+
     sess.init_app(app)
     db.init_app(app)
 
@@ -46,7 +47,7 @@ def create_app(config_class: Config = Config, testing:bool = False):
 
     if not testing:
         migrate.init_app(app)
-    
+
     with app.app_context():
         db.create_all()
         app.session_interface.db.create_all()

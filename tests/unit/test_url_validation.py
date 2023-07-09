@@ -3,29 +3,71 @@ import pytest
 from urls4irl import url_validation as url_valid
 
 valid_urls = {
-    "https://www.google.com/" : ["https://www.google.com/", "https://www.google.com", "google.com", "www.google.com", "http://www.google.com", "https://www.google.com", "https://google.com","ww.google.com", "http://google.com", "http:/google.com", "https:/google.com"],
-    "https://www.facebook.com/" : ["https://www.facebook.com/", "https://www.facebook.com", "facebook.com", "www.facebook.com", "http://www.facebook.com", "https://facebook.com", "ww.facebook.com", "http://facebook.com", "http:/facebook.com", "https:/facebook.com"],
-    "https://cherupil.com/": ["https://cherupil.com/", "https://cherupil.com", "cherupil.com", "https:/cherupil.com", "http://cherupil.com", "http:/cherupil.com"],
-    "https://www.cherupil.com/" : ["www.cherupil.com/", "www.cherupil.com", "https://www.cherupil.com", "http://www.cherupil.com/", "https:/www.cherupil.com/"],
-    "https://flask-limiter.readthedocs.io/en/stable/" : ["https://flask-limiter.readthedocs.io/",
-                                                            "https://flask-limiter.readthedocs.io", 
-                                                            "http:/flask-limiter.readthedocs.io", 
-                                                            "https:/flask-limiter.readthedocs.io",
-                                                            "https://flask-limiter.readthedocs.io/", 
-                                                            "http:/flask-limiter.readthedocs.io/", 
-                                                            "https:/flask-limiter.readthedocs.io/",
-                                                            "flask-limiter.readthedocs.io",
-                                                            "flask-limiter.readthedocs.io/"]
+    "https://www.google.com/": [
+        "https://www.google.com/",
+        "https://www.google.com",
+        "google.com",
+        "www.google.com",
+        "http://www.google.com",
+        "https://www.google.com",
+        "https://google.com",
+        "ww.google.com",
+        "http://google.com",
+        "http:/google.com",
+        "https:/google.com",
+    ],
+    "https://www.facebook.com/": [
+        "https://www.facebook.com/",
+        "https://www.facebook.com",
+        "facebook.com",
+        "www.facebook.com",
+        "http://www.facebook.com",
+        "https://facebook.com",
+        "ww.facebook.com",
+        "http://facebook.com",
+        "http:/facebook.com",
+        "https:/facebook.com",
+    ],
+    "https://cherupil.com/": [
+        "https://cherupil.com/",
+        "https://cherupil.com",
+        "cherupil.com",
+        "https:/cherupil.com",
+        "http://cherupil.com",
+        "http:/cherupil.com",
+    ],
+    "https://www.cherupil.com/": [
+        "www.cherupil.com/",
+        "www.cherupil.com",
+        "https://www.cherupil.com",
+        "http://www.cherupil.com/",
+        "https:/www.cherupil.com/",
+    ],
+    "https://flask-limiter.readthedocs.io/en/stable/": [
+        "https://flask-limiter.readthedocs.io/",
+        "https://flask-limiter.readthedocs.io",
+        "http:/flask-limiter.readthedocs.io",
+        "https:/flask-limiter.readthedocs.io",
+        "https://flask-limiter.readthedocs.io/",
+        "http:/flask-limiter.readthedocs.io/",
+        "https:/flask-limiter.readthedocs.io/",
+        "flask-limiter.readthedocs.io",
+        "flask-limiter.readthedocs.io/",
+    ],
 }
 
 invalid_urls = (
-    "w.google.com", "http://mw1.google.com/mw-earth-vectordb/kml-samples/gp/seattle/gigapxl/$[level]/r$[y]_c$[x].jpg",
-    "http://www.example.com/main.html", "/main.html", "http:\\www.example.com\\andhere.html"
+    "w.google.com",
+    "http://mw1.google.com/mw-earth-vectordb/kml-samples/gp/seattle/gigapxl/$[level]/r$[y]_c$[x].jpg",
+    "http://www.example.com/main.html",
+    "/main.html",
+    "http:\\www.example.com\\andhere.html",
 )
 
 unknown_urls = {
     "https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862"
 }
+
 
 def test_valid_urls():
     """
@@ -48,7 +90,8 @@ def test_invalid_urls():
     for invalid_url in invalid_urls:
         with pytest.raises(url_valid.InvalidURLError):
             url_valid.check_request_head(invalid_url)
-            
+
+
 def test_unknown_urls():
     """
     GIVEN URLs that seeem to fail unknowingly...
