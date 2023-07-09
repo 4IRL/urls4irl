@@ -49,6 +49,6 @@ jobs:
 
     - name: Run tests
       env: 
-        DATABASE_URL_TEST: postgresql://postgres:postgres@127.0.0.1:${{ job.services.postgres.ports['5432'] }}/postgres
+        DATABASE_URL_TEST: postgresql://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/postgres
       run: |
         python -m pytest -sv tests/functional/test_add_utub_route.py
