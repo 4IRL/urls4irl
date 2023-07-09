@@ -83,7 +83,10 @@ def check_request_head(url: str) -> str:
     url = normalize_url(url)
     
     try:
-        response = requests.head(url)
+        response = requests.get(url, timeout=10)
+
+    except requests.exceptions.ReadTimeout:
+        raise InvalidURLError
     
     except requests.exceptions.ConnectionError:
         raise InvalidURLError
@@ -112,3 +115,5 @@ def check_request_head(url: str) -> str:
             # Redirect was found, provide the redirect URL
             return location
             
+if __name__ == "__main__":
+    check_request_head('https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862')
