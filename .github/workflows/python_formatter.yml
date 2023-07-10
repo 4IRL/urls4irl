@@ -36,7 +36,7 @@ jobs:
         git commit -a -m "Formatted Python code - Black"
     - name: Push changes
       if: steps.git-check.outputs.modified == 'true'
-      uses: ad-m/github-push-action@master
-      with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
-        branch: ${{ github.head_ref }}
+      run: |
+        git config --local user.email "${{ secrets.MY_EMAIL }}"
+        git config --local user.name "{{ secrets.NAME }}"
+        git commit -a -m "Add changes"
