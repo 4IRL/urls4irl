@@ -45,11 +45,11 @@ def test_get_login_screen_not_logged_in(client):
         assert response.status_code == 200
 
         assert (
-            b'<input class="form-control form-control-lg" id="username" name="username" required type="text" value="">'
+            b'<input class="form-control login-register-form-group" id="username" name="username" required type="text" value="">'
             in response.data
         )
         assert (
-            b'<input class="form-control form-control-lg" id="password" name="password" required type="password" value="">'
+            b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
             in response.data
         )
         assert (
@@ -72,23 +72,23 @@ def test_get_register_screen_not_logged_in(client):
         assert response.status_code == 200
 
         assert (
-            b'<input class="form-control form-control-lg" id="username" maxlength="20" minlength="4" name="username" required type="text" value="">'
+            b'<input class="form-control login-register-form-group" id="username" maxlength="20" minlength="4" name="username" required type="text" value="">'
             in response.data
         )
         assert (
-            b'<input class="form-control form-control-lg" id="email" name="email" required type="text" value="">'
+            b'<input class="form-control login-register-form-group" id="email" name="email" required type="text" value="">'
             in response.data
         )
         assert (
-            b'<input class="form-control form-control-lg" id="confirm_email" name="confirm_email" required type="text" value="">'
+            b'<input class="form-control login-register-form-group" id="confirm_email" name="confirm_email" required type="text" value="">'
             in response.data
         )
         assert (
-            b'<input class="form-control form-control-lg" id="password" maxlength="64" minlength="12" name="password" required type="password" value="">'
+            b'<input class="form-control login-register-form-group" id="password" maxlength="64" minlength="12" name="password" required type="password" value="">'
             in response.data
         )
         assert (
-            b'<input class="form-control form-control-lg" id="confirm_password" name="confirm_password" required type="password" value="">'
+            b'<input class="form-control login-register-form-group" id="confirm_password" name="confirm_password" required type="password" value="">'
             in response.data
         )
         assert (

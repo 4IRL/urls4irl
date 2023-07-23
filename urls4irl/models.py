@@ -7,6 +7,7 @@ from datetime import datetime
 from urls4irl import db, login_manager
 from flask_login import UserMixin
 from werkzeug.security import check_password_hash, generate_password_hash
+from urls4irl.utils.strings import MODELS as MODEL_STRS
 
 
 @login_manager.user_loader
@@ -75,11 +76,11 @@ class Utub_Urls(db.Model):
         url_data = self.url_in_utub.serialized_url
 
         return {
-            "url_id": url_data["id"],
-            "url_string": url_data["url"],
-            "url_tags": url_tags,
-            "added_by": self.user_that_added_url.serialized["id"],
-            "notes": self.url_notes,
+            MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
+            MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
+            MODEL_STRS.URL_TAGS: url_tags,
+            MODEL_STRS.ADDED_BY: self.user_that_added_url.serialized[MODEL_STRS.ID],
+            MODEL_STRS.URL_DESCRIPTION: self.url_notes,
         }
 
 
@@ -106,8 +107,8 @@ class Url_Tags(db.Model):
     def serialized(self):
         """Returns serialized object."""
         return {
-            "tag": self.tag_item.serialized,
-            "tagged_url": self.tagged_url.serialized_url,
+            MODEL_STRS.TAG: self.tag_item.serialized,
+            MODEL_STRS.TAGGED_URL: self.tagged_url.serialized_url,
         }
 
 
@@ -153,8 +154,8 @@ class User(db.Model, UserMixin):
     def serialized(self):
         """Return object in serialized form."""
         return {
-            "id": self.id,
-            "username": self.username,
+            MODEL_STRS.ID: self.id,
+            MODEL_STRS.USERNAME: self.username,
         }
 
     @property
@@ -211,16 +212,16 @@ class Utub(db.Model):
                 utub_tags.append(tag_object)
 
         return {
-            "id": self.id,
-            "name": self.name,
-            "created_by": self.utub_creator,
-            "created_at": self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
-            "description": self.utub_description
+            MODEL_STRS.ID: self.id,
+            MODEL_STRS.NAME: self.name,
+            MODEL_STRS.CREATED_BY: self.utub_creator,
+            MODEL_STRS.CREATED_AT: self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
+            MODEL_STRS.DESCRIPTION: self.utub_description
             if self.utub_description is not None
             else "",
-            "members": [member.serialized for member in self.members],
-            "urls": [url_in_utub.serialized for url_in_utub in self.utub_urls],
-            "tags": utub_tags,
+            MODEL_STRS.MEMBERS: [member.serialized for member in self.members],
+            MODEL_STRS.URLS: [url_in_utub.serialized for url_in_utub in self.utub_urls],
+            MODEL_STRS.TAGS: utub_tags,
         }
 
 
@@ -245,9 +246,9 @@ class URLS(db.Model):
     def serialized_url(self):
         """Includes an array of tag IDs for all ID's on this url"""
         return {
-            "id": self.id,
-            "url": self.url_string,
-            "tags": [tag.tag_item.serialized for tag in self.url_tags],
+            MODEL_STRS.ID: self.id,
+            MODEL_STRS.URL: self.url_string,
+            MODEL_STRS.TAGS: [tag.tag_item.serialized for tag in self.url_tags],
         }
 
 
@@ -269,4 +270,4 @@ class Tags(db.Model):
     @property
     def serialized(self):
         """Returns serialized object."""
-        return {"id": self.id, "tag_string": self.tag_string}
+        return {MODEL_STRS.ID: self.id, MODEL_STRS.TAG_STRING: self.tag_string}

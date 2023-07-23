@@ -1,16 +1,21 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, jsonify
 from flask_login import current_user, login_required
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Urls, URLS, Url_Tags
 from urls4irl.urls.forms import (
     UTubNewURLForm,
     UTubEditURLForm,
-    UTubEditURLDescriptionForm,
 )
 from urls4irl.url_validation import InvalidURLError, check_request_head
+from urls4irl.utils import strings as U4I_STRINGS
 
 urls = Blueprint("urls", __name__)
 
+# Standard response for JSON messages
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+URL_FAILURE = U4I_STRINGS.URL_FAILURE
+URL_NO_CHANGE = U4I_STRINGS.URL_NO_CHANGE
+URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
 
 @urls.route("/url/remove/<int:utub_id>/<int:url_id>", methods=["POST"])
 @login_required
@@ -46,11 +51,11 @@ def delete_url(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "Message": "URL removed from this UTub",
-                    "URL": serialized_url_in_utub,
-                    "UTub_ID": f"{utub.id}",
-                    "UTub_name": f"{utub.name}",
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
+                    URL_SUCCESS.URL: serialized_url_in_utub,
+                    URL_SUCCESS.UTUB_ID: f"{utub.id}",
+                    URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                 }
             ),
             200,
@@ -61,8 +66,8 @@ def delete_url(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to remove this URL",
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_REMOVE_URL,
                 }
             ),
             403,
@@ -85,9 +90,9 @@ def add_url(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to add this URL",
-                    "Error_code": 1,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
+                    STD_JSON.ERROR_CODE: 1,
                 }
             ),
             403,
@@ -105,9 +110,9 @@ def add_url(utub_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "Failure",
-                        "Message": "Unable to add this URL",
-                        "Error_code": 2,
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
+                        STD_JSON.ERROR_CODE: 2,
                     }
                 ),
                 400,
@@ -141,16 +146,16 @@ def add_url(utub_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "Success",
-                        "Message": "New URL created and added to UTub",
-                        "URL": {
-                            "url_string": f"{normalized_url}",
-                            "url_ID": f"{url_id}",
-                            "url_description": f"{utub_new_url_form.url_description.data}",
+                        STD_JSON.STATUS: STD_JSON.SUCCESS,
+                        STD_JSON.MESSAGE: URL_SUCCESS.URL_CREATED_ADDED,
+                        URL_SUCCESS.URL: {
+                            URL_SUCCESS.URL_STRING: f"{normalized_url}",
+                            URL_SUCCESS.URL_ID: f"{url_id}",
+                            URL_SUCCESS.URL_DESCRIPTION: f"{utub_new_url_form.url_description.data}",
                         },
-                        "UTub_ID": f"{utub_id}",
-                        "UTub_name": f"{utub.name}",
-                        "Added_by": f"{current_user.get_id()}",
+                        URL_SUCCESS.UTUB_ID: f"{utub_id}",
+                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
+                        URL_SUCCESS.ADDED_BY: f"{current_user.get_id()}",
                     }
                 ),
                 200,
@@ -177,16 +182,16 @@ def add_url(utub_id: int):
                 return (
                     jsonify(
                         {
-                            "Status": "Success",
-                            "Message": "URL added to UTub",
-                            "URL": {
-                                "url_string": f"{normalized_url}",
-                                "url_ID": f"{url_id}",
-                                "url_description": f"{utub_new_url_form.url_description.data}",
+                            STD_JSON.STATUS: STD_JSON.SUCCESS,
+                            STD_JSON.MESSAGE: URL_SUCCESS.URL_ADDED,
+                            URL_SUCCESS.URL: {
+                                URL_SUCCESS.URL_STRING: f"{normalized_url}",
+                                URL_SUCCESS.URL_ID: f"{url_id}", 
+                                URL_SUCCESS.URL_DESCRIPTION: f"{utub_new_url_form.url_description.data}",
                             },
-                            "UTub_ID": f"{utub_id}",
-                            "UTub_name": f"{utub.name}",
-                            "Added_by": f"{current_user.get_id()}",
+                            URL_SUCCESS.UTUB_ID: f"{utub_id}",
+                            URL_SUCCESS.UTUB_NAME: f"{utub.name}",
+                            URL_SUCCESS.ADDED_BY: f"{current_user.get_id()}",
                         }
                     ),
                     200,
@@ -197,9 +202,9 @@ def add_url(utub_id: int):
                 return (
                     jsonify(
                         {
-                            "Status": "Failure",
-                            "Message": "URL already in UTub",
-                            "Error_code": 3,
+                            STD_JSON.STATUS: STD_JSON.FAILURE,
+                            STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
+                            STD_JSON.ERROR_CODE: 3,
                         }
                     ),
                     400,
@@ -210,10 +215,10 @@ def add_url(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to add this URL, please check inputs",
-                    "Error_code": 4,
-                    "Errors": utub_new_url_form.errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
+                    STD_JSON.ERROR_CODE: 4,
+                    STD_JSON.ERRORS: utub_new_url_form.errors,
                 }
             ),
             404,
@@ -222,7 +227,11 @@ def add_url(utub_id: int):
     # Something else went wrong
     return (
         jsonify(
-            {"Status": "Failure", "Message": "Unable to add this URL", "Error_code": 5}
+            {
+                STD_JSON.STATUS: STD_JSON.FAILURE, 
+                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL, 
+                STD_JSON.ERROR_CODE: 5
+            }
         ),
         404,
     )
@@ -253,9 +262,9 @@ def edit_url_and_description(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to modify this URL",
-                    "Error_code": 1,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
+                    STD_JSON.ERROR_CODE: 1,
                 }
             ),
             403,
@@ -273,9 +282,9 @@ def edit_url_and_description(utub_id: int, url_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "Failure",
-                        "Message": "URL cannot be empty",
-                        "Error_code": 2,
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.EMPTY_URL,
+                        STD_JSON.ERROR_CODE: 2,
                     }
                 ),
                 400,
@@ -291,11 +300,11 @@ def edit_url_and_description(utub_id: int, url_id: int):
                 # Identical description
                 return jsonify(
                     {
-                        "Status": "No change",
-                        "Message": "URL and URL description were not modified",
-                        "URL": serialized_url_in_utub,
-                        "UTub_ID": f"{utub.id}",
-                        "UTub_name": f"{utub.name}",
+                        STD_JSON.STATUS: STD_JSON.NO_CHANGE,
+                        STD_JSON.MESSAGE: URL_NO_CHANGE.URL_AND_DESC_NOT_MODIFIED,
+                        URL_SUCCESS.URL: serialized_url_in_utub,
+                        URL_SUCCESS.UTUB_ID: f"{utub.id}",
+                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                     }
                 )
 
@@ -307,11 +316,11 @@ def edit_url_and_description(utub_id: int, url_id: int):
 
                 return jsonify(
                     {
-                        "Status": "Success",
-                        "Message": "URL description was modified",
-                        "URL": new_serialized_url,
-                        "UTub_ID": f"{utub.id}",
-                        "UTub_name": f"{utub.name}",
+                        STD_JSON.STATUS: STD_JSON.SUCCESS,
+                        STD_JSON.MESSAGE: URL_SUCCESS.URL_DESC_MODIFIED,
+                        URL_SUCCESS.URL: new_serialized_url,
+                        URL_SUCCESS.UTUB_ID: f"{utub.id}",
+                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                     }
                 )
 
@@ -323,9 +332,9 @@ def edit_url_and_description(utub_id: int, url_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "Failure",
-                        "Message": "Unable to add this URL",
-                        "Error_code": 3,
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
+                        STD_JSON.ERROR_CODE: 3,
                     }
                 ),
                 400,
@@ -355,11 +364,11 @@ def edit_url_and_description(utub_id: int, url_id: int):
                 # Identical description
                 return jsonify(
                     {
-                        "Status": "No change",
-                        "Message": "URL and URL description were not modified",
-                        "URL": serialized_url_in_utub,
-                        "UTub_ID": f"{utub.id}",
-                        "UTub_name": f"{utub.name}",
+                        STD_JSON.STATUS: STD_JSON.NO_CHANGE,
+                        STD_JSON.MESSAGE: URL_NO_CHANGE.URL_AND_DESC_NOT_MODIFIED,
+                        URL_SUCCESS.URL: serialized_url_in_utub,
+                        URL_SUCCESS.UTUB_ID: f"{utub.id}",
+                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                     }
                 )
 
@@ -371,11 +380,11 @@ def edit_url_and_description(utub_id: int, url_id: int):
 
                 return jsonify(
                     {
-                        "Status": "Success",
-                        "Message": "URL description was modified",
-                        "URL": new_serialized_url,
-                        "UTub_ID": f"{utub.id}",
-                        "UTub_name": f"{utub.name}",
+                        STD_JSON.STATUS: STD_JSON.SUCCESS,
+                        STD_JSON.MESSAGE: URL_SUCCESS.URL_DESC_MODIFIED,
+                        URL_SUCCESS.URL: new_serialized_url,
+                        URL_SUCCESS.UTUB_ID: f"{utub.id}",
+                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                     }
                 )
 
@@ -400,11 +409,11 @@ def edit_url_and_description(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "Message": "URL and/or URL Description modified",
-                    "URL": new_serialized_url,
-                    "UTub_ID": f"{utub.id}",
-                    "UTub_name": f"{utub.name}",
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: URL_SUCCESS.URL_OR_DESC_MODIFIED,
+                    URL_SUCCESS.URL: new_serialized_url,
+                    URL_SUCCESS.UTUB_ID: f"{utub.id}",
+                    URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                 }
             ),
             200,
@@ -415,10 +424,10 @@ def edit_url_and_description(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to modify this URL, please check inputs",
-                    "Error_code": 4,
-                    "Errors": {"url_description": ["This field is required."]},
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+                    STD_JSON.ERROR_CODE: 4,
+                    STD_JSON.ERRORS: {URL_FAILURE.URL_DESCRIPTION: URL_FAILURE.FIELD_REQUIRED},
                 }
             ),
             404,
@@ -429,10 +438,10 @@ def edit_url_and_description(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to modify this URL, please check inputs",
-                    "Error_code": 5,
-                    "Errors": edit_url_form.errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+                    STD_JSON.ERROR_CODE: 5,
+                    STD_JSON.ERRORS: edit_url_form.errors,
                 }
             ),
             404,
@@ -442,9 +451,9 @@ def edit_url_and_description(utub_id: int, url_id: int):
     return (
         jsonify(
             {
-                "Status": "Failure",
-                "Message": "Unable to modify this URL",
-                "Error_code": 6,
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
+                STD_JSON.ERROR_CODE: 6,
             }
         ),
         404,

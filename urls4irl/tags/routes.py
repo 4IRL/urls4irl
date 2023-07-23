@@ -1,11 +1,17 @@
 from flask import Blueprint, jsonify
 from flask_login import current_user, login_required
 from urls4irl import db
-from urls4irl.models import Utub, Url_Tags, Tags, Utub_Urls, URLS
+from urls4irl.models import Utub, Url_Tags, Tags, Utub_Urls
 from urls4irl.tags.forms import UTubNewUrlTagForm
+from urls4irl.utils import strings as U4I_STRINGS
 
 tags = Blueprint("tags", __name__)
 
+# Standard response for JSON messages
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+TAGS_FAILURE = U4I_STRINGS.TAGS_FAILURE
+TAGS_NO_CHANGE = U4I_STRINGS.TAGS_NO_CHANGE
+TAGS_SUCCESS = U4I_STRINGS.TAGS_SUCCESS
 
 @tags.route("/tag/add/<int:utub_id>/<int:url_id>", methods=["POST"])
 @login_required
@@ -34,9 +40,9 @@ def add_tag(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to add tag to this URL",
-                    "Error_code": 1,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+                    STD_JSON.ERROR_CODE: 1,
                 }
             ),
             404,
@@ -57,9 +63,9 @@ def add_tag(utub_id: int, url_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "Failure",
-                        "Message": "URLs can only have 5 tags max",
-                        "Error_code": 2,
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: TAGS_FAILURE.FIVE_TAGS_MAX,
+                        STD_JSON.ERROR_CODE: 2,
                     }
                 ),
                 400,
@@ -81,9 +87,9 @@ def add_tag(utub_id: int, url_id: int):
                 return (
                     jsonify(
                         {
-                            "Status": "Failure",
-                            "Message": "URL already has this tag",
-                            "Error_code": 3,
+                            STD_JSON.STATUS: STD_JSON.FAILURE,
+                            STD_JSON.MESSAGE: TAGS_FAILURE.TAG_ALREADY_ON_URL,
+                            STD_JSON.ERROR_CODE: 3,
                         }
                     ),
                     400,
@@ -114,12 +120,12 @@ def add_tag(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "Message": "Tag added to this URL",
-                    "Tag": tag_model.serialized,  # Can I just serialize the Tag model here instead?
-                    "URL": url_utub_association.serialized,  # Can I just serialize the Url_Utub model here instead?
-                    "UTub_ID": utub.id,
-                    "UTub_name": utub.name,
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_URL,
+                    TAGS_SUCCESS.TAG: tag_model.serialized,  # Can I just serialize the Tag model here instead?
+                    TAGS_SUCCESS.URL: url_utub_association.serialized,  # Can I just serialize the Url_Utub model here instead?
+                    TAGS_SUCCESS.UTUB_ID: utub.id,
+                    TAGS_SUCCESS.UTUB_NAME: utub.name,
                 }
             ),
             200,
@@ -130,10 +136,10 @@ def add_tag(utub_id: int, url_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to add tag to this URL",
-                    "Error_code": 4,
-                    "Errors": url_tag_form.errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+                    STD_JSON.ERROR_CODE: 4,
+                    STD_JSON.ERRORS: url_tag_form.errors,
                 }
             ),
             404,
@@ -142,9 +148,9 @@ def add_tag(utub_id: int, url_id: int):
     return (
         jsonify(
             {
-                "Status": "Failure",
-                "Message": "Unable to add tag to this URL",
-                "Error_code": 5,
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+                STD_JSON.ERROR_CODE: 5,
             }
         ),
         404,
@@ -188,20 +194,20 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "Message": "Tag removed from URL",
-                    "Tag": tag_to_remove.serialized,
-                    "URL": url_utub_association.serialized,
-                    "UTub_ID": utub_id,
-                    "UTub_name": utub.name,
-                    "Count_in_UTub": num_left_in_utub,
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
+                    TAGS_SUCCESS.TAG: tag_to_remove.serialized,
+                    TAGS_SUCCESS.URL: url_utub_association.serialized,
+                    TAGS_SUCCESS.UTUB_ID: utub_id,
+                    TAGS_SUCCESS.UTUB_NAME: utub.name,
+                    TAGS_SUCCESS.COUNT_IN_UTUB: num_left_in_utub,
                 }
             ),
             200,
         )
 
     return (
-        jsonify({"Status": "Failure", "Message": "Only UTub members can remove tags"}),
+        jsonify({STD_JSON.STATUS: STD_JSON.FAILURE, STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS}),
         403,
     )
 
@@ -224,9 +230,9 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Only UTub members can modify tags",
-                    "Error_code": 1,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_MODIFY_TAGS,
+                    STD_JSON.ERROR_CODE: 1,
                 }
             ),
             404,
@@ -246,8 +252,8 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "No change",
-                        "Message": "Tag was not modified on this URL",
+                        STD_JSON.STATUS: STD_JSON.NO_CHANGE,
+                        STD_JSON.MESSAGE: TAGS_NO_CHANGE.TAG_NOT_MODIFIED,
                     }
                 ),
                 200,
@@ -273,9 +279,9 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
                 return (
                     jsonify(
                         {
-                            "Status": "Failure",
-                            "Message": "Tag already on URL",
-                            "Error_code": 2,
+                            STD_JSON.STATUS: STD_JSON.FAILURE,
+                            STD_JSON.MESSAGE: TAGS_FAILURE.TAG_ALREADY_ON_URL,
+                            STD_JSON.ERROR_CODE: 2,
                         }
                     ),
                     404,
@@ -291,12 +297,12 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "Message": "Tag modified on URL",
-                    "Tag": tag_that_already_exists.serialized,
-                    "URL": url_utub_association.serialized,
-                    "UTub_ID": utub_id,
-                    "UTub_name": utub.name,
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_MODIFIED_ON_URL,
+                    TAGS_SUCCESS.TAG: tag_that_already_exists.serialized,
+                    TAGS_SUCCESS.URL: url_utub_association.serialized,
+                    TAGS_SUCCESS.UTUB_ID: utub_id,
+                    TAGS_SUCCESS.UTUB_NAME: utub.name,
                 }
             ),
             200,
@@ -307,10 +313,10 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to add tag to this URL",
-                    "Error_code": 3,
-                    "Errors": url_tag_form.errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+                    STD_JSON.ERROR_CODE: 3,
+                    STD_JSON.ERRORS: url_tag_form.errors,
                 }
             ),
             404,
@@ -319,9 +325,9 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
     return (
         jsonify(
             {
-                "Status": "Failure",
-                "Message": "Unable to add tag to this URL",
-                "Error_code": 4,
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+                STD_JSON.ERROR_CODE: 4,
             }
         ),
         404,

@@ -3,7 +3,13 @@ from flask_login import current_user
 
 from urls4irl.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags
 from urls4irl import db
+from urls4irl.utils import strings as U4I_STRINGS
 
+ADD_USER_FORM = U4I_STRINGS.ADD_USER_FORM
+USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+MODEL_STRS = U4I_STRINGS.MODELS
+USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
 def test_add_valid_users_to_utub_as_creator(
     every_user_makes_a_unique_utub, login_first_user_without_register
@@ -12,22 +18,22 @@ def test_add_valid_users_to_utub_as_creator(
     GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
     WHEN the user wants to add two other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
         correct form data, following the following format:
-            "csrf_token": String containing CSRF token for validation
-            "username": Username of the user to add
+            ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            ADD_USER_FORM.USERNAME: Username of the user to add
     THEN ensure that the backend responds with a 200 HTTP status code, that the database contains the newly added
         UTub-User association, and that the backend responds with the correct JSON response
 
     The correct JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "User added",
-        "User_ID_added": Integer representing ID of the user just added,
-        "UTub_ID" : Integer representing ID of the UTub the user was added to,
-        "UTub_name" : String representing name of the UTub the user was added to,
-        "UTub_users": Array containing strings of all usernames in the UTub
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : USER_SUCCESS.USER_ADDED,
+        USER_SUCCESS.USER_ID_ADDED: Integer representing ID of the user just added,
+        USER_SUCCESS.UTUB_ID : Integer representing ID of the UTub the user was added to,
+        USER_SUCCESS.UTUB_NAME : String representing name of the UTub the user was added to,
+        USER_SUCCESS.UTUB_USERS: Array containing strings of all usernames in the UTub
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     # Get the other users' usernames and this user's UTub, assuming 3 valid users
     with app.app_context():
@@ -63,7 +69,7 @@ def test_add_valid_users_to_utub_as_creator(
 
     # Add the other users to the current user's UTubs
     for other_user in other_usernames:
-        add_user_form = {"csrf_token": csrf_token, "username": other_user}
+        add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: other_user}
 
         with app.app_context():
             new_user = User.query.filter(User.username == other_user).first()
@@ -78,18 +84,18 @@ def test_add_valid_users_to_utub_as_creator(
         added_user_response_json = added_user_response.json
 
         # Assert JSON response is valid and contains updated data
-        assert added_user_response_json["Status"] == "Success"
-        assert added_user_response_json["Message"] == "User added"
-        assert int(added_user_response_json["User_ID_added"]) == new_user.id
-        assert int(added_user_response_json["UTub_ID"]) == utub_id_of_current_user
+        assert added_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        assert added_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_ADDED
+        assert int(added_user_response_json[USER_SUCCESS.USER_ID_ADDED]) == new_user.id
+        assert int(added_user_response_json[USER_SUCCESS.UTUB_ID]) == utub_id_of_current_user
         assert (
-            added_user_response_json["UTub_name"] == utub_of_current_user.to_utub.name
+            added_user_response_json[USER_SUCCESS.UTUB_NAME] == utub_of_current_user.to_utub.name
         )
         assert (
-            len(added_user_response_json["UTub_users"])
+            len(added_user_response_json[USER_SUCCESS.UTUB_USERS])
             == current_number_of_users_in_utub
         )
-        assert other_user in added_user_response_json["UTub_users"]
+        assert other_user in added_user_response_json[USER_SUCCESS.UTUB_USERS]
 
         # Assert database user-utub associations is up to date
         with app.app_context():
@@ -116,23 +122,23 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     GIVEN a logged-in user who is creator of a UTub that contains other members
     WHEN the creator first removes another user who has added URLs, then wants to add the users back to their UTub by POST to
         "/user/add/<int: utub_id>" with correct form data, following the following format:
-            "csrf_token": String containing CSRF token for validation
-            "username": Username of the user to add
+            ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            ADD_USER_FORM.USERNAME: Username of the user to add
     THEN ensure that the backend responds with a 200 HTTP status code, that the database contains the newly added
         UTub-User association, the URL-Tag associations and UTub-URL associations are still valid,
         and that the backend responds with the correct JSON response
 
     The correct JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "User added",
-        "User_ID_added": Integer representing ID of the user just added,
-        "UTub_ID" : Integer representing ID of the UTub the user was added to,
-        "UTub_name" : String representing name of the UTub the user was added to,
-        "UTub_users": Array containing strings of all usernames in the UTub
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : USER_SUCCESS.USER_ADDED,
+        USER_SUCCESS.USER_ID_ADDED: Integer representing ID of the user just added,
+        USER_SUCCESS.UTUB_ID : Integer representing ID of the UTub the user was added to,
+        USER_SUCCESS.UTUB_NAME : String representing name of the UTub the user was added to,
+        USER_SUCCESS.UTUB_USERS: Array containing strings of all usernames in the UTub
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get this user's UTub they created
@@ -182,7 +188,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     # Remove this user first
     remove_user_response = client.post(
         f"/user/remove/{utub_user_created.id}/{other_user_id_in_utub_with_urls}",
-        data={"csrf_token": csrf_token},
+        data={ADD_USER_FORM.CSRF_TOKEN: csrf_token},
     )
 
     # Ensure HTTP response code is correct
@@ -201,7 +207,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
         )
 
     # Add them back in
-    add_user_form = {"csrf_token": csrf_token, "username": other_user_username}
+    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: other_user_username}
 
     added_user_response = client.post(
         f"/user/add/{utub_user_created.id}", data=add_user_form
@@ -212,16 +218,16 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     added_user_response_json = added_user_response.json
 
     # Assert JSON response is valid and contains updated data
-    assert added_user_response_json["Status"] == "Success"
-    assert added_user_response_json["Message"] == "User added"
+    assert added_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert added_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_ADDED
     assert (
-        int(added_user_response_json["User_ID_added"])
+        int(added_user_response_json[USER_SUCCESS.USER_ID_ADDED])
         == other_user_id_in_utub_with_urls
     )
-    assert int(added_user_response_json["UTub_ID"]) == utub_user_created.id
-    assert added_user_response_json["UTub_name"] == utub_user_created.name
-    assert len(added_user_response_json["UTub_users"]) == initial_num_of_users_in_utub
-    assert set(added_user_response_json["UTub_users"]) == set(initial_usernames_in_utub)
+    assert int(added_user_response_json[USER_SUCCESS.UTUB_ID]) == utub_user_created.id
+    assert added_user_response_json[USER_SUCCESS.UTUB_NAME] == utub_user_created.name
+    assert len(added_user_response_json[USER_SUCCESS.UTUB_USERS]) == initial_num_of_users_in_utub
+    assert set(added_user_response_json[USER_SUCCESS.UTUB_USERS]) == set(initial_usernames_in_utub)
 
     with app.app_context():
         # Ensure proper counts of all associations after removing then adding user who owned URLs in the UTub
@@ -246,18 +252,18 @@ def test_add_valid_users_to_utub_as_member(
     GIVEN a logged-in user who is member of a UTub
     WHEN the user wants to add another other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
         correct form data, following the following format:
-            "csrf_token": String containing CSRF token for validation
-            "username": Username of the user to add
+            ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            ADD_USER_FORM.USERNAME: Username of the user to add
     THEN ensure that the backend responds with a 403 HTTP status code,and the correct JSON response
 
     The correct JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Not authorized",
-        "Error_code": 1
+        STD_JSON.STATUS : "Failure",
+        STD_JSON.MESSAGE : "Not authorized",
+        STD_JSON.ERROR_CODE: 1
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_second_user_without_register
+    client, csrf_token_string, _, app = login_second_user_without_register
     with app.app_context():
         # Add second user to first UTub
         only_utub = Utub.query.first()
@@ -292,7 +298,7 @@ def test_add_valid_users_to_utub_as_member(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to add the missing member to the UTub
-    add_user_form = {"csrf_token": csrf_token_string, "username": missing_user.username}
+    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token_string, ADD_USER_FORM.USERNAME: missing_user.username}
 
     missing_user_id = missing_user.id
     add_user_response = client.post(f"/user/add/{only_utub.id}", data=add_user_form)
@@ -301,9 +307,9 @@ def test_add_valid_users_to_utub_as_member(
 
     add_user_response_json = add_user_response.json
 
-    assert add_user_response_json["Status"] == "Failure"
-    assert add_user_response_json["Message"] == "Not authorized"
-    assert int(add_user_response_json["Error_code"]) == 1
+    assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.NOT_AUTHORIZED
+    assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 1
 
     with app.app_context():
         assert (
@@ -322,18 +328,18 @@ def test_add_duplicate_user_to_utub(
     GIVEN a logged-in user who owns a UTub that has another user as a member
     WHEN the creator wants to add the same other user to their UTub by POST to "/user/add/<int: utub_id>" with
         correct form data, following the following format:
-            "csrf_token": String containing CSRF token for validation
-            "username": Username of the user to add
+            ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            ADD_USER_FORM.USERNAME: Username of the user to add
     THEN ensure that the backend responds with a 400 HTTP status code,and the correct JSON response
 
     The correct JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "User already in UTub",
-        "Error_code": 2
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : "User already in UTub",
+        STD_JSON.ERROR_CODE: 2
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     # Add another user to first user's UTub
     with app.app_context():
@@ -364,7 +370,7 @@ def test_add_duplicate_user_to_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to the UTub again
-    add_user_form = {"csrf_token": csrf_token, "username": another_user_username}
+    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: another_user_username}
 
     add_user_response = client.post(
         f"/user/add/{current_user_utub_id}", data=add_user_form
@@ -374,9 +380,9 @@ def test_add_duplicate_user_to_utub(
 
     add_user_response_json = add_user_response.json
 
-    assert add_user_response_json["Status"] == "Failure"
-    assert add_user_response_json["Message"] == "User already in UTub"
-    assert int(add_user_response_json["Error_code"]) == 2
+    assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.USER_ALREADY_IN_UTUB
+    assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure the user is only associated with the UTub once
@@ -410,8 +416,8 @@ def test_add_user_to_nonexistant_utub(
     GIVEN a logged-in user and other valid registered users with no UTubs created
     WHEN the logged-in user wants to another user to a UTub (none exist) by POST to "/user/add/<int: utub_id>" with
         correct form data, following the following format:
-            "csrf_token": String containing CSRF token for validation
-            "username": Username of the user to add
+            ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            ADD_USER_FORM.USERNAME: Username of the user to add
     THEN ensure that the backend responds with a 404 HTTP status code indicating no UTub could
         be found in the database
     """
@@ -431,7 +437,7 @@ def test_add_user_to_nonexistant_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to a UTub
-    add_user_form = {"csrf_token": csrf_token, "username": another_user.username}
+    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: another_user.username}
 
     add_user_response = client.post(f"/user/add/1", data=add_user_form)
 
@@ -453,13 +459,13 @@ def test_add_nonexistant_user_to_utub(
     GIVEN a logged-in user and their single UTub and no other registered users with no UTubs created
     WHEN the logged-in user wants to another user to their UTub by POST to "/user/add/<int: utub_id>" with
         correct form data, following the following format:
-            "csrf_token": String containing CSRF token for validation
-            "username": Username of an unregistered user
+            ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            ADD_USER_FORM.USERNAME: Username of an unregistered user
     THEN ensure that the backend responds with a 404 HTTP status code indicating no user could
         be found in the database
     """
 
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Ensure only one user exists
@@ -476,7 +482,7 @@ def test_add_nonexistant_user_to_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to a UTub
-    add_user_form = {"csrf_token": csrf_token, "username": "Not a registered user"}
+    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: "Not a registered user"}
 
     add_user_response = client.post(f"/user/add/{only_utub.id}", data=add_user_form)
 
@@ -501,19 +507,19 @@ def test_add_user_to_another_users_utub(
     GIVEN three valid users, first one being logged in, and each user has their own UTub and themselves being the only member
     WHEN the logged-in user wants to add another user to another person's UTub by POST to "/user/add/<int: utub_id>" with
         correct form data, following the following format:
-            "csrf_token": String containing CSRF token for validation
-            "username": Username of an unregistered user
+            ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            ADD_USER_FORM.USERNAME: Username of an unregistered user
     THEN ensure that the backend responds with a 403 HTTP status code,and the correct JSON response
 
     The correct JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Not authorized",
-        "Error_code": 1
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : USER_FAILURE.NOT_AUTHORIZED,
+        STD_JSON.ERROR_CODE: 1
     }
     """
 
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get logged in user's UTub
@@ -548,7 +554,7 @@ def test_add_user_to_another_users_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to add this third user to the second user's UTub, logged as the first user
-    add_user_form = {"csrf_token": csrf_token, "username": test_user_to_add.username}
+    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: test_user_to_add.username}
 
     add_user_response = client.post(f"/user/add/{another_utub.id}", data=add_user_form)
 
@@ -556,9 +562,9 @@ def test_add_user_to_another_users_utub(
 
     add_user_response_json = add_user_response.json
 
-    assert add_user_response_json["Status"] == "Failure"
-    assert add_user_response_json["Message"] == "Not authorized"
-    assert int(add_user_response_json["Error_code"]) == 1
+    assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.NOT_AUTHORIZED
+    assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 1
 
     # Confirm third user not in second user's UTub
     with app.app_context():
@@ -582,23 +588,23 @@ def test_add_user_to_utub_invalid_form(
     """
     GIVEN a logged-in user who is member of a UTub
     WHEN the user wants to add another other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
-        incorrect form data (missing "username"), following the following format:
-            "csrf_token": String containing CSRF token for validation
+        incorrect form data (missing ADD_USER_FORM.USERNAME), following the following format:
+            ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN ensure that the backend responds with a 404 HTTP status code,and the correct JSON response
 
     The correct JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Unable to add that user to this UTub",
-        "Error_code": 3,
-        "Errors": Objects representing the incorrect field, and an array of errors associated with that field.
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : "Unable to add that user to this UTub",
+        STD_JSON.ERROR_CODE: 3,
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing username field:
             {
-                "username": ['This field is required.']
+                ADD_USER_FORM.USERNAME: ['This field is required.']
             }
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     # Get logged in user's UTub
     with app.app_context():
@@ -610,7 +616,7 @@ def test_add_user_to_utub_invalid_form(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to add this third user to the second user's UTub, logged as the first user
-    add_user_form = {"csrf_token": csrf_token}
+    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token}
 
     add_user_response = client.post(
         f"/user/add/{current_user_utub.id}", data=add_user_form
@@ -620,10 +626,10 @@ def test_add_user_to_utub_invalid_form(
 
     add_user_response_json = add_user_response.json
 
-    assert add_user_response_json["Status"] == "Failure"
-    assert add_user_response_json["Message"] == "Unable to add that user to this UTub"
-    assert int(add_user_response_json["Error_code"]) == 3
-    assert add_user_response_json["Errors"]["username"] == ["This field is required."]
+    assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_ADD
+    assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 3
+    assert add_user_response_json[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME] == USER_FAILURE.FIELD_REQUIRED
 
     with app.app_context():
         # Ensure correct count of Utub-User associations
@@ -639,7 +645,7 @@ def test_add_user_to_utub_missing_csrf_token(
         a missing CSRF token
     THEN ensure that the backend responds with a 404 HTTP status code,and the correct JSON response
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     # Get logged in user's UTub
     with app.app_context():

@@ -1,12 +1,16 @@
 from flask import Blueprint, jsonify, redirect, url_for, render_template, request
-from werkzeug.security import check_password_hash
 from flask_login import current_user, login_required, login_user, logout_user
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Users, User
 from urls4irl.users.forms import LoginForm, UserRegistrationForm, UTubNewUserForm
+from urls4irl.utils import strings as U4I_STRINGS
 
 users = Blueprint("users", __name__)
 
+# Standard response for JSON messages
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+USER_FAILURE = U4I_STRINGS.USER_FAILURE
+USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
 
 @users.route("/login", methods=["GET", "POST"])
 def login():
@@ -15,6 +19,9 @@ def login():
         return redirect(url_for("main.home"))
 
     login_form = LoginForm()
+
+    if request.method == "GET":
+        return render_template("login.html", login_form=login_form)
 
     if login_form.validate_on_submit():
         username = login_form.username.data
@@ -29,6 +36,20 @@ def login():
             return redirect(next_page) if next_page else url_for("main.home")
         else:
             return render_template("login.html", login_form=login_form), 400
+
+    # Input form errors
+    if login_form.errors is not None:
+        return (
+            jsonify(
+                {
+                    STD_JSON.STATUS: STD_JSON.FAILURE, 
+                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN, 
+                    STD_JSON.ERROR_CODE: 1,
+                    STD_JSON.ERRORS: login_form.errors,
+                }
+            ),
+            401,
+        )
 
     return render_template("login.html", login_form=login_form)
 
@@ -46,7 +67,10 @@ def register_user():
     if current_user.is_authenticated:
         return redirect(url_for("main.home"))
 
-    register_form = UserRegistrationForm()
+    register_form: UserRegistrationForm = UserRegistrationForm()
+
+    if request.method == "GET":
+        return render_template("register_user.html", register_form=register_form)
 
     if register_form.validate_on_submit():
         username = register_form.username.data
@@ -63,6 +87,20 @@ def register_user():
         user = User.query.filter_by(username=username).first()
         login_user(user)
         return url_for("main.home")
+
+    # Input form errors
+    if register_form.errors is not None:
+        return (
+            jsonify(
+                {
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER, 
+                    STD_JSON.ERROR_CODE: 1,
+                    STD_JSON.ERRORS: register_form.errors,
+                }
+            ),
+            401,
+        )
 
     return render_template("register_user.html", register_form=register_form)
 
@@ -85,9 +123,9 @@ def delete_user(utub_id: int, user_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "UTub creator cannot remove themselves",
-                    "Error_code": 1,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
+                    STD_JSON.ERROR_CODE: 1,
                 }
             ),
             400,
@@ -107,9 +145,9 @@ def delete_user(utub_id: int, user_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Not allowed to remove a user from this UTub",
-                    "Error_code": 2,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+                    STD_JSON.ERROR_CODE: 2,
                 }
             ),
             403,
@@ -119,9 +157,9 @@ def delete_user(utub_id: int, user_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "User does not exist or not found in this UTub",
-                    "Error_code": 3,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: USER_FAILURE.USER_NOT_IN_UTUB,
+                    STD_JSON.ERROR_CODE: 3,
                 }
             ),
             404,
@@ -140,13 +178,13 @@ def delete_user(utub_id: int, user_id: int):
     return (
         jsonify(
             {
-                "Status": "Success",
-                "Message": "User removed",
-                "User_ID_removed": f"{user_id}",
-                "Username": f"{deleted_user_username}",
-                "UTub_ID": f"{utub_id}",
-                "UTub_name": f"{current_utub.name}",
-                "UTub_users": [user.to_user.username for user in current_utub.members],
+                STD_JSON.STATUS: STD_JSON.SUCCESS, 
+                STD_JSON.MESSAGE: USER_SUCCESS.USER_REMOVED,
+                USER_SUCCESS.USER_ID_REMOVED: f"{user_id}",
+                USER_SUCCESS.USERNAME_REMOVED: f"{deleted_user_username}",
+                USER_SUCCESS.UTUB_ID: f"{utub_id}",
+                USER_SUCCESS.UTUB_NAME: f"{current_utub.name}",
+                USER_SUCCESS.UTUB_USERS: [user.to_user.username for user in current_utub.members],
             }
         ),
         200,
@@ -168,7 +206,7 @@ def add_user(utub_id: int):
         # User not authorized to add a user to this UTub
         return (
             jsonify(
-                {"Status": "Failure", "Message": "Not authorized", "Error_code": 1}
+                {STD_JSON.STATUS: STD_JSON.FAILURE, STD_JSON.MESSAGE: USER_FAILURE.NOT_AUTHORIZED, STD_JSON.ERROR_CODE: 1}
             ),
             403,
         )
@@ -188,9 +226,9 @@ def add_user(utub_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "Failure",
-                        "Message": "User already in UTub",
-                        "Error_code": 2,
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: USER_FAILURE.USER_ALREADY_IN_UTUB,
+                        STD_JSON.ERROR_CODE: 2,
                     }
                 ),
                 400,
@@ -206,12 +244,12 @@ def add_user(utub_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "Success",
-                        "Message": "User added",
-                        "User_ID_added": int(new_user.id),
-                        "UTub_ID": int(utub_id),
-                        "UTub_name": f"{utub.name}",
-                        "UTub_users": [user.to_user.username for user in utub.members],
+                        STD_JSON.STATUS: STD_JSON.SUCCESS,
+                        STD_JSON.MESSAGE: USER_SUCCESS.USER_ADDED,
+                        USER_SUCCESS.USER_ID_ADDED: int(new_user.id),
+                        USER_SUCCESS.UTUB_ID: int(utub_id),
+                        USER_SUCCESS.UTUB_NAME: f"{utub.name}",
+                        USER_SUCCESS.UTUB_USERS: [user.to_user.username for user in utub.members],
                     }
                 ),
                 200,
@@ -221,10 +259,10 @@ def add_user(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to add that user to this UTub",
-                    "Error_code": 3,
-                    "Errors": utub_new_user_form.errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
+                    STD_JSON.ERROR_CODE: 3,
+                    STD_JSON.ERRORS: utub_new_user_form.errors,
                 }
             ),
             404,
@@ -233,9 +271,9 @@ def add_user(utub_id: int):
     return (
         jsonify(
             {
-                "Status": "Failure",
-                "Message": "Unable to add that user to this UTub",
-                "Error_code": 4,
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
+                STD_JSON.ERROR_CODE: 4,
             }
         ),
         404,

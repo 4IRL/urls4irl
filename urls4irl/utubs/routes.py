@@ -3,9 +3,14 @@ from flask_login import current_user, login_required
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Users
 from urls4irl.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
+from urls4irl.utils import strings as U4I_STRINGS
 
 utubs = Blueprint("utubs", __name__)
 
+# Standard response for JSON messages
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
+UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
 
 @utubs.route("/utub/new", methods=["POST"])
 @login_required
@@ -36,11 +41,11 @@ def create_utub():
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "UTub_ID": int(new_utub.id),
-                    "UTub_name": f"{new_utub.name}",
-                    "UTub_description": f"{description}",
-                    "UTub_creator_id": int(current_user.get_id()),
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    UTUB_SUCCESS.UTUB_ID: int(new_utub.id),
+                    UTUB_SUCCESS.UTUB_NAME: f"{new_utub.name}",
+                    UTUB_SUCCESS.UTUB_DESCRIPTION: f"{description}",
+                    UTUB_SUCCESS.UTUB_CREATOR_ID: int(current_user.get_id()),
                 }
             ),
             200,
@@ -51,10 +56,10 @@ def create_utub():
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Unable to generate a new UTub with that information.",
-                    "Error_code": 1,
-                    "Errors": utub_form.errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
+                    STD_JSON.ERROR_CODE: 1,
+                    STD_JSON.ERRORS: utub_form.errors,
                 }
             ),
             404,
@@ -63,9 +68,9 @@ def create_utub():
     return (
         jsonify(
             {
-                "Status": "Failure",
-                "Message": "Unable to generate a new UTub with that information.",
-                "Error_code": 2,
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
+                STD_JSON.ERROR_CODE: 2,
             }
         ),
         404,
@@ -92,8 +97,8 @@ def delete_utub(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "You don't have permission to delete this UTub!",
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
                 }
             ),
             403,
@@ -106,11 +111,11 @@ def delete_utub(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "Message": "UTub deleted",
-                    "UTub_ID": f"{utub.id}",
-                    "UTub_name": f"{utub.name}",
-                    "UTub_description": f"{utub.utub_description}",
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
+                    UTUB_SUCCESS.UTUB_ID: f"{utub.id}",
+                    UTUB_SUCCESS.UTUB_NAME: f"{utub.name}",
+                    UTUB_SUCCESS.UTUB_DESCRIPTION: f"{utub.utub_description}",
                 }
             ),
             200,
@@ -140,9 +145,9 @@ def update_utub_name(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "You do not have permission to edit this UTub's name",
-                    "Error_code": 1,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
+                    STD_JSON.ERROR_CODE: 1,
                 }
             ),
             403,
@@ -162,10 +167,10 @@ def update_utub_name(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "UTub_ID": current_utub.id,
-                    "UTub_name": current_utub.name,
-                    "UTub_description": current_utub.utub_description,
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    UTUB_SUCCESS.UTUB_ID: current_utub.id,
+                    UTUB_SUCCESS.UTUB_NAME: current_utub.name,
+                    UTUB_SUCCESS.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),
             200,
@@ -176,10 +181,10 @@ def update_utub_name(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "Invalid form",
-                    "Error_code": 2,
-                    "Errors": utub_name_form.errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
+                    STD_JSON.ERROR_CODE: 2,
+                    STD_JSON.ERRORS: utub_name_form.errors,
                 }
             ),
             404,
@@ -188,9 +193,9 @@ def update_utub_name(utub_id: int):
     return (
         jsonify(
             {
-                "Status": "Failure",
-                "Message": "Unable to modify this UTub's name",
-                "Error_code": 3,
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
+                STD_JSON.ERROR_CODE: 3,
             }
         ),
         404,
@@ -221,10 +226,10 @@ def update_utub_desc(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "You do not have permission to edit this UTub's description",
-                    "Error_code": 1,
-                    "UTub_description": current_utub.utub_description,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
+                    STD_JSON.ERROR_CODE: 1,
+                    UTUB_FAILURE.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),
             403,
@@ -243,9 +248,9 @@ def update_utub_desc(utub_id: int):
             return (
                 jsonify(
                     {
-                        "Status": "Failure",
-                        "Message": "Invalid form",
-                        "Error_code": 2,
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
+                        STD_JSON.ERROR_CODE: 2,
                     }
                 ),
                 404,
@@ -258,10 +263,10 @@ def update_utub_desc(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Success",
-                    "UTub_ID": current_utub.id,
-                    "UTub_name": current_utub.name,
-                    "UTub_description": current_utub.utub_description,
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    UTUB_SUCCESS.UTUB_ID: current_utub.id,
+                    UTUB_SUCCESS.UTUB_NAME: current_utub.name,
+                    UTUB_SUCCESS.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),
             200,
@@ -272,10 +277,10 @@ def update_utub_desc(utub_id: int):
         return (
             jsonify(
                 {
-                    "Status": "Failure",
-                    "Message": "UTub description is too long",
-                    "Error_code": 3,
-                    "Errors": utub_desc_form.errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: UTUB_FAILURE.UTUB_DESC_TOO_LONG,
+                    STD_JSON.ERROR_CODE: 3,
+                    STD_JSON.ERRORS: utub_desc_form.errors,
                 }
             ),
             404,
@@ -284,9 +289,9 @@ def update_utub_desc(utub_id: int):
     return (
         jsonify(
             {
-                "Status": "Failure",
-                "Message": "Unable to modify this UTub's description",
-                "Error_code": 4,
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
+                STD_JSON.ERROR_CODE: 4,
             }
         ),
         404,

@@ -1,9 +1,15 @@
 import pytest
 from flask_login import current_user
 
-from urls4irl.models import Utub, User, URLS, Utub_Urls, Utub_Users
+from urls4irl.models import Utub, URLS, Utub_Urls 
 from models_for_test import valid_url_strings
+from urls4irl.utils import strings as U4I_STRINGS
 
+URL_FORM = U4I_STRINGS.URL_FORM
+URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+MODEL_STRS = U4I_STRINGS.MODELS
+URL_FAILURE = U4I_STRINGS.URL_FAILURE
 
 def test_add_valid_url_as_utub_member(
     add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
@@ -18,18 +24,18 @@ def test_add_valid_url_as_utub_member(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "URL added to UTub",
-        "URL" : {
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : URL_SUCCESS.URL_ADDED,
+        MODEL_STRS.URL : {
             "url_string": String representing the URL ,
             "url_ID" : Integer representing the URL ID
         },
-        "UTub_ID" : Integer representing the ID of the UTub added to,
-        "UTub_name" : String representing the name of the UTub added to,
-        "Added_by" : Integer representing the ID of current user who added this URL to this UTub
+        URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
+        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub added to,
+        URL_SUCCESS.ADDED_BY : Integer representing the ID of current user who added this URL to this UTub
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
@@ -75,9 +81,9 @@ def test_add_valid_url_as_utub_member(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": url_string_to_add,
-        "url_description": url_description_to_add,
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_DESCRIPTION: url_description_to_add,
     }
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
@@ -85,13 +91,13 @@ def test_add_valid_url_as_utub_member(
     assert add_url_response.status_code == 200
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Success"
-    assert add_url_json_response["Message"] == "URL added to UTub"
-    assert int(add_url_json_response["UTub_ID"]) == utub_id_to_add_to
-    assert add_url_json_response["UTub_name"] == utub_name_to_add
-    assert int(add_url_json_response["Added_by"]) == current_user.id
-    assert add_url_json_response["URL"]["url_string"] == url_string_to_add
-    assert int(add_url_json_response["URL"]["url_ID"]) == url_id_to_add
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_ADDED
+    assert int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == utub_id_to_add_to
+    assert add_url_json_response[URL_SUCCESS.UTUB_NAME] == utub_name_to_add
+    assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
+    assert add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
+    assert int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID]) == url_id_to_add
 
     with app.app_context():
         # Ensure no new URL created
@@ -132,18 +138,18 @@ def test_add_valid_url_as_utub_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "URL added to UTub",
-        "URL" : {
-            "url_string": String representing the URL ,
-            "url_ID" : Integer representing the URL ID
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : URL_SUCCESS.URL_ADDED,
+        MODEL_STRS.URL : {
+            URL_FORM.URL_STRING: String representing the URL ,
+            URL_SUCCESS.URL_ID : Integer representing the URL ID
         },
-        "UTub_ID" : Integer representing the ID of the UTub added to,
-        "UTub_name" : String representing the name of the UTub added to,
-        "Added_by" : Integer representing the ID of current user who added this URL to this UTub
+        URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
+        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub added to,
+        URL_SUCCESS.ADDED_BY : Integer representing the ID of current user who added this URL to this UTub
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is a creator of
@@ -189,9 +195,9 @@ def test_add_valid_url_as_utub_creator(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": url_string_to_add,
-        "url_description": url_description_to_add,
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_DESCRIPTION: url_description_to_add,
     }
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
@@ -199,13 +205,13 @@ def test_add_valid_url_as_utub_creator(
     assert add_url_response.status_code == 200
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Success"
-    assert add_url_json_response["Message"] == "URL added to UTub"
-    assert int(add_url_json_response["UTub_ID"]) == utub_id_to_add_to
-    assert add_url_json_response["UTub_name"] == utub_name_to_add
-    assert int(add_url_json_response["Added_by"]) == current_user.id
-    assert add_url_json_response["URL"]["url_string"] == url_string_to_add
-    assert int(add_url_json_response["URL"]["url_ID"]) == url_id_to_add
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_ADDED
+    assert int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == utub_id_to_add_to
+    assert add_url_json_response[URL_SUCCESS.UTUB_NAME] == utub_name_to_add
+    assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
+    assert add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
+    assert int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID]) == url_id_to_add
 
     with app.app_context():
         # Ensure no new URL created
@@ -246,12 +252,12 @@ def test_add_invalid_url_as_utub_member(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Unable to add this URL",
+        STD_JSON.STATUS : "Failure",
+        STD_JSON.MESSAGE : "Unable to add this URL",
         "Error_code": 2
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
@@ -292,9 +298,9 @@ def test_add_invalid_url_as_utub_member(
 
     # Try to add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": "AAAA",
-        "url_description": "This is AAAA",
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: "AAAA",
+        URL_FORM.URL_DESCRIPTION: "This is AAAA",
     }
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
@@ -302,8 +308,8 @@ def test_add_invalid_url_as_utub_member(
     assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Failure"
-    assert add_url_json_response["Message"] == "Unable to add this URL"
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL
     assert int(add_url_json_response["Error_code"]) == 2
 
     with app.app_context():
@@ -343,12 +349,12 @@ def test_add_invalid_url_as_utub_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Unable to add this URL",
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : URL_FAILURE.UNABLE_TO_ADD_URL,
         "Error_code": 2
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is a creator of
@@ -389,9 +395,9 @@ def test_add_invalid_url_as_utub_creator(
 
     # Try to add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": "AAAA",
-        "url_description": "This is AAAA",
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: "AAAA",
+        URL_FORM.URL_DESCRIPTION: "This is AAAA",
     }
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
@@ -399,9 +405,9 @@ def test_add_invalid_url_as_utub_creator(
     assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Failure"
-    assert add_url_json_response["Message"] == "Unable to add this URL"
-    assert int(add_url_json_response["Error_code"]) == 2
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure no new URL created
@@ -437,7 +443,7 @@ def test_add_valid_url_to_nonexistent_utub(
         - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
@@ -458,9 +464,9 @@ def test_add_valid_url_to_nonexistent_utub(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": valid_url_string,
-        "url_description": valid_url_description,
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: valid_url_string,
+        URL_FORM.URL_DESCRIPTION: valid_url_description,
     }
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
@@ -484,12 +490,12 @@ def test_add_valid_url_to_utub_not_a_member_of(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Unable to add this URL",
-        "Error_code": 1
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : URL_FAILURE.UNABLE_TO_ADD_URL,
+        STD_JSON.ERROR_CODE: 1
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is not a member of
@@ -521,9 +527,9 @@ def test_add_valid_url_to_utub_not_a_member_of(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": valid_url_string,
-        "url_description": valid_url_description,
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: valid_url_string,
+        URL_FORM.URL_DESCRIPTION: valid_url_description,
     }
 
     add_url_response = client.post(
@@ -533,9 +539,9 @@ def test_add_valid_url_to_utub_not_a_member_of(
     assert add_url_response.status_code == 403
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Failure"
-    assert add_url_json_response["Message"] == "Unable to add this URL"
-    assert int(add_url_json_response["Error_code"]) == 1
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 1
 
     with app.app_context():
         utub_not_member_of = Utub.query.get(id_of_utub_not_member_of)
@@ -567,18 +573,18 @@ def test_add_fresh_url_to_utub(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "New URL created and added to UTub",
-        "URL" : {
-            "url_string": String representing the URL,
-            "url_ID" : Integer representing the URL ID
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : "New URL created and added to UTub",
+        MODEL_STRS.URL : {
+            URL_FORM.URL_STRING: String representing the URL,
+            URL_SUCCESS.URL_ID : Integer representing the URL ID
         },
-        "UTub_ID" : Integer representing the ID of the UTub added to,
-        "UTub_name" : String representing the name of the UTub added to,
-        "Added_by" : Integer representing the ID of current user who added this URL to this UTub
+        URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
+        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub added to,
+        URL_SUCCESS.ADDED_BY : Integer representing the ID of current user who added this URL to this UTub
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
     valid_url_to_add = valid_url_strings[0]
 
     with app.app_context():
@@ -619,9 +625,9 @@ def test_add_fresh_url_to_utub(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": valid_url_to_add,
-        "url_description": f"This is {valid_url_to_add}",
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: valid_url_to_add,
+        URL_FORM.URL_DESCRIPTION: f"This is {valid_url_to_add}",
     }
 
     add_url_response = client.post(
@@ -631,13 +637,13 @@ def test_add_fresh_url_to_utub(
     assert add_url_response.status_code == 200
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Success"
-    assert add_url_json_response["Message"] == "New URL created and added to UTub"
-    assert int(add_url_json_response["UTub_ID"]) == id_of_utub_that_is_creator_of
-    assert add_url_json_response["UTub_name"] == name_of_utub_that_is_creator_of
-    assert int(add_url_json_response["Added_by"]) == current_user.id
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_CREATED_ADDED
+    assert int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == id_of_utub_that_is_creator_of
+    assert add_url_json_response[URL_SUCCESS.UTUB_NAME] == name_of_utub_that_is_creator_of
+    assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
 
-    url_id_added = int(add_url_json_response["URL"]["url_ID"])
+    url_id_added = int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID])
 
     with app.app_context():
         # Ensure new URL exists
@@ -678,12 +684,12 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "URL already in UTub",
-        "Error_code": 3
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : "URL already in UTub",
+        STD_JSON.ERROR_CODE: 3
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get this user's UTub
@@ -715,9 +721,9 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": url_string_to_add,
-        "url_description": url_description_to_add,
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_DESCRIPTION: url_description_to_add,
     }
 
     add_url_response = client.post(
@@ -727,9 +733,9 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
     assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Failure"
-    assert add_url_json_response["Message"] == "URL already in UTub"
-    assert int(add_url_json_response["Error_code"]) == 3
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
         # Ensure same number of URLs in UTub as before
@@ -767,12 +773,12 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "URL already in UTub",
-        "Error_code": 3
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : URL_FAILURE.URL_IN_UTUB,
+        STD_JSON.ERROR_CODE: 3
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get this user's UTub
@@ -804,9 +810,9 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": url_string_to_add,
-        "url_description": url_description_to_add,
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_DESCRIPTION: url_description_to_add,
     }
 
     add_url_response = client.post(
@@ -816,9 +822,9 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
     assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Failure"
-    assert add_url_json_response["Message"] == "URL already in UTub"
-    assert int(add_url_json_response["Error_code"]) == 3
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
         # Ensure same number of URLs in UTub as before
@@ -855,12 +861,12 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "URL already in UTub",
-        "Error_code": 3
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : URL_FAILURE.URL_IN_UTUB,
+        STD_JSON.ERROR_CODE: 3
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get this user's UTub
@@ -893,9 +899,9 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": url_string_to_add,
-        "url_description": url_description_to_add,
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_DESCRIPTION: url_description_to_add,
     }
 
     add_url_response = client.post(
@@ -905,9 +911,9 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
     assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Failure"
-    assert add_url_json_response["Message"] == "URL already in UTub"
-    assert int(add_url_json_response["Error_code"]) == 3
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
         # Ensure same number of URLs in UTub as before
@@ -944,15 +950,15 @@ def test_add_url_missing_url(
 
     Proper JSON response is as follows:
     {
-        "Status": "Failure",
-        "Message": "Unable to add this URL, please check inputs",
-        "Error_code": 4,
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: "Unable to add this URL, please check inputs",
+        STD_JSON.ERROR_CODE: 4,
         "Errors": {
-            "url_string": ["This field is required."]
+            URL_FORM.URL_STRING: ["This field is required."]
         }
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
@@ -983,9 +989,9 @@ def test_add_url_missing_url(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": "",
-        "url_description": url_description_to_add,
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: "",
+        URL_FORM.URL_DESCRIPTION: url_description_to_add,
     }
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
@@ -993,13 +999,13 @@ def test_add_url_missing_url(
     assert add_url_response.status_code == 404
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Failure"
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        add_url_json_response["Message"]
-        == "Unable to add this URL, please check inputs"
+        add_url_json_response[STD_JSON.MESSAGE]
+        == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
     )
-    assert int(add_url_json_response["Error_code"]) == 4
-    assert add_url_json_response["Errors"]["url_string"] == ["This field is required."]
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
+    assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == URL_FAILURE.FIELD_REQUIRED
 
     with app.app_context():
         assert (
@@ -1022,15 +1028,15 @@ def test_add_url_missing_url_description(
 
     Proper JSON response is as follows:
     {
-        "Status": "Failure",
-        "Message": "Unable to add this URL, please check inputs",
-        "Error_code": 4,
-        "Errors": {
-            "url_description": ["This field is required."]
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
+        STD_JSON.ERROR_CODE: 4,
+        STD_JSON.ERRORS: {
+            URL_FORM.URL_DESCRIPTION: ["This field is required."]
         }
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
@@ -1060,9 +1066,9 @@ def test_add_url_missing_url_description(
 
     # Add the URL to the UTub
     add_url_form = {
-        "csrf_token": csrf_token,
-        "url_string": url_string_to_add,
-        "url_description": "",
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_DESCRIPTION: "",
     }
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
@@ -1070,15 +1076,13 @@ def test_add_url_missing_url_description(
     assert add_url_response.status_code == 404
 
     add_url_json_response = add_url_response.json
-    assert add_url_json_response["Status"] == "Failure"
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        add_url_json_response["Message"]
-        == "Unable to add this URL, please check inputs"
+        add_url_json_response[STD_JSON.MESSAGE]
+        == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
     )
-    assert int(add_url_json_response["Error_code"]) == 4
-    assert add_url_json_response["Errors"]["url_description"] == [
-        "This field is required."
-    ]
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
+    assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_DESCRIPTION] == URL_FAILURE.FIELD_REQUIRED
 
     with app.app_context():
         assert (
@@ -1102,15 +1106,15 @@ def test_add_url_missing_csrf_token(
 
     Proper JSON response is as follows:
     {
-        "Status": "Failure",
-        "Message": "Unable to add this URL, please check inputs",
-        "Error_code": 4,
-        "Errors": {
-            "url_description": ["This field is required."]
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
+        STD_JSON.ERROR_CODE: 4,
+        STD_JSON.ERRORS: {
+            URL_FORM.URL_DESCRIPTION: ["This field is required."]
         }
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find a UTub this current user is a member of (and not creator of)
@@ -1139,7 +1143,7 @@ def test_add_url_missing_csrf_token(
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
-    add_url_form = {"url_string": url_string_to_add, "url_description": ""}
+    add_url_form = {URL_FORM.URL_STRING: url_string_to_add, URL_FORM.URL_DESCRIPTION: ""}
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 

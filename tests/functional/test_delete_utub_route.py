@@ -4,7 +4,13 @@ from flask_login import current_user
 from models_for_test import valid_empty_utub_1
 from urls4irl.models import Utub, Utub_Users, Utub_Urls, Url_Tags
 from urls4irl import db
+from urls4irl.utils import strings as U4I_STRINGS
 
+REMOVE_UTUB_FORM = U4I_STRINGS.UTUB_FORM
+UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+MODEL_STRS = U4I_STRINGS.MODELS
+UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
 
 def test_delete_existing_utub_as_creator_no_tags_urls_members(
     add_single_utub_as_user_after_logging_in,
@@ -19,11 +25,11 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
 
     On POST with a successful deletion, the JSON response is as follows:
     {
-        "Status": "Success",
-        "Message": "UTub deleted",
-        "UTub_ID": Integer representing the ID of the UTub deleted,
-        "UTub_description": String representing the description of the deleted UTub,
-        "UTub_name": String representing the name of the deleted UTub,
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the ID of the UTub deleted,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the description of the deleted UTub,
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the deleted UTub,
     }
     """
     client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
@@ -33,7 +39,7 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        f"/utub/delete/{utub_id}", data={"csrf_token": csrf_token}
+        f"/utub/delete/{utub_id}", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     assert delete_utub_response.status_code == 200
@@ -41,14 +47,14 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
     delete_utub_json_response = delete_utub_response.json
 
     # Assert JSON includes proper response on successful deletion of UTub
-    assert delete_utub_json_response["Message"] == "UTub deleted"
-    assert delete_utub_json_response["Status"] == "Success"
+    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_SUCCESS.UTUB_DELETED
+    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert (
-        delete_utub_json_response["UTub_description"]
-        == valid_empty_utub_1["utub_description"]
+        delete_utub_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION]
     )
-    assert int(delete_utub_json_response["UTub_ID"]) == utub_id
-    assert delete_utub_json_response["UTub_name"] == valid_empty_utub_1["name"]
+    assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == valid_empty_utub_1[REMOVE_UTUB_FORM.NAME]
 
     with app.app_context():
         # Assert no UTubs and no UTub-User associations exist in the database after deletion
@@ -68,15 +74,15 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
 
     On POST with a successful deletion, the JSON response is as follows:
     {
-        "Status": "Success",
-        "Message": "UTub deleted",
-        "UTub_ID": Integer representing the ID of the UTub deleted,
-        "UTub_description": String representing the description of the deleted UTub,
-        "UTub_name": String representing the name of the deleted UTub,
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the ID of the UTub deleted,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the description of the deleted UTub,
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the deleted UTub,
     }
     """
 
-    client, csrf_token, valid_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the UTub this user is a creator of
@@ -99,7 +105,7 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        f"/utub/delete/{utub_id_to_delete}", data={"csrf_token": csrf_token}
+        f"/utub/delete/{utub_id_to_delete}", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     assert delete_utub_response.status_code == 200
@@ -107,11 +113,11 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
     delete_utub_json_response = delete_utub_response.json
 
     # Assert JSON includes proper response on successful deletion of UTub
-    assert delete_utub_json_response["Message"] == "UTub deleted"
-    assert delete_utub_json_response["Status"] == "Success"
-    assert delete_utub_json_response["UTub_description"] == utub_description_to_delete
-    assert int(delete_utub_json_response["UTub_ID"]) == utub_id_to_delete
-    assert delete_utub_json_response["UTub_name"] == utub_name_to_delete
+    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_SUCCESS.UTUB_DELETED
+    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == utub_description_to_delete
+    assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id_to_delete
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == utub_name_to_delete
 
     with app.app_context():
         # Ensure proper counting in DB of deleted associations
@@ -156,15 +162,15 @@ def test_delete_existing_utub_with_urls_no_tags(
 
     On POST with a successful deletion, the JSON response is as follows:
     {
-        "Status": "Success",
-        "Message": "UTub deleted",
-        "UTub_ID": Integer representing the ID of the UTub deleted,
-        "UTub_description": String representing the description of the deleted UTub,
-        "UTub_name": String representing the name of the deleted UTub,
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the ID of the UTub deleted,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the description of the deleted UTub,
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the deleted UTub,
     }
     """
 
-    client, csrf_token, valid_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the UTub this user is a creator of
@@ -187,7 +193,7 @@ def test_delete_existing_utub_with_urls_no_tags(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        f"/utub/delete/{utub_id_to_delete}", data={"csrf_token": csrf_token}
+        f"/utub/delete/{utub_id_to_delete}", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     assert delete_utub_response.status_code == 200
@@ -195,11 +201,11 @@ def test_delete_existing_utub_with_urls_no_tags(
     delete_utub_json_response = delete_utub_response.json
 
     # Assert JSON includes proper response on successful deletion of UTub
-    assert delete_utub_json_response["Message"] == "UTub deleted"
-    assert delete_utub_json_response["Status"] == "Success"
-    assert delete_utub_json_response["UTub_description"] == utub_description_to_delete
-    assert int(delete_utub_json_response["UTub_ID"]) == utub_id_to_delete
-    assert delete_utub_json_response["UTub_name"] == utub_name_to_delete
+    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_SUCCESS.UTUB_DELETED
+    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == utub_description_to_delete
+    assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id_to_delete
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == utub_name_to_delete
 
     with app.app_context():
         # Ensure proper counting in DB of deleted associations
@@ -244,15 +250,15 @@ def test_delete_existing_utub_with_urls_and_tags(
 
     On POST with a successful deletion, the JSON response is as follows:
     {
-        "Status": "Success",
-        "Message": "UTub deleted",
-        "UTub_ID": Integer representing the ID of the UTub deleted,
-        "UTub_description": String representing the description of the deleted UTub,
-        "UTub_name": String representing the name of the deleted UTub,
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the ID of the UTub deleted,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the description of the deleted UTub,
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the deleted UTub,
     }
     """
 
-    client, csrf_token, valid_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the UTub this user is a creator of
@@ -275,7 +281,7 @@ def test_delete_existing_utub_with_urls_and_tags(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        f"/utub/delete/{utub_id_to_delete}", data={"csrf_token": csrf_token}
+        f"/utub/delete/{utub_id_to_delete}", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     assert delete_utub_response.status_code == 200
@@ -283,11 +289,11 @@ def test_delete_existing_utub_with_urls_and_tags(
     delete_utub_json_response = delete_utub_response.json
 
     # Assert JSON includes proper response on successful deletion of UTub
-    assert delete_utub_json_response["Message"] == "UTub deleted"
-    assert delete_utub_json_response["Status"] == "Success"
-    assert delete_utub_json_response["UTub_description"] == utub_description_to_delete
-    assert int(delete_utub_json_response["UTub_ID"]) == utub_id_to_delete
-    assert delete_utub_json_response["UTub_name"] == utub_name_to_delete
+    assert delete_utub_json_response[STD_JSON.MESSAGE] == UTUB_SUCCESS.UTUB_DELETED
+    assert delete_utub_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == utub_description_to_delete
+    assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id_to_delete
+    assert delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME] == utub_name_to_delete
 
     with app.app_context():
         # Ensure proper counting in DB of deleted associations
@@ -326,14 +332,14 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
     WHEN the user requests to delete the UTub via a POST to "/utub/delete/1"
     THEN ensure that a 404 status code response is given when the UTub cannot be found in the database
     """
-    client, csrf_token, valid_user, app = login_first_user_with_register
+    client, csrf_token, _, app = login_first_user_with_register
 
     # Assert no UTubs exist before nonexistent UTub is attempted to be removed
     with app.app_context():
         assert len(Utub.query.all()) == 0
 
     delete_utub_response = client.post(
-        f"/utub/delete/1", data={"csrf_token": csrf_token}
+        f"/utub/delete/1", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     # Ensure 404 sent back after invalid UTub id is requested
@@ -353,14 +359,14 @@ def test_delete_utub_with_invalid_route(login_first_user_with_register):
     Correct url should be: "/utub/delete/<int: utub_id>" Where utub_id is an integer representing the ID of the UTub
         to delete
     """
-    client, csrf_token, valid_user, app = login_first_user_with_register
+    client, csrf_token, _, app = login_first_user_with_register
 
     # Assert no UTubs exist before nonexistent UTub is attempted to be removed
     with app.app_context():
         assert len(Utub.query.all()) == 0
 
     delete_utub_response = client.post(
-        f"/utub/delete/InvalidRoute", data={"csrf_token": csrf_token}
+        f"/utub/delete/InvalidRoute", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     # Ensure 404 sent back after invalid UTub id is requested
@@ -377,7 +383,7 @@ def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in
     WHEN the user requests to delete a UTub via a POST to "/utub/delete/1" without a CSRF token included
     THEN ensure that a 400 status code response is given due to not including the CSRF
     """
-    client, utub_id, csrf_token, app = add_single_utub_as_user_after_logging_in
+    client, utub_id, _, app = add_single_utub_as_user_after_logging_in
 
     # Assert 1 UTub exists before nonexistent UTub is attempted to be removed
     with app.app_context():
@@ -404,11 +410,11 @@ def test_delete_utub_as_not_member_or_creator(
 
     JSON response should be formatted as follows:
     {
-        "Status" : "Failure",
-        "Message": "You don't have permission to delete this UTub!"
+        STD_JSON.STATUS : "Failure",
+        STD_JSON.MESSAGE: "You don't have permission to delete this UTub!"
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the UTubs from the database that this member is not a part of
@@ -425,17 +431,17 @@ def test_delete_utub_as_not_member_or_creator(
 
     for utub_not_in in user_not_in_these_utubs:
         delete_utub_response = client.post(
-            f"/utub/delete/{utub_not_in.utub_id}", data={"csrf_token": csrf_token}
+            f"/utub/delete/{utub_not_in.utub_id}", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
         )
 
         assert delete_utub_response.status_code == 403
 
         delete_utub_response_json = delete_utub_response.json
 
-        assert delete_utub_response_json["Status"] == "Failure"
+        assert delete_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
         assert (
-            delete_utub_response_json["Message"]
-            == "You don't have permission to delete this UTub!"
+            delete_utub_response_json[STD_JSON.MESSAGE]
+            == UTUB_FAILURE.NOT_AUTHORIZED
         )
 
         with app.app_context():
@@ -465,11 +471,11 @@ def test_delete_utub_as_member_only(
 
     JSON response should be formatted as follows:
     {
-        "Status" : "Failure",
-        "Message": "You don't have permission to delete this UTub!"
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: "You don't have permission to delete this UTub!"
     }
     """
-    client, csrf_token, logged_in_user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the UTubs from the database that this member is not a part of
@@ -486,7 +492,7 @@ def test_delete_utub_as_member_only(
         for utub_not_part_of in user_not_in_these_utubs:
             utub_to_join = utub_not_part_of.utub_id
             new_utub_user_association = Utub_Users(
-                utub_id=utub_to_join, user_id=logged_in_user.id
+                utub_id=utub_to_join, user_id=_.id
             )
             new_utub_user_association.to_user = current_user
             new_utub_user_association.to_utub = Utub.query.get(utub_to_join)
@@ -513,17 +519,17 @@ def test_delete_utub_as_member_only(
 
     for utub_not_in in only_member_in_these_utubs:
         delete_utub_response = client.post(
-            f"/utub/delete/{utub_not_in.utub_id}", data={"csrf_token": csrf_token}
+            f"/utub/delete/{utub_not_in.utub_id}", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
         )
 
         assert delete_utub_response.status_code == 403
 
         delete_utub_response_json = delete_utub_response.json
 
-        assert delete_utub_response_json["Status"] == "Failure"
+        assert delete_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
         assert (
-            delete_utub_response_json["Message"]
-            == "You don't have permission to delete this UTub!"
+            delete_utub_response_json[STD_JSON.MESSAGE]
+            == UTUB_FAILURE.NOT_AUTHORIZED
         )
 
         with app.app_context():

@@ -15,7 +15,10 @@ from models_for_test import (
     valid_url_strings,
     all_tags,
 )
+from urls4irl.utils import strings as U4I_STRINGS
 
+MODEL_STRS = U4I_STRINGS.MODELS
+USER_STRS = U4I_STRINGS.REGISTER_FORM
 
 @pytest.fixture()
 def app():
@@ -82,9 +85,9 @@ def register_first_user(app):
     # Add a new user for testing
     with app.app_context():
         new_user = User(
-            username=valid_user_1["username"],
-            email=valid_user_1["email"],
-            plaintext_password=valid_user_1["password"],
+            username=valid_user_1[USER_STRS.USERNAME],
+            email=valid_user_1[USER_STRS.EMAIL],
+            plaintext_password=valid_user_1[USER_STRS.PASSWORD],
         )
 
         db.session.add(new_user)
@@ -116,9 +119,9 @@ def register_all_but_first_user(app):
     with app.app_context():
         for user in all_users:
             new_user = User(
-                username=user["username"],
-                email=user["email"],
-                plaintext_password=user["password"],
+                username=user[USER_STRS.USERNAME],
+                email=user[USER_STRS.EMAIL],
+                plaintext_password=user[USER_STRS.PASSWORD],
             )
 
             db.session.add(new_user)
@@ -149,9 +152,9 @@ def register_multiple_users(app):
     with app.app_context():
         for user in all_users:
             new_user = User(
-                username=user["username"],
-                email=user["email"],
-                plaintext_password=user["password"],
+                username=user[USER_STRS.USERNAME],
+                email=user[USER_STRS.EMAIL],
+                plaintext_password=user[USER_STRS.PASSWORD],
             )
 
             db.session.add(new_user)
@@ -251,9 +254,9 @@ def add_single_utub_as_user_without_logging_in(app, register_first_user):
     first_user_dict, first_user_object = register_first_user
     with app.app_context():
         new_utub = Utub(
-            name=valid_empty_utub_1["name"],
+            name=valid_empty_utub_1[MODEL_STRS.NAME],
             utub_creator=1,
-            utub_description=valid_empty_utub_1["utub_description"],
+            utub_description=valid_empty_utub_1[U4I_STRINGS.UTUB_DESCRIPTION],
         )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = first_user_object
@@ -275,9 +278,9 @@ def add_single_user_to_utub_without_logging_in(app, register_multiple_users):
     with app.app_context():
         creator = User.query.get(1)
         new_utub = Utub(
-            name=valid_empty_utub_1["name"],
+            name=valid_empty_utub_1[MODEL_STRS.NAME],
             utub_creator=creator.id,
-            utub_description=valid_empty_utub_1["utub_description"],
+            utub_description=valid_empty_utub_1[U4I_STRINGS.UTUB_DESCRIPTION],
         )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = creator
@@ -306,9 +309,9 @@ def add_multiple_users_to_utub_without_logging_in(app, register_multiple_users):
     with app.app_context():
         creator = User.query.get(1)
         new_utub = Utub(
-            name=valid_empty_utub_1["name"],
+            name=valid_empty_utub_1[MODEL_STRS.NAME],
             utub_creator=creator.id,
-            utub_description=valid_empty_utub_1["utub_description"],
+            utub_description=valid_empty_utub_1[U4I_STRINGS.UTUB_DESCRIPTION],
         )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = creator
@@ -348,9 +351,9 @@ def add_single_utub_as_user_after_logging_in(login_first_user_with_register):
 
     with app.app_context():
         new_utub = Utub(
-            name=valid_empty_utub_1["name"],
+            name=valid_empty_utub_1[MODEL_STRS.NAME],
             utub_creator=valid_user.id,
-            utub_description=valid_empty_utub_1["utub_description"],
+            utub_description=valid_empty_utub_1[U4I_STRINGS.UTUB_DESCRIPTION],
         )
 
         creator_to_utub = Utub_Users()
@@ -378,9 +381,9 @@ def every_user_makes_a_unique_utub(app, register_multiple_users):
         other_users = User.query.all()
         for utub_data, other_user in zip(all_empty_utubs, other_users):
             new_utub = Utub(
-                name=utub_data["name"],
+                name=utub_data[MODEL_STRS.NAME],
                 utub_creator=other_user.id,
-                utub_description=utub_data["utub_description"],
+                utub_description=utub_data[MODEL_STRS.UTUB_DESCRIPTION],
             )
 
             creator_to_utub = Utub_Users()
@@ -442,7 +445,7 @@ def add_urls_to_database(app, every_user_makes_a_unique_utub):
 def add_tags_to_database(app, register_multiple_users):
     with app.app_context():
         for idx, tag in enumerate(all_tags):
-            new_tag = Tags(tag_string=tag["tag_string"], created_by=idx + 1)
+            new_tag = Tags(tag_string=tag[MODEL_STRS.TAG_STRING], created_by=idx + 1)
             db.session.add(new_tag)
         db.session.commit()
 
