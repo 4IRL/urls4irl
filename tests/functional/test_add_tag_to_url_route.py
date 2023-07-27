@@ -12,6 +12,7 @@ STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 MODEL_STRS = U4I_STRINGS.MODELS
 TAG_FAILURE = U4I_STRINGS.TAGS_FAILURE
 
+
 def test_add_fresh_tag_to_valid_url_as_utub_creator(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ):
@@ -382,7 +383,9 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_ADDED_TO_URL
     assert int(add_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
     assert add_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
-    assert int(add_tag_response_json[TAG_SUCCESS.TAG][MODEL_STRS.ID]) == tag_id_that_exists
+    assert (
+        int(add_tag_response_json[TAG_SUCCESS.TAG][MODEL_STRS.ID]) == tag_id_that_exists
+    )
     assert add_tag_response_json[TAG_SUCCESS.TAG][TAG_FORM.TAG_STRING] == tag_to_add
 
     url_serialization_from_server = add_tag_response_json[TAG_SUCCESS.URL]
@@ -528,7 +531,9 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_ADDED_TO_URL
     assert int(add_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
     assert add_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
-    assert int(add_tag_response_json[TAG_SUCCESS.TAG][MODEL_STRS.ID]) == tag_id_that_exists
+    assert (
+        int(add_tag_response_json[TAG_SUCCESS.TAG][MODEL_STRS.ID]) == tag_id_that_exists
+    )
     assert add_tag_response_json[TAG_SUCCESS.TAG][TAG_FORM.TAG_STRING] == tag_to_add
 
     url_serialization_from_server = add_tag_response_json[TAG_SUCCESS.URL]
@@ -1187,7 +1192,9 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
 
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_tag_response_json[STD_JSON.MESSAGE] == TAG_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
+    assert (
+        add_tag_response_json[STD_JSON.MESSAGE] == TAG_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
+    )
     assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 1
 
     with app.app_context():
@@ -1742,9 +1749,14 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
     # Ensure json response from server is valid
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_tag_response_json[STD_JSON.MESSAGE] == TAG_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
+    assert (
+        add_tag_response_json[STD_JSON.MESSAGE] == TAG_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
+    )
     assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 4
-    assert add_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING] == TAG_FAILURE.FIELD_REQUIRED
+    assert (
+        add_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING]
+        == TAG_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Ensure no tags

@@ -12,6 +12,7 @@ MODEL_STRS = U4I_STRINGS.MODELS
 URL_FAILURE = U4I_STRINGS.URL_FAILURE
 URL_NO_CHANGE = U4I_STRINGS.URL_NO_CHANGE
 
+
 def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
@@ -98,8 +99,13 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) != url_in_this_utub.url_id
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        != url_in_this_utub.url_id
+    )
+    assert (
+        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
+    )
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_creator_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
@@ -231,8 +237,13 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) != url_in_this_utub.url_id
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        != url_in_this_utub.url_id
+    )
+    assert (
+        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
+    )
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
@@ -359,8 +370,13 @@ def test_update_url_description_with_fresh_valid_url_as_utub_creator(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == NEW_DESCRIPTION
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) != url_in_this_utub.url_id
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        != url_in_this_utub.url_id
+    )
+    assert (
+        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
+    )
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_creator_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
@@ -493,8 +509,13 @@ def test_update_url_description_with_fresh_valid_url_as_url_adder(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == NEW_DESCRIPTION
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) != url_in_this_utub.url_id
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        != url_in_this_utub.url_id
+    )
+    assert (
+        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
+    )
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
@@ -633,8 +654,14 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) != id_of_url_in_utub
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == url_id_of_url_not_in_utub
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_string_of_url_not_in_utub
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        == url_id_of_url_not_in_utub
+    )
+    assert (
+        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING]
+        == url_string_of_url_not_in_utub
+    )
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_creator_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
@@ -770,9 +797,18 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) != url_id_of_url_in_this_utub
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == url_id_of_url_not_in_utub
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_string_of_url_not_in_utub
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        != url_id_of_url_in_this_utub
+    )
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        == url_id_of_url_not_in_utub
+    )
+    assert (
+        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING]
+        == url_string_of_url_not_in_utub
+    )
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
@@ -1018,8 +1054,13 @@ def test_update_valid_url_with_same_url_as_url_adder(
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_AND_DESC_NOT_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == url_id_of_url_in_this_utub
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_string_of_url_in_utub
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        == url_id_of_url_in_this_utub
+    )
+    assert (
+        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_string_of_url_in_utub
+    )
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
@@ -1267,8 +1308,13 @@ def test_update_valid_url_with_same_url_new_description_as_url_adder(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_DESC_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == NEW_DESCRIPTION
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == url_id_of_url_in_this_utub
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_string_of_url_in_utub
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        == url_id_of_url_in_this_utub
+    )
+    assert (
+        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_string_of_url_in_utub
+    )
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
@@ -1720,7 +1766,10 @@ def test_update_valid_url_with_empty_url_and_empty_desc_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 5
-    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == URL_FAILURE.FIELD_REQUIRED
+    assert (
+        json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
+        == URL_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1828,7 +1877,10 @@ def test_update_valid_url_with_empty_url_and_valid_desc_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 5
-    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == URL_FAILURE.FIELD_REQUIRED
+    assert (
+        json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
+        == URL_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -2369,7 +2421,10 @@ def test_update_valid_url_with_missing_url_field_and_valid_desc_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 5
-    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == URL_FAILURE.FIELD_REQUIRED
+    assert (
+        json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
+        == URL_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -2456,7 +2511,10 @@ def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
-    edit_url_string_desc_form = {URL_FORM.CSRF_TOKEN: csrf_token_string, URL_FORM.URL_STRING: NEW_URL}
+    edit_url_string_desc_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: NEW_URL,
+    }
 
     edit_url_string_desc_form = client.post(
         f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
@@ -2470,7 +2528,10 @@ def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 4
-    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_DESCRIPTION] == URL_FAILURE.FIELD_REQUIRED
+    assert (
+        json_response[STD_JSON.ERRORS][URL_FORM.URL_DESCRIPTION]
+        == URL_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

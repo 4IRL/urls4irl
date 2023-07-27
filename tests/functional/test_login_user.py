@@ -10,6 +10,7 @@ from urls4irl.utils import strings as U4I_STRINGS
 
 LOGIN_FORM = U4I_STRINGS.LOGIN_FORM
 
+
 def test_login_registered_and_logged_in_user(app, register_first_user, load_login_page):
     """
     GIVEN a registered and logged in user
@@ -29,7 +30,9 @@ def test_login_registered_and_logged_in_user(app, register_first_user, load_logi
 
     # Test if user logged in
     assert current_user.username == registered_user_data[LOGIN_FORM.USERNAME]
-    assert check_password_hash(current_user.password, registered_user_data[LOGIN_FORM.PASSWORD])
+    assert check_password_hash(
+        current_user.password, registered_user_data[LOGIN_FORM.PASSWORD]
+    )
     assert current_user.email == registered_user_data[LOGIN_FORM.EMAIL]
 
     # Ensure user id's match with  database

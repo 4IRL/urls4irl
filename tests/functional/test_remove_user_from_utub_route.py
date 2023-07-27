@@ -70,8 +70,14 @@ def test_remove_valid_user_from_utub_as_creator(
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
-    assert int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED]) == second_user_in_utub.id
-    assert remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED] == second_user_in_utub.username
+    assert (
+        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED])
+        == second_user_in_utub.id
+    )
+    assert (
+        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
+        == second_user_in_utub.username
+    )
     assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
     assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
     assert remove_user_response_json[USER_SUCCESS.UTUB_USERS] == [current_user.username]
@@ -143,11 +149,18 @@ def test_remove_self_from_utub_as_member(
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
-    assert int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED]) == current_user.id
-    assert remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED] == current_user.username
+    assert (
+        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED]) == current_user.id
+    )
+    assert (
+        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
+        == current_user.username
+    )
     assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
     assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
-    assert current_user.username not in remove_user_response_json[USER_SUCCESS.UTUB_USERS]
+    assert (
+        current_user.username not in remove_user_response_json[USER_SUCCESS.UTUB_USERS]
+    )
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -253,8 +266,14 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
-    assert int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED]) == second_user_in_utub.id
-    assert remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED] == second_user_in_utub.username
+    assert (
+        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED])
+        == second_user_in_utub.id
+    )
+    assert (
+        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
+        == second_user_in_utub.username
+    )
     assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
     assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
 
@@ -343,7 +362,8 @@ def test_remove_self_from_utub_as_creator(
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        remove_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF
     )
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 1
 
@@ -576,10 +596,7 @@ def test_remove_invalid_user_from_utub_as_creator(
     # Ensure proper JSON response
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        remove_user_response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.USER_NOT_IN_UTUB
-    )
+    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.USER_NOT_IN_UTUB
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():

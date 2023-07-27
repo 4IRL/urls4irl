@@ -12,6 +12,7 @@ STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
 
+
 @users.route("/login", methods=["GET", "POST"])
 def login():
     """Login page. Allows user to register or login."""
@@ -42,8 +43,8 @@ def login():
         return (
             jsonify(
                 {
-                    STD_JSON.STATUS: STD_JSON.FAILURE, 
-                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN, 
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
                     STD_JSON.ERROR_CODE: 1,
                     STD_JSON.ERRORS: login_form.errors,
                 }
@@ -94,7 +95,7 @@ def register_user():
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER, 
+                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
                     STD_JSON.ERROR_CODE: 1,
                     STD_JSON.ERRORS: register_form.errors,
                 }
@@ -178,13 +179,15 @@ def delete_user(utub_id: int, user_id: int):
     return (
         jsonify(
             {
-                STD_JSON.STATUS: STD_JSON.SUCCESS, 
+                STD_JSON.STATUS: STD_JSON.SUCCESS,
                 STD_JSON.MESSAGE: USER_SUCCESS.USER_REMOVED,
                 USER_SUCCESS.USER_ID_REMOVED: f"{user_id}",
                 USER_SUCCESS.USERNAME_REMOVED: f"{deleted_user_username}",
                 USER_SUCCESS.UTUB_ID: f"{utub_id}",
                 USER_SUCCESS.UTUB_NAME: f"{current_utub.name}",
-                USER_SUCCESS.UTUB_USERS: [user.to_user.username for user in current_utub.members],
+                USER_SUCCESS.UTUB_USERS: [
+                    user.to_user.username for user in current_utub.members
+                ],
             }
         ),
         200,
@@ -206,7 +209,11 @@ def add_user(utub_id: int):
         # User not authorized to add a user to this UTub
         return (
             jsonify(
-                {STD_JSON.STATUS: STD_JSON.FAILURE, STD_JSON.MESSAGE: USER_FAILURE.NOT_AUTHORIZED, STD_JSON.ERROR_CODE: 1}
+                {
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: USER_FAILURE.NOT_AUTHORIZED,
+                    STD_JSON.ERROR_CODE: 1,
+                }
             ),
             403,
         )
@@ -249,7 +256,9 @@ def add_user(utub_id: int):
                         USER_SUCCESS.USER_ID_ADDED: int(new_user.id),
                         USER_SUCCESS.UTUB_ID: int(utub_id),
                         USER_SUCCESS.UTUB_NAME: f"{utub.name}",
-                        USER_SUCCESS.UTUB_USERS: [user.to_user.username for user in utub.members],
+                        USER_SUCCESS.UTUB_USERS: [
+                            user.to_user.username for user in utub.members
+                        ],
                     }
                 ),
                 200,

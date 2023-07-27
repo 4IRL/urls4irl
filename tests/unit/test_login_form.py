@@ -6,6 +6,7 @@ LOGIN_FORM = U4I_STRINGS.LOGIN_FORM
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 LOGIN_FAILURE = U4I_STRINGS.USER_FAILURE
 
+
 def test_login_no_password(load_login_page):
     """
     GIVEN an unregistered user
@@ -32,11 +33,12 @@ def test_login_no_password(load_login_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
     assert len(response_json[STD_JSON.ERRORS]) == 1
-    
+
     for input_key in LOGIN_FORM.LOGIN_FORM_KEYS:
         if input_key != LOGIN_FORM.PASSWORD:
             continue
         assert response_json[STD_JSON.ERRORS][input_key] == LOGIN_FAILURE.FIELD_REQUIRED
+
 
 def test_login_no_username(load_login_page):
     """
@@ -64,11 +66,12 @@ def test_login_no_username(load_login_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
     assert len(response_json[STD_JSON.ERRORS]) == 1
-    
+
     for input_key in LOGIN_FORM.LOGIN_FORM_KEYS:
         if input_key != LOGIN_FORM.USERNAME:
             continue
         assert response_json[STD_JSON.ERRORS][input_key] == LOGIN_FAILURE.FIELD_REQUIRED
+
 
 def test_login_no_username_or_password(load_login_page):
     """
@@ -95,7 +98,7 @@ def test_login_no_username_or_password(load_login_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
     assert len(response_json[STD_JSON.ERRORS]) == 2
-    
+
     for input_key in LOGIN_FORM.LOGIN_FORM_KEYS:
         if input_key == LOGIN_FORM.CSRF_TOKEN:
             continue

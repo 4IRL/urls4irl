@@ -76,11 +76,23 @@ all_tag_strings = [tag[MODEL_STRS.TAG_STRING] for tag in all_tags]
 """
 Valid URLs used for testing, without tags    
 """
-valid_url_without_tag_1 = {MODEL_STRS.ID: 1, MODEL_STRS.URL: "https://www.google.com/", MODEL_STRS.TAGS: []}
+valid_url_without_tag_1 = {
+    MODEL_STRS.ID: 1,
+    MODEL_STRS.URL: "https://www.google.com/",
+    MODEL_STRS.TAGS: [],
+}
 
-valid_url_without_tag_2 = {MODEL_STRS.ID: 2, MODEL_STRS.URL: "https://www.facebook.com/", MODEL_STRS.TAGS: []}
+valid_url_without_tag_2 = {
+    MODEL_STRS.ID: 2,
+    MODEL_STRS.URL: "https://www.facebook.com/",
+    MODEL_STRS.TAGS: [],
+}
 
-valid_url_without_tag_3 = {MODEL_STRS.ID: 3, MODEL_STRS.URL: "https://www.microsoft.com/", MODEL_STRS.TAGS: []}
+valid_url_without_tag_3 = {
+    MODEL_STRS.ID: 3,
+    MODEL_STRS.URL: "https://www.microsoft.com/",
+    MODEL_STRS.TAGS: [],
+}
 
 all_urls_no_tags = (
     valid_url_without_tag_1,
@@ -164,7 +176,12 @@ for utub, user in zip(all_empty_utubs, valid_users):
             MODEL_STRS.CREATED_BY: utub[MODEL_STRS.ID],
             MODEL_STRS.CREATED_AT: None,
             MODEL_STRS.DESCRIPTION: utub[MODEL_STRS.UTUB_DESCRIPTION],
-            MODEL_STRS.MEMBERS: [{MODEL_STRS.ID: user[MODEL_STRS.ID], USER_FORM.USERNAME: user[USER_FORM.USERNAME]}],
+            MODEL_STRS.MEMBERS: [
+                {
+                    MODEL_STRS.ID: user[MODEL_STRS.ID],
+                    USER_FORM.USERNAME: user[USER_FORM.USERNAME],
+                }
+            ],
             MODEL_STRS.URLS: [],
             MODEL_STRS.TAGS: [],
         }
@@ -181,7 +198,10 @@ for utub, user in zip(all_empty_utubs, valid_users):
             MODEL_STRS.CREATED_AT: None,
             MODEL_STRS.DESCRIPTION: utub[MODEL_STRS.UTUB_DESCRIPTION],
             MODEL_STRS.MEMBERS: [
-                {MODEL_STRS.ID: all_user[MODEL_STRS.ID], USER_FORM.USERNAME: all_user[USER_FORM.USERNAME]}
+                {
+                    MODEL_STRS.ID: all_user[MODEL_STRS.ID],
+                    USER_FORM.USERNAME: all_user[USER_FORM.USERNAME],
+                }
                 for all_user in valid_users
             ],
             MODEL_STRS.URLS: [],
@@ -200,7 +220,10 @@ for utub, user, url in zip(all_empty_utubs, valid_users, all_urls_no_tags):
             MODEL_STRS.CREATED_AT: None,
             MODEL_STRS.DESCRIPTION: utub[MODEL_STRS.UTUB_DESCRIPTION],
             MODEL_STRS.MEMBERS: [
-                {MODEL_STRS.ID: all_user[MODEL_STRS.ID], USER_FORM.USERNAME: all_user[USER_FORM.USERNAME]}
+                {
+                    MODEL_STRS.ID: all_user[MODEL_STRS.ID],
+                    USER_FORM.USERNAME: all_user[USER_FORM.USERNAME],
+                }
                 for all_user in valid_users
             ],
             MODEL_STRS.URLS: [
@@ -228,7 +251,10 @@ for utub in all_empty_utubs:
             MODEL_STRS.CREATED_AT: None,
             MODEL_STRS.DESCRIPTION: utub[MODEL_STRS.UTUB_DESCRIPTION],
             MODEL_STRS.MEMBERS: [
-                {MODEL_STRS.ID: all_user[MODEL_STRS.ID], USER_FORM.USERNAME: all_user[USER_FORM.USERNAME]}
+                {
+                    MODEL_STRS.ID: all_user[MODEL_STRS.ID],
+                    USER_FORM.USERNAME: all_user[USER_FORM.USERNAME],
+                }
                 for all_user in valid_users
             ],
             MODEL_STRS.URLS: [

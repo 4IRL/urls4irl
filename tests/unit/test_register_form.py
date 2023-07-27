@@ -6,6 +6,7 @@ REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 REGISTER_FAILURE = U4I_STRINGS.USER_FAILURE
 
+
 def test_register_user_form_only_username_csrf(load_register_page):
     """
     GIVEN an unregistered user
@@ -34,11 +35,14 @@ def test_register_user_form_only_username_csrf(load_register_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
-    
+
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.USERNAME:
             continue
-        assert response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+        assert (
+            response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+        )
+
 
 def test_register_user_form_only_invalid_email_csrf(load_register_page):
     """
@@ -46,8 +50,8 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     WHEN "/register" is POST'd with only invalid email and CSRF
     THEN ensure registration does not occur due to missing fields and invalid email
     """
-    
-    INVALID_EMAIL_ADDRESS = ['Invalid email address.']
+
+    INVALID_EMAIL_ADDRESS = ["Invalid email address."]
     client, csrf_token_string = load_register_page
     response = client.post(
         "/register",
@@ -69,13 +73,16 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
-    
+
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         form_error = response_json[STD_JSON.ERRORS][input_key]
         if input_key == REGISTER_FORM.EMAIL:
             assert form_error == INVALID_EMAIL_ADDRESS
         else:
-            assert response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+            assert (
+                response_json[STD_JSON.ERRORS][input_key]
+                == REGISTER_FAILURE.FIELD_REQUIRED
+            )
 
 
 def test_register_user_form_only_valid_email_csrf(load_register_page):
@@ -107,11 +114,13 @@ def test_register_user_form_only_valid_email_csrf(load_register_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
-    
+
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.EMAIL:
             continue
-        assert response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+        assert (
+            response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+        )
 
 
 def test_register_user_form_only_confirm_email_csrf(load_register_page):
@@ -143,12 +152,17 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
-    
+
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.CONFIRM_EMAIL:
-            assert response_json[STD_JSON.ERRORS][input_key] == ['Field must be equal to email.']
+            assert response_json[STD_JSON.ERRORS][input_key] == [
+                "Field must be equal to email."
+            ]
         else:
-            assert response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+            assert (
+                response_json[STD_JSON.ERRORS][input_key]
+                == REGISTER_FAILURE.FIELD_REQUIRED
+            )
 
 
 def test_register_user_form_invalid_password_csrf(load_register_page):
@@ -180,12 +194,17 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
-    
+
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.PASSWORD:
-            assert response_json[STD_JSON.ERRORS][input_key] == ['Field must be between 12 and 64 characters long.']
+            assert response_json[STD_JSON.ERRORS][input_key] == [
+                "Field must be between 12 and 64 characters long."
+            ]
         else:
-            assert response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+            assert (
+                response_json[STD_JSON.ERRORS][input_key]
+                == REGISTER_FAILURE.FIELD_REQUIRED
+            )
 
 
 def test_register_user_form_only_valid_password_csrf(load_register_page):
@@ -217,11 +236,13 @@ def test_register_user_form_only_valid_password_csrf(load_register_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
-    
+
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.PASSWORD:
             continue
-        assert response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+        assert (
+            response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+        )
 
 
 def test_register_user_form_only_confirm_password_csrf(load_register_page):
@@ -253,12 +274,18 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
-    
+
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.CONFIRM_PASSWORD:
-            assert response_json[STD_JSON.ERRORS][input_key] == ['Field must be equal to password.']
+            assert response_json[STD_JSON.ERRORS][input_key] == [
+                "Field must be equal to password."
+            ]
         else:
-            assert response_json[STD_JSON.ERRORS][input_key] == REGISTER_FAILURE.FIELD_REQUIRED
+            assert (
+                response_json[STD_JSON.ERRORS][input_key]
+                == REGISTER_FAILURE.FIELD_REQUIRED
+            )
+
 
 def test_register_user_form_no_csrf(load_register_page):
     """

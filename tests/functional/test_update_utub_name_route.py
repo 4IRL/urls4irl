@@ -10,6 +10,7 @@ STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 MODEL_STRS = U4I_STRINGS.MODELS
 UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
 
+
 def test_update_valid_utub_name_as_creator(
     add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
 ):
@@ -74,7 +75,10 @@ def test_update_valid_utub_name_as_creator(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(edit_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == current_utub_description
+    assert (
+        edit_utub_name_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == current_utub_description
+    )
     assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
 
     # Ensure database is consistent with just updating the UTub name
@@ -168,7 +172,10 @@ def test_update_valid_utub_same_name_as_creator(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(edit_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == current_utub_description
+    assert (
+        edit_utub_name_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == current_utub_description
+    )
     assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
 
     # Ensure database is consistent after user requested same name for UTub
@@ -267,8 +274,14 @@ def test_update_utub_empty_name_as_creator(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
-    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-    assert edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME] == UTUB_FAILURE.FIELD_REQUIRED
+    assert (
+        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
+    assert (
+        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME]
+        == UTUB_FAILURE.FIELD_REQUIRED
+    )
 
     # Ensure database is consistent after sending back invalid form response
     with app.app_context():
@@ -366,7 +379,10 @@ def test_update_utub_name_only_spaces_as_creator(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
-    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    assert (
+        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
     assert edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME] == [
         "Name cannot contain only spaces or be empty."
     ]
@@ -466,9 +482,7 @@ def test_update_utub_name_as_member(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
-    assert (
-        edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
-    )
+    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -564,9 +578,7 @@ def test_update_utub_name_as_creator_of_another_utub(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
-    assert (
-        edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
-    )
+    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -747,8 +759,14 @@ def test_update_name_of_utub_too_long_name(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
-    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-    assert edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME] == UTUB_FAILURE.UTUB_NAME_FIELD_INVALID
+    assert (
+        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
+    assert (
+        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME]
+        == UTUB_FAILURE.UTUB_NAME_FIELD_INVALID
+    )
 
     # Ensure database is consistent after user requested same name for UTub
     with app.app_context():
@@ -843,8 +861,14 @@ def test_update_name_of_utub_missing_name_field_form(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
-    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-    assert edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME] == UTUB_FAILURE.FIELD_REQUIRED
+    assert (
+        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
+    assert (
+        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME]
+        == UTUB_FAILURE.FIELD_REQUIRED
+    )
 
     # Ensure database is consistent after user requested same name for UTub
     with app.app_context():

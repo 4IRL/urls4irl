@@ -11,6 +11,7 @@ STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 MODEL_STRS = U4I_STRINGS.MODELS
 UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
 
+
 def test_add_utub_with_valid_form(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page
@@ -56,7 +57,10 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         new_utub_response_json[UTUB_SUCCESS.UTUB_DESCRIPTION]
         == valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION]
     )
-    assert new_utub_response_json[UTUB_SUCCESS.UTUB_NAME] == valid_empty_utub_1[ADD_UTUB_FORM.NAME]
+    assert (
+        new_utub_response_json[UTUB_SUCCESS.UTUB_NAME]
+        == valid_empty_utub_1[ADD_UTUB_FORM.NAME]
+    )
     assert new_utub_response_json[UTUB_SUCCESS.UTUB_CREATOR_ID] == user.id
     assert isinstance(new_utub_response_json[UTUB_SUCCESS.UTUB_ID], int)
 
@@ -71,7 +75,10 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
 
         # Assert that utub name and description line up in the database
         assert utub_from_db.name == valid_empty_utub_1[ADD_UTUB_FORM.NAME]
-        assert utub_from_db.utub_description == valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        assert (
+            utub_from_db.utub_description
+            == valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        )
 
         # Assert only one member in the UTub
         assert len(utub_from_db.members) == 1
@@ -143,7 +150,10 @@ def test_add_utub_with_same_name(
         new_utub_response_json[UTUB_SUCCESS.UTUB_DESCRIPTION]
         == valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION]
     )
-    assert new_utub_response_json[UTUB_SUCCESS.UTUB_NAME] == valid_empty_utub_1[ADD_UTUB_FORM.NAME]
+    assert (
+        new_utub_response_json[UTUB_SUCCESS.UTUB_NAME]
+        == valid_empty_utub_1[ADD_UTUB_FORM.NAME]
+    )
     assert new_utub_response_json[UTUB_SUCCESS.UTUB_CREATOR_ID] == user.id
     assert isinstance(new_utub_response_json[UTUB_SUCCESS.UTUB_ID], int)
 
@@ -158,7 +168,10 @@ def test_add_utub_with_same_name(
 
         # Assert that utub name and description line up in the database
         assert utub_from_db.name == valid_empty_utub_1[ADD_UTUB_FORM.NAME]
-        assert utub_from_db.utub_description == valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        assert (
+            utub_from_db.utub_description
+            == valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        )
 
         # Assert only one member in the UTub
         assert len(utub_from_db.members) == 1
@@ -230,7 +243,8 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
     assert invalid_new_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert invalid_new_utub_response_json[STD_JSON.ERROR_CODE] == 1
     assert (
-        invalid_new_utub_response_json[STD_JSON.ERRORS][ADD_UTUB_FORM.NAME] == UTUB_FAILURE.FIELD_REQUIRED
+        invalid_new_utub_response_json[STD_JSON.ERRORS][ADD_UTUB_FORM.NAME]
+        == UTUB_FAILURE.FIELD_REQUIRED
     )
     assert (
         invalid_new_utub_response_json[STD_JSON.MESSAGE]
@@ -287,9 +301,13 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
         new_utub_response_json = new_utub_response.json
         assert new_utub_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
         assert (
-            new_utub_response_json[UTUB_SUCCESS.UTUB_DESCRIPTION] == valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION]
+            new_utub_response_json[UTUB_SUCCESS.UTUB_DESCRIPTION]
+            == valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION]
         )
-        assert new_utub_response_json[UTUB_SUCCESS.UTUB_NAME] == valid_utub[ADD_UTUB_FORM.NAME]
+        assert (
+            new_utub_response_json[UTUB_SUCCESS.UTUB_NAME]
+            == valid_utub[ADD_UTUB_FORM.NAME]
+        )
         assert new_utub_response_json[UTUB_SUCCESS.UTUB_CREATOR_ID] == user.id
         assert isinstance(new_utub_response_json[UTUB_SUCCESS.UTUB_ID], int)
 
@@ -303,7 +321,10 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
 
             # Assert that utub name and description line up in the database
             assert utub_from_db.name == valid_utub[ADD_UTUB_FORM.NAME]
-            assert utub_from_db.utub_description == valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION]
+            assert (
+                utub_from_db.utub_description
+                == valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION]
+            )
 
             # Assert only one member in the UTub
             assert len(utub_from_db.members) == 1

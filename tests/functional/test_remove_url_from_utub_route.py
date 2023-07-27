@@ -311,7 +311,9 @@ def test_remove_url_from_utub_not_member_of(
     # Ensure JSON response is correct
     remove_url_response_json = remove_url_response.json
     assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert remove_url_response_json[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_REMOVE_URL
+    assert (
+        remove_url_response_json[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_REMOVE_URL
+    )
 
     # Ensure database is not affected
     with app.app_context():
@@ -563,8 +565,12 @@ def test_remove_url_as_utub_creator_with_tags(
     assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
     assert remove_url_response_json[URL_SUCCESS.URL] == url_in_utub_serialized
-    assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
-    assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == utub_name_to_remove_url_from
+    assert (
+        int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.UTUB_NAME] == utub_name_to_remove_url_from
+    )
 
     # Ensure proper removal from database
     with app.app_context():
@@ -689,7 +695,9 @@ def test_remove_url_as_utub_member_with_tags(
     assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
     assert remove_url_response_json[URL_SUCCESS.URL] == url_in_utub_serialized
-    assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
+    assert (
+        int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
+    )
     assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == current_user_utub.name
 
     # Ensure proper removal from database

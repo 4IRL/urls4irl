@@ -12,6 +12,7 @@ STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
 UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
 
+
 @utubs.route("/utub/new", methods=["POST"])
 @login_required
 def create_utub():

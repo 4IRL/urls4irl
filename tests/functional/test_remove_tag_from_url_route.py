@@ -10,6 +10,7 @@ TAG_SUCCESS = U4I_STRINGS.TAGS_SUCCESS
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 TAG_FAILURE = U4I_STRINGS.TAGS_FAILURE
 
+
 def test_remove_tag_from_url_as_utub_creator(
     add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
 ):
@@ -108,9 +109,17 @@ def test_remove_tag_from_url_as_utub_creator(
     remove_tag_response_json = remove_tag_response.json
 
     assert remove_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
-    assert int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_this_user_creator_of
-    assert remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_creator_of
+    assert (
+        remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
+    )
+    assert (
+        int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID])
+        == utub_id_this_user_creator_of
+    )
+    assert (
+        remove_tag_response_json[TAG_SUCCESS.UTUB_NAME]
+        == utub_name_this_user_creator_of
+    )
     assert int(remove_tag_response_json[TAG_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1
 
     tag_serialized_on_delete_response = remove_tag_response_json[TAG_SUCCESS.TAG]
@@ -255,9 +264,16 @@ def test_remove_tag_from_url_as_utub_member(
     remove_tag_response_json = remove_tag_response.json
 
     assert remove_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
-    assert int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_this_user_member_of
-    assert remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+    assert (
+        remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
+    )
+    assert (
+        int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID])
+        == utub_id_this_user_member_of
+    )
+    assert (
+        remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+    )
     assert int(remove_tag_response_json[TAG_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1
 
     tag_serialized_on_delete_response = remove_tag_response_json[TAG_SUCCESS.TAG]
@@ -402,9 +418,16 @@ def test_remove_tag_from_url_with_one_tag(
     remove_tag_response_json = remove_tag_response.json
 
     assert remove_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
-    assert int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_this_user_member_of
-    assert remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+    assert (
+        remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
+    )
+    assert (
+        int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID])
+        == utub_id_this_user_member_of
+    )
+    assert (
+        remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+    )
     assert int(remove_tag_response_json[TAG_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1
 
     tag_serialized_on_delete_response = remove_tag_response_json[TAG_SUCCESS.TAG]
@@ -551,10 +574,19 @@ def test_remove_last_tag_from_utub(
     remove_tag_response_json = remove_tag_response.json
 
     assert remove_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
-    assert int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_this_user_member_of
-    assert remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
-    assert int(remove_tag_response_json[TAG_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1 == 0
+    assert (
+        remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
+    )
+    assert (
+        int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID])
+        == utub_id_this_user_member_of
+    )
+    assert (
+        remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+    )
+    assert (
+        int(remove_tag_response_json[TAG_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1 == 0
+    )
 
     tag_serialized_on_delete_response = remove_tag_response_json[TAG_SUCCESS.TAG]
     url_serialized_on_delete_response = remove_tag_response_json[TAG_SUCCESS.URL]
@@ -720,9 +752,15 @@ def test_remove_tag_from_url_with_five_tags(
     remove_tag_response_json = remove_tag_response.json
 
     assert remove_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
-    assert int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
-    assert remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+    assert (
+        remove_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_REMOVED_FROM_URL
+    )
+    assert (
+        int(remove_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
+    )
+    assert (
+        remove_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+    )
     assert int(remove_tag_response_json[TAG_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1
 
     tag_serialized_on_delete_response = remove_tag_response_json[TAG_SUCCESS.TAG]
@@ -1033,7 +1071,10 @@ def test_remove_tag_from_url_but_not_member_of_utub(
     remove_tag_response_json = remove_tag_response.json
 
     assert remove_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert remove_tag_response_json[STD_JSON.MESSAGE] == TAG_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS
+    assert (
+        remove_tag_response_json[STD_JSON.MESSAGE]
+        == TAG_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS
+    )
 
     with app.app_context():
         # Ensure tag exists

@@ -17,6 +17,7 @@ URL_FAILURE = U4I_STRINGS.URL_FAILURE
 URL_NO_CHANGE = U4I_STRINGS.URL_NO_CHANGE
 URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
 
+
 @urls.route("/url/remove/<int:utub_id>/<int:url_id>", methods=["POST"])
 @login_required
 def delete_url(utub_id: int, url_id: int):
@@ -186,7 +187,7 @@ def add_url(utub_id: int):
                             STD_JSON.MESSAGE: URL_SUCCESS.URL_ADDED,
                             URL_SUCCESS.URL: {
                                 URL_SUCCESS.URL_STRING: f"{normalized_url}",
-                                URL_SUCCESS.URL_ID: f"{url_id}", 
+                                URL_SUCCESS.URL_ID: f"{url_id}",
                                 URL_SUCCESS.URL_DESCRIPTION: f"{utub_new_url_form.url_description.data}",
                             },
                             URL_SUCCESS.UTUB_ID: f"{utub_id}",
@@ -228,9 +229,9 @@ def add_url(utub_id: int):
     return (
         jsonify(
             {
-                STD_JSON.STATUS: STD_JSON.FAILURE, 
-                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL, 
-                STD_JSON.ERROR_CODE: 5
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
+                STD_JSON.ERROR_CODE: 5,
             }
         ),
         404,
@@ -427,7 +428,9 @@ def edit_url_and_description(utub_id: int, url_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
                     STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: {URL_FAILURE.URL_DESCRIPTION: URL_FAILURE.FIELD_REQUIRED},
+                    STD_JSON.ERRORS: {
+                        URL_FAILURE.URL_DESCRIPTION: URL_FAILURE.FIELD_REQUIRED
+                    },
                 }
             ),
             404,

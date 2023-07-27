@@ -11,6 +11,7 @@ STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 MODEL_STRS = U4I_STRINGS.MODELS
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
+
 def test_add_valid_users_to_utub_as_creator(
     every_user_makes_a_unique_utub, login_first_user_without_register
 ):
@@ -69,7 +70,10 @@ def test_add_valid_users_to_utub_as_creator(
 
     # Add the other users to the current user's UTubs
     for other_user in other_usernames:
-        add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: other_user}
+        add_user_form = {
+            ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+            ADD_USER_FORM.USERNAME: other_user,
+        }
 
         with app.app_context():
             new_user = User.query.filter(User.username == other_user).first()
@@ -87,9 +91,13 @@ def test_add_valid_users_to_utub_as_creator(
         assert added_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
         assert added_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_ADDED
         assert int(added_user_response_json[USER_SUCCESS.USER_ID_ADDED]) == new_user.id
-        assert int(added_user_response_json[USER_SUCCESS.UTUB_ID]) == utub_id_of_current_user
         assert (
-            added_user_response_json[USER_SUCCESS.UTUB_NAME] == utub_of_current_user.to_utub.name
+            int(added_user_response_json[USER_SUCCESS.UTUB_ID])
+            == utub_id_of_current_user
+        )
+        assert (
+            added_user_response_json[USER_SUCCESS.UTUB_NAME]
+            == utub_of_current_user.to_utub.name
         )
         assert (
             len(added_user_response_json[USER_SUCCESS.UTUB_USERS])
@@ -207,7 +215,10 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
         )
 
     # Add them back in
-    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: other_user_username}
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+        ADD_USER_FORM.USERNAME: other_user_username,
+    }
 
     added_user_response = client.post(
         f"/user/add/{utub_user_created.id}", data=add_user_form
@@ -226,8 +237,13 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     )
     assert int(added_user_response_json[USER_SUCCESS.UTUB_ID]) == utub_user_created.id
     assert added_user_response_json[USER_SUCCESS.UTUB_NAME] == utub_user_created.name
-    assert len(added_user_response_json[USER_SUCCESS.UTUB_USERS]) == initial_num_of_users_in_utub
-    assert set(added_user_response_json[USER_SUCCESS.UTUB_USERS]) == set(initial_usernames_in_utub)
+    assert (
+        len(added_user_response_json[USER_SUCCESS.UTUB_USERS])
+        == initial_num_of_users_in_utub
+    )
+    assert set(added_user_response_json[USER_SUCCESS.UTUB_USERS]) == set(
+        initial_usernames_in_utub
+    )
 
     with app.app_context():
         # Ensure proper counts of all associations after removing then adding user who owned URLs in the UTub
@@ -298,7 +314,10 @@ def test_add_valid_users_to_utub_as_member(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to add the missing member to the UTub
-    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token_string, ADD_USER_FORM.USERNAME: missing_user.username}
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token_string,
+        ADD_USER_FORM.USERNAME: missing_user.username,
+    }
 
     missing_user_id = missing_user.id
     add_user_response = client.post(f"/user/add/{only_utub.id}", data=add_user_form)
@@ -370,7 +389,10 @@ def test_add_duplicate_user_to_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to the UTub again
-    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: another_user_username}
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+        ADD_USER_FORM.USERNAME: another_user_username,
+    }
 
     add_user_response = client.post(
         f"/user/add/{current_user_utub_id}", data=add_user_form
@@ -437,7 +459,10 @@ def test_add_user_to_nonexistant_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to a UTub
-    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: another_user.username}
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+        ADD_USER_FORM.USERNAME: another_user.username,
+    }
 
     add_user_response = client.post(f"/user/add/1", data=add_user_form)
 
@@ -482,7 +507,10 @@ def test_add_nonexistant_user_to_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try adding this user to a UTub
-    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: "Not a registered user"}
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+        ADD_USER_FORM.USERNAME: "Not a registered user",
+    }
 
     add_user_response = client.post(f"/user/add/{only_utub.id}", data=add_user_form)
 
@@ -554,7 +582,10 @@ def test_add_user_to_another_users_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to add this third user to the second user's UTub, logged as the first user
-    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token, ADD_USER_FORM.USERNAME: test_user_to_add.username}
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+        ADD_USER_FORM.USERNAME: test_user_to_add.username,
+    }
 
     add_user_response = client.post(f"/user/add/{another_utub.id}", data=add_user_form)
 
@@ -629,7 +660,10 @@ def test_add_user_to_utub_invalid_form(
     assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_ADD
     assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 3
-    assert add_user_response_json[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME] == USER_FAILURE.FIELD_REQUIRED
+    assert (
+        add_user_response_json[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME]
+        == USER_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Ensure correct count of Utub-User associations

@@ -60,7 +60,10 @@ def test_update_valid_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string, UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -156,7 +159,10 @@ def test_update_valid_empty_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string, UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -252,7 +258,10 @@ def test_update_only_spaces_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string, UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -345,7 +354,10 @@ def test_update_utub_description_with_same_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string, UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -439,7 +451,10 @@ def test_update_utub_description_as_member(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string, UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -453,11 +468,12 @@ def test_update_utub_description_as_member(
 
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] != UPDATE_TEXT
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == current_utub_description
-    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
     assert (
-        edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+        edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == current_utub_description
     )
+    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -543,7 +559,10 @@ def test_update_utub_description_as_creator_of_other_utub(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string, UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -557,11 +576,12 @@ def test_update_utub_description_as_creator_of_other_utub(
 
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] != UPDATE_TEXT
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == current_utub_description
-    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
     assert (
-        edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+        edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == current_utub_description
     )
+    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -629,7 +649,10 @@ def test_update_utub_description_of_invalid_utub(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string, UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{invalid_utub_id}", data=utub_desc_form
@@ -715,7 +738,10 @@ def test_update_utub_description_too_long(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string, UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -728,9 +754,17 @@ def test_update_utub_description_too_long(
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UTUB_DESC_TOO_LONG
+    assert (
+        edit_utub_desc_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UTUB_DESC_TOO_LONG
+    )
     assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 3
-    assert edit_utub_desc_json_response[STD_JSON.ERRORS][UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM] == UTUB_FAILURE.UTUB_DESC_FIELD_TOO_LONG
+    assert (
+        edit_utub_desc_json_response[STD_JSON.ERRORS][
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM
+        ]
+        == UTUB_FAILURE.UTUB_DESC_FIELD_TOO_LONG
+    )
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -817,7 +851,10 @@ def test_update_utub_description_missing_description_field(
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
+    assert (
+        edit_utub_desc_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
+    )
     assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 2
 
     # Ensure database is consistent with just updating the UTub description

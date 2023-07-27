@@ -20,6 +20,7 @@ from urls4irl.utils import strings as U4I_STRINGS
 MODEL_STRS = U4I_STRINGS.MODELS
 USER_STRS = U4I_STRINGS.REGISTER_FORM
 
+
 @pytest.fixture()
 def app():
     app = create_app(TestingConfig)

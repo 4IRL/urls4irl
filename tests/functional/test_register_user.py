@@ -11,6 +11,7 @@ from urls4irl.utils import strings as U4I_STRINGS
 REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
+
 def test_register_new_user(app, load_register_page):
     """
     GIVEN a new, unregistered user to the page
@@ -23,7 +24,9 @@ def test_register_new_user(app, load_register_page):
 
     # Ensure no user with this data exists in database
     with app.app_context():
-        new_db_user = User.query.filter_by(username=valid_user_1[REGISTER_FORM.USERNAME]).first()
+        new_db_user = User.query.filter_by(
+            username=valid_user_1[REGISTER_FORM.USERNAME]
+        ).first()
 
     assert new_db_user is None
 
@@ -40,7 +43,9 @@ def test_register_new_user(app, load_register_page):
 
     # Ensure user exists in database
     with app.app_context():
-        new_db_user = User.query.filter_by(username=valid_user_1[REGISTER_FORM.USERNAME]).first()
+        new_db_user = User.query.filter_by(
+            username=valid_user_1[REGISTER_FORM.USERNAME]
+        ).first()
 
     # Ensure user model after loading from database is logged in
     assert new_db_user.is_authenticated is True
@@ -91,10 +96,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     assert len(response.history) == 0
 
     # Check that correctly displays error message
-    assert (
-        f"{USER_FAILURE.USERNAME_TAKEN}".encode()
-        in response.data
-    )
+    assert f"{USER_FAILURE.USERNAME_TAKEN}".encode() in response.data
     assert f"{USER_FAILURE.EMAIL_TAKEN}".encode() in response.data
 
 
@@ -159,5 +161,7 @@ def test_register_modal_logs_user_in(client):
         assert response.data == bytes(f"{url_for('main.home')}", "utf-8")
 
         assert current_user.username == valid_user_1[REGISTER_FORM.USERNAME]
-        assert check_password_hash(current_user.password, valid_user_1[REGISTER_FORM.PASSWORD])
+        assert check_password_hash(
+            current_user.password, valid_user_1[REGISTER_FORM.PASSWORD]
+        )
         assert current_user.email == valid_user_1[REGISTER_FORM.EMAIL]

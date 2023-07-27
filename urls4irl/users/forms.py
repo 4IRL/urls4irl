@@ -6,6 +6,7 @@ from urls4irl.utils import strings as U4I_STRINGS
 
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
+
 class UserRegistrationForm(FlaskForm):
     """
     Form to register users. Inherits from FlaskForm. All fields require data.
@@ -40,9 +41,7 @@ class UserRegistrationForm(FlaskForm):
         username_exists = User.query.filter_by(username=username.data).first()
 
         if username_exists:
-            raise ValidationError(
-                USER_FAILURE.USERNAME_TAKEN
-            )
+            raise ValidationError(USER_FAILURE.USERNAME_TAKEN)
 
     def validate_email(self, email):
         """Validates username is unique in the db"""
@@ -87,6 +86,4 @@ class UTubNewUserForm(FlaskForm):
         username_exists = User.query.filter_by(username=username.data).first()
 
         if not username_exists:
-            raise ValidationError(
-                USER_FAILURE.USER_NOT_EXIST
-            )
+            raise ValidationError(USER_FAILURE.USER_NOT_EXIST)

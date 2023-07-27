@@ -1,7 +1,7 @@
 import pytest
 from flask_login import current_user
 
-from urls4irl.models import Utub, URLS, Utub_Urls 
+from urls4irl.models import Utub, URLS, Utub_Urls
 from models_for_test import valid_url_strings
 from urls4irl.utils import strings as U4I_STRINGS
 
@@ -10,6 +10,7 @@ URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 MODEL_STRS = U4I_STRINGS.MODELS
 URL_FAILURE = U4I_STRINGS.URL_FAILURE
+
 
 def test_add_valid_url_as_utub_member(
     add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
@@ -96,8 +97,12 @@ def test_add_valid_url_as_utub_member(
     assert int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == utub_id_to_add_to
     assert add_url_json_response[URL_SUCCESS.UTUB_NAME] == utub_name_to_add
     assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
-    assert add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
-    assert int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID]) == url_id_to_add
+    assert (
+        add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
+    )
+    assert (
+        int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID]) == url_id_to_add
+    )
 
     with app.app_context():
         # Ensure no new URL created
@@ -210,8 +215,12 @@ def test_add_valid_url_as_utub_creator(
     assert int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == utub_id_to_add_to
     assert add_url_json_response[URL_SUCCESS.UTUB_NAME] == utub_name_to_add
     assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
-    assert add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
-    assert int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID]) == url_id_to_add
+    assert (
+        add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
+    )
+    assert (
+        int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID]) == url_id_to_add
+    )
 
     with app.app_context():
         # Ensure no new URL created
@@ -639,8 +648,12 @@ def test_add_fresh_url_to_utub(
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_CREATED_ADDED
-    assert int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == id_of_utub_that_is_creator_of
-    assert add_url_json_response[URL_SUCCESS.UTUB_NAME] == name_of_utub_that_is_creator_of
+    assert (
+        int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == id_of_utub_that_is_creator_of
+    )
+    assert (
+        add_url_json_response[URL_SUCCESS.UTUB_NAME] == name_of_utub_that_is_creator_of
+    )
     assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
 
     url_id_added = int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID])
@@ -1000,12 +1013,12 @@ def test_add_url_missing_url(
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        add_url_json_response[STD_JSON.MESSAGE]
-        == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
-    )
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
-    assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == URL_FAILURE.FIELD_REQUIRED
+    assert (
+        add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
+        == URL_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         assert (
@@ -1077,12 +1090,12 @@ def test_add_url_missing_url_description(
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        add_url_json_response[STD_JSON.MESSAGE]
-        == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
-    )
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
-    assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_DESCRIPTION] == URL_FAILURE.FIELD_REQUIRED
+    assert (
+        add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_DESCRIPTION]
+        == URL_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         assert (
@@ -1143,7 +1156,10 @@ def test_add_url_missing_csrf_token(
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Add the URL to the UTub
-    add_url_form = {URL_FORM.URL_STRING: url_string_to_add, URL_FORM.URL_DESCRIPTION: ""}
+    add_url_form = {
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_DESCRIPTION: "",
+    }
 
     add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
 

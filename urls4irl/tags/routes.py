@@ -13,6 +13,7 @@ TAGS_FAILURE = U4I_STRINGS.TAGS_FAILURE
 TAGS_NO_CHANGE = U4I_STRINGS.TAGS_NO_CHANGE
 TAGS_SUCCESS = U4I_STRINGS.TAGS_SUCCESS
 
+
 @tags.route("/tag/add/<int:utub_id>/<int:url_id>", methods=["POST"])
 @login_required
 def add_tag(utub_id: int, url_id: int):
@@ -207,7 +208,12 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         )
 
     return (
-        jsonify({STD_JSON.STATUS: STD_JSON.FAILURE, STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS}),
+        jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS,
+            }
+        ),
         403,
     )
 

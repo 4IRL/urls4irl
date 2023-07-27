@@ -7,7 +7,7 @@ from urls4irl import db
 from urls4irl.utils import strings as U4I_STRINGS
 
 MODEL_STRS = U4I_STRINGS.MODELS
-USER_STRS= U4I_STRINGS.REGISTER_FORM
+USER_STRS = U4I_STRINGS.REGISTER_FORM
 
 """
 Serializations to test
@@ -46,7 +46,10 @@ def test_tag_serialization(app, register_multiple_users):
         for idx, tag in enumerate(all_tags):
             json_tag = json.dumps(tag.serialized)
             valid_json_tag = json.dumps(
-                {MODEL_STRS.ID: idx + 1, MODEL_STRS.TAG_STRING: input_tags[idx][MODEL_STRS.TAG_STRING]}
+                {
+                    MODEL_STRS.ID: idx + 1,
+                    MODEL_STRS.TAG_STRING: input_tags[idx][MODEL_STRS.TAG_STRING],
+                }
             )
 
         assert valid_json_tag == json_tag
@@ -75,7 +78,9 @@ def test_url_serialization_without_tags():
     current_user_id = 0
 
     for v_url in valid_urls:
-        new_url = URLS(normalized_url=v_url[MODEL_STRS.URL], current_user_id=current_user_id)
+        new_url = URLS(
+            normalized_url=v_url[MODEL_STRS.URL], current_user_id=current_user_id
+        )
         new_url.id = v_url[MODEL_STRS.ID]
 
         # Test a URL without any tags
@@ -181,7 +186,10 @@ def test_user_serialization_as_member_of_utub():
     for idx, test_user in enumerate(valid_users):
         json_tag = json.dumps(test_user.serialized)
         valid_json_user = json.dumps(
-            {MODEL_STRS.ID: idx, MODEL_STRS.USERNAME: member_users[idx][MODEL_STRS.USERNAME]}
+            {
+                MODEL_STRS.ID: idx,
+                MODEL_STRS.USERNAME: member_users[idx][MODEL_STRS.USERNAME],
+            }
         )
 
         assert valid_json_user == json_tag
@@ -219,7 +227,9 @@ def test_user_utub_data_serialized_on_initial_load():
 
     for empty_utub in empty_utubs:
         new_utub = Utub(
-            name=empty_utub[MODEL_STRS.NAME], utub_creator=valid_user[MODEL_STRS.ID], utub_description=""
+            name=empty_utub[MODEL_STRS.NAME],
+            utub_creator=valid_user[MODEL_STRS.ID],
+            utub_description="",
         )
         new_utub.id = empty_utub[MODEL_STRS.ID]
         new_utub.utub_creator = valid_user[MODEL_STRS.ID]
@@ -282,7 +292,9 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_only_creator, all_utubs
         ):
-            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
+                "%m/%d/%Y %H:%M:%S"
+            )
             assert json.dumps(test_utub) == json.dumps(utub.serialized)
 
 
@@ -334,7 +346,9 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members, all_utubs
         ):
-            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
+                "%m/%d/%Y %H:%M:%S"
+            )
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = utub.serialized
@@ -394,7 +408,9 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members_and_url, all_utubs
         ):
-            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
+                "%m/%d/%Y %H:%M:%S"
+            )
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = utub.serialized
@@ -454,7 +470,9 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members_and_url_and_tags, all_utubs
         ):
-            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
+                "%m/%d/%Y %H:%M:%S"
+            )
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = utub.serialized
