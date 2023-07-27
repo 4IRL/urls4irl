@@ -2,6 +2,13 @@ import pytest
 from flask_login import current_user
 
 from urls4irl.models import Utub, Utub_Urls, Utub_Users, Url_Tags
+from urls4irl.utils import strings as U4I_STRINGS
+
+UTUB_FORM = U4I_STRINGS.UTUB_FORM
+UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+MODEL_STRS = U4I_STRINGS.MODELS
+UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
 
 
 def test_update_valid_utub_name_as_creator(
@@ -11,7 +18,7 @@ def test_update_valid_utub_name_as_creator(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to a new name, via a POST to
         "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the new UTub name is stored in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -19,10 +26,10 @@ def test_update_valid_utub_name_as_creator(
 
     Proper JSON is as follows:
     {
-        "Status": "Success",
-        "UTub_ID": Integer representing the UTub ID for the changed name
-        "UTub_name": String representing the new name of the UTub
-        "UTub_description": String representing the current UTub's new name
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed name
+        UTUB_SUCCESS.UTUB_NAME: String representing the new name of the UTub
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new name
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -54,7 +61,7 @@ def test_update_valid_utub_name_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
-    utub_name_form = {"csrf_token": csrf_token_string, "name": NEW_NAME}
+    utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
         f"/utub/edit_name/{current_utub_id}", data=utub_name_form
@@ -66,10 +73,13 @@ def test_update_valid_utub_name_as_creator(
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
 
-    assert edit_utub_name_json_response["Status"] == "Success"
-    assert int(edit_utub_name_json_response["UTub_ID"]) == current_utub_id
-    assert edit_utub_name_json_response["UTub_description"] == current_utub_description
-    assert edit_utub_name_json_response["UTub_name"] == NEW_NAME
+    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(edit_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert (
+        edit_utub_name_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == current_utub_description
+    )
+    assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -107,7 +117,7 @@ def test_update_valid_utub_same_name_as_creator(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to the same name, via a POST to
         "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is still identical in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -115,10 +125,10 @@ def test_update_valid_utub_same_name_as_creator(
 
     Proper JSON is as follows:
     {
-        "Status": "Success",
-        "UTub_ID": Integer representing the UTub ID for the changed name
-        "UTub_name": String representing the name of the UTub whose name was changed
-        "UTub_description": String representing the current UTub's new name
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed name
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose name was changed
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new name
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -148,7 +158,7 @@ def test_update_valid_utub_same_name_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
-    utub_name_form = {"csrf_token": csrf_token_string, "name": NEW_NAME}
+    utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
         f"/utub/edit_name/{current_utub_id}", data=utub_name_form
@@ -160,10 +170,13 @@ def test_update_valid_utub_same_name_as_creator(
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
 
-    assert edit_utub_name_json_response["Status"] == "Success"
-    assert int(edit_utub_name_json_response["UTub_ID"]) == current_utub_id
-    assert edit_utub_name_json_response["UTub_description"] == current_utub_description
-    assert edit_utub_name_json_response["UTub_name"] == NEW_NAME
+    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(edit_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert (
+        edit_utub_name_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == current_utub_description
+    )
+    assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
 
     # Ensure database is consistent after user requested same name for UTub
     with app.app_context():
@@ -201,7 +214,7 @@ def test_update_utub_empty_name_as_creator(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to an empty name, via a POST to
         "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -209,13 +222,13 @@ def test_update_utub_empty_name_as_creator(
 
     Proper JSON is as follows:
     {
-        "Status": "Failure",
-        "Message": "Invalid form"
-        "Error_code": 2
-        "Errors": Objects representing the incorrect field, and an array of errors associated with that field.
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing name field:
             {
-                "name": ['This field is required.']
+                UTUB_FORM.NAME: ['This field is required.']
             }
     }
     """
@@ -247,7 +260,7 @@ def test_update_utub_empty_name_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
-    utub_name_form = {"csrf_token": csrf_token_string, "name": NEW_NAME}
+    utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
         f"/utub/edit_name/{current_utub_id}", data=utub_name_form
@@ -259,10 +272,16 @@ def test_update_utub_empty_name_as_creator(
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
 
-    assert edit_utub_name_json_response["Status"] == "Failure"
-    assert int(edit_utub_name_json_response["Error_code"]) == 2
-    assert edit_utub_name_json_response["Message"] == "Invalid form"
-    assert edit_utub_name_json_response["Errors"]["name"] == ["This field is required."]
+    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
+    assert (
+        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME]
+        == UTUB_FAILURE.FIELD_REQUIRED
+    )
 
     # Ensure database is consistent after sending back invalid form response
     with app.app_context():
@@ -300,7 +319,7 @@ def test_update_utub_name_only_spaces_as_creator(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to a name with only spaces, via a POST to
         "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -308,13 +327,13 @@ def test_update_utub_name_only_spaces_as_creator(
 
     Proper JSON is as follows:
     {
-        "Status": "Failure",
-        "Message": "Invalid form"
-        "Error_code": 2
-        "Errors": Objects representing the incorrect field, and an array of errors associated with that field.
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the name containing only spaces:
             {
-                "name": ['Name cannot contain only spaces or be empty.']
+                UTUB_FORM.NAME: ['Name cannot contain only spaces or be empty.']
             }
     }
     """
@@ -346,7 +365,7 @@ def test_update_utub_name_only_spaces_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
-    utub_name_form = {"csrf_token": csrf_token_string, "name": NEW_NAME}
+    utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
         f"/utub/edit_name/{current_utub_id}", data=utub_name_form
@@ -358,10 +377,13 @@ def test_update_utub_name_only_spaces_as_creator(
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
 
-    assert edit_utub_name_json_response["Status"] == "Failure"
-    assert int(edit_utub_name_json_response["Error_code"]) == 2
-    assert edit_utub_name_json_response["Message"] == "Invalid form"
-    assert edit_utub_name_json_response["Errors"]["name"] == [
+    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
+    assert edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME] == [
         "Name cannot contain only spaces or be empty."
     ]
 
@@ -401,7 +423,7 @@ def test_update_utub_name_as_member(
     GIVEN a valid member of a UTub that has other members, a creator
     WHEN the member attempts to modify the UTub name to a new name, via a POST to
         "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -409,9 +431,9 @@ def test_update_utub_name_as_member(
 
     Proper JSON is as follows:
     {
-        "Status": "Failure",
-        "Message": "You do not have permission to edit this UTub's name"
-        "Error_code": 1
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: "You do not have permission to edit this UTub's name"
+        STD_JSON.ERROR_CODE: 1
     }
     """
     client, csrf_token_string, logged_in_user, app = login_second_user_without_register
@@ -446,7 +468,7 @@ def test_update_utub_name_as_member(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
-    utub_name_form = {"csrf_token": csrf_token_string, "name": NEW_NAME}
+    utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
         f"/utub/edit_name/{current_utub_id}", data=utub_name_form
@@ -458,12 +480,9 @@ def test_update_utub_name_as_member(
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
 
-    assert edit_utub_name_json_response["Status"] == "Failure"
-    assert int(edit_utub_name_json_response["Error_code"]) == 1
-    assert (
-        edit_utub_name_json_response["Message"]
-        == "You do not have permission to edit this UTub's name"
-    )
+    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -495,7 +514,7 @@ def test_update_utub_name_as_creator_of_another_utub(
     GIVEN a valid member of a UTub that has other members, a creator, URLs, and tags associated with all URLs
     WHEN the member attempts to modify the UTub name to a new name, via a POST to
         "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -503,9 +522,9 @@ def test_update_utub_name_as_creator_of_another_utub(
 
     Proper JSON is as follows:
     {
-        "Status": "Failure",
-        "Message": "You do not have permission to edit this UTub's name"
-        "Error_code": 1
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: "You do not have permission to edit this UTub's name"
+        STD_JSON.ERROR_CODE: 1
     }
     """
     client, csrf_token_string, logged_in_user, app = login_second_user_without_register
@@ -545,7 +564,7 @@ def test_update_utub_name_as_creator_of_another_utub(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
-    utub_name_form = {"csrf_token": csrf_token_string, "name": NEW_NAME}
+    utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
         f"/utub/edit_name/{current_utub_id}", data=utub_name_form
@@ -557,12 +576,9 @@ def test_update_utub_name_as_creator_of_another_utub(
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
 
-    assert edit_utub_name_json_response["Status"] == "Failure"
-    assert int(edit_utub_name_json_response["Error_code"]) == 1
-    assert (
-        edit_utub_name_json_response["Message"]
-        == "You do not have permission to edit this UTub's name"
-    )
+    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -594,7 +610,7 @@ def test_update_name_of_invalid_utub(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name of an invalid UTub via a POST to
         "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub names have not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -632,8 +648,8 @@ def test_update_name_of_invalid_utub(
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
     utub_name_form = {
-        "csrf_token": csrf_token_string,
-        "name": utub_of_user.name + "Hello",
+        UTUB_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_FORM.NAME: utub_of_user.name + "Hello",
     }
 
     edit_utub_name_response = client.post(
@@ -679,22 +695,22 @@ def test_update_name_of_utub_too_long_name(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs, and that
         the max length of a UTub name is 30 characters
     WHEN the creator attempts to modify the UTub name of an invalid UTub via a POST to
-        "/utub/edit_name/<utub_id: int>" with invalid form data that does not contain the "name" field, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "name": New UTub name to add (longer than 30 characters)
+        "/utub/edit_name/<utub_id: int>" with invalid form data that does not contain the UTUB_FORM.NAME field, following this format:
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_FORM.NAME: New UTub name to add (longer than 30 characters)
     THEN verify that the UTub names have not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
         the server sends back a 404 HTTP status code, and the server sends back a proper JSON response
 
     Proper JSON is as follows:
     {
-        "Status": "Failure",
-        "Message": "Invalid form"
-        "Error_code": 2
-        "Errors": Objects representing the incorrect field, and an array of errors associated with that field.
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the name being too long:
             {
-                "name": ['Field must be between 1 and 30 characters long.']
+                UTUB_FORM.NAME: ['Field must be between 1 and 30 characters long.']
             }
     }
     """
@@ -729,7 +745,7 @@ def test_update_name_of_utub_too_long_name(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
-    utub_name_form = {"csrf_token": csrf_token_string, "name": NEW_NAME}
+    utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
         f"/utub/edit_name/{current_utub_id}", data=utub_name_form
@@ -741,12 +757,16 @@ def test_update_name_of_utub_too_long_name(
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
 
-    assert edit_utub_name_json_response["Status"] == "Failure"
-    assert int(edit_utub_name_json_response["Error_code"]) == 2
-    assert edit_utub_name_json_response["Message"] == "Invalid form"
-    assert edit_utub_name_json_response["Errors"]["name"] == [
-        "Field must be between 1 and 30 characters long."
-    ]
+    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
+    assert (
+        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME]
+        == UTUB_FAILURE.UTUB_NAME_FIELD_INVALID
+    )
 
     # Ensure database is consistent after user requested same name for UTub
     with app.app_context():
@@ -783,21 +803,21 @@ def test_update_name_of_utub_missing_name_field_form(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name of an invalid UTub via a POST to
-        "/utub/edit_name/<utub_id: int>" with invalid form data that does not contain the "name" field, following this format:
-            "csrf_token": String containing CSRF token for validation
+        "/utub/edit_name/<utub_id: int>" with invalid form data that does not contain the UTUB_FORM.NAME field, following this format:
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN verify that the UTub names have not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
         the server sends back a 404 HTTP status code, and the server sends back a proper JSON response
 
     Proper JSON is as follows:
     {
-        "Status": "Failure",
-        "Message": "Invalid form"
-        "Error_code": 2
-        "Errors": Objects representing the incorrect field, and an array of errors associated with that field.
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the name containing only spaces:
             {
-                "name": ['This field is required.']
+                UTUB_FORM.NAME: ['This field is required.']
             }
     }
     """
@@ -826,7 +846,7 @@ def test_update_name_of_utub_missing_name_field_form(
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
     utub_name_form = {
-        "csrf_token": csrf_token_string,
+        UTUB_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
     edit_utub_name_response = client.post(
@@ -839,10 +859,16 @@ def test_update_name_of_utub_missing_name_field_form(
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
 
-    assert edit_utub_name_json_response["Status"] == "Failure"
-    assert int(edit_utub_name_json_response["Error_code"]) == 2
-    assert edit_utub_name_json_response["Message"] == "Invalid form"
-    assert edit_utub_name_json_response["Errors"]["name"] == ["This field is required."]
+    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
+    assert (
+        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.NAME]
+        == UTUB_FAILURE.FIELD_REQUIRED
+    )
 
     # Ensure database is consistent after user requested same name for UTub
     with app.app_context():
@@ -915,7 +941,7 @@ def test_update_name_of_utub_missing_csrf_token(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.utub_description] = utub.name
 
-    utub_name_form = {"name": NEW_NAME}
+    utub_name_form = {UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
         f"/utub/edit_name/{current_utub_id}", data=utub_name_form

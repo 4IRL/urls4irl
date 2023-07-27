@@ -2,8 +2,13 @@ import pytest
 from flask_login import current_user
 
 from urls4irl import db
-from urls4irl.models import URLS, Utub_Urls, Utub, Utub_Users, User, Tags, Url_Tags
-from models_for_test import valid_url_strings
+from urls4irl.models import URLS, Utub_Urls, Utub, Url_Tags
+from urls4irl.utils import strings as U4I_STRINGS
+
+URL_FORM = U4I_STRINGS.URL_FORM
+URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+URL_FAILURE = U4I_STRINGS.URL_FAILURE
 
 
 def test_remove_url_as_utub_creator_no_tags(
@@ -17,9 +22,9 @@ def test_remove_url_as_utub_creator_no_tags(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message": "URL removed from this UTub",
-        "URL" : Serialized information of the URL that was removed, as follows:
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
+        URL_SUCCESS.URL : Serialized information of the URL that was removed, as follows:
         {
             "url_id": Integer representing ID of the URL,
             "url_string": String representing the URL itself,
@@ -28,11 +33,11 @@ def test_remove_url_as_utub_creator_no_tags(
             "added_by": Integer representing ID of user who added this,
             "notes": String representing the URL description in this UTub
         }
-        "UTub_ID" : Integer representing the UTub ID where the URL was removed from,
-        "UTub_name" : String representing the name of the UTub removed"
+        URL_SUCCESS.UTUB_ID : Integer representing the UTub ID where the URL was removed from,
+        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub removed"
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     # Get UTub of current user
     with app.app_context():
@@ -74,7 +79,7 @@ def test_remove_url_as_utub_creator_no_tags(
     # Remove URL from UTub as UTub creator
     remove_url_response = client.post(
         f"/url/remove/{current_user_utub.id}/{url_id_to_remove}",
-        data={"csrf_token": csrf_token_string},
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -82,11 +87,11 @@ def test_remove_url_as_utub_creator_no_tags(
 
     # Ensure JSON response is correct
     remove_url_response_json = remove_url_response.json
-    assert remove_url_response_json["Status"] == "Success"
-    assert remove_url_response_json["Message"] == "URL removed from this UTub"
-    assert remove_url_response_json["URL"] == url_to_remove_serialized
-    assert int(remove_url_response_json["UTub_ID"]) == current_user_utub.id
-    assert remove_url_response_json["UTub_name"] == current_user_utub.name
+    assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
+    assert remove_url_response_json[URL_SUCCESS.URL] == url_to_remove_serialized
+    assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == current_user_utub.id
+    assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == current_user_utub.name
 
     # Ensure proper removal from database
     with app.app_context():
@@ -123,9 +128,9 @@ def test_remove_url_as_utub_member_no_tags(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message": "URL removed from this UTub",
-        "URL" : Serialized information of the URL that was removed, as follows:
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
+        URL_SUCCESS.URL : Serialized information of the URL that was removed, as follows:
         {
             "url_id": Integer representing ID of the URL,
             "url_string": String representing the URL itself,
@@ -134,11 +139,11 @@ def test_remove_url_as_utub_member_no_tags(
             "added_by": Integer representing ID of user who added this,
             "notes": String representing the URL description in this UTub
         }
-        "UTub_ID" : Integer representing the UTub ID where the URL was removed from,
-        "UTub_name" : String representing the name of the UTub removed"
+        URL_SUCCESS.UTUB_ID : Integer representing the UTub ID where the URL was removed from,
+        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub removed"
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get first UTub where current logged in user is not the creator
@@ -213,7 +218,7 @@ def test_remove_url_as_utub_member_no_tags(
     # Remove URL from UTub as UTub member
     remove_url_response = client.post(
         f"/url/remove/{current_user_utub.id}/{missing_url.id}",
-        data={"csrf_token": csrf_token_string},
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -222,11 +227,11 @@ def test_remove_url_as_utub_member_no_tags(
     # Ensure JSON response is correct
     remove_url_response_json = remove_url_response.json
 
-    assert remove_url_response_json["Status"] == "Success"
-    assert remove_url_response_json["Message"] == "URL removed from this UTub"
-    assert remove_url_response_json["URL"] == missing_url_serialized
-    assert int(remove_url_response_json["UTub_ID"]) == current_user_utub.id
-    assert remove_url_response_json["UTub_name"] == current_user_utub.name
+    assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
+    assert remove_url_response_json[URL_SUCCESS.URL] == missing_url_serialized
+    assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == current_user_utub.id
+    assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == current_user_utub.name
 
     # Ensure proper removal from database
     with app.app_context():
@@ -262,11 +267,11 @@ def test_remove_url_from_utub_not_member_of(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Unable to remove this URL"
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : URL_FAILURE.UNABLE_TO_REMOVE_URL
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     # Find the first UTub the logged in user is not a creator of
     with app.app_context():
@@ -297,7 +302,7 @@ def test_remove_url_from_utub_not_member_of(
     # Remove the URL from the other user's UTub while logged in as member of another UTub
     remove_url_response = client.post(
         f"/url/remove/{utub_current_user_not_part_of.id}/{url_to_remove_id}",
-        data={"csrf_token": csrf_token_string},
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -305,8 +310,10 @@ def test_remove_url_from_utub_not_member_of(
 
     # Ensure JSON response is correct
     remove_url_response_json = remove_url_response.json
-    assert remove_url_response_json["Status"] == "Failure"
-    assert remove_url_response_json["Message"] == "Unable to remove this URL"
+    assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        remove_url_response_json[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_REMOVE_URL
+    )
 
     # Ensure database is not affected
     with app.app_context():
@@ -334,7 +341,7 @@ def test_remove_invalid_nonexistant_url_as_utub_creator(
     THEN the server responds with a 404 HTTP status code, and the database has no changes
     """
 
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     # Find the first UTub this logged in user is a creator of
     with app.app_context():
@@ -378,7 +385,7 @@ def test_remove_invalid_nonexistant_url_as_utub_creator(
     # Attempt to remove nonexistant URL from UTub as creator of UTub
     remove_url_response = client.post(
         f"/url/remove/{id_of_utub_current_user_creator_of}/{id_of_url_to_remove}",
-        data={"csrf_token": csrf_token_string},
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -407,7 +414,7 @@ def test_remove_invalid_nonexistant_url_as_utub_member(
     WHEN the user wishes to remove a nonexistant URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
     THEN the server responds with a 404 HTTP status code, and the database has no changes
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     # Find the first UTub this logged in user is a creator of
     with app.app_context():
@@ -454,7 +461,7 @@ def test_remove_invalid_nonexistant_url_as_utub_member(
     # Attempt to remove nonexistant URL from UTub as creator of UTub
     remove_url_response = client.post(
         f"/url/remove/{id_of_utub_current_user_member_of}/{id_of_url_to_remove}",
-        data={"csrf_token": csrf_token_string},
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -486,9 +493,9 @@ def test_remove_url_as_utub_creator_with_tags(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message": "URL removed from this UTub",
-        "URL" : Serialized information of the URL that was removed, as follows:
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
+        URL_SUCCESS.URL : Serialized information of the URL that was removed, as follows:
         {
             "url_id": Integer representing ID of the URL,
             "url_string": String representing the URL itself,
@@ -497,11 +504,11 @@ def test_remove_url_as_utub_creator_with_tags(
             "added_by": Integer representing ID of user who added this,
             "notes": String representing the URL description in this UTub
         }
-        "UTub_ID" : Integer representing the UTub ID where the URL was removed from,
-        "UTub_name" : String representing the name of the UTub removed"
+        URL_SUCCESS.UTUB_ID : Integer representing the UTub ID where the URL was removed from,
+        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub removed"
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find current user's UTub
@@ -550,16 +557,20 @@ def test_remove_url_as_utub_creator_with_tags(
     # Attempt to remove URL that contains tag from UTub as creator of UTub
     remove_url_response = client.post(
         f"/url/remove/{utub_id_to_remove_url_from}/{url_id_to_remove}",
-        data={"csrf_token": csrf_token_string},
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure JSON response is correct
     remove_url_response_json = remove_url_response.json
-    assert remove_url_response_json["Status"] == "Success"
-    assert remove_url_response_json["Message"] == "URL removed from this UTub"
-    assert remove_url_response_json["URL"] == url_in_utub_serialized
-    assert int(remove_url_response_json["UTub_ID"]) == utub_id_to_remove_url_from
-    assert remove_url_response_json["UTub_name"] == utub_name_to_remove_url_from
+    assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
+    assert remove_url_response_json[URL_SUCCESS.URL] == url_in_utub_serialized
+    assert (
+        int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.UTUB_NAME] == utub_name_to_remove_url_from
+    )
 
     # Ensure proper removal from database
     with app.app_context():
@@ -605,9 +616,9 @@ def test_remove_url_as_utub_member_with_tags(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message": "URL removed from this UTub",
-        "URL" : Serialized information of the URL that was removed, as follows:
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
+        URL_SUCCESS.URL : Serialized information of the URL that was removed, as follows:
         {
             "url_id": Integer representing ID of the URL,
             "url_string": String representing the URL itself,
@@ -616,11 +627,11 @@ def test_remove_url_as_utub_member_with_tags(
             "added_by": Integer representing ID of user who added this,
             "notes": String representing the URL description in this UTub
         }
-        "UTub_ID" : Integer representing the UTub ID where the URL was removed from,
-        "UTub_name" : String representing the name of the UTub removed"
+        URL_SUCCESS.UTUB_ID : Integer representing the UTub ID where the URL was removed from,
+        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub removed"
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get first UTub where current logged in user is not the creator
@@ -672,7 +683,7 @@ def test_remove_url_as_utub_member_with_tags(
     # Remove URL from UTub as UTub member
     remove_url_response = client.post(
         f"/url/remove/{utub_id_to_remove_url_from}/{url_id_to_remove}",
-        data={"csrf_token": csrf_token_string},
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -681,11 +692,13 @@ def test_remove_url_as_utub_member_with_tags(
     # Ensure JSON response is correct
     remove_url_response_json = remove_url_response.json
 
-    assert remove_url_response_json["Status"] == "Success"
-    assert remove_url_response_json["Message"] == "URL removed from this UTub"
-    assert remove_url_response_json["URL"] == url_in_utub_serialized
-    assert int(remove_url_response_json["UTub_ID"]) == utub_id_to_remove_url_from
-    assert remove_url_response_json["UTub_name"] == current_user_utub.name
+    assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
+    assert remove_url_response_json[URL_SUCCESS.URL] == url_in_utub_serialized
+    assert (
+        int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
+    )
+    assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == current_user_utub.name
 
     # Ensure proper removal from database
     with app.app_context():
@@ -718,7 +731,7 @@ def test_remove_url_from_utub_no_csrf_token(
     THEN the server responds with a 400 HTTP status code, the UTub-User-URL association is not removed from the database,
         and the server sends back an HTML element indicating a missing CSRF token
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, _, _, app = login_first_user_without_register
 
     # Find the first UTub the logged in user is not a creator of
     with app.app_context():

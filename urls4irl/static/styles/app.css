@@ -1,4 +1,5 @@
-html, body {
+html,
+body {
     height: 100%;
     margin: 0;
     padding: 0;
@@ -13,7 +14,8 @@ h1 {
     font-size: 2.5em;
 }
 
-h2, .login-register-label {
+h2,
+.login-register-label {
     color: #2ecc71;
 }
 
@@ -117,7 +119,8 @@ input[type=radio]:hover {
     box-shadow: 0px 0px 5px #1300ff;
 } */
 
-input[type=radio]::before, input[type=radio]::after {
+input[type=radio]::before,
+input[type=radio]::after {
     box-sizing: border-box;
     content: '';
     position: absolute;
@@ -251,7 +254,9 @@ i.fa-check-square {
 
 /* Icon 1 */
 
-.animated-icon1, .animated-icon2, .animated-icon3 {
+.animated-icon1,
+.animated-icon2,
+.animated-icon3 {
     width: 30px;
     height: 20px;
     position: relative;
@@ -267,7 +272,9 @@ i.fa-check-square {
     cursor: pointer;
 }
 
-.animated-icon1 span, .animated-icon2 span, .animated-icon3 span {
+.animated-icon1 span,
+.animated-icon2 span,
+.animated-icon3 span {
     display: block;
     position: absolute;
     height: 3px;
@@ -336,7 +343,8 @@ i.fa-check-square {
     top: 0px;
 }
 
-.animated-icon2 span:nth-child(2), .animated-icon2 span:nth-child(3) {
+.animated-icon2 span:nth-child(2),
+.animated-icon2 span:nth-child(3) {
     top: 10px;
 }
 
@@ -424,7 +432,8 @@ i.fa-check-square {
     transition: color 0.25s;
 }
 
-.draw::before, .draw::after {
+.draw::before,
+.draw::after {
     border: 2px solid transparent;
     width: 0;
     height: 0;
@@ -444,7 +453,8 @@ i.fa-check-square {
     color: #f45e61;
 }
 
-.draw.active::before, .draw.active::after {
+.draw.active::before,
+.draw.active::after {
     width: 100%;
     height: 100%;
 }
@@ -511,6 +521,15 @@ i.fa-check-square {
     overflow-y: hidden;
     padding-right: 0px;
     width: 500px;
+}
+
+.login-register-form-group {
+    box-sizing: border-box;
+}
+
+.login-buttons {
+    display: inline-block;
+    vertical-align: top;
 }
 
 /* ID sepcific */

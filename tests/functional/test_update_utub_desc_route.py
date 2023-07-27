@@ -2,6 +2,12 @@ import pytest
 from flask_login import current_user
 
 from urls4irl.models import Utub, Utub_Urls, Utub_Users, Url_Tags
+from urls4irl.utils import strings as U4I_STRINGS
+
+UTUB_DESC_FORM = U4I_STRINGS.UTUB_DESCRIPTION_FORM
+UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
 
 
 def test_update_valid_utub_description_as_creator(
@@ -11,18 +17,18 @@ def test_update_valid_utub_description_as_creator(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
     WHEN the creator attempts to modify the UTub description to a new description, via a POST to
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "utub_description": New utub description to add
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN verify that the new UTub description is stored in the database, the utub-user associations are
         consistent across the change, all other UTub descriptions are kept consistent,
         the server sends back a 200 HTTP status code, and the server sends back the appropriate JSON response
 
     Proper JSON is as follows:
     {
-        "Status": "Success",
-        "UTub_ID": Integer representing the UTub ID for the changed description
-        "UTub_name": String representing the name of the UTub whose description was changed
-        "UTub_description": String representing the current UTub's new description
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed description
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose description was changed
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -54,7 +60,10 @@ def test_update_valid_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {"csrf_token": csrf_token_string, "utub_description": UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -66,10 +75,10 @@ def test_update_valid_utub_description_as_creator(
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
-    assert edit_utub_desc_json_response["Status"] == "Success"
-    assert int(edit_utub_desc_json_response["UTub_ID"]) == current_utub_id
-    assert edit_utub_desc_json_response["UTub_description"] == UPDATE_TEXT
-    assert edit_utub_desc_json_response["UTub_name"] == current_utub_name
+    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_NAME] == current_utub_name
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -107,18 +116,18 @@ def test_update_valid_empty_utub_description_as_creator(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with
     WHEN the creator attempts to modify the UTub description to an empty description, via a POST to
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "utub_description": New utub description to add
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN verify that the new UTub description is stored in the database, the utub-user associations are
         consistent across the change, all other UTub descriptions are kept consistent,
         the server sends back a 200 HTTP status code, and the server sends back the appropriate JSON response
 
     Proper JSON is as follows:
     {
-        "Status": "Success",
-        "UTub_ID": Integer representing the UTub ID for the changed description
-        "UTub_name": String representing the name of the UTub whose description was changed
-        "UTub_description": String representing the current UTub's new description
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed description
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose description was changed
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -150,7 +159,10 @@ def test_update_valid_empty_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {"csrf_token": csrf_token_string, "utub_description": UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -162,10 +174,10 @@ def test_update_valid_empty_utub_description_as_creator(
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
-    assert edit_utub_desc_json_response["Status"] == "Success"
-    assert int(edit_utub_desc_json_response["UTub_ID"]) == current_utub_id
-    assert edit_utub_desc_json_response["UTub_description"] == UPDATE_TEXT
-    assert edit_utub_desc_json_response["UTub_name"] == current_utub_name
+    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_NAME] == current_utub_name
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -203,18 +215,18 @@ def test_update_only_spaces_utub_description_as_creator(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with
     WHEN the creator attempts to modify the UTub description to a description containing only spaces, via a POST to
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "utub_description": New utub description to add
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN verify that the new UTub description is stored in the database as an empty string, the utub-user
         associations are consistent across the change, all other UTub descriptions are kept consistent,
         the server sends back a 200 HTTP status code, and the server sends back the appropriate JSON response
 
     Proper JSON is as follows:
     {
-        "Status": "Success",
-        "UTub_ID": Integer representing the UTub ID for the changed description
-        "UTub_name": String representing the name of the UTub whose description was changed
-        "UTub_description": String representing the current UTub's new description
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed description
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose description was changed
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -246,7 +258,10 @@ def test_update_only_spaces_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {"csrf_token": csrf_token_string, "utub_description": UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -258,10 +273,10 @@ def test_update_only_spaces_utub_description_as_creator(
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
-    assert edit_utub_desc_json_response["Status"] == "Success"
-    assert int(edit_utub_desc_json_response["UTub_ID"]) == current_utub_id
-    assert edit_utub_desc_json_response["UTub_description"] == ""
-    assert edit_utub_desc_json_response["UTub_name"] == current_utub_name
+    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == ""
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_NAME] == current_utub_name
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -299,18 +314,18 @@ def test_update_utub_description_with_same_description_as_creator(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with
     WHEN the creator attempts to modify the UTub description to the same description, via a POST to
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "utub_description": New utub description to add
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN verify that the new UTub description is stored in the database, the UTub-user associations are
         consistent across the change, all other UTub descriptions are kept consistent,
         the server sends back a 200 HTTP status code, and the server sends back the appropriate JSON response
 
     Proper JSON is as follows:
     {
-        "Status": "Success",
-        "UTub_ID": Integer representing the UTub ID for the changed description
-        "UTub_name": String representing the name of the UTub whose description was changed
-        "UTub_description": String representing the current UTub's previous description
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed description
+        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose description was changed
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's previous description
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -339,7 +354,10 @@ def test_update_utub_description_with_same_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {"csrf_token": csrf_token_string, "utub_description": UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -351,10 +369,10 @@ def test_update_utub_description_with_same_description_as_creator(
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
-    assert edit_utub_desc_json_response["Status"] == "Success"
-    assert int(edit_utub_desc_json_response["UTub_ID"]) == current_utub_id
-    assert edit_utub_desc_json_response["UTub_description"] == UPDATE_TEXT
-    assert edit_utub_desc_json_response["UTub_name"] == current_utub_name
+    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_NAME] == current_utub_name
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -387,18 +405,18 @@ def test_update_utub_description_as_member(
         creators are allowed to modify UTub descriptions
     WHEN the member attempts to modify the UTub description to a new description, via a POST to
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "utub_description": New utub description to add
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
         the server sends back a 403 HTTP status code, and the server sends back the appropriate JSON response
         indicating the member is not authorized to edit the description
 
     Proper JSON is as follows:
     {
-        "Status" : "Failure",
-        "Message": "You do not have permission to edit this UTub's description",
-        "Error_code": 1,
-        "UTub_description": String representing the current UTub's description
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: "You do not have permission to edit this UTub's description",
+        STD_JSON.ERROR_CODE: 1,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's description
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -433,7 +451,10 @@ def test_update_utub_description_as_member(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {"csrf_token": csrf_token_string, "utub_description": UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -445,14 +466,14 @@ def test_update_utub_description_as_member(
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
-    assert edit_utub_desc_json_response["Status"] == "Failure"
-    assert edit_utub_desc_json_response["UTub_description"] != UPDATE_TEXT
-    assert edit_utub_desc_json_response["UTub_description"] == current_utub_description
-    assert int(edit_utub_desc_json_response["Error_code"]) == 1
+    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] != UPDATE_TEXT
     assert (
-        edit_utub_desc_json_response["Message"]
-        == "You do not have permission to edit this UTub's description"
+        edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == current_utub_description
     )
+    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -486,18 +507,18 @@ def test_update_utub_description_as_creator_of_other_utub(
         creators are allowed to modify UTub descriptions, and this member is creator of another UTub
     WHEN the member attempts to modify the UTub description to a new description, via a POST to
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "utub_description": New utub description to add
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
         the server sends back a 403 HTTP status code, and the server sends back the appropriate JSON response
         indicating the member is not authorized to edit the description
 
     Proper JSON is as follows:
     {
-        "Status" : "Failure",
-        "Message": "You do not have permission to edit this UTub's description",
-        "Error_code": 1,
-        "UTub_description": String representing the current UTub's description
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
+        STD_JSON.ERROR_CODE: 1,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's description
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -538,7 +559,10 @@ def test_update_utub_description_as_creator_of_other_utub(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {"csrf_token": csrf_token_string, "utub_description": UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -550,14 +574,14 @@ def test_update_utub_description_as_creator_of_other_utub(
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
-    assert edit_utub_desc_json_response["Status"] == "Failure"
-    assert edit_utub_desc_json_response["UTub_description"] != UPDATE_TEXT
-    assert edit_utub_desc_json_response["UTub_description"] == current_utub_description
-    assert int(edit_utub_desc_json_response["Error_code"]) == 1
+    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] != UPDATE_TEXT
     assert (
-        edit_utub_desc_json_response["Message"]
-        == "You do not have permission to edit this UTub's description"
+        edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
+        == current_utub_description
     )
+    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -591,8 +615,8 @@ def test_update_utub_description_of_invalid_utub(
         creators are allowed to modify UTub descriptions, and this member is creator of another UTub
     WHEN the member attempts to modify the UTub description of a nonexistent UTub, via a POST to
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "utub_description": New utub description to add
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
         the server sends back a 404 HTTP status code
     """
@@ -625,7 +649,10 @@ def test_update_utub_description_of_invalid_utub(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {"csrf_token": csrf_token_string, "utub_description": UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{invalid_utub_id}", data=utub_desc_form
@@ -662,21 +689,21 @@ def test_update_utub_description_too_long(
     WHEN the creator attempts to modify the UTub description to a new description that is longer than
         500 characters, via a POST to:
         "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "utub_description": New utub description to add
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
         the server sends back a 404 HTTP status code, and the server sends back the appropriate JSON response
         indicating the UTub description is too long
 
     Proper JSON is as follows:
     {
-        "Status": "Failure",
-        "Message": "UTub description is too long",
-        "Error_code": 3,
-        "Errors": Objects representing the incorrect field, and an array of errors associated with that field.
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UTUB_DESC_TOO_LONG,
+        STD_JSON.ERROR_CODE: 3,
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing or empty utub_description field:
             {
-                "utub_description": ['This field is required.']
+                UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UTUB_FAILURE.UTUB_DESC_FIELD_TOO_LONG
             }
     }
     """
@@ -711,7 +738,10 @@ def test_update_utub_description_too_long(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {"csrf_token": csrf_token_string, "utub_description": UPDATE_TEXT}
+    utub_desc_form = {
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
 
     edit_utub_desc_response = client.post(
         f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
@@ -723,12 +753,18 @@ def test_update_utub_description_too_long(
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
-    assert edit_utub_desc_json_response["Status"] == "Failure"
-    assert edit_utub_desc_json_response["Message"] == "UTub description is too long"
-    assert int(edit_utub_desc_json_response["Error_code"]) == 3
-    assert edit_utub_desc_json_response["Errors"]["utub_description"] == [
-        "Field cannot be longer than 500 characters."
-    ]
+    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        edit_utub_desc_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UTUB_DESC_TOO_LONG
+    )
+    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert (
+        edit_utub_desc_json_response[STD_JSON.ERRORS][
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM
+        ]
+        == UTUB_FAILURE.UTUB_DESC_FIELD_TOO_LONG
+    )
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -762,17 +798,17 @@ def test_update_utub_description_missing_description_field(
         creators are allowed to modify UTub descriptions
     WHEN the creator attempts to modify the UTub description, via a POST to:
         "/utub/edit_description/<utub_id: int>" with invalid form data that doens't contain
-            the "utub_description" field, following this format:
-            "csrf_token": String containing CSRF token for validation
+            the UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM field, following this format:
+            UTUB_DESC_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
         the server sends back a 404 HTTP status code, and the server sends back the appropriate JSON response
         indicating the form is invalid
 
     Proper JSON is as follows:
     {
-        "Status" : "Failure",
-        "Message": "Invalid form",
-        "Error_code": 2,
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: "Invalid form",
+        STD_JSON.ERROR_CODE: 2,
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -801,7 +837,7 @@ def test_update_utub_description_missing_description_field(
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
     utub_desc_form = {
-        "csrf_token": csrf_token_string,
+        UTUB_DESC_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
     edit_utub_desc_response = client.post(
@@ -814,9 +850,12 @@ def test_update_utub_description_missing_description_field(
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
-    assert edit_utub_desc_json_response["Status"] == "Failure"
-    assert edit_utub_desc_json_response["Message"] == "Invalid form"
-    assert int(edit_utub_desc_json_response["Error_code"]) == 2
+    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        edit_utub_desc_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
+    )
+    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 2
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -849,8 +888,8 @@ def test_update_utub_description_missing_csrf_token(
         creators are allowed to modify UTub descriptions
     WHEN the creator attempts to modify the UTub description, via a POST to:
         "/utub/edit_description/<utub_id: int>" with invalid form data that doens't contain
-            the "csrf_token" field, following this format:
-            "utub_description": New utub description to add
+            the UTUB_DESC_FORM.CSRF_TOKEN field, following this format:
+            UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
         the server sends back a 400 HTTP status code, and the server sends back the appropriate HTML element
         indicating the CSRF token is missing
@@ -882,7 +921,7 @@ def test_update_utub_description_missing_csrf_token(
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
     utub_desc_form = {
-        "utub_description": UPDATE_TEXT,
+        UTUB_DESC_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
     edit_utub_desc_response = client.post(

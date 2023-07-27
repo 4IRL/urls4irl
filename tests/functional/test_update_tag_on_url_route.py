@@ -1,9 +1,15 @@
 import pytest
 from flask_login import current_user
 
-from urls4irl import db
 from urls4irl.models import Utub, Utub_Urls, Tags, Url_Tags
-from models_for_test import all_tag_strings
+from urls4irl.utils import strings as U4I_STRINGS
+
+TAG_FORM = U4I_STRINGS.TAG_FORM
+TAG_SUCCESS = U4I_STRINGS.TAGS_SUCCESS
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+TAG_FAILURE = U4I_STRINGS.TAGS_FAILURE
+TAG_NO_CHANGE = U4I_STRINGS.TAGS_NO_CHANGE
+NEW_TAG = "Fruitilicious"
 
 
 def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
@@ -24,14 +30,14 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "Tag added to this URL",
-        "Tag" : Serialization representing the new tag object:
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : TAG_SUCCESS.TAG_MODIFIED_ON_URL,
+        TAG_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 "tag_string": String representing the tag just added
             }
-        "URL" : Serialization representing the URL in this UTub, who it was added by, and associated tags IDs:
+        TAG_SUCCESS.URL : Serialization representing the URL in this UTub, who it was added by, and associated tags IDs:
             {
                 "url_id": Integer reprensenting ID of the URL the tag was added to in this UTub,
                 "url_string": String representing the URL,
@@ -40,13 +46,12 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
                 "url_tags": Array of integers representing all IDs of tags associated with this URL in this UTub,
                     which should include the newly added tag
             }
-        "UTub_ID" : Integer representing the ID of the UTub that the URL, user, and tag association is in,
-        "UTub_name": String representing name of UTub that the URL, user, and tag association is in
+        TAG_SUCCESS.UTUB_ID : Integer representing the ID of the UTub that the URL, user, and tag association is in,
+        TAG_SUCCESS.UTUB_NAME: String representing name of UTub that the URL, user, and tag association is in
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
 
-    NEW_TAG = "Fruitilicious"
     with app.app_context():
         # Find UTub this current user is creator of
         utub_user_is_creator_of = Utub.query.filter(
@@ -91,8 +96,8 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
 
     # Add tag to this URL
     add_tag_form = {
-        "csrf_token": csrf_token,
-        "tag_string": NEW_TAG,
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: NEW_TAG,
     }
 
     modify_tag_response = client.post(
@@ -104,13 +109,17 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "Success"
-    assert modify_tag_response_json["Message"] == "Tag modified on URL"
-    assert int(modify_tag_response_json["UTub_ID"]) == utub_id_user_is_creator_of
-    assert modify_tag_response_json["UTub_name"] == utub_name_user_is_creator_of
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_MODIFIED_ON_URL
+    assert (
+        int(modify_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
+    )
+    assert (
+        modify_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
+    )
 
-    url_serialization_from_server = modify_tag_response_json["URL"]
-    tag_serialization_from_server = modify_tag_response_json["Tag"]
+    url_serialization_from_server = modify_tag_response_json[TAG_SUCCESS.URL]
+    tag_serialization_from_server = modify_tag_response_json[TAG_SUCCESS.TAG]
 
     with app.app_context():
         # Ensure a new tag exists
@@ -164,14 +173,14 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "Tag added to this URL",
-        "Tag" : Serialization representing the new tag object:
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : TAG_SUCCESS.TAG_MODIFIED_ON_URL,
+        TAG_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 "tag_string": String representing the tag just added
             }
-        "URL" : Serialization representing the URL in this UTub, who it was added by, and associated tags IDs:
+        TAG_SUCCESS.URL : Serialization representing the URL in this UTub, who it was added by, and associated tags IDs:
             {
                 "url_id": Integer reprensenting ID of the URL the tag was added to in this UTub,
                 "url_string": String representing the URL,
@@ -180,13 +189,12 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
                 "url_tags": Array of integers representing all IDs of tags associated with this URL in this UTub,
                     which should include the newly added tag
             }
-        "UTub_ID" : Integer representing the ID of the UTub that the URL, user, and tag association is in,
-        "UTub_name": String representing name of UTub that the URL, user, and tag association is in
+        TAG_SUCCESS.UTUB_ID : Integer representing the ID of the UTub that the URL, user, and tag association is in,
+        TAG_SUCCESS.UTUB_NAME: String representing name of UTub that the URL, user, and tag association is in
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
 
-    NEW_TAG = "Fruitilicious"
     with app.app_context():
         # Find UTub this current user is member of
         utubs_user_is_not_creator_of = Utub.query.filter(
@@ -237,8 +245,8 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
 
     # Add tag to this URL
     add_tag_form = {
-        "csrf_token": csrf_token,
-        "tag_string": NEW_TAG,
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: NEW_TAG,
     }
 
     modify_tag_response = client.post(
@@ -250,13 +258,17 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "Success"
-    assert modify_tag_response_json["Message"] == "Tag modified on URL"
-    assert int(modify_tag_response_json["UTub_ID"]) == utub_id_user_is_member_of
-    assert modify_tag_response_json["UTub_name"] == utub_name_user_is_member_of
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_MODIFIED_ON_URL
+    assert (
+        int(modify_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
+    )
+    assert (
+        modify_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
+    )
 
-    url_serialization_from_server = modify_tag_response_json["URL"]
-    tag_serialization_from_server = modify_tag_response_json["Tag"]
+    url_serialization_from_server = modify_tag_response_json[TAG_SUCCESS.URL]
+    tag_serialization_from_server = modify_tag_response_json[TAG_SUCCESS.TAG]
 
     with app.app_context():
         # Ensure a new tag exists
@@ -311,14 +323,14 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "Tag added to this URL",
-        "Tag" : Serialization representing the new tag object:
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : TAG_SUCCESS.TAG_MODIFIED_ON_URL,
+        TAG_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag,
-                "tag_string": String representing the tag just added
+                TAG_FORM.TAG_STRING: String representing the tag just added
             }
-        "URL" : Serialization representing the URL in this UTub, who it was added by, and associated tags IDs:
+        TAG_SUCCESS.URL : Serialization representing the URL in this UTub, who it was added by, and associated tags IDs:
             {
                 "url_id": Integer reprensenting ID of the URL the tag was added to in this UTub,
                 "url_string": String representing the URL,
@@ -327,8 +339,8 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
                 "url_tags": Array of integers representing all IDs of tags associated with this URL in this UTub,
                     which should include the tag
             }
-        "UTub_ID" : Integer representing the ID of the UTub that the URL, user, and tag association is in,
-        "UTub_name": String representing name of UTub that the URL, user, and tag association is in
+        TAG_SUCCESS.UTUB_ID : Integer representing the ID of the UTub that the URL, user, and tag association is in,
+        TAG_SUCCESS.UTUB_NAME: String representing name of UTub that the URL, user, and tag association is in
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -391,7 +403,10 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"csrf_token": csrf_token, "tag_string": new_tag_string}
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: new_tag_string,
+    }
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
@@ -402,13 +417,17 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "Success"
-    assert modify_tag_response_json["Message"] == "Tag modified on URL"
-    assert int(modify_tag_response_json["UTub_ID"]) == utub_id_user_is_creator_of
-    assert modify_tag_response_json["UTub_name"] == utub_name_user_is_creator_of
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_MODIFIED_ON_URL
+    assert (
+        int(modify_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
+    )
+    assert (
+        modify_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
+    )
 
-    url_serialization_from_server = modify_tag_response_json["URL"]
-    tag_serialization_from_server = modify_tag_response_json["Tag"]
+    url_serialization_from_server = modify_tag_response_json[TAG_SUCCESS.URL]
+    tag_serialization_from_server = modify_tag_response_json[TAG_SUCCESS.TAG]
 
     with app.app_context():
         # Ensure no new tag exists
@@ -459,14 +478,14 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "Tag added to this URL",
-        "Tag" : Serialization representing the new tag object:
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : TAG_SUCCESS.TAG_MODIFIED_ON_URL,
+        TAG_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
-                "tag_string": String representing the tag just added
+                TAG_FORM.TAG_STRING: String representing the tag just added
             }
-        "URL" : Serialization representing the URL in this UTub, who it was added by, and associated tags IDs:
+        TAG_SUCCESS.URL : Serialization representing the URL in this UTub, who it was added by, and associated tags IDs:
             {
                 "url_id": Integer reprensenting ID of the URL the tag was added to in this UTub,
                 "url_string": String representing the URL,
@@ -475,8 +494,8 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
                 "url_tags": Array of integers representing all IDs of tags associated with this URL in this UTub,
                     which should include the newly added tag
             }
-        "UTub_ID" : Integer representing the ID of the UTub that the URL, user, and tag association is in,
-        "UTub_name": String representing name of UTub that the URL, user, and tag association is in
+        TAG_SUCCESS.UTUB_ID : Integer representing the ID of the UTub that the URL, user, and tag association is in,
+        TAG_SUCCESS.UTUB_NAME: String representing name of UTub that the URL, user, and tag association is in
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -545,8 +564,8 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
 
     # Add tag to this URL
     add_tag_form = {
-        "csrf_token": csrf_token,
-        "tag_string": tag_from_database.tag_string,
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_from_database.tag_string,
     }
 
     modify_tag_response = client.post(
@@ -558,13 +577,17 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "Success"
-    assert modify_tag_response_json["Message"] == "Tag modified on URL"
-    assert int(modify_tag_response_json["UTub_ID"]) == utub_id_user_is_member_of
-    assert modify_tag_response_json["UTub_name"] == utub_name_user_is_member_of
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAG_SUCCESS.TAG_MODIFIED_ON_URL
+    assert (
+        int(modify_tag_response_json[TAG_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
+    )
+    assert (
+        modify_tag_response_json[TAG_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
+    )
 
-    url_serialization_from_server = modify_tag_response_json["URL"]
-    tag_serialization_from_server = modify_tag_response_json["Tag"]
+    url_serialization_from_server = modify_tag_response_json[TAG_SUCCESS.URL]
+    tag_serialization_from_server = modify_tag_response_json[TAG_SUCCESS.TAG]
 
     with app.app_context():
         # Ensure a new tag does not exist
@@ -616,8 +639,8 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "No change",
-        "Message" : "Tag was not modified on this URL",
+        STD_JSON.STATUS : STD_JSON.NO_CHANGE,
+        STD_JSON.MESSAGE : TAG_NO_CHANGE.TAG_NOT_MODIFIED,
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -662,7 +685,10 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"csrf_token": csrf_token, "tag_string": tag_string_on_url}
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_string_on_url,
+    }
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
@@ -673,8 +699,8 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "No change"
-    assert modify_tag_response_json["Message"] == "Tag was not modified on this URL"
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
+    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAG_NO_CHANGE.TAG_NOT_MODIFIED
 
     with app.app_context():
         # Ensure no new tag exists
@@ -726,8 +752,8 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
 
     Proper JSON response is as follows:
     {
-        "Status" : "No change",
-        "Message" : "Tag was not modified on this URL",
+        STD_JSON.STATUS : STD_JSON.NO_CHANGE,
+        STD_JSON.MESSAGE : TAG_NO_CHANGE.TAG_NOT_MODIFIED,
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -778,7 +804,10 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"csrf_token": csrf_token, "tag_string": curr_tag_string}
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: curr_tag_string,
+    }
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
@@ -789,8 +818,8 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "No change"
-    assert modify_tag_response_json["Message"] == "Tag was not modified on this URL"
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
+    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAG_NO_CHANGE.TAG_NOT_MODIFIED
 
     with app.app_context():
         # Ensure a new tag does not exist
@@ -841,9 +870,9 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Tag already on URL",
-        "Error_code": 2
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : "Tag already on URL",
+        STD_JSON.ERROR_CODE: 2
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -897,7 +926,10 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"csrf_token": csrf_token, "tag_string": tag_to_change_to_string}
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_to_change_to_string,
+    }
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
@@ -908,9 +940,9 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "Failure"
-    assert modify_tag_response_json["Message"] == "Tag already on URL"
-    assert int(modify_tag_response_json["Error_code"]) == 2
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAG_FAILURE.TAG_ALREADY_ON_URL
+    assert int(modify_tag_response_json[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure no new tag exists
@@ -961,9 +993,9 @@ def test_modify_tag_on_another_utub_url(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Only UTub members can modify tags",
-        "Error_code" : 1
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : "Only UTub members can modify tags",
+        STD_JSON.ERROR_CODE : 1
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -1016,7 +1048,10 @@ def test_modify_tag_on_another_utub_url(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"csrf_token": csrf_token, "tag_string": curr_tag_string}
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: curr_tag_string,
+    }
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{utub_id_user_is_not_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
@@ -1027,9 +1062,12 @@ def test_modify_tag_on_another_utub_url(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "Failure"
-    assert modify_tag_response_json["Message"] == "Only UTub members can modify tags"
-    assert int(modify_tag_response_json["Error_code"]) == 1
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        modify_tag_response_json[STD_JSON.MESSAGE]
+        == TAG_FAILURE.ONLY_UTUB_MEMBERS_MODIFY_TAGS
+    )
+    assert int(modify_tag_response_json[STD_JSON.ERROR_CODE]) == 1
 
     with app.app_context():
         # Ensure a new tag does not exist
@@ -1081,13 +1119,12 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "No change",
-        "Message" : "Tag was not modified on this URL",
+        STD_JSON.STATUS : STD_JSON.NO_CHANGE,
+        STD_JSON.MESSAGE : TAG_NO_CHANGE.TAG_NOT_MODIFIED,
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
 
-    NEW_TAG = "Fruitilicious"
     with app.app_context():
         # Find UTub this current user is creator of
         utub_user_is_creator_of = Utub.query.filter(
@@ -1110,7 +1147,7 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"csrf_token": csrf_token, "tag_string": NEW_TAG}
+    add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{utub_id_user_is_creator_of}/{invalid_url_id}/1",
@@ -1144,7 +1181,6 @@ def test_modify_tag_on_url_in_nonexistent_utub(
     """
     client, csrf_token, _, app = login_first_user_without_register
 
-    NEW_TAG = "Fruitilicious"
     invalid_url_id = -1
     invalid_utub_id = -1
 
@@ -1156,7 +1192,7 @@ def test_modify_tag_on_url_in_nonexistent_utub(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"csrf_token": csrf_token, "tag_string": NEW_TAG}
+    add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{invalid_utub_id}/{invalid_url_id}/1", data=add_tag_form
@@ -1189,12 +1225,12 @@ def test_modify_tag_with_missing_tag_field(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Unable to add tag to this URL",
-        "Error_code" : 3,
-        "Errors": Object representing array of errors pertaining to relevant fields
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : "Unable to add tag to this URL",
+        STD_JSON.ERROR_CODE : 3,
+        STD_JSON.ERRORS: Object representing array of errors pertaining to relevant fields
         {
-            "tag_string" : Array of errors associated with tag_string field
+            TAG_FORM.TAG_STRING : Array of errors associated with tag_string field
         }
     }
     """
@@ -1245,7 +1281,7 @@ def test_modify_tag_with_missing_tag_field(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"csrf_token": csrf_token}
+    add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token}
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
@@ -1256,12 +1292,16 @@ def test_modify_tag_with_missing_tag_field(
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
-    assert modify_tag_response_json["Status"] == "Failure"
-    assert modify_tag_response_json["Message"] == "Unable to add tag to this URL"
-    assert int(modify_tag_response_json["Error_code"]) == 3
-    assert modify_tag_response_json["Errors"]["tag_string"] == [
-        "This field is required."
-    ]
+    assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        modify_tag_response_json[STD_JSON.MESSAGE]
+        == TAG_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
+    )
+    assert int(modify_tag_response_json[STD_JSON.ERROR_CODE]) == 3
+    assert (
+        modify_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING]
+        == TAG_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Ensure a new tag does not exist
@@ -1358,7 +1398,7 @@ def test_modify_tag_with_missing_csrf_token(
         num_tags = len(Tags.query.all())
 
     # Add tag to this URL
-    add_tag_form = {"tag_string": tag_string_of_tag}
+    add_tag_form = {TAG_FORM.TAG_STRING: tag_string_of_tag}
 
     modify_tag_response = client.post(
         f"/tag/url/modify/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",

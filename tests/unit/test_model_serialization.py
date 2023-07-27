@@ -1,10 +1,13 @@
 import json
-from datetime import datetime
 import pytest
 
 import models_for_test as v_models
 from urls4irl.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
 from urls4irl import db
+from urls4irl.utils import strings as U4I_STRINGS
+
+MODEL_STRS = U4I_STRINGS.MODELS
+USER_STRS = U4I_STRINGS.REGISTER_FORM
 
 """
 Serializations to test
@@ -34,7 +37,7 @@ def test_tag_serialization(app, register_multiple_users):
 
     with app.app_context():
         for idx, tag in enumerate(input_tags):
-            new_tag = Tags(tag_string=tag["tag_string"], created_by=idx + 1)
+            new_tag = Tags(tag_string=tag[MODEL_STRS.TAG_STRING], created_by=idx + 1)
             db.session.add(new_tag)
         db.session.commit()
 
@@ -43,7 +46,10 @@ def test_tag_serialization(app, register_multiple_users):
         for idx, tag in enumerate(all_tags):
             json_tag = json.dumps(tag.serialized)
             valid_json_tag = json.dumps(
-                {"id": idx + 1, "tag_string": input_tags[idx]["tag_string"]}
+                {
+                    MODEL_STRS.ID: idx + 1,
+                    MODEL_STRS.TAG_STRING: input_tags[idx][MODEL_STRS.TAG_STRING],
+                }
             )
 
         assert valid_json_tag == json_tag
@@ -58,7 +64,7 @@ def test_url_serialization_without_tags():
 
     The JSON output for a URL without tags is formatted as follows:
     {
-        "id": Integer representing the ID of the URL,
+        MODEL_STRS.ID: Integer representing the ID of the URL,
         "url": String representing the URL itself,
         "tags": An empty array signifying no tags on this URL. URL data is requested in the context of a UTub so
             the tags contained on this URL will be specific to the UTub
@@ -72,8 +78,10 @@ def test_url_serialization_without_tags():
     current_user_id = 0
 
     for v_url in valid_urls:
-        new_url = URLS(normalized_url=v_url["url"], current_user_id=current_user_id)
-        new_url.id = v_url["id"]
+        new_url = URLS(
+            normalized_url=v_url[MODEL_STRS.URL], current_user_id=current_user_id
+        )
+        new_url.id = v_url[MODEL_STRS.ID]
 
         # Test a URL without any tags
         valid_url_for_json = json.dumps(v_url)
@@ -90,8 +98,8 @@ def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_data
 
     The JSON output for a URL with tags is formatted as follows:
     {
-        "id": Integer representing the ID of the URL,
-        "url": String representing the URL itself,
+        MODEL_STRS.ID: Integer representing the ID of the URL,
+        MODEL_STRS.URL: String representing the URL itself,
         "tags": An array containing all tag IDs relevant to this URL, which will be requested in the context of a UTub.
             An example would be: [0, 1, 2]
     }
@@ -159,7 +167,7 @@ def test_user_serialization_as_member_of_utub():
 
     The JSON output is formatted as follows:
     {
-        "id": Integer representing the ID of the user,
+        MODEL_STRS.ID: Integer representing the ID of the user,
         "username": String representing the user's username
     }
     """
@@ -168,9 +176,9 @@ def test_user_serialization_as_member_of_utub():
 
     for idx, inner_user in enumerate(member_users):
         new_user = User(
-            username=inner_user["username"],
-            email=inner_user["email"],
-            plaintext_password=inner_user["password"],
+            username=inner_user[MODEL_STRS.USERNAME],
+            email=inner_user[USER_STRS.EMAIL],
+            plaintext_password=inner_user[USER_STRS.PASSWORD],
         )
         new_user.id = idx
         valid_users.append(new_user)
@@ -178,7 +186,10 @@ def test_user_serialization_as_member_of_utub():
     for idx, test_user in enumerate(valid_users):
         json_tag = json.dumps(test_user.serialized)
         valid_json_user = json.dumps(
-            {"id": idx, "username": member_users[idx]["username"]}
+            {
+                MODEL_STRS.ID: idx,
+                MODEL_STRS.USERNAME: member_users[idx][MODEL_STRS.USERNAME],
+            }
         )
 
         assert valid_json_user == json_tag
@@ -194,7 +205,7 @@ def test_user_utub_data_serialized_on_initial_load():
     The JSON array output has the following format:
     [
         {
-            "id": Integer value defining the ID of the UTub,
+            MODEL_STRS.ID: Integer value defining the ID of the UTub,
             "name": String representing the UTub name
         }
     ]
@@ -207,26 +218,28 @@ def test_user_utub_data_serialized_on_initial_load():
     )
     valid_user = v_models.valid_user_1
     new_user = User(
-        username=valid_user["username"],
-        email=valid_user["email"],
-        plaintext_password=valid_user["password"],
+        username=valid_user[MODEL_STRS.USERNAME],
+        email=valid_user[USER_STRS.EMAIL],
+        plaintext_password=valid_user[USER_STRS.PASSWORD],
     )
 
     valid_utubs = []  # Array used to store the serialized utub data to validate against
 
     for empty_utub in empty_utubs:
         new_utub = Utub(
-            name=empty_utub["name"], utub_creator=valid_user["id"], utub_description=""
+            name=empty_utub[MODEL_STRS.NAME],
+            utub_creator=valid_user[MODEL_STRS.ID],
+            utub_description="",
         )
-        new_utub.id = empty_utub["id"]
-        new_utub.utub_creator = valid_user["id"]
+        new_utub.id = empty_utub[MODEL_STRS.ID]
+        new_utub.utub_creator = valid_user[MODEL_STRS.ID]
 
         # Add the valid user to the utub
         new_utub_user = Utub_Users()
         new_utub_user.to_user = new_user
         new_utub.members.append(new_utub_user)
 
-        valid_utubs.append({"id": new_utub.id, "name": new_utub.name})
+        valid_utubs.append({MODEL_STRS.ID: new_utub.id, MODEL_STRS.NAME: new_utub.name})
 
     assert json.dumps(valid_utubs) == json.dumps(new_user.serialized_on_initial_load)
 
@@ -267,8 +280,8 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
     'tags': Array containing all tag information for tags used in this UTub, in the following format:
         [
             {
-                "id": Integer representing the tag ID,
-                "tag_string": "String representing the tag itself
+                MODEL_STRS.ID: Integer representing the tag ID,
+                MODEL_STRS.TAG_STRING: "String representing the tag itself
             }
         ]
     }
@@ -279,7 +292,9 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_only_creator, all_utubs
         ):
-            test_utub["created_at"] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
+                "%m/%d/%Y %H:%M:%S"
+            )
             assert json.dumps(test_utub) == json.dumps(utub.serialized)
 
 
@@ -319,8 +334,8 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
     'tags': Array containing all tag information for tags used in this UTub, in the following format:
         [
             {
-                "id": Integer representing the tag ID,
-                "tag_string": "String representing the tag itself
+                MODEL_STRS.ID: Integer representing the tag ID,
+                MODEL_STRS.TAG_STRING: "String representing the tag itself
             }
         ]
     }
@@ -331,13 +346,15 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members, all_utubs
         ):
-            test_utub["created_at"] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
+                "%m/%d/%Y %H:%M:%S"
+            )
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = utub.serialized
-            utub_in_data_serialized["members"] = sorted(
-                utub_in_data_serialized["members"],
-                key=lambda test_user: test_user["id"],
+            utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
+                utub_in_data_serialized[MODEL_STRS.MEMBERS],
+                key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
@@ -379,8 +396,8 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
     'tags': Array containing all tag information for tags used in this UTub, in the following format:
         [
             {
-                "id": Integer representing the tag ID,
-                "tag_string": "String representing the tag itself
+                MODEL_STRS.ID: Integer representing the tag ID,
+                MODEL_STRS.TAG_STRING: "String representing the tag itself
             }
         ]
     }
@@ -391,13 +408,15 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members_and_url, all_utubs
         ):
-            test_utub["created_at"] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
+                "%m/%d/%Y %H:%M:%S"
+            )
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = utub.serialized
-            utub_in_data_serialized["members"] = sorted(
-                utub_in_data_serialized["members"],
-                key=lambda test_user: test_user["id"],
+            utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
+                utub_in_data_serialized[MODEL_STRS.MEMBERS],
+                key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
@@ -439,8 +458,8 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
     'tags': Array containing all tag information for tags used in this UTub, in the following format:
         [
             {
-                "id": Integer representing the tag ID,
-                "tag_string": "String representing the tag itself
+                MODEL_STRS.ID: Integer representing the tag ID,
+                MODEL_STRS.TAG_STRING: "String representing the tag itself
             }
         ]
     }
@@ -451,13 +470,15 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members_and_url_and_tags, all_utubs
         ):
-            test_utub["created_at"] = utub.created_at.strftime("%m/%d/%Y %H:%M:%S")
+            test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
+                "%m/%d/%Y %H:%M:%S"
+            )
 
             # Array of members needs to be sorted by ID's to match
             utub_in_data_serialized = utub.serialized
-            utub_in_data_serialized["members"] = sorted(
-                utub_in_data_serialized["members"],
-                key=lambda test_user: test_user["id"],
+            utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
+                utub_in_data_serialized[MODEL_STRS.MEMBERS],
+                key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
             # Array of tag IDs must also be sorted

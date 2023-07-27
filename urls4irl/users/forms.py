@@ -2,6 +2,9 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
 from urls4irl.models import User
+from urls4irl.utils import strings as U4I_STRINGS
+
+USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
 
 class UserRegistrationForm(FlaskForm):
@@ -38,16 +41,14 @@ class UserRegistrationForm(FlaskForm):
         username_exists = User.query.filter_by(username=username.data).first()
 
         if username_exists:
-            raise ValidationError(
-                "That username is already taken. Please choose another."
-            )
+            raise ValidationError(USER_FAILURE.USERNAME_TAKEN)
 
     def validate_email(self, email):
         """Validates username is unique in the db"""
         email_exists = User.query.filter_by(email=email.data).first()
 
         if email_exists:
-            raise ValidationError("That email address is already in use.")
+            raise ValidationError(USER_FAILURE.EMAIL_TAKEN)
 
 
 class LoginForm(FlaskForm):
@@ -85,6 +86,4 @@ class UTubNewUserForm(FlaskForm):
         username_exists = User.query.filter_by(username=username.data).first()
 
         if not username_exists:
-            raise ValidationError(
-                "That user does not exist. Note this is case sensitive."
-            )
+            raise ValidationError(USER_FAILURE.USER_NOT_EXIST)

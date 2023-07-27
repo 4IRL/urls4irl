@@ -3,6 +3,13 @@ from flask_login import current_user
 
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags
+from urls4irl.utils import strings as U4I_STRINGS
+
+GENERAL_FORM = U4I_STRINGS.GENERAL_FORM
+USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+MODEL_STRS = U4I_STRINGS.MODELS
+USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
 
 def test_remove_valid_user_from_utub_as_creator(
@@ -17,16 +24,16 @@ def test_remove_valid_user_from_utub_as_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "User removed",
-        "User_ID_removed" : Integer representing ID of user removed,
-        "Username": Username of user deleted,
-        "UTub_ID" : Interger representing ID of UTub the user was removed from,
-        "UTub_name" : String representing name of UTub removed,
-        "UTub_users": Array of string usernames of all members of UTub after the user was removed
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : USER_SUCCESS.USER_REMOVED,
+        USER_SUCCESS.USER_ID_REMOVED : Integer representing ID of user removed,
+        USER_SUCCESS.USERNAME_REMOVED: Username of user deleted,
+        USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
+        USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
+        USER_SUCCESS.UTUB_USERS: Array of string usernames of all members of UTub after the user was removed
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the only UTub, which contains two members
@@ -53,7 +60,7 @@ def test_remove_valid_user_from_utub_as_creator(
     # Remove second user
     remove_user_response = client.post(
         f"/user/remove/{current_utub.id}/{second_user_in_utub.id}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -61,13 +68,19 @@ def test_remove_valid_user_from_utub_as_creator(
 
     # Ensore JSON response is correct
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Success"
-    assert remove_user_response_json["Message"] == "User removed"
-    assert int(remove_user_response_json["User_ID_removed"]) == second_user_in_utub.id
-    assert remove_user_response_json["Username"] == second_user_in_utub.username
-    assert int(remove_user_response_json["UTub_ID"]) == current_utub.id
-    assert remove_user_response_json["UTub_name"] == current_utub.name
-    assert remove_user_response_json["UTub_users"] == [current_user.username]
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
+    assert (
+        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED])
+        == second_user_in_utub.id
+    )
+    assert (
+        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
+        == second_user_in_utub.username
+    )
+    assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
+    assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
+    assert remove_user_response_json[USER_SUCCESS.UTUB_USERS] == [current_user.username]
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -95,17 +108,17 @@ def test_remove_self_from_utub_as_member(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "User removed",
-        "User_ID_removed" : Integer representing ID of user removed,
-        "Username": Username of user deleted,
-        "UTub_ID" : Interger representing ID of UTub the user was removed from,
-        "UTub_name" : String representing name of UTub removed,
-        "UTub_users": Array of string usernames of all members of UTub after the user was removed
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : USER_SUCCESS.USER_REMOVED,
+        USER_SUCCESS.USER_ID_REMOVED : Integer representing ID of user removed,
+        USER_SUCCESS.USERNAME_REMOVED: Username of user deleted,
+        USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
+        USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
+        USER_SUCCESS.UTUB_USERS: Array of string usernames of all members of UTub after the user was removed
     }
     """
 
-    client, csrf_token_string, logged_in_user, app = login_second_user_without_register
+    client, csrf_token_string, _, app = login_second_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
@@ -126,7 +139,7 @@ def test_remove_self_from_utub_as_member(
     # Remove self from UTub
     remove_user_response = client.post(
         f"/user/remove/{current_utub.id}/{current_user.id}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -134,13 +147,20 @@ def test_remove_self_from_utub_as_member(
 
     # Ensore JSON response is correct
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Success"
-    assert remove_user_response_json["Message"] == "User removed"
-    assert int(remove_user_response_json["User_ID_removed"]) == current_user.id
-    assert remove_user_response_json["Username"] == current_user.username
-    assert int(remove_user_response_json["UTub_ID"]) == current_utub.id
-    assert remove_user_response_json["UTub_name"] == current_utub.name
-    assert current_user.username not in remove_user_response_json["UTub_users"]
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
+    assert (
+        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED]) == current_user.id
+    )
+    assert (
+        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
+        == current_user.username
+    )
+    assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
+    assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
+    assert (
+        current_user.username not in remove_user_response_json[USER_SUCCESS.UTUB_USERS]
+    )
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -167,16 +187,16 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Success",
-        "Message" : "User removed",
-        "User_ID_removed" : Integer representing ID of user removed,
-        "Username": Username of user deleted,
-        "UTub_ID" : Interger representing ID of UTub the user was removed from,
-        "UTub_name" : String representing name of UTub removed,
-        "UTub_users": Array of string usernames of all members of UTub after the user was removed
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE : USER_SUCCESS.USER_REMOVED,
+        USER_SUCCESS.USER_ID_REMOVED : Integer representing ID of user removed,
+        USER_SUCCESS.USERNAME_REMOVED: Username of user deleted,
+        USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
+        USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
+        USER_SUCCESS.UTUB_USERS: Array of string usernames of all members of UTub after the user was removed
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get this creator's UTub
@@ -236,7 +256,7 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
     # Remove second user
     remove_user_response = client.post(
         f"/user/remove/{current_utub.id}/{second_user_in_utub.id}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -244,14 +264,20 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
 
     # Ensore JSON response is correct
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Success"
-    assert remove_user_response_json["Message"] == "User removed"
-    assert int(remove_user_response_json["User_ID_removed"]) == second_user_in_utub.id
-    assert remove_user_response_json["Username"] == second_user_in_utub.username
-    assert int(remove_user_response_json["UTub_ID"]) == current_utub.id
-    assert remove_user_response_json["UTub_name"] == current_utub.name
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
+    assert (
+        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED])
+        == second_user_in_utub.id
+    )
+    assert (
+        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
+        == second_user_in_utub.username
+    )
+    assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
+    assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
 
-    current_users_in_utub = remove_user_response_json["UTub_users"]
+    current_users_in_utub = remove_user_response_json[USER_SUCCESS.UTUB_USERS]
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -299,12 +325,12 @@ def test_remove_self_from_utub_as_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "UTub creator cannot remove themselves",
-        "Error_code": 1
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
+        STD_JSON.ERROR_CODE: 1
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
@@ -327,18 +353,19 @@ def test_remove_self_from_utub_as_creator(
     # Remove self from UTub
     remove_user_response = client.post(
         f"/user/remove/{current_utub.id}/{current_user.id}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     assert remove_user_response.status_code == 400
 
     # Ensore JSON response is correct
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Failure"
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        remove_user_response_json["Message"] == "UTub creator cannot remove themselves"
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF
     )
-    assert int(remove_user_response_json["Error_code"]) == 1
+    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 1
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -366,7 +393,7 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
         400 HTTP status code indicating no CSRF token included
     """
 
-    client, csrf_token_string, logged_in_user, app = login_second_user_without_register
+    client, _, _, app = login_second_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
@@ -417,7 +444,7 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
         with a 400 HTTP status code indicating the CSRF token is missing
     """
 
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, _, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
@@ -475,7 +502,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
     THEN ensure that a 404 status code response is given when the UTub cannot be found in the database
     """
 
-    client, csrf_token_string, logged_in_user, app = login_second_user_without_register
+    client, csrf_token_string, _, app = login_second_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
@@ -495,7 +522,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
     # Remove self from UTub
     remove_user_response = client.post(
         f"/user/remove/{invalid_utub_id}/{current_user.id}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 404 HTTP status code response
@@ -505,7 +532,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
     for num in range(10):
         remove_user_response = client.post(
             f"/user/remove/{invalid_utub_id}/{num}",
-            data={"csrf_token": csrf_token_string},
+            data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
         )
 
         # Ensure 404 HTTP status code response
@@ -526,13 +553,13 @@ def test_remove_invalid_user_from_utub_as_creator(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "User does not exist or not found in this UTub",
-        "Error_code": 3
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : USER_FAILURE.USER_NOT_IN_UTUB,
+        STD_JSON.ERROR_CODE: 3
     }
     """
 
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
@@ -560,7 +587,7 @@ def test_remove_invalid_user_from_utub_as_creator(
     # Remove self from UTub
     remove_user_response = client.post(
         f"/user/remove/{current_utub.id}/{user_id_not_in_utub}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 404 HTTP status code response
@@ -568,12 +595,9 @@ def test_remove_invalid_user_from_utub_as_creator(
 
     # Ensure proper JSON response
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Failure"
-    assert (
-        remove_user_response_json["Message"]
-        == "User does not exist or not found in this UTub"
-    )
-    assert int(remove_user_response_json["Error_code"]) == 3
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.USER_NOT_IN_UTUB
+    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
         # Ensure counts of Utub-User associations is correct
@@ -590,13 +614,13 @@ def test_remove_invalid_user_from_utub_as_member(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Not allowed to remove a user from this UTub",
-        "Error_code": 2
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+        STD_JSON.ERROR_CODE: 2
     }
     """
 
-    client, csrf_token_string, logged_in_user, app = login_second_user_without_register
+    client, csrf_token_string, _, app = login_second_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
@@ -627,7 +651,7 @@ def test_remove_invalid_user_from_utub_as_member(
     # Remove self from UTub
     remove_user_response = client.post(
         f"/user/remove/{current_utub.id}/{user_id_not_in_utub}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 403 HTTP status code response
@@ -635,12 +659,12 @@ def test_remove_invalid_user_from_utub_as_member(
 
     # Ensure proper JSON response
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Failure"
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        remove_user_response_json["Message"]
-        == "Not allowed to remove a user from this UTub"
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
-    assert int(remove_user_response_json["Error_code"]) == 2
+    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure counts of Utub-User associations is correct
@@ -659,13 +683,13 @@ def test_remove_another_member_from_same_utub_as_member(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Not allowed to remove a user from this UTub",
-        "Error_code": 2
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+        STD_JSON.ERROR_CODE: 2
     }
     """
 
-    client, csrf_token_string, logged_in_user, app = login_second_user_without_register
+    client, csrf_token_string, _, app = login_second_user_without_register
 
     with app.app_context():
         # Get the only UTub, which contains three members
@@ -692,7 +716,7 @@ def test_remove_another_member_from_same_utub_as_member(
     # Attempt to remove other user from UTub as a member
     remove_user_response = client.post(
         f"/user/remove/{current_utub.id}/{other_utub_member.id}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -700,12 +724,12 @@ def test_remove_another_member_from_same_utub_as_member(
 
     # Ensore JSON response is correct
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Failure"
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        remove_user_response_json["Message"]
-        == "Not allowed to remove a user from this UTub"
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
-    assert int(remove_user_response_json["Error_code"]) == 2
+    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -742,13 +766,13 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Not allowed to remove a user from this UTub",
-        "Error_code": 2
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+        STD_JSON.ERROR_CODE: 2
     }
     """
 
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         second_user_utub = Utub.query.get(2)
@@ -781,7 +805,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     # Try to remove the third user from second user's UTub as the first user
     remove_user_response = client.post(
         f"/user/remove/{second_user_utub.id}/{third_user.id}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 403 HTTP status code response
@@ -789,12 +813,12 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
 
     # Ensure proper JSON response
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Failure"
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        remove_user_response_json["Message"]
-        == "Not allowed to remove a user from this UTub"
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
-    assert int(remove_user_response_json["Error_code"]) == 2
+    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     # Ensure database still shows user 3 is member of utub 2
     with app.app_context():
@@ -830,12 +854,12 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
 
     Proper JSON response is as follows:
     {
-        "Status" : "Failure",
-        "Message" : "Not allowed to remove a user from this UTub",
-        "Error_code": 2
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+        STD_JSON.ERROR_CODE: 2
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_second_user_without_register
+    client, csrf_token_string, _, app = login_second_user_without_register
 
     with app.app_context():
         # Get the third user
@@ -880,7 +904,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
     # Try to remove the first user from second user's UTub as the first user
     remove_user_response = client.post(
         f"/user/remove/{new_utub_from_third_user.id}/{first_user.id}",
-        data={"csrf_token": csrf_token_string},
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
     # Ensure 403 HTTP status code response
@@ -888,12 +912,12 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
 
     # Ensure proper JSON response
     remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json["Status"] == "Failure"
+    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        remove_user_response_json["Message"]
-        == "Not allowed to remove a user from this UTub"
+        remove_user_response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
-    assert int(remove_user_response_json["Error_code"]) == 2
+    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     # Ensure database still shows user 1 is member of utub 2
     with app.app_context():

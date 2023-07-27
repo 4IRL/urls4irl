@@ -6,6 +6,9 @@ from werkzeug.security import check_password_hash
 from models_for_test import invalid_user_1, valid_user_1
 from urls4irl.models import User
 from utils_for_test import get_csrf_token
+from urls4irl.utils import strings as U4I_STRINGS
+
+LOGIN_FORM = U4I_STRINGS.LOGIN_FORM
 
 
 def test_login_registered_and_logged_in_user(app, register_first_user, load_login_page):
@@ -17,7 +20,7 @@ def test_login_registered_and_logged_in_user(app, register_first_user, load_logi
     registered_user_data, _ = register_first_user
     client, csrf_token_str = load_login_page
 
-    registered_user_data["csrf_token"] = csrf_token_str
+    registered_user_data[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
 
     response = client.post("/login", data=registered_user_data, follow_redirects=True)
 
@@ -26,14 +29,16 @@ def test_login_registered_and_logged_in_user(app, register_first_user, load_logi
     assert response.status_code == 200
 
     # Test if user logged in
-    assert current_user.username == registered_user_data["username"]
-    assert check_password_hash(current_user.password, registered_user_data["password"])
-    assert current_user.email == registered_user_data["email"]
+    assert current_user.username == registered_user_data[LOGIN_FORM.USERNAME]
+    assert check_password_hash(
+        current_user.password, registered_user_data[LOGIN_FORM.PASSWORD]
+    )
+    assert current_user.email == registered_user_data[LOGIN_FORM.EMAIL]
 
     # Ensure user id's match with  database
     with app.app_context():
         registered_db_user = User.query.filter_by(
-            username=registered_user_data["username"]
+            username=registered_user_data[LOGIN_FORM.USERNAME]
         ).first()
 
     assert registered_db_user.id == int(current_user.get_id())
@@ -47,14 +52,14 @@ def test_login_unregistered_user(load_login_page):
     """
     client, csrf_token_str = load_login_page
 
-    invalid_user_1["csrf_token"] = csrf_token_str
+    invalid_user_1[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
 
     response = client.post(
         "/login",
         data={
-            "csrf_token": invalid_user_1["csrf_token"],
-            "username": invalid_user_1["username"],
-            "password": invalid_user_1["password"],
+            LOGIN_FORM.CSRF_TOKEN: invalid_user_1[LOGIN_FORM.CSRF_TOKEN],
+            LOGIN_FORM.USERNAME: invalid_user_1[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: invalid_user_1[LOGIN_FORM.PASSWORD],
         },
     )
 
@@ -104,7 +109,7 @@ def test_already_logged_in_user_to_login_page(login_first_user_with_register):
     THEN ensure redirection occurs and user is brought to their home page
         - Note: Redirects are "/login" -> "/home"
     """
-    client, csrf_token, logged_in_user, app = login_first_user_with_register
+    client, _, logged_in_user, _ = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/login", follow_redirects=True)
@@ -133,7 +138,7 @@ def test_already_logged_in_user_to_register_page(login_first_user_with_register)
     THEN ensure redirection occurs and user is brought to their home page
         - Note: Redirects are "/register" -> "/home"
     """
-    client, csrf_token, logged_in_user, app = login_first_user_with_register
+    client, _, logged_in_user, _ = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/register", follow_redirects=True)
@@ -161,7 +166,7 @@ def test_already_logged_in_user_to_home_page(login_first_user_with_register):
     WHEN "/home" is GET after user is already logged on
     THEN ensure 200 and user is brought to their home page
     """
-    client, csrf_token, logged_in_user, app = login_first_user_with_register
+    client, _, logged_in_user, _ = login_first_user_with_register
 
     # Ensure redirect on home page access
     response = client.get("/home", follow_redirects=True)
@@ -185,7 +190,7 @@ def test_user_can_logout_after_login(login_first_user_with_register):
     WHEN "/logout" is GET after user is already logged on
     THEN ensure 200, user is brought to login page, user no longer logged in
     """
-    client, csrf_token, logged_in_user, app = login_first_user_with_register
+    client, _, logged_in_user, _ = login_first_user_with_register
 
     # Ensure logout is successful
     response = client.get("/logout", follow_redirects=True)
@@ -226,25 +231,25 @@ def test_user_can_login_logout_login(login_first_user_with_register):
         in response.data
     )
     assert (
-        b'<input class="form-control form-control-lg" id="username" name="username" required type="text" value="">'
+        b'<input class="form-control login-register-form-group" id="username" name="username" required type="text" value="">'
         in response.data
     )
     assert (
-        b'<input class="form-control form-control-lg" id="password" name="password" required type="password" value="">'
+        b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
         in response.data
     )
     assert request.path == url_for("users.login")
 
     # Grab csrf token from login page
-    valid_user_1["csrf_token"] = get_csrf_token(response.data)
+    valid_user_1[LOGIN_FORM.CSRF_TOKEN] = get_csrf_token(response.data)
 
     # Post data to login page
     response = client.post(
         "/login",
         data={
-            "csrf_token": valid_user_1["csrf_token"],
-            "username": valid_user_1["username"],
-            "password": valid_user_1["password"],
+            LOGIN_FORM.CSRF_TOKEN: valid_user_1[LOGIN_FORM.CSRF_TOKEN],
+            LOGIN_FORM.USERNAME: valid_user_1[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: valid_user_1[LOGIN_FORM.PASSWORD],
         },
         follow_redirects=True,
     )
@@ -279,11 +284,11 @@ def test_login_modal_is_shown(client):
             in response.data
         )
         assert (
-            b'<input class="form-control form-control-lg" id="username" name="username" required type="text" value="">'
+            b'<input class="form-control login-register-form-group" id="username" name="username" required type="text" value="">'
             in response.data
         )
         assert (
-            b'<input class="form-control form-control-lg" id="password" name="password" required type="password" value="">'
+            b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
             in response.data
         )
         assert request.path == url_for("users.login")
@@ -301,15 +306,15 @@ def test_login_modal_logs_user_in(client, register_first_user):
         response = client.get("/login")
         csrf_token = get_csrf_token(response.data)
 
-        registered_user_data["csrf_token"] = csrf_token
+        registered_user_data[LOGIN_FORM.CSRF_TOKEN] = csrf_token
 
         response = client.post("/login", data=registered_user_data)
 
         assert response.status_code == 200
         assert response.data == bytes(f"{url_for('main.home')}", "utf-8")
 
-        assert current_user.username == registered_user_data["username"]
+        assert current_user.username == registered_user_data[LOGIN_FORM.USERNAME]
         assert check_password_hash(
-            current_user.password, registered_user_data["password"]
+            current_user.password, registered_user_data[LOGIN_FORM.PASSWORD]
         )
-        assert current_user.email == registered_user_data["email"]
+        assert current_user.email == registered_user_data[LOGIN_FORM.EMAIL]
