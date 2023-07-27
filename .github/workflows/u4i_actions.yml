@@ -76,7 +76,7 @@ jobs:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           branch: ${{ github.ref }}
 
-  build-test-container:
+  run-tests:
     needs: javascript-prettier-formatter
     env:
       FLASK_ENV: 'development'
@@ -117,10 +117,6 @@ jobs:
         python -m pip install --upgrade pip
         pip install -r requirements.txt
         
-    - name: Linting
-      run: |
-        black .
-
     - name: Run tests
       env: 
         DATABASE_URL_TEST: postgresql://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/postgres
