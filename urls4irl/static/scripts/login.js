@@ -36,7 +36,7 @@ function loginRegisterModalOpener(url) {
           handleImproperFormErrors(xhr.responseJSON);
         } else {
           // TODO: Handle other errors here.
-          console.log("You need to handle other errors!")
+          console.log("You need to handle other errors!");
         }
       });
     });
@@ -55,22 +55,17 @@ function handleImproperFormErrors(errorResponse) {
       case "confirm_email":
       case "confirm_password":
         let errorMessage = errorResponse.Errors[key][0];
-        displayFormErrors(key, errorMessage)
+        displayFormErrors(key, errorMessage);
         break;
       default:
         // Error for a field that doens't exist
-        console.log("No op.")
+        console.log("No op.");
     }
   }
-
 }
 
 function displayFormErrors(key, errorMessage) {
-  $(
-    '<div class="invalid-feedback"><span>' +
-    errorMessage +
-    "</span></div>",
-  )
+  $('<div class="invalid-feedback"><span>' + errorMessage + "</span></div>")
     .insertAfter("#" + key)
     .show();
   $("#" + key).addClass("is-invalid");
