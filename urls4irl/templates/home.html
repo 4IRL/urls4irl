@@ -1,80 +1,87 @@
 {% extends "layout.html" %}
-{% block content %}
+{% block utubhome %}
 
 <!-- Backend load of UTub JSON data -->
 <script type="text/javascript">
-    var UTubs = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
+    var UTubsList = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
 </script>
 
 <!-- Left Side Panel -->
 <div id="leftPanel" class="panel col-md-2">
 
-    <!-- UPR LH Panel, UTubs ("red") -->
-    <div id="UTubDeck" class="deck row h-50 mb-md-1 p-3">
+    <!-- UPR LH Panel, UTubs -->
+    <div id="UTubDeck" class="deck row h-50 md-mb-1 p-3" style="display:flex /*margin-bottom: 5px;*/">
         <div class="col-9 col-lg-9 mb-md-0">
-            <h2>UTubs</h2>
+            <h2></h2>
         </div>
         <div class="col-3 col-lg-3 mb-md-0 text-right">
             <div class="d-flex justify-content-center flex-row">
-                <a class="btn btn-primary mx-3" modal-target="/create_utub"
-                    onclick="openModal(this.getAttribute('modal-target'))"><b>+</b></a>
-
+                <i id="createUTubButton" class="bi bi-plus-square-fill fa-2x text-success mx-1"
+                    onclick="showInput('createUTub')"></i>
+                <i id="deleteUTubButton" class="bi bi-x-square-fill fa-2x text-danger mx-1"
+                    onclick="confirmModal('deleteUTub')" style="display:none"></i>
             </div>
         </div>
+
         <div class="deckContent">
-            <form></form>
+            <form id="listUTubs">
+                <!-- UTubs -->
+            </form>
         </div>
     </div>
 
 
-    <!-- LWR LH Panel, Tags ("orange") -->
-    <!-- Will be alpha ordered -->
+    <!-- LWR LH Panel, Tags -->
     <div id="TagDeck" class="deck row h-50 p-3">
         <div class="col-9 col-lg-9 mb-md-0">
-            <h2>Tags</h2>
+            <h2>No UTub Selected</h2>
         </div>
         <div class="col-3 col-lg-3 mb-md-0 text-right">
             <div class="d-flex justify-content-center flex-row">
-                <a class="btn btn-primary mx-3" modal-target="/create_tag"
-                    onclick="openModal(this.getAttribute('modal-target'))"><b>+</b>
-                </a>
-                <a class="btn btn-primary mx-3" modal-target="/edit_tags"><b><i class="fa-solid fa-pencil"></i></b>
-                </a>
-                <i class="fa-solid fa-square-check"></i>
+                <i class="bi bi-plus-square-fill fa-2x text-success mx-1" id="createTagButton"
+                    onclick="showInput('createTag')" style="display:none"></i>
+                <i class="bi bi-pencil-square fa-2x text-warning mx-1" id="editTagButton" onclick="editTags('edit')"
+                    style="display:none"></i>
+                <i class="fa fa-check-square fa-2x text-success mx-1" id="submitTagButton" onclick="editTags('submit')"
+                    style="display:none"></i>
             </div>
         </div>
         <div class="deckContent form-group">
             <form id="listTags">
-                <h5>No UTub Selected</h5>
+                <!-- Tags -->
             </form>
         </div>
     </div>
 </div>
 
-<!-- Center Panel, URLs ("gray")-->
-
+<!-- Center Panel, URLs -->
 <div id="centerPanel" class="panel col-md-7">
-    <div id="UTubContent" class="deck h-100 mb-md-1 p-3">
+    <div id="URLDeck" class="deck h-100 p-3" style="margin-bottom: -5px;">
         <div class="row justify-content-center mx-2">
             <div class="col-9 col-lg-9 mb-md-0 text-left">
-                <h2 id="UTubHeader">Select a UTub</h2>
+                <h2 id="UTubHeader" style="display: inline-block">Select a UTub</h2>
+                <div class="createDiv" style="display: none">
+                    <input type="text" id="editUTub" class="userInput">
+                    <i id="submitEditUTubButton" class="fa fa-check-square fa-2x text-success mx-1" type="button" style="display: none" onclick="postData(event, 'editUTub-')"></i>
+                </div>
+                <i id="editUTubButton" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454"
+                    onclick="editUTub()"></i>
             </div>
             <div class="col-3 col-lg-3 mb-md-0 text-right">
-                <a class="btn btn-success mx-3" id="addURL" modal-target="#"
-                    onclick="openModal(this.getAttribute('modal-target'))"><b>+</b></a>
+                <i id="addURL" class="bi bi-plus-square-fill fa-2x text-success mx-1" style="display: none;"
+                    onclick="showInput('newURLDescription');"></i>
+            </div>
+        </div>
+        <div class="row justify-content-center mx-2">
+            <div class="col-12 col-lg-12 mb-md-0 text-left">
+                <p id="UTubDescription" style="display: inline-block"></p>
+                <div class="createDiv" style="display: none">
+                    <textarea cols="40" rows="5" id="editUTubDescription" class="userInput"
+                        placeholder="Describe the contents of your UTub (optional)"></textarea>
+                </div>
             </div>
         </div>
         <div class="deckContent justify-content-center">
-            <img id="TubImage"
-                src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80"
-                alt="Select a Tub!">
-            <!-- Figure out Font Awesome icons... -->
-            <!-- <i class="fas fa-bath"></i>
-                <i class="fa fa-flask"></i> -->
-            {% if not utubs_for_this_user %}
-            <img src="https://images.unsplash.com/photo-1613271007499-130e4d331a46?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=764&q=80"
-                alt="Create a Tub!">
-            {% else %}
             <div id="listURLs">
                 <!-- Current selected UTub's URLs will be displayed here -->
                 <div id="UPRRow" class="row list-content justify-content-center board-list">
@@ -87,7 +94,6 @@
                     <!-- URLs below selected URL will be displayed here -->
                 </div>
             </div>
-            {% endif %}
         </div>
     </div>
 </div>
@@ -95,7 +101,7 @@
 <!-- Right Side Panel -->
 
 <div id="rightPanel" class="panel col-md-3">
-    <div id="MembersDeck" class="deck row h-50 mb-md-1 p-3" style="display:block">
+    <div id="MembersDeck" class="deck row h-50 md-mb-1 p-3" style="display: block; /*margin-bottom: 5px;*/">
 
         <h2>Members</h2>
 
@@ -109,33 +115,12 @@
 
         <h5>Actions</h5>
         <div id="UTubActions" class="row">
-            <div class="col-4 col-lg-4 text-left">
-                <a class="btn btn-success mx-3" id="addUser" modal-target="#"
-                    onclick="openModal(this.getAttribute('modal-target'))"><b>Add New User</b></a>
-            </div>
-            <div class="col-4 col-lg-4 text-center">
-                <a class="btn btn-warning mx-3" id="removeUser" modal-target="#"
-                    onclick="openModal(this.getAttribute('modal-target'))"><b>Remove Selected User</b></a>
-            </div>
-            <div class="col-4 col-lg-4 text-right">
-                <a class="btn btn-danger mx-3" id="deleteUTub" modal-target="#"
-                    onclick="openModal(this.getAttribute('modal-target'))"><b>Delete Current UTub</b></a>
-            </div>
+            <button class="btn btn-success mx-3" id="addUser" modal-target="#"
+                onclick="openModal(this.getAttribute('modal-target'))">Add New User</button>
+
+            <button class="btn btn-danger mx-3" id="removeUser" modal-target="#"
+                onclick="openModal(this.getAttribute('modal-target'))">Remove Selected User</button>
         </div>
-
-        <h5>Description</h5>
-        <p id="UTubInfo" class="lead" contentEditable="true">
-            Storing email addresses in a PostGreSQL database
-
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
-            beatae, maiores deserunt
-            in voluptatibus
-            aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
-            repellat eveniet quidem
-            voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
-            autem nam ex deserunt debitis
-            eaque ratione! Nobis, quidem assumenda.
-        </p>
     </div>
 
     <div id="ChatDeck" class="deck row h-50 p-3">
@@ -155,7 +140,11 @@
 
 
 <!-- Home Page JS -->
+<!-- <script src="{{ url_for('static', filename='scripts/230103_home.js') }}"></script> -->
 <script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/utubs.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/tags.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/urls.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/dragdropswap.js') }}"></script>
 
 {% endblock %}
