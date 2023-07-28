@@ -12,14 +12,14 @@ It allows each user to create one or many UTubs (URL Tubs) where they can:
 - Add/remove other users
 - Add tags to each URL
 - Add descriptions to each UTub
-- Chat with other users in their UTub
+- Leave messages for other users in their UTub
 
 It is built on Flask, and uses a SQLite database with an eye towards migrating to a PostgreSQL
 database in the future.
 
 This is our first web app and we are exciting to share it with the world! Come watch us grow!
 
-###### tags: `URLs`, `Flask`, `Python`, `HTML`, `CSS`, `Javascript`, `SQLite`, `PostgreSQL`
+###### tags: `URLs`, `Flask`, `Python`, `HTML`, `CSS`, `Javascript`, `PostgreSQL`
 
 ## :memo: Progress
 
@@ -42,8 +42,8 @@ This is our first web app and we are exciting to share it with the world! Come w
 - [ ] User home page with their UTubs displayed, including:
   - [ ] All URLs shown for all selected UTubs, separated per UTub
   - [ ] All tags shown for all selected UTubs
-  - [ ] Chat box for UTub specific chat, with drop down menu to choose which UTub specific chat is shown
-- [ ] Splash page for guests/users who aren't logged in
+  - [ ] Message board for the selected UTub
+- [x] Splash page for guests/users who aren't logged in
 - [ ] User settings page
 - [ ] Error pages
 - [ ] [A license!](https://gist.github.com/nicolasdao/a7adda51f2f185e8d2700e1573d8a633)
@@ -55,11 +55,10 @@ This is our first web app and we are exciting to share it with the world! Come w
 How about we add some goals we need to hit before we can go fully public?
 
 - [ ] Email confirmation
-- [ ] URL commonizer to avoid messy URL savings
+- [x] URL commonizer to avoid messy URL savings
   > (i.e. www.google.com vs google.com, these should be the same regardless of what the user typed in)
 - [ ] Profile Pictures?
-- [ ] Hosting the website somewhere
-- [ ] Websockets for UTub chatting
+- [x] Hosting the website somewhere
 - [ ] [Finish this Readme!](https://hackmd.io/2uvlNeFrT-qBu3qiXTcC6w?both)
 
 ### Step 3: Reach Goals
@@ -67,7 +66,7 @@ How about we add some goals we need to hit before we can go fully public?
 > Let's get some reach goals, shall we?
 
 - [ ] RestAPI developed for the backend
-- [ ] iOS app developed from the RestAPI
+- [ ] Android app developed from the RestAPI
 
 ---
 
