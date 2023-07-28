@@ -32,7 +32,7 @@ jobs:
       if: steps.git-check.outputs.modified == 'true'
       run: |
         git config --local user.email "${{ secrets.MY_EMAIL }}"
-        git config --local user.name "{{ secrets.NAME }}"
+        git config --local user.name "${{ secrets.NAME }}"
         git commit -a -m "Formatted Python code - Black"
     - name: Push changes
       if: steps.git-check.outputs.modified == 'true'
@@ -67,7 +67,7 @@ jobs:
         if: steps.git-check.outputs.modified == 'true'
         run: |
           git config --local user.email "${{ secrets.MY_EMAIL }}"
-          git config --local user.name "{{ secrets.NAME }}"
+          git config --local user.name "${{ secrets.NAME }}"
           git commit -a -m "Formatted javascript code - Prettier"
       - name: Push changes
         if: steps.git-check.outputs.modified == 'true'
