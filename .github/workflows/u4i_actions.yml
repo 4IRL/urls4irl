@@ -1,8 +1,6 @@
-name: Format Code and Test
+name: Tests
 
 on:
-  push:
-    branches: [backend, frontend, dev, main]
   pull_request:
     branches: [backend, frontend, dev, main]
   
