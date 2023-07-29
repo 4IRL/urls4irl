@@ -3,6 +3,10 @@ astroid==2.15.6
 attrs==22.1.0
 autoflake==2.2.0
 black==23.3.0
+astroid==2.15.6
+attrs==22.1.0
+autoflake==2.2.0
+black==23.3.0
 cachelib==0.6.0
 certifi>=2023.07.22
 charset-normalizer==2.0.12
@@ -42,10 +46,16 @@ psycopg2==2.9.5
 pyflakes==3.0.1
 pylint==2.17.4
 pytest==7.2.0
+pyflakes==3.0.1
+pylint==2.17.4
+pytest==7.2.0
 python-dotenv==0.19.2
 requests>=2.31.0
 six==1.16.0
 SQLAlchemy==1.4.31
+tomli==2.0.1
+tomlkit==0.11.8
+typing_extensions==4.7.1
 tomli==2.0.1
 tomlkit==0.11.8
 typing_extensions==4.7.1
