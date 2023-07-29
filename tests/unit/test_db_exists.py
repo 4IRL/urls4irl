@@ -1,7 +1,7 @@
-import pytest
-from flask_sqlalchemy import inspect
+from sqlalchemy import inspect
 
 from urls4irl import db
+from urls4irl.models import URLS, Utub, User, Utub_Urls, Utub_Users, Url_Tags
 
 
 def test_db_created_correctly(app):
@@ -10,15 +10,14 @@ def test_db_created_correctly(app):
     WHEN these tests are running
     THEN ensure all tables exist in the database
     """
-
     with app.app_context():
-        table_names = set(inspect(db.engine).get_table_names())
+        engine = db.engine
+        inspector = inspect(engine)
 
-        assert "Urls" in table_names
-        assert "sessions" in table_names
-        assert "UrlTags" in table_names
-        assert "UtubUsers" in table_names
-        assert "Utub" in table_names
-        assert "Tags" in table_names
-        assert "User" in table_names
-        assert "UtubUrls" in table_names
+        assert inspector.has_table(URLS.__tablename__)
+        assert inspector.has_table(Utub.__tablename__)
+        assert inspector.has_table(User.__tablename__)
+        assert inspector.has_table(Utub_Urls.__tablename__)
+        assert inspector.has_table(Utub_Users.__tablename__)
+        assert inspector.has_table(Url_Tags.__tablename__)
+        assert inspector.has_table("sessions")

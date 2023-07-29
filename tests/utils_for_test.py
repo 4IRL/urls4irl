@@ -1,4 +1,6 @@
 import re
+import sqlalchemy
+from urls4irl.config import TestingConfig
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
@@ -27,3 +29,9 @@ def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
         )
 
     return result.group(1)
+
+def drop_database(test_config: TestingConfig):
+    engine = sqlalchemy.create_engine(test_config.SQLALCHEMY_DATABASE_URI)
+    meta = sqlalchemy.MetaData(engine)
+    meta.reflect()
+    meta.drop_all()

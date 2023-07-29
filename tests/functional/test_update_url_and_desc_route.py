@@ -1,4 +1,3 @@
-import pytest
 from flask_login import current_user
 
 from urls4irl.models import Utub, Utub_Urls, Url_Tags, URLS
@@ -79,6 +78,8 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         num_of_url_tag_assocs = len(Url_Tags.query.all())
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        
+        current_user_id = current_user.id
 
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -97,7 +98,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
     assert (
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
@@ -218,6 +219,8 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: validated_new_fresh_url,
@@ -235,7 +238,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
     assert (
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
@@ -351,6 +354,8 @@ def test_update_url_description_with_fresh_valid_url_as_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: validated_new_fresh_url,
@@ -368,7 +373,7 @@ def test_update_url_description_with_fresh_valid_url_as_utub_creator(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == NEW_DESCRIPTION
     assert (
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
@@ -490,6 +495,8 @@ def test_update_url_description_with_fresh_valid_url_as_url_adder(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: validated_new_fresh_url,
@@ -507,7 +514,7 @@ def test_update_url_description_with_fresh_valid_url_as_url_adder(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == NEW_DESCRIPTION
     assert (
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
@@ -634,6 +641,8 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
@@ -651,7 +660,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) != id_of_url_in_utub
     assert (
@@ -777,6 +786,8 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         num_of_url_tag_assocs = len(Url_Tags.query.all())
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        
+        current_user_id = current_user.id
 
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -795,7 +806,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_OR_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
     assert (
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
@@ -916,6 +927,8 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_in_utub_string,
@@ -933,7 +946,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_AND_DESC_NOT_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == id_of_url_in_utub
     assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_in_utub_string
@@ -1035,6 +1048,8 @@ def test_update_valid_url_with_same_url_as_url_adder(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_string_of_url_in_utub,
@@ -1052,7 +1067,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_AND_DESC_NOT_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == current_desc
     assert (
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
@@ -1157,6 +1172,8 @@ def test_update_valid_url_with_same_url_and_new_desc_as_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_in_utub_string,
@@ -1174,7 +1191,7 @@ def test_update_valid_url_with_same_url_and_new_desc_as_utub_creator(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == NEW_DESCRIPTION
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == id_of_url_in_utub
     assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_in_utub_string
@@ -1289,6 +1306,8 @@ def test_update_valid_url_with_same_url_new_description_as_url_adder(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_string_of_url_in_utub,
@@ -1306,7 +1325,7 @@ def test_update_valid_url_with_same_url_new_description_as_url_adder(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == NEW_DESCRIPTION
     assert (
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
@@ -1625,6 +1644,8 @@ def test_update_valid_url_with_same_url_and_empty_desc_as_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
+        current_user_id = current_user.id
+
     edit_url_string_desc_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_in_utub_string,
@@ -1642,7 +1663,7 @@ def test_update_valid_url_with_same_url_and_empty_desc_as_utub_creator(
     json_response = edit_url_string_desc_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_DESC_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user.id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_DESCRIPTION] == NEW_DESCRIPTION
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == id_of_url_in_utub
     assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_in_utub_string

@@ -1,6 +1,5 @@
-import pytest
-
 from urls4irl import url_validation as url_valid
+from pytest import raises
 
 valid_urls = {
     "https://www.google.com/": [
@@ -88,7 +87,7 @@ def test_invalid_urls():
     THEN ensure the InvalidURLError exception is raised
     """
     for invalid_url in invalid_urls:
-        with pytest.raises(url_valid.InvalidURLError):
+        with raises(url_valid.InvalidURLError):
             url_valid.check_request_head(invalid_url)
 
 
@@ -99,5 +98,5 @@ def test_unknown_urls():
     THEN ensure the request times out
     """
     for unknown_url in unknown_urls:
-        with pytest.raises(url_valid.InvalidURLError):
+        with raises(url_valid.InvalidURLError):
             url_valid.check_request_head(unknown_url)

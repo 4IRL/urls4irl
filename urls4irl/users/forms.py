@@ -6,6 +6,7 @@ from urls4irl.utils import strings as U4I_STRINGS
 
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
+USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
 class UserRegistrationForm(FlaskForm):
     """
