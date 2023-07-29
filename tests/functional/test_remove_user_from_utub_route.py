@@ -159,7 +159,7 @@ def test_remove_self_from_utub_as_member(
         remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
         == current_user_username
     )
-    assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id    
+    assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
     assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
     assert (
         current_user_username not in remove_user_response_json[USER_SUCCESS.UTUB_USERS]

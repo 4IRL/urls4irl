@@ -78,7 +78,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         num_of_url_tag_assocs = len(Url_Tags.query.all())
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
-        
+
         current_user_id = current_user.id
 
     edit_url_string_desc_form = {
@@ -786,7 +786,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         num_of_url_tag_assocs = len(Url_Tags.query.all())
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
-        
+
         current_user_id = current_user.id
 
     edit_url_string_desc_form = {

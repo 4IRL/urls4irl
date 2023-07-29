@@ -8,6 +8,7 @@ USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 
+
 class UserRegistrationForm(FlaskForm):
     """
     Form to register users. Inherits from FlaskForm. All fields require data.
