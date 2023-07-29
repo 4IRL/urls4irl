@@ -1,9 +1,8 @@
-import pytest
 from flask_login import current_user
 
 from urls4irl import db
 from urls4irl.models import Utub, URLS, Utub_Urls, Utub_Users, Tags, Url_Tags
-from models_for_test import all_tag_strings
+from tests.models_for_test import all_tag_strings
 from urls4irl.utils import strings as U4I_STRINGS
 
 TAG_FORM = U4I_STRINGS.TAG_FORM

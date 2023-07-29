@@ -1,4 +1,3 @@
-import pytest
 from flask_login import current_user
 
 from urls4irl.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags

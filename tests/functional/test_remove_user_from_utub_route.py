@@ -1,4 +1,3 @@
-import pytest
 from flask_login import current_user
 
 from urls4irl import db
@@ -136,9 +135,12 @@ def test_remove_self_from_utub_as_member(
         # Count all user-utub associations in db
         initial_num_user_utubs = len(Utub_Users.query.all())
 
+        current_user_id = int(current_user.id)
+        current_user_username = current_user.username
+
     # Remove self from UTub
     remove_user_response = client.post(
-        f"/user/remove/{current_utub.id}/{current_user.id}",
+        f"/user/remove/{current_utub.id}/{current_user_id}",
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -149,17 +151,18 @@ def test_remove_self_from_utub_as_member(
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
+    # breakpoint()
     assert (
-        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED]) == current_user.id
+        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED]) == current_user_id
     )
     assert (
         remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
-        == current_user.username
+        == current_user_username
     )
     assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
     assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
     assert (
-        current_user.username not in remove_user_response_json[USER_SUCCESS.UTUB_USERS]
+        current_user_username not in remove_user_response_json[USER_SUCCESS.UTUB_USERS]
     )
 
     # Ensure database is correctly updated

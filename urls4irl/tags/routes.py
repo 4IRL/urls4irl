@@ -300,6 +300,7 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
             Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_id
         ).first_or_404()
 
+        db.session.commit()
         return (
             jsonify(
                 {

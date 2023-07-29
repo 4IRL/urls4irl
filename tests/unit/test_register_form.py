@@ -1,4 +1,3 @@
-import pytest
 from flask import url_for, request
 from urls4irl.utils import strings as U4I_STRINGS
 
@@ -16,7 +15,7 @@ def test_register_user_form_only_username_csrf(load_register_page):
 
     client, csrf_token_string = load_register_page
     response = client.post(
-        "/register",
+        url_for("users.register_user"),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "FakeUserName123",

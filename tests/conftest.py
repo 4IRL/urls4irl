@@ -1,12 +1,11 @@
 import pytest
-import flask
 from flask_login import FlaskLoginClient, current_user
 
-from utils_for_test import get_csrf_token
 from urls4irl import create_app, db
 from urls4irl.config import TestingConfig
 from urls4irl.models import User, Utub, Utub_Users, URLS, Utub_Urls, Tags, Url_Tags
-from models_for_test import (
+from tests.utils_for_test import get_csrf_token, drop_database
+from tests.models_for_test import (
     valid_user_1,
     valid_user_2,
     valid_user_3,
@@ -21,14 +20,15 @@ MODEL_STRS = U4I_STRINGS.MODELS
 USER_STRS = U4I_STRINGS.REGISTER_FORM
 
 
-@pytest.fixture()
+@pytest.fixture
 def app():
-    app = create_app(TestingConfig)
-    yield app
-    db.drop_all(app=app)
+    config = TestingConfig()
+    app_for_test = create_app(config)
+    yield app_for_test
+    drop_database(config)
 
 
-@pytest.fixture()
+@pytest.fixture
 def client(app):
     return app.test_client()
 
@@ -161,6 +161,7 @@ def register_multiple_users(app):
             db.session.add(new_user)
             db.session.commit()
 
+        # yield app
     yield all_users
 
 

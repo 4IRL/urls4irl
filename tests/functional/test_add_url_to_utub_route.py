@@ -1,8 +1,7 @@
-import pytest
 from flask_login import current_user
 
 from urls4irl.models import Utub, URLS, Utub_Urls
-from models_for_test import valid_url_strings
+from tests.models_for_test import valid_url_strings
 from urls4irl.utils import strings as U4I_STRINGS
 
 URL_FORM = U4I_STRINGS.URL_FORM
