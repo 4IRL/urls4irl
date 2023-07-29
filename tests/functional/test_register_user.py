@@ -1,11 +1,10 @@
-import pytest
 from flask import url_for, request
 from flask_login import current_user
 from werkzeug.security import check_password_hash
 
-from models_for_test import valid_user_1
+from tests.models_for_test import valid_user_1
+from tests.utils_for_test import get_csrf_token
 from urls4irl.models import User
-from utils_for_test import get_csrf_token
 from urls4irl.utils import strings as U4I_STRINGS
 
 REGISTER_FORM = U4I_STRINGS.REGISTER_FORM

@@ -8,7 +8,7 @@ load_dotenv(path.join(basedir, ".env"))
 class Config:
     """Set Flask config variables."""
 
-    FLASK_ENV = environ.get("FLASK_ENV")
+    FLASK_DEBUG = environ.get("FLASK_DEBUG")
     SECRET_KEY = environ.get("SECRET_KEY")
     SESSION_PERMANENT = "False"
     SESSION_TYPE = "sqlalchemy"

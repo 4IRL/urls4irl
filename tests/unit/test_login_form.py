@@ -1,4 +1,3 @@
-import pytest
 from flask import url_for, request
 from urls4irl.utils import strings as U4I_STRINGS
 

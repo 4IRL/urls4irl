@@ -1,7 +1,10 @@
-import pytest
 from flask_login import current_user
 
-from models_for_test import valid_empty_utub_1, valid_empty_utub_2, valid_empty_utub_3
+from tests.models_for_test import (
+    valid_empty_utub_1,
+    valid_empty_utub_2,
+    valid_empty_utub_3,
+)
 from urls4irl.models import Utub, Utub_Users
 from urls4irl.utils import strings as U4I_STRINGS
 

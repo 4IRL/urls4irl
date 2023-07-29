@@ -1,12 +1,12 @@
-import pytest
 from flask import url_for, request
 from flask_login import current_user
 from werkzeug.security import check_password_hash
+from pytest import raises
 
-from models_for_test import invalid_user_1, valid_user_1
-from urls4irl.models import User
-from utils_for_test import get_csrf_token
+from tests.models_for_test import invalid_user_1, valid_user_1
+from tests.utils_for_test import get_csrf_token
 from urls4irl.utils import strings as U4I_STRINGS
+from urls4irl.models import User
 
 LOGIN_FORM = U4I_STRINGS.LOGIN_FORM
 
@@ -93,7 +93,7 @@ def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
 
     # Ensure lands on user's home page
     assert response.status_code == 200
-    assert request.path == url_for("main.home")
+    assert response.request.path == url_for("main.home")
 
     # Test if user logged in
     assert current_user.username == logged_in_user.username
@@ -122,7 +122,7 @@ def test_already_logged_in_user_to_login_page(login_first_user_with_register):
 
     # Ensure lands on user's home page
     assert response.status_code == 200
-    assert request.path == url_for("main.home")
+    assert response.request.path == url_for("main.home")
 
     # Test if user logged in
     assert current_user.username == logged_in_user.username
@@ -151,7 +151,7 @@ def test_already_logged_in_user_to_register_page(login_first_user_with_register)
 
     # Ensure lands on user's home page
     assert response.status_code == 200
-    assert request.path == url_for("main.home")
+    assert response.request.path == url_for("main.home")
 
     # Test if user logged in
     assert current_user.username == logged_in_user.username
@@ -201,10 +201,10 @@ def test_user_can_logout_after_login(login_first_user_with_register):
 
     # Ensure lands on login page
     assert response.status_code == 200
-    assert request.path == url_for("users.login")
+    assert response.request.path == url_for("users.login")
 
     # Test if user logged in
-    with pytest.raises(AttributeError):
+    with raises(AttributeError):
         assert current_user.username != logged_in_user.username
         assert current_user.password != logged_in_user.password
         assert current_user.email != logged_in_user.email
@@ -238,7 +238,7 @@ def test_user_can_login_logout_login(login_first_user_with_register):
         b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
         in response.data
     )
-    assert request.path == url_for("users.login")
+    assert response.request.path == url_for("users.login")
 
     # Grab csrf token from login page
     valid_user_1[LOGIN_FORM.CSRF_TOKEN] = get_csrf_token(response.data)
