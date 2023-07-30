@@ -25,8 +25,6 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 
 from url_normalize import url_normalize
 import requests
-
-
 class InvalidURLError(Exception):
     """Error if the URL returns a bad status code."""
 
