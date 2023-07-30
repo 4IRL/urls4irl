@@ -37,7 +37,7 @@ jobs:
       if: steps.git-check.outputs.modified == 'true'
       uses: ad-m/github-push-action@master
       with:
-        github_token: ${{ secrets.GITHUB_TOKEN }}
+        github_token: ${{ secrets.PAT_TOKEN }}
         branch: ${{ github.head_ref }}
 
   javascript-prettier-formatter:
@@ -58,7 +58,7 @@ jobs:
       - name: Prettier
         run: npx prettier --write **/*.js
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
       - name: Check for modified files
         id: git-check
         run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
@@ -72,7 +72,7 @@ jobs:
         if: steps.git-check.outputs.modified == 'true'
         uses: ad-m/github-push-action@master
         with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
+          github_token: ${{ secrets.PAT_TOKEN }}
           branch: ${{ github.head_ref }}
 
   run-tests:
