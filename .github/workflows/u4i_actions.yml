@@ -2,7 +2,7 @@ name: Tests
 
 on:
   pull_request:
-    types: [opened, synchronize]
+    types: [opened, synchronize, edited, reopened]
     branches: [backend, frontend, dev, main]
   
 jobs:

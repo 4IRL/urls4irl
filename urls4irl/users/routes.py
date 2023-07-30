@@ -11,8 +11,6 @@ users = Blueprint("users", __name__)
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
-
-
 @users.route("/login", methods=["GET", "POST"])
 def login():
     """Login page. Allows user to register or login."""
