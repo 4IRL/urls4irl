@@ -6,7 +6,7 @@ from urls4irl.urls.forms import (
     UTubNewURLForm,
     UTubEditURLForm,
 )
-from urls4irl.url_validation import InvalidURLError, check_request_head
+from urls4irl.utils.url_validation import InvalidURLError, check_request_head
 from urls4irl.utils import strings as U4I_STRINGS
 
 urls = Blueprint("urls", __name__)

@@ -1,4 +1,4 @@
-from urls4irl import url_validation as url_valid
+from urls4irl.utils import url_validation as url_valid
 from pytest import raises
 
 valid_urls = {

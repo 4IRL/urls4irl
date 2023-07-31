@@ -1,7 +1,7 @@
 from flask_login import current_user
 
 from urls4irl.models import Utub, Utub_Urls, Url_Tags, URLS
-from urls4irl.url_validation import check_request_head
+from urls4irl.utils.url_validation import check_request_head
 from urls4irl.utils import strings as U4I_STRINGS
 
 URL_FORM = U4I_STRINGS.URL_FORM
