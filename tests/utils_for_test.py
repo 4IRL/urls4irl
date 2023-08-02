@@ -1,6 +1,23 @@
 import re
 import sqlalchemy
 from urls4irl.config import TestingConfig
+from urls4irl.models import Utub, User
+
+def get_utub_is_creator_of(current_user: User) -> tuple[Utub, int, int]:
+    # Find UTub this current user is creator of
+    utub_user_is_creator_of = Utub.query.filter(
+        Utub.utub_creator == current_user.id
+    ).first()
+    utub_id_user_is_creator_of = utub_user_is_creator_of.id
+    utub_name_user_is_creator_of = utub_user_is_creator_of.name
+
+    # Ensure user is in this UTub
+    assert current_user in [
+        user.to_user for user in utub_user_is_creator_of.members
+    ]
+
+    return utub_user_is_creator_of, utub_id_user_is_creator_of, utub_name_user_is_creator_of
+
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:

@@ -3,6 +3,7 @@ from flask_login import current_user
 from urls4irl import db
 from urls4irl.models import Utub, URLS, Utub_Urls, Utub_Users, Tags, Url_Tags
 from tests.models_for_test import all_tag_strings
+from tests.utils_for_test import get_utub_is_creator_of
 from urls4irl.utils import strings as U4I_STRINGS
 
 TAG_FORM = U4I_STRINGS.TAG_FORM
@@ -56,17 +57,20 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         # Ensure no tags
         assert len(Tags.query.all()) == 0
 
-        # Find UTub this current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
-        ).first()
-        utub_id_user_is_creator_of = utub_user_is_creator_of.id
-        utub_name_user_is_creator_of = utub_user_is_creator_of.name
+        utub_user_is_creator_of, utub_id_user_is_creator_of, utub_name_user_is_creator_of = get_utub_is_creator_of(current_user)
 
-        # Ensure user is in this UTub
-        assert current_user in [
-            user.to_user for user in utub_user_is_creator_of.members
-        ]
+
+        # Find UTub this current user is creator of
+        # utub_user_is_creator_of = Utub.query.filter(
+        #     Utub.utub_creator == current_user.id
+        # ).first()
+        # utub_id_user_is_creator_of = utub_user_is_creator_of.id
+        # utub_name_user_is_creator_of = utub_user_is_creator_of.name
+
+        # # Ensure user is in this UTub
+        # assert current_user in [
+        #     user.to_user for user in utub_user_is_creator_of.members
+        # ]
 
         # Get URL that is in this UTub, added by this user
         url_utub_association = Utub_Urls.query.filter(
