@@ -1,5 +1,5 @@
 from urls4irl.models import User, Utub, URLS, Tags
-from urls4irl.url_validation import check_request_head
+from urls4irl.utils.url_validation import check_request_head
 
 new_user = {
     "username": "FakeUserName1234",
