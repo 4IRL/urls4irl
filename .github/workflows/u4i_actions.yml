@@ -12,7 +12,6 @@ jobs:
       FLASK_DEBUG: 'development'
       PRODUCTION: 'false'
       SECRET_KEY: 'ABCDEFGH12345678'
-      GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
 
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
@@ -40,10 +39,19 @@ jobs:
           --health-retries 5
 
     steps:
+    - name: Get Token
+      id: get_workflow_token
+      uses: peter-murray/workflow-application-token-action@v2
+      with:
+        application_id: ${{ secrets.APPLICATION_ID }}
+        application_private_key: ${{ secrets.APPLICATION_PRIVATE_KEY }}
+
     - name: Checkout code
       uses: actions/checkout@v3
+      env:
+        GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
       with:
-        token: ${{ secrets.PAT_TOKEN }}
+        token: ${{ steps.get_workflow_token.outputs.token }}
         ref: ${{ github.head_ref }}
         fetch-depth: 0
 
@@ -77,13 +85,17 @@ jobs:
 
     - name: Commit Lint Changes
       if: steps.git-check-python.outputs.modified == 'true' || steps.git-check-javascript.outputs.modified == 'true'
+      env:
+        GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
       run: |
-        git config --global user.email "${{ secrets.MY_EMAIL }}"
-        git config --global user.name "${{ secrets.NAME }}"
+        git config --global user.email "${{ secrets.BOT_EMAIL }}"
+        git config --global user.name "${{ secrets.BOT_NAME }}"
         git commit -a -m "[Auto] Format javascript and python"
 
     - name: Push changes
       if: steps.git-check-python.outputs.modified == 'true' || steps.git-check-javascript.outputs.modified == 'true'
+      env:
+        GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
       run: |
         git push
 
