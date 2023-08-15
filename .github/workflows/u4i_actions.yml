@@ -2,20 +2,17 @@ name: Tests
 
 on: push
 permissions:
-    contents: write
-  
+  contents: write
+
 jobs:
   Lint-and-Test:
     env:
-      FLASK_DEBUG: 'development'
-      PRODUCTION: 'false'
-      SECRET_KEY: 'ABCDEFGH12345678'
+      FLASK_DEBUG: "development"
+      PRODUCTION: "false"
+      SECRET_KEY: "ABCDEFGH12345678"
 
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-
-    # Docker Hub image that `container-job` executes in
-    container: python:3.10.12-bookworm
 
     # Service containers to run with `container-job`
     services:
@@ -28,7 +25,9 @@ jobs:
           - 5432:5432
         # Provide the password for postgres
         env:
+          POSTGRES_DB: postgres
           POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -37,84 +36,83 @@ jobs:
           --health-retries 5
 
     steps:
-    - name: Get Token
-      id: get_workflow_token
-      uses: peter-murray/workflow-application-token-action@v2
-      with:
-        application_id: ${{ secrets.APPLICATION_ID }}
-        application_private_key: ${{ secrets.APPLICATION_PRIVATE_KEY }}
+      - name: Get Token
+        id: get_workflow_token
+        uses: peter-murray/workflow-application-token-action@v2
+        with:
+          application_id: ${{ secrets.APPLICATION_ID }}
+          application_private_key: ${{ secrets.APPLICATION_PRIVATE_KEY }}
 
-    - name: Checkout code
-      uses: actions/checkout@v3
-      env:
-        GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
-      with:
-        token: ${{ steps.get_workflow_token.outputs.token }}
-        ref: ${{ github.head_ref }}
-        fetch-depth: 0
+      - name: Checkout code
+        uses: actions/checkout@v3
+        env:
+          GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
+        with:
+          token: ${{ steps.get_workflow_token.outputs.token }}
+          ref: ${{ github.head_ref }}
+          fetch-depth: 0
 
-    - name: Check Python with Black
-      uses: psf/black@stable
-      with:
-        options: " --verbose"       
+      - name: Setup Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10.12'
 
-    - name: Verify Python with Black
-      uses: psf/black@stable
-      with:
-        options: "--check --verbose"
+      - name: Check Python with Black
+        uses: psf/black@stable
+        with:
+          options: " --verbose"
 
-    - name: Check for modified files
-      id: git-check-python
-      run: |
-        git config --global --add safe.directory /__w/urls4irl/urls4irl;   
-        echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
+      - name: Verify Python with Black
+        uses: psf/black@stable
+        with:
+          options: "--check --verbose"
 
-    - name: Setup node
-      uses: actions/setup-node@v3
-      with:
-        node-version: "16"
+      - name: Check for modified files
+        id: git-check-python
+        run: |
+          git config --global --add safe.directory /__w/urls4irl/urls4irl;   
+          echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
 
-    - name: Prettier
-      run: npx prettier --write **/*.js
+      - name: Setup node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
 
-    - name: Check for modified files
-      id: git-check-javascript
-      run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
+      - name: Prettier
+        run: npx prettier --write "**/*.js"
 
-    - name: Commit Lint Changes
-      if: steps.git-check-python.outputs.modified == 'true' || steps.git-check-javascript.outputs.modified == 'true'
-      env:
-        GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
-      run: |
-        git config --global user.email "${{ secrets.BOT_EMAIL }}"
-        git config --global user.name "${{ secrets.BOT_NAME }}"
-        git commit -a -m "[Auto] Format javascript and python"
+      - name: Check for modified files
+        id: git-check-javascript
+        run: echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
 
-    - name: Push changes
-      if: steps.git-check-python.outputs.modified == 'true' || steps.git-check-javascript.outputs.modified == 'true'
-      env:
-        GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
-      run: |
-        git push
+      - name: Commit Lint Changes
+        if: steps.git-check-python.outputs.modified == 'true' || steps.git-check-javascript.outputs.modified == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
+        run: |
+          git config --global user.email "${{ secrets.BOT_EMAIL }}"
+          git config --global user.name "${{ secrets.BOT_NAME }}"
+          git commit -a -m "[Auto] Format javascript and python"
 
-    - name: Set up Python Environment
-      if: steps.git-check-python.outputs.modified == 'false' && steps.git-check-javascript.outputs.modified == 'false'
-      uses: actions/setup-python@v2
-      with:
-        python-version: '3.10'
+      - name: Push changes
+        if: steps.git-check-python.outputs.modified == 'true' || steps.git-check-javascript.outputs.modified == 'true'
+        env:
+          GITHUB_TOKEN: ${{ steps.get_workflow_token.outputs.token }}
+        run: |
+          git push
 
-    - name: Install Dependencies
-      if: steps.git-check-python.outputs.modified == 'false' && steps.git-check-javascript.outputs.modified == 'false'
-      run: |
-        python3 -m venv venv;
-        . ./venv/bin/activate;
-        python3 -m pip install --upgrade pip;
-        pip install -r requirements.txt;
-        
-    - name: Run tests
-      if: steps.git-check-python.outputs.modified == 'false' && steps.git-check-javascript.outputs.modified == 'false'
-      env: 
-        DATABASE_URL_TEST: postgresql://postgres:postgres@postgres:${{ job.services.postgres.ports['5432'] }}/postgres
-      run: |
-        . ./venv/bin/activate;
-        python3 -m pytest -sv
+      - name: Install Dependencies
+        if: steps.git-check-python.outputs.modified == 'false' && steps.git-check-javascript.outputs.modified == 'false'
+        run: |
+          python3 -m venv venv;
+          . ./venv/bin/activate;
+          python3 -m pip install --upgrade pip;
+          pip install -r requirements.txt;
+
+      - name: Run tests
+        if: steps.git-check-python.outputs.modified == 'false' && steps.git-check-javascript.outputs.modified == 'false'
+        env:
+          DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
+        run: |
+          . ./venv/bin/activate;
+          python3 -m pytest -sv 
