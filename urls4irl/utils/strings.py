@@ -68,11 +68,15 @@ class SUCCESS_GENERAL:
 # Strings for general failure, included in JSON message
 NOT_AUTHORIZED = "Not authorized."
 FIELD_REQUIRED = ["This field is required."]
+REDIRECT = "redirect"
+EMAIL_VALIDATED = "Email_validated"
 
 
 class FAILURE_GENERAL:
     NOT_AUTHORIZED = NOT_AUTHORIZED
     FIELD_REQUIRED = FIELD_REQUIRED
+    REDIRECT = REDIRECT
+    EMAIL_VALIDATED = EMAIL_VALIDATED
 
 
 # Strings for users success
@@ -302,3 +306,32 @@ UTUB_DESCRIPTION_FOR_FORM = "utub_description"
 class UTUB_DESCRIPTION_FORM(GENERAL_FORM):
     UTUB_DESCRIPTION = UTUB_DESCRIPTION
     UTUB_DESCRIPTION_FOR_FORM = UTUB_DESCRIPTION_FOR_FORM
+
+
+VALIDATE_EMAIL = "validate_email"
+EXPIRATION = "exp"
+ALGORITHM = "HS256"
+EMAIL_VALIDATED_SESS_KEY = "email_validated"
+
+
+# Email related strings
+class EMAILS:
+    VALIDATE_EMAIL = VALIDATE_EMAIL
+    EXPIRATION = EXPIRATION
+    ALGORITHM = ALGORITHM
+    EMAIL_VALIDATED_SESS_KEY = EMAIL_VALIDATED_SESS_KEY
+
+
+# Strings for email validation errors
+USER_INVALID_EMAIL = "User has not validated their email."
+
+
+class EMAILS_FAILURE(FAILURE_GENERAL):
+    USER_INVALID_EMAIL = USER_INVALID_EMAIL
+
+
+# Config Env vars labels
+class CONFIG_ENVS:
+    DATABASE_URL_DEV = "DATABASE_URL_DEV"
+    DATABASE_URL_TEST = "DATABASE_URL_TEST"
+    SECRET_KEY = "SECRET_KEY"
