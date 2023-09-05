@@ -6,8 +6,13 @@ Contains database models for URLS4IRL.
 from datetime import datetime
 from urls4irl import db, login_manager
 from flask_login import UserMixin
+from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 from urls4irl.utils.strings import MODELS as MODEL_STRS
+from urls4irl.utils.strings import EMAILS
+from urls4irl.utils.strings import CONFIG_ENVS
+import jwt
+from jwt import exceptions as JWTExceptions
 
 
 @login_manager.user_loader
@@ -119,19 +124,19 @@ class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(20), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
-    email_confirm = db.Column(db.Boolean, default=False)
     password = db.Column(db.String(166), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     utubs_created = db.relationship("Utub", backref="created_by", lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     utubs_is_member_of = db.relationship("Utub_Users", back_populates="to_user")
+    email_confirm = db.relationship("EmailValidation", uselist=False, back_populates="user")
+    
 
     def __init__(
         self,
         username: str,
         email: str,
         plaintext_password: str,
-        email_confirm: bool = False,
     ):
         """
         Create new user object per the following parameters
@@ -139,16 +144,18 @@ class User(db.Model, UserMixin):
         Args:
             username (str): Username from user input
             email (str): Email from user input
-            email_confirm (bool): Whether user's email has been confirmed yet
             plaintext_password (str): Plaintext password to be hashed
         """
         self.username = username
         self.email = email
         self.password = generate_password_hash(plaintext_password)
-        self.email_confirm = email_confirm
+        self._email_confirmed = False
 
     def is_password_correct(self, plaintext_password: str) -> bool:
         return check_password_hash(self.password, plaintext_password)
+
+    def is_email_authenticated(self) -> bool:
+        return self.email_confirm.is_validated
 
     @property
     def serialized(self):
@@ -169,6 +176,41 @@ class User(db.Model, UserMixin):
 
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
+
+    def get_email_validation_token(self, expires_in=3600):
+        return jwt.encode(
+            payload={EMAILS.VALIDATE_EMAIL: self.id, EMAILS.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in},
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithm=EMAILS.ALGORITHM
+        )
+
+    @staticmethod
+    def verify_email_validation_token(token: str):
+        try:
+            user_id = jwt.decode(jwt=token, key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithms=EMAILS.ALGORITHM)
+
+        except (RuntimeError, TypeError, JWTExceptions.JWSDecodeError):
+            return
+
+        return User.query.get(user_id)
+        
+
+class EmailValidation(db.Model):
+    """Class represents an Email Validation row - users are required to have their emails confirmed before accessing the site"""
+
+    __tablename__ = "EmailValidation"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("User.id"))
+    confirm_url = db.Column(db.String(2000), nullable=False, default="")
+    is_validated = db.Column(db.Boolean, default=False)
+    attempts = db.Column(db.Integer, nullable=False, default=1)
+    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    validated_at = db.Column(db.DateTime, nullable=True, default=None)
+
+    user = db.relationship("User", back_populates="email_confirm")
+
+    def __init__(self, user_id: int, confirm_url: str):
+        self.user_id = user_id
+        self.confirm_url = confirm_url
 
 
 class Utub(db.Model):
