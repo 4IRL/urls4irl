@@ -21,7 +21,7 @@ login_manager.login_message_category = "info"
 cors_sess = CORS()
 
 
-def create_app(config_class: Config = Config, testing: bool = False):
+def create_app(config_class: Config = Config, is_production: bool = False, testing: bool = False):
     app = Flask(__name__)
     app.config.from_object(config_class)
 

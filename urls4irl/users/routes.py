@@ -1,9 +1,10 @@
 from flask import Blueprint, jsonify, redirect, url_for, render_template, request
-from flask_login import current_user, login_required, login_user, logout_user
+from flask_login import current_user, login_user, logout_user
 from urls4irl import db
-from urls4irl.models import Utub, Utub_Users, User
+from urls4irl.models import Utub, Utub_Users, User, EmailValidation
 from urls4irl.users.forms import LoginForm, UserRegistrationForm, UTubNewUserForm
 from urls4irl.utils import strings as U4I_STRINGS
+from urls4irl.utils.email_validation import email_validation_required
 
 users = Blueprint("users", __name__)
 
@@ -26,10 +27,26 @@ def login():
 
     if login_form.validate_on_submit():
         username = login_form.username.data
-        user = User.query.filter_by(username=username).first()
+        user: User = User.query.filter_by(username=username).first()
 
         if user and user.is_password_correct(login_form.password.data):
+            TESTING = True
+            if not TESTING and not user.email_confirm.is_validated:
+                return (
+                    jsonify(
+                        {
+                            STD_JSON.STATUS: STD_JSON.FAILURE,
+                            STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
+                            USER_FAILURE.EMAIL_VALIDATED: str(False),
+                            USER_FAILURE.REDIRECT: url_for("users.validate_email"),
+                            STD_JSON.ERROR_CODE: 1,
+                        }
+                    ),
+                    403,
+                )
+
             login_user(user)  # Can add Remember Me functionality here
+
             next_page = request.args.get(
                 "next"
             )  # Takes user to the page they wanted to originally before being logged in
@@ -45,7 +62,8 @@ def login():
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
-                    STD_JSON.ERROR_CODE: 1,
+                    USER_FAILURE.EMAIL_VALIDATED: str(False),
+                    STD_JSON.ERROR_CODE: 2,
                     STD_JSON.ERRORS: login_form.errors,
                 }
             ),
@@ -59,13 +77,15 @@ def login():
 def logout():
     """Logs user out by clearing session details. Returns to login page."""
     logout_user()
-    return redirect(url_for("users.login"))
+    return redirect(url_for("main.splash"))
 
 
 @users.route("/register", methods=["GET", "POST"])
 def register_user():
     """Allows a user to register an account."""
     if current_user.is_authenticated:
+        if not current_user.email_confirm.is_validated:
+            return redirect(url_for("users.validate_email"))
         return redirect(url_for("main.home"))
 
     register_form: UserRegistrationForm = UserRegistrationForm()
@@ -81,11 +101,19 @@ def register_user():
             username=username,
             email=email,
             plaintext_password=plain_password,
-            email_confirm=False,
         )
+        email_validation_token = new_user.get_email_validation_token()
+        new_email_validation = EmailValidation(
+            user_id=new_user.id,
+            confirm_url=email_validation_token
+        )
+        new_user.email_confirm = new_email_validation
+        print(f"Email validation token is: {email_validation_token}")
+        print(dir(new_user))
         db.session.add(new_user)
         db.session.commit()
         user = User.query.filter_by(username=username).first()
+        #TODO: Redirect user to an email validation modal instead of logging in
         login_user(user)
         return url_for("main.home")
 
@@ -96,6 +124,7 @@ def register_user():
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
+                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                     STD_JSON.ERRORS: register_form.errors,
                 }
@@ -107,7 +136,7 @@ def register_user():
 
 
 @users.route("/user/remove/<int:utub_id>/<int:user_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def delete_user(utub_id: int, user_id: int):
     """
     Delete a user from a Utub. The creator of the Utub can delete anyone but themselves.
@@ -126,6 +155,7 @@ def delete_user(utub_id: int, user_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
+                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
@@ -148,6 +178,7 @@ def delete_user(utub_id: int, user_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 2,
                 }
             ),
@@ -160,6 +191,7 @@ def delete_user(utub_id: int, user_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.USER_NOT_IN_UTUB,
+                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 3,
                 }
             ),
@@ -195,7 +227,7 @@ def delete_user(utub_id: int, user_id: int):
 
 
 @users.route("/user/add/<int:utub_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def add_user(utub_id: int):
     """
     Creater of utub wants to add a user to the utub.
@@ -211,6 +243,7 @@ def add_user(utub_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
+                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.MESSAGE: USER_FAILURE.NOT_AUTHORIZED,
                     STD_JSON.ERROR_CODE: 1,
                 }
@@ -234,6 +267,7 @@ def add_user(utub_id: int):
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
+                        USER_FAILURE.EMAIL_VALIDATED: str(True),
                         STD_JSON.MESSAGE: USER_FAILURE.USER_ALREADY_IN_UTUB,
                         STD_JSON.ERROR_CODE: 2,
                     }
@@ -270,6 +304,7 @@ def add_user(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
+                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 3,
                     STD_JSON.ERRORS: utub_new_user_form.errors,
                 }
@@ -282,8 +317,14 @@ def add_user(utub_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
+                USER_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 4,
             }
         ),
         404,
     )
+
+
+@users.route("/validate_email", methods=["GET", "POST"])
+def validate_email():
+    return render_template("/emails/email_needs_validation.html")

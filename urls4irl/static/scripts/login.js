@@ -34,6 +34,9 @@ function loginRegisterModalOpener(url) {
       request.fail(function (xhr, textStatus, error) {
         if (xhr.status == 401) {
           handleImproperFormErrors(xhr.responseJSON);
+        } else if (xhr.status == 403) {
+          // Email invalid
+          window.location.replace(xhr.responseJSON.redirect);
         } else {
           // TODO: Handle other errors here.
           console.log("You need to handle other errors!");

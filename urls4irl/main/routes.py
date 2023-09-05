@@ -1,20 +1,21 @@
 from flask import redirect, url_for, request, render_template, abort, jsonify, Blueprint
 from flask_login import current_user, login_required
 from urls4irl.models import Utub
+from urls4irl.utils.email_validation import email_validation_required
 
 main = Blueprint("main", __name__)
 
 
 @main.route("/")
 def splash():
-    """Splash page for either an unlogged in user."""
+    """Splash page for an unlogged in user."""
     if current_user.is_authenticated:
         return redirect(url_for("main.home"))
     return render_template("splash.html")
 
 
 @main.route("/home", methods=["GET"])
-@login_required
+@email_validation_required
 def home():
     """
     Splash page for logged in user. Loads and displays all UTubs, and contained URLs.
