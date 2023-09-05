@@ -10,8 +10,8 @@ if environ.get("PRODUCTION") is None:
 is_production_env_var = environ.get("PRODUCTION")
 
 if is_production_env_var.lower() not in ("false", "true"):
-   print("Invalid PRODUCTION environment variable.")
-   quit()
+    print("Invalid PRODUCTION environment variable.")
+    quit()
 else:
     is_production = True if is_production_env_var.lower() == "true" else False
 
