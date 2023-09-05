@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Email Validation</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1f2424;
+            font-family: Arial, sans-serif;
+        }
+
+        .container {
+            text-align: center;
+            background-color: #ffffff;
+            border-radius: 10px;
+            box-shadow: 0px 4px 20px rgba(0, 0, 0, 0.2);
+            padding: 30px;
+            max-width: 450px;
+            width: 90%;
+        }
+
+        h1 {
+            color: #28a745;
+            font-size: 36px;
+            margin-bottom: 20px;
+        }
+
+        p {
+            color: #333;
+            font-size: 18px;
+            line-height: 1.6;
+            margin-bottom: 30px;
+        }
+
+        .btn-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .btn-send-email {
+            background-color: #28a745;
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 18px;
+            transition: background-color 0.3s ease-in-out;
+            margin-bottom: 20px;
+        }
+
+        .btn-send-email:hover {
+            background-color: #1f8f42;
+        }
+
+        .btn-return {
+            background-color: #dc3545;
+            /* Different color for return button */
+            color: white;
+            padding: 14px 28px;
+            border: none;
+            cursor: pointer;
+            border-radius: 5px;
+            font-size: 18px;
+            transition: background-color 0.3s ease-in-out;
+        }
+
+        .btn-return:hover {
+            background-color: #c82333;
+        }
+
+        /* Custom icon style */
+        .custom-icon {
+            width: 48px;
+            height: 48px;
+            background-color: #28a745;
+            color: white;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 50%;
+            margin: 0 auto 10px auto;
+            /* Center horizontally */
+        }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="custom-icon">✉️</div>
+        <h1>Email Not Validated</h1>
+        <p>Your email address has not been validated. To complete the process, please click the button below to receive
+            a validation email.</p>
+        <div class="btn-container">
+            <button class="btn-send-email">Send Validation Email</button>
+            <form action="{{ url_for('users.logout') }}" method="get">
+                <button class="btn-return">Return</button>
+            </form>
+        </div>
+    </div>
+</body>
+
+</html>
