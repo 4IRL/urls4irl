@@ -6,6 +6,7 @@ ERROR_CODE = "Error_code"
 FAILURE = "Failure"
 SUCCESS = "Success"
 NO_CHANGE = "No change"
+BASE_URL = "https://urls4irl.app/"
 
 
 class STD_JSON_RESPONSE:
@@ -56,6 +57,7 @@ UTUB_NAME = "UTub_name"
 UTUB_USERS = "UTub_users"
 UTUB_DESCRIPTION = "UTub_description"
 URL = "URL"
+REDIRECT = "redirect"
 
 
 class SUCCESS_GENERAL:
@@ -63,12 +65,12 @@ class SUCCESS_GENERAL:
     UTUB_NAME = UTUB_NAME
     UTUB_USERS = UTUB_USERS
     URL = URL
+    REDIRECT = REDIRECT
 
 
 # Strings for general failure, included in JSON message
 NOT_AUTHORIZED = "Not authorized."
 FIELD_REQUIRED = ["This field is required."]
-REDIRECT = "redirect"
 EMAIL_VALIDATED = "Email_validated"
 
 
@@ -84,6 +86,7 @@ USER_REMOVED = "User removed."
 USER_ADDED = "User added."
 USER_ID_REMOVED = "User_ID_removed"
 USER_ID_ADDED = "User_ID_added"
+USER_REGISTERED = "User registered."
 USERNAME_REMOVED = "Username"
 
 
@@ -93,6 +96,7 @@ class USER_SUCCESS(SUCCESS_GENERAL):
     USER_ID_REMOVED = USER_ID_REMOVED
     USER_ID_ADDED = USER_ID_ADDED
     USERNAME_REMOVED = USERNAME_REMOVED
+    USER_REGISTERED = USER_REGISTERED
 
 
 # Strings for users errors
@@ -324,10 +328,16 @@ class EMAILS:
 
 # Strings for email validation errors
 USER_INVALID_EMAIL = "User has not validated their email."
+TOO_MANY_ATTEMPTS_MAX = "Too many attempts, please wait 10 minutes."
+TOO_MANY_ATTEMPTS = " attempts left. Please wait 1 minute before sending another email."
+ATTEMPTS = "attempts"
 
 
 class EMAILS_FAILURE(FAILURE_GENERAL):
     USER_INVALID_EMAIL = USER_INVALID_EMAIL
+    TOO_MANY_ATTEMPTS = TOO_MANY_ATTEMPTS
+    TOO_MANY_ATTEMPTS_MAX = TOO_MANY_ATTEMPTS_MAX
+    ATTEMPTS = ATTEMPTS
 
 
 # Config Env vars labels

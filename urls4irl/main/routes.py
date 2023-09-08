@@ -1,5 +1,6 @@
 from flask import redirect, url_for, request, render_template, abort, jsonify, Blueprint
-from flask_login import current_user, login_required
+from flask_login import current_user
+from urls4irl.users.forms import ValidateEmail
 from urls4irl.models import Utub
 from urls4irl.utils.email_validation import email_validation_required
 
@@ -10,6 +11,8 @@ main = Blueprint("main", __name__)
 def splash():
     """Splash page for an unlogged in user."""
     if current_user.is_authenticated:
+        if not current_user.email_confirm.is_validated:
+            return render_template("splash.html", show_email_validation_modal=True)
         return redirect(url_for("main.home"))
     return render_template("splash.html")
 

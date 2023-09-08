@@ -69,6 +69,10 @@ class LoginForm(FlaskForm):
     submit = SubmitField("Login")
 
 
+class ValidateEmail(FlaskForm):
+    submit = SubmitField("Send Validation Email")
+
+
 class UTubNewUserForm(FlaskForm):
     """
     Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.

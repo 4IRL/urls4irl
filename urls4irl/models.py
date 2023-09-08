@@ -179,20 +179,24 @@ class User(db.Model, UserMixin):
 
     def get_email_validation_token(self, expires_in=3600):
         return jwt.encode(
-            payload={EMAILS.VALIDATE_EMAIL: self.id, EMAILS.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in},
+            payload={EMAILS.VALIDATE_EMAIL: self.username, EMAILS.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in},
             key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithm=EMAILS.ALGORITHM
         )
 
     @staticmethod
     def verify_email_validation_token(token: str):
         try:
-            user_id = jwt.decode(jwt=token, key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithms=EMAILS.ALGORITHM)
+            username_to_validate = jwt.decode(jwt=token, key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithms=EMAILS.ALGORITHM)
 
         except (RuntimeError, TypeError, JWTExceptions.JWSDecodeError):
-            return
+            return 
 
-        return User.query.get(user_id)
+        return User.query.filter(User.username == username_to_validate[EMAILS.VALIDATE_EMAIL]).first_or_404()
         
+
+MAX_EMAIL_ATTEMPTS_IN_HOUR = 5
+WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS = 60
+WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS = 3600
 
 class EmailValidation(db.Model):
     """Class represents an Email Validation row - users are required to have their emails confirmed before accessing the site"""
@@ -202,15 +206,40 @@ class EmailValidation(db.Model):
     user_id = db.Column(db.Integer, db.ForeignKey("User.id"))
     confirm_url = db.Column(db.String(2000), nullable=False, default="")
     is_validated = db.Column(db.Boolean, default=False)
-    attempts = db.Column(db.Integer, nullable=False, default=1)
+    attempts = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    last_attempt = db.Column(db.DateTime, nullable=True, default=None)
     validated_at = db.Column(db.DateTime, nullable=True, default=None)
 
     user = db.relationship("User", back_populates="email_confirm")
 
-    def __init__(self, user_id: int, confirm_url: str):
-        self.user_id = user_id
+    def __init__(self, confirm_url: str):
         self.confirm_url = confirm_url
+
+    def validate(self):
+        self.is_validated = True
+        self.validated_at = datetime.utcnow()
+
+    def increment_attempt(self) -> bool:
+        if self.last_attempt is not None and (datetime.utcnow() - self.last_attempt).seconds <= WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS:
+            return False
+
+        self.last_attempt = datetime.utcnow()
+        self.attempts += 1
+        return True
+
+    def check_if_too_many_attempts(self) -> bool:
+        if self.last_attempt is None or self.attempts < MAX_EMAIL_ATTEMPTS_IN_HOUR: return False
+
+        if self.attempts >= MAX_EMAIL_ATTEMPTS_IN_HOUR: 
+            if (datetime.utcnow() - self.last_attempt).seconds >= WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS:
+                self.attempts = 0
+
+            else:
+                return True
+
+        return False
+
 
 
 class Utub(db.Model):

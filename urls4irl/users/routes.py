@@ -1,8 +1,8 @@
-from flask import Blueprint, jsonify, redirect, url_for, render_template, request
+from flask import Blueprint, jsonify, redirect, url_for, render_template, request, abort, session
 from flask_login import current_user, login_user, logout_user
 from urls4irl import db
-from urls4irl.models import Utub, Utub_Users, User, EmailValidation
-from urls4irl.users.forms import LoginForm, UserRegistrationForm, UTubNewUserForm
+from urls4irl.models import Utub, Utub_Users, User, EmailValidation, MAX_EMAIL_ATTEMPTS_IN_HOUR
+from urls4irl.users.forms import LoginForm, UserRegistrationForm, UTubNewUserForm, ValidateEmail
 from urls4irl.utils import strings as U4I_STRINGS
 from urls4irl.utils.email_validation import email_validation_required
 
@@ -12,6 +12,8 @@ users = Blueprint("users", __name__)
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
+EMAILS = U4I_STRINGS.EMAILS
+EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
 
 
 @users.route("/login", methods=["GET", "POST"])
@@ -30,6 +32,7 @@ def login():
         user: User = User.query.filter_by(username=username).first()
 
         if user and user.is_password_correct(login_form.password.data):
+            login_user(user)  # Can add Remember Me functionality here
             TESTING = True
             if not TESTING and not user.email_confirm.is_validated:
                 return (
@@ -45,7 +48,6 @@ def login():
                     403,
                 )
 
-            login_user(user)  # Can add Remember Me functionality here
 
             next_page = request.args.get(
                 "next"
@@ -77,6 +79,8 @@ def login():
 def logout():
     """Logs user out by clearing session details. Returns to login page."""
     logout_user()
+    if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
+        session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
     return redirect(url_for("main.splash"))
 
 
@@ -85,7 +89,7 @@ def register_user():
     """Allows a user to register an account."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return redirect(url_for("users.validate_email"))
+            return render_template("splash.html", show_email_validation_modal=True)
         return redirect(url_for("main.home"))
 
     register_form: UserRegistrationForm = UserRegistrationForm()
@@ -104,18 +108,15 @@ def register_user():
         )
         email_validation_token = new_user.get_email_validation_token()
         new_email_validation = EmailValidation(
-            user_id=new_user.id,
             confirm_url=email_validation_token
         )
         new_user.email_confirm = new_email_validation
-        print(f"Email validation token is: {email_validation_token}")
-        print(dir(new_user))
         db.session.add(new_user)
         db.session.commit()
         user = User.query.filter_by(username=username).first()
-        #TODO: Redirect user to an email validation modal instead of logging in
         login_user(user)
-        return url_for("main.home")
+        validate_email_form = ValidateEmail()
+        return render_template("emails/email_needs_validation_modal.html", validate_email_form=validate_email_form), 201
 
     # Input form errors
     if register_form.errors is not None:
@@ -133,7 +134,6 @@ def register_user():
         )
 
     return render_template("register_user.html", register_form=register_form)
-
 
 @users.route("/user/remove/<int:utub_id>/<int:user_id>", methods=["POST"])
 @email_validation_required
@@ -325,6 +325,60 @@ def add_user(utub_id: int):
     )
 
 
-@users.route("/validate_email", methods=["GET", "POST"])
-def validate_email():
-    return render_template("/emails/email_needs_validation.html")
+@users.route("/confirm_email", methods=["GET"])
+def confirm_email_after_register():
+    if current_user.email_confirm.is_validated:
+        return redirect(url_for("main.home"))
+    return render_template("emails/email_needs_validation_modal.html", validate_email_form=ValidateEmail())
+
+
+@users.route("/send_validation_email", methods=["POST"])
+def send_validation_email():
+    current_email_validation: EmailValidation = EmailValidation.query.filter(EmailValidation.user_id == current_user.id).first_or_404()
+
+    if current_email_validation.is_validated:
+        return redirect(url_for("main.home"))
+
+    if current_email_validation.check_if_too_many_attempts():
+        db.session.commit()
+        return (jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.ERROR_CODE: 1,
+                STD_JSON.MESSAGE: EMAILS_FAILURE.TOO_MANY_ATTEMPTS_MAX
+                }
+        ), 429)
+
+    
+    more_attempts_allowed = current_email_validation.increment_attempt()
+    db.session.commit()
+
+    if not more_attempts_allowed:
+        return (jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.ERROR_CODE: 2,
+                STD_JSON.MESSAGE: str(MAX_EMAIL_ATTEMPTS_IN_HOUR - current_email_validation.attempts) + EMAILS_FAILURE.TOO_MANY_ATTEMPTS,
+            }
+        ), 429)
+
+    print(f"Sending this to the user's email:\n{url_for('users.confirm_email', token=current_email_validation.confirm_url, _external=True)}")
+    # TODO: Send another email
+    return (jsonify(
+        {"Status": "Success!"}, 200
+    ))
+
+
+
+@users.route("/confirm/<string:token>", methods=["GET"])
+def confirm_email(token: str):
+    user_to_validate: User = User.verify_email_validation_token(token)
+    if not user_to_validate:
+        # Link is invalid or token is expired
+        return abort(404)
+        
+    user_to_validate.email_confirm.validate()
+    db.session.commit()
+    login_user(user_to_validate)
+    session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
+    return redirect(url_for("main.home"))

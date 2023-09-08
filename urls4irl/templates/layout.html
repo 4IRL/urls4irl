@@ -83,7 +83,7 @@
         </div>
         <div class="navbar-collapse collapse w-100 order-3 dual-collapse2">
             <ul class="navbar-nav ml-auto">
-                {% if current_user.is_authenticated %}
+                {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
                 <li id="{{current_user.id}}" class="nav-item user">
                     <a class="nav-link" href="#"> Logged in as {{current_user.username}}</a>
                 </li>
@@ -103,7 +103,7 @@
     </nav>
     <!-- Navigation Bar -->
 
-{% block mainbody %}
+    {% block mainbody %}
     {% if current_user.is_authenticated %}
     <!-- Main Panel View -->
 
@@ -129,12 +129,14 @@
     <!-- Main Panel View -->
 
     {% endif %}
-{% endblock %}
+    {% endblock %}
 
     {% block modal_extender %}
     <!-- Modal -->
+    {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
 
-    <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="FormModal" aria-hidden="true">
+    <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="FormModal"
+        aria-hidden="true">
         <div class="modal-dialog" role="document">
             <div class="modal-content">
                 <script type="text/javascript">
@@ -162,10 +164,18 @@
             </div>
         </div>
     </div>
-    
+
+    {% else %}
+    <div class="modal fade" id="loginRegisterModal" tabindex="-1" role="dialog" aria-labelledby="FormModal"
+        aria-hidden="true">
+        <div class="modal-dialog login-register-content" role="document">
+            <div class="modal-content">
+            </div>
+        </div>
+    </div>
+    {% endif %}
     <!-- Modal -->
     {% endblock %}
-
 </body>
 
 </html>

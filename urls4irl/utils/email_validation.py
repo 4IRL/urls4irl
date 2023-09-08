@@ -4,8 +4,8 @@ from mailjet_rest import Client
 from flask_login import login_required, current_user
 from urls4irl.models import EmailValidation
 from functools import wraps
-from flask import session, render_template, jsonify, url_for
-from urls4irl.utils import strings as U4I_STRINGS
+from flask import session, url_for, redirect  
+from urls4irl.utils.strings import STD_JSON_RESPONSE, EMAILS, EMAILS_FAILURE
 
 basedir = path.abspath(path.dirname(__file__))
 load_dotenv(path.join(basedir, ".env"))
@@ -14,13 +14,9 @@ BASE_API_URL = "https://api.us.mailjet.com/"
 EMAIL_SIGNATURE = "The urls4irl team"
 MESSAGES, FROM, TO, EMAIL, NAME = "Messages", "From", "To", "Email", "Name"
 SUBJECT, TEXTPART, HTMLPART =  "Subject", "TextPart", "HTMLPart"
-EMAILS = U4I_STRINGS.EMAILS
-EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-USER_FAILURE = U4I_STRINGS.USER_FAILURE
-USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
+STD_JSON = STD_JSON_RESPONSE
 
 class EmailSender:
     def __init__(self):
@@ -94,27 +90,8 @@ def email_validation_required(func):
             session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = current_user_email_validation.is_validated
             is_email_validated = session[EMAILS.EMAIL_VALIDATED_SESS_KEY]
 
-        # Comment
-        # is_email_validated = True
         if not is_email_validated:
-            # TODO: Redirect to email validation page.. or send modal?
-            # TODO: Frontend needs to be able to handle a redirect if email is invalidated
-            print("Tried to access a page requiring email validation")
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: EMAILS_FAILURE.USER_INVALID_EMAIL,
-                        STD_JSON.ERROR_CODE: 999,
-                        EMAILS_FAILURE.EMAIL_VALIDATED: str(False),
-                        EMAILS_FAILURE.REDIRECT: url_for("users.validate_email")
-
-                    }
-                ), 
-            403, 
-            )
-
-        print(f"Updated.. Email validated: {is_email_validated}")
+            return redirect(url_for("main.splash"))
         return func(*args, **kwargs)
 
     return decorated_view
