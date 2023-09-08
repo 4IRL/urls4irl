@@ -188,7 +188,7 @@ def test_user_can_logout_after_login(login_first_user_with_register):
     """
     GIVEN a registered and logged in user
     WHEN "/logout" is GET after user is already logged on
-    THEN ensure 200, user is brought to login page, user no longer logged in
+    THEN ensure 200, user is brought to splash page, user no longer logged in
     """
     client, _, logged_in_user, _ = login_first_user_with_register
 
@@ -199,9 +199,9 @@ def test_user_can_logout_after_login(login_first_user_with_register):
     assert response.history[0].status_code == 302
     assert response.history[0].request.path == url_for("users.logout")
 
-    # Ensure lands on login page
+    # Ensure lands on splash page
     assert response.status_code == 200
-    assert response.request.path == url_for("users.login")
+    assert response.request.path == url_for("main.splash")
 
     # Test if user logged in
     with raises(AttributeError):
@@ -224,6 +224,12 @@ def test_user_can_login_logout_login(login_first_user_with_register):
 
     # Ensure logout is successful
     response = client.get("/logout", follow_redirects=True)
+
+    # Ensure lands on splash page
+    assert response.status_code == 200
+    assert response.request.path == url_for("main.splash")
+    
+    response = client.get("/login")
 
     # Ensure on login page
     assert (

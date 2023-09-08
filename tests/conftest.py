@@ -3,7 +3,7 @@ from flask_login import FlaskLoginClient, current_user
 
 from urls4irl import create_app, db
 from urls4irl.config import TestingConfig
-from urls4irl.models import User, Utub, Utub_Users, URLS, Utub_Urls, Tags, Url_Tags
+from urls4irl.models import User, Utub, Utub_Users, URLS, Utub_Urls, Tags, Url_Tags, EmailValidation
 from tests.utils_for_test import get_csrf_token, drop_database
 from tests.models_for_test import (
     valid_user_1,
@@ -91,6 +91,12 @@ def register_first_user(app):
             plaintext_password=valid_user_1[USER_STRS.PASSWORD],
         )
 
+        new_email_validation = EmailValidation(
+            confirm_url=new_user.get_email_validation_token()
+        )
+        new_email_validation.is_validated = True
+        new_user.email_confirm = new_email_validation
+
         db.session.add(new_user)
         db.session.commit()
 
@@ -125,6 +131,12 @@ def register_all_but_first_user(app):
                 plaintext_password=user[USER_STRS.PASSWORD],
             )
 
+            new_email_validation = EmailValidation(
+                confirm_url=new_user.get_email_validation_token()
+            )
+            new_email_validation.is_validated = True
+            new_user.email_confirm = new_email_validation
+
             db.session.add(new_user)
             db.session.commit()
 
@@ -157,6 +169,12 @@ def register_multiple_users(app):
                 email=user[USER_STRS.EMAIL],
                 plaintext_password=user[USER_STRS.PASSWORD],
             )
+
+            new_email_validation = EmailValidation(
+                confirm_url=new_user.get_email_validation_token()
+            )
+            new_email_validation.is_validated = True
+            new_user.email_confirm = new_email_validation
 
             db.session.add(new_user)
             db.session.commit()

@@ -32,8 +32,8 @@ def test_register_new_user(app, load_register_page):
     response = client.post("/register", data=valid_user_1, follow_redirects=True)
 
     # Correctly sends URL to home page
-    assert response.status_code == 200
-    assert response.data == bytes(f"{url_for('main.home')}", "utf-8")
+    assert response.status_code == 201
+    assert  b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>' in response.data
 
     # Test if user logged in
     assert current_user.username == valid_user_1[REGISTER_FORM.USERNAME]
@@ -156,8 +156,8 @@ def test_register_modal_logs_user_in(client):
 
         response = client.post("/register", data=valid_user_1)
 
-        assert response.status_code == 200
-        assert response.data == bytes(f"{url_for('main.home')}", "utf-8")
+        assert response.status_code == 201
+        assert  b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>' in response.data
 
         assert current_user.username == valid_user_1[REGISTER_FORM.USERNAME]
         assert check_password_hash(
