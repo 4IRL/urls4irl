@@ -15,11 +15,12 @@ $(document).ready(function () {
     .off("click")
     .on("click", function () {
       $("#loginRegisterModal").modal("hide");
-      onCloseLogout();
+      logoutUser();
     });
+
 });
 
-function onCloseLogout() {
+function logoutUser() {
   $.get("/logout");
 }
 
@@ -27,6 +28,9 @@ function emailValidationModal() {
   $.get("/confirm_email", function (data) {
     $("#loginRegisterModal .modal-content").html(data);
     $("#loginRegisterModal").modal();
+    $("#loginRegisterModal").one("hide.bs.modal", function (e) {
+      logoutUser();
+    })
     $("#submit").click(function (event) {
       event.preventDefault();
       let request = $.ajax({
@@ -93,11 +97,18 @@ function loginModalOpener(url) {
       });
 
       request.fail(function (xhr, textStatus, error) {
-        if (xhr.status == 401) {
-          handleImproperFormErrors(xhr.responseJSON);
-        } else if (xhr.status == 403) {
-          // Email invalid
-          window.location.replace(xhr.responseJSON.redirect);
+        if (xhr.status == 401 && xhr.responseJSON.hasOwnProperty("Error_code")) {
+          switch (xhr.responseJSON.Error_code) {
+            case 1: {
+              // User found but email not yet validated
+              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message)
+              break;
+            }
+            case 2: {
+              handleImproperFormErrors(xhr.responseJSON);
+              break;
+            }
+          }
         } else {
           // TODO: Handle other errors here.
           console.log("You need to handle other errors!");
@@ -126,11 +137,18 @@ function registerModalOpener(url) {
       });
 
       request.fail(function (xhr, textStatus, error) {
-        if (xhr.status == 401) {
-          handleImproperFormErrors(xhr.responseJSON);
-        } else if (xhr.status == 403) {
-          // Email invalid
-          window.location.replace(xhr.responseJSON.redirect);
+        if (xhr.status == 401 && xhr.responseJSON.hasOwnProperty("Error_code")) {
+          switch (xhr.responseJSON.Error_code) {
+            case 1: {
+              // User found but email not yet validated
+              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message)
+              break;
+            }
+            case 2: {
+              handleImproperFormErrors(xhr.responseJSON);
+              break;
+            }
+          }
         } else {
           // TODO: Handle other errors here.
           console.log("You need to handle other errors!");
@@ -140,9 +158,39 @@ function registerModalOpener(url) {
   });
 }
 
+function handleUserHasAccountNotEmailValidated(message) {
+  $(".form-control").removeClass("is-invalid");
+  $(".invalid-feedback").remove();
+  const alertBanner = $("#ValidateEmailMessage");
+  alertBanner.addClass("alert-warning").css({
+    "display": "flex",
+    "flex-direction": "column",
+    "align-items": "center",
+    "text-align": "center"
+  })
+    .append($('<div>' + message + '</div>'))
+    .append(
+      $('<button type="button" class="btn btn-link btn-block">Validate My Email</button>').click(emailValidationModal)
+    )
+
+  $(".register-to-login-footer").remove()
+  $(".modal-footer").remove()
+
+  $(".close-register-login-modal")
+    .off("click")
+    .on("click", function () {
+      $("#loginRegisterModal").modal("hide");
+      logoutUser();
+    });
+}
+
 function handleImproperFormErrors(errorResponse) {
   $(".invalid-feedback").remove();
-  $(".alert").remove();
+  $(".alert").each(function () {
+    if ($(this).attr("id") !== "ValidateEmailMessage") {
+      $(this).remove()
+    }
+  })
   $(".form-control").removeClass("is-invalid");
   for (let key in errorResponse.Errors) {
     switch (key) {

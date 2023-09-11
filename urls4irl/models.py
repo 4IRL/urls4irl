@@ -4,7 +4,7 @@ Contains database models for URLS4IRL.
 # https://docs.sqlalchemy.org/en/14/orm/backref.html
 """
 from datetime import datetime
-from urls4irl import db, login_manager
+from urls4irl import db
 from flask_login import UserMixin
 from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -13,11 +13,6 @@ from urls4irl.utils.strings import EMAILS
 from urls4irl.utils.strings import CONFIG_ENVS
 import jwt
 from jwt import exceptions as JWTExceptions
-
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
 
 
 """

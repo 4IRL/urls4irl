@@ -9,6 +9,8 @@ from urls4irl.utils import strings as U4I_STRINGS
 from urls4irl.models import User
 
 LOGIN_FORM = U4I_STRINGS.LOGIN_FORM
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
+LOGIN_FAILURE = U4I_STRINGS.USER_FAILURE
 
 
 def test_login_registered_and_logged_in_user(app, register_first_user, load_login_page):
@@ -63,10 +65,47 @@ def test_login_unregistered_user(load_login_page):
         },
     )
 
-    # TODO: Check for error message of some kind here eventually
+    # Ensure json response from server is valid
+    login_user_response_json = response.json
+    assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert login_user_response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
+    assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert LOGIN_FAILURE.USER_NOT_EXIST in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME]
 
-    assert response.status_code == 400
-    assert request.path == url_for("users.login")
+    assert response.status_code == 401
+
+    # Ensure no one is logged in
+    assert current_user.get_id() is None
+    assert current_user.is_active is False
+
+
+def test_login_user_wrong_password(register_first_user, load_login_page):
+    """
+    GIVEN a registered user
+    WHEN "/login" is POST'd with filled in correctly with form data, and an invalid password for this user
+    THEN ensure login does not occur, and correct form error is given
+    """
+    client, csrf_token_str = load_login_page
+
+    valid_user_1[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
+
+    response = client.post(
+        "/login",
+        data={
+            LOGIN_FORM.CSRF_TOKEN: valid_user_1[LOGIN_FORM.CSRF_TOKEN],
+            LOGIN_FORM.USERNAME: valid_user_1[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: "A",
+        },
+    )
+
+    # Ensure json response from server is valid
+    login_user_response_json = response.json
+    assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert login_user_response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
+    assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert LOGIN_FAILURE.INVALID_PASSWORD in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]
+
+    assert response.status_code == 401
 
     # Ensure no one is logged in
     assert current_user.get_id() is None

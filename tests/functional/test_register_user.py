@@ -31,7 +31,7 @@ def test_register_new_user(app, load_register_page):
 
     response = client.post("/register", data=valid_user_1, follow_redirects=True)
 
-    # Correctly sends URL to home page
+    # Correctly sends URL to email validation modal
     assert response.status_code == 201
     assert  b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>' in response.data
 

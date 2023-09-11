@@ -68,6 +68,20 @@ def load_login_page(client):
         csrf_token_string = get_csrf_token(get_register_response.get_data())
         yield client, csrf_token_string
 
+@pytest.fixture
+def load_splash_page(client):
+    """
+    Given a Flask client, performs a GET of the splash page using "/"
+
+    Args:
+        client (FlaskClient): A Flask client
+
+    Yields:
+        (FlaskClient): A Flask client that has just performed a GET on "/"
+    """
+    with client:
+        yield client
+
 
 @pytest.fixture
 def register_first_user(app):
@@ -102,6 +116,37 @@ def register_first_user(app):
 
     yield valid_user_1, new_user
 
+@pytest.fixture
+def register_first_user_without_email_validation(app):
+    """
+    Registers a User model with.
+    See 'models_for_test.py' for model information.
+    The newly registered User's will have ID == 1
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+
+    Yields:
+        (dict): The information used to generate the new User model
+        (User): The newly generated User model
+    """
+    # Add a new user for testing
+    with app.app_context():
+        new_user = User(
+            username=valid_user_1[USER_STRS.USERNAME],
+            email=valid_user_1[USER_STRS.EMAIL],
+            plaintext_password=valid_user_1[USER_STRS.PASSWORD],
+        )
+
+        new_email_validation = EmailValidation(
+            confirm_url=new_user.get_email_validation_token()
+        )
+        new_user.email_confirm = new_email_validation
+
+        db.session.add(new_user)
+        db.session.commit()
+
+    yield valid_user_1, new_user
 
 @pytest.fixture
 def register_all_but_first_user(app):

@@ -1,6 +1,6 @@
 from flask import Blueprint, jsonify, redirect, url_for, render_template, request, abort, session
-from flask_login import current_user, login_user, logout_user
-from urls4irl import db
+from flask_login import current_user, login_user, logout_user, AnonymousUserMixin
+from urls4irl import db, login_manager
 from urls4irl.models import Utub, Utub_Users, User, EmailValidation, MAX_EMAIL_ATTEMPTS_IN_HOUR
 from urls4irl.users.forms import LoginForm, UserRegistrationForm, UTubNewUserForm, ValidateEmail
 from urls4irl.utils import strings as U4I_STRINGS
@@ -16,10 +16,25 @@ EMAILS = U4I_STRINGS.EMAILS
 EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
 
 
+@login_manager.user_loader
+def load_user(user_id):
+    return User.query.get(int(user_id))
+
+
+@login_manager.unauthorized_handler
+def unauthorized():
+    if not current_user.is_authenticated:
+        return redirect(url_for("main.splash"))
+    if current_user.is_authenticated and not current_user.email_confirm.is_validated:
+        return redirect(url_for("users.confirm_email_after_register"))
+
+
 @users.route("/login", methods=["GET", "POST"])
 def login():
     """Login page. Allows user to register or login."""
     if current_user.is_authenticated:
+        if not current_user.email_confirm.is_validated:
+            return redirect(url_for("users.confirm_email_after_register"))
         return redirect(url_for("main.home"))
 
     login_form = LoginForm()
@@ -30,32 +45,27 @@ def login():
     if login_form.validate_on_submit():
         username = login_form.username.data
         user: User = User.query.filter_by(username=username).first()
-
-        if user and user.is_password_correct(login_form.password.data):
-            login_user(user)  # Can add Remember Me functionality here
-            TESTING = True
-            if not TESTING and not user.email_confirm.is_validated:
-                return (
-                    jsonify(
-                        {
-                            STD_JSON.STATUS: STD_JSON.FAILURE,
-                            STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
-                            USER_FAILURE.EMAIL_VALIDATED: str(False),
-                            USER_FAILURE.REDIRECT: url_for("users.validate_email"),
-                            STD_JSON.ERROR_CODE: 1,
-                        }
-                    ),
-                    403,
-                )
+        login_user(user)  # Can add Remember Me functionality here
+        TESTING = True
+        if TESTING and not user.email_confirm.is_validated:
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
+                        USER_FAILURE.EMAIL_VALIDATED: str(False),
+                        STD_JSON.ERROR_CODE: 1,
+                    }
+                ),
+                401,
+            )
 
 
-            next_page = request.args.get(
-                "next"
-            )  # Takes user to the page they wanted to originally before being logged in
+        next_page = request.args.get(
+            "next"
+        )  # Takes user to the page they wanted to originally before being logged in
 
-            return redirect(next_page) if next_page else url_for("main.home")
-        else:
-            return render_template("login.html", login_form=login_form), 400
+        return redirect(next_page) if next_page else url_for("main.home")
 
     # Input form errors
     if login_form.errors is not None:
@@ -89,14 +99,14 @@ def register_user():
     """Allows a user to register an account."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return render_template("splash.html", show_email_validation_modal=True)
+            return redirect(url_for("users.confirm_email_after_register"))
         return redirect(url_for("main.home"))
 
     register_form: UserRegistrationForm = UserRegistrationForm()
 
     if request.method == "GET":
         return render_template("register_user.html", register_form=register_form)
-
+    
     if register_form.validate_on_submit():
         username = register_form.username.data
         email = register_form.email.data
@@ -120,13 +130,27 @@ def register_user():
 
     # Input form errors
     if register_form.errors is not None:
+        if EMAILS.EMAIL in register_form.errors and USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED in register_form.errors[EMAILS.EMAIL]:
+            login_user(User.query.filter(User.email == register_form.email.data).first_or_404())
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
+                        USER_FAILURE.EMAIL_VALIDATED: str(False),
+                        STD_JSON.ERROR_CODE: 1,
+                    }
+                ),
+                401,
+            )
+
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
                     USER_FAILURE.EMAIL_VALIDATED: str(True),
-                    STD_JSON.ERROR_CODE: 1,
+                    STD_JSON.ERROR_CODE: 2,
                     STD_JSON.ERRORS: register_form.errors,
                 }
             ),

@@ -33,12 +33,28 @@ EMAIL = "email"
 CONFIRM_EMAIL = "confirm_email"
 PASSWORD = "password"
 CONFIRM_PASSWORD = "confirm_password"
+USERNAME_TEXT = "Username"
+EMAIL_TEXT = "Email"
+CONFIRM_EMAIL_TEXT = "Confirm Email"
+PASSWORD_TEXT = "Password"
+CONFIRM_PASSWORD_TEXT = "Confirm Password"
+REGISTER = "Register"
+LOGIN = "Login"
+SEND_EMAIL_VALIDATION = "Send Validation Email"
 
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):
     EMAIL = EMAIL
     USERNAME = USERNAME
     PASSWORD = PASSWORD
+    USERNAME_TEXT = USERNAME_TEXT
+    EMAIL_TEXT = EMAIL_TEXT
+    CONFIRM_EMAIL_TEXT = CONFIRM_EMAIL_TEXT
+    PASSWORD_TEXT = PASSWORD_TEXT
+    CONFIRM_PASSWORD_TEXT = CONFIRM_PASSWORD_TEXT
+    REGISTER = REGISTER
+    LOGIN = LOGIN
+    SEND_EMAIL_VALIDATION = SEND_EMAIL_VALIDATION
 
 
 class REGISTER_FORM(REGISTER_LOGIN_FORM):
@@ -111,6 +127,8 @@ UNABLE_TO_ADD = "Unable to add that user to this UTub."
 EMAIL_TAKEN = "That email address is already in use."
 USERNAME_TAKEN = "That username is already taken. Please choose another."
 USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
+INVALID_PASSWORD = "Invalid password."
+ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = "An account already exists with that information but the email has not been validated."
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -125,6 +143,8 @@ class USER_FAILURE(FAILURE_GENERAL):
     EMAIL_TAKEN = EMAIL_TAKEN
     USERNAME_TAKEN = USERNAME_TAKEN
     USER_NOT_EXIST = USER_NOT_EXIST
+    ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
+    INVALID_PASSWORD = INVALID_PASSWORD
 
 
 # Strings for URL success
@@ -316,6 +336,7 @@ VALIDATE_EMAIL = "validate_email"
 EXPIRATION = "exp"
 ALGORITHM = "HS256"
 EMAIL_VALIDATED_SESS_KEY = "email_validated"
+EMAIL_VALIDATION_MODAL_CALL = "emailValidationModal()"
 
 
 # Email related strings
@@ -323,6 +344,7 @@ class EMAILS:
     VALIDATE_EMAIL = VALIDATE_EMAIL
     EXPIRATION = EXPIRATION
     ALGORITHM = ALGORITHM
+    EMAIL = EMAIL
     EMAIL_VALIDATED_SESS_KEY = EMAIL_VALIDATED_SESS_KEY
 
 

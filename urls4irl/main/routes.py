@@ -12,6 +12,7 @@ def splash():
     """Splash page for an unlogged in user."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
+            print("User is not email validated.")
             return render_template("splash.html", show_email_validation_modal=True)
         return redirect(url_for("main.home"))
     return render_template("splash.html")
