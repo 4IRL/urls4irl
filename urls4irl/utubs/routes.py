@@ -60,7 +60,6 @@ def create_utub():
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
-                    UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                     STD_JSON.ERRORS: utub_form.errors,
                 }
@@ -73,7 +72,6 @@ def create_utub():
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
-                UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 2,
             }
         ),
@@ -103,7 +101,6 @@ def delete_utub(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
-                    UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                 }
             ),
             403,
@@ -152,7 +149,6 @@ def update_utub_name(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
-                    UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
@@ -189,7 +185,6 @@ def update_utub_name(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
-                    UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 2,
                     STD_JSON.ERRORS: utub_name_form.errors,
                 }
@@ -202,7 +197,6 @@ def update_utub_name(utub_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
-                UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 3,
             }
         ),
@@ -236,7 +230,6 @@ def update_utub_desc(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
-                    UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                     UTUB_FAILURE.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
@@ -259,7 +252,6 @@ def update_utub_desc(utub_id: int):
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
-                        UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                         STD_JSON.ERROR_CODE: 2,
                     }
                 ),
@@ -289,7 +281,6 @@ def update_utub_desc(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.UTUB_DESC_TOO_LONG,
-                    UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 3,
                     STD_JSON.ERRORS: utub_desc_form.errors,
                 }
@@ -302,7 +293,6 @@ def update_utub_desc(utub_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
-                UTUB_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 4,
             }
         ),

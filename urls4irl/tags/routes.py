@@ -44,7 +44,6 @@ def add_tag(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-                    TAGS_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
@@ -68,7 +67,6 @@ def add_tag(utub_id: int, url_id: int):
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: TAGS_FAILURE.FIVE_TAGS_MAX,
-                        TAGS_FAILURE.EMAIL_VALIDATED: str(True),
                         STD_JSON.ERROR_CODE: 2,
                     }
                 ),
@@ -93,7 +91,6 @@ def add_tag(utub_id: int, url_id: int):
                         {
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: TAGS_FAILURE.TAG_ALREADY_ON_URL,
-                            TAGS_FAILURE.EMAIL_VALIDATED: str(True),
                             STD_JSON.ERROR_CODE: 3,
                         }
                     ),
@@ -143,7 +140,6 @@ def add_tag(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-                    TAGS_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 4,
                     STD_JSON.ERRORS: url_tag_form.errors,
                 }
@@ -156,7 +152,6 @@ def add_tag(utub_id: int, url_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-                TAGS_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 5,
             }
         ),
@@ -218,7 +213,6 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS,
-                TAGS_FAILURE.EMAIL_VALIDATED: str(True),
             }
         ),
         403,
@@ -245,7 +239,6 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_MODIFY_TAGS,
-                    TAGS_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
@@ -295,7 +288,6 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
                         {
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: TAGS_FAILURE.TAG_ALREADY_ON_URL,
-                            TAGS_FAILURE.EMAIL_VALIDATED: str(True),
                             STD_JSON.ERROR_CODE: 2,
                         }
                     ),
@@ -343,7 +335,6 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-                TAGS_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 4,
             }
         ),

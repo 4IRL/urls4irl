@@ -8,6 +8,7 @@ from urls4irl import db
 from flask_login import UserMixin
 from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
+from urls4irl.utils.constants import EmailConstants
 from urls4irl.utils.strings import MODELS as MODEL_STRS
 from urls4irl.utils.strings import EMAILS
 from urls4irl.utils.strings import CONFIG_ENVS
@@ -172,7 +173,7 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
 
-    def get_email_validation_token(self, expires_in=3600):
+    def get_email_validation_token(self, expires_in=EmailConstants.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS):
         return jwt.encode(
             payload={EMAILS.VALIDATE_EMAIL: self.username, EMAILS.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in},
             key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithm=EMAILS.ALGORITHM
@@ -183,15 +184,11 @@ class User(db.Model, UserMixin):
         try:
             username_to_validate = jwt.decode(jwt=token, key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithms=EMAILS.ALGORITHM)
 
-        except (RuntimeError, TypeError, JWTExceptions.JWSDecodeError):
+        except (RuntimeError, TypeError, JWTExceptions.ExpiredSignatureError, JWTExceptions.DecodeError):
             return 
 
         return User.query.filter(User.username == username_to_validate[EMAILS.VALIDATE_EMAIL]).first_or_404()
         
-
-MAX_EMAIL_ATTEMPTS_IN_HOUR = 5
-WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS = 60
-WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS = 3600
 
 class EmailValidation(db.Model):
     """Class represents an Email Validation row - users are required to have their emails confirmed before accessing the site"""
@@ -216,7 +213,7 @@ class EmailValidation(db.Model):
         self.validated_at = datetime.utcnow()
 
     def increment_attempt(self) -> bool:
-        if self.last_attempt is not None and (datetime.utcnow() - self.last_attempt).seconds <= WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS:
+        if self.last_attempt is not None and (datetime.utcnow() - self.last_attempt).seconds <= EmailConstants.WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS:
             return False
 
         self.last_attempt = datetime.utcnow()
@@ -224,10 +221,10 @@ class EmailValidation(db.Model):
         return True
 
     def check_if_too_many_attempts(self) -> bool:
-        if self.last_attempt is None or self.attempts < MAX_EMAIL_ATTEMPTS_IN_HOUR: return False
+        if self.last_attempt is None or self.attempts < EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR: return False
 
-        if self.attempts >= MAX_EMAIL_ATTEMPTS_IN_HOUR: 
-            if (datetime.utcnow() - self.last_attempt).seconds >= WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS:
+        if self.attempts >= EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR: 
+            if (datetime.utcnow() - self.last_attempt).seconds >= EmailConstants.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS:
                 self.attempts = 0
 
             else:

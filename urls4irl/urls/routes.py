@@ -55,7 +55,6 @@ def delete_url(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
-                    URL_FAILURE.EMAIL_VALIDATED: str(True),
                     URL_SUCCESS.URL: serialized_url_in_utub,
                     URL_SUCCESS.UTUB_ID: f"{utub.id}",
                     URL_SUCCESS.UTUB_NAME: f"{utub.name}",
@@ -71,7 +70,6 @@ def delete_url(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_REMOVE_URL,
-                    URL_FAILURE.EMAIL_VALIDATED: str(True),
                 }
             ),
             403,
@@ -96,7 +94,6 @@ def add_url(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
-                    URL_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
@@ -117,7 +114,6 @@ def add_url(utub_id: int):
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
-                        URL_FAILURE.EMAIL_VALIDATED: str(True),
                         STD_JSON.ERROR_CODE: 2,
                     }
                 ),
@@ -210,7 +206,6 @@ def add_url(utub_id: int):
                         {
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
-                            URL_FAILURE.EMAIL_VALIDATED: str(True),
                             STD_JSON.ERROR_CODE: 3,
                         }
                     ),
@@ -224,7 +219,6 @@ def add_url(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
-                    URL_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 4,
                     STD_JSON.ERRORS: utub_new_url_form.errors,
                 }
@@ -238,7 +232,6 @@ def add_url(utub_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
-                URL_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 5,
             }
         ),
@@ -273,7 +266,6 @@ def edit_url_and_description(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                    URL_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
@@ -294,7 +286,6 @@ def edit_url_and_description(utub_id: int, url_id: int):
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: URL_FAILURE.EMPTY_URL,
-                        URL_FAILURE.EMAIL_VALIDATED: str(True),
                         STD_JSON.ERROR_CODE: 2,
                     }
                 ),
@@ -345,7 +336,6 @@ def edit_url_and_description(utub_id: int, url_id: int):
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                        URL_FAILURE.EMAIL_VALIDATED: str(True),
                         STD_JSON.ERROR_CODE: 3,
                     }
                 ),
@@ -438,7 +428,6 @@ def edit_url_and_description(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-                    URL_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 4,
                     STD_JSON.ERRORS: {
                         URL_FAILURE.URL_DESCRIPTION: URL_FAILURE.FIELD_REQUIRED
@@ -455,7 +444,6 @@ def edit_url_and_description(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-                    URL_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 5,
                     STD_JSON.ERRORS: edit_url_form.errors,
                 }
@@ -469,7 +457,6 @@ def edit_url_and_description(utub_id: int, url_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                URL_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 6,
             }
         ),

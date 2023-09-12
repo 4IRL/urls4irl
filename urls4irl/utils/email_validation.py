@@ -18,6 +18,7 @@ SUBJECT, TEXTPART, HTMLPART =  "Subject", "TextPart", "HTMLPart"
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
 
+
 class EmailSender:
     def __init__(self):
         api_key = environ.get("MAILJET_API_KEY")

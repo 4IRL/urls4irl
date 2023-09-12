@@ -72,9 +72,10 @@ function emailValidationModal() {
 }
 
 function showEmailValidationAlert(message, category) {
-  $("#ValidateEmailMessage").addClass("alert-" + category).css({
-    "display": "inherit"
-  }).text(message)
+  $("#ValidateEmailMessage").removeClass("alert-banner-email-validation-hide")
+    .addClass("alert-" + category).css({
+      "display": "inherit"
+    }).text(message)
 }
 
 function loginModalOpener(url) {
@@ -162,12 +163,8 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".form-control").removeClass("is-invalid");
   $(".invalid-feedback").remove();
   const alertBanner = $("#ValidateEmailMessage");
-  alertBanner.addClass("alert-warning").css({
-    "display": "flex",
-    "flex-direction": "column",
-    "align-items": "center",
-    "text-align": "center"
-  })
+  alertBanner.removeClass("alert-banner-email-validation-hide")
+    .addClass("alert-warning alert-banner-email-validation-show")
     .append($('<div>' + message + '</div>'))
     .append(
       $('<button type="button" class="btn btn-link btn-block">Validate My Email</button>').click(emailValidationModal)

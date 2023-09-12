@@ -33,9 +33,7 @@
 
 <script src="{{ url_for('static', filename='scripts/login.js') }}"></script>
 {% if show_email_validation_modal %}
-<script>
-    emailValidationModal()
-</script>
+<script>{{ email_validation_modal }}</script>
 {% endif %}
 
 {% endif %}

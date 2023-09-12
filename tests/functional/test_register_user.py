@@ -7,8 +7,9 @@ from tests.utils_for_test import get_csrf_token
 from urls4irl.models import User
 from urls4irl.utils import strings as U4I_STRINGS
 
+STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
-USER_FAILURE = U4I_STRINGS.USER_FAILURE
+REGISTER_FAILURE = U4I_STRINGS.USER_FAILURE
 
 
 def test_register_new_user(app, load_register_page):
@@ -65,8 +66,22 @@ def test_register_new_user(app, load_register_page):
 def test_register_duplicate_user(app, load_register_page, register_first_user):
     """
     GIVEN a user to the page
-    WHEN they register with same credentials database, and POST to "/register" correctly
+    WHEN they register with same credentials, and POST to "/register" correctly
     THEN ensure they are not logged in and not registered again
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: REGISTER_FAILURE.UNABLE_TO_REGISTER,
+        STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for invalid form inputs
+        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
+            [
+                {
+                    REGISTER_FORM.USERNAME: "That username is taken. Please choose another.",
+                    REGISTER_FORM.EMAIL: "That email address is already in use."                
+                }
+            ]
+    }
     """
     client, csrf_token_string = load_register_page
     already_registered_user_data, _ = register_first_user
@@ -94,9 +109,14 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     assert request.path == url_for("users.register_user")
     assert len(response.history) == 0
 
-    # Check that correctly displays error message
-    assert f"{USER_FAILURE.USERNAME_TAKEN}".encode() in response.data
-    assert f"{USER_FAILURE.EMAIL_TAKEN}".encode() in response.data
+    # Ensure json response from server is valid
+    register_user_response_json = response.json
+    assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert register_user_response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
+    assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert REGISTER_FAILURE.USERNAME_TAKEN in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
+    assert REGISTER_FAILURE.EMAIL_TAKEN in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
+
 
 
 def test_register_modal_is_shown(client):

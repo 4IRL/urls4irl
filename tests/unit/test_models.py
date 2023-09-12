@@ -38,6 +38,7 @@ def test_user_model():
     assert len(new_user_object.utubs_created) == 0
     assert len(new_user_object.utub_urls) == 0
     assert len(new_user_object.utubs_is_member_of) == 0
+    assert new_user_object.email_confirm is None
 
 
 def test_utub_model():

@@ -50,7 +50,20 @@ def test_login_unregistered_user(load_login_page):
     """
     GIVEN an unregistered user
     WHEN "/login" is POST'd with filled in correctly with form data
-    THEN ensure login does not occur
+    THEN ensure login does not occur, and correct form error is given in the JSON response
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: LOGIN_FAILURE.UNABLE_TO_LOGIN,
+        STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for invalid form inputs
+        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
+            [
+                {
+                    LOGIN_FORM.USERNAME: "That user does not exist. Note this is case sensitive."                
+                }
+            ]
+    }
     """
     client, csrf_token_str = load_login_page
 
@@ -83,7 +96,20 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
     """
     GIVEN a registered user
     WHEN "/login" is POST'd with filled in correctly with form data, and an invalid password for this user
-    THEN ensure login does not occur, and correct form error is given
+    THEN ensure login does not occur, and correct form error is given in the JSON resonse
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: LOGIN_FAILURE.UNABLE_TO_LOGIN,
+        STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for invalid form inputs
+        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
+            [
+                {
+                    LOGIN_FORM.PASSWORD: "Invalid password."                
+                }
+            ]
+    }
     """
     client, csrf_token_str = load_login_page
 

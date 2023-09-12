@@ -337,6 +337,7 @@ EXPIRATION = "exp"
 ALGORITHM = "HS256"
 EMAIL_VALIDATED_SESS_KEY = "email_validated"
 EMAIL_VALIDATION_MODAL_CALL = "emailValidationModal()"
+EMAIL_SENT = "Email sent to user."
 
 
 # Email related strings
@@ -346,11 +347,13 @@ class EMAILS:
     ALGORITHM = ALGORITHM
     EMAIL = EMAIL
     EMAIL_VALIDATED_SESS_KEY = EMAIL_VALIDATED_SESS_KEY
+    EMAIL_SENT = EMAIL_SENT 
+    EMAIL_VALIDATION_MODAL_CALL = EMAIL_VALIDATION_MODAL_CALL
 
 
 # Strings for email validation errors
 USER_INVALID_EMAIL = "User has not validated their email."
-TOO_MANY_ATTEMPTS_MAX = "Too many attempts, please wait 10 minutes."
+TOO_MANY_ATTEMPTS_MAX = "Too many attempts, please wait 1 hour."
 TOO_MANY_ATTEMPTS = " attempts left. Please wait 1 minute before sending another email."
 ATTEMPTS = "attempts"
 

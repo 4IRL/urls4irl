@@ -1,9 +1,10 @@
 from flask import Blueprint, jsonify, redirect, url_for, render_template, request, abort, session
 from flask_login import current_user, login_user, logout_user, AnonymousUserMixin
 from urls4irl import db, login_manager
-from urls4irl.models import Utub, Utub_Users, User, EmailValidation, MAX_EMAIL_ATTEMPTS_IN_HOUR
+from urls4irl.models import Utub, Utub_Users, User, EmailValidation
 from urls4irl.users.forms import LoginForm, UserRegistrationForm, UTubNewUserForm, ValidateEmail
 from urls4irl.utils import strings as U4I_STRINGS
+from urls4irl.utils.constants import EmailConstants
 from urls4irl.utils.email_validation import email_validation_required
 
 users = Blueprint("users", __name__)
@@ -53,7 +54,6 @@ def login():
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
-                        USER_FAILURE.EMAIL_VALIDATED: str(False),
                         STD_JSON.ERROR_CODE: 1,
                     }
                 ),
@@ -74,7 +74,6 @@ def login():
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
-                    USER_FAILURE.EMAIL_VALIDATED: str(False),
                     STD_JSON.ERROR_CODE: 2,
                     STD_JSON.ERRORS: login_form.errors,
                 }
@@ -137,7 +136,6 @@ def register_user():
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
-                        USER_FAILURE.EMAIL_VALIDATED: str(False),
                         STD_JSON.ERROR_CODE: 1,
                     }
                 ),
@@ -149,7 +147,6 @@ def register_user():
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 2,
                     STD_JSON.ERRORS: register_form.errors,
                 }
@@ -267,7 +264,6 @@ def add_user(utub_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.MESSAGE: USER_FAILURE.NOT_AUTHORIZED,
                     STD_JSON.ERROR_CODE: 1,
                 }
@@ -291,7 +287,6 @@ def add_user(utub_id: int):
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
-                        USER_FAILURE.EMAIL_VALIDATED: str(True),
                         STD_JSON.MESSAGE: USER_FAILURE.USER_ALREADY_IN_UTUB,
                         STD_JSON.ERROR_CODE: 2,
                     }
@@ -328,7 +323,6 @@ def add_user(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
                     STD_JSON.ERROR_CODE: 3,
                     STD_JSON.ERRORS: utub_new_user_form.errors,
                 }
@@ -341,7 +335,6 @@ def add_user(utub_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
-                USER_FAILURE.EMAIL_VALIDATED: str(True),
                 STD_JSON.ERROR_CODE: 4,
             }
         ),
@@ -382,20 +375,24 @@ def send_validation_email():
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.ERROR_CODE: 2,
-                STD_JSON.MESSAGE: str(MAX_EMAIL_ATTEMPTS_IN_HOUR - current_email_validation.attempts) + EMAILS_FAILURE.TOO_MANY_ATTEMPTS,
+                STD_JSON.MESSAGE: str(EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR - current_email_validation.attempts) + EMAILS_FAILURE.TOO_MANY_ATTEMPTS,
             }
         ), 429)
 
-    print(f"Sending this to the user's email:\n{url_for('users.confirm_email', token=current_email_validation.confirm_url, _external=True)}")
+    print(f"Sending this to the user's email:\n{url_for('users.validate_email', token=current_email_validation.confirm_url, _external=True)}")
     # TODO: Send another email
-    return (jsonify(
-        {"Status": "Success!"}, 200
-    ))
+    return (
+        jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.SUCCESS,
+                STD_JSON.MESSAGE: EMAILS.EMAIL_SENT
+            }
+    ), 200)
 
 
 
-@users.route("/confirm/<string:token>", methods=["GET"])
-def confirm_email(token: str):
+@users.route("/validate/<string:token>", methods=["GET"])
+def validate_email(token: str):
     user_to_validate: User = User.verify_email_validation_token(token)
     if not user_to_validate:
         # Link is invalid or token is expired

@@ -555,6 +555,17 @@ i.fa-check-square {
     font-family: Arial, sans-serif;
 }
 
+.alert-banner-email-validation-hide {
+    display: none;
+}
+
+.alert-banner-email-validation-show {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
 /* ID sepcific */
 
 #body {
@@ -607,5 +618,4 @@ i.fa-check-square {
     font-size: 18px;
     line-height: 1.6;
     text-align: center;
-    display: none;
 }
