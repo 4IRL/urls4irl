@@ -8,7 +8,7 @@ from urls4irl import db
 from flask_login import UserMixin
 from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
-from urls4irl.utils.constants import EmailConstants
+from urls4irl.utils.constants import EmailConstants, UserConstants
 from urls4irl.utils.strings import MODELS as MODEL_STRS
 from urls4irl.utils.strings import EMAILS
 from urls4irl.utils.strings import CONFIG_ENVS
@@ -115,10 +115,13 @@ class Url_Tags(db.Model):
 
 class User(db.Model, UserMixin):
     """Class represents a User, with their username, email, and hashed password."""
+    #TODO - Ensure if user signs in with Oauth, their username is local part of their email
+    #TODO - Verify that username is less than length of max username, else add numbers to end up to 99999
+    #TODO - Verify email cannot be used as password
 
     __tablename__ = "User"
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(20), unique=True, nullable=False)
+    username = db.Column(db.String(UserConstants.MAX_USERNAME_LENGTH), unique=True, nullable=False)
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(166), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -184,10 +187,13 @@ class User(db.Model, UserMixin):
         try:
             username_to_validate = jwt.decode(jwt=token, key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithms=EMAILS.ALGORITHM)
 
-        except (RuntimeError, TypeError, JWTExceptions.ExpiredSignatureError, JWTExceptions.DecodeError):
-            return 
+        except JWTExceptions.ExpiredSignatureError:
+            return None, True
 
-        return User.query.filter(User.username == username_to_validate[EMAILS.VALIDATE_EMAIL]).first_or_404()
+        except (RuntimeError, TypeError, JWTExceptions.ExpiredSignatureError, JWTExceptions.DecodeError):
+            return  None, False
+
+        return User.query.filter(User.username == username_to_validate[EMAILS.VALIDATE_EMAIL]).first_or_404(), False
         
 
 class EmailValidation(db.Model):
@@ -232,6 +238,9 @@ class EmailValidation(db.Model):
 
         return False
 
+    def reset_attempts(self):
+        self.last_attempt = None
+        self.attempts = 0
 
 
 class Utub(db.Model):

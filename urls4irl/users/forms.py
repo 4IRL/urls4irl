@@ -3,6 +3,7 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
 from urls4irl.models import User
 from urls4irl.utils import strings as U4I_STRINGS
+from urls4irl.utils.constants import UserConstants
 
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 LOGIN_REGISTER_FORM = U4I_STRINGS.REGISTER_LOGIN_FORM
@@ -22,7 +23,7 @@ class UserRegistrationForm(FlaskForm):
     """
 
     username = StringField(
-        LOGIN_REGISTER_FORM.USERNAME_TEXT, validators=[InputRequired(), Length(min=4, max=20)]
+        LOGIN_REGISTER_FORM.USERNAME_TEXT, validators=[InputRequired(), Length(min=4, max=UserConstants.MAX_USERNAME_LENGTH)]
     )
     email = StringField(LOGIN_REGISTER_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()])
     confirm_email = StringField(
@@ -41,7 +42,7 @@ class UserRegistrationForm(FlaskForm):
         """Validates username is unique in the db"""
         user: User = User.query.filter_by(username=username.data).first()
 
-        if user:
+        if user and user.email_confirm.is_validated:
             raise ValidationError(USER_FAILURE.USERNAME_TAKEN)
 
     def validate_email(self, email):

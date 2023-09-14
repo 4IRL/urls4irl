@@ -1,11 +1,12 @@
 from flask import Flask
-from flask_session import Session, SqlAlchemySessionInterface
-from flask_sqlalchemy import SQLAlchemy
-from urls4irl.config import Config
-from flask_login import LoginManager
-from flask_wtf.csrf import CSRFProtect
-from flask_migrate import Migrate
 from flask_cors import CORS
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from flask_session import Session
+from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
+from urls4irl.config import Config
+from urls4irl.utils.email_sender import EmailSender
 
 sess = Session()
 
@@ -18,8 +19,10 @@ login_manager = LoginManager()
 
 cors_sess = CORS()
 
+email_sender = EmailSender()
 
-def create_app(config_class: Config = Config, is_production: bool = False, testing: bool = False):
+
+def create_app(config_class: Config = Config, testing: bool = False):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -30,6 +33,8 @@ def create_app(config_class: Config = Config, is_production: bool = False, testi
     login_manager.init_app(app)
 
     cors_sess.init_app(app)
+
+    email_sender.init_app(app)
 
     from urls4irl.main.routes import main
     from urls4irl.utubs.routes import utubs

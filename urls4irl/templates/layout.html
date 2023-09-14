@@ -103,34 +103,6 @@
     </nav>
     <!-- Navigation Bar -->
 
-    {% block mainbody %}
-    {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
-    <!-- Main Panel View -->
-
-    <main id="mainPanel" class="mx-0 bt-4 pt-0">
-        <!-- Display flash messages on top -->
-        {% with messages = get_flashed_messages(with_categories=true) %}
-        {% if messages %}
-        <div class=flashes>
-            {% for category, message in messages %}
-            <div class="alert alert-{{category}}">{{ message }}</div>
-            {% endfor %}
-        </div>
-        {% endif %}
-        {% endwith %}
-
-        <div id="pageContent" class="row">
-            {% block utubhome %}
-            {% endblock %}
-        </div>
-
-    </main>
-
-    <!-- Main Panel View -->
-
-    {% endif %}
-    {% endblock %}
-
     {% block modal_extender %}
     <!-- Modal -->
     {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
@@ -176,6 +148,35 @@
     {% endif %}
     <!-- Modal -->
     {% endblock %}
+
+    {% block mainbody %}
+    {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+    <!-- Main Panel View -->
+
+    <main id="mainPanel" class="mx-0 bt-4 pt-0">
+        <!-- Display flash messages on top -->
+        {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+        <div class=flashes>
+            {% for category, message in messages %}
+            <div class="alert alert-{{category}}">{{ message }}</div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+
+        <div id="pageContent" class="row">
+            {% block utubhome %}
+            {% endblock %}
+        </div>
+
+    </main>
+
+    <!-- Main Panel View -->
+
+    {% endif %}
+    {% endblock %}
+
 </body>
 
 </html>

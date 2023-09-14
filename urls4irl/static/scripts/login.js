@@ -1,36 +1,47 @@
 $(document).ready(function () {
+  setToRegisterButton();
+  setToLoginButton();
+});
+
+function setToRegisterButton() {
   $(".to-register")
     .off("click")
     .on("click", function () {
       registerModalOpener("/register");
     });
+}
 
+function setToLoginButton() {
   $(".to-login")
     .off("click")
     .on("click", function () {
       loginModalOpener("/login");
     });
+}
 
+function setCloseEmailModalButton() {
   $(".close-email-modal")
     .off("click")
     .on("click", function () {
       $("#loginRegisterModal").modal("hide");
-      logoutUser();
     });
-
-});
+}
 
 function logoutUser() {
   $.get("/logout");
 }
 
-function emailValidationModal() {
+function emailValidationModal(tokenExpired = "") {
   $.get("/confirm_email", function (data) {
     $("#loginRegisterModal .modal-content").html(data);
     $("#loginRegisterModal").modal();
+    setCloseEmailModalButton();
     $("#loginRegisterModal").one("hide.bs.modal", function (e) {
       logoutUser();
     })
+    if (tokenExpired !== undefined && tokenExpired.length != 0) {
+      showEmailValidationAlert(tokenExpired, "info")
+    }
     $("#submit").click(function (event) {
       event.preventDefault();
       let request = $.ajax({
@@ -42,26 +53,21 @@ function emailValidationModal() {
       request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
           // Email sent!
-          console.log("Email sent to the user")
+          showEmailValidationAlert(xhr.responseJSON.Message, "success")
         }
       });
 
       request.fail(function (xhr, textStatus, error) {
-        if (xhr.status == 401) {
-          handleImproperFormErrors(xhr.responseJSON);
-        } else if (xhr.status == 403) {
-          // Email invalid
-          window.location.replace(xhr.responseJSON.redirect);
-        } else if (xhr.status == 429 && xhr.responseJSON.hasOwnProperty("Error_code")) {
+        if (xhr.status == 429 && xhr.responseJSON.hasOwnProperty("Error_code")) {
           if (xhr.responseJSON.Error_code == 1) {
             showEmailValidationAlert(xhr.responseJSON.Message, "danger")
-          }
-
-          if (xhr.responseJSON.Error_code == 2) {
+          } else if (xhr.responseJSON.Error_code == 2) {
             showEmailValidationAlert(xhr.responseJSON.Message, "warning")
           }
-          // Too many attempts
-          console.log(xhr.responseJSON.Message)
+        } else if (xhr.status == 400 && xhr.responseJSON.hasOwnProperty("Error_code")) {
+          if (xhr.responseJSON.Error_code == 3 || xhr.responseJSON.Error_code == 4) {
+            showEmailValidationAlert(xhr.responseJSON.Message, "warning")
+          }
         } else {
           // TODO: Handle other errors here.
           console.log("You need to handle other errors!");
@@ -82,6 +88,7 @@ function loginModalOpener(url) {
   $.get(url, function (data) {
     $("#loginRegisterModal .modal-content").html(data);
     $("#loginRegisterModal").modal();
+    setToRegisterButton();
     $("#submit").click(function (event) {
       event.preventDefault();
       let request = $.ajax({
@@ -123,7 +130,10 @@ function registerModalOpener(url) {
   $.get(url, function (data) {
     $("#loginRegisterModal .modal-content").html(data);
     $("#loginRegisterModal").modal();
-    $("#submit").click(function (event) {
+    setToLoginButton();
+    const registerButton = $("#submit");
+    registerButton.click(function (event) {
+      registerButton.attr("disabled", "disabled");
       event.preventDefault();
       let request = $.ajax({
         url: url,
@@ -147,6 +157,7 @@ function registerModalOpener(url) {
             }
             case 2: {
               handleImproperFormErrors(xhr.responseJSON);
+              registerButton.removeAttr("disabled");
               break;
             }
           }
@@ -164,10 +175,14 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".invalid-feedback").remove();
   const alertBanner = $("#ValidateEmailMessage");
   alertBanner.removeClass("alert-banner-email-validation-hide")
-    .addClass("alert-warning alert-banner-email-validation-show")
+    .addClass("alert-info alert-banner-email-validation-show")
     .append($('<div>' + message + '</div>'))
     .append(
-      $('<button type="button" class="btn btn-link btn-block">Validate My Email</button>').click(emailValidationModal)
+      $('<button type="button" class="btn btn-link btn-block">Validate My Email</button>')
+        .off("click")
+        .on("click", function () {
+          emailValidationModal()
+        })
     )
 
   $(".register-to-login-footer").remove()

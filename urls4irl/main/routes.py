@@ -7,12 +7,12 @@ from urls4irl.utils.strings import EMAIL_VALIDATION_MODAL_CALL
 main = Blueprint("main", __name__)
 
 
-@main.route("/")
+@main.route("/", methods=["GET"])
 def splash():
     """Splash page for an unlogged in user."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return render_template("splash.html", show_email_validation_modal=True, email_validation_modal=EMAIL_VALIDATION_MODAL_CALL)
+            return render_template("splash.html", email_validation_modal=EMAIL_VALIDATION_MODAL_CALL)
         return redirect(url_for("main.home"))
     return render_template("splash.html")
 

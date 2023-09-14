@@ -32,8 +32,12 @@
 </div>
 
 <script src="{{ url_for('static', filename='scripts/login.js') }}"></script>
-{% if show_email_validation_modal %}
-<script>{{ email_validation_modal }}</script>
+{% if email_validation_modal is defined and email_validation_modal %}
+{% if expired_token is defined and expired_token  %}
+<script>{{ email_validation_modal }}("{{ expired_token }}")</script>
+{% else %}
+<script>{{ email_validation_modal }}()</script>
+{% endif %}
 {% endif %}
 
 {% endif %}
