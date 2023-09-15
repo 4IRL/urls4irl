@@ -3,7 +3,16 @@ from flask_login import FlaskLoginClient, current_user
 
 from urls4irl import create_app, db
 from urls4irl.config import TestingConfig
-from urls4irl.models import User, Utub, Utub_Users, URLS, Utub_Urls, Tags, Url_Tags, EmailValidation
+from urls4irl.models import (
+    User,
+    Utub,
+    Utub_Users,
+    URLS,
+    Utub_Urls,
+    Tags,
+    Url_Tags,
+    EmailValidation,
+)
 from tests.utils_for_test import get_csrf_token, drop_database
 from tests.models_for_test import (
     valid_user_1,
@@ -68,6 +77,7 @@ def load_login_page(client):
         csrf_token_string = get_csrf_token(get_register_response.get_data())
         yield client, csrf_token_string
 
+
 @pytest.fixture
 def load_splash_page(client):
     """
@@ -116,6 +126,7 @@ def register_first_user(app):
 
     yield valid_user_1, new_user
 
+
 @pytest.fixture
 def register_first_user_without_email_validation(app):
     """
@@ -147,6 +158,7 @@ def register_first_user_without_email_validation(app):
         db.session.commit()
 
     yield valid_user_1, new_user
+
 
 @pytest.fixture
 def register_all_but_first_user(app):

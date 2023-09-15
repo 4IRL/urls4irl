@@ -32,8 +32,13 @@ def test_login_no_password(load_login_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
     assert len(response_json[STD_JSON.ERRORS]) == 2
-    assert response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME] == [LOGIN_FAILURE.USER_NOT_EXIST]
-    assert response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD] == LOGIN_FAILURE.FIELD_REQUIRED
+    assert response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME] == [
+        LOGIN_FAILURE.USER_NOT_EXIST
+    ]
+    assert (
+        response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]
+        == LOGIN_FAILURE.FIELD_REQUIRED
+    )
 
 
 def test_login_no_username(load_login_page):

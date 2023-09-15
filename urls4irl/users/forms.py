@@ -23,17 +23,26 @@ class UserRegistrationForm(FlaskForm):
     """
 
     username = StringField(
-        LOGIN_REGISTER_FORM.USERNAME_TEXT, validators=[InputRequired(), Length(min=4, max=UserConstants.MAX_USERNAME_LENGTH)]
+        LOGIN_REGISTER_FORM.USERNAME_TEXT,
+        validators=[
+            InputRequired(),
+            Length(min=4, max=UserConstants.MAX_USERNAME_LENGTH),
+        ],
     )
-    email = StringField(LOGIN_REGISTER_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()])
+    email = StringField(
+        LOGIN_REGISTER_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
+    )
     confirm_email = StringField(
-        LOGIN_REGISTER_FORM.CONFIRM_EMAIL_TEXT, validators=[InputRequired(), EqualTo(LOGIN_REGISTER_FORM.EMAIL)]
+        LOGIN_REGISTER_FORM.CONFIRM_EMAIL_TEXT,
+        validators=[InputRequired(), EqualTo(LOGIN_REGISTER_FORM.EMAIL)],
     )
     password = PasswordField(
-        LOGIN_REGISTER_FORM.PASSWORD_TEXT, validators=[InputRequired(), Length(min=12, max=64)]
+        LOGIN_REGISTER_FORM.PASSWORD_TEXT,
+        validators=[InputRequired(), Length(min=12, max=64)],
     )
     confirm_password = PasswordField(
-       LOGIN_REGISTER_FORM.CONFIRM_PASSWORD_TEXT, validators=[InputRequired(), EqualTo(LOGIN_REGISTER_FORM.PASSWORD)]
+        LOGIN_REGISTER_FORM.CONFIRM_PASSWORD_TEXT,
+        validators=[InputRequired(), EqualTo(LOGIN_REGISTER_FORM.PASSWORD)],
     )
 
     submit = SubmitField(LOGIN_REGISTER_FORM.REGISTER)
@@ -65,8 +74,12 @@ class LoginForm(FlaskForm):
         submit (Submitfield): Represents the submit button to submit the form
     """
 
-    username = StringField(LOGIN_REGISTER_FORM.USERNAME_TEXT, validators=[InputRequired()])
-    password = PasswordField(LOGIN_REGISTER_FORM.PASSWORD_TEXT, validators=[InputRequired()])
+    username = StringField(
+        LOGIN_REGISTER_FORM.USERNAME_TEXT, validators=[InputRequired()]
+    )
+    password = PasswordField(
+        LOGIN_REGISTER_FORM.PASSWORD_TEXT, validators=[InputRequired()]
+    )
 
     submit = SubmitField(LOGIN_REGISTER_FORM.LOGIN)
 
@@ -98,7 +111,8 @@ class UTubNewUserForm(FlaskForm):
     """
 
     username = StringField(
-        LOGIN_REGISTER_FORM.USERNAME_TEXT, validators=[InputRequired(), Length(min=1, max=30)]
+        LOGIN_REGISTER_FORM.USERNAME_TEXT,
+        validators=[InputRequired(), Length(min=1, max=30)],
     )
 
     submit = SubmitField("Add to this UTub!")

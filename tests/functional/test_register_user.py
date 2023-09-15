@@ -34,7 +34,10 @@ def test_register_new_user(app, load_register_page):
 
     # Correctly sends URL to email validation modal
     assert response.status_code == 201
-    assert  b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>' in response.data
+    assert (
+        b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
+        in response.data
+    )
 
     # Test if user logged in
     assert current_user.username == valid_user_1[REGISTER_FORM.USERNAME]
@@ -78,7 +81,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
             [
                 {
                     REGISTER_FORM.USERNAME: "That username is taken. Please choose another.",
-                    REGISTER_FORM.EMAIL: "That email address is already in use."                
+                    REGISTER_FORM.EMAIL: "That email address is already in use."
                 }
             ]
     }
@@ -112,11 +115,19 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     # Ensure json response from server is valid
     register_user_response_json = response.json
     assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert register_user_response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
+    assert (
+        register_user_response_json[STD_JSON.MESSAGE]
+        == REGISTER_FAILURE.UNABLE_TO_REGISTER
+    )
     assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 2
-    assert REGISTER_FAILURE.USERNAME_TAKEN in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
-    assert REGISTER_FAILURE.EMAIL_TAKEN in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
-
+    assert (
+        REGISTER_FAILURE.USERNAME_TAKEN
+        in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
+    )
+    assert (
+        REGISTER_FAILURE.EMAIL_TAKEN
+        in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
+    )
 
 
 def test_register_modal_is_shown(client):
@@ -177,7 +188,10 @@ def test_register_modal_logs_user_in(client):
         response = client.post("/register", data=valid_user_1)
 
         assert response.status_code == 201
-        assert  b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>' in response.data
+        assert (
+            b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
+            in response.data
+        )
 
         assert current_user.username == valid_user_1[REGISTER_FORM.USERNAME]
         assert check_password_hash(

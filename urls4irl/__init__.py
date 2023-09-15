@@ -22,7 +22,9 @@ cors_sess = CORS()
 email_sender = EmailSender()
 
 
-def create_app(config_class: Config = Config, testing: bool = False, production: bool = False):
+def create_app(
+    config_class: Config = Config, testing: bool = False, production: bool = False
+):
     app = Flask(__name__)
     app.config.from_object(config_class)
 

@@ -1,7 +1,7 @@
 from flask_login import login_required, current_user
 from urls4irl.models import EmailValidation
 from functools import wraps
-from flask import session, url_for, redirect  
+from flask import session, url_for, redirect
 from urls4irl.utils.strings import EMAILS
 
 
@@ -14,8 +14,12 @@ def email_validation_required(func):
 
         if is_email_validated is None:
             # TODO: Instead of 404'ing, redirect for users who don't validate in case they don't have a row... maybe?
-            current_user_email_validation: EmailValidation = EmailValidation.query.get_or_404(current_user_id)
-            session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = current_user_email_validation.is_validated
+            current_user_email_validation: EmailValidation = (
+                EmailValidation.query.get_or_404(current_user_id)
+            )
+            session[
+                EMAILS.EMAIL_VALIDATED_SESS_KEY
+            ] = current_user_email_validation.is_validated
             is_email_validated = session[EMAILS.EMAIL_VALIDATED_SESS_KEY]
 
         if not is_email_validated:

@@ -38,9 +38,9 @@ function emailValidationModal(tokenExpired = "") {
     setCloseEmailModalButton();
     $("#loginRegisterModal").one("hide.bs.modal", function (e) {
       logoutUser();
-    })
+    });
     if (tokenExpired !== undefined && tokenExpired.length != 0) {
-      showEmailValidationAlert(tokenExpired, "info")
+      showEmailValidationAlert(tokenExpired, "info");
     }
     $("#submit").click(function (event) {
       event.preventDefault();
@@ -53,20 +53,29 @@ function emailValidationModal(tokenExpired = "") {
       request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
           // Email sent!
-          showEmailValidationAlert(xhr.responseJSON.Message, "success")
+          showEmailValidationAlert(xhr.responseJSON.Message, "success");
         }
       });
 
       request.fail(function (xhr, textStatus, error) {
-        if (xhr.status == 429 && xhr.responseJSON.hasOwnProperty("Error_code")) {
+        if (
+          xhr.status == 429 &&
+          xhr.responseJSON.hasOwnProperty("Error_code")
+        ) {
           if (xhr.responseJSON.Error_code == 1) {
-            showEmailValidationAlert(xhr.responseJSON.Message, "danger")
+            showEmailValidationAlert(xhr.responseJSON.Message, "danger");
           } else if (xhr.responseJSON.Error_code == 2) {
-            showEmailValidationAlert(xhr.responseJSON.Message, "warning")
+            showEmailValidationAlert(xhr.responseJSON.Message, "warning");
           }
-        } else if (xhr.status == 400 && xhr.responseJSON.hasOwnProperty("Error_code")) {
-          if (xhr.responseJSON.Error_code == 3 || xhr.responseJSON.Error_code == 4) {
-            showEmailValidationAlert(xhr.responseJSON.Message, "warning")
+        } else if (
+          xhr.status == 400 &&
+          xhr.responseJSON.hasOwnProperty("Error_code")
+        ) {
+          if (
+            xhr.responseJSON.Error_code == 3 ||
+            xhr.responseJSON.Error_code == 4
+          ) {
+            showEmailValidationAlert(xhr.responseJSON.Message, "warning");
           }
         } else {
           // TODO: Handle other errors here.
@@ -74,14 +83,17 @@ function emailValidationModal(tokenExpired = "") {
         }
       });
     });
-  })
+  });
 }
 
 function showEmailValidationAlert(message, category) {
-  $("#ValidateEmailMessage").removeClass("alert-banner-email-validation-hide")
-    .addClass("alert-" + category).css({
-      "display": "inherit"
-    }).text(message)
+  $("#ValidateEmailMessage")
+    .removeClass("alert-banner-email-validation-hide")
+    .addClass("alert-" + category)
+    .css({
+      display: "inherit",
+    })
+    .text(message);
 }
 
 function loginModalOpener(url) {
@@ -105,11 +117,14 @@ function loginModalOpener(url) {
       });
 
       request.fail(function (xhr, textStatus, error) {
-        if (xhr.status == 401 && xhr.responseJSON.hasOwnProperty("Error_code")) {
+        if (
+          xhr.status == 401 &&
+          xhr.responseJSON.hasOwnProperty("Error_code")
+        ) {
           switch (xhr.responseJSON.Error_code) {
             case 1: {
               // User found but email not yet validated
-              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message)
+              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
               break;
             }
             case 2: {
@@ -148,11 +163,14 @@ function registerModalOpener(url) {
       });
 
       request.fail(function (xhr, textStatus, error) {
-        if (xhr.status == 401 && xhr.responseJSON.hasOwnProperty("Error_code")) {
+        if (
+          xhr.status == 401 &&
+          xhr.responseJSON.hasOwnProperty("Error_code")
+        ) {
           switch (xhr.responseJSON.Error_code) {
             case 1: {
               // User found but email not yet validated
-              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message)
+              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
               break;
             }
             case 2: {
@@ -174,19 +192,22 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".form-control").removeClass("is-invalid");
   $(".invalid-feedback").remove();
   const alertBanner = $("#ValidateEmailMessage");
-  alertBanner.removeClass("alert-banner-email-validation-hide")
+  alertBanner
+    .removeClass("alert-banner-email-validation-hide")
     .addClass("alert-info alert-banner-email-validation-show")
-    .append($('<div>' + message + '</div>'))
+    .append($("<div>" + message + "</div>"))
     .append(
-      $('<button type="button" class="btn btn-link btn-block">Validate My Email</button>')
+      $(
+        '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
+      )
         .off("click")
         .on("click", function () {
-          emailValidationModal()
-        })
-    )
+          emailValidationModal();
+        }),
+    );
 
-  $(".register-to-login-footer").remove()
-  $(".modal-footer").remove()
+  $(".register-to-login-footer").remove();
+  $(".modal-footer").remove();
 
   $(".close-register-login-modal")
     .off("click")
@@ -200,9 +221,9 @@ function handleImproperFormErrors(errorResponse) {
   $(".invalid-feedback").remove();
   $(".alert").each(function () {
     if ($(this).attr("id") !== "ValidateEmailMessage") {
-      $(this).remove()
+      $(this).remove();
     }
-  })
+  });
   $(".form-control").removeClass("is-invalid");
   for (let key in errorResponse.Errors) {
     switch (key) {

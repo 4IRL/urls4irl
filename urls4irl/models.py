@@ -115,21 +115,25 @@ class Url_Tags(db.Model):
 
 class User(db.Model, UserMixin):
     """Class represents a User, with their username, email, and hashed password."""
-    #TODO - Ensure if user signs in with Oauth, their username is local part of their email
-    #TODO - Verify that username is less than length of max username, else add numbers to end up to 99999
-    #TODO - Verify email cannot be used as password
+
+    # TODO - Ensure if user signs in with Oauth, their username is local part of their email
+    # TODO - Verify that username is less than length of max username, else add numbers to end up to 99999
+    # TODO - Verify email cannot be used as password
 
     __tablename__ = "User"
     id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(db.String(UserConstants.MAX_USERNAME_LENGTH), unique=True, nullable=False)
+    username = db.Column(
+        db.String(UserConstants.MAX_USERNAME_LENGTH), unique=True, nullable=False
+    )
     email = db.Column(db.String(120), unique=True, nullable=False)
     password = db.Column(db.String(166), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     utubs_created = db.relationship("Utub", backref="created_by", lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     utubs_is_member_of = db.relationship("Utub_Users", back_populates="to_user")
-    email_confirm = db.relationship("EmailValidation", uselist=False, back_populates="user")
-    
+    email_confirm = db.relationship(
+        "EmailValidation", uselist=False, back_populates="user"
+    )
 
     def __init__(
         self,
@@ -176,25 +180,45 @@ class User(db.Model, UserMixin):
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
 
-    def get_email_validation_token(self, expires_in=EmailConstants.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS):
+    def get_email_validation_token(
+        self, expires_in=EmailConstants.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS
+    ):
         return jwt.encode(
-            payload={EMAILS.VALIDATE_EMAIL: self.username, EMAILS.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in},
-            key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithm=EMAILS.ALGORITHM
+            payload={
+                EMAILS.VALIDATE_EMAIL: self.username,
+                EMAILS.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithm=EMAILS.ALGORITHM,
         )
 
     @staticmethod
     def verify_email_validation_token(token: str):
         try:
-            username_to_validate = jwt.decode(jwt=token, key=current_app.config[CONFIG_ENVS.SECRET_KEY], algorithms=EMAILS.ALGORITHM)
+            username_to_validate = jwt.decode(
+                jwt=token,
+                key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+                algorithms=EMAILS.ALGORITHM,
+            )
 
         except JWTExceptions.ExpiredSignatureError:
             return None, True
 
-        except (RuntimeError, TypeError, JWTExceptions.ExpiredSignatureError, JWTExceptions.DecodeError):
-            return  None, False
+        except (
+            RuntimeError,
+            TypeError,
+            JWTExceptions.ExpiredSignatureError,
+            JWTExceptions.DecodeError,
+        ):
+            return None, False
 
-        return User.query.filter(User.username == username_to_validate[EMAILS.VALIDATE_EMAIL]).first_or_404(), False
-        
+        return (
+            User.query.filter(
+                User.username == username_to_validate[EMAILS.VALIDATE_EMAIL]
+            ).first_or_404(),
+            False,
+        )
+
 
 class EmailValidation(db.Model):
     """Class represents an Email Validation row - users are required to have their emails confirmed before accessing the site"""
@@ -219,7 +243,11 @@ class EmailValidation(db.Model):
         self.validated_at = datetime.utcnow()
 
     def increment_attempt(self) -> bool:
-        if self.last_attempt is not None and (datetime.utcnow() - self.last_attempt).seconds <= EmailConstants.WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS:
+        if (
+            self.last_attempt is not None
+            and (datetime.utcnow() - self.last_attempt).seconds
+            <= EmailConstants.WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS
+        ):
             return False
 
         self.last_attempt = datetime.utcnow()
@@ -227,10 +255,16 @@ class EmailValidation(db.Model):
         return True
 
     def check_if_too_many_attempts(self) -> bool:
-        if self.last_attempt is None or self.attempts < EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR: return False
+        if (
+            self.last_attempt is None
+            or self.attempts < EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR
+        ):
+            return False
 
-        if self.attempts >= EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR: 
-            if (datetime.utcnow() - self.last_attempt).seconds >= EmailConstants.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS:
+        if self.attempts >= EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR:
+            if (
+                datetime.utcnow() - self.last_attempt
+            ).seconds >= EmailConstants.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS:
                 self.attempts = 0
 
             else:

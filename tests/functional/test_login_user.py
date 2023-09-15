@@ -60,7 +60,7 @@ def test_login_unregistered_user(load_login_page):
         STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
             [
                 {
-                    LOGIN_FORM.USERNAME: "That user does not exist. Note this is case sensitive."                
+                    LOGIN_FORM.USERNAME: "That user does not exist. Note this is case sensitive."
                 }
             ]
     }
@@ -83,7 +83,10 @@ def test_login_unregistered_user(load_login_page):
     assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert login_user_response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
     assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 2
-    assert LOGIN_FAILURE.USER_NOT_EXIST in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME]
+    assert (
+        LOGIN_FAILURE.USER_NOT_EXIST
+        in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME]
+    )
 
     assert response.status_code == 401
 
@@ -106,7 +109,7 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
         STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
             [
                 {
-                    LOGIN_FORM.PASSWORD: "Invalid password."                
+                    LOGIN_FORM.PASSWORD: "Invalid password."
                 }
             ]
     }
@@ -129,7 +132,10 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
     assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert login_user_response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
     assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 2
-    assert LOGIN_FAILURE.INVALID_PASSWORD in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]
+    assert (
+        LOGIN_FAILURE.INVALID_PASSWORD
+        in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]
+    )
 
     assert response.status_code == 401
 
@@ -293,7 +299,7 @@ def test_user_can_login_logout_login(login_first_user_with_register):
     # Ensure lands on splash page
     assert response.status_code == 200
     assert response.request.path == url_for("main.splash")
-    
+
     response = client.get("/login")
 
     # Ensure on login page
