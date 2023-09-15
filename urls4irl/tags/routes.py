@@ -1,9 +1,10 @@
 from flask import Blueprint, jsonify
-from flask_login import current_user, login_required
+from flask_login import current_user
 from urls4irl import db
 from urls4irl.models import Utub, Url_Tags, Tags, Utub_Urls
 from urls4irl.tags.forms import UTubNewUrlTagForm
 from urls4irl.utils import strings as U4I_STRINGS
+from urls4irl.utils.email_validation import email_validation_required
 
 tags = Blueprint("tags", __name__)
 
@@ -15,7 +16,7 @@ TAGS_SUCCESS = U4I_STRINGS.TAGS_SUCCESS
 
 
 @tags.route("/tag/add/<int:utub_id>/<int:url_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def add_tag(utub_id: int, url_id: int):
     """
     User wants to add a tag to a URL. 5 tags per URL.
@@ -159,7 +160,7 @@ def add_tag(utub_id: int, url_id: int):
 
 
 @tags.route("/tag/remove/<int:utub_id>/<int:url_id>/<int:tag_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
     User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
@@ -219,7 +220,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
 
 
 @tags.route("/tag/url/modify/<int:utub_id>/<int:url_id>/<int:tag_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
     """
     User wants to modify an existing tag on a URL

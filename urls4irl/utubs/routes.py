@@ -1,9 +1,10 @@
 from flask import Blueprint, jsonify
-from flask_login import current_user, login_required
+from flask_login import current_user
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Users
 from urls4irl.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from urls4irl.utils import strings as U4I_STRINGS
+from urls4irl.utils.email_validation import email_validation_required
 
 utubs = Blueprint("utubs", __name__)
 
@@ -14,7 +15,7 @@ UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
 
 
 @utubs.route("/utub/new", methods=["POST"])
-@login_required
+@email_validation_required
 def create_utub():
     """
     User wants to create a new utub.
@@ -79,7 +80,7 @@ def create_utub():
 
 
 @utubs.route("/utub/delete/<int:utub_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def delete_utub(utub_id: int):
     """
     Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
@@ -124,7 +125,7 @@ def delete_utub(utub_id: int):
 
 
 @utubs.route("/utub/edit_name/<int:utub_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def update_utub_name(utub_id: int):
     """
     Creator wants to update their UTub name.
@@ -204,7 +205,7 @@ def update_utub_name(utub_id: int):
 
 
 @utubs.route("/utub/edit_description/<int:utub_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def update_utub_desc(utub_id: int):
     """
     Creator wants to update their UTub description.

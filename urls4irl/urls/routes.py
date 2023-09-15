@@ -1,5 +1,5 @@
 from flask import Blueprint, jsonify
-from flask_login import current_user, login_required
+from flask_login import current_user
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Urls, URLS, Url_Tags
 from urls4irl.urls.forms import (
@@ -8,6 +8,7 @@ from urls4irl.urls.forms import (
 )
 from urls4irl.utils.url_validation import InvalidURLError, check_request_head
 from urls4irl.utils import strings as U4I_STRINGS
+from urls4irl.utils.email_validation import email_validation_required
 
 urls = Blueprint("urls", __name__)
 
@@ -19,7 +20,7 @@ URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
 
 
 @urls.route("/url/remove/<int:utub_id>/<int:url_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def delete_url(utub_id: int, url_id: int):
     """
     User wants to delete a URL from a UTub. Only available to owner of that utub,
@@ -76,7 +77,7 @@ def delete_url(utub_id: int, url_id: int):
 
 
 @urls.route("/url/add/<int:utub_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def add_url(utub_id: int):
     """
     User wants to add URL to UTub. On success, adds the URL to the UTub.
@@ -239,7 +240,7 @@ def add_url(utub_id: int):
 
 
 @urls.route("/url/edit/<int:utub_id>/<int:url_id>", methods=["POST"])
-@login_required
+@email_validation_required
 def edit_url_and_description(utub_id: int, url_id: int):
     """
     Edits the URL contained in the UTub.

@@ -29,25 +29,16 @@ def test_user_model():
         username=new_user["username"],
         email=new_user["email"],
         plaintext_password=new_user["password"],
-        email_confirm=True,
     )
 
     assert new_user_object.username == new_user["username"]
     assert new_user_object.password != new_user["password"]
     assert new_user_object.email == new_user["email"]
-    assert new_user_object.email_confirm is True
     assert new_user_object.is_password_correct(new_user["password"]) is True
     assert len(new_user_object.utubs_created) == 0
     assert len(new_user_object.utub_urls) == 0
     assert len(new_user_object.utubs_is_member_of) == 0
-
-    new_user_object = User(
-        username=new_user["username"],
-        email=new_user["email"],
-        plaintext_password=new_user["password"],
-    )
-
-    assert new_user_object.email_confirm is False
+    assert new_user_object.email_confirm is None
 
 
 def test_utub_model():

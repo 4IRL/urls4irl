@@ -479,6 +479,15 @@ i.fa-check-square {
     position: relative;
 }
 
+.email-container {
+    text-align: center;
+    display: flex;
+    justify-content: space-between;
+    flex-direction: row;
+    align-items: flex-start;
+    width: 100%;
+}
+
 .container-fluid {
     padding-right: 0px;
     padding-left: 0px;
@@ -516,6 +525,16 @@ i.fa-check-square {
     width: max-content;
 }
 
+.modal-close {
+    width: auto;
+}
+
+.validate-email-title {
+    flex-grow: 1;
+    color: #28a745;
+    font-size: 36px;
+}
+
 /* Remove the scroll bar from login/register forms */
 .login-register-form {
     overflow-y: hidden;
@@ -530,6 +549,21 @@ i.fa-check-square {
 .login-buttons {
     display: inline-block;
     vertical-align: top;
+}
+
+.validate-email-text {
+    font-family: Arial, sans-serif;
+}
+
+.alert-banner-email-validation-hide {
+    display: none;
+}
+
+.alert-banner-email-validation-show {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
 }
 
 /* ID sepcific */
@@ -556,4 +590,32 @@ i.fa-check-square {
 
 #ModalForm {
     overflow: hidden;
+}
+
+#ValidateEmailIcon {
+    width: 48px;
+    height: 48px;
+    background-color: #28a745;
+    color: white;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    margin: 0 auto 10px auto;
+    /* Center horizontally */
+}
+
+#ValidateEmailText {
+    color: #333;
+    font-size: 18px;
+    line-height: 1.6;
+    margin-bottom: 30px;
+}
+
+#ValidateEmailMessage {
+    color: #333;
+    font-size: 18px;
+    line-height: 1.6;
+    text-align: center;
 }

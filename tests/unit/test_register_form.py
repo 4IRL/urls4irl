@@ -30,7 +30,7 @@ def test_register_user_form_only_username_csrf(load_register_page):
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
@@ -68,7 +68,7 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
@@ -109,7 +109,7 @@ def test_register_user_form_only_valid_email_csrf(load_register_page):
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
@@ -147,7 +147,7 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
@@ -189,7 +189,7 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
@@ -231,7 +231,7 @@ def test_register_user_form_only_valid_password_csrf(load_register_page):
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
@@ -269,7 +269,7 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5

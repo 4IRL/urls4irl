@@ -28,15 +28,17 @@ def test_login_no_password(load_login_page):
     assert request.path == url_for("users.login")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
-    assert len(response_json[STD_JSON.ERRORS]) == 1
-
-    for input_key in LOGIN_FORM.LOGIN_FORM_KEYS:
-        if input_key != LOGIN_FORM.PASSWORD:
-            continue
-        assert response_json[STD_JSON.ERRORS][input_key] == LOGIN_FAILURE.FIELD_REQUIRED
+    assert len(response_json[STD_JSON.ERRORS]) == 2
+    assert response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME] == [
+        LOGIN_FAILURE.USER_NOT_EXIST
+    ]
+    assert (
+        response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]
+        == LOGIN_FAILURE.FIELD_REQUIRED
+    )
 
 
 def test_login_no_username(load_login_page):
@@ -61,7 +63,7 @@ def test_login_no_username(load_login_page):
     assert request.path == url_for("users.login")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
     assert len(response_json[STD_JSON.ERRORS]) == 1
@@ -93,7 +95,7 @@ def test_login_no_username_or_password(load_login_page):
     assert request.path == url_for("users.login")
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == LOGIN_FAILURE.UNABLE_TO_LOGIN
     assert len(response_json[STD_JSON.ERRORS]) == 2

@@ -5,7 +5,7 @@ def test_get_home_screen_not_logged_in(client):
     """
     GIVEN a fresh user to the website who isn't logged in
     WHEN "/" is requested (GET)
-    THEN ensure redirect to "login"
+    THEN ensure redirect to splash page
     """
     with client:
         response = client.get("/", follow_redirects=True)

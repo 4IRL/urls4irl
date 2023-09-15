@@ -1,11 +1,12 @@
 from flask import Flask
-from flask_session import Session, SqlAlchemySessionInterface
-from flask_sqlalchemy import SQLAlchemy
-from urls4irl.config import Config
-from flask_login import LoginManager
-from flask_wtf.csrf import CSRFProtect
-from flask_migrate import Migrate
 from flask_cors import CORS
+from flask_login import LoginManager
+from flask_migrate import Migrate
+from flask_session import Session
+from flask_sqlalchemy import SQLAlchemy
+from flask_wtf.csrf import CSRFProtect
+from urls4irl.config import Config
+from urls4irl.utils.email_sender import EmailSender
 
 sess = Session()
 
@@ -15,13 +16,15 @@ migrate = Migrate(db=db, render_as_batch=True)
 csrf = CSRFProtect()
 
 login_manager = LoginManager()
-login_manager.login_view = "users.login"  # Where to send user if they aren't logged in but try to access a logged in page
-login_manager.login_message_category = "info"
 
 cors_sess = CORS()
 
+email_sender = EmailSender()
 
-def create_app(config_class: Config = Config, testing: bool = False):
+
+def create_app(
+    config_class: Config = Config, testing: bool = False, production: bool = False
+):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -32,6 +35,10 @@ def create_app(config_class: Config = Config, testing: bool = False):
     login_manager.init_app(app)
 
     cors_sess.init_app(app)
+
+    email_sender.init_app(app)
+    if production:
+        email_sender.in_production()
 
     from urls4irl.main.routes import main
     from urls4irl.utubs.routes import utubs

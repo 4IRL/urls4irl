@@ -1,5 +1,7 @@
 # URLS4IRL
 
+[![Tests](https://github.com/4IRL/urls4irl/actions/workflows/u4i_actions.yml/badge.svg)](https://github.com/4IRL/urls4irl/actions/workflows/u4i_actions.yml)
+
 ## Share URLs With People You Know!
 
 Ever shared a link with someone and then tried to search through your chat history to find it again?
