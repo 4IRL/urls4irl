@@ -12,6 +12,7 @@ class EmailSender:
     def __init__(self):
         self._base = EMAILS.BASE_API_URL      
         self._testing = False
+        self._in_production = False
 
 
     def init_app(self, app):
@@ -22,6 +23,18 @@ class EmailSender:
         api_key = app.config[CONFIG_ENVS.MAILJET_API_KEY]
         api_secret = app.config[CONFIG_ENVS.MAILJET_SECRET_KEY]
         self._mailjet_client = Client(auth=(api_key, api_secret), version='v3.1')
+
+
+    def is_testing(self):
+        return self._testing
+
+
+    def in_production(self):
+        self._in_production = True
+
+
+    def is_production(self):
+        return self._in_production
 
 
     def send_account_email_confirmation(self, to_email: str, to_name: str, confirmation_url: str):

@@ -15,7 +15,7 @@ if is_production_env_var.lower() not in ("false", "true"):
 else:
     is_production = True if is_production_env_var.lower() == "true" else False
 
-app = create_app()
+app = create_app(production=is_production)
 
 if __name__ == "__main__":
     if not is_production:

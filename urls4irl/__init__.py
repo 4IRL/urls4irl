@@ -22,7 +22,7 @@ cors_sess = CORS()
 email_sender = EmailSender()
 
 
-def create_app(config_class: Config = Config, testing: bool = False):
+def create_app(config_class: Config = Config, testing: bool = False, production: bool = False):
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -35,6 +35,8 @@ def create_app(config_class: Config = Config, testing: bool = False):
     cors_sess.init_app(app)
 
     email_sender.init_app(app)
+    if production:
+        email_sender.in_production()
 
     from urls4irl.main.routes import main
     from urls4irl.utubs.routes import utubs

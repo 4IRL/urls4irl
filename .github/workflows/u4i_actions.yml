@@ -7,9 +7,12 @@ permissions:
 jobs:
   Lint-and-Test:
     env:
-      FLASK_DEBUG: "development"
-      PRODUCTION: "false"
-      SECRET_KEY: "ABCDEFGH12345678"
+      FLASK_DEBUG: 'development'
+      PRODUCTION: 'false'
+      SECRET_KEY: 'ABCDEFGH12345678'
+      MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
+      MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
+      BASE_EMAIL: ${{ secrets.BASE_EMAIL }}
 
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest

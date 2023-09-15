@@ -48,8 +48,7 @@ def login():
         username = login_form.username.data
         user: User = User.query.filter_by(username=username).first()
         login_user(user)  # Can add Remember Me functionality here
-        TESTING = True
-        if TESTING and not user.email_confirm.is_validated:
+        if not user.email_confirm.is_validated:
             return (
                 jsonify(
                     {
@@ -399,7 +398,8 @@ def send_validation_email():
             }
         ), 429)
 
-    print(f"Sending this to the user's email:\n{url_for('users.validate_email', token=current_email_validation.confirm_url, _external=True)}")
+    if not email_sender.is_production() and not email_sender.is_testing():
+        print(f"Sending this to the user's email:\n{url_for('users.validate_email', token=current_email_validation.confirm_url, _external=True)}")
     url_for_confirmation = url_for('users.validate_email', token=current_email_validation.confirm_url, _external=True)
     email_send_result = email_sender.send_account_email_confirmation(current_user.email, current_user.username, url_for_confirmation)
     return _handle_email_sending_result(email_send_result)
