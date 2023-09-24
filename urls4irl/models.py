@@ -10,8 +10,7 @@ from flask import current_app
 from werkzeug.security import check_password_hash, generate_password_hash
 from urls4irl.utils.constants import EmailConstants, UserConstants
 from urls4irl.utils.strings import MODELS as MODEL_STRS
-from urls4irl.utils.strings import EMAILS
-from urls4irl.utils.strings import CONFIG_ENVS
+from urls4irl.utils.strings import EMAILS, CONFIG_ENVS, RESET_PASSWORD
 import jwt
 from jwt import exceptions as JWTExceptions
 
@@ -134,6 +133,9 @@ class User(db.Model, UserMixin):
     email_confirm = db.relationship(
         "EmailValidation", uselist=False, back_populates="user"
     )
+    password_reset = db.relationship(
+        "PasswordReset", uselist=False, back_populates="user"
+    )
 
     def __init__(
         self,
@@ -159,6 +161,9 @@ class User(db.Model, UserMixin):
 
     def is_email_authenticated(self) -> bool:
         return self.email_confirm.is_validated
+
+    def change_password(self, new_plaintext_password: str):
+        self.password = generate_password_hash(new_plaintext_password)
 
     @property
     def serialized(self):
@@ -191,6 +196,21 @@ class User(db.Model, UserMixin):
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],
             algorithm=EMAILS.ALGORITHM,
         )
+
+    def get_password_reset_token(
+            self, expires_in=UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MAX
+    ):
+        return jwt.encode(
+            payload={
+                RESET_PASSWORD.RESET_PASSWORD_KEY: self.username,
+                RESET_PASSWORD.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in,
+            },
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+        )
+
+    @staticmethod
+    def verify_email_validation_token(token: str):
+        pass
 
     @staticmethod
     def verify_email_validation_token(token: str):
@@ -275,6 +295,47 @@ class EmailValidation(db.Model):
     def reset_attempts(self):
         self.last_attempt = None
         self.attempts = 0
+
+
+class PasswordReset(db.Model):
+
+    __tablename__ = "PasswordReset"
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey("User.id"))
+    reset_token = db.Column(db.String(2000), nullable=False, default="")
+    attempts = db.Column(db.Integer, nullable=False, default=0)
+    initial_attempt = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    last_attempt = db.Column(db.DateTime, nullable=True, default=None)
+
+    user = db.relationship("User", back_populates="password_reset")
+
+    def __init__(self, reset_token: str):
+        self.reset_token = reset_token
+
+
+    def increment_attempts(self):
+        self.attempts += 1
+        self.last_attempt = datetime.utcnow()
+
+
+    def is_not_more_than_hour_old(self) -> bool:
+        if (datetime.utcnow() - self.initial_attempt).seconds > UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MAX:
+            # Token must be less than an hour old
+            return False
+        return True
+
+
+    def is_not_rate_limited(self) -> bool:
+        is_more_than_five_attempts_in_one_hour = self.attempts >= UserConstants.PASSWORD_RESET_ATTEMPTS
+        if is_more_than_five_attempts_in_one_hour:
+            # User won't be able to send more than 5 requests in one hour
+            return False
+
+        if self.last_attempt is not None and (datetime.utcnow() - self.last_attempt).seconds < UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MIN:
+            # Cannot perform more than two requests per minute
+            return False
+
+        return True
 
 
 class Utub(db.Model):

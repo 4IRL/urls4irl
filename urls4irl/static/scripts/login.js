@@ -19,6 +19,15 @@ function setToLoginButton() {
     });
 }
 
+function setForgotPasswordButton() {
+  $(".to-forgot-password")
+    .off("click")
+    .on("click", function () {
+      forgotPasswordModalOpener("/forgot_password");
+      console.log("User trying to reset their password.")
+    });
+}
+
 function setCloseEmailModalButton() {
   $(".close-email-modal")
     .off("click")
@@ -40,7 +49,7 @@ function emailValidationModal(tokenExpired = "") {
       logoutUser();
     });
     if (tokenExpired !== undefined && tokenExpired.length != 0) {
-      showEmailValidationAlert(tokenExpired, "info");
+      showEmailRelatedAlertBanner(tokenExpired, "info");
     }
     $("#submit").click(function (event) {
       event.preventDefault();
@@ -53,7 +62,7 @@ function emailValidationModal(tokenExpired = "") {
       request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
           // Email sent!
-          showEmailValidationAlert(xhr.responseJSON.Message, "success");
+          showEmailRelatedAlertBanner(xhr.responseJSON.Message, "success");
         }
       });
 
@@ -63,9 +72,9 @@ function emailValidationModal(tokenExpired = "") {
           xhr.responseJSON.hasOwnProperty("Error_code")
         ) {
           if (xhr.responseJSON.Error_code == 1) {
-            showEmailValidationAlert(xhr.responseJSON.Message, "danger");
+            showEmailRelatedAlertBanner(xhr.responseJSON.Message, "danger");
           } else if (xhr.responseJSON.Error_code == 2) {
-            showEmailValidationAlert(xhr.responseJSON.Message, "warning");
+            showEmailRelatedAlertBanner(xhr.responseJSON.Message, "warning");
           }
         } else if (
           xhr.status == 400 &&
@@ -75,7 +84,7 @@ function emailValidationModal(tokenExpired = "") {
             xhr.responseJSON.Error_code == 3 ||
             xhr.responseJSON.Error_code == 4
           ) {
-            showEmailValidationAlert(xhr.responseJSON.Message, "warning");
+            showEmailRelatedAlertBanner(xhr.responseJSON.Message, "warning");
           }
         } else {
           // TODO: Handle other errors here.
@@ -86,8 +95,8 @@ function emailValidationModal(tokenExpired = "") {
   });
 }
 
-function showEmailValidationAlert(message, category) {
-  $("#ValidateEmailMessage")
+function showEmailRelatedAlertBanner(message, category) {
+  $("#EmailAlertBanner")
     .removeClass("alert-banner-email-validation-hide")
     .addClass("alert-" + category)
     .css({
@@ -101,6 +110,7 @@ function loginModalOpener(url) {
     $("#loginRegisterModal .modal-content").html(data);
     $("#loginRegisterModal").modal();
     setToRegisterButton();
+    setForgotPasswordButton();
     $("#submit").click(function (event) {
       event.preventDefault();
       let request = $.ajax({
@@ -188,10 +198,61 @@ function registerModalOpener(url) {
   });
 }
 
+function forgotPasswordModalOpener(url) {
+  $.get(url, function (data) {
+    $("#loginRegisterModal .modal-content").html(data);
+    $("#loginRegisterModal").modal();
+    $("#submit").click(function (event) {
+      event.preventDefault();
+      let request = $.ajax({
+        url: url,
+        type: "POST",
+        data: $("#ModalForm").serialize(),
+      });
+
+      request.done(function (response, textStatus, xhr) {
+        if (xhr.status == 200) {
+          showEmailRelatedAlertBanner(xhr.responseJSON.Message, "success");
+          disableSendPasswordResetEmailButton();
+        }
+      });
+
+      request.fail(function (xhr, textStatus, error) {
+        if (
+          xhr.status == 401 &&
+          xhr.responseJSON.hasOwnProperty("Error_code")
+        ) {
+          switch (xhr.responseJSON.Error_code) {
+            case 1: {
+              handleImproperFormErrors(xhr.responseJSON);
+            }
+          }
+        } else {
+          // TODO: Handle other errors here.
+          console.log("You need to handle other errors!");
+        }
+      });
+    });
+  });
+}
+
+function disableSendPasswordResetEmailButton() {
+  const submitButton = $("#submit");
+  submitButton.prop("type", "button");
+  submitButton.click(function (e) {
+    if ($(this).hasClass('form-submitted')) {
+      e.preventDefault();
+      return;
+    }
+    $(this).addClass('form-submitted');
+  });
+  submitButton.prop("disabled", true);
+}
+
 function handleUserHasAccountNotEmailValidated(message) {
   $(".form-control").removeClass("is-invalid");
   $(".invalid-feedback").remove();
-  const alertBanner = $("#ValidateEmailMessage");
+  const alertBanner = $("#EmailAlertBanner");
   alertBanner
     .removeClass("alert-banner-email-validation-hide")
     .addClass("alert-info alert-banner-email-validation-show")

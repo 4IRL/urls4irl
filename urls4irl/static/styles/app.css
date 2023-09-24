@@ -555,6 +555,10 @@ i.fa-check-square {
     font-family: Arial, sans-serif;
 }
 
+.forgot-password-form-group {
+    margin-bottom: 0;
+}
+
 .alert-banner-email-validation-hide {
     display: none;
 }
@@ -613,9 +617,18 @@ i.fa-check-square {
     margin-bottom: 30px;
 }
 
-#ValidateEmailMessage {
+#EmailAlertBanner {
     color: #333;
     font-size: 18px;
     line-height: 1.6;
     text-align: center;
+}
+
+#ForgotPasswordLink {
+    font-size: 0.75rem;
+    margin-bottom: 0;
+}
+
+#ForgotPasswordText {
+    color: black;
 }

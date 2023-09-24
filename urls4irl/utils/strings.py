@@ -41,6 +41,7 @@ CONFIRM_PASSWORD_TEXT = "Confirm Password"
 REGISTER = "Register"
 LOGIN = "Login"
 SEND_EMAIL_VALIDATION = "Send Validation Email"
+SEND_PASSWORD_RESET_EMAIL = "Send Password Reset Email"
 
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):
@@ -55,6 +56,7 @@ class REGISTER_LOGIN_FORM(GENERAL_FORM):
     REGISTER = REGISTER
     LOGIN = LOGIN
     SEND_EMAIL_VALIDATION = SEND_EMAIL_VALIDATION
+    SEND_PASSWORD_RESET_EMAIL = SEND_PASSWORD_RESET_EMAIL
 
 
 class REGISTER_FORM(REGISTER_LOGIN_FORM):
@@ -88,6 +90,7 @@ class SUCCESS_GENERAL:
 NOT_AUTHORIZED = "Not authorized."
 FIELD_REQUIRED = ["This field is required."]
 EMAIL_VALIDATED = "Email_validated"
+SOMETHING_WENT_WRONG = "Something went wrong."
 
 
 class FAILURE_GENERAL:
@@ -95,6 +98,7 @@ class FAILURE_GENERAL:
     FIELD_REQUIRED = FIELD_REQUIRED
     REDIRECT = REDIRECT
     EMAIL_VALIDATED = EMAIL_VALIDATED
+    SOMETHING_WENT_WRONG = SOMETHING_WENT_WRONG
 
 
 # Strings for users success
@@ -129,6 +133,7 @@ USERNAME_TAKEN = "That username is already taken. Please choose another."
 USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
 INVALID_PASSWORD = "Invalid password."
 ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = "An account already exists with that information but the email has not been validated."
+INVALID_EMAIL = "Email is not valid."
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -145,6 +150,7 @@ class USER_FAILURE(FAILURE_GENERAL):
     USER_NOT_EXIST = USER_NOT_EXIST
     ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
     INVALID_PASSWORD = INVALID_PASSWORD
+    INVALID_EMAIL = INVALID_EMAIL
 
 
 # Strings for URL success
@@ -391,6 +397,22 @@ class EMAILS_FAILURE(FAILURE_GENERAL):
     TOO_MANY_ATTEMPTS = TOO_MANY_ATTEMPTS
     TOO_MANY_ATTEMPTS_MAX = TOO_MANY_ATTEMPTS_MAX
     ATTEMPTS = ATTEMPTS
+
+
+RESET_PASSWORD_KEY = "reset_password"
+NEW_PASSWORD = "New Password"
+CONFIRM_NEW_PASSWORD = "Confirm New Password"
+RESET_YOUR_PASSWORD = "Reset your password"
+EMAIL_SENT_MESSAGE = "If you entered a valid email, you should receive a reset password link soon."
+
+
+class RESET_PASSWORD:
+    RESET_PASSWORD_KEY = RESET_PASSWORD_KEY
+    EXPIRATION = EXPIRATION
+    NEW_PASSWORD = NEW_PASSWORD
+    CONFIRM_NEW_PASSWORD = CONFIRM_NEW_PASSWORD
+    RESET_YOUR_PASSWORD = RESET_YOUR_PASSWORD
+    EMAIL_SENT_MESSAGE = EMAIL_SENT_MESSAGE
 
 
 # Config Env vars labels

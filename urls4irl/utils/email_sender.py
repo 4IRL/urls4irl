@@ -41,11 +41,11 @@ class EmailSender:
                     to_name=to_name,
                     subject=EMAILS.ACCOUNT_CONFIRMATION_SUBJECT,
                     textpart=render_template(
-                        "emails/email_confirmation.txt",
+                        "email_validation/email_confirmation.txt",
                         email_confirmation_url=confirmation_url,
                     ),
                     htmlpart=render_template(
-                        "emails/email_confirmation.html",
+                        "email_validation/email_confirmation.html",
                         email_confirmation_url=confirmation_url,
                     ),
                 )

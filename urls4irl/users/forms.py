@@ -7,6 +7,7 @@ from urls4irl.utils.constants import UserConstants
 
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 LOGIN_REGISTER_FORM = U4I_STRINGS.REGISTER_LOGIN_FORM
+RESET_PASSWORD_FORM = U4I_STRINGS.RESET_PASSWORD
 
 
 class UserRegistrationForm(FlaskForm):
@@ -100,6 +101,26 @@ class LoginForm(FlaskForm):
 
 class ValidateEmail(FlaskForm):
     submit = SubmitField(LOGIN_REGISTER_FORM.SEND_EMAIL_VALIDATION)
+
+
+class ForgotPassword(FlaskForm):
+    email = StringField(
+        LOGIN_REGISTER_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
+    )
+
+    submit = SubmitField(LOGIN_REGISTER_FORM.SEND_PASSWORD_RESET_EMAIL)
+
+
+class ResetPasswordForm(FlaskForm):
+    new_password = StringField(
+        RESET_PASSWORD_FORM.NEW_PASSWORD, validators=[InputRequired(), Length(min=12, max=64)]
+    )
+    confirm_new_password = StringField(
+        RESET_PASSWORD_FORM.CONFIRM_NEW_PASSWORD,
+        validators=[InputRequired(), EqualTo(RESET_PASSWORD_FORM.NEW_PASSWORD)],
+    )
+
+    submit = SubmitField(RESET_PASSWORD_FORM.RESET_YOUR_PASSWORD)
 
 
 class UTubNewUserForm(FlaskForm):
