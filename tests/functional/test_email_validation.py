@@ -190,7 +190,7 @@ def test_valid_token_generated_on_user_register(
             User.email == registered_user[REGISTER_FORM.EMAIL]
         ).first()
         user_token = registered_user.email_confirm.confirm_url
-        assert User.verify_email_validation_token(user_token) == (
+        assert User.verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (
             registered_user,
             False,
         )
@@ -250,7 +250,7 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
 
-        assert User.verify_email_validation_token(quick_expiring_token) == (None, True)
+        assert User.verify_token(quick_expiring_token, EMAILS.VALIDATE_EMAIL) == (None, True)
 
 
 def test_success_on_send_of_email(app, load_register_page):

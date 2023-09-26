@@ -212,7 +212,7 @@ class User(db.Model, UserMixin):
         )
 
     @staticmethod
-    def verify_token(token: str):
+    def verify_token(token: str, token_key: str):
         try:
             username_to_validate = jwt.decode(
                 jwt=token,
@@ -232,7 +232,7 @@ class User(db.Model, UserMixin):
 
         return (
             User.query.filter(
-                User.username == username_to_validate[RESET_PASSWORD.RESET_PASSWORD_KEY]
+                User.username == username_to_validate[token_key]
             ).first_or_404(),
             False,
         )

@@ -500,7 +500,7 @@ def _handle_email_sending_result(email_result: Response):
 
 @users.route("/validate/<string:token>", methods=["GET"])
 def validate_email(token: str):
-    user_to_validate, expired = User.verify_token(token)
+    user_to_validate, expired = User.verify_token(token, EMAILS.VALIDATE_EMAIL)
 
     if expired:
         invalid_email: EmailValidation = EmailValidation.query.filter(
@@ -621,7 +621,7 @@ def confirm_password_reset():
 
 @users.route("/reset_password/<string:token>", methods=["GET", "POST"])
 def reset_password(token: str):
-    reset_password_user, expired = User.verify_token(token)
+    reset_password_user, expired = User.verify_token(token, RESET_PASSWORD.RESET_PASSWORD_KEY)
 
     if expired:
         reset_password_obj = PasswordReset.query.filter(PasswordReset.reset_token == token).first_or_404()
