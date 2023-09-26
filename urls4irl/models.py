@@ -201,12 +201,13 @@ class User(db.Model, UserMixin):
         )
 
     def get_password_reset_token(
-            self, expires_in=UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MAX
+        self, expires_in=UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MAX
     ):
         return jwt.encode(
             payload={
                 RESET_PASSWORD.RESET_PASSWORD_KEY: self.username,
-                RESET_PASSWORD.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in,
+                RESET_PASSWORD.EXPIRATION: datetime.timestamp(datetime.now())
+                + expires_in,
             },
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],
         )
@@ -296,7 +297,6 @@ class EmailValidation(db.Model):
 
 
 class PasswordReset(db.Model):
-
     __tablename__ = "PasswordReset"
     id = db.Column(db.Integer, primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("User.id"))
@@ -310,26 +310,31 @@ class PasswordReset(db.Model):
     def __init__(self, reset_token: str):
         self.reset_token = reset_token
 
-
     def increment_attempts(self):
         self.attempts += 1
         self.last_attempt = datetime.utcnow()
 
-
     def is_not_more_than_hour_old(self) -> bool:
-        if (datetime.utcnow() - self.initial_attempt).seconds > UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MAX:
+        if (
+            datetime.utcnow() - self.initial_attempt
+        ).seconds > UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MAX:
             # Token must be less than an hour old
             return False
         return True
 
-
     def is_not_rate_limited(self) -> bool:
-        is_more_than_five_attempts_in_one_hour = self.attempts >= UserConstants.PASSWORD_RESET_ATTEMPTS
+        is_more_than_five_attempts_in_one_hour = (
+            self.attempts >= UserConstants.PASSWORD_RESET_ATTEMPTS
+        )
         if is_more_than_five_attempts_in_one_hour:
             # User won't be able to send more than 5 requests in one hour
             return False
 
-        if self.last_attempt is not None and (datetime.utcnow() - self.last_attempt).seconds < UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MIN:
+        if (
+            self.last_attempt is not None
+            and (datetime.utcnow() - self.last_attempt).seconds
+            < UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MIN
+        ):
             # Cannot perform more than two requests per minute
             return False
 

@@ -404,7 +404,9 @@ NEW_PASSWORD = "New Password"
 NEW_PASSWORD_FIELD = "new_password"
 CONFIRM_NEW_PASSWORD = "Confirm New Password"
 RESET_YOUR_PASSWORD = "Reset your password"
-EMAIL_SENT_MESSAGE = "If you entered a valid email, you should receive a reset password link soon."
+EMAIL_SENT_MESSAGE = (
+    "If you entered a valid email, you should receive a reset password link soon."
+)
 RESET_PASSWORD_MODAL_CALL = "resetPasswordModal"
 RESET_PASSWORD_INVALID = "Could not reset the password."
 SAME_PASSWORD = "Invalid password. Try another password."

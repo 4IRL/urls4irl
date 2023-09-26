@@ -7,19 +7,19 @@ from flask import (
     request,
     abort,
     session,
-    Response
+    Response,
 )
 from flask_login import current_user, login_user, logout_user
 from requests import Response
 from urls4irl import db, login_manager, email_sender
-from urls4irl.models import Utub, Utub_Users, User, EmailValidation, PasswordReset 
+from urls4irl.models import Utub, Utub_Users, User, EmailValidation, PasswordReset
 from urls4irl.users.forms import (
     LoginForm,
     UserRegistrationForm,
     UTubNewUserForm,
     ValidateEmail,
     ForgotPassword,
-    ResetPasswordForm
+    ResetPasswordForm,
 )
 from urls4irl.utils import strings as U4I_STRINGS
 from urls4irl.utils.constants import EmailConstants
@@ -398,7 +398,8 @@ def confirm_email_after_register():
     if current_user.email_confirm.is_validated:
         return redirect(url_for("main.home"))
     return render_template(
-        "email_validation/email_needs_validation_modal.html", validate_email_form=ValidateEmail()
+        "email_validation/email_needs_validation_modal.html",
+        validate_email_form=ValidateEmail(),
     )
 
 
@@ -541,6 +542,7 @@ def validate_email(token: str):
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
     return redirect(url_for("main.home"))
 
+
 @users.route("/forgot_password", methods=["GET", "POST"])
 def forgot_password():
     if current_user.is_authenticated:
@@ -550,34 +552,42 @@ def forgot_password():
 
     forgot_password_form = ForgotPassword()
     if request.method == "GET":
-        return render_template("password_reset/forgot_password.html", forgot_password_form=forgot_password_form)
+        return render_template(
+            "password_reset/forgot_password.html",
+            forgot_password_form=forgot_password_form,
+        )
 
     if forgot_password_form.validate_on_submit():
-        user_with_email: User = User.query.filter_by(email=forgot_password_form.email.data).first()
-        
+        user_with_email: User = User.query.filter_by(
+            email=forgot_password_form.email.data
+        ).first()
+
         if user_with_email is not None:
             # Check if user has already tried to reset their password before, and
             user_password_reset: PasswordReset = user_with_email.password_reset
 
             if user_password_reset is None:
                 password_reset_token = user_with_email.get_password_reset_token()
-                user_password_reset = PasswordReset(
-                    reset_token=password_reset_token
-                )
+                user_password_reset = PasswordReset(reset_token=password_reset_token)
                 user_with_email.password_reset = user_password_reset
                 db.session.add(user_password_reset)
                 db.session.commit()
 
             else:
                 user_password_reset.attempts = 0
-                user_password_reset.reset_token = user_with_email.get_password_reset_token()
+                user_password_reset.reset_token = (
+                    user_with_email.get_password_reset_token()
+                )
                 db.session.commit()
 
             if user_password_reset.is_not_more_than_hour_old():
                 if user_password_reset.is_not_rate_limited():
                     user_password_reset.increment_attempts()
                     # Send email
-                    if not email_sender.is_production() and not email_sender.is_testing():
+                    if (
+                        not email_sender.is_production()
+                        and not email_sender.is_testing()
+                    ):
                         print(
                             f"Sending this to the user's email:\n{url_for('users.reset_password', token=user_password_reset.reset_token, _external=True)}"
                         )
@@ -585,11 +595,16 @@ def forgot_password():
                 db.session.delete(user_password_reset)
             db.session.commit()
 
-        return jsonify({
-            STD_JSON.STATUS: STD_JSON.SUCCESS,
-            STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE
-        }), 200
-    
+        return (
+            jsonify(
+                {
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
+                }
+            ),
+            200,
+        )
+
     if forgot_password_form.errors is not None:
         return (
             jsonify(
@@ -608,23 +623,30 @@ def forgot_password():
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: USER_FAILURE.SOMETHING_WENT_WRONG,
-                STD_JSON.ERROR_CODE: 2
+                STD_JSON.ERROR_CODE: 2,
             }
         ),
-        404
+        404,
     )
+
 
 @users.route("/confirm_password_reset", methods=["GET"])
 def confirm_password_reset():
-    return render_template("password_reset/reset_password.html", reset_password_form=ResetPasswordForm())
+    return render_template(
+        "password_reset/reset_password.html", reset_password_form=ResetPasswordForm()
+    )
 
 
 @users.route("/reset_password/<string:token>", methods=["GET", "POST"])
 def reset_password(token: str):
-    reset_password_user, expired = User.verify_token(token, RESET_PASSWORD.RESET_PASSWORD_KEY)
+    reset_password_user, expired = User.verify_token(
+        token, RESET_PASSWORD.RESET_PASSWORD_KEY
+    )
 
     if expired:
-        reset_password_obj = PasswordReset.query.filter(PasswordReset.reset_token == token).first_or_404()
+        reset_password_obj = PasswordReset.query.filter(
+            PasswordReset.reset_token == token
+        ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()
         return redirect(url_for("main.splash"))
@@ -634,7 +656,9 @@ def reset_password(token: str):
         abort(404)
 
     if not reset_password_user.is_email_authenticated():
-        reset_password_obj = PasswordReset.query.filter(PasswordReset.reset_token == token).first_or_404()
+        reset_password_obj = PasswordReset.query.filter(
+            PasswordReset.reset_token == token
+        ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()
         return redirect(url_for("main.splash"))
@@ -643,7 +667,10 @@ def reset_password(token: str):
         abort(404)
 
     if request.method == "GET":
-        return render_template("splash.html", forgot_password_modal=RESET_PASSWORD.RESET_PASSWORD_MODAL_CALL)
+        return render_template(
+            "splash.html",
+            forgot_password_modal=RESET_PASSWORD.RESET_PASSWORD_MODAL_CALL,
+        )
 
     reset_password_form = ResetPasswordForm()
 
@@ -663,14 +690,15 @@ def reset_password(token: str):
             ),
             400,
         )
-    
-def _validate_resetting_password(
-        reset_password_user: User,
-        reset_password_form: ResetPasswordForm
-        ) -> tuple[Response, int]:
 
+
+def _validate_resetting_password(
+    reset_password_user: User, reset_password_form: ResetPasswordForm
+) -> tuple[Response, int]:
     # Make sure password isn't same as before
-    if reset_password_user.is_new_password_same_as_previous(reset_password_form.new_password.data):
+    if reset_password_user.is_new_password_same_as_previous(
+        reset_password_form.new_password.data
+    ):
         return (
             jsonify(
                 {
@@ -679,7 +707,7 @@ def _validate_resetting_password(
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
-            400
+            400,
         )
 
     reset_password_user.change_password(reset_password_form.new_password.data)
@@ -689,9 +717,8 @@ def _validate_resetting_password(
         jsonify(
             {
                 STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: RESET_PASSWORD.PASSWORD_RESET
+                STD_JSON.MESSAGE: RESET_PASSWORD.PASSWORD_RESET,
             }
         ),
-        200
+        200,
     )
-

@@ -27,14 +27,17 @@ function setForgotPasswordButton() {
     });
 }
 
-function setCloseModalButton(shouldLogout = false, shouldReplaceWindow = false) {
+function setCloseModalButton(
+  shouldLogout = false,
+  shouldReplaceWindow = false,
+) {
   $(".close-modal")
     .off("click")
     .on("click", function () {
       $("#SplashModal").modal("hide");
       if (shouldLogout) {
         logoutUser();
-      };
+      }
       if (shouldReplaceWindow) {
         window.location.replace("/");
       }
@@ -48,7 +51,8 @@ function logoutUser() {
 function resetPasswordModal() {
   $.get("/confirm_password_reset", function (data) {
     $("#SplashModal .modal-content").html(data);
-    $("#SplashModal").modal()
+    $("#SplashModal")
+      .modal()
       .on("hide.bs.modal", function (e) {
         let previouslyClicked = false;
         if (!previouslyClicked) {
@@ -57,7 +61,7 @@ function resetPasswordModal() {
           $("#SplashModal").off("hide.bs.modal");
         }
       });
-    setCloseModalButton(shouldReplaceWindow = true);
+    setCloseModalButton((shouldReplaceWindow = true));
 
     $("#submit").click(function (event) {
       event.preventDefault();
@@ -71,7 +75,7 @@ function resetPasswordModal() {
         if (xhr.status == 200) {
           // Password changed!
           hideSplashModalAlertBanner();
-          showSplashModalAlertBanner(xhr.responseJSON.Message, "success")
+          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
           handleUserChangedPassword();
         }
       });
@@ -97,26 +101,28 @@ function resetPasswordModal() {
           console.log("You need to handle other errors!");
         }
       });
-    })
-  })
+    });
+  });
 }
 
 function handleUserChangedPassword() {
   const submitButton = $("#submit");
-  submitButton.off("click")
+  submitButton
+    .off("click")
     .prop("type", "button")
     .val("Close")
     .removeClass("btn-success")
     .addClass("btn-warning")
     .on("click", function (e) {
       window.location.replace("/");
-    })
+    });
 }
 
 function emailValidationModal(tokenExpired = "") {
   $.get("/confirm_email", function (data) {
     $("#SplashModal .modal-content").html(data);
-    $("#SplashModal").modal()
+    $("#SplashModal")
+      .modal()
       .on("hide.bs.modal", function (e) {
         let previouslyClicked = false;
         if (!previouslyClicked) {
@@ -128,7 +134,7 @@ function emailValidationModal(tokenExpired = "") {
     setCloseModalButton(true);
     if (tokenExpired !== undefined && tokenExpired.length != 0) {
       showSplashModalAlertBanner(tokenExpired, "info");
-    };
+    }
     $("#submit").click(function (event) {
       event.preventDefault();
       let request = $.ajax({
@@ -180,7 +186,7 @@ function hideSplashModalAlertBanner() {
   $("#SplashModalAlertBanner")
     .removeClass("alert-banner-splash-modal-display")
     .removeClassStartingWith("alert-")
-    .addClass("alert-banner-splash-modal-hide")
+    .addClass("alert-banner-splash-modal-hide");
 }
 
 function showSplashModalAlertBanner(message, category) {
@@ -326,7 +332,8 @@ function forgotPasswordModalOpener(url) {
 
 function disableSendPasswordResetEmailButton() {
   const submitButton = $("#submit");
-  submitButton.prop("type", "button")
+  submitButton
+    .prop("type", "button")
     .off("click")
     .prop("disabled", true)
     .on("click", function (e) {
@@ -338,7 +345,8 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".form-control").removeClass("is-invalid");
   $(".invalid-feedback").remove();
   const alertBanner = $("#SplashModalAlertBanner");
-  alertBanner.removeClass("alert-banner-splash-modal-hide")
+  alertBanner
+    .removeClass("alert-banner-splash-modal-hide")
     .addClass("alert-info alert-banner-splash-modal-show")
     .append($("<div>" + message + "</div>"))
     .append(
@@ -399,7 +407,9 @@ function displayFormErrors(key, errorMessage) {
 // Extension to allow removal of a class based on a prefix
 $.fn.removeClassStartingWith = function (filter) {
   $(this).removeClass(function (index, className) {
-    return (className.match(new RegExp("\\S*" + filter + "\\S*", 'g')) || []).join(' ')
+    return (
+      className.match(new RegExp("\\S*" + filter + "\\S*", "g")) || []
+    ).join(" ");
   });
   return this;
 };
