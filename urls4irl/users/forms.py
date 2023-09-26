@@ -112,15 +112,19 @@ class ForgotPassword(FlaskForm):
 
 
 class ResetPasswordForm(FlaskForm):
-    new_password = StringField(
+    new_password = PasswordField(
         RESET_PASSWORD_FORM.NEW_PASSWORD, validators=[InputRequired(), Length(min=12, max=64)]
     )
-    confirm_new_password = StringField(
+    confirm_new_password = PasswordField(
         RESET_PASSWORD_FORM.CONFIRM_NEW_PASSWORD,
-        validators=[InputRequired(), EqualTo(RESET_PASSWORD_FORM.NEW_PASSWORD)],
+        validators=[InputRequired()],
     )
 
     submit = SubmitField(RESET_PASSWORD_FORM.RESET_YOUR_PASSWORD)
+
+    def validate_confirm_new_password(self, confirm_new_password):
+        if (confirm_new_password.data != self.new_password.data):
+            raise ValidationError("Passwords are not identical.")
 
 
 class UTubNewUserForm(FlaskForm):

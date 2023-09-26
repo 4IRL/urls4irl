@@ -24,15 +24,20 @@ function setForgotPasswordButton() {
     .off("click")
     .on("click", function () {
       forgotPasswordModalOpener("/forgot_password");
-      console.log("User trying to reset their password.")
     });
 }
 
-function setCloseEmailModalButton() {
-  $(".close-email-modal")
+function setCloseModalButton(shouldLogout = false, shouldReplaceWindow = false) {
+  $(".close-modal")
     .off("click")
     .on("click", function () {
-      $("#loginRegisterModal").modal("hide");
+      $("#SplashModal").modal("hide");
+      if (shouldLogout) {
+        logoutUser();
+      };
+      if (shouldReplaceWindow) {
+        window.location.replace("/");
+      }
     });
 }
 
@@ -40,17 +45,90 @@ function logoutUser() {
   $.get("/logout");
 }
 
+function resetPasswordModal() {
+  $.get("/confirm_password_reset", function (data) {
+    $("#SplashModal .modal-content").html(data);
+    $("#SplashModal").modal()
+      .on("hide.bs.modal", function (e) {
+        let previouslyClicked = false;
+        if (!previouslyClicked) {
+          window.location.replace("/");
+          previouslyClicked = true;
+          $("#SplashModal").off("hide.bs.modal");
+        }
+      });
+    setCloseModalButton(shouldReplaceWindow = true);
+
+    $("#submit").click(function (event) {
+      event.preventDefault();
+      let request = $.ajax({
+        url: window.location.pathname,
+        type: "POST",
+        data: $("#ModalForm").serialize(),
+      });
+
+      request.done(function (response, textStatus, xhr) {
+        if (xhr.status == 200) {
+          // Password changed!
+          hideSplashModalAlertBanner();
+          showSplashModalAlertBanner(xhr.responseJSON.Message, "success")
+          handleUserChangedPassword();
+        }
+      });
+
+      request.fail(function (xhr, textStatus, error) {
+        if (
+          xhr.status == 400 &&
+          xhr.responseJSON.hasOwnProperty("Error_code")
+        ) {
+          switch (xhr.responseJSON.Error_code) {
+            case 1:
+              $(".form-control").removeClass("is-invalid");
+              $(".invalid-feedback").remove();
+              showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
+              break;
+            case 2:
+              hideSplashModalAlertBanner();
+              handleImproperFormErrors(xhr.responseJSON);
+              break;
+          }
+        } else {
+          // TODO: Handle other errors here.
+          console.log("You need to handle other errors!");
+        }
+      });
+    })
+  })
+}
+
+function handleUserChangedPassword() {
+  const submitButton = $("#submit");
+  submitButton.off("click")
+    .prop("type", "button")
+    .val("Close")
+    .removeClass("btn-success")
+    .addClass("btn-warning")
+    .on("click", function (e) {
+      window.location.replace("/");
+    })
+}
+
 function emailValidationModal(tokenExpired = "") {
   $.get("/confirm_email", function (data) {
-    $("#loginRegisterModal .modal-content").html(data);
-    $("#loginRegisterModal").modal();
-    setCloseEmailModalButton();
-    $("#loginRegisterModal").one("hide.bs.modal", function (e) {
-      logoutUser();
-    });
+    $("#SplashModal .modal-content").html(data);
+    $("#SplashModal").modal()
+      .on("hide.bs.modal", function (e) {
+        let previouslyClicked = false;
+        if (!previouslyClicked) {
+          logoutUser();
+          previouslyClicked = true;
+          $("#SplashModal").off("hide.bs.modal");
+        }
+      });
+    setCloseModalButton(true);
     if (tokenExpired !== undefined && tokenExpired.length != 0) {
-      showEmailRelatedAlertBanner(tokenExpired, "info");
-    }
+      showSplashModalAlertBanner(tokenExpired, "info");
+    };
     $("#submit").click(function (event) {
       event.preventDefault();
       let request = $.ajax({
@@ -62,7 +140,7 @@ function emailValidationModal(tokenExpired = "") {
       request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
           // Email sent!
-          showEmailRelatedAlertBanner(xhr.responseJSON.Message, "success");
+          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
         }
       });
 
@@ -71,10 +149,13 @@ function emailValidationModal(tokenExpired = "") {
           xhr.status == 429 &&
           xhr.responseJSON.hasOwnProperty("Error_code")
         ) {
-          if (xhr.responseJSON.Error_code == 1) {
-            showEmailRelatedAlertBanner(xhr.responseJSON.Message, "danger");
-          } else if (xhr.responseJSON.Error_code == 2) {
-            showEmailRelatedAlertBanner(xhr.responseJSON.Message, "warning");
+          switch (xhr.responseJSON.Error_code) {
+            case 1:
+              showSplashModalAlertBanner(xhr.responseJSON.Message, "danger");
+              break;
+            case 2:
+              showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
+              break;
           }
         } else if (
           xhr.status == 400 &&
@@ -84,7 +165,7 @@ function emailValidationModal(tokenExpired = "") {
             xhr.responseJSON.Error_code == 3 ||
             xhr.responseJSON.Error_code == 4
           ) {
-            showEmailRelatedAlertBanner(xhr.responseJSON.Message, "warning");
+            showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
           }
         } else {
           // TODO: Handle other errors here.
@@ -95,20 +176,25 @@ function emailValidationModal(tokenExpired = "") {
   });
 }
 
-function showEmailRelatedAlertBanner(message, category) {
-  $("#EmailAlertBanner")
-    .removeClass("alert-banner-email-validation-hide")
+function hideSplashModalAlertBanner() {
+  $("#SplashModalAlertBanner")
+    .removeClass("alert-banner-splash-modal-display")
+    .removeClassStartingWith("alert-")
+    .addClass("alert-banner-splash-modal-hide")
+}
+
+function showSplashModalAlertBanner(message, category) {
+  $("#SplashModalAlertBanner")
+    .removeClass("alert-banner-splash-modal-hide")
     .addClass("alert-" + category)
-    .css({
-      display: "inherit",
-    })
+    .addClass("alert-banner-splash-modal-display")
     .text(message);
 }
 
 function loginModalOpener(url) {
   $.get(url, function (data) {
-    $("#loginRegisterModal .modal-content").html(data);
-    $("#loginRegisterModal").modal();
+    $("#SplashModal .modal-content").html(data);
+    $("#SplashModal").modal();
     setToRegisterButton();
     setForgotPasswordButton();
     $("#submit").click(function (event) {
@@ -121,7 +207,7 @@ function loginModalOpener(url) {
 
       request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
-          $("#loginRegisterModal").modal("hide");
+          $("#SplashModal").modal("hide");
           window.location.replace(response);
         }
       });
@@ -153,8 +239,8 @@ function loginModalOpener(url) {
 
 function registerModalOpener(url) {
   $.get(url, function (data) {
-    $("#loginRegisterModal .modal-content").html(data);
-    $("#loginRegisterModal").modal();
+    $("#SplashModal .modal-content").html(data);
+    $("#SplashModal").modal();
     setToLoginButton();
     const registerButton = $("#submit");
     registerButton.click(function (event) {
@@ -200,8 +286,8 @@ function registerModalOpener(url) {
 
 function forgotPasswordModalOpener(url) {
   $.get(url, function (data) {
-    $("#loginRegisterModal .modal-content").html(data);
-    $("#loginRegisterModal").modal();
+    $("#SplashModal .modal-content").html(data);
+    $("#SplashModal").modal();
     $("#submit").click(function (event) {
       event.preventDefault();
       let request = $.ajax({
@@ -212,7 +298,9 @@ function forgotPasswordModalOpener(url) {
 
       request.done(function (response, textStatus, xhr) {
         if (xhr.status == 200) {
-          showEmailRelatedAlertBanner(xhr.responseJSON.Message, "success");
+          $(".form-control").removeClass("is-invalid");
+          $(".invalid-feedback").remove();
+          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
           disableSendPasswordResetEmailButton();
         }
       });
@@ -238,24 +326,20 @@ function forgotPasswordModalOpener(url) {
 
 function disableSendPasswordResetEmailButton() {
   const submitButton = $("#submit");
-  submitButton.prop("type", "button");
-  submitButton.click(function (e) {
-    if ($(this).hasClass('form-submitted')) {
-      e.preventDefault();
-      return;
-    }
-    $(this).addClass('form-submitted');
-  });
-  submitButton.prop("disabled", true);
+  submitButton.prop("type", "button")
+    .off("click")
+    .prop("disabled", true)
+    .on("click", function (e) {
+      submitButton.prop("disabled", true);
+    });
 }
 
 function handleUserHasAccountNotEmailValidated(message) {
   $(".form-control").removeClass("is-invalid");
   $(".invalid-feedback").remove();
-  const alertBanner = $("#EmailAlertBanner");
-  alertBanner
-    .removeClass("alert-banner-email-validation-hide")
-    .addClass("alert-info alert-banner-email-validation-show")
+  const alertBanner = $("#SplashModalAlertBanner");
+  alertBanner.removeClass("alert-banner-splash-modal-hide")
+    .addClass("alert-info alert-banner-splash-modal-show")
     .append($("<div>" + message + "</div>"))
     .append(
       $(
@@ -273,7 +357,7 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".close-register-login-modal")
     .off("click")
     .on("click", function () {
-      $("#loginRegisterModal").modal("hide");
+      $("#SplashModal").modal("hide");
       logoutUser();
     });
 }
@@ -281,7 +365,7 @@ function handleUserHasAccountNotEmailValidated(message) {
 function handleImproperFormErrors(errorResponse) {
   $(".invalid-feedback").remove();
   $(".alert").each(function () {
-    if ($(this).attr("id") !== "ValidateEmailMessage") {
+    if ($(this).attr("id") !== "SplashModalAlertBanner") {
       $(this).remove();
     }
   });
@@ -293,6 +377,8 @@ function handleImproperFormErrors(errorResponse) {
       case "email":
       case "confirm_email":
       case "confirm_password":
+      case "new_password":
+      case "confirm_new_password":
         let errorMessage = errorResponse.Errors[key][0];
         displayFormErrors(key, errorMessage);
         break;
@@ -309,3 +395,11 @@ function displayFormErrors(key, errorMessage) {
     .show();
   $("#" + key).addClass("is-invalid");
 }
+
+// Extension to allow removal of a class based on a prefix
+$.fn.removeClassStartingWith = function (filter) {
+  $(this).removeClass(function (index, className) {
+    return (className.match(new RegExp("\\S*" + filter + "\\S*", 'g')) || []).join(' ')
+  });
+  return this;
+};

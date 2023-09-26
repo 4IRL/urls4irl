@@ -559,11 +559,15 @@ i.fa-check-square {
     margin-bottom: 0;
 }
 
-.alert-banner-email-validation-hide {
+.alert-banner-splash-modal-hide {
     display: none;
 }
 
-.alert-banner-email-validation-show {
+.alert-banner-splash-modal-display {
+    display: inherit;
+}
+
+.alert-banner-splash-modal-show {
     display: flex;
     flex-direction: column;
     align-items: center;

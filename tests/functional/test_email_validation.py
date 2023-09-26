@@ -233,6 +233,7 @@ def test_token_validates_user(app, load_register_page):
             User.email == valid_user_1[REGISTER_FORM.EMAIL]
         ).first()
         assert user.is_email_authenticated() and user.email_confirm.is_validated
+        assert user.email_confirm.confirm_url != user_token
 
 
 def test_token_can_expire(app, register_first_user_without_email_validation):

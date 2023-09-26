@@ -159,6 +159,9 @@ class User(db.Model, UserMixin):
     def is_password_correct(self, plaintext_password: str) -> bool:
         return check_password_hash(self.password, plaintext_password)
 
+    def is_new_password_same_as_previous(self, plaintext_password: str) -> bool:
+        return self.is_password_correct(plaintext_password)
+
     def is_email_authenticated(self) -> bool:
         return self.email_confirm.is_validated
 
@@ -209,11 +212,7 @@ class User(db.Model, UserMixin):
         )
 
     @staticmethod
-    def verify_email_validation_token(token: str):
-        pass
-
-    @staticmethod
-    def verify_email_validation_token(token: str):
+    def verify_token(token: str):
         try:
             username_to_validate = jwt.decode(
                 jwt=token,
@@ -227,14 +226,13 @@ class User(db.Model, UserMixin):
         except (
             RuntimeError,
             TypeError,
-            JWTExceptions.ExpiredSignatureError,
             JWTExceptions.DecodeError,
         ):
             return None, False
 
         return (
             User.query.filter(
-                User.username == username_to_validate[EMAILS.VALIDATE_EMAIL]
+                User.username == username_to_validate[RESET_PASSWORD.RESET_PASSWORD_KEY]
             ).first_or_404(),
             False,
         )
