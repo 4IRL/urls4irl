@@ -315,7 +315,9 @@ class PasswordReset(db.Model):
         self.last_attempt = datetime.utcnow()
 
     def is_more_than_hour_old(self) -> bool:
-        return (datetime.utcnow() - self.initial_attempt).seconds >= UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MAX
+        return (
+            datetime.utcnow() - self.initial_attempt
+        ).seconds >= UserConstants.WAIT_TO_RETRY_PASSWORD_RESET_MAX
 
     def is_not_rate_limited(self) -> bool:
         is_more_than_five_attempts_in_one_hour = (

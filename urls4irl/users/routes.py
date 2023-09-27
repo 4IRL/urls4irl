@@ -490,18 +490,18 @@ def _handle_email_sending_result(email_result: Response):
 
 
 def _handle_mailjet_failure(email_result: Response, error_code: int = 1):
-        json_response = email_result.json()
-        message = json_response[EMAILS.MESSAGES]
-        errors = message[EMAILS.MAILJET_ERRORS]
-        return jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: EMAILS.ERROR_WITH_MAILJET,
-                STD_JSON.ERROR_CODE: error_code,
-                STD_JSON.ERRORS: errors,
-            },
-            400,
-        )
+    json_response = email_result.json()
+    message = json_response[EMAILS.MESSAGES]
+    errors = message[EMAILS.MAILJET_ERRORS]
+    return jsonify(
+        {
+            STD_JSON.STATUS: STD_JSON.FAILURE,
+            STD_JSON.MESSAGE: EMAILS.ERROR_WITH_MAILJET,
+            STD_JSON.ERROR_CODE: error_code,
+            STD_JSON.ERRORS: errors,
+        },
+        400,
+    )
 
 
 @users.route("/validate/<string:token>", methods=["GET"])
@@ -599,10 +599,7 @@ def forgot_password():
                 user_password_reset.increment_attempts()
                 db.session.commit()
                 # Send email
-                if (
-                    not email_sender.is_production()
-                    and not email_sender.is_testing()
-                ):
+                if not email_sender.is_production() and not email_sender.is_testing():
                     print(
                         f"Sending this to the user's email:\n{url_for('users.reset_password', token=user_password_reset.reset_token, _external=True)}"
                     )
@@ -687,7 +684,10 @@ def reset_password(token: str):
         db.session.commit()
         return redirect(url_for("main.splash"))
 
-    if reset_password_user.password_reset.reset_token != token or reset_password_user.password_reset.is_more_than_hour_old():
+    if (
+        reset_password_user.password_reset.reset_token != token
+        or reset_password_user.password_reset.is_more_than_hour_old()
+    ):
         abort(404)
 
     if request.method == "GET":

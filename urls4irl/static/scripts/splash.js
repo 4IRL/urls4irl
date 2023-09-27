@@ -200,7 +200,7 @@ function showSplashModalAlertBanner(message, category) {
 function verifyValidSplashForm() {
   if ($("#SplashModalAlertBanner").length !== 1) {
     window.location.replace("/");
-  };
+  }
 }
 
 function loginModalOpener(url) {

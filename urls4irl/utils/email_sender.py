@@ -57,9 +57,7 @@ class EmailSender:
 
         return self._mailjet_client.send.create(data=message)
 
-    def send_password_reset_email(
-        self, to_email: str, to_name: str, reset_url: str
-    ):
+    def send_password_reset_email(self, to_email: str, to_name: str, reset_url: str):
         message = {
             EMAILS.MESSAGES: [
                 self._message_builder(
