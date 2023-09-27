@@ -342,7 +342,7 @@ VALIDATE_EMAIL = "validate_email"
 EXPIRATION = "exp"
 ALGORITHM = "HS256"
 EMAIL_VALIDATED_SESS_KEY = "email_validated"
-EMAIL_VALIDATION_MODAL_CALL = "emailValidationModal"
+EMAIL_VALIDATION_MODAL_CALL = "emailValidationModalOpener"
 TOKEN_EXPIRED = "Your token expired. Please try again."
 EMAIL_SENT = "Email sent!"
 EMAIL_FAILED = "Email could not be sent."
@@ -351,6 +351,7 @@ EMAIL_SIGNATURE = "URLS4IRL Team"
 MESSAGES, FROM, TO, NAME = "Messages", "From", "To", "Name"
 SUBJECT, TEXTPART, HTMLPART = "Subject", "TextPart", "HTMLPart"
 ACCOUNT_CONFIRMATION_SUBJECT = "URLS4IRL Account Confirmation"
+PASSWORD_RESET_SUBJECT = "URLS4IRL Password Reset"
 SANDBOXMODE = "SandboxMode"
 MAILJET_STATUS_CODE = "StatusCode"
 MAILJET_ERROR_MESSAGE = "ErrorMessage"
@@ -383,6 +384,7 @@ class EMAILS:
     MAILJET_ERRORS = MAILJET_ERRORS
     EMAIL_FAILED = EMAIL_FAILED
     ERROR_WITH_MAILJET = ERROR_WITH_MAILJET
+    PASSWORD_RESET_SUBJECT = PASSWORD_RESET_SUBJECT
 
 
 # Strings for email validation errors
@@ -407,7 +409,7 @@ RESET_YOUR_PASSWORD = "Reset your password"
 EMAIL_SENT_MESSAGE = (
     "If you entered a valid email, you should receive a reset password link soon."
 )
-RESET_PASSWORD_MODAL_CALL = "resetPasswordModal"
+RESET_PASSWORD_MODAL_CALL = "resetPasswordModalOpener"
 RESET_PASSWORD_INVALID = "Could not reset the password."
 SAME_PASSWORD = "Invalid password. Try another password."
 PASSWORD_RESET = "Password reset."

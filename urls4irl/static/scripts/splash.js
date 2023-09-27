@@ -48,7 +48,7 @@ function logoutUser() {
   $.get("/logout");
 }
 
-function resetPasswordModal() {
+function resetPasswordModalOpener() {
   $.get("/confirm_password_reset", function (data) {
     $("#SplashModal .modal-content").html(data);
     $("#SplashModal")
@@ -118,7 +118,7 @@ function handleUserChangedPassword() {
     });
 }
 
-function emailValidationModal(tokenExpired = "") {
+function emailValidationModalOpener(tokenExpired = "") {
   $.get("/confirm_email", function (data) {
     $("#SplashModal .modal-content").html(data);
     $("#SplashModal")
@@ -197,9 +197,16 @@ function showSplashModalAlertBanner(message, category) {
     .text(message);
 }
 
+function verifyValidSplashForm() {
+  if ($("#SplashModalAlertBanner").length !== 1) {
+    window.location.replace("/");
+  };
+}
+
 function loginModalOpener(url) {
-  $.get(url, function (data) {
+  $.get(url, function (data, textStatus, xhr) {
     $("#SplashModal .modal-content").html(data);
+    verifyValidSplashForm();
     $("#SplashModal").modal();
     setToRegisterButton();
     setForgotPasswordButton();
@@ -246,6 +253,7 @@ function loginModalOpener(url) {
 function registerModalOpener(url) {
   $.get(url, function (data) {
     $("#SplashModal .modal-content").html(data);
+    verifyValidSplashForm();
     $("#SplashModal").modal();
     setToLoginButton();
     const registerButton = $("#submit");

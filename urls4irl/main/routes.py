@@ -13,7 +13,7 @@ def splash():
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
             return render_template(
-                "splash.html", email_validation_modal=EMAIL_VALIDATION_MODAL_CALL
+                "splash.html", email_validation_modal=True
             )
         return redirect(url_for("main.home"))
     return render_template("splash.html")

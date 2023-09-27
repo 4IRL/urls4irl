@@ -57,6 +57,32 @@ class EmailSender:
 
         return self._mailjet_client.send.create(data=message)
 
+    def send_password_reset_email(
+        self, to_email: str, to_name: str, reset_url: str
+    ):
+        message = {
+            EMAILS.MESSAGES: [
+                self._message_builder(
+                    to_email=to_email,
+                    to_name=to_name,
+                    subject=EMAILS.PASSWORD_RESET_SUBJECT,
+                    textpart=render_template(
+                        "password_reset/reset_password_text_email.txt",
+                        password_reset_url=reset_url,
+                    ),
+                    htmlpart=render_template(
+                        "password_reset/reset_password_html_email.html",
+                        password_reset_url=reset_url,
+                    ),
+                )
+            ]
+        }
+
+        if self._testing:
+            message[EMAILS.SANDBOXMODE] = True
+
+        return self._mailjet_client.send.create(data=message)
+
     def _to_builder(self, email: str, name: str) -> dict:
         return {EMAILS.EMAIL: email, EMAILS.NAME: name}
 
