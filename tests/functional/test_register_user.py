@@ -198,3 +198,38 @@ def test_register_modal_logs_user_in(client):
             current_user.password, valid_user_1[REGISTER_FORM.PASSWORD]
         )
         assert current_user.email == valid_user_1[REGISTER_FORM.EMAIL]
+
+
+def test_register_user_missing_csrf(app, load_register_page):
+    """
+    GIVEN a new, unregistered user to the page
+    WHEN they register to an empty database, and POST to "/register" without a CSRF token
+    THEN ensure server responds with 400 and proper error message
+    """
+    client, _ = load_register_page
+
+    # Ensure no user with this data exists in database
+    with app.app_context():
+        new_db_user = User.query.filter_by(
+            username=valid_user_1[REGISTER_FORM.USERNAME]
+        ).first()
+
+    assert new_db_user is None
+
+    response = client.post("/register", data=valid_user_1, follow_redirects=True)
+
+    # Correctly sends URL to email validation modal
+    assert response.status_code == 400
+    assert b"<p>The CSRF token is missing.</p>" in response.data
+
+    # Ensure no one is logged in
+    assert current_user.get_id() is None
+    assert current_user.is_active is False
+
+    # Ensure no user with this data exists in database
+    with app.app_context():
+        new_db_user = User.query.filter_by(
+            username=valid_user_1[REGISTER_FORM.USERNAME]
+        ).first()
+
+    assert new_db_user is None

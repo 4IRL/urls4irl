@@ -183,11 +183,11 @@ def test_valid_token_generated_on_user_register(
     WHEN they registered
     THEN ensure a token was correctly created referencing the user
     """
-    registered_user, _ = register_first_user_without_email_validation
+    new_user, _ = register_first_user_without_email_validation
 
     with app.app_context():
         registered_user: User = User.query.filter(
-            User.email == registered_user[REGISTER_FORM.EMAIL]
+            User.email == new_user[REGISTER_FORM.EMAIL]
         ).first()
         user_token = registered_user.email_confirm.confirm_url
         assert User.verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (

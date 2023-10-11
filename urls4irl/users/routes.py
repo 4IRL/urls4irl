@@ -499,9 +499,8 @@ def _handle_mailjet_failure(email_result: Response, error_code: int = 1):
             STD_JSON.MESSAGE: EMAILS.ERROR_WITH_MAILJET,
             STD_JSON.ERROR_CODE: error_code,
             STD_JSON.ERRORS: errors,
-        },
-        400,
-    )
+        }
+    ), 400
 
 
 @users.route("/validate/<string:token>", methods=["GET"])
@@ -563,68 +562,7 @@ def forgot_password():
         )
 
     if forgot_password_form.validate_on_submit():
-        user_with_email: User = User.query.filter_by(
-            email=forgot_password_form.email.data
-        ).first()
-
-        if user_with_email is not None:
-            if not user_with_email.email_confirm.is_validated:
-                return (
-                    jsonify(
-                        {
-                            STD_JSON.STATUS: STD_JSON.SUCCESS,
-                            STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
-                        }
-                    ),
-                    200,
-                )
-
-            # Check if user has already tried to reset their password before, and
-            user_password_reset: PasswordReset = user_with_email.password_reset
-            password_reset_token = user_with_email.get_password_reset_token()
-
-            if user_password_reset is None:
-                user_password_reset = PasswordReset(reset_token=password_reset_token)
-                user_with_email.password_reset = user_password_reset
-                db.session.add(user_password_reset)
-                db.session.commit()
-
-            else:
-                if user_password_reset.is_not_rate_limited():
-                    user_password_reset.attempts = 0
-                    user_password_reset.reset_token = password_reset_token
-                    db.session.commit()
-
-            if user_password_reset.is_not_rate_limited():
-                user_password_reset.increment_attempts()
-                db.session.commit()
-                # Send email
-                if not email_sender.is_production() and not email_sender.is_testing():
-                    print(
-                        f"Sending this to the user's email:\n{url_for('users.reset_password', token=user_password_reset.reset_token, _external=True)}"
-                    )
-                url_for_reset = url_for(
-                    "users.reset_password",
-                    token=user_password_reset.reset_token,
-                    _external=True,
-                )
-                email_send_result = email_sender.send_password_reset_email(
-                    user_with_email.email, user_with_email.username, url_for_reset
-                )
-                if email_send_result.status_code >= 500:
-                    return _handle_mailjet_failure(email_send_result)
-
-                db.session.commit()
-
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
-                }
-            ),
-            200,
-        )
+        return _handle_after_forgot_password_form_validated(forgot_password_form)
 
     if forgot_password_form.errors is not None:
         return (
@@ -649,6 +587,76 @@ def forgot_password():
         ),
         404,
     )
+
+def _handle_after_forgot_password_form_validated(forgot_password_form: ForgotPassword) -> Response:
+    user_with_email: User = User.query.filter_by(
+        email=forgot_password_form.email.data
+    ).first()
+
+    if user_with_email is not None:
+        if not user_with_email.email_confirm.is_validated:
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.SUCCESS,
+                        STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
+                    }
+                ),
+                200,
+            )
+
+        # Check if user has already tried to reset their password before
+        user_password_reset: PasswordReset = user_with_email.password_reset
+        password_reset_token = user_with_email.get_password_reset_token()
+
+        password_reset_obj = _create_or_reset_password_reset_object_for_user(user_with_email, user_password_reset, password_reset_token)
+
+        if password_reset_obj.is_not_rate_limited():
+            password_reset_obj.increment_attempts()
+            db.session.commit()
+            # Send email
+            if not email_sender.is_production() and not email_sender.is_testing():
+                print(
+                    f"Sending this to the user's email:\n{url_for('users.reset_password', token=password_reset_obj.reset_token, _external=True)}"
+                )
+            url_for_reset = url_for(
+                "users.reset_password",
+                token=password_reset_obj.reset_token,
+                _external=True,
+            )
+            email_send_result = email_sender.send_password_reset_email(
+                user_with_email.email, user_with_email.username, url_for_reset
+            )
+            if email_send_result.status_code >= 500:
+                return _handle_mailjet_failure(email_send_result)
+
+            db.session.commit()
+
+    return (
+        jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.SUCCESS,
+                STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
+            }
+        ),
+        200,
+    )
+
+
+def _create_or_reset_password_reset_object_for_user(user: User, password_reset: PasswordReset, token: str):
+    if password_reset is None:
+        password_reset = PasswordReset(reset_token=token)
+        user.password_reset = password_reset
+        db.session.add(password_reset)
+        db.session.commit()
+
+    else:
+        if password_reset.is_not_rate_limited():
+            password_reset.attempts = 0
+            password_reset.reset_token = token
+            db.session.commit()
+
+    return password_reset
 
 
 @users.route("/confirm_password_reset", methods=["GET"])
@@ -677,12 +685,13 @@ def reset_password(token: str):
         abort(404)
 
     if not reset_password_user.is_email_authenticated():
+        # Remove the object if it exists
         reset_password_obj = PasswordReset.query.filter(
             PasswordReset.reset_token == token
         ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()
-        return redirect(url_for("main.splash"))
+        abort(404)
 
     if (
         reset_password_user.password_reset.reset_token != token
@@ -735,7 +744,8 @@ def _validate_resetting_password(
         )
 
     reset_password_user.change_password(reset_password_form.new_password.data)
-    reset_password_user.password_reset.reset_token = ""
+    password_reset_obj = reset_password_user.password_reset
+    db.session.delete(password_reset_obj)
     db.session.commit()
     return (
         jsonify(

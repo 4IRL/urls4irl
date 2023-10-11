@@ -213,7 +213,18 @@ class User(db.Model, UserMixin):
         )
 
     @staticmethod
-    def verify_token(token: str, token_key: str):
+    def verify_token(token: str, token_key: str) -> tuple[UserMixin, bool]:
+        """
+        Returns a valid user if one found, or None.
+        Boolean indicates whether the token is expired or not.
+
+        Args:
+            token (str): The token to check
+            token_key (str): The key of the token
+
+        Returns:
+            tuple[UserMixin, bool]: Returns a User and Boolean
+        """
         try:
             username_to_validate = jwt.decode(
                 jwt=token,

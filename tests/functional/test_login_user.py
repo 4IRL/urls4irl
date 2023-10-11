@@ -144,6 +144,30 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
     assert current_user.is_active is False
 
 
+def test_login_user_missing_csrf(register_first_user, load_login_page):
+    """
+    GIVEN a registered user
+    WHEN "/login" is POST'd with filled in correctly with form data but a missing CSRF token
+    THEN ensure login does not occur, and 400 status code is given with proper error message
+    """
+    client, _ = load_login_page
+
+    response = client.post(
+        "/login",
+        data={
+            LOGIN_FORM.USERNAME: valid_user_1[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: "A",
+        },
+    )
+
+    # Ensure json response from server is valid
+    assert response.status_code == 400
+    assert b"<p>The CSRF token is missing.</p>" in response.data
+
+    # Ensure no one is logged in
+    assert current_user.get_id() is None
+    assert current_user.is_active is False
+
 def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
     """
     GIVEN a registered and logged in user

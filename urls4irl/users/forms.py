@@ -125,7 +125,7 @@ class ResetPasswordForm(FlaskForm):
 
     def validate_confirm_new_password(self, confirm_new_password):
         if confirm_new_password.data != self.new_password.data:
-            raise ValidationError("Passwords are not identical.")
+            raise ValidationError(RESET_PASSWORD_FORM.PASSWORDS_NOT_IDENTICAL)
 
 
 class UTubNewUserForm(FlaskForm):

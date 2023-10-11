@@ -192,6 +192,7 @@ function hideSplashModalAlertBanner() {
 function showSplashModalAlertBanner(message, category) {
   $("#SplashModalAlertBanner")
     .removeClass("alert-banner-splash-modal-hide")
+    .removeClassStartingWith("alert-")
     .addClass("alert-" + category)
     .addClass("alert-banner-splash-modal-display")
     .text(message);
@@ -268,7 +269,7 @@ function registerModalOpener(url) {
 
       request.done(function (response, textStatus, xhr) {
         if (xhr.status == 201) {
-          emailValidationModal();
+          emailValidationModalOpener();
         }
       });
 
@@ -363,7 +364,7 @@ function handleUserHasAccountNotEmailValidated(message) {
       )
         .off("click")
         .on("click", function () {
-          emailValidationModal();
+          emailValidationModalOpener();
         }),
     );
 

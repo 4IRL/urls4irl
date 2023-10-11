@@ -21,15 +21,16 @@ class STD_JSON_RESPONSE:
 
 # Strings for all forms
 CSRF_TOKEN = "csrf_token"
+EMAIL = "email"
 
 
 class GENERAL_FORM:
     CSRF_TOKEN = CSRF_TOKEN
+    EMAIL = EMAIL
 
 
 # Strings for login/register forms
 USERNAME = "username"
-EMAIL = "email"
 CONFIRM_EMAIL = "confirm_email"
 PASSWORD = "password"
 CONFIRM_PASSWORD = "confirm_password"
@@ -45,7 +46,6 @@ SEND_PASSWORD_RESET_EMAIL = "Send Password Reset Email"
 
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):
-    EMAIL = EMAIL
     USERNAME = USERNAME
     PASSWORD = PASSWORD
     USERNAME_TEXT = USERNAME_TEXT
@@ -413,9 +413,10 @@ RESET_PASSWORD_MODAL_CALL = "resetPasswordModalOpener"
 RESET_PASSWORD_INVALID = "Could not reset the password."
 SAME_PASSWORD = "Invalid password. Try another password."
 PASSWORD_RESET = "Password reset."
+PASSWORDS_NOT_IDENTICAL = "Passwords are not identical."
 
 
-class RESET_PASSWORD:
+class RESET_PASSWORD(GENERAL_FORM):
     RESET_PASSWORD_KEY = RESET_PASSWORD_KEY
     EXPIRATION = EXPIRATION
     NEW_PASSWORD = NEW_PASSWORD
@@ -427,6 +428,7 @@ class RESET_PASSWORD:
     RESET_PASSWORD_INVALID = RESET_PASSWORD_INVALID
     SAME_PASSWORD = SAME_PASSWORD
     PASSWORD_RESET = PASSWORD_RESET
+    PASSWORDS_NOT_IDENTICAL = PASSWORDS_NOT_IDENTICAL
 
 
 # Config Env vars labels
