@@ -3,29 +3,33 @@
 
 <!-- Backend load of UTub JSON data -->
 <script type="text/javascript">
-    var UTubsList = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
     if (isValidSplashForm === undefined) {
         let isValidSplashForm = false;
     } else {
         isValidSplashForm = false;
     }
+    var UTubs = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
 </script>
 
 <!-- Left Side Panel -->
-<div id="leftPanel" class="panel col-md-2">
+<div id="leftPanel" class="panel col-md-3">
 
     <!-- UPR LH Panel, UTubs -->
     <div id="UTubDeck" class="deck row h-50 md-mb-1 p-3" style="display:flex /*margin-bottom: 5px;*/">
         <div class="col-9 col-lg-9 mb-md-0">
-            <h2></h2>
+            <h2 id="UTubDeckHeader"></h2>
         </div>
-        <div class="col-3 col-lg-3 mb-md-0 text-right">
-            <div class="d-flex justify-content-center flex-row">
-                <i id="createUTubButton" class="bi bi-plus-square-fill fa-2x text-success mx-1"
-                    onclick="showInput('createUTub')"></i>
-                <i id="deleteUTubButton" class="bi bi-x-square-fill fa-2x text-danger mx-1"
-                    onclick="confirmModal('deleteUTub')" style="display:none"></i>
-            </div>
+        <div class="col-3 col-lg-3 mb-md-0 text-right d-flex justify-content-center flex-row">
+
+            <!-- Local Dev (1/5) -->
+            <!-- <button id="createUTubButton" class="bi bi-plus-square-fill fa-2x btn-success mx-1">+</button>
+                <button id="deleteUTubButton" class="bi bi-x-square-fill fa-2x btn-danger mx-1" style="display:none">X</button> -->
+            <!-- Local Dev (1/5) -->
+
+            <!-- Production (1/5) -->
+            <i id="createUTubButton" class="bi bi-plus-square-fill fa-2x text-success mx-1"></i>
+            <i id="deleteUTubButton" class="bi bi-x-square-fill fa-2x text-danger mx-1" style="display:none"></i>
+            <!-- Production (1/5) -->
         </div>
 
         <div class="deckContent">
@@ -39,19 +43,26 @@
     <!-- LWR LH Panel, Tags -->
     <div id="TagDeck" class="deck row h-50 p-3">
         <div class="col-9 col-lg-9 mb-md-0">
-            <h2>No UTub Selected</h2>
+            <h2 id="TagDeckHeader">No UTub Selected</h2>
         </div>
         <div class="col-3 col-lg-3 mb-md-0 text-right">
             <div class="d-flex justify-content-center flex-row">
-                <i class="bi bi-plus-square-fill fa-2x text-success mx-1" id="createTagButton"
-                    onclick="showInput('createTag')" style="display:none"></i>
-                <i class="bi bi-pencil-square fa-2x text-warning mx-1" id="editTagButton" onclick="editTags('edit')"
-                    style="display:none"></i>
-                <i class="fa fa-check-square fa-2x text-success mx-1" id="submitTagButton" onclick="editTags('submit')"
-                    style="display:none"></i>
+
+                <!-- Local Dev (2/5) -->
+                <!-- <button class="bi bi-plus-square-fill fa-2x btn-success mx-1" id="createTagButton" style="display:none">+</button>
+                <button class="bi bi-pencil-square fa-2x btn-warning mx-1" id="editTagButton" style="display:none">edit</button>
+                <button class="fa fa-check-square fa-2x btn-success mx-1" id="submitTagButton" style="display:none">check</button> -->
+                <!-- Local Dev (2/5) -->
+
+                <!-- Production (2/5) -->
+                <i class="bi bi-plus-square-fill fa-2x text-success mx-1" id="createTagButton" style="display:none"></i>
+                <i class="bi bi-pencil-square fa-2x text-warning mx-1" id="editTagButton" style="display:none"></i>
+                <i class="fa fa-check-square fa-2x text-success mx-1" id="submitTagButton" style="display:none"></i>
+                <!-- Production (2/5) -->
             </div>
         </div>
         <div class="deckContent form-group">
+            <h5 id="noTagsHeader">No tags applied to any URLs in this UTub</h5>
             <form id="listTags">
                 <!-- Tags -->
             </form>
@@ -64,17 +75,35 @@
     <div id="URLDeck" class="deck h-100 p-3" style="margin-bottom: -5px;">
         <div class="row justify-content-center mx-2">
             <div class="col-9 col-lg-9 mb-md-0 text-left">
-                <h2 id="UTubHeader" style="display: inline-block">Select a UTub</h2>
+                <h2 id="URLDeckHeader" style="display: inline-block"></h2>
                 <div class="createDiv" style="display: none">
-                    <input type="text" id="editUTub" class="userInput">
-                    <i id="submitEditUTubButton" class="fa fa-check-square fa-2x text-success mx-1" type="button" style="display: none" onclick="postData(event, 'editUTub-')"></i>
+                    <input type="text" id="editUTubName" class="userInput">
+                    <!-- Local Dev (3/5) -->
+                    <!-- <button id="submitEditUTubButton" class="fa fa-check-square fa-2x text-success mx-1" type="button">check</button> -->
+                    <!-- Local Dev (3/5) -->
+
+                    <!-- Production (3/5) -->
+                    <i id="submitEditUTubButton" class="fa fa-check-square fa-2x text-success mx-1" type="button"></i>
+                    <!-- Production (3/5) -->
                 </div>
-                <i id="editUTubButton" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454"
-                    onclick="editUTub()"></i>
+
+                <!-- Local Dev (4/5) -->
+                <!-- <button id="editUTubButton" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454">edit</button> -->
+                <!-- Local Dev (4/5) -->
+
+                <!-- Production (4/5) -->
+                <i id="editUTubButton" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454"></i>
+                <!-- Production (4/5) -->
             </div>
             <div class="col-3 col-lg-3 mb-md-0 text-right">
-                <i id="addURL" class="bi bi-plus-square-fill fa-2x text-success mx-1" style="display: none;"
-                    onclick="showInput('newURLDescription');"></i>
+
+                <!-- Local Dev (5/5) -->
+                <!-- <button id="addURLBtn" class="bi bi-plus-square-fill fa-2x btn-success mx-1" style="display: none;">+</button> -->
+                <!-- Local Dev (5/5) -->
+
+                <!-- Production (5/5) -->
+                <i id="addURLBtn" class="bi bi-plus-square-fill fa-2x text-success mx-1" style="display: none;"></i>
+                <!-- Production (5/5) -->
             </div>
         </div>
         <div class="row justify-content-center mx-2">
@@ -105,7 +134,7 @@
 
 <!-- Right Side Panel -->
 
-<div id="rightPanel" class="panel col-md-3">
+<div id="rightPanel" class="panel col-md-2">
     <div id="MembersDeck" class="deck row h-50 md-mb-1 p-3" style="display: block; /*margin-bottom: 5px;*/">
 
         <h2>Members</h2>
@@ -145,7 +174,7 @@
 
 
 <!-- Home Page JS -->
-<!-- <script src="{{ url_for('static', filename='scripts/230103_home.js') }}"></script> -->
+<script src="{{ url_for('static', filename='scripts/utils.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/utubs.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/tags.js') }}"></script>

@@ -212,7 +212,18 @@ i.fa-check-square {
 
 .selected {
     border: 5px solid rgb(13, 255, 0);
+}
+
+.selectedURL {
+    border: 5px solid rgb(13, 255, 0);
     transition: 250ms;
+}
+
+.URLString {
+    width: 200px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis
 }
 
 .col-lg-10 {
