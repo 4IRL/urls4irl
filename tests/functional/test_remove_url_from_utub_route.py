@@ -1,3 +1,4 @@
+from flask import url_for
 from flask_login import current_user
 
 from urls4irl import db
@@ -77,7 +78,7 @@ def test_remove_url_as_utub_creator_no_tags(
 
     # Remove URL from UTub as UTub creator
     remove_url_response = client.post(
-        f"/url/remove/{current_user_utub.id}/{url_id_to_remove}",
+        url_for("urls.delete_url", utub_id=current_user_utub.id, url_id=url_id_to_remove),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -216,7 +217,7 @@ def test_remove_url_as_utub_member_no_tags(
 
     # Remove URL from UTub as UTub member
     remove_url_response = client.post(
-        f"/url/remove/{current_user_utub.id}/{missing_url.id}",
+        url_for("urls.delete_url", utub_id=current_user_utub.id, url_id=missing_url.id),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -300,7 +301,7 @@ def test_remove_url_from_utub_not_member_of(
 
     # Remove the URL from the other user's UTub while logged in as member of another UTub
     remove_url_response = client.post(
-        f"/url/remove/{utub_current_user_not_part_of.id}/{url_to_remove_id}",
+        url_for("urls.delete_url", utub_id=utub_current_user_not_part_of.id, url_id=url_to_remove_id),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -383,7 +384,7 @@ def test_remove_invalid_nonexistant_url_as_utub_creator(
 
     # Attempt to remove nonexistant URL from UTub as creator of UTub
     remove_url_response = client.post(
-        f"/url/remove/{id_of_utub_current_user_creator_of}/{id_of_url_to_remove}",
+        url_for("urls.delete_url", utub_id=id_of_utub_current_user_creator_of, url_id=id_of_url_to_remove),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -459,7 +460,7 @@ def test_remove_invalid_nonexistant_url_as_utub_member(
 
     # Attempt to remove nonexistant URL from UTub as creator of UTub
     remove_url_response = client.post(
-        f"/url/remove/{id_of_utub_current_user_member_of}/{id_of_url_to_remove}",
+        url_for("urls.delete_url", utub_id=id_of_utub_current_user_member_of, url_id=id_of_url_to_remove),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -555,7 +556,7 @@ def test_remove_url_as_utub_creator_with_tags(
 
     # Attempt to remove URL that contains tag from UTub as creator of UTub
     remove_url_response = client.post(
-        f"/url/remove/{utub_id_to_remove_url_from}/{url_id_to_remove}",
+        url_for("urls.delete_url", utub_id=utub_id_to_remove_url_from, url_id=url_id_to_remove),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -681,7 +682,7 @@ def test_remove_url_as_utub_member_with_tags(
 
     # Remove URL from UTub as UTub member
     remove_url_response = client.post(
-        f"/url/remove/{utub_id_to_remove_url_from}/{url_id_to_remove}",
+        url_for("urls.delete_url", utub_id=utub_id_to_remove_url_from, url_id=url_id_to_remove),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -760,7 +761,8 @@ def test_remove_url_from_utub_no_csrf_token(
 
     # Remove the URL from the other user's UTub while logged in as member of another UTub
     remove_url_response = client.post(
-        f"/url/remove/{utub_current_user_not_part_of.id}/{url_to_remove_id}", data={}
+        url_for("urls.delete_url", utub_id=utub_current_user_not_part_of.id, url_id=url_to_remove_id),
+        data={}
     )
 
     # Ensure 200 HTTP status code response

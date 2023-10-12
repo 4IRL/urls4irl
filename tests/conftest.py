@@ -43,6 +43,12 @@ def client(app):
 
 
 @pytest.fixture
+def app_with_server_name(app):
+    app.config['SERVER_NAME'] = 'localhost:5000'
+    yield app
+
+
+@pytest.fixture
 def load_register_page(client):
     """
     Given a Flask client, performs a GET of the register page using "/register"

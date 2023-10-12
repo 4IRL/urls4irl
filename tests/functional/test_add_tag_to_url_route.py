@@ -1,3 +1,4 @@
+from flask import url_for
 from flask_login import current_user
 
 from urls4irl import db
@@ -100,7 +101,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -232,7 +233,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -370,7 +371,7 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -518,7 +519,7 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -670,7 +671,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -797,7 +798,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -898,7 +899,7 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -996,7 +997,7 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -1083,7 +1084,7 @@ def test_add_tag_to_url_in_nonexistent_utub(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_that_does_not_exist}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_that_does_not_exist, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -1183,7 +1184,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_that_user_not_member_of}/{url_id_for_url_in_utub}",
+        url_for("tags.add_tag", utub_id=utub_id_that_user_not_member_of, url_id=url_id_for_url_in_utub),
         data=add_tag_form,
     )
 
@@ -1314,7 +1315,7 @@ def test_add_tag_to_url_not_in_utub(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_creator_of}/{url_id_for_url_not_in_utub}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_creator_of, url_id=url_id_for_url_not_in_utub),
         data=add_tag_form,
     )
 
@@ -1459,7 +1460,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_creator_of}/{url_id_in_this_utub}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_creator_of, url_id=url_id_in_this_utub),
         data=add_tag_form,
     )
 
@@ -1613,7 +1614,8 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_member_of}/{url_id_in_this_utub}", data=add_tag_form
+        url_for("tags.add_tag", utub_id=utub_id_user_is_member_of, url_id=url_id_in_this_utub),
+        data=add_tag_form
     )
 
     assert add_tag_response.status_code == 400
@@ -1739,7 +1741,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 
@@ -1865,7 +1867,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
     }
 
     add_tag_response = client.post(
-        f"/tag/add/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}",
+        url_for("tags.add_tag", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to),
         data=add_tag_form,
     )
 

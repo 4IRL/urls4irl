@@ -1,3 +1,4 @@
+from copy import deepcopy
 from flask import url_for, request
 from flask_login import current_user
 from werkzeug.security import check_password_hash
@@ -20,17 +21,18 @@ def test_register_new_user(app, load_register_page):
     """
     client, csrf_token_string = load_register_page
 
-    valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
+    new_user = deepcopy(valid_user_1)
+    new_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
 
     # Ensure no user with this data exists in database
     with app.app_context():
         new_db_user = User.query.filter_by(
-            username=valid_user_1[REGISTER_FORM.USERNAME]
+            username=new_user[REGISTER_FORM.USERNAME]
         ).first()
 
     assert new_db_user is None
 
-    response = client.post("/register", data=valid_user_1, follow_redirects=True)
+    response = client.post(url_for("users.register_user"), data=new_user, follow_redirects=True)
 
     # Correctly sends URL to email validation modal
     assert response.status_code == 201
@@ -40,14 +42,14 @@ def test_register_new_user(app, load_register_page):
     )
 
     # Test if user logged in
-    assert current_user.username == valid_user_1[REGISTER_FORM.USERNAME]
-    assert current_user.password != valid_user_1[REGISTER_FORM.PASSWORD]
-    assert current_user.email == valid_user_1[REGISTER_FORM.EMAIL]
+    assert current_user.username == new_user[REGISTER_FORM.USERNAME]
+    assert current_user.password != new_user[REGISTER_FORM.PASSWORD]
+    assert current_user.email == new_user[REGISTER_FORM.EMAIL]
 
     # Ensure user exists in database
     with app.app_context():
         new_db_user = User.query.filter_by(
-            username=valid_user_1[REGISTER_FORM.USERNAME]
+            username=new_user[REGISTER_FORM.USERNAME]
         ).first()
 
     # Ensure user model after loading from database is logged in
@@ -55,9 +57,9 @@ def test_register_new_user(app, load_register_page):
     assert new_db_user.is_active is True
 
     # Test if user db data is same as input when registering
-    assert new_db_user.username == valid_user_1[REGISTER_FORM.USERNAME]
-    assert new_db_user.password != valid_user_1[REGISTER_FORM.PASSWORD]
-    assert new_db_user.email == valid_user_1[REGISTER_FORM.EMAIL]
+    assert new_db_user.username == new_user[REGISTER_FORM.USERNAME]
+    assert new_db_user.password != new_user[REGISTER_FORM.PASSWORD]
+    assert new_db_user.email == new_user[REGISTER_FORM.EMAIL]
 
     # Test if user db data is same as current user variable
     assert new_db_user.username == current_user.username
@@ -104,7 +106,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     assert current_user.is_active is False
 
     response = client.post(
-        "/register", data=already_registered_user_data, follow_redirects=True
+        url_for("users.register_user"), data=already_registered_user_data, follow_redirects=True
     )
 
     # Check that does not reroute
@@ -130,15 +132,16 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     )
 
 
-def test_register_modal_is_shown(client):
+def test_register_modal_is_shown(app_with_server_name, client):
     """
     GIVEN a non-registered user visiting the splash page ("/")
     WHEN the user makes a request to "/register"
     THEN verify that the backends responds with a modal in the HTML
     """
     with client:
-        response = client.get("/")
-        response = client.get("/register")
+        with app_with_server_name.app_context():
+            client.get(url_for("main.splash"))
+            response = client.get(url_for("users.register_user"))
         assert (
             b'<form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>'
             in response.data
@@ -172,20 +175,22 @@ def test_register_modal_is_shown(client):
         assert request.path == url_for("users.register_user")
 
 
-def test_register_modal_logs_user_in(client):
+def test_register_modal_logs_user_in(app_with_server_name, client):
     """
     GIVEN a non-logged in user visiting the splash page ("/")
     WHEN the user makes a GET request to "/register", and then a POST request with the applicable form info
     THEN verify that the backends responds with URL to "/home" on response to the post, and logs the user in
     """
     with client:
-        response = client.get("/")
-        response = client.get("/register")
+        with app_with_server_name.app_context():
+            client.get(url_for("main.splash"))
+            response = client.get(url_for("users.register_user"))
         csrf_token = get_csrf_token(response.data)
 
-        valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token
+        new_user = deepcopy(valid_user_1)
+        new_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
-        response = client.post("/register", data=valid_user_1)
+        response = client.post(url_for("users.register_user"), data=new_user)
 
         assert response.status_code == 201
         assert (
@@ -193,11 +198,11 @@ def test_register_modal_logs_user_in(client):
             in response.data
         )
 
-        assert current_user.username == valid_user_1[REGISTER_FORM.USERNAME]
+        assert current_user.username == new_user[REGISTER_FORM.USERNAME]
         assert check_password_hash(
-            current_user.password, valid_user_1[REGISTER_FORM.PASSWORD]
+            current_user.password, new_user[REGISTER_FORM.PASSWORD]
         )
-        assert current_user.email == valid_user_1[REGISTER_FORM.EMAIL]
+        assert current_user.email == new_user[REGISTER_FORM.EMAIL]
 
 
 def test_register_user_missing_csrf(app, load_register_page):
@@ -216,7 +221,14 @@ def test_register_user_missing_csrf(app, load_register_page):
 
     assert new_db_user is None
 
-    response = client.post("/register", data=valid_user_1, follow_redirects=True)
+    response = client.post(url_for("users.register_user"), data={
+        REGISTER_FORM.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
+        REGISTER_FORM.EMAIL: valid_user_1[REGISTER_FORM.EMAIL],
+        REGISTER_FORM.CONFIRM_EMAIL: valid_user_1[REGISTER_FORM.CONFIRM_EMAIL],
+        REGISTER_FORM.PASSWORD: valid_user_1[REGISTER_FORM.PASSWORD],
+        REGISTER_FORM.CONFIRM_PASSWORD: valid_user_1[REGISTER_FORM.CONFIRM_PASSWORD],
+        }, 
+        follow_redirects=True)
 
     # Correctly sends URL to email validation modal
     assert response.status_code == 400
