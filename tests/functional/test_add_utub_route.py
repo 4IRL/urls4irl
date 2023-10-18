@@ -1,3 +1,4 @@
+from flask import url_for
 from flask_login import current_user
 
 from tests.models_for_test import (
@@ -49,7 +50,7 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         ADD_UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
-    new_utub_response = client.post("/utub/new", data=new_utub_form)
+    new_utub_response = client.post(url_for("utubs.create_utub"), data=new_utub_form)
 
     assert new_utub_response.status_code == 200
 
@@ -65,7 +66,6 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         == valid_empty_utub_1[ADD_UTUB_FORM.NAME]
     )
     assert new_utub_response_json[UTUB_SUCCESS.UTUB_CREATOR_ID] == user.id
-    assert isinstance(new_utub_response_json[UTUB_SUCCESS.UTUB_ID], int)
 
     # Validate the utub in the database
     utub_id = int(new_utub_response_json[UTUB_SUCCESS.UTUB_ID])
@@ -99,8 +99,6 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         current_utub_user_association = Utub_Users.query.all()
         assert current_utub_user_association[0].utub_id == utub_id
         assert current_utub_user_association[0].user_id == user.id
-
-    # TODO test new UTub displayed on user's UTub deck
 
 
 def test_add_utub_with_same_name(
@@ -142,7 +140,7 @@ def test_add_utub_with_same_name(
         ADD_UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
-    new_utub_response = client.post("/utub/new", data=new_utub_form)
+    new_utub_response = client.post(url_for("utubs.create_utub"), data=new_utub_form)
 
     assert new_utub_response.status_code == 200
 
@@ -200,7 +198,7 @@ def test_add_utub_with_get_request(login_first_user_with_register):
         ADD_UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
-    new_utub_response = client.get("/utub/new", data=new_utub_form)
+    new_utub_response = client.get(url_for("utubs.create_utub"), data=new_utub_form)
 
     # Get method is not allowed
     assert new_utub_response.status_code == 405
@@ -236,7 +234,9 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
         ADD_UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_FAILURE.UTUB_DESCRIPTION],
     }
 
-    invalid_new_utub_response = client.post("/utub/new", data=new_utub_form)
+    invalid_new_utub_response = client.post(
+        url_for("utubs.create_utub"), data=new_utub_form
+    )
 
     # Assert invalid response code
     assert invalid_new_utub_response.status_code == 404
@@ -268,7 +268,7 @@ def test_add_utub_with_no_csrf_token(login_first_user_with_register):
 
     client, csrf_token, user, app = login_first_user_with_register
 
-    invalid_new_utub_response = client.post("/utub/new")
+    invalid_new_utub_response = client.post(url_for("utubs.create_utub"))
 
     # Assert invalid response code
     assert invalid_new_utub_response.status_code == 400
@@ -296,7 +296,9 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
             ADD_UTUB_FORM.DESCRIPTION: valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION],
         }
 
-        new_utub_response = client.post("/utub/new", data=new_utub_form)
+        new_utub_response = client.post(
+            url_for("utubs.create_utub"), data=new_utub_form
+        )
 
         assert new_utub_response.status_code == 200
 

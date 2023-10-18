@@ -555,11 +555,19 @@ i.fa-check-square {
     font-family: Arial, sans-serif;
 }
 
-.alert-banner-email-validation-hide {
+.forgot-password-form-group {
+    margin-bottom: 0;
+}
+
+.alert-banner-splash-modal-hide {
     display: none;
 }
 
-.alert-banner-email-validation-show {
+.alert-banner-splash-modal-display {
+    display: inherit;
+}
+
+.alert-banner-splash-modal-show {
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -613,9 +621,18 @@ i.fa-check-square {
     margin-bottom: 30px;
 }
 
-#ValidateEmailMessage {
+#EmailAlertBanner {
     color: #333;
     font-size: 18px;
     line-height: 1.6;
     text-align: center;
+}
+
+#ForgotPasswordLink {
+    font-size: 0.75rem;
+    margin-bottom: 0;
+}
+
+#ForgotPasswordText {
+    color: black;
 }

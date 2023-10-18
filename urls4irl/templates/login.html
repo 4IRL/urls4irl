@@ -2,6 +2,7 @@
     if (document.querySelector('head').childElementCount === 1) {
         window.location.href = '/';
     };
+    let isValidSplashForm = true;
 </script>
 <form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>
     <div class="modal-header">
@@ -12,7 +13,7 @@
     </div>
     <div class="modal-body">
         {{ login_form.hidden_tag() }}
-        <div id="ValidateEmailMessage" class="alert alert-banner-email-validation-hide" role="alert"></div>
+        <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
         <fieldset class="form-group">
             <div class="form-group">
                 {{ login_form.username.label(class="form-control-label login-register-label")}}
@@ -27,7 +28,7 @@
                 {{ login_form.username(class="form-control login-register-form-group")}}
                 {% endif %}
             </div>
-            <div class="form-group">
+            <div class="form-group forgot-password-form-group">
                 {{ login_form.password.label(class="form-control-label login-register-label")}}
                 {% if login_form.password.errors %}
                 {{ login_form.password(class="form-control login-register-form-group is-invalid") }}
@@ -39,6 +40,11 @@
                 {% else %}
                 {{ login_form.password(class="form-control login-register-form-group")}}
                 {% endif %}
+            </div>
+            <div class="form-group" id="ForgotPasswordLink">
+                <small class="text-muted">
+                    <a class="to-forgot-password" href="javascript:;">Forgot your password?</a>
+                </small>
             </div>
         </fieldset>
     </div>

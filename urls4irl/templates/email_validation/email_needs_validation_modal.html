@@ -8,7 +8,7 @@
         <div class="email-container">
             <div id="ValidateEmailIcon">✉️</div>
             <h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>
-            <button type="button" class="close modal-close close-email-modal" data-dismiss="modal" aria-label="close">
+            <button type="button" class="close modal-close close-modal" data-dismiss="modal" aria-label="close">
                 <span aria-hidden="true">&times;</span>
             </button>
         </div>
@@ -17,11 +17,16 @@
         {{ validate_email_form.hidden_tag() }}
         <p id="ValidateEmailText" class="validate-email-text">Your email address has not been validated. To complete
             your registration, please click the button below to receive a validation email.</p>
-        <div id="ValidateEmailMessage" class="alert alert-banner-email-validation-hide" role="alert"></div>
+        <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
         <div class="modal-footer">
-            <a class="btn btn-warning col-4 login-register-form-group login-buttons center-block close-email-modal"
-                href="javascript:;">Close</a>
+            <button type="button" class="btn btn-warning close-modal login-register-form-group center-block col-4" data-dismiss="modal">Close</button>
+            <!-- <a class="btn btn-warning col-4 login-register-form-group login-buttons center-block close-modal"
+                href="javascript:;">Close</a> -->
             {{ validate_email_form.submit(class="btn btn-success login-register-form-group login-buttons center-block
             col-8")}}
         </div>
 </form>
+
+<script>
+    setCloseModalButton(true);
+</script>

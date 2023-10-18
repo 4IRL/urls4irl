@@ -1,14 +1,15 @@
 from flask import url_for, request
 
 
-def test_get_home_screen_not_logged_in(client):
+def test_get_home_screen_not_logged_in(app_with_server_name, client):
     """
     GIVEN a fresh user to the website who isn't logged in
     WHEN "/" is requested (GET)
     THEN ensure redirect to splash page
     """
     with client:
-        response = client.get("/", follow_redirects=True)
+        with app_with_server_name.app_context():
+            response = client.get(url_for("main.splash"), follow_redirects=True)
 
         # Hits splash page
         assert response.status_code == 200
@@ -18,28 +19,30 @@ def test_get_home_screen_not_logged_in(client):
         )
 
 
-def test_post_home_screen_not_logged_in(client):
+def test_post_home_screen_not_logged_in(app_with_server_name, client):
     """
     GIVEN a fresh user to the website who isn't logged in
     WHEN "/" is requested (POST)
     THEN check 405 occurs and user is not redirected
     """
     with client:
-        response = client.post("/", follow_redirects=True)
+        with app_with_server_name.app_context():
+            response = client.post(url_for("main.splash"), follow_redirects=True)
 
         assert response.status_code == 405
         assert len(response.history) == 0
         assert request.path != url_for("users.login")
 
 
-def test_get_login_screen_not_logged_in(client):
+def test_get_login_screen_not_logged_in(app_with_server_name, client):
     """
     GIVEN a fresh user to the website who isn't logged in
     WHEN "/login" is requested (GET)
     THEN ensure page contains Login form data, and successful page load
     """
     with client:
-        response = client.get("/login")
+        with app_with_server_name.app_context():
+            response = client.get(url_for("users.login"))
 
         assert response.status_code == 200
 
@@ -59,14 +62,15 @@ def test_get_login_screen_not_logged_in(client):
         assert request.path == url_for("users.login")
 
 
-def test_get_register_screen_not_logged_in(client):
+def test_get_register_screen_not_logged_in(app_with_server_name, client):
     """
     GIVEN a fresh user to the website who isn't logged in
     WHEN "/register" is requested (GET)
     THEN ensure page contains Register form data, and successful page load
     """
     with client:
-        response = client.get("/register")
+        with app_with_server_name.app_context():
+            response = client.get(url_for("users.register_user"))
 
         assert response.status_code == 200
 

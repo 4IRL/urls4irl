@@ -1,3 +1,4 @@
+from flask import url_for
 from flask_login import current_user
 
 from urls4irl.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags
@@ -78,7 +79,8 @@ def test_add_valid_users_to_utub_as_creator(
             new_user = User.query.filter(User.username == other_user).first()
 
         added_user_response = client.post(
-            f"/user/add/{utub_id_of_current_user}", data=add_user_form
+            url_for("users.add_user", utub_id=utub_id_of_current_user),
+            data=add_user_form,
         )
         current_number_of_users_in_utub += 1
 
@@ -194,7 +196,11 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
 
     # Remove this user first
     remove_user_response = client.post(
-        f"/user/remove/{utub_user_created.id}/{other_user_id_in_utub_with_urls}",
+        url_for(
+            "users.delete_user",
+            utub_id=utub_user_created.id,
+            user_id=other_user_id_in_utub_with_urls,
+        ),
         data={ADD_USER_FORM.CSRF_TOKEN: csrf_token},
     )
 
@@ -220,7 +226,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     }
 
     added_user_response = client.post(
-        f"/user/add/{utub_user_created.id}", data=add_user_form
+        url_for("users.add_user", utub_id=utub_user_created.id), data=add_user_form
     )
 
     # Assert correct status code
@@ -319,7 +325,9 @@ def test_add_valid_users_to_utub_as_member(
     }
 
     missing_user_id = missing_user.id
-    add_user_response = client.post(f"/user/add/{only_utub.id}", data=add_user_form)
+    add_user_response = client.post(
+        url_for("users.add_user", utub_id=only_utub.id), data=add_user_form
+    )
 
     assert add_user_response.status_code == 403
 
@@ -394,7 +402,7 @@ def test_add_duplicate_user_to_utub(
     }
 
     add_user_response = client.post(
-        f"/user/add/{current_user_utub_id}", data=add_user_form
+        url_for("users.add_user", utub_id=current_user_utub_id), data=add_user_form
     )
 
     assert add_user_response.status_code == 400
@@ -463,7 +471,9 @@ def test_add_user_to_nonexistant_utub(
         ADD_USER_FORM.USERNAME: another_user.username,
     }
 
-    add_user_response = client.post(f"/user/add/1", data=add_user_form)
+    add_user_response = client.post(
+        url_for("users.add_user", utub_id=1), data=add_user_form
+    )
 
     assert add_user_response.status_code == 404
 
@@ -511,7 +521,9 @@ def test_add_nonexistant_user_to_utub(
         ADD_USER_FORM.USERNAME: "Not a registered user",
     }
 
-    add_user_response = client.post(f"/user/add/{only_utub.id}", data=add_user_form)
+    add_user_response = client.post(
+        url_for("users.add_user", utub_id=only_utub.id), data=add_user_form
+    )
 
     assert add_user_response.status_code == 404
 
@@ -586,7 +598,9 @@ def test_add_user_to_another_users_utub(
         ADD_USER_FORM.USERNAME: test_user_to_add.username,
     }
 
-    add_user_response = client.post(f"/user/add/{another_utub.id}", data=add_user_form)
+    add_user_response = client.post(
+        url_for("users.add_user", utub_id=another_utub.id), data=add_user_form
+    )
 
     assert add_user_response.status_code == 403
 
@@ -649,7 +663,7 @@ def test_add_user_to_utub_invalid_form(
     add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token}
 
     add_user_response = client.post(
-        f"/user/add/{current_user_utub.id}", data=add_user_form
+        url_for("users.add_user", utub_id=current_user_utub.id), data=add_user_form
     )
 
     assert add_user_response.status_code == 404
@@ -689,7 +703,9 @@ def test_add_user_to_utub_missing_csrf_token(
         # Count all user-utub associations in db
         initial_num_user_utubs = len(Utub_Users.query.all())
 
-    add_user_response = client.post(f"/user/add/{current_user_utub.id}")
+    add_user_response = client.post(
+        url_for("users.add_user", utub_id=current_user_utub.id)
+    )
 
     assert add_user_response.status_code == 400
     assert b"<p>The CSRF token is missing.</p>" in add_user_response.data

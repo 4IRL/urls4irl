@@ -3,10 +3,12 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
 from urls4irl.models import User
 from urls4irl.utils import strings as U4I_STRINGS
-from urls4irl.utils.constants import UserConstants
+from urls4irl.utils.constants import USER_CONSTANTS
 
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 LOGIN_REGISTER_FORM = U4I_STRINGS.REGISTER_LOGIN_FORM
+FORGOT_PASSWORD_FORM = U4I_STRINGS.FORGOT_PASSWORD
+RESET_PASSWORD_FORM = U4I_STRINGS.RESET_PASSWORD
 
 
 class UserRegistrationForm(FlaskForm):
@@ -26,7 +28,7 @@ class UserRegistrationForm(FlaskForm):
         LOGIN_REGISTER_FORM.USERNAME_TEXT,
         validators=[
             InputRequired(),
-            Length(min=4, max=UserConstants.MAX_USERNAME_LENGTH),
+            Length(min=4, max=USER_CONSTANTS.MAX_USERNAME_LENGTH),
         ],
     )
     email = StringField(
@@ -98,8 +100,33 @@ class LoginForm(FlaskForm):
             raise ValidationError(USER_FAILURE.INVALID_PASSWORD)
 
 
-class ValidateEmail(FlaskForm):
+class ValidateEmailForm(FlaskForm):
     submit = SubmitField(LOGIN_REGISTER_FORM.SEND_EMAIL_VALIDATION)
+
+
+class ForgotPasswordForm(FlaskForm):
+    email = StringField(
+        FORGOT_PASSWORD_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
+    )
+
+    submit = SubmitField(FORGOT_PASSWORD_FORM.SEND_PASSWORD_RESET_EMAIL)
+
+
+class ResetPasswordForm(FlaskForm):
+    new_password = PasswordField(
+        RESET_PASSWORD_FORM.NEW_PASSWORD,
+        validators=[InputRequired(), Length(min=12, max=64)],
+    )
+    confirm_new_password = PasswordField(
+        RESET_PASSWORD_FORM.CONFIRM_NEW_PASSWORD,
+        validators=[InputRequired()],
+    )
+
+    submit = SubmitField(RESET_PASSWORD_FORM.RESET_YOUR_PASSWORD)
+
+    def validate_confirm_new_password(self, confirm_new_password):
+        if confirm_new_password.data != self.new_password.data:
+            raise ValidationError(RESET_PASSWORD_FORM.PASSWORDS_NOT_IDENTICAL)
 
 
 class UTubNewUserForm(FlaskForm):

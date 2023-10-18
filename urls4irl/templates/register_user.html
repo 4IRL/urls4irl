@@ -2,6 +2,7 @@
     if (document.querySelector('head').childElementCount === 1) {
         window.location.href = '/';
     };
+    let isValidSplashForm = true;
 </script>
 
 <form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>
@@ -13,7 +14,7 @@
     </div>
     <div class="modal-body">
         {{ register_form.hidden_tag() }}
-        <div id="ValidateEmailMessage" class="alert alert-banner-email-validation-hide" role="alert"></div>
+        <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
         <fieldset class="form-group">
             <div class="form-group">
                 {{ register_form.username.label(class="form-control-label login-register-label")}}

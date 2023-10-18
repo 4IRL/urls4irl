@@ -4,6 +4,11 @@
 <!-- Backend load of UTub JSON data -->
 <script type="text/javascript">
     var UTubsList = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
+    if (isValidSplashForm === undefined) {
+        let isValidSplashForm = false;
+    } else {
+        isValidSplashForm = false;
+    }
 </script>
 
 <!-- Left Side Panel -->

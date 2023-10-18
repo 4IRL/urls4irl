@@ -1,5 +1,8 @@
 from flask import render_template
+from json import dumps
+from requests import Response
 from mailjet_rest import Client
+from mailjet_rest.client import ApiError, TimeoutError
 from urls4irl.utils.strings import STD_JSON_RESPONSE, EMAILS, CONFIG_ENVS
 
 
@@ -41,11 +44,11 @@ class EmailSender:
                     to_name=to_name,
                     subject=EMAILS.ACCOUNT_CONFIRMATION_SUBJECT,
                     textpart=render_template(
-                        "emails/email_confirmation.txt",
+                        "email_validation/email_confirmation.txt",
                         email_confirmation_url=confirmation_url,
                     ),
                     htmlpart=render_template(
-                        "emails/email_confirmation.html",
+                        "email_validation/email_confirmation.html",
                         email_confirmation_url=confirmation_url,
                     ),
                 )
@@ -56,6 +59,30 @@ class EmailSender:
             message[EMAILS.SANDBOXMODE] = True
 
         return self._mailjet_client.send.create(data=message)
+
+    def send_password_reset_email(self, to_email: str, to_name: str, reset_url: str):
+        message = {
+            EMAILS.MESSAGES: [
+                self._message_builder(
+                    to_email=to_email,
+                    to_name=to_name,
+                    subject=EMAILS.PASSWORD_RESET_SUBJECT,
+                    textpart=render_template(
+                        "password_reset/reset_password_text_email.txt",
+                        password_reset_url=reset_url,
+                    ),
+                    htmlpart=render_template(
+                        "password_reset/reset_password_html_email.html",
+                        password_reset_url=reset_url,
+                    ),
+                )
+            ]
+        }
+
+        if self._testing:
+            message[EMAILS.SANDBOXMODE] = True
+
+        return self._send_or_fail(message)
 
     def _to_builder(self, email: str, name: str) -> dict:
         return {EMAILS.EMAIL: email, EMAILS.NAME: name}
@@ -76,3 +103,29 @@ class EmailSender:
             EMAILS.TEXTPART: textpart,
             EMAILS.HTMLPART: htmlpart,
         }
+
+    def _send_or_fail(self, message: dict[str, list[dict]]) -> Response:
+        try:
+            return self._mailjet_client.send.create(data=message)
+
+        except (ApiError, TimeoutError) as e:
+            # Can occur if not connected to internet, or on a limited service
+            # TODO: Include the error output for logging but just return error here
+            return self._mock_response_builder(500)
+
+        except Exception as e:
+            # TODO: Include the error output for logging but just return error here
+            return self._mock_response_builder(500)
+
+    @staticmethod
+    def _mock_response_builder(status_code: int = 500) -> Response:
+        mock_response = Response()
+        mock_response.status_code = status_code
+        mock_response.encoding = "utf-8"
+        json_include = {
+            EMAILS.MESSAGES: {EMAILS.MAILJET_ERRORS: EMAILS.ERROR_WITH_MAILJET}
+        }
+        mock_response._content = bytes(
+            dumps(json_include, allow_nan=False), encoding="utf-8"
+        )
+        return mock_response

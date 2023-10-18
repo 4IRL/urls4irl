@@ -21,17 +21,19 @@ class STD_JSON_RESPONSE:
 
 # Strings for all forms
 CSRF_TOKEN = "csrf_token"
+EMAIL = "email"
+PASSWORD = "password"
 
 
 class GENERAL_FORM:
     CSRF_TOKEN = CSRF_TOKEN
+    EMAIL = EMAIL
+    PASSWORD = PASSWORD
 
 
 # Strings for login/register forms
 USERNAME = "username"
-EMAIL = "email"
 CONFIRM_EMAIL = "confirm_email"
-PASSWORD = "password"
 CONFIRM_PASSWORD = "confirm_password"
 USERNAME_TEXT = "Username"
 EMAIL_TEXT = "Email"
@@ -44,9 +46,7 @@ SEND_EMAIL_VALIDATION = "Send Validation Email"
 
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):
-    EMAIL = EMAIL
     USERNAME = USERNAME
-    PASSWORD = PASSWORD
     USERNAME_TEXT = USERNAME_TEXT
     EMAIL_TEXT = EMAIL_TEXT
     CONFIRM_EMAIL_TEXT = CONFIRM_EMAIL_TEXT
@@ -88,6 +88,7 @@ class SUCCESS_GENERAL:
 NOT_AUTHORIZED = "Not authorized."
 FIELD_REQUIRED = ["This field is required."]
 EMAIL_VALIDATED = "Email_validated"
+SOMETHING_WENT_WRONG = "Something went wrong."
 
 
 class FAILURE_GENERAL:
@@ -95,6 +96,7 @@ class FAILURE_GENERAL:
     FIELD_REQUIRED = FIELD_REQUIRED
     REDIRECT = REDIRECT
     EMAIL_VALIDATED = EMAIL_VALIDATED
+    SOMETHING_WENT_WRONG = SOMETHING_WENT_WRONG
 
 
 # Strings for users success
@@ -129,6 +131,7 @@ USERNAME_TAKEN = "That username is already taken. Please choose another."
 USER_NOT_EXIST = "That user does not exist. Note this is case sensitive."
 INVALID_PASSWORD = "Invalid password."
 ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = "An account already exists with that information but the email has not been validated."
+INVALID_EMAIL = "Email is not valid."
 
 
 class USER_FAILURE(FAILURE_GENERAL):
@@ -145,6 +148,7 @@ class USER_FAILURE(FAILURE_GENERAL):
     USER_NOT_EXIST = USER_NOT_EXIST
     ACCOUNT_CREATED_EMAIL_NOT_VALIDATED = ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
     INVALID_PASSWORD = INVALID_PASSWORD
+    INVALID_EMAIL = INVALID_EMAIL
 
 
 # Strings for URL success
@@ -336,7 +340,7 @@ VALIDATE_EMAIL = "validate_email"
 EXPIRATION = "exp"
 ALGORITHM = "HS256"
 EMAIL_VALIDATED_SESS_KEY = "email_validated"
-EMAIL_VALIDATION_MODAL_CALL = "emailValidationModal"
+EMAIL_VALIDATION_MODAL_CALL = "emailValidationModalOpener"
 TOKEN_EXPIRED = "Your token expired. Please try again."
 EMAIL_SENT = "Email sent!"
 EMAIL_FAILED = "Email could not be sent."
@@ -345,6 +349,7 @@ EMAIL_SIGNATURE = "URLS4IRL Team"
 MESSAGES, FROM, TO, NAME = "Messages", "From", "To", "Name"
 SUBJECT, TEXTPART, HTMLPART = "Subject", "TextPart", "HTMLPart"
 ACCOUNT_CONFIRMATION_SUBJECT = "URLS4IRL Account Confirmation"
+PASSWORD_RESET_SUBJECT = "URLS4IRL Password Reset"
 SANDBOXMODE = "SandboxMode"
 MAILJET_STATUS_CODE = "StatusCode"
 MAILJET_ERROR_MESSAGE = "ErrorMessage"
@@ -377,6 +382,7 @@ class EMAILS:
     MAILJET_ERRORS = MAILJET_ERRORS
     EMAIL_FAILED = EMAIL_FAILED
     ERROR_WITH_MAILJET = ERROR_WITH_MAILJET
+    PASSWORD_RESET_SUBJECT = PASSWORD_RESET_SUBJECT
 
 
 # Strings for email validation errors
@@ -393,6 +399,48 @@ class EMAILS_FAILURE(FAILURE_GENERAL):
     ATTEMPTS = ATTEMPTS
 
 
+# Strings for Forgot Password form
+SEND_PASSWORD_RESET_EMAIL = "Send Password Reset Email"
+EMAIL_SENT_MESSAGE = (
+    "If you entered a valid email, you should receive a reset password link soon."
+)
+
+
+class FORGOT_PASSWORD(GENERAL_FORM):
+    EMAIL_TEXT = EMAIL_TEXT
+    EMAIL_SENT_MESSAGE = EMAIL_SENT_MESSAGE
+    SEND_PASSWORD_RESET_EMAIL = SEND_PASSWORD_RESET_EMAIL
+    INVALID_EMAIL = INVALID_EMAIL
+
+
+RESET_PASSWORD_KEY = "reset_password"
+NEW_PASSWORD = "New Password"
+NEW_PASSWORD_FIELD = "new_password"
+CONFIRM_NEW_PASSWORD_FIELD = "confirm_new_password"
+CONFIRM_NEW_PASSWORD = "Confirm New Password"
+RESET_YOUR_PASSWORD = "Reset your password"
+RESET_PASSWORD_MODAL_CALL = "resetPasswordModalOpener"
+RESET_PASSWORD_INVALID = "Could not reset the password."
+SAME_PASSWORD = "Invalid password. Try another password."
+PASSWORD_RESET = "Password reset."
+PASSWORDS_NOT_IDENTICAL = "Passwords are not identical."
+
+
+class RESET_PASSWORD(GENERAL_FORM):
+    RESET_PASSWORD_KEY = RESET_PASSWORD_KEY
+    EXPIRATION = EXPIRATION
+    NEW_PASSWORD = NEW_PASSWORD
+    NEW_PASSWORD_FIELD = NEW_PASSWORD_FIELD
+    CONFIRM_NEW_PASSWORD_FIELD = CONFIRM_NEW_PASSWORD_FIELD
+    CONFIRM_NEW_PASSWORD = CONFIRM_NEW_PASSWORD
+    RESET_YOUR_PASSWORD = RESET_YOUR_PASSWORD
+    RESET_PASSWORD_MODAL_CALL = RESET_PASSWORD_MODAL_CALL
+    RESET_PASSWORD_INVALID = RESET_PASSWORD_INVALID
+    SAME_PASSWORD = SAME_PASSWORD
+    PASSWORD_RESET = PASSWORD_RESET
+    PASSWORDS_NOT_IDENTICAL = PASSWORDS_NOT_IDENTICAL
+
+
 # Config Env vars labels
 class CONFIG_ENVS:
     DATABASE_URL_DEV = "DATABASE_URL_DEV"
@@ -401,3 +449,8 @@ class CONFIG_ENVS:
     MAILJET_SECRET_KEY = "MAILJET_SECRET_KEY"
     MAILJET_API_KEY = "MAILJET_API_KEY"
     BASE_EMAIL = "BASE_EMAIL"
+
+
+# General Identifiers
+class IDENTIFIERS:
+    SPLASH_PAGE = "Welcome to URLS4IRL"

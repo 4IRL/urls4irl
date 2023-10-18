@@ -1,3 +1,4 @@
+from flask import url_for
 from flask_login import current_user
 
 from urls4irl import db
@@ -100,7 +101,12 @@ def test_remove_tag_from_url_as_utub_creator(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{utub_id_this_user_creator_of}/{url_id_to_remove_tag_from}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=utub_id_this_user_creator_of,
+            url_id=url_id_to_remove_tag_from,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -255,7 +261,12 @@ def test_remove_tag_from_url_as_utub_member(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{utub_id_this_user_member_of}/{url_id_to_remove_tag_from}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=utub_id_this_user_member_of,
+            url_id=url_id_to_remove_tag_from,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -409,7 +420,12 @@ def test_remove_tag_from_url_with_one_tag(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{utub_id_this_user_member_of}/{url_id_to_remove_tag_from}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=utub_id_this_user_member_of,
+            url_id=url_id_to_remove_tag_from,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -565,7 +581,12 @@ def test_remove_last_tag_from_utub(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{utub_id_this_user_member_of}/{url_id_to_remove_tag_from}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=utub_id_this_user_member_of,
+            url_id=url_id_to_remove_tag_from,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -743,7 +764,12 @@ def test_remove_tag_from_url_with_five_tags(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{utub_id_user_is_member_of}/{url_id_in_this_utub}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_in_this_utub,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -861,7 +887,12 @@ def test_remove_nonexistent_tag_from_url_as_utub_creator(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{utub_id_this_user_creator_of}/{url_id_to_remove_tag_from}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=utub_id_this_user_creator_of,
+            url_id=url_id_to_remove_tag_from,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -952,7 +983,12 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{utub_id_this_user_member_of}/{url_id_to_remove_tag_from}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=utub_id_this_user_member_of,
+            url_id=url_id_to_remove_tag_from,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -1062,7 +1098,12 @@ def test_remove_tag_from_url_but_not_member_of_utub(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{utub_id_not_member_of}/{url_id_in_utub}/{tag_id_to_add}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=utub_id_not_member_of,
+            url_id=url_id_in_utub,
+            tag_id=tag_id_to_add,
+        ),
         data=add_tag_form,
     )
 
@@ -1168,7 +1209,12 @@ def test_remove_tag_from_url_from_nonexistent_utub(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{nonexistent_utub_id}/{url_id_to_remove}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=nonexistent_utub_id,
+            url_id=url_id_to_remove,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -1271,7 +1317,12 @@ def test_remove_tag_from_nonexistent_url_utub(
     }
 
     remove_tag_response = client.post(
-        f"/tag/remove/{existing_utub_id}/{nonexistent_url_id}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=existing_utub_id,
+            url_id=nonexistent_url_id,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 
@@ -1357,7 +1408,12 @@ def test_remove_tag_with_no_csrf_token(
     add_tag_form = {}
 
     remove_tag_response = client.post(
-        f"/tag/remove/{existing_utub_id}/{url_id_to_remove}/{tag_id_to_remove}",
+        url_for(
+            "tags.remove_tag",
+            utub_id=existing_utub_id,
+            url_id=url_id_to_remove,
+            tag_id=tag_id_to_remove,
+        ),
         data=add_tag_form,
     )
 

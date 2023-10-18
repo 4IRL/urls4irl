@@ -6,7 +6,7 @@ from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
 from urls4irl import db
 from urls4irl.models import URLS, Utub_Urls, Utub, Url_Tags, User
-from urls4irl.utils.constants import EmailConstants
+from urls4irl.utils.constants import EMAIL_CONSTANTS
 from urls4irl.utils import strings as U4I_STRINGS
 
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
@@ -14,6 +14,7 @@ REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 EMAILS = U4I_STRINGS.EMAILS
 EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
+IDENTIFIERS = U4I_STRINGS.IDENTIFIERS
 VALIDATE_EMAIL_MODAL_TITLE = '<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
 
 
@@ -27,7 +28,9 @@ def test_registered_user_is_not_email_validated(app, load_register_page):
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
-    response = client.post("/register", data=valid_user_1, follow_redirects=True)
+    response = client.post(
+        url_for("users.register_user"), data=valid_user_1, follow_redirects=True
+    )
 
     # Assert user gets shown email validation modal
     assert response.status_code == 201
@@ -49,14 +52,17 @@ def test_registered_not_email_validated_user_access_splash_page(load_register_pa
     client, csrf_token_string = load_register_page
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
-    response = client.post("/register", data=valid_user_1, follow_redirects=True)
+    response = client.post(
+        url_for("users.register_user"), data=valid_user_1, follow_redirects=True
+    )
 
     # Correctly sends URL to email validation modal
     assert response.status_code == 201
     assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
 
-    response = client.get("/")
+    response = client.get(url_for("main.splash"))
     assert response.status_code == 200
+    assert IDENTIFIERS.SPLASH_PAGE.encode() in response.data
     assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
 
 
@@ -69,16 +75,19 @@ def test_registered_not_email_validated_user_access_home_page(load_register_page
     client, csrf_token_string = load_register_page
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
-    response = client.post("/register", data=valid_user_1, follow_redirects=True)
+    response = client.post(
+        url_for("users.register_user"), data=valid_user_1, follow_redirects=True
+    )
 
     # Correctly sends URL to email validation modal
     assert response.status_code == 201
     assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
 
-    response = client.get("/home", follow_redirects=True)
+    response = client.get(url_for("main.home"), follow_redirects=True)
     assert response.history[0].status_code == 302
     assert response.history[0].location == url_for("main.splash")
     assert response.status_code == 200
+    assert IDENTIFIERS.SPLASH_PAGE.encode() in response.data
     assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
 
 
@@ -91,13 +100,15 @@ def test_registered_not_email_validated_user_access_register_login(load_register
     client, csrf_token_string = load_register_page
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
-    response = client.post("/register", data=valid_user_1, follow_redirects=True)
+    response = client.post(
+        url_for("users.register_user"), data=valid_user_1, follow_redirects=True
+    )
 
     # Correctly sends URL to email validation modal
     assert response.status_code == 201
     assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
 
-    urls_to_check = ("/register", "/login")
+    urls_to_check = (url_for("users.register_user"), url_for("users.login"))
 
     for url in urls_to_check:
         response = client.get(url, follow_redirects=True)
@@ -128,7 +139,7 @@ def test_registered_not_email_validated_tries_registering_again(
     client, csrf_token_string = load_register_page
 
     registered_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
-    response = client.post("/register", data=valid_user_1)
+    response = client.post(url_for("users.register_user"), data=valid_user_1)
 
     # Ensure json response from server is valid
     register_user_response_json = response.json
@@ -161,7 +172,7 @@ def test_registered_not_email_validated_tries_logging_in(
     client, csrf_token_string = load_login_page
 
     registered_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
-    response = client.post("/login", data=valid_user_1)
+    response = client.post(url_for("users.login"), data=valid_user_1)
 
     # Ensure json response from server is valid
     login_user_response_json = response.json
@@ -183,14 +194,14 @@ def test_valid_token_generated_on_user_register(
     WHEN they registered
     THEN ensure a token was correctly created referencing the user
     """
-    registered_user, _ = register_first_user_without_email_validation
+    new_user, _ = register_first_user_without_email_validation
 
     with app.app_context():
         registered_user: User = User.query.filter(
-            User.email == registered_user[REGISTER_FORM.EMAIL]
+            User.email == new_user[REGISTER_FORM.EMAIL]
         ).first()
         user_token = registered_user.email_confirm.confirm_url
-        assert User.verify_email_validation_token(user_token) == (
+        assert User.verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (
             registered_user,
             False,
         )
@@ -206,7 +217,9 @@ def test_token_validates_user(app, load_register_page):
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
-    client.post("/register", data=valid_user_1, follow_redirects=True)
+    client.post(
+        url_for("users.register_user"), data=valid_user_1, follow_redirects=True
+    )
 
     with app.app_context():
         user: User = User.query.filter(
@@ -233,6 +246,7 @@ def test_token_validates_user(app, load_register_page):
             User.email == valid_user_1[REGISTER_FORM.EMAIL]
         ).first()
         assert user.is_email_authenticated() and user.email_confirm.is_validated
+        assert user.email_confirm.confirm_url != user_token
 
 
 def test_token_can_expire(app, register_first_user_without_email_validation):
@@ -249,7 +263,10 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
 
-        assert User.verify_email_validation_token(quick_expiring_token) == (None, True)
+        assert User.verify_token(quick_expiring_token, EMAILS.VALIDATE_EMAIL) == (
+            None,
+            True,
+        )
 
 
 def test_success_on_send_of_email(app, load_register_page):
@@ -269,11 +286,12 @@ def test_success_on_send_of_email(app, load_register_page):
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
     register_response = client.post(
-        "/register", data=valid_user_1, follow_redirects=True
+        url_for("users.register_user"), data=valid_user_1, follow_redirects=True
     )
     new_csrf_token = get_csrf_token(register_response.data)
     send_email_response = client.post(
-        "/send_validation_email", data={REGISTER_FORM.CSRF_TOKEN: csrf_token}
+        url_for("users.send_validation_email"),
+        data={REGISTER_FORM.CSRF_TOKEN: csrf_token},
     )
 
     email_send_json = send_email_response.json
@@ -299,11 +317,17 @@ def test_min_rate_limiting_of_sending_email(app, load_register_page):
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
-    client.post("/register", data=valid_user_1, follow_redirects=True)
-    client.post("/send_validation_email", data={REGISTER_FORM.CSRF_TOKEN: csrf_token})
+    client.post(
+        url_for("users.register_user"), data=valid_user_1, follow_redirects=True
+    )
+    client.post(
+        url_for("users.send_validation_email"),
+        data={REGISTER_FORM.CSRF_TOKEN: csrf_token},
+    )
 
     send_second_email_response = client.post(
-        "/send_validation_email", data={REGISTER_FORM.CSRF_TOKEN: csrf_token}
+        url_for("users.send_validation_email"),
+        data={REGISTER_FORM.CSRF_TOKEN: csrf_token},
     )
     second_email_send_json = send_second_email_response.json
 
@@ -312,7 +336,7 @@ def test_min_rate_limiting_of_sending_email(app, load_register_page):
     assert int(second_email_send_json[STD_JSON.ERROR_CODE]) == 2
     assert (
         second_email_send_json[STD_JSON.MESSAGE]
-        == str(EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR - 1)
+        == str(EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR - 1)
         + EMAILS_FAILURE.TOO_MANY_ATTEMPTS
     )
 
@@ -334,18 +358,21 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
-    client.post("/register", data=valid_user_1, follow_redirects=True)
+    client.post(
+        url_for("users.register_user"), data=valid_user_1, follow_redirects=True
+    )
 
     with app.app_context():
         user: User = User.query.filter(
             User.email == valid_user_1[REGISTER_FORM.EMAIL]
         ).first()
-        user.email_confirm.attempts = EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
+        user.email_confirm.attempts = EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
         user.email_confirm.last_attempt = datetime.utcnow()
         db.session.commit()
 
     email_response = client.post(
-        "/send_validation_email", data={REGISTER_FORM.CSRF_TOKEN: csrf_token}
+        url_for("users.send_validation_email"),
+        data={REGISTER_FORM.CSRF_TOKEN: csrf_token},
     )
     email_response_json = email_response.json
 

@@ -1,3 +1,4 @@
+from flask import url_for
 from flask_login import current_user
 
 from urls4irl.models import Utub, Utub_Urls, Url_Tags, URLS
@@ -88,7 +89,11 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_in_this_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_in_this_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -228,7 +233,11 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_member_of.id}/{url_in_this_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_member_of.id,
+            url_id=url_in_this_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -363,7 +372,11 @@ def test_update_url_description_with_fresh_valid_url_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_in_this_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_in_this_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -504,7 +517,11 @@ def test_update_url_description_with_fresh_valid_url_as_url_adder(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_member_of.id}/{url_in_this_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_member_of.id,
+            url_id=url_in_this_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -650,7 +667,11 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -796,7 +817,11 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_member_of.id}/{url_in_this_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_member_of.id,
+            url_id=url_in_this_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -936,7 +961,11 @@ def test_update_valid_url_with_same_url_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1057,7 +1086,11 @@ def test_update_valid_url_with_same_url_as_url_adder(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_member_of.id}/{url_id_of_url_in_this_utub}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_member_of.id,
+            url_id=url_id_of_url_in_this_utub,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1181,7 +1214,11 @@ def test_update_valid_url_with_same_url_and_new_desc_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1315,7 +1352,11 @@ def test_update_valid_url_with_same_url_new_description_as_url_adder(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_member_of.id}/{url_id_of_url_in_this_utub}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_member_of.id,
+            url_id=url_id_of_url_in_this_utub,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1437,7 +1478,11 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1540,7 +1585,11 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_member_of.id}/{url_id_of_url_in_this_utub}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_member_of.id,
+            url_id=url_id_of_url_in_this_utub,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1653,7 +1702,11 @@ def test_update_valid_url_with_same_url_and_empty_desc_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1776,7 +1829,11 @@ def test_update_valid_url_with_empty_url_and_empty_desc_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1887,7 +1944,11 @@ def test_update_valid_url_with_empty_url_and_valid_desc_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -1999,7 +2060,11 @@ def test_update_url_description_with_fresh_valid_url_as_another_current_utub_mem
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_member_of.id}/{url_in_this_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_member_of.id,
+            url_id=url_in_this_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -2142,7 +2207,11 @@ def test_update_url_description_with_fresh_valid_url_as_other_utub_member(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_user_not_member_of.id}/{url_in_this_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_user_not_member_of.id,
+            url_id=url_in_this_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -2301,7 +2370,11 @@ def test_update_url_description_with_fresh_valid_url_as_other_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_user_not_member_of.id}/{url_in_this_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_user_not_member_of.id,
+            url_id=url_in_this_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -2431,7 +2504,11 @@ def test_update_valid_url_with_missing_url_field_and_valid_desc_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -2538,7 +2615,11 @@ def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
@@ -2635,7 +2716,11 @@ def test_update_valid_url_with_valid_url_and_valid_desc_missing_csrf(
     }
 
     edit_url_string_desc_form = client.post(
-        f"/url/edit/{utub_creator_of.id}/{url_already_in_utub.url_id}",
+        url_for(
+            "urls.edit_url_and_description",
+            utub_id=utub_creator_of.id,
+            url_id=url_already_in_utub.url_id,
+        ),
         data=edit_url_string_desc_form,
     )
 
