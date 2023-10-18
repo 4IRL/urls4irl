@@ -286,7 +286,7 @@ def user_attempts_reset_password(app, register_first_user, load_login_page):
         user_to_reset.password_reset = password_reset_obj
         db.session.commit()
 
-    yield app, client, new_user, reset_token
+    yield app, client, new_user, reset_token, csrf_token
 
 
 @pytest.fixture
@@ -333,7 +333,7 @@ def user_attempts_reset_password_one_hour_old(app, register_first_user, load_log
         user_to_reset.password_reset = password_reset_obj
         db.session.commit()
 
-    yield app, client, new_user, reset_token
+    yield app, client, new_user, reset_token, csrf_token
 
 @pytest.fixture
 def login_first_user_with_register(app, register_first_user):

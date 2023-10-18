@@ -383,10 +383,7 @@ def test_user_requests_reset_after_password_reset_object_older_than_hour(user_at
     WHEN the user forgets password more than one hour after their previous attempt
     THEN ensure a new token is generated and captured attempt timings in ForgotPassword object are updated
     """
-    app, client, new_user, old_reset_token = user_attempts_reset_password_one_hour_old
-
-    forgot_password_response = client.get(url_for("users.forgot_password"))
-    csrf_token = get_csrf_token(forgot_password_response.data)
+    app, client, new_user, old_reset_token, csrf_token = user_attempts_reset_password_one_hour_old
 
     forgot_password_response = client.post(url_for("users.forgot_password"), data={
         FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
@@ -410,16 +407,13 @@ def test_two_forgot_password_attempts_more_than_minute_apart_increments_attempts
     WHEN the user accesses the Forgot Password feature again
     THEN ensure that a new token is not generated, and the attempts are properly incremented
     """
-    app, client, new_user, reset_token = user_attempts_reset_password
+    app, client, new_user, reset_token, csrf_token = user_attempts_reset_password
 
     with app.app_context():
         forgot_password: ForgotPassword = ForgotPassword.query.filter(ForgotPassword.reset_token == reset_token).first()
         forgot_password.last_attempt = datetime.utcnow() - timedelta(seconds=USER_CONSTANTS.WAIT_TO_RETRY_FORGOT_PASSWORD_MIN + 1)
         current_attempts = forgot_password.attempts
         db.session.commit()
-
-    forgot_password_response = client.get(url_for("users.forgot_password"))
-    csrf_token = get_csrf_token(forgot_password_response.data)
 
     forgot_password_response = client.post(url_for("users.forgot_password"), data={
         FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
