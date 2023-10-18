@@ -338,13 +338,13 @@ def test_forgot_password_generates_token_correctly(
     """
     GIVEN a user who accesses the forgot password form from the login page
     WHEN the user inputs an email that has been validated, and POSTs the form twice in one minute
-    THEN server still shows success with a 200 response status code, with proper JSON response
-        ForgotPassword object is created, and is used to rate limit the user.
+    THEN server successfully generates a reset password token for the user, and responds properly
+        with a 200 status code and a formatted JSON message
 
     JSON response as follows:
     {
         STD_JSON.STATUS: STD_JSON.SUCCESS,
-        STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
+        STD_JSON.MESSAGE: FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
     }
     """
     new_user, _ = register_first_user
@@ -357,10 +357,15 @@ def test_forgot_password_generates_token_correctly(
         user = all_users_with_email[-1]
         user_id = user.id
 
-    response = client.post(url_for("users.forgot_password"), data={
+    forgot_password_response = client.post(url_for("users.forgot_password"), data={
         FORGOT_PASSWORD.EMAIL: valid_user_1[FORGOT_PASSWORD.EMAIL],
         FORGOT_PASSWORD.CSRF_TOKEN: csrf_token
     })
+
+    assert forgot_password_response.status_code == 200
+    forgot_password_response_json = forgot_password_response.json
+    assert forgot_password_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert forgot_password_response_json[STD_JSON.MESSAGE] == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
 
     with app.app_context():
         forgot_password_objs = ForgotPassword.query.all()
@@ -382,6 +387,13 @@ def test_user_requests_reset_after_password_reset_object_older_than_hour(user_at
     GIVEN a user having previously forgotten their password
     WHEN the user forgets password more than one hour after their previous attempt
     THEN ensure a new token is generated and captured attempt timings in ForgotPassword object are updated
+     and the server responds with a 200 status code
+
+    JSON response as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
+    }
     """
     app, client, new_user, old_reset_token, csrf_token = user_attempts_reset_password_one_hour_old
 
@@ -392,6 +404,10 @@ def test_user_requests_reset_after_password_reset_object_older_than_hour(user_at
     current_time = datetime.utcnow()
 
     assert forgot_password_response.status_code == 200
+    forgot_password_response_json = forgot_password_response.json
+    assert forgot_password_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert forgot_password_response_json[STD_JSON.MESSAGE] == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
+
     with app.app_context():
         user: User = User.query.filter(User.email == new_user[FORGOT_PASSWORD.EMAIL]).first()
         new_forgot_password: ForgotPassword = ForgotPassword.query.filter(ForgotPassword.user_id == user.id).first()
@@ -405,7 +421,14 @@ def test_two_forgot_password_attempts_more_than_minute_apart_increments_attempts
     """
     GIVEN a user who previously forgot their password more than a minute ago
     WHEN the user accesses the Forgot Password feature again
-    THEN ensure that a new token is not generated, and the attempts are properly incremented
+    THEN ensure that a new token is not generated, the attempts are properly incremented, and the server
+        responds with a 200 status code and properly formatted JSON
+
+    JSON response as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
+    }
     """
     app, client, new_user, reset_token, csrf_token = user_attempts_reset_password
 
@@ -414,6 +437,7 @@ def test_two_forgot_password_attempts_more_than_minute_apart_increments_attempts
         forgot_password.last_attempt = datetime.utcnow() - timedelta(seconds=USER_CONSTANTS.WAIT_TO_RETRY_FORGOT_PASSWORD_MIN + 1)
         current_attempts = forgot_password.attempts
         db.session.commit()
+
 
     forgot_password_response = client.post(url_for("users.forgot_password"), data={
         FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
