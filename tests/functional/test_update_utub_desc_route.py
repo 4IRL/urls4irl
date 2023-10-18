@@ -66,8 +66,7 @@ def test_update_valid_utub_description_as_creator(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -166,8 +165,7 @@ def test_update_valid_empty_utub_description_as_creator(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -266,8 +264,7 @@ def test_update_only_spaces_utub_description_as_creator(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -363,8 +360,7 @@ def test_update_utub_description_with_same_description_as_creator(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -461,8 +457,7 @@ def test_update_utub_description_as_member(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -570,8 +565,7 @@ def test_update_utub_description_as_creator_of_other_utub(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -661,8 +655,7 @@ def test_update_utub_description_of_invalid_utub(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=invalid_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=invalid_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -751,8 +744,7 @@ def test_update_utub_description_too_long(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -849,8 +841,7 @@ def test_update_utub_description_missing_description_field(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -934,8 +925,7 @@ def test_update_utub_description_missing_csrf_token(
     }
 
     edit_utub_desc_response = client.post(
-        url_for("utubs.update_utub_desc", utub_id=current_utub_id),
-        data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse

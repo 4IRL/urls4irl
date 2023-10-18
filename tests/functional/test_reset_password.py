@@ -43,13 +43,17 @@ def test_reset_password_token_can_expire(app, register_first_user):
         ).first()
         quick_expiring_token = user.get_password_reset_token(expires_in=0)
 
-        assert User.verify_token(quick_expiring_token, RESET_PASSWORD.RESET_PASSWORD_KEY) == (
+        assert User.verify_token(
+            quick_expiring_token, RESET_PASSWORD.RESET_PASSWORD_KEY
+        ) == (
             None,
             True,
         )
 
 
-def test_expired_token_deletes_object_and_redirects(app, load_login_page, register_first_user):
+def test_expired_token_deletes_object_and_redirects(
+    app, load_login_page, register_first_user
+):
     """
     GIVEN a user with an expired reset password token
     WHEN they click on the expired token in their email
@@ -59,14 +63,18 @@ def test_expired_token_deletes_object_and_redirects(app, load_login_page, regist
     client, _ = load_login_page
 
     with app.app_context():
-        user: User = User.query.filter(User.email == registered_user[RESET_PASSWORD.EMAIL]).first()
+        user: User = User.query.filter(
+            User.email == registered_user[RESET_PASSWORD.EMAIL]
+        ).first()
         expired_token = user.get_password_reset_token(expires_in=0)
         password_reset = ForgotPassword(reset_token=expired_token)
         password_reset.user = user
         db.session.add(password_reset)
         db.session.commit()
 
-    reset_response = client.get(url_for(RESET_PASSWORD_URL, token=expired_token), follow_redirects=True)
+    reset_response = client.get(
+        url_for(RESET_PASSWORD_URL, token=expired_token), follow_redirects=True
+    )
 
     assert len(reset_response.history) == 1
     redirected_response = reset_response.history[-1]
@@ -76,7 +84,14 @@ def test_expired_token_deletes_object_and_redirects(app, load_login_page, regist
     assert IDENTIFIERS.SPLASH_PAGE.encode() in reset_response.data
 
     with app.app_context():
-        assert len(ForgotPassword.query.filter(ForgotPassword.reset_token == expired_token).all()) == 0
+        assert (
+            len(
+                ForgotPassword.query.filter(
+                    ForgotPassword.reset_token == expired_token
+                ).all()
+            )
+            == 0
+        )
 
 
 def test_invalid_reset_password_token(user_attempts_reset_password):
@@ -87,17 +102,26 @@ def test_invalid_reset_password_token(user_attempts_reset_password):
     """
     app, client, _, _, _ = user_attempts_reset_password
 
-    invalid_token = "AAA" 
+    invalid_token = "AAA"
     # Verify invalid token is invalid
     with app.app_context():
-        assert len(ForgotPassword.query.filter(ForgotPassword.reset_token == invalid_token).all()) == 0
+        assert (
+            len(
+                ForgotPassword.query.filter(
+                    ForgotPassword.reset_token == invalid_token
+                ).all()
+            )
+            == 0
+        )
 
     reset_response = client.get(url_for(RESET_PASSWORD_URL, token=invalid_token))
 
     assert reset_response.status_code == 404
 
 
-def test_not_email_validated_user_with_password_reset_token_fails(app, load_login_page, register_first_user_without_email_validation):
+def test_not_email_validated_user_with_password_reset_token_fails(
+    app, load_login_page, register_first_user_without_email_validation
+):
     """
     GIVEN a non-email-validated user who somehow generates a ForgotPassword object with a reset token
     WHEN they perform a GET on the reset password URL with their newly created reset token
@@ -108,7 +132,9 @@ def test_not_email_validated_user_with_password_reset_token_fails(app, load_logi
     client, _ = load_login_page
 
     with app.app_context():
-        user: User = User.query.filter(User.email == registered_user[RESET_PASSWORD.EMAIL]).first()
+        user: User = User.query.filter(
+            User.email == registered_user[RESET_PASSWORD.EMAIL]
+        ).first()
         reset_token = user.get_password_reset_token()
         new_password_reset = ForgotPassword(reset_token=reset_token)
         new_password_reset.user = user
@@ -120,7 +146,14 @@ def test_not_email_validated_user_with_password_reset_token_fails(app, load_logi
     assert reset_password_response.status_code == 404
 
     with app.app_context():
-        assert len(ForgotPassword.query.filter(ForgotPassword.reset_token == reset_token).all()) == 0
+        assert (
+            len(
+                ForgotPassword.query.filter(
+                    ForgotPassword.reset_token == reset_token
+                ).all()
+            )
+            == 0
+        )
 
 
 def test_matching_user_reset_token_not_in_database_fails(user_attempts_reset_password):
@@ -132,18 +165,31 @@ def test_matching_user_reset_token_not_in_database_fails(user_attempts_reset_pas
     app, client, new_user, correct_token, _ = user_attempts_reset_password
 
     with app.app_context():
-        user: User = User.query.filter(User.email == new_user[RESET_PASSWORD.EMAIL]).first()
+        user: User = User.query.filter(
+            User.email == new_user[RESET_PASSWORD.EMAIL]
+        ).first()
         invalid_token = user.get_password_reset_token()
 
-    reset_password_response = client.get(url_for(RESET_PASSWORD_URL, token=invalid_token))
+    reset_password_response = client.get(
+        url_for(RESET_PASSWORD_URL, token=invalid_token)
+    )
 
     assert reset_password_response.status_code == 404
 
     with app.app_context():
-        assert len(ForgotPassword.query.filter(ForgotPassword.reset_token == correct_token).all()) == 1
+        assert (
+            len(
+                ForgotPassword.query.filter(
+                    ForgotPassword.reset_token == correct_token
+                ).all()
+            )
+            == 1
+        )
 
 
-def test_password_reset_object_expires_after_one_hour(user_attempts_reset_password_one_hour_old):
+def test_password_reset_object_expires_after_one_hour(
+    user_attempts_reset_password_one_hour_old,
+):
     """
     GIVEN a user with a ForgotPassword object of more than 1 hour old
     WHEN they try to access the token in their email to reset their password
@@ -164,10 +210,13 @@ def test_password_reset_without_csrf_fails(user_attempts_reset_password):
     """
     _, client, _, reset_token, _ = user_attempts_reset_password
 
-    reset_response = client.post(url_for(RESET_PASSWORD_URL, token=reset_token), data={
-        RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
-        RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD
-    })
+    reset_response = client.post(
+        url_for(RESET_PASSWORD_URL, token=reset_token),
+        data={
+            RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
+            RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
+        },
+    )
 
     # Assert invalid response code
     assert reset_response.status_code == 400
@@ -193,28 +242,42 @@ def test_password_reset_without_equal_passwords_fails(user_attempts_reset_passwo
     """
     app, client, new_user, reset_token, csrf_token = user_attempts_reset_password
 
-    reset_response = client.post(url_for(RESET_PASSWORD_URL, token=reset_token), data={
-        RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
-        RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD + "AAA",
-        RESET_PASSWORD.CSRF_TOKEN: csrf_token
-    })
-    
+    reset_response = client.post(
+        url_for(RESET_PASSWORD_URL, token=reset_token),
+        data={
+            RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
+            RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD + "AAA",
+            RESET_PASSWORD.CSRF_TOKEN: csrf_token,
+        },
+    )
+
     assert reset_response.status_code == 400
     reset_response_json = reset_response.json
     assert reset_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert reset_response_json[STD_JSON.MESSAGE] == RESET_PASSWORD.RESET_PASSWORD_INVALID
+    assert (
+        reset_response_json[STD_JSON.MESSAGE] == RESET_PASSWORD.RESET_PASSWORD_INVALID
+    )
     assert int(reset_response_json[STD_JSON.ERROR_CODE]) == 2
-    assert reset_response_json[STD_JSON.ERRORS][RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD][-1] == RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL
+    assert (
+        reset_response_json[STD_JSON.ERRORS][RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD][
+            -1
+        ]
+        == RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL
+    )
 
     with app.app_context():
-        user: User = User.query.filter(User.email == new_user[RESET_PASSWORD.EMAIL]).first()
+        user: User = User.query.filter(
+            User.email == new_user[RESET_PASSWORD.EMAIL]
+        ).first()
         assert user.is_password_correct(new_user[RESET_PASSWORD.PASSWORD])
 
 
-def test_password_reset_with_identical_to_previous_password_fails(user_attempts_reset_password):
+def test_password_reset_with_identical_to_previous_password_fails(
+    user_attempts_reset_password,
+):
     """
     GIVEN a user trying to reset their password
-    WHEN they submit a reset password form with the password and confirm password equal to their previous passwords     
+    WHEN they submit a reset password form with the password and confirm password equal to their previous passwords
     THEN ensure server responds indicating the password is same as old password, and a status code of 400
 
     JSON response as follows:
@@ -226,11 +289,16 @@ def test_password_reset_with_identical_to_previous_password_fails(user_attempts_
     """
     _, client, new_user, reset_token, csrf_token = user_attempts_reset_password
 
-    reset_response = client.post(url_for(RESET_PASSWORD_URL, token=reset_token), data={
-        RESET_PASSWORD.NEW_PASSWORD_FIELD: new_user[RESET_PASSWORD.PASSWORD],
-        RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: new_user[RESET_PASSWORD.PASSWORD],
-        RESET_PASSWORD.CSRF_TOKEN: csrf_token
-    })
+    reset_response = client.post(
+        url_for(RESET_PASSWORD_URL, token=reset_token),
+        data={
+            RESET_PASSWORD.NEW_PASSWORD_FIELD: new_user[RESET_PASSWORD.PASSWORD],
+            RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: new_user[
+                RESET_PASSWORD.PASSWORD
+            ],
+            RESET_PASSWORD.CSRF_TOKEN: csrf_token,
+        },
+    )
 
     assert reset_response.status_code == 400
     reset_response_json = reset_response.json
@@ -239,10 +307,12 @@ def test_password_reset_with_identical_to_previous_password_fails(user_attempts_
     assert int(reset_response_json[STD_JSON.ERROR_CODE]) == 1
 
 
-def test_valid_new_password_changes_password_and_deletes_forgot_password_object(user_attempts_reset_password):
+def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
+    user_attempts_reset_password,
+):
     """
     GIVEN a user trying to reset their password
-    WHEN they submit a valid reset password form   
+    WHEN they submit a valid reset password form
     THEN ensure server responds indicating the password is changed, status code of 200, the
         ForgotPassword object is deleted from the database, and no user is logged in
 
@@ -254,11 +324,14 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     """
     app, client, new_user, reset_token, csrf_token = user_attempts_reset_password
 
-    reset_response = client.post(url_for(RESET_PASSWORD_URL, token=reset_token), data={
-        RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
-        RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
-        RESET_PASSWORD.CSRF_TOKEN: csrf_token
-    })
+    reset_response = client.post(
+        url_for(RESET_PASSWORD_URL, token=reset_token),
+        data={
+            RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
+            RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
+            RESET_PASSWORD.CSRF_TOKEN: csrf_token,
+        },
+    )
 
     assert reset_response.status_code == 200
     reset_response_json = reset_response.json
@@ -266,9 +339,20 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     assert reset_response_json[STD_JSON.MESSAGE] == RESET_PASSWORD.PASSWORD_RESET
 
     with app.app_context():
-        user: User = User.query.filter(User.email == new_user[RESET_PASSWORD.EMAIL]).first()
-        assert user.is_password_correct(NEW_PASSWORD) and not user.is_password_correct(new_user[RESET_PASSWORD.PASSWORD])
-        assert len(ForgotPassword.query.filter(ForgotPassword.reset_token == reset_token).all()) == 0
+        user: User = User.query.filter(
+            User.email == new_user[RESET_PASSWORD.EMAIL]
+        ).first()
+        assert user.is_password_correct(NEW_PASSWORD) and not user.is_password_correct(
+            new_user[RESET_PASSWORD.PASSWORD]
+        )
+        assert (
+            len(
+                ForgotPassword.query.filter(
+                    ForgotPassword.reset_token == reset_token
+                ).all()
+            )
+            == 0
+        )
 
     # Ensure no one is logged in
     assert current_user.get_id() is None

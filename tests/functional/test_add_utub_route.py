@@ -234,7 +234,9 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
         ADD_UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_FAILURE.UTUB_DESCRIPTION],
     }
 
-    invalid_new_utub_response = client.post(url_for("utubs.create_utub"), data=new_utub_form)
+    invalid_new_utub_response = client.post(
+        url_for("utubs.create_utub"), data=new_utub_form
+    )
 
     # Assert invalid response code
     assert invalid_new_utub_response.status_code == 404
@@ -294,7 +296,9 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
             ADD_UTUB_FORM.DESCRIPTION: valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION],
         }
 
-        new_utub_response = client.post(url_for("utubs.create_utub"), data=new_utub_form)
+        new_utub_response = client.post(
+            url_for("utubs.create_utub"), data=new_utub_form
+        )
 
         assert new_utub_response.status_code == 200
 

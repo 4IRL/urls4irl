@@ -20,7 +20,7 @@ def test_login_registered_and_logged_in_user(login_first_user_with_register):
     WHEN "/login" is POST'd with CSRF token
     THEN ensure the user is redirected to the home page since they are already logged in
     """
-    client, csrf_token_str, user, app = login_first_user_with_register 
+    client, csrf_token_str, user, app = login_first_user_with_register
 
     new_user = deepcopy(valid_user_1)
     new_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
@@ -36,9 +36,7 @@ def test_login_registered_and_logged_in_user(login_first_user_with_register):
 
     # Test if user logged in
     assert current_user.username == new_user[LOGIN_FORM.USERNAME]
-    assert check_password_hash(
-        current_user.password, new_user[LOGIN_FORM.PASSWORD]
-    )
+    assert check_password_hash(current_user.password, new_user[LOGIN_FORM.PASSWORD])
     assert current_user.email == new_user[LOGIN_FORM.EMAIL]
 
     # Ensure user id's match with  database
@@ -173,6 +171,7 @@ def test_login_user_missing_csrf(register_first_user, load_login_page):
     # Ensure no one is logged in
     assert current_user.get_id() is None
     assert current_user.is_active is False
+
 
 def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
     """

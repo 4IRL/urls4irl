@@ -1,6 +1,6 @@
 from flask import render_template
 from json import dumps
-from requests import Response 
+from requests import Response
 from mailjet_rest import Client
 from mailjet_rest.client import ApiError, TimeoutError
 from urls4irl.utils.strings import STD_JSON_RESPONSE, EMAILS, CONFIG_ENVS
@@ -123,11 +123,9 @@ class EmailSender:
         mock_response.status_code = status_code
         mock_response.encoding = "utf-8"
         json_include = {
-            EMAILS.MESSAGES: {
-                EMAILS.MAILJET_ERRORS: EMAILS.ERROR_WITH_MAILJET
-            }
+            EMAILS.MESSAGES: {EMAILS.MAILJET_ERRORS: EMAILS.ERROR_WITH_MAILJET}
         }
-        mock_response._content = bytes(dumps(json_include, allow_nan=False), encoding="utf-8")
+        mock_response._content = bytes(
+            dumps(json_include, allow_nan=False), encoding="utf-8"
+        )
         return mock_response
-
-

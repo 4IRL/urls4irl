@@ -495,14 +495,17 @@ def _handle_mailjet_failure(email_result: Response, error_code: int = 1):
     json_response = email_result.json()
     message = json_response[EMAILS.MESSAGES]
     errors = message[EMAILS.MAILJET_ERRORS]
-    return jsonify(
-        {
-            STD_JSON.STATUS: STD_JSON.FAILURE,
-            STD_JSON.MESSAGE: EMAILS.ERROR_WITH_MAILJET,
-            STD_JSON.ERROR_CODE: error_code,
-            STD_JSON.ERRORS: errors,
-        }
-    ), 400
+    return (
+        jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: EMAILS.ERROR_WITH_MAILJET,
+                STD_JSON.ERROR_CODE: error_code,
+                STD_JSON.ERRORS: errors,
+            }
+        ),
+        400,
+    )
 
 
 @users.route("/validate/<string:token>", methods=["GET"])
@@ -590,7 +593,10 @@ def forgot_password():
         404,
     )
 
-def _handle_after_forgot_password_form_validated(forgot_password_form: ForgotPasswordForm) -> Response:
+
+def _handle_after_forgot_password_form_validated(
+    forgot_password_form: ForgotPasswordForm,
+) -> Response:
     user_with_email: User = User.query.filter_by(
         email=forgot_password_form.email.data
     ).first()
@@ -609,7 +615,9 @@ def _handle_after_forgot_password_form_validated(forgot_password_form: ForgotPas
 
         # Check if user has already tried to reset their password before
         prev_forgot_password: ForgotPassword = user_with_email.forgot_password
-        forgot_password_obj = _create_or_reset_forgot_password_object_for_user(user_with_email, prev_forgot_password)
+        forgot_password_obj = _create_or_reset_forgot_password_object_for_user(
+            user_with_email, prev_forgot_password
+        )
 
         if forgot_password_obj.is_not_rate_limited():
             forgot_password_obj.increment_attempts()
@@ -641,7 +649,9 @@ def _handle_after_forgot_password_form_validated(forgot_password_form: ForgotPas
     )
 
 
-def _create_or_reset_forgot_password_object_for_user(user: User, forgot_password: ForgotPassword):
+def _create_or_reset_forgot_password_object_for_user(
+    user: User, forgot_password: ForgotPassword
+):
     if forgot_password is None:
         new_token = user.get_password_reset_token()
         forgot_password = ForgotPassword(reset_token=new_token)
@@ -650,7 +660,10 @@ def _create_or_reset_forgot_password_object_for_user(user: User, forgot_password
         db.session.commit()
 
     else:
-        if forgot_password.is_not_rate_limited() and forgot_password.is_more_than_hour_old():
+        if (
+            forgot_password.is_not_rate_limited()
+            and forgot_password.is_more_than_hour_old()
+        ):
             forgot_password.attempts = 0
             forgot_password.reset_token = user.get_password_reset_token()
             forgot_password.initial_attempt = datetime.utcnow()

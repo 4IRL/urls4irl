@@ -101,7 +101,12 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
     }
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -250,7 +255,12 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
     }
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -409,7 +419,12 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
     }
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -569,7 +584,12 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
     }
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -691,7 +711,12 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
     }
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -810,7 +835,12 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
     }
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -932,7 +962,12 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
     }
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -1054,7 +1089,12 @@ def test_modify_tag_on_another_utub_url(
     }
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_not_member_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_not_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -1150,7 +1190,12 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_creator_of, url_id=invalid_url_id, tag_id=1),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=invalid_url_id,
+            tag_id=1,
+        ),
         data=add_tag_form,
     )
     assert modify_tag_response.status_code == 404
@@ -1195,8 +1240,13 @@ def test_modify_tag_on_url_in_nonexistent_utub(
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=invalid_utub_id, url_id=invalid_url_id, tag_id=1),
-        data=add_tag_form
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=invalid_utub_id,
+            url_id=invalid_url_id,
+            tag_id=1,
+        ),
+        data=add_tag_form,
     )
     assert modify_tag_response.status_code == 404
 
@@ -1285,7 +1335,12 @@ def test_modify_tag_with_missing_tag_field(
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token}
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -1402,7 +1457,12 @@ def test_modify_tag_with_missing_csrf_token(
     add_tag_form = {TAG_FORM.TAG_STRING: tag_string_of_tag}
 
     modify_tag_response = client.post(
-        url_for("tags.modify_tag_on_url", utub_id=utub_id_user_is_member_of, url_id=url_id_to_add_tag_to, tag_id=curr_tag_id_on_url),
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 

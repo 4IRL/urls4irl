@@ -40,7 +40,8 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        url_for("utubs.delete_utub", utub_id=utub_id), data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
+        url_for("utubs.delete_utub", utub_id=utub_id),
+        data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
 
     assert delete_utub_response.status_code == 200
@@ -355,7 +356,8 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
         assert len(Utub.query.all()) == 0
 
     delete_utub_response = client.post(
-        url_for("utubs.delete_utub", utub_id=1), data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
+        url_for("utubs.delete_utub", utub_id=1),
+        data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
 
     # Ensure 404 sent back after invalid UTub id is requested

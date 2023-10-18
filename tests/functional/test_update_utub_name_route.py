@@ -64,8 +64,7 @@ def test_update_valid_utub_name_as_creator(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -162,8 +161,7 @@ def test_update_valid_utub_same_name_as_creator(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -265,8 +263,7 @@ def test_update_utub_empty_name_as_creator(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -371,8 +368,7 @@ def test_update_utub_name_only_spaces_as_creator(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -475,8 +471,7 @@ def test_update_utub_name_as_member(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -572,8 +567,7 @@ def test_update_utub_name_as_creator_of_another_utub(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -659,8 +653,7 @@ def test_update_name_of_invalid_utub(
     }
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=utub_id_to_test),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=utub_id_to_test), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -755,8 +748,7 @@ def test_update_name_of_utub_too_long_name(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -858,8 +850,7 @@ def test_update_name_of_utub_missing_name_field_form(
     }
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -953,8 +944,7 @@ def test_update_name_of_utub_missing_csrf_token(
     utub_name_form = {UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id),
-        data=utub_name_form
+        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse

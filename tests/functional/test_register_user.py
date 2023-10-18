@@ -32,7 +32,9 @@ def test_register_new_user(app, load_register_page):
 
     assert new_db_user is None
 
-    response = client.post(url_for("users.register_user"), data=new_user, follow_redirects=True)
+    response = client.post(
+        url_for("users.register_user"), data=new_user, follow_redirects=True
+    )
 
     # Correctly sends URL to email validation modal
     assert response.status_code == 201
@@ -106,7 +108,9 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     assert current_user.is_active is False
 
     response = client.post(
-        url_for("users.register_user"), data=already_registered_user_data, follow_redirects=True
+        url_for("users.register_user"),
+        data=already_registered_user_data,
+        follow_redirects=True,
     )
 
     # Check that does not reroute
@@ -221,14 +225,19 @@ def test_register_user_missing_csrf(app, load_register_page):
 
     assert new_db_user is None
 
-    response = client.post(url_for("users.register_user"), data={
-        REGISTER_FORM.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
-        REGISTER_FORM.EMAIL: valid_user_1[REGISTER_FORM.EMAIL],
-        REGISTER_FORM.CONFIRM_EMAIL: valid_user_1[REGISTER_FORM.CONFIRM_EMAIL],
-        REGISTER_FORM.PASSWORD: valid_user_1[REGISTER_FORM.PASSWORD],
-        REGISTER_FORM.CONFIRM_PASSWORD: valid_user_1[REGISTER_FORM.CONFIRM_PASSWORD],
-        }, 
-        follow_redirects=True)
+    response = client.post(
+        url_for("users.register_user"),
+        data={
+            REGISTER_FORM.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
+            REGISTER_FORM.EMAIL: valid_user_1[REGISTER_FORM.EMAIL],
+            REGISTER_FORM.CONFIRM_EMAIL: valid_user_1[REGISTER_FORM.CONFIRM_EMAIL],
+            REGISTER_FORM.PASSWORD: valid_user_1[REGISTER_FORM.PASSWORD],
+            REGISTER_FORM.CONFIRM_PASSWORD: valid_user_1[
+                REGISTER_FORM.CONFIRM_PASSWORD
+            ],
+        },
+        follow_redirects=True,
+    )
 
     # Correctly sends URL to email validation modal
     assert response.status_code == 400
