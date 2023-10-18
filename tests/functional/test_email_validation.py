@@ -6,7 +6,7 @@ from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
 from urls4irl import db
 from urls4irl.models import URLS, Utub_Urls, Utub, Url_Tags, User
-from urls4irl.utils.constants import EmailConstants
+from urls4irl.utils.constants import EMAIL_CONSTANTS
 from urls4irl.utils import strings as U4I_STRINGS
 
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
@@ -14,6 +14,7 @@ REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 EMAILS = U4I_STRINGS.EMAILS
 EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
+IDENTIFIERS = U4I_STRINGS.IDENTIFIERS
 VALIDATE_EMAIL_MODAL_TITLE = '<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
 
 
@@ -57,6 +58,7 @@ def test_registered_not_email_validated_user_access_splash_page(load_register_pa
 
     response = client.get(url_for("main.splash"))
     assert response.status_code == 200
+    assert IDENTIFIERS.SPLASH_PAGE.encode() in response.data    
     assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
 
 
@@ -79,6 +81,7 @@ def test_registered_not_email_validated_user_access_home_page(load_register_page
     assert response.history[0].status_code == 302
     assert response.history[0].location == url_for("main.splash")
     assert response.status_code == 200
+    assert IDENTIFIERS.SPLASH_PAGE.encode() in response.data
     assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
 
 
@@ -316,7 +319,7 @@ def test_min_rate_limiting_of_sending_email(app, load_register_page):
     assert int(second_email_send_json[STD_JSON.ERROR_CODE]) == 2
     assert (
         second_email_send_json[STD_JSON.MESSAGE]
-        == str(EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR - 1)
+        == str(EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR - 1)
         + EMAILS_FAILURE.TOO_MANY_ATTEMPTS
     )
 
@@ -344,7 +347,7 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
         user: User = User.query.filter(
             User.email == valid_user_1[REGISTER_FORM.EMAIL]
         ).first()
-        user.email_confirm.attempts = EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
+        user.email_confirm.attempts = EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
         user.email_confirm.last_attempt = datetime.utcnow()
         db.session.commit()
 

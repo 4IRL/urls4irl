@@ -1,3 +1,4 @@
+from datetime import datetime
 from flask import (
     Blueprint,
     jsonify,
@@ -12,17 +13,17 @@ from flask import (
 from flask_login import current_user, login_user, logout_user
 from requests import Response
 from urls4irl import db, login_manager, email_sender
-from urls4irl.models import Utub, Utub_Users, User, EmailValidation, PasswordReset
+from urls4irl.models import Utub, Utub_Users, User, EmailValidation, ForgotPassword
 from urls4irl.users.forms import (
     LoginForm,
     UserRegistrationForm,
     UTubNewUserForm,
-    ValidateEmail,
-    ForgotPassword,
+    ValidateEmailForm,
+    ForgotPasswordForm,
     ResetPasswordForm,
 )
 from urls4irl.utils import strings as U4I_STRINGS
-from urls4irl.utils.constants import EmailConstants
+from urls4irl.utils.constants import EMAIL_CONSTANTS
 from urls4irl.utils.email_validation import email_validation_required
 
 users = Blueprint("users", __name__)
@@ -34,6 +35,7 @@ USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
 EMAILS = U4I_STRINGS.EMAILS
 EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
 RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD
+FORGOT_PASSWORD = U4I_STRINGS.FORGOT_PASSWORD
 
 
 @login_manager.user_loader
@@ -139,7 +141,7 @@ def register_user():
         db.session.commit()
         user = User.query.filter_by(username=username).first()
         login_user(user)
-        validate_email_form = ValidateEmail()
+        validate_email_form = ValidateEmailForm()
         return (
             render_template(
                 "email_validation/email_needs_validation_modal.html",
@@ -399,7 +401,7 @@ def confirm_email_after_register():
         return redirect(url_for("main.home"))
     return render_template(
         "email_validation/email_needs_validation_modal.html",
-        validate_email_form=ValidateEmail(),
+        validate_email_form=ValidateEmailForm(),
     )
 
 
@@ -435,7 +437,7 @@ def send_validation_email():
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.ERROR_CODE: 2,
                     STD_JSON.MESSAGE: str(
-                        EmailConstants.MAX_EMAIL_ATTEMPTS_IN_HOUR
+                        EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR
                         - current_email_validation.attempts
                     )
                     + EMAILS_FAILURE.TOO_MANY_ATTEMPTS,
@@ -554,7 +556,7 @@ def forgot_password():
             return redirect(url_for("users.confirm_email_after_register"))
         return redirect(url_for("main.home"))
 
-    forgot_password_form = ForgotPassword()
+    forgot_password_form = ForgotPasswordForm()
     if request.method == "GET":
         return render_template(
             "password_reset/forgot_password.html",
@@ -569,7 +571,7 @@ def forgot_password():
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.INVALID_EMAIL,
+                    STD_JSON.MESSAGE: FORGOT_PASSWORD.INVALID_EMAIL,
                     STD_JSON.ERROR_CODE: 1,
                     STD_JSON.ERRORS: forgot_password_form.errors,
                 }
@@ -588,7 +590,7 @@ def forgot_password():
         404,
     )
 
-def _handle_after_forgot_password_form_validated(forgot_password_form: ForgotPassword) -> Response:
+def _handle_after_forgot_password_form_validated(forgot_password_form: ForgotPasswordForm) -> Response:
     user_with_email: User = User.query.filter_by(
         email=forgot_password_form.email.data
     ).first()
@@ -599,29 +601,27 @@ def _handle_after_forgot_password_form_validated(forgot_password_form: ForgotPas
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.SUCCESS,
-                        STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
+                        STD_JSON.MESSAGE: FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
                     }
                 ),
                 200,
             )
 
         # Check if user has already tried to reset their password before
-        user_password_reset: PasswordReset = user_with_email.password_reset
-        password_reset_token = user_with_email.get_password_reset_token()
+        prev_forgot_password: ForgotPassword = user_with_email.forgot_password
+        forgot_password_obj = _create_or_reset_forgot_password_object_for_user(user_with_email, prev_forgot_password)
 
-        password_reset_obj = _create_or_reset_password_reset_object_for_user(user_with_email, user_password_reset, password_reset_token)
-
-        if password_reset_obj.is_not_rate_limited():
-            password_reset_obj.increment_attempts()
+        if forgot_password_obj.is_not_rate_limited():
+            forgot_password_obj.increment_attempts()
             db.session.commit()
-            # Send email
+
             if not email_sender.is_production() and not email_sender.is_testing():
                 print(
-                    f"Sending this to the user's email:\n{url_for('users.reset_password', token=password_reset_obj.reset_token, _external=True)}"
+                    f"Sending this to the user's email:\n{url_for('users.reset_password', token=forgot_password_obj.reset_token, _external=True)}"
                 )
             url_for_reset = url_for(
                 "users.reset_password",
-                token=password_reset_obj.reset_token,
+                token=forgot_password_obj.reset_token,
                 _external=True,
             )
             email_send_result = email_sender.send_password_reset_email(
@@ -630,33 +630,33 @@ def _handle_after_forgot_password_form_validated(forgot_password_form: ForgotPas
             if email_send_result.status_code >= 500:
                 return _handle_mailjet_failure(email_send_result)
 
-            db.session.commit()
-
     return (
         jsonify(
             {
                 STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
+                STD_JSON.MESSAGE: FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
             }
         ),
         200,
     )
 
 
-def _create_or_reset_password_reset_object_for_user(user: User, password_reset: PasswordReset, token: str):
-    if password_reset is None:
-        password_reset = PasswordReset(reset_token=token)
-        user.password_reset = password_reset
-        db.session.add(password_reset)
+def _create_or_reset_forgot_password_object_for_user(user: User, forgot_password: ForgotPassword):
+    if forgot_password is None:
+        new_token = user.get_password_reset_token()
+        forgot_password = ForgotPassword(reset_token=new_token)
+        user.forgot_password = forgot_password
+        db.session.add(forgot_password)
         db.session.commit()
 
     else:
-        if password_reset.is_not_rate_limited():
-            password_reset.attempts = 0
-            password_reset.reset_token = token
+        if forgot_password.is_not_rate_limited() and forgot_password.is_more_than_hour_old():
+            forgot_password.attempts = 0
+            forgot_password.reset_token = user.get_password_reset_token()
+            forgot_password.initial_attempt = datetime.utcnow()
             db.session.commit()
 
-    return password_reset
+    return forgot_password
 
 
 @users.route("/confirm_password_reset", methods=["GET"])
@@ -673,8 +673,8 @@ def reset_password(token: str):
     )
 
     if expired:
-        reset_password_obj = PasswordReset.query.filter(
-            PasswordReset.reset_token == token
+        reset_password_obj = ForgotPassword.query.filter(
+            ForgotPassword.reset_token == token
         ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()
@@ -686,16 +686,16 @@ def reset_password(token: str):
 
     if not reset_password_user.is_email_authenticated():
         # Remove the object if it exists
-        reset_password_obj = PasswordReset.query.filter(
-            PasswordReset.reset_token == token
+        reset_password_obj = ForgotPassword.query.filter(
+            ForgotPassword.reset_token == token
         ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()
         abort(404)
 
     if (
-        reset_password_user.password_reset.reset_token != token
-        or reset_password_user.password_reset.is_more_than_hour_old()
+        reset_password_user.forgot_password.reset_token != token
+        or reset_password_user.forgot_password.is_more_than_hour_old()
     ):
         abort(404)
 
@@ -710,7 +710,6 @@ def reset_password(token: str):
     if reset_password_form.validate_on_submit():
         return _validate_resetting_password(reset_password_user, reset_password_form)
 
-    # Validate token
     if reset_password_form.errors is not None:
         return (
             jsonify(
@@ -728,7 +727,6 @@ def reset_password(token: str):
 def _validate_resetting_password(
     reset_password_user: User, reset_password_form: ResetPasswordForm
 ) -> tuple[Response, int]:
-    # Make sure password isn't same as before
     if reset_password_user.is_new_password_same_as_previous(
         reset_password_form.new_password.data
     ):
@@ -744,8 +742,8 @@ def _validate_resetting_password(
         )
 
     reset_password_user.change_password(reset_password_form.new_password.data)
-    password_reset_obj = reset_password_user.password_reset
-    db.session.delete(password_reset_obj)
+    forgot_password_obj = reset_password_user.forgot_password
+    db.session.delete(forgot_password_obj)
     db.session.commit()
     return (
         jsonify(

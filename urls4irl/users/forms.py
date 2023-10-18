@@ -3,10 +3,11 @@ from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
 from urls4irl.models import User
 from urls4irl.utils import strings as U4I_STRINGS
-from urls4irl.utils.constants import UserConstants
+from urls4irl.utils.constants import USER_CONSTANTS
 
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 LOGIN_REGISTER_FORM = U4I_STRINGS.REGISTER_LOGIN_FORM
+FORGOT_PASSWORD_FORM = U4I_STRINGS.FORGOT_PASSWORD
 RESET_PASSWORD_FORM = U4I_STRINGS.RESET_PASSWORD
 
 
@@ -27,7 +28,7 @@ class UserRegistrationForm(FlaskForm):
         LOGIN_REGISTER_FORM.USERNAME_TEXT,
         validators=[
             InputRequired(),
-            Length(min=4, max=UserConstants.MAX_USERNAME_LENGTH),
+            Length(min=4, max=USER_CONSTANTS.MAX_USERNAME_LENGTH),
         ],
     )
     email = StringField(
@@ -99,16 +100,16 @@ class LoginForm(FlaskForm):
             raise ValidationError(USER_FAILURE.INVALID_PASSWORD)
 
 
-class ValidateEmail(FlaskForm):
+class ValidateEmailForm(FlaskForm):
     submit = SubmitField(LOGIN_REGISTER_FORM.SEND_EMAIL_VALIDATION)
 
 
-class ForgotPassword(FlaskForm):
+class ForgotPasswordForm(FlaskForm):
     email = StringField(
-        LOGIN_REGISTER_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
+        FORGOT_PASSWORD_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
     )
 
-    submit = SubmitField(LOGIN_REGISTER_FORM.SEND_PASSWORD_RESET_EMAIL)
+    submit = SubmitField(FORGOT_PASSWORD_FORM.SEND_PASSWORD_RESET_EMAIL)
 
 
 class ResetPasswordForm(FlaskForm):
