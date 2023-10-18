@@ -2,7 +2,6 @@ from datetime import datetime, timedelta
 from flask import url_for
 
 from tests.models_for_test import valid_user_1
-from tests.utils_for_test import get_csrf_token
 from urls4irl import db
 from urls4irl.models import User, ForgotPassword
 from urls4irl.utils import constants as U4I_CONSTANTS
@@ -10,7 +9,6 @@ from urls4irl.utils import strings as U4I_STRINGS
 
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
-USER_FAILURE = U4I_STRINGS.USER_FAILURE
 RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD
 FORGOT_PASSWORD = U4I_STRINGS.FORGOT_PASSWORD
 USER_CONSTANTS = U4I_CONSTANTS.USER_CONSTANTS
@@ -124,7 +122,7 @@ def test_forgot_password_with_invalid_email_fails(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.ERROR_CODE: 1,
-        STD_JSON.MESSAGE: USER_FAILURE.INVALID_EMAIL,
+        STD_JSON.MESSAGE: FORGOT_PASSWORD.INVALID_EMAIL,
         STD_JSON.ERRORS: {
             STD_JSON.EMAIL: ["Invalid email address.",]
         }

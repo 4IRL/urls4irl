@@ -22,17 +22,18 @@ class STD_JSON_RESPONSE:
 # Strings for all forms
 CSRF_TOKEN = "csrf_token"
 EMAIL = "email"
+PASSWORD = "password"
 
 
 class GENERAL_FORM:
     CSRF_TOKEN = CSRF_TOKEN
     EMAIL = EMAIL
+    PASSWORD = PASSWORD
 
 
 # Strings for login/register forms
 USERNAME = "username"
 CONFIRM_EMAIL = "confirm_email"
-PASSWORD = "password"
 CONFIRM_PASSWORD = "confirm_password"
 USERNAME_TEXT = "Username"
 EMAIL_TEXT = "Email"
@@ -46,7 +47,6 @@ SEND_EMAIL_VALIDATION = "Send Validation Email"
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):
     USERNAME = USERNAME
-    PASSWORD = PASSWORD
     USERNAME_TEXT = USERNAME_TEXT
     EMAIL_TEXT = EMAIL_TEXT
     CONFIRM_EMAIL_TEXT = CONFIRM_EMAIL_TEXT
