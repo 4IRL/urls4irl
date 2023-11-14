@@ -451,8 +451,8 @@ function postRequestCleanupFail(e, handle, response, textStatus, xhr) {
           for (let key in error) {
             $(
               '<div class="invalid-feedback"><span>' +
-              error[key] +
-              "</span></div>",
+                error[key] +
+                "</span></div>",
             )
               .insertAfter("#" + key)
               .show();

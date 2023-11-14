@@ -158,13 +158,14 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
       toggleSelectedURL(URLID);
     });
 
-  $(card).attr({
-    urlid: URLID,
-    draggable: "true",
-    ondrop: "dropIt(event)",
-    ondragover: "allowDrop(event)",
-    ondragstart: "dragStart(event)",
-  })
+  $(card)
+    .attr({
+      urlid: URLID,
+      draggable: "true",
+      ondrop: "dropIt(event)",
+      ondragover: "allowDrop(event)",
+      ondragstart: "dragStart(event)",
+    })
     .addClass("card url");
 
   // $(cardImg).attr({
@@ -175,35 +176,35 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
 
   $(urlInfo).addClass("card-body URLInfo");
 
-  $(urlDescription)
-    .addClass("card-title URLDescription")
-    .text(description);
+  $(urlDescription).addClass("card-title URLDescription").text(description);
 
-  $(urlString).addClass("card-text URLString")
-    .text(string);
+  $(urlString).addClass("card-text URLString").text(string);
 
-  $(editWrap).attr({
-    style: "display: none"
-  })
+  $(editWrap)
+    .attr({
+      style: "display: none",
+    })
     .addClass("createDiv");
 
-  $(editURLDescription).attr({
-    type: "text",
-    size: "50",
-    value: description,
-    placeholder: "Edit URL Description",
-    // 'onblur': "postData(event, '" + editURLid + "')"
-  })
+  $(editURLDescription)
+    .attr({
+      type: "text",
+      size: "50",
+      value: description,
+      placeholder: "Edit URL Description",
+      // 'onblur': "postData(event, '" + editURLid + "')"
+    })
     .addClass("card-title userInput editURLDescription");
 
   $(editWrap1).append(editURLDescription);
 
-  $(editURLString).attr({
-    type: "text",
-    size: "50",
-    value: string,
-    placeholder: "Edit URL"
-  })
+  $(editURLString)
+    .attr({
+      type: "text",
+      size: "50",
+      value: string,
+      placeholder: "Edit URL",
+    })
     .addClass("card-text userInput editURLString");
 
   $(editWrap2).append(editURLString);
@@ -211,9 +212,10 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
   $(editWrap).append(editWrap1);
   $(editWrap).append(editWrap2);
 
-  $(urlTags).attr({
-    style: "display: none"
-  })
+  $(urlTags)
+    .attr({
+      style: "display: none",
+    })
     .addClass("card-body URLTags");
 
   // Build tag html strings
@@ -234,14 +236,15 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
   $(urlTags).append(createNewTagInputField());
 
   // Buttons
-  $(urlOptions).attr({
-    style: "display: none"
-  })
+  $(urlOptions)
+    .attr({
+      style: "display: none",
+    })
     .addClass("card-body URLOptions");
 
   $(accessURLBtn)
     .attr({
-      type: "button"
+      type: "button",
     })
     .addClass("card-link btn btn-primary accessURL")
     .text("Access Link")
@@ -253,7 +256,7 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
 
   $(addTagBtn)
     .attr({
-      type: "button"
+      type: "button",
     })
     .addClass("card-link btn btn-info addTagBtn")
     .text("Add Tag")
@@ -522,7 +525,6 @@ function toggleSelectedURL(selectedURLID) {
 function addURLShowInput() {
   showInput("addURL");
   highlightInput($("#newURLDescription"));
-
 }
 
 // Handles addition of new URL after user submission
@@ -564,7 +566,7 @@ function addURLSetup() {
     url_string: newURL,
     url_description: newURLDescription,
   };
-  console.log(postURL)
+  console.log(postURL);
 
   return [postURL, data];
 }
@@ -738,16 +740,18 @@ function removeURLShowModal() {
 
   $("#confirmModalTitle").text(modalTitle);
 
-  $("#modalDismiss").on("click", function (e) {
-    e.preventDefault();
-    $("#confirmModal").modal("hide");
-  })
+  $("#modalDismiss")
+    .on("click", function (e) {
+      e.preventDefault();
+      $("#confirmModal").modal("hide");
+    })
     .text(modalDismiss);
 
-  $("#modalSubmit").on("click", function (e) {
-    e.preventDefault();
-    removeURL();
-  })
+  $("#modalSubmit")
+    .on("click", function (e) {
+      e.preventDefault();
+      removeURL();
+    })
     .text("Remove URL");
 
   $("#confirmModal").modal("show");
@@ -783,7 +787,8 @@ function removeURL() {
 }
 
 function removeURLSetup() {
-  let postURL = REMOVE_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
+  let postURL =
+    REMOVE_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
 
   return postURL;
 }

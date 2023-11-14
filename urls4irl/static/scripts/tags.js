@@ -136,7 +136,7 @@ function createNewTagInputField() {
 
   $(wrapper)
     .attr({
-      style: "display: none"
+      style: "display: none",
     })
     .addClass("createDiv row");
 
@@ -149,11 +149,9 @@ function createNewTagInputField() {
     })
     .addClass("tag userInput addTag");
 
-    
   wrapperInput.append(input);
-  
-  $(wrapperBtns)
-    .addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
+
+  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
 
   $(submit)
     .addClass("fa fa-check-square fa-2x text-success mx-1")
@@ -162,7 +160,7 @@ function createNewTagInputField() {
       e.preventDefault();
       addTag();
     });
-    
+
   wrapperBtns.append(submit);
 
   $(cancel)

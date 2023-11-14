@@ -54,10 +54,11 @@ $(document).ready(function () {
     } catch (error) {
       sameNameCounter = 0;
     }
-    console.log(sameNameCounter)
+    console.log(sameNameCounter);
     let sameNameBool = false;
     if (sameNameCounter > 1) sameNameBool = true;
-    if (sameNameBool) sameNameWarningShowModal(0, UTubIDFromName(proposedUTubName));
+    if (sameNameBool)
+      sameNameWarningShowModal(0, UTubIDFromName(proposedUTubName));
     else editUTub();
   });
 });
@@ -72,7 +73,7 @@ function getCurrentUTubID() {
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function UTubIDFromName(name) {
   let currentUTubID = getCurrentUTubID();
-  $("#listUTubs").find()
+  $("#listUTubs").find();
 
   for (let i = 0; i < UTubs.length; i++) {
     let UTubID = UTubs[i].id;
@@ -165,12 +166,11 @@ function createNewUTubInputField() {
 
   $(wrapper)
     .attr({
-      style: "display: none"
+      style: "display: none",
     })
     .addClass("createDiv row");
 
-  $(wrapperInput)
-    .addClass("col-5 col-lg-5 mb-md-0");
+  $(wrapperInput).addClass("col-5 col-lg-5 mb-md-0");
 
   $(input)
     .attr({
@@ -182,8 +182,7 @@ function createNewUTubInputField() {
 
   wrapperInput.append(input);
 
-  $(wrapperBtns)
-    .addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
+  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
 
   $(submit)
     .addClass("fa fa-check-square fa-2x text-success mx-1")
@@ -197,10 +196,11 @@ function createNewUTubInputField() {
       } catch (error) {
         sameNameCounter = 0;
       }
-      console.log(sameNameCounter)
+      console.log(sameNameCounter);
       let sameNameBool = false;
       if (sameNameCounter > 0) sameNameBool = true;
-      if (sameNameBool) sameNameWarningShowModal(1, UTubIDFromName(proposedUTubName));
+      if (sameNameBool)
+        sameNameWarningShowModal(1, UTubIDFromName(proposedUTubName));
       else addUTub();
     });
 
@@ -318,8 +318,8 @@ function displayUpdateUTubActive(selectedUTub) {
   $("#editUTubDescription").val(UTubDescription);
   showIfHidden($("#editUTubButton"));
   showIfHidden($("#addURLBtn"));
-  if (selectedUTub.urls.length > 0) showIfHidden($("#accessAllURLsBtn"))
-  else hideIfShown($("#accessAllURLsBtn"))
+  if (selectedUTub.urls.length > 0) showIfHidden($("#accessAllURLsBtn"));
+  else hideIfShown($("#accessAllURLsBtn"));
   showIfHidden($("#UTubDescription"));
 }
 
@@ -330,12 +330,12 @@ function displayUpdateUTubActive(selectedUTub) {
 // DP 10/22 When I edit UTubs, I get a response for the single UTub information. But this doesn't give me updated information about the aggregate of the user's UTubs. This check does not catch if user changes two UTubs to a third similar name. Ex. UTub1 --> UTub3, UTub2 --> UTub3, should throw error but does not. Is it best to recount based on #listUTubs?
 function checkSameNameUTub(name) {
   let counter = 0;
-  
+
   for (i = 0; i < UTubs.length; i++) {
-    console.log(UTubs[i].name)
+    console.log(UTubs[i].name);
     if (UTubs[i].name === name) counter++;
   }
-  console.log(counter)
+  console.log(counter);
 
   return counter;
 }
@@ -640,10 +640,10 @@ function editUTubFail(response, textStatus, xhr) {
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal() {
   let modalTitle = "Are you sure you want to delete this UTub?";
-  let modalBody = "This action will remove all URLs in UTub and is irreverisible!";
+  let modalBody =
+    "This action will remove all URLs in UTub and is irreverisible!";
   let buttonTextDismiss = "Nevermind...";
   let buttonTextSubmit = "Delete this sucka!";
-
 
   $("#confirmModalTitle").text(modalTitle);
 
@@ -666,7 +666,7 @@ function deleteUTubShowModal() {
     .on("click", function (e) {
       e.preventDefault();
       deleteUTub();
-    })
+    });
 
   $("#confirmModal").modal("show");
 
@@ -720,7 +720,7 @@ function deleteUTubSuccess() {
   hideIfShown($("#addURLBtn"));
   hideIfShown($("#UTubDescription"));
 
-  displayUpdateUTubChange(null)
+  displayUpdateUTubChange(null);
 }
 
 function deleteUTubFailure(xhr, textStatus, error) {
