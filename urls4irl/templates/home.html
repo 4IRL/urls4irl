@@ -3,11 +3,11 @@
 
 <!-- Backend load of UTub JSON data -->
 <script type="text/javascript">
-    if (isValidSplashForm === undefined) {
-        let isValidSplashForm = false;
-    } else {
-        isValidSplashForm = false;
-    }
+    // if (isValidSplashForm === undefined) {
+    //     let isValidSplashForm = false;
+    // } else {
+    //     isValidSplashForm = false;
+    // }
     var UTubs = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
 </script>
 
@@ -55,9 +55,9 @@
                 <!-- Local Dev (2/5) -->
 
                 <!-- Production (2/5) -->
-                <i class="bi bi-plus-square-fill fa-2x text-success mx-1" id="createTagButton" style="display:none"></i>
+                <!-- <i class="bi bi-plus-square-fill fa-2x text-success mx-1" id="createTagButton" style="display:none"></i>
                 <i class="bi bi-pencil-square fa-2x text-warning mx-1" id="editTagButton" style="display:none"></i>
-                <i class="fa fa-check-square fa-2x text-success mx-1" id="submitTagButton" style="display:none"></i>
+                <i class="fa fa-check-square fa-2x text-success mx-1" id="submitTagButton" style="display:none"></i> -->
                 <!-- Production (2/5) -->
             </div>
         </div>
@@ -102,6 +102,7 @@
                 <!-- Local Dev (5/5) -->
 
                 <!-- Production (5/5) -->
+                <button id="accessAllURLsBtn" class="btn btn-primary mx-1" style="display: none;">Access All URLs in UTub</button> 
                 <i id="addURLBtn" class="bi bi-plus-square-fill fa-2x text-success mx-1" style="display: none;"></i>
                 <!-- Production (5/5) -->
             </div>

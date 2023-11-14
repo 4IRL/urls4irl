@@ -119,18 +119,17 @@
 
                 <form id="ModalForm" name="stepForm" class="form" method="post" action="" novalidate>
                     <div class="modal-header">
-                        <h4 class="modal-title">Are you sure you want to delete this
-                            UTub?</h4>
+                        <h4 id="confirmModalTitle" class="modal-title"></h4>
                         <button type="button" class="close" data-dismiss="modal" aria-label="close">
                             <span aria-hidden="true">&times;</span>
                         </button>
                     </div>
-                    <div class="modal-body" id="modal-body">
-                        This action cannot be undone.
+                    <div id="confirmModalBody" class="modal-body">
                     </div>
                     <div class="modal-footer">
-                        <button type="button" class="btn btn-default" data-dismiss="modal">Close</button>
-                        <button id="submit" type="submit" class="btn btn-danger" data-dismiss="modal">Delete</button>
+                        <button id="modalDismiss" type="button" class="btn btn-default" data-dismiss="modal"></button>
+                        <button id="modalRedirect" type="button" class="btn btn-default" data-dismiss="modal"></button>
+                        <button id="modalSubmit" type="submit" class="btn btn-danger" data-dismiss="modal"></button>
                     </div>
                 </form>
             </div>

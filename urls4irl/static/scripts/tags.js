@@ -1,9 +1,9 @@
 /* Tag-related constants */
 
 // Routes
-const REMOVE_TAG_ROUTE = "/tag/remove/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
 const ADD_TAG_ROUTE = "/tag/add/"; // +<int:utub_id>/<int:url_id>
 const EDIT_TAG_ROUTE = "/tag/modify/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
+const REMOVE_TAG_ROUTE = "/tag/remove/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
 // Small DP 09/25 consistency to 'modify' -> 'edit'?
 
 /* Tag UI Interactions */
@@ -12,18 +12,18 @@ $(document).ready(function () {
   /* Bind click functions */
 
   // Create unassociated tag
-  $("#createTagButton").on("click", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
-    addTagToURLShowInput();
-  });
+  // $("#createTagButton").on("click", function (e) {
+  //   e.stopPropagation();
+  //   e.preventDefault();
+  //   addTagInDeckShowInput();
+  // });
 
   // Edit tags
-  $("#editTagButton").on("click", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
-    editTagsInDeckShowInput();
-  });
+  // $("#editTagButton").on("click", function (e) {
+  //   e.stopPropagation();
+  //   e.preventDefault();
+  //   editTagsInDeckShowInput();
+  // });
 
   // Complete edit tags
   $("#submitTagButton").on("click", function (e) {
@@ -55,15 +55,12 @@ function buildTagDeck(dictTags) {
   const parent = $("#listTags");
 
   // Tag deck display updates
-  showIfHidden($("#createTagButton"));
-
-  // Tag deck display updates
-  showIfHidden($("#createTagButton"));
+  // showIfHidden($("#createTagButton"));
 
   if (dictTags.length == 0) {
     // User has no Tags in this UTub
     $("#TagDeck").find("h2")[0].innerHTML = "Create a Tag";
-    hideIfShown($("#editTagButton"));
+    // hideIfShown($("#editTagButton"));
     showIfHidden($("#noTagsHeader"));
 
     // New Tag input text field. Initially hidden, shown when create Tag is requested
@@ -72,7 +69,7 @@ function buildTagDeck(dictTags) {
     // Instantiate TagDeck (bottom left panel) with tags in current UTub
     hideIfShown($("#noTagsHeader"));
     $("#TagDeck").find("h2")[0].innerHTML = "Tags";
-    showIfHidden($("#editTagButton"));
+    // showIfHidden($("#editTagButton"));
 
     // 1. Select all checkbox
     createTaginDeck(0, "selectAll");
@@ -129,44 +126,65 @@ function createTaginURL(tagID, string) {
 
 // New URL tag input text field. Initially hidden, shown when Create Tag is requested. Input field recreated here to ensure at the end of list after creation of new URL
 function createNewTagInputField() {
-  let tagEl;
+  const wrapper = $(document.createElement("div"));
+  const wrapperInput = $(document.createElement("div"));
+  const wrapperBtns = $(document.createElement("div"));
 
-  let container = document.createElement("div");
-  let input = document.createElement("input");
-  let submit = document.createElement("i");
+  const input = document.createElement("input");
+  const submit = document.createElement("i");
+  const cancel = $(document.createElement("i"));
 
-  $(container).attr({
-    class: "createDiv",
-    style: "display: none",
-  });
+  $(wrapper)
+    .attr({
+      style: "display: none"
+    })
+    .addClass("createDiv row");
 
-  $(input).attr({
-    type: "text",
-    class: "tag userInput addTag",
-    placeholder: "Attribute Tag to URL",
-    // onblur: 'postData(event, "addTag")',
-  });
+  $(wrapperInput).addClass("col-3 col-lg-3 mb-md-0");
+
+  $(input)
+    .attr({
+      type: "text",
+      placeholder: "Attribute Tag to URL",
+    })
+    .addClass("tag userInput addTag");
+
+    
+  wrapperInput.append(input);
+  
+  $(wrapperBtns)
+    .addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
 
   $(submit)
-    .attr({ class: "fa fa-check-square fa-2x text-success mx-1" })
+    .addClass("fa fa-check-square fa-2x text-success mx-1")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
       addTag();
     });
+    
+  wrapperBtns.append(submit);
 
-  container.append(input);
-  container.append(submit);
+  $(cancel)
+    .addClass("fa bi-x-square-fill fa-2x text-danger mx-1")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      hideIfShown(wrapper);
+    });
 
-  tagEl = container;
+  wrapperBtns.append(cancel);
 
-  return tagEl;
+  wrapper.append(wrapperInput);
+  wrapper.append(wrapperBtns);
+
+  return wrapper;
 }
 
 // Handle tag deck display changes related to creating a new tag
 function createTaginDeck(tagid, string) {
-  let container = document.createElement("div");
-  let label = document.createElement("label");
+  const container = document.createElement("div");
+  const label = document.createElement("label");
 
   $(container).attr({
     class: "tagFilter selected",
@@ -328,7 +346,7 @@ function addTagToURLShowInput() {
   // Prevent deselection of URL while modifying its values
   unbindSelectBehavior();
 
-  let URLCard = selectedURLCard();
+  let URLCard = getSelectedURLCard();
 
   // Show temporary div element containing input
   let inputEl = $(URLCard).find(".addTag");
@@ -344,7 +362,7 @@ function addTagToURLShowInput() {
 }
 
 // Handles addition of new Tag to URL after user submission
-function addTag(selectedUTubID, selectedURLid) {
+function addTag() {
   // Extract data to submit in POST request
   [postURL, data] = addTagSetup();
 
@@ -376,7 +394,7 @@ function addTagSetup() {
   let postURL = ADD_TAG_ROUTE + currentUTubID() + "/" + selectedURLID();
 
   // Assemble submission data
-  let URLTagDeck = $(selectedURLCard()).find(".URLTags");
+  let URLTagDeck = $(getSelectedURLCard()).find(".URLTags");
   let newTag = URLTagDeck.find(".addTag").val();
   data = {
     tag_string: newTag,
@@ -387,10 +405,11 @@ function addTagSetup() {
 
 // Displays changes related to a successful addition of a new Tag
 function addTagSuccess(response) {
-  console.log(response);
+  // Rebind selection behavior of current URL
+  rebindSelectBehavior(selectedURLID());
 
   // Clear input field
-  let URLTagDeck = $(selectedURLCard()).find(".URLTags");
+  let URLTagDeck = $(getSelectedURLCard()).find(".URLTags");
   let newTagInputField = URLTagDeck.find(".addTag");
   newTagInputField.val("");
   hideIfShown(newTagInputField.closest(".createDiv"));

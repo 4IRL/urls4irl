@@ -52,19 +52,6 @@ $(document).ready(function () {
         // User wants to highlight next URL
         let cardCol = $($("#LWRRow").children(".cardCol")[0]);
         toggleSelectedURL($(cardCol[0].children).attr("urlid"));
-      } else if (keycode == 27) {
-        // ESC key
-
-        let activeURLCard = $(".selectedURL");
-        let activeCardCol = activeURLCard.closest(".cardCol");
-
-        if (activeURLCard.length === 0) activeURLCard = $(".selected");
-
-        if (activeURLCard.attr("urlid") === 0) {
-          hideIfShown(activeCardCol);
-        } else {
-          deselectAllURLs();
-        }
       }
     } else {
       // No URL selected, switch UTubs
@@ -464,8 +451,8 @@ function postRequestCleanupFail(e, handle, response, textStatus, xhr) {
           for (let key in error) {
             $(
               '<div class="invalid-feedback"><span>' +
-                error[key] +
-                "</span></div>",
+              error[key] +
+              "</span></div>",
             )
               .insertAfter("#" + key)
               .show();
