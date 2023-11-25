@@ -38,7 +38,7 @@ $(document).ready(function () {
 // Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
 function currentTagDeckIDs() {
   let tagList = $(".tagFilter");
-  Object.keys(tagList).map(function(property) {
+  Object.keys(tagList).map(function (property) {
     return tagList[property];
   });
   return tagList.map((i) => $(tagList[i]).attr("tagid"));

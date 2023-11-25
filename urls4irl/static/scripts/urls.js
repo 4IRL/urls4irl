@@ -573,9 +573,9 @@ function addURLSetup() {
 
 // Displays changes related to a successful addition of a new URL
 function addURLSuccess(response) {
-  console.log(response)
+  console.log(response);
   resetNewURLForm();
-  console.log(response)
+  console.log(response);
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
   let URLcol = createURLBlock(
@@ -586,9 +586,9 @@ function addURLSuccess(response) {
     [],
   );
 
-  console.log(URLcol)
-  console.log(response.URL.url_ID)
-  console.log(response.URL.url_string)
+  console.log(URLcol);
+  console.log(response.URL.url_ID);
+  console.log(response.URL.url_string);
 
   $("#URLFocusRow").append(URLcol);
 }
