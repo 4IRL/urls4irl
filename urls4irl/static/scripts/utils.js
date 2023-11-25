@@ -25,3 +25,11 @@ function AJAXCall(type, url, data) {
     data: data,
   }));
 }
+
+// Rebind Enter key to current function submission
+// $(document).on("keyup", function (e) {
+//   if (e.keyCode === 13) {
+//     e.preventDefault();
+//     e.target.blur();
+//   }
+// });

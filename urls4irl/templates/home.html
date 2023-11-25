@@ -3,11 +3,6 @@
 
 <!-- Backend load of UTub JSON data -->
 <script type="text/javascript">
-    // if (isValidSplashForm === undefined) {
-    //     let isValidSplashForm = false;
-    // } else {
-    //     isValidSplashForm = false;
-    // }
     var UTubs = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
 </script>
 
@@ -102,8 +97,8 @@
                 <!-- Local Dev (5/5) -->
 
                 <!-- Production (5/5) -->
-                <button id="accessAllURLsBtn" class="btn btn-primary mx-1" style="display: none;">Access All URLs in UTub</button> 
                 <i id="addURLBtn" class="bi bi-plus-square-fill fa-2x text-success mx-1" style="display: none;"></i>
+                <button id="accessAllURLsBtn" class="btn btn-primary mx-1" style="display: none;">Access All URLs in UTub</button> 
                 <!-- Production (5/5) -->
             </div>
         </div>

@@ -24,14 +24,6 @@ $(document).ready(function () {
     return false;
   });
 
-  // Trigger blur and submit data
-  $(document).on("keyup", function (e) {
-    if (e.keyCode === 13) {
-      e.preventDefault();
-      e.target.blur();
-    }
-  });
-
   // Keyboard navigation between selected UTubs or URLs
   $(document).on("keyup", function (e) {
     let keycode = e.keyCode ? e.keyCode : e.which;

@@ -67,7 +67,7 @@ $(document).ready(function () {
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function getCurrentUTubID() {
-  return $(".UTub.active").find("input").attr("utubid");
+  return $(".UTub.active").attr("utubid");
 }
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
@@ -83,7 +83,6 @@ function UTubIDFromName(name) {
 
 // Counts the updated number of UTubs user has, after add or delete operations, prior to page refresh and issuance of an updated UTubs global variable. Minus 1 included to account for new UTub input field.
 function numOfUTubs() {
-  console.log($("#listUTubs").children().length - 1);
   return $("#listUTubs").children().length - 1;
 }
 
@@ -93,7 +92,7 @@ function getUtubInfo(selectedUTubID) {
 }
 
 // Clear new UTub Form
-function resetNewUTUbForm() {
+function resetNewUTubForm() {
   $("#createUTub").val("");
   hideIfShown($("#createUTub").closest(".createDiv"));
 }
@@ -301,12 +300,11 @@ function displayUpdateUTubActive(selectedUTub) {
     $(departureUTubLabel).on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      changeUTub(departureUTubLabel.find("input[type=radio]").attr("utubid"));
+      changeUTub(departureUTubLabel.attr("utubid"));
     });
   }
   // Select new UTub
-  let selectedUTubRadio = $("input[utubid=" + UTubID + "]");
-  let selectedUTubLabel = selectedUTubRadio.parent();
+  let selectedUTubLabel = $("label[utubid=" + UTubID + "]");
   selectedUTubLabel.addClass("active");
   // Unbind selection function
   $(selectedUTubLabel).off("click");
@@ -437,7 +435,7 @@ function addUTubSetup() {
 function addUTubSuccess(response) {
   let UTubID = response.UTub_ID;
 
-  resetNewUTUbForm();
+  resetNewUTubForm();
 
   if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
 
@@ -709,7 +707,7 @@ function deleteUTubSuccess() {
 
   // Update UTub Deck
   let currentUTubID = getCurrentUTubID();
-  let UTubSelector = $("input[utubid=" + currentUTubID + "]").parent();
+  let UTubSelector = $("label[utubid=" + currentUTubID + "]");
   UTubSelector.fadeOut();
   UTubSelector.remove();
 

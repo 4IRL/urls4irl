@@ -81,7 +81,7 @@ function accessLink(url_string) {
 }
 
 // Opens all URLs in UTub in separate tabs
-function accessAllLinksInUTub(url_string) {
+function accessAllLinksInUTub() {
   getUtubInfo(getCurrentUTubID()).then(function (selectedUTub) {
     let dictURLs = selectedUTub.urls;
 
@@ -94,8 +94,8 @@ function accessAllLinksInUTub(url_string) {
 // Clear new URL Form
 function resetNewURLForm() {
   $("#newURLDescription").val("");
-  $("#newURL").val("");
-  hideIfShown($("#addURL"));
+  $("#newURLString").val("");
+  hideIfShown($("#newURLString").closest(".createDiv"));
 }
 
 // Clear the URL Deck
@@ -111,6 +111,7 @@ function resetURLDeck() {
 // Build center panel URL list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
   resetURLDeck();
+  let UPRRow = $("#UPRRow");
 
   for (let i = 0; i < dictURLs.length; i++) {
     let URLcol = createURLBlock(
@@ -126,7 +127,7 @@ function buildURLDeck(dictURLs, dictTags) {
   }
 
   // New URL create block
-  URLFocusRow.append(createNewURLInputField());
+  $("#URLFocusRow").append(createNewURLInputField());
 }
 
 // Create a URL block to add to current UTub/URLDeck
@@ -246,7 +247,7 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
     .attr({
       type: "button",
     })
-    .addClass("card-link btn btn-primary accessURL")
+    .addClass("card-link btn btn-primary accessURLBtn")
     .text("Access Link")
     .on("click", function (e) {
       e.stopPropagation();
@@ -268,9 +269,9 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
 
   $(editURLBtn)
     .attr({
-      class: "card-link btn btn-warning editURLBtn",
       type: "button",
     })
+    .addClass("card-link btn btn-warning editURLBtn")
     .text("Edit")
     .on("click", function (e) {
       e.stopPropagation();
@@ -280,9 +281,9 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
 
   $(remURLBtn)
     .attr({
-      class: "card-link btn btn-danger remURLBtn",
       type: "button",
     })
+    .addClass("card-link btn btn-danger remURLBtn")
     .text("Remove")
     .on("click", function (e) {
       e.stopPropagation();
@@ -292,10 +293,10 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
 
   $(submitEditBtn)
     .attr({
-      class: "fa fa-check-square fa-2x text-success mx-1 submitEditURLBtn",
       type: "button",
       style: "display: none",
     })
+    .addClass("fa fa-check-square fa-2x text-success mx-1 submitEditURLBtn")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -411,7 +412,7 @@ function createNewURLInputField() {
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      hideIfShown($("#addURL").closest(".createDiv"));
+      hideIfShown($("#newURL").closest(".createDiv"));
     });
 
   // Assemble url list items
@@ -472,7 +473,7 @@ function deselectAllURLs() {
 
 // Deselects addURL block
 function deselectAddURL() {
-  hideIfShown($("#addURL").closest(".cardCol"));
+  hideIfShown($("#newURL").closest(".cardCol"));
 }
 
 // User clicks a URL. If already selected, URL is deselected, else it is selected. All other URLs are deselected. This function places all URLs prior to selected URL into #UPRRow, inserts selected URL into a separate #URLFocusRow, and places all subsequent URLs into #LWRRow. It also adjusts css displays accordingly
@@ -566,14 +567,15 @@ function addURLSetup() {
     url_string: newURL,
     url_description: newURLDescription,
   };
-  console.log(postURL);
 
   return [postURL, data];
 }
 
 // Displays changes related to a successful addition of a new URL
 function addURLSuccess(response) {
+  console.log(response)
   resetNewURLForm();
+  console.log(response)
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
   let URLcol = createURLBlock(
@@ -584,7 +586,11 @@ function addURLSuccess(response) {
     [],
   );
 
-  URLFocusRow.append(URLcol);
+  console.log(URLcol)
+  console.log(response.URL.url_ID)
+  console.log(response.URL.url_string)
+
+  $("#URLFocusRow").append(URLcol);
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
@@ -600,11 +606,14 @@ function addURLFailure(response) {
 
 // Shows edit URL inputs
 function editURLShowInput() {
-  // Show edit submission icon, hide edit request icon
+  // Show edit submission button, hide edit request button
   let selectedCardDiv = $(getSelectedURLCard());
   let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
   showIfHidden(URLOptionsDiv.find("i"));
   hideIfShown(URLOptionsDiv.find(".editURLBtn"));
+
+  // Hide access URL button
+  hideIfShown(URLOptionsDiv.find(".accessURLBtn"));
 
   // Show input fields
   let inputElURLString = selectedCardDiv.find(".editURLString");
@@ -627,6 +636,9 @@ function editURLHideInput() {
   let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
   showIfHidden($(URLOptionsDiv.find(".editURLBtn")));
   hideIfShown($(URLOptionsDiv.find("i")));
+
+  // Show access URL button
+  showIfHidden(URLOptionsDiv.find(".accessURLBtn"));
 
   // Hide input fields
   let inputElURLString = selectedCardDiv.find(".editURLString");

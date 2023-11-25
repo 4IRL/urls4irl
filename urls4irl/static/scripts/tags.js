@@ -38,8 +38,15 @@ $(document).ready(function () {
 // Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
 function currentTagDeckIDs() {
   let tagList = $(".tagFilter");
-  // return tagList.map(i => console.log(tagList[i]));
+  Object.keys(tagList).map(function(property) {
+    return tagList[property];
+  });
   return tagList.map((i) => $(tagList[i]).attr("tagid"));
+}
+// 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
+// Function to evaluate whether newly added tag already exists in Tag Deck
+function isTagInDeck(tagid) {
+  return currentTagDeckIDs().includes(tagid);
 }
 
 // Clear the Tag Deck
@@ -184,9 +191,7 @@ function createTaginDeck(tagid, string) {
   const container = document.createElement("div");
   const label = document.createElement("label");
 
-  $(container).attr({
-    class: "tagFilter selected",
-  });
+  $(container).addClass("tagFilter selected");
 
   // Select all and new tag creation specific items
   if (tagid == 0) {
@@ -224,6 +229,7 @@ function createTaginDeck(tagid, string) {
       container.append(input);
       container.append(submit);
     }
+
     $("#listTags").append(container);
   } else {
     // Regular tag creation
@@ -389,7 +395,7 @@ function addTag() {
 // Prepares post request inputs for addition of a new Tag to URL
 function addTagSetup() {
   // Assemble post request route
-  let postURL = ADD_TAG_ROUTE + currentUTubID() + "/" + selectedURLID();
+  let postURL = ADD_TAG_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
 
   // Assemble submission data
   let URLTagDeck = $(getSelectedURLCard()).find(".URLTags");
@@ -404,7 +410,7 @@ function addTagSetup() {
 // Displays changes related to a successful addition of a new Tag
 function addTagSuccess(response) {
   // Rebind selection behavior of current URL
-  rebindSelectBehavior(selectedURLID());
+  rebindSelectBehavior(getSelectedURLID());
 
   // Clear input field
   let URLTagDeck = $(getSelectedURLCard()).find(".URLTags");
@@ -419,7 +425,7 @@ function addTagSuccess(response) {
   // Update Tags deck
   hideIfShown($("#noTagsHeader"));
 
-  createTaginDeck(tagid, string);
+  if (!isTagInDeck(tagid)) createTaginDeck(tagid, string);
 
   // Update tags in URL
   let tagSpan = createTaginURL(tagid, string);
@@ -482,8 +488,8 @@ function editTagsInDeckShowInput(handle) {
 
 // Remove tag from selected URL
 function removeTag(tagID) {
-  var UTubID = currentUTubID();
-  var URLID = selectedURLID();
+  var UTubID = getCurrentUTubID();
+  var URLID = getSelectedURLID();
 
   let request = $.ajax({
     type: "post",
