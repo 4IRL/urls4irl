@@ -40,7 +40,7 @@ function currentTagDeckIDs() {
   let tagList = $(".tagFilter");
   let tagIDList = Object.keys(tagList).map(function (property) {
     return "" + $(tagList[property]).attr("tagid");
-  })
+  });
   return tagIDList;
 }
 // 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
@@ -505,7 +505,9 @@ function removeTag(tagID) {
 
   request.fail(function (response, textStatus, xhr) {
     console.log("failed");
-    console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
+    console.log(
+      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
+    );
     if (xhr.status == 404) {
       // Reroute to custom U4I 404 error page
     } else {
@@ -517,7 +519,12 @@ function removeTag(tagID) {
 // Prepares post request inputs for removal of a URL
 function removeTagSetup(tagID) {
   let postURL =
-    REMOVE_TAG_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID() + "/" + tagID;
+    REMOVE_TAG_ROUTE +
+    getCurrentUTubID() +
+    "/" +
+    getSelectedURLID() +
+    "/" +
+    tagID;
 
   return postURL;
 }
