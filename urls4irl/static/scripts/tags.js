@@ -38,15 +38,15 @@ $(document).ready(function () {
 // Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
 function currentTagDeckIDs() {
   let tagList = $(".tagFilter");
-  Object.keys(tagList).map(function(property) {
-    return tagList[property];
-  });
-  return tagList.map((i) => $(tagList[i]).attr("tagid"));
+  let tagIDList = Object.keys(tagList).map(function (property) {
+    return "" + $(tagList[property]).attr("tagid");
+  })
+  return tagIDList;
 }
 // 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
 // Function to evaluate whether newly added tag already exists in Tag Deck
 function isTagInDeck(tagid) {
-  return currentTagDeckIDs().includes(tagid);
+  return currentTagDeckIDs().includes("" + tagid);
 }
 
 // Clear the Tag Deck
@@ -487,47 +487,60 @@ function editTagsInDeckShowInput(handle) {
 /* Remove tag from URL */
 
 // Remove tag from selected URL
+
 function removeTag(tagID) {
-  var UTubID = getCurrentUTubID();
-  var URLID = getSelectedURLID();
+  // Extract data to submit in POST request
+  postURL = removeTagSetup(tagID);
 
-  let request = $.ajax({
-    type: "post",
-    url: "/tag/remove/" + UTubID + "/" + URLID + "/" + tagID,
-  });
+  let request = AJAXCall("post", postURL, []);
 
+  // Handle response
   request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
-      // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
+    console.log("success");
 
-      $("div.url[urlid=" + URLID + "]")
-        .find("span.tag[tagid=" + tagID + "]")
-        .remove();
+    if (xhr.status == 200) {
+      removeTagSuccess(tagID);
     }
   });
 
-  request.fail(function (xhr, textStatus, error) {
-    if (xhr.status == 409) {
-      console.log(
-        "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-      );
-    } else if (xhr.status == 404) {
-      $(".invalid-feedback").remove();
-      $(".alert").remove();
-      $(".form-control").removeClass("is-invalid");
-      const error = JSON.parse(xhr.responseJSON);
-      for (var key in error) {
-        $('<div class="invalid-feedback"><span>' + error[key] + "</span></div>")
-          .insertAfter("#" + key)
-          .show();
-        $("#" + key).addClass("is-invalid");
-      }
+  request.fail(function (response, textStatus, xhr) {
+    console.log("failed");
+    console.log("Failure. Status code: " + xhr.status + ". Status: " + textStatus);
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      removeTagFail(response);
     }
+  });
+}
+
+// Prepares post request inputs for removal of a URL
+function removeTagSetup(tagID) {
+  let postURL =
+    REMOVE_TAG_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID() + "/" + tagID;
+
+  return postURL;
+}
+
+// Displays changes related to a successful reomval of a URL
+function removeTagSuccess(tagID) {
+  // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
+
+  $("div.url[urlid=" + getSelectedURLID() + "]")
+    .find("span.tag[tagid=" + tagID + "]")
+    .remove();
+}
+
+// Displays appropriate prompts and options to user following a failed removal of a URL
+function removeTagFail(xhr, textStatus, error) {
+  console.log("Error: Could not delete URL");
+
+  if (xhr.status == 409) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );
-    console.log("Error: " + error);
-  });
+    console.log("Error: " + error.Error_code);
+  }
 }
 
 /* Remove tag from all URLs in UTub */

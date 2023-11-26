@@ -655,6 +655,7 @@ function editURLHideInput() {
   showIfHidden(selectedCardDiv.find(".editURLBtn"));
 }
 
+// Handles edition of an existing URL
 function editURL() {
   // Extract data to submit in POST request
   [postURL, data] = editURLSetup();
@@ -681,6 +682,7 @@ function editURL() {
   });
 }
 
+// Prepares post request inputs for edition of a URL
 function editURLSetup() {
   let postURL = EDIT_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
 
@@ -700,6 +702,7 @@ function editURLSetup() {
   return [postURL, data];
 }
 
+// Displays changes related to a successful edition of a URL
 function editURLSuccess(response) {
   // Extract response data
   let editedURLID = response.URL.url_ID;
@@ -739,6 +742,7 @@ function editURLSuccess(response) {
   editURLHideInput();
 }
 
+// Displays appropriate prompts and options to user following a failed edition of a URL
 function editURLFail(response) {
   console.log("Unimplemented");
 }
@@ -798,6 +802,7 @@ function removeURL() {
   });
 }
 
+// Prepares post request inputs for removal of a URL
 function removeURLSetup() {
   let postURL =
     REMOVE_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
@@ -805,6 +810,7 @@ function removeURLSetup() {
   return postURL;
 }
 
+// Displays changes related to a successful reomval of a URL
 function removeURLSuccess() {
   // Close modal
   $("#confirmModal").modal("hide");
@@ -814,6 +820,7 @@ function removeURLSuccess() {
   cardCol.remove();
 }
 
+// Displays appropriate prompts and options to user following a failed removal of a URL
 function removeURLFail(xhr, textStatus, error) {
   console.log("Error: Could not delete URL");
 
