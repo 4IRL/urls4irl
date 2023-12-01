@@ -1,63 +1,127 @@
-// URL UI Interactions
+/** URL-related constants **/
+
+// Routes
+const ADD_URL_ROUTE = "/url/add/"; // +<int:utub_id>
+const EDIT_URL_ROUTE = "/url/edit/"; // +<int:utub_id>/<int:url_id>
+const REMOVE_URL_ROUTE = "/url/remove/"; // +<int:utub_id>/<int:url_id>
+
+/** URL UI Interactions **/
 
 $(document).ready(function () {
-  // Selected URL. Hide/show the card, if nothing "important" in card was clicked)
-  $(document).on("click", ".card", function (e) {
-    // e.stopPropagation();
-    // e.stopImmediatePropagation();
-    // Triage click
-    var el = $(e.target);
+  /* Bind click functions */
 
-    var importantBool =
-      el.hasClass("btn") || el.hasClass("tag") || el[0].type == "text";
-    if (importantBool) {
-      // "Important" thing clicked. Do nothing. onclick function will handle user inputs
-    } else {
-      var clickedCardCol = $(e.target).closest(".cardCol"); // Card column
-      var clickedCard = clickedCardCol.find(".card"); // Card
-      var selectedURLid = clickedCard.attr("urlid"); // URL ID
-
-      if (clickedCard.hasClass("selected")) {
-        $(".cardCol").each(function () {
-          $("#UPRRow").append(this);
-        });
-        deselectURL(clickedCardCol);
-      } else selectURL(selectedURLid);
-    }
+  // Add new URL to current UTub
+  $("#addURLBtn").on("click", function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    deselectAllURLs();
+    addURLShowInput();
   });
 
-  // Remove tag from URL
-  $(".tag-remove").click(function (e) {
-    console.log("Tag removal initiated");
-    e.stopImmediatePropagation();
-    const tagToRemove = $(this).parent();
-    const tagID = tagToRemove.attr("tagid");
-    removeTag(tagToRemove, tagID);
+  // Open all URLs in UTub in separate tabs
+  $("#accessAllURLsBtn").on("click", function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    accessAllLinksInUTub();
   });
 });
 
-// URL Functions
+/** URL Utility Functions **/
 
-// Simple function to streamline the jQuery selector extraction of URL ID. And makes it easier in case the ID is encoded in a new location in the future
-function selectedURLID() {
-  return $(".url.selected").last().attr("urlid");
+// Function to count number of URLs in current UTub
+function numOfURLs() {
+  return;
 }
 
-// Build center panel URL-tag list for selectedUTub
+// function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
+function getSelectedURLID() {
+  return $(".selectedURL").attr("urlid");
+}
+
+// Simple function to streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
+function getSelectedURLCard() {
+  return $("#listURLs").find(".card[urlid = " + getSelectedURLID() + "]")[0];
+}
+
+// Prevent deselection of URL while modifying its values (e.g. adding a tag, editing URL string or description)
+function unbindSelectBehavior() {
+  $(getSelectedURLCard().closest(".cardCol")).off("click");
+  $(document).on("keyup", function (e) {
+    let keycode = e.keyCode ? e.keyCode : e.which;
+    if (keycode == 27) {
+      // ESC key, unbind action
+    }
+  });
+}
+
+// Rebinds selection click behavior after URL-modifying post requests are complete
+function rebindSelectBehavior(URLID) {
+  const selectedCardDiv = $(getSelectedURLCard());
+  selectedCardDiv.closest(".cardCol").on("click", function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    toggleSelectedURL(URLID);
+  });
+  $(document).on("keyup", function (e) {
+    let keycode = e.keyCode ? e.keyCode : e.which;
+    if (keycode == 27) {
+      // ESC key, hide all URL cardCols
+      deselectAllURLs();
+      deselectAddURL();
+    }
+  });
+}
+
+// Opens new tab
+function accessLink(url_string) {
+  // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
+
+  if (!url_string.startsWith("https://")) {
+    window.open("https://" + url_string, "_blank").focus();
+  } else {
+    window.open(url_string, "_blank").focus();
+  }
+}
+
+// Opens all URLs in UTub in separate tabs
+function accessAllLinksInUTub() {
+  getUtubInfo(getCurrentUTubID()).then(function (selectedUTub) {
+    let dictURLs = selectedUTub.urls;
+
+    for (i = 0; i < dictURLs.length; i++) {
+      accessLink(dictURLs[i].url_string);
+    }
+  });
+}
+
+// Clear new URL Form
+function resetNewURLForm() {
+  $("#newURLDescription").val("");
+  $("#newURLString").val("");
+  hideIfShown($("#newURLString").closest(".createDiv"));
+}
+
+// Clear the URL Deck
+function resetURLDeck() {
+  // Empty URL Deck
+  $("#UPRRow").empty();
+  $("#URLFocusRow").empty();
+  $("#LWRRow").empty();
+}
+
+/* URL Functions */
+
+// Build center panel URL list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
-  $("#editUTubButton").show();
-  $("#addURL").show();
-  $("#UTubDescription").show();
+  resetURLDeck();
+  let UPRRow = $("#UPRRow");
 
-  let selectedUTubID = currentUTubID();
-
-  for (let i in dictURLs) {
-    let URLcol = createURL(
-      dictURLs[i].url_id,
+  for (let i = 0; i < dictURLs.length; i++) {
+    let URLcol = createURLBlock(
+      dictURLs[i].url_ID,
       dictURLs[i].url_string,
-      dictURLs[i].notes,
+      dictURLs[i].url_description,
       dictURLs[i].url_tags,
-      selectedUTubID,
       dictTags,
     );
 
@@ -65,38 +129,229 @@ function buildURLDeck(dictURLs, dictTags) {
   }
 
   // New URL create block
-  let URLcol = createURL(0, "", "", "", selectedUTubID, []);
-
-  URLFocusRow.append(URLcol);
-  // I actually don't know how 'UPRRow' and 'URLFocusRow' are referenced...
+  $("#URLFocusRow").append(createNewURLInputField());
 }
 
-// Add a URL to current UTub
-function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
-  let col = document.createElement("div");
-  let card = document.createElement("div");
-  // let cardImg = document.createElement('img');
-  let urlInfo = document.createElement("div"); // This element holds the URL description and string
-  let urlDescription = document.createElement("h5"); // This element displays the user-created description of the URL
-  let urlString = document.createElement("p"); // This element displays the user's URL
-  let editWrap1 = document.createElement("div"); // This element wraps the edit field for URL description
-  let editURLDescription = document.createElement("input"); // This element is instantiated with the URL description, or is blank for the creation block
-  let editWrap2; // This element wraps the edit field for URL string
-  let editURLString = document.createElement("input"); // This element is instantiated with the URL, or is blank for the creation block
-  let urlTags = document.createElement("div");
-  let urlOptions = document.createElement("div");
-  let accessURL = document.createElement("button");
-  let addTag = document.createElement("button");
-  let editURL = document.createElement("button");
-  let submit = document.createElement("i");
-  let delURL = document.createElement("button");
+// Create a URL block to add to current UTub/URLDeck
+function createURLBlock(URLID, string, description, tagArray, dictTags) {
+  const col = document.createElement("div");
+  const card = document.createElement("div");
+  // const cardImg = document.createElement('img');
+  const urlInfo = document.createElement("div"); // This element holds the URL description and string
+  const urlDescription = document.createElement("h5"); // This element displays the user-created description of the URL
+  const urlString = document.createElement("p"); // This element displays the user's URL
+  const editWrap = document.createElement("div"); // This element wraps the edit field for URL description AND URL string
+  const editWrap1 = document.createElement("div"); // This element wraps the edit field for URL description
+  const editURLDescription = document.createElement("input"); // This element is instantiated with the URL description
+  const editWrap2 = document.createElement("div"); // This element wraps the edit field for URL string
+  const editURLString = document.createElement("input"); // This element is instantiated with the URL
+  const urlTags = document.createElement("div");
+  const urlOptions = document.createElement("div");
+  const accessURLBtn = document.createElement("button");
+  const addTagBtn = document.createElement("button");
+  const editURLBtn = document.createElement("button");
+  const submitEditBtn = document.createElement("i"); // Submit changes after 'edit' operations
+  const remURLBtn = document.createElement("button");
 
-  $(col).attr({ class: "cardCol mb-3 col-md-10" });
+  $(col)
+    .addClass("cardCol mb-3 col-md-10 col-lg-4 col-xl-3")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      toggleSelectedURL(URLID);
+    });
+
+  $(card)
+    .attr({
+      urlid: URLID,
+      // draggable: "true",
+      ondrop: "dropIt(event)",
+      ondragover: "allowDrop(event)",
+      ondragstart: "dragStart(event)",
+    })
+    .addClass("card url");
+
+  // $(cardImg).attr({
+  //     'src': '...',
+  //     'alt': '"Card image cap'
+  // })
+  // .addClass("card-img-top")
+
+  $(urlInfo).addClass("card-body URLInfo");
+
+  $(urlDescription).addClass("card-title URLDescription").text(description);
+
+  $(urlString).addClass("card-text URLString").text(string);
+
+  $(editWrap)
+    .attr({
+      style: "display: none",
+    })
+    .addClass("createDiv");
+
+  $(editURLDescription)
+    .attr({
+      type: "text",
+      size: "50",
+      value: description,
+      placeholder: "Edit URL Description",
+      // 'onblur': "postData(event, '" + editURLid + "')"
+    })
+    .addClass("card-title userInput editURLDescription");
+
+  $(editWrap1).append(editURLDescription);
+
+  $(editURLString)
+    .attr({
+      type: "text",
+      size: "50",
+      value: string,
+      placeholder: "Edit URL",
+    })
+    .addClass("card-text userInput editURLString");
+
+  $(editWrap2).append(editURLString);
+
+  $(editWrap).append(editWrap1);
+  $(editWrap).append(editWrap2);
+
+  $(urlTags)
+    .attr({
+      style: "display: none",
+    })
+    .addClass("card-body URLTags");
+
+  // Build tag html strings
+  for (let j in tagArray) {
+    // Find applicable tags in dictionary to apply to URL card
+    let tag = dictTags.find(function (e) {
+      if (e.id === tagArray[j]) {
+        return e;
+      }
+    });
+
+    let tagSpan = createTaginURL(tag.id, tag.tag_string);
+
+    $(urlTags).append(tagSpan);
+  }
+
+  // New tag create span
+  $(urlTags).append(createNewTagInputField());
+
+  // Buttons
+  $(urlOptions)
+    .attr({
+      style: "display: none",
+    })
+    .addClass("card-body URLOptions");
+
+  $(accessURLBtn)
+    .attr({
+      type: "button",
+    })
+    .addClass("card-link btn btn-primary accessURLBtn")
+    .text("Access Link")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      accessLink(string);
+    });
+
+  $(addTagBtn)
+    .attr({
+      type: "button",
+    })
+    .addClass("card-link btn btn-info addTagBtn")
+    .text("Add Tag")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      addTagToURLShowInput();
+    });
+
+  $(editURLBtn)
+    .attr({
+      type: "button",
+    })
+    .addClass("card-link btn btn-warning editURLBtn")
+    .text("Edit")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      editURLShowInput();
+    });
+
+  $(remURLBtn)
+    .attr({
+      type: "button",
+    })
+    .addClass("card-link btn btn-danger remURLBtn")
+    .text("Remove")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      removeURLShowModal();
+    });
+
+  $(submitEditBtn)
+    .attr({
+      type: "button",
+      style: "display: none",
+    })
+    .addClass("fa fa-check-square fa-2x text-success mx-1 submitEditURLBtn")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      editURL();
+    });
+
+  // Assemble url list items
+  $(col).append(card);
+  $(card).append(urlInfo);
+
+  $(urlInfo).append(urlDescription);
+  $(urlInfo).append(urlString);
+  $(urlInfo).append(editWrap);
+
+  $(card).append(urlTags);
+
+  $(card).append(urlOptions);
+  $(urlOptions).append(accessURLBtn);
+  $(urlOptions).append(addTagBtn);
+  $(urlOptions).append(editURLBtn);
+  $(urlOptions).append(remURLBtn);
+  $(urlOptions).append(submitEditBtn);
+
+  return col;
+}
+
+// New URL card and input text fields. Initially hidden, shown when create URL is requested. Input field recreated here to ensure at the end of list after creation of new URL
+function createNewURLInputField() {
+  const col = document.createElement("div");
+  const card = document.createElement("div");
+  // const cardImg = document.createElement('img');
+  const urlInfo = document.createElement("div"); // This element holds the URL description and string inputs
+  const newWrap = document.createElement("div"); // This element wraps the edit field for URL description AND URL string
+  const newWrap1 = document.createElement("div"); // This element wraps the edit field for URL description
+  const newURLDescription = document.createElement("input"); // This element is a blank input to accept a new URL description
+  const newWrap2 = document.createElement("div"); // This element wraps the edit field for URL string
+  const newURLString = document.createElement("input"); // This element is instantiated with the URL, or is blank for the creation block
+  const urlTags = document.createElement("div");
+  const urlOptions = document.createElement("div");
+  const addURLBtn = document.createElement("button");
+  const delURLBtn = document.createElement("button");
+
+  $(col).attr({
+    class: "createDiv cardCol mb-3 col-md-10 col-lg-10 col-xl-10",
+    style: "display: none",
+    // onblur: "hideInput(event)",
+  });
 
   $(card).attr({
-    urlid: URLID,
-    class: "card url",
-    draggable: "true",
+    urlid: 0,
+    id: "addURL",
+    class: "card url selected",
+    // draggable: "true",
     ondrop: "dropIt(event)",
     ondragover: "allowDrop(event)",
     ondragstart: "dragStart(event)",
@@ -110,297 +365,467 @@ function createURL(URLID, string, description, tagArray, UTubID, dictTags) {
 
   $(urlInfo).attr({ class: "card-body URLInfo" });
 
-  $(urlDescription).attr({ class: "card-title" });
-  urlDescription.innerHTML = description ? description : "";
-
-  $(editWrap1).attr({
-    class: "createDiv",
-    style: "display: none",
-  });
-
-  $(editURLDescription).attr({
-    type: "text",
+  $(newURLDescription).attr({
+    id: "newURLDescription",
     class: "card-title userInput",
-    size: "50",
-  });
-
-  $(urlString).attr({ class: "card-text" });
-  urlString.innerHTML = string;
-
-  $(editURLString).attr({
+    placeholder: "New URL Description",
     type: "text",
-    class: "card-text userInput",
     size: "50",
   });
+
+  $(newWrap1).append(newURLDescription);
+
+  $(newURLString).attr({
+    id: "newURLString",
+    class: "card-text userInput",
+    placeholder: "New URL",
+    type: "text",
+    size: "50",
+  });
+
+  $(newWrap2).append(newURLString);
 
   $(urlTags).attr({ class: "card-body URLTags" });
 
-  // Build tag html strings
-  for (let j in tagArray) {
-    // Find applicable tags in dictionary to apply to URL card
-    let tag = dictTags.find(function (e) {
-      if (e.id === tagArray[j]) {
-        return e;
-      }
-    });
+  // Add tag input
+  $(urlTags).append(createNewTagInputField());
 
-    let tagSpan = createTaginURL(tag.id, tag.tag_string, 0);
-
-    $(urlTags).append(tagSpan);
-  }
-
-  // New tag create span
-  let tagInput = createTaginURL(0, "", URLID);
-
-  $(urlTags).append(tagInput);
-
+  // Buttons
   $(urlOptions).attr({ class: "card-body URLOptions" });
 
-  $(accessURL).attr({
-    class: "card-link btn",
-    type: "button",
-  });
-
-  $(addTag).attr({
-    class: "card-link btn btn-info",
-    type: "button",
-    onclick: "showInput('addTag-" + URLID + "')",
-  });
-  addTag.innerHTML = "Add Tag";
-
-  $(editURL).attr({
-    class: "card-link btn btn-warning editBtn",
-    type: "button",
-  });
-  editURL.innerHTML = "Edit";
-
-  $(submit).attr({
-    id: "submitEditURL-" + URLID,
-    class: "fa fa-check-square fa-2x text-success mx-1",
-    type: "button",
-    style: "display: none",
-  });
-
-  $(delURL).attr({
-    class: "card-link btn btn-danger",
-    type: "button",
-  });
-
-  // Creation URL specific items
-  if (URLID == 0) {
-    // New URL card and input text fields. Initially hidden, shown when create URL is requested. Input field recreated here to ensure at the end of list after creation of new URL
-    $(col).attr({
-      id: "createURL",
-      class: "createDiv col-lg-10 col-xl-10",
-      style: "display: none",
-      onblur: "hideInput(event)",
+  $(addURLBtn)
+    .attr({
+      class: "card-link btn btn-success",
+      type: "button",
+    })
+    .text("Add URL")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      addURL();
     });
 
-    $(card).addClass("selected");
-
-    $(editURLDescription).attr({
-      id: "newURLDescription",
-      placeholder: "New URL description",
+  $(delURLBtn)
+    .attr({
+      class: "card-link btn btn-danger",
+      type: "button",
+    })
+    .text("Cancel")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      hideIfShown($("#newURL").closest(".createDiv"));
     });
-
-    $(editURLString).attr({
-      id: "newURL",
-      placeholder: "New URL",
-    });
-
-    // Buttons
-    $(accessURL).attr({ onclick: 'postData(event, "createURL")' });
-    $(accessURL).addClass("btn-success");
-    accessURL.innerHTML = "Create URL";
-    // $(addTag).attr({ 'onclick': "showInput('addTag')" })
-    $(editURL).attr({
-      // Re-highlight input field?
-      // 'onclick': "cardEdit(" + selectedUTubID + "," + dictURLs[i].url_id + ",'url')" should refocus on URL input
-      // 'onclick': "(function(){ alert('Hey i am calling'); return false; })();return false;"
-    });
-    $(delURL).attr({
-      // Cancel creation, reset fields?
-      onclick: "$('#createURL').hide()",
-    });
-    delURL.innerHTML = "Cancel";
-  } else {
-    $(col).addClass("col-lg-4 col-xl-3");
-
-    let editURLDescriptionid = "editURLDescription-" + URLID;
-    let editURLid = "editURL-" + URLID;
-
-    $(editURLDescription).attr({
-      id: editURLDescriptionid,
-      value: description ? description : "",
-      placeholder: "Edit URL Description",
-      // 'onblur': "postData(event, '" + editURLid + "')"
-    });
-
-    $(editURLString).attr({
-      id: editURLid,
-      value: string,
-      placeholder: "Edit URL",
-      // 'onblur': "postData(event, '" + editURLid + "')"
-    });
-
-    $(urlOptions).append(accessURL);
-
-    $(urlTags).attr({ style: "display: none" });
-
-    // Buttons
-    $(urlOptions).attr({ style: "display: none" });
-
-    $(accessURL).attr({ onclick: "accessLink('" + string + "')" });
-    $(accessURL).addClass("btn-primary");
-    accessURL.innerHTML = "Access Link";
-    // $(addTag).attr({ 'onclick': "cardEdit(" + UTubID + "," + URLID + ",'tag')" })
-    $(editURL).attr({ onclick: "showInput('" + editURLid + "')" });
-    $(delURL).attr({ onclick: "confirmModal('deleteURL')" });
-    $(submit).attr({ onclick: "postData(event, '" + editURLid + "')" });
-    // "/delete_url/" + UTubID + "/" + dictURLs[i].url_id
-    delURL.innerHTML = "Delete";
-  }
-
-  editWrap2 = editWrap1;
-  console.log(editWrap1);
-  console.log(editWrap2);
 
   // Assemble url list items
   $(col).append(card);
-  // $(card).append(cardImg); // incorporate a thumbnail of the URL to show when highlighted as the focus URL
   $(card).append(urlInfo);
 
-  $(urlInfo).append(urlDescription);
-  $(urlInfo).append(urlString);
-
-  $(urlInfo).append(URLID == 0 ? editURLDescription : editWrap1);
-  $(editWrap1).append(editURLDescription);
-  $(urlInfo).append(URLID == 0 ? editURLString : editWrap2);
-  $(editWrap2).append(editURLString);
+  $(urlInfo).append(newWrap1);
+  $(urlInfo).append(newWrap2);
 
   $(card).append(urlTags);
+
   $(card).append(urlOptions);
-  $(urlOptions).append(accessURL);
-  $(urlOptions).append(addTag);
-  $(urlOptions).append(editURL);
-  $(urlOptions).append(delURL);
-  $(urlOptions).append(submit);
+  $(urlOptions).append(addURLBtn);
+  $(urlOptions).append(delURLBtn);
 
   return col;
 }
 
-// A URL is already selected, user would like to unselect (or potentially select another)
-function deselectURL(deselectedCardCol) {
-  var card = deselectedCardCol.find(".card");
-  deselectedCardCol.addClass("col-lg-4 col-xl-3");
-  deselectedCardCol.removeClass("col-lg-10 col-xl-10");
-  card.removeClass("selected");
-  card.find(".URLTags").css("display", "none");
-  card.find(".URLOptions").css("display", "none");
+// Display updates related to selection of a URL
+function selectURL(selectedCardCol) {
+  const card = selectedCardCol.find(".card");
+  const URLTags = selectedCardCol.find(".URLTags");
+  const URLOptions = selectedCardCol.find(".URLOptions");
+
+  selectedCardCol.addClass("col-lg-10 col-xl-10");
+  selectedCardCol.removeClass("col-lg-4 col-xl-3");
+  card.addClass("selectedURL");
+  // card.attr("draggable", "");
+  showIfHidden(URLTags);
+  showIfHidden(URLOptions);
 }
 
-// User selects a URL. All other URLs are deselected. This function places all URLs prior to selected URL into #UPRRow, inserts selected URL into a separate #URLFocusRow, and places all subsequent URLs into #LWRRow. It also adjusts css displays accordingly
-function selectURL(selectedURLid) {
-  var cardCols = $(".cardCol");
+// Display updates related to deselection of a URL
+function deselectURL(deselectedCardCol) {
+  const card = deselectedCardCol.find(".card");
+  const URLTags = deselectedCardCol.find(".URLTags");
+  const URLOptions = deselectedCardCol.find(".URLOptions");
 
-  let rowToggle = 1; // ? Add to UPR row : Add to LWR row
-  var activeRow = $("#UPRRow");
+  deselectedCardCol.addClass("col-lg-4 col-xl-3");
+  deselectedCardCol.removeClass("col-lg-10 col-xl-10");
+  card.removeClass("selectedURL");
+  // card.attr("draggable");
+  hideIfShown(URLTags);
+  hideIfShown(URLOptions);
+}
+
+// Deselects all URLs in preparation for creation URL
+function deselectAllURLs() {
+  let cardCols = $(".cardCol");
+
+  for (let i = 0; i < cardCols.length; i++) {
+    let cardCol = $(cardCols[i]);
+    let createURLBlockBool = cardCol.hasClass("createDiv");
+
+    if (!createURLBlockBool) deselectURL(cardCol);
+  }
+}
+
+// Deselects addURL block
+function deselectAddURL() {
+  hideIfShown($("#newURL").closest(".cardCol"));
+}
+
+// User clicks a URL. If already selected, URL is deselected, else it is selected. All other URLs are deselected. This function places all URLs prior to selected URL into #UPRRow, inserts selected URL into a separate #URLFocusRow, and places all subsequent URLs into #LWRRow. It also adjusts css displays accordingly
+// REHch goal 09/12/23 may want a "display order" attribute stored in backend. Option to sort by alpha, date added, or custom prescribed "display order". This display can be manipulated by drag-drop of the URL card.
+function toggleSelectedURL(selectedURLID) {
+  let cardCols = $(".cardCol");
+
+  let activeRow = $("#UPRRow");
+  let focusRow = $("#URLFocusRow");
+
+  // Hide addURL block
+  hideInput("addURL");
 
   // Loop through all cardCols and add to UPR row until selected URL card, then subsequent cardCols are added to LWR row
   for (let i = 0; i < cardCols.length; i++) {
-    let card = $(cardCols[i]).find(".card");
-    let URLid = card.attr("urlid");
+    let cardCol = $(cardCols[i]);
+    let card = cardCol.find(".card");
+    let URLID = card.attr("urlid");
+    let selectBool = card.hasClass("selectedURL");
+    let clickedCardBool = URLID == selectedURLID;
+    let addURLBlockBool = card.attr("id") === "addURL";
 
-    if (URLid == selectedURLid) {
-      // Reorder createURL card to before selected URL
-      var createCardCol = $("#createURL").detach();
-      // console.log(createCardCol)
-      createCardCol.appendTo("#URLFocusRow");
-
-      // console.log($('#URLFocusRow').append($('#createURL').detach()));
-
-      // console.log($('#URLFocusRow').children())
-      // console.log($('#LWRRow').children())
-
-      // Expand and highlight selected URL
-      $("#URLFocusRow").append(cardCols[i]);
-      $(cardCols[i]).toggleClass("col-lg-10 col-lg-4 col-xl-10 col-xl-3");
-      card.addClass("selected");
-      card.attr("draggable", "");
-      card.find(".URLTags").show();
-      card.find(".URLOptions").show();
-
-      rowToggle = 0;
-    } else {
-      deselectURL($(cardCols[i]));
-      activeRow.append(cardCols[i]);
+    // If this cardCol is the creation block, skip it and move to the next iteration
+    if (addURLBlockBool) continue;
+    // If this is not the card the user clicked or it's already selected, deselect it and add it to the activeRow
+    if (!clickedCardBool || selectBool) {
+      deselectURL(cardCol);
+      activeRow.append(cardCol);
     }
+    // URL the user clicked is deselected, select it
+    if (!selectBool && clickedCardBool) {
+      selectURL(cardCol);
+      focusRow.append(cardCol);
 
-    activeRow = rowToggle ? $("#UPRRow") : $("#LWRRow");
+      // Reorder addURL card to before selected URL
+      let createCardCol = $("#addURL").closest(".cardCol").detach();
+      focusRow.prepend(createCardCol);
+
+      // All subsequent cardCols should be added below the focusRow
+      activeRow = $("#LWRRow");
+    }
   }
 }
 
-// Clear the URL Deck
-function resetURLDeck() {
-  // Empty URL Deck
-  $("#UPRRow").empty();
-  $("#URLFocusRow").empty();
-  $("#LWRRow").empty();
+/** Post data handling **/
+
+/* Add URL */
+
+// Displays new URL input prompt
+function addURLShowInput() {
+  showInput("addURL");
+  highlightInput($("#newURLDescription"));
 }
 
-function accessLink(url_string) {
-  // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
-  if (!url_string.startsWith("https://")) {
-    window.open("https://" + url_string, "_blank");
-  } else {
-    window.open(url_string, "_blank");
-  }
-}
+// Handles addition of new URL after user submission
+function addURL() {
+  // Extract data to submit in POST request
+  [postURL, data] = addURLSetup();
 
-function deleteURL() {
-  var URLID = selectedURLID();
+  AJAXCall("post", postURL, data);
 
-  let request = $.ajax({
-    type: "post",
-    url: "/url/remove/" + currentUTubID() + "/" + URLID,
-  });
-
+  // Handle response
   request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
-      let cardCol = $("div[urlid=" + URLID + "]").parent();
-      cardCol.fadeOut();
-      cardCol.remove();
+    console.log("success");
 
-      // Close modal
-      $("#confirmModal").hide();
+    if (xhr.status == 200) {
+      addURLSuccess(response);
     }
   });
 
-  request.fail(function (xhr, textStatus, error) {
-    if (xhr.status == 409) {
-      console.log(
-        "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-      );
-      // const flashMessage = xhr.responseJSON.error;
-      // const flashCategory = xhr.responseJSON.category;
+  request.fail(function (response, textStatus, xhr) {
+    console.log("failed");
 
-      // let flashElem = flashMessageBanner(flashMessage, flashCategory);
-      // flashElem.insertBefore('#modal-body').show();
-    } else if (xhr.status == 404) {
-      $(".invalid-feedback").remove();
-      $(".alert").remove();
-      $(".form-control").removeClass("is-invalid");
-      const error = JSON.parse(xhr.responseJSON);
-      for (var key in error) {
-        $('<div class="invalid-feedback"><span>' + error[key] + "</span></div>")
-          .insertAfter("#" + key)
-          .show();
-        $("#" + key).addClass("is-invalid");
-      }
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      addURLFailure(response);
     }
+  });
+}
+
+// Prepares post request inputs for addition of a new URL
+function addURLSetup() {
+  // Assemble post request route
+  let postURL = ADD_URL_ROUTE + getCurrentUTubID();
+
+  // Assemble submission data
+  let newURLDescription = $("#newURLDescription").val();
+  let newURL = $("#newURLString").val();
+  data = {
+    url_string: newURL,
+    url_description: newURLDescription,
+  };
+
+  return [postURL, data];
+}
+
+// Displays changes related to a successful addition of a new URL
+function addURLSuccess(response) {
+  resetNewURLForm();
+
+  // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
+  let URLcol = createURLBlock(
+    response.URL.url_ID,
+    response.URL.url_string,
+    response.URL.url_description,
+    [],
+    [],
+  );
+
+  $("#URLFocusRow").append(URLcol);
+
+  showIfHidden($("#accessAllURLsBtn"));
+}
+
+// Displays appropriate prompts and options to user following a failed addition of a new URL
+function addURLFailure(response) {
+  console.log("Basic implementation. Needs revision");
+  console.log(response.responseJSON.Error_code);
+  console.log(response.responseJSON.Message);
+  // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to user?
+  // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
+}
+
+/* Edit URL */
+
+// Shows edit URL inputs
+function editURLShowInput() {
+  // Show edit submission button, hide edit request button
+  let selectedCardDiv = $(getSelectedURLCard());
+  let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
+  showIfHidden(URLOptionsDiv.find("i"));
+  hideIfShown(URLOptionsDiv.find(".editURLBtn"));
+
+  // Hide access URL button
+  hideIfShown(URLOptionsDiv.find(".accessURLBtn"));
+
+  // Show input fields
+  let inputElURLString = selectedCardDiv.find(".editURLString");
+  let inputDivURLString = inputElURLString.closest(".createDiv");
+  showIfHidden($(inputDivURLString));
+
+  // Hide published values
+  let URLInfoDiv = selectedCardDiv.find(".URLInfo");
+  hideIfShown($(URLInfoDiv.find("h5")));
+  hideIfShown($(URLInfoDiv.find("p")));
+
+  // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
+  unbindSelectBehavior();
+}
+
+// Hides edit URL inputs
+function editURLHideInput() {
+  // Hide edit submission icon, show edit request icon
+  let selectedCardDiv = $(getSelectedURLCard());
+  let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
+  showIfHidden($(URLOptionsDiv.find(".editURLBtn")));
+  hideIfShown($(URLOptionsDiv.find("i")));
+
+  // Show access URL button
+  showIfHidden(URLOptionsDiv.find(".accessURLBtn"));
+
+  // Hide input fields
+  let inputElURLString = selectedCardDiv.find(".editURLString");
+  let inputDivURLString = inputElURLString.closest(".createDiv");
+  hideIfShown($(inputDivURLString));
+
+  // Show published values
+  let URLInfoDiv = inputElURLString.closest(".URLInfo");
+  showIfHidden($(URLInfoDiv.find("h5")));
+  showIfHidden($(URLInfoDiv.find("p")));
+
+  // Update URL options display
+  hideIfShown(selectedCardDiv.find(".submitEditURLBtn"));
+  showIfHidden(selectedCardDiv.find(".editURLBtn"));
+}
+
+// Handles edition of an existing URL
+function editURL() {
+  // Extract data to submit in POST request
+  [postURL, data] = editURLSetup();
+
+  AJAXCall("post", postURL, data);
+
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    console.log("success");
+
+    if (xhr.status == 200) {
+      editURLSuccess(response);
+    }
+  });
+
+  request.fail(function (response, textStatus, xhr) {
+    console.log("failed");
+
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      editURLFail(response);
+    }
+  });
+}
+d;
+// Prepares post request inputs for edition of a URL
+function editURLSetup() {
+  let postURL = EDIT_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
+
+  let selectedCardDiv = $(getSelectedURLCard());
+  console.log(selectedCardDiv);
+  let editedURLfield = selectedCardDiv.find(".editURLString")[0];
+  let editedURL = editedURLfield.value;
+  let editedURLDescriptionfield = selectedCardDiv.find(
+    ".editURLDescription",
+  )[0];
+  let editedURLDescription = editedURLDescriptionfield.value;
+  data = {
+    url_string: editedURL,
+    url_description: editedURLDescription,
+  };
+
+  return [postURL, data];
+}
+
+// Displays changes related to a successful edition of a URL
+function editURLSuccess(response) {
+  // Extract response data
+  let editedURLID = response.URL.url_ID;
+  let editedURLDescription = response.URL.url_description;
+  let editedURLString = response.URL.url_string;
+
+  // If edit URL action, rebind the ability to select/deselect URL by clicking it
+  rebindSelectBehavior(editedURLID);
+
+  const selectedCardDiv = $(getSelectedURLCard());
+
+  // Update URL ID
+  selectedCardDiv.attr("urlid", editedURLID);
+
+  // Updating input field placeholders
+  let editURLDescriptionInput = selectedCardDiv.find(".editURLDescription");
+  editURLDescriptionInput.text(editedURLDescription);
+  let editURLStringInput = selectedCardDiv.find(".editURLString");
+  editURLStringInput.text(editedURLString);
+
+  // Update URL body with latest published data
+  let URLDescriptionField = selectedCardDiv.find(".URLDescription");
+  URLDescriptionField.text(editedURLDescription);
+  let URLStringField = selectedCardDiv.find(".URLString");
+  URLStringField.text(editedURLString);
+
+  // Update URL options
+  selectedCardDiv
+    .find(".accessURL")
+    .off("click")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      accessLink(editedURLString);
+    });
+
+  editURLHideInput();
+}
+
+// Displays appropriate prompts and options to user following a failed edition of a URL
+function editURLFail(response) {
+  console.log("Unimplemented");
+}
+
+/* Remove URL */
+
+// Show confirmation modal for removal of the selected existing URL from current UTub
+function removeURLShowModal() {
+  let modalTitle = "Are you sure you want to delete this URL from the UTub?";
+  let modalDismiss = "Just kidding";
+
+  $("#confirmModalTitle").text(modalTitle);
+
+  $("#modalDismiss")
+    .on("click", function (e) {
+      e.preventDefault();
+      $("#confirmModal").modal("hide");
+    })
+    .text(modalDismiss);
+
+  $("#modalSubmit")
+    .on("click", function (e) {
+      e.preventDefault();
+      removeURL();
+    })
+    .text("Remove URL");
+
+  $("#confirmModal").modal("show");
+
+  hideIfShown($("#modalRedirect"));
+}
+
+// Handles post request and response for removing an existing URL from current UTub, after confirmation
+function removeURL() {
+  // Extract data to submit in POST request
+  postURL = removeURLSetup();
+
+  let request = AJAXCall("post", postURL, []);
+
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    console.log("success");
+
+    if (xhr.status == 200) {
+      removeURLSuccess();
+    }
+  });
+
+  request.fail(function (response, textStatus, xhr) {
+    console.log("failed");
+
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      removeURLFail(response);
+    }
+  });
+}
+
+// Prepares post request inputs for removal of a URL
+function removeURLSetup() {
+  let postURL =
+    REMOVE_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
+
+  return postURL;
+}
+
+// Displays changes related to a successful reomval of a URL
+function removeURLSuccess() {
+  // Close modal
+  $("#confirmModal").modal("hide");
+
+  let cardCol = $("div[urlid=" + getSelectedURLID() + "]").parent();
+  cardCol.fadeOut();
+  cardCol.remove();
+}
+
+// Displays appropriate prompts and options to user following a failed removal of a URL
+function removeURLFail(xhr, textStatus, error) {
+  console.log("Error: Could not delete URL");
+
+  if (xhr.status == 409) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );
     console.log("Error: " + error.Error_code);
-  });
+  }
 }
