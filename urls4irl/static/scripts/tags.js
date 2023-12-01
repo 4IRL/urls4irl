@@ -363,6 +363,14 @@ function addTagToURLShowInput() {
   // let showInputBtn = $(URLCard).find(".addTagBtn");
   // showInputBtn.off("click");
   // showInputBtn.on("click", highlightInput(inputEl));
+
+  // showIfHidden a new select input
+  //   <select name="cars" id="cars">
+  //   <option value="volvo">Volvo</option>
+  //   <option value="saab">Saab</option>
+  //   <option value="opel">Opel</option>
+  //   <option value="audi">Audi</option>
+  // </select>
 }
 
 // Handles addition of new Tag to URL after user submission
@@ -519,11 +527,7 @@ function removeTag(tagID) {
 // Prepares post request inputs for removal of a URL
 function removeTagSetup(tagID) {
   let postURL =
-    REMOVE_TAG_ROUTE +
-    getCurrentUTubID() +
-    "/" +
-    getSelectedURLID() +
-    "/" +
+    REMOVE_TAG_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID() + "/" +
     tagID;
 
   return postURL;
@@ -536,6 +540,9 @@ function removeTagSuccess(tagID) {
   $("div.url[urlid=" + getSelectedURLID() + "]")
     .find("span.tag[tagid=" + tagID + "]")
     .remove();
+
+  // Determine whether the removed tag is the last instance in the UTub
+  // Remove, if yes
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL

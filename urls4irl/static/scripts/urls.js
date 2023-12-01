@@ -28,7 +28,12 @@ $(document).ready(function () {
 
 /** URL Utility Functions **/
 
-// Simple function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
+// Function to count number of URLs in current UTub
+function numOfURLs() {
+  return 
+}
+
+// function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
 function getSelectedURLID() {
   return $(".selectedURL").attr("urlid");
 }
@@ -40,8 +45,6 @@ function getSelectedURLCard() {
 
 // Prevent deselection of URL while modifying its values (e.g. adding a tag, editing URL string or description)
 function unbindSelectBehavior() {
-  console.log(getSelectedURLCard());
-  console.log(getSelectedURLCard().closest(".cardCol"));
   $(getSelectedURLCard().closest(".cardCol")).off("click");
   $(document).on("keyup", function (e) {
     let keycode = e.keyCode ? e.keyCode : e.which;
@@ -123,7 +126,6 @@ function buildURLDeck(dictURLs, dictTags) {
     );
 
     UPRRow.append(URLcol);
-    // I actually don't know how 'UPRRow' and 'URLFocusRow' are referenced...but it works so I don't question it
   }
 
   // New URL create block
@@ -162,7 +164,7 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
   $(card)
     .attr({
       urlid: URLID,
-      draggable: "true",
+      // draggable: "true",
       ondrop: "dropIt(event)",
       ondragover: "allowDrop(event)",
       ondragstart: "dragStart(event)",
@@ -349,7 +351,7 @@ function createNewURLInputField() {
     urlid: 0,
     id: "addURL",
     class: "card url selected",
-    draggable: "true",
+    // draggable: "true",
     ondrop: "dropIt(event)",
     ondragover: "allowDrop(event)",
     ondragstart: "dragStart(event)",
@@ -440,7 +442,7 @@ function selectURL(selectedCardCol) {
   selectedCardCol.addClass("col-lg-10 col-xl-10");
   selectedCardCol.removeClass("col-lg-4 col-xl-3");
   card.addClass("selectedURL");
-  card.attr("draggable", "");
+  // card.attr("draggable", "");
   showIfHidden(URLTags);
   showIfHidden(URLOptions);
 }
@@ -454,7 +456,7 @@ function deselectURL(deselectedCardCol) {
   deselectedCardCol.addClass("col-lg-4 col-xl-3");
   deselectedCardCol.removeClass("col-lg-10 col-xl-10");
   card.removeClass("selectedURL");
-  card.attr("draggable");
+  // card.attr("draggable");
   hideIfShown(URLTags);
   hideIfShown(URLOptions);
 }
@@ -573,9 +575,7 @@ function addURLSetup() {
 
 // Displays changes related to a successful addition of a new URL
 function addURLSuccess(response) {
-  console.log(response);
   resetNewURLForm();
-  console.log(response);
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
   let URLcol = createURLBlock(
@@ -586,11 +586,9 @@ function addURLSuccess(response) {
     [],
   );
 
-  console.log(URLcol);
-  console.log(response.URL.url_ID);
-  console.log(response.URL.url_string);
-
   $("#URLFocusRow").append(URLcol);
+
+  showIfHidden($("#accessAllURLsBtn"))
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
@@ -681,7 +679,7 @@ function editURL() {
     }
   });
 }
-
+d
 // Prepares post request inputs for edition of a URL
 function editURLSetup() {
   let postURL = EDIT_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();

@@ -72,18 +72,12 @@ function getCurrentUTubID() {
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function UTubIDFromName(name) {
-  let currentUTubID = getCurrentUTubID();
-  $("#listUTubs").find();
-
-  for (let i = 0; i < UTubs.length; i++) {
-    let UTubID = UTubs[i].id;
-    if (UTubs[i].name === name && UTubID != currentUTubID) return UTubID;
-  }
-}
-
-// Counts the updated number of UTubs user has, after add or delete operations, prior to page refresh and issuance of an updated UTubs global variable. Minus 1 included to account for new UTub input field.
-function numOfUTubs() {
-  return $("#listUTubs").children().length - 1;
+  let UTubIDs = [];
+  
+  UTubs.forEach(function (UTub) {
+    if (UTub.name === name) UTubIDs.push(UTub.id);
+  })
+  return UTubIDs
 }
 
 // Streamline the AJAX call to db for updated info
@@ -250,7 +244,7 @@ function changeUTub(selectedUTubID) {
 
 // Updates page display in response to current UTubDeck status.
 function displayUpdateUTubChange(selectedUTub) {
-  if (!numOfUTubs()) {
+  if (!UTubs.length) {
     // User has no UTubs
     $("#UTubDeckHeader").text("Create a UTub");
 
