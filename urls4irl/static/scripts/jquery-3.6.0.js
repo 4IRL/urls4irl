@@ -702,15 +702,15 @@
             ? // Strip the backslash prefix from a non-hex escape sequence
               nonHex
             : // Replace a hexadecimal escape sequence with the encoded Unicode code point
-            // Support: IE <=11+
-            // For values outside the Basic Multilingual Plane (BMP), manually construct a
-            // surrogate pair
-            high < 0
-            ? String.fromCharCode(high + 0x10000)
-            : String.fromCharCode(
-                (high >> 10) | 0xd800,
-                (high & 0x3ff) | 0xdc00,
-              );
+              // Support: IE <=11+
+              // For values outside the Basic Multilingual Plane (BMP), manually construct a
+              // surrogate pair
+              high < 0
+              ? String.fromCharCode(high + 0x10000)
+              : String.fromCharCode(
+                  (high >> 10) | 0xd800,
+                  (high & 0x3ff) | 0xdc00,
+                );
         },
         // CSS string/identifier serialization
         // https://drafts.csswg.org/cssom/#common-serializing-idioms
@@ -1641,15 +1641,15 @@
                 return a == document
                   ? -1
                   : b == document
-                  ? 1
-                  : /* eslint-enable eqeqeq */
-                  aup
-                  ? -1
-                  : bup
-                  ? 1
-                  : sortInput
-                  ? indexOf(sortInput, a) - indexOf(sortInput, b)
-                  : 0;
+                    ? 1
+                    : /* eslint-enable eqeqeq */
+                      aup
+                      ? -1
+                      : bup
+                        ? 1
+                        : sortInput
+                          ? indexOf(sortInput, a) - indexOf(sortInput, b)
+                          : 0;
 
                 // If the nodes are siblings, we can do a quick check
               } else if (aup === bup) {
@@ -1675,16 +1675,16 @@
                 ? // Do a sibling check if the nodes have a common ancestor
                   siblingCheck(ap[i], bp[i])
                 : // Otherwise nodes in our document sort first
-                // Support: IE 11+, Edge 17 - 18+
-                // IE/Edge sometimes throw a "Permission denied" error when strict-comparing
-                // two documents; shallow comparisons work.
-                /* eslint-disable eqeqeq */
-                ap[i] == preferredDoc
-                ? -1
-                : bp[i] == preferredDoc
-                ? 1
-                : /* eslint-enable eqeqeq */
-                  0;
+                  // Support: IE 11+, Edge 17 - 18+
+                  // IE/Edge sometimes throw a "Permission denied" error when strict-comparing
+                  // two documents; shallow comparisons work.
+                  /* eslint-disable eqeqeq */
+                  ap[i] == preferredDoc
+                  ? -1
+                  : bp[i] == preferredDoc
+                    ? 1
+                    : /* eslint-enable eqeqeq */
+                      0;
             };
 
         return document;
@@ -1757,10 +1757,10 @@
         return val !== undefined
           ? val
           : support.attributes || !documentIsHTML
-          ? elem.getAttribute(name)
-          : (val = elem.getAttributeNode(name)) && val.specified
-          ? val.value
-          : null;
+            ? elem.getAttribute(name)
+            : (val = elem.getAttributeNode(name)) && val.specified
+              ? val.value
+              : null;
       };
 
       Sizzle.escape = function (sel) {
@@ -1996,21 +1996,23 @@
               return operator === "="
                 ? result === check
                 : operator === "!="
-                ? result !== check
-                : operator === "^="
-                ? check && result.indexOf(check) === 0
-                : operator === "*="
-                ? check && result.indexOf(check) > -1
-                : operator === "$="
-                ? check && result.slice(-check.length) === check
-                : operator === "~="
-                ? (" " + result.replace(rwhitespace, " ") + " ").indexOf(
-                    check,
-                  ) > -1
-                : operator === "|="
-                ? result === check ||
-                  result.slice(0, check.length + 1) === check + "-"
-                : false;
+                  ? result !== check
+                  : operator === "^="
+                    ? check && result.indexOf(check) === 0
+                    : operator === "*="
+                      ? check && result.indexOf(check) > -1
+                      : operator === "$="
+                        ? check && result.slice(-check.length) === check
+                        : operator === "~="
+                          ? (
+                              " " +
+                              result.replace(rwhitespace, " ") +
+                              " "
+                            ).indexOf(check) > -1
+                          : operator === "|="
+                            ? result === check ||
+                              result.slice(0, check.length + 1) === check + "-"
+                            : false;
               /* eslint-enable max-len */
             };
           },
@@ -2404,8 +2406,8 @@
               argument < 0
                 ? argument + length
                 : argument > length
-                ? length
-                : argument;
+                  ? length
+                  : argument;
             for (; --i >= 0; ) {
               matchIndexes.push(i);
             }
@@ -2512,9 +2514,9 @@
         return parseOnly
           ? soFar.length
           : soFar
-          ? Sizzle.error(selector)
-          : // Cache the tokens
-            tokenCache(selector, groups).slice(0);
+            ? Sizzle.error(selector)
+            : // Cache the tokens
+              tokenCache(selector, groups).slice(0);
       };
 
       function toSelector(tokens) {
@@ -3147,8 +3149,8 @@
             return elem[name] === true
               ? name.toLowerCase()
               : (val = elem.getAttributeNode(name)) && val.specified
-              ? val.value
-              : null;
+                ? val.value
+                : null;
           }
         });
       }

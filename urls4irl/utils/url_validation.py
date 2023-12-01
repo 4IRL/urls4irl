@@ -24,7 +24,18 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 """
 
 from url_normalize import url_normalize
+import random
 import requests
+
+USER_AGENTS = (
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
+)
 
 
 class InvalidURLError(Exception):
@@ -62,7 +73,7 @@ def normalize_url(url: str) -> str:
     return return_val
 
 
-def check_request_head(url: str) -> str:
+def check_request_head(url: str, user_agent: str = None) -> str:
     """
     Status codes: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
 
@@ -87,7 +98,12 @@ def check_request_head(url: str) -> str:
     url = normalize_url(url)
 
     try:
-        response = requests.get(url, timeout=10)
+        headers = {
+            "User-Agent": random.choice(USER_AGENTS)
+            if user_agent is None
+            else user_agent
+        }
+        response = requests.get(url, timeout=10, headers=headers)
 
     except requests.exceptions.ReadTimeout:
         raise InvalidURLError
@@ -118,9 +134,3 @@ def check_request_head(url: str) -> str:
         else:
             # Redirect was found, provide the redirect URL
             return location
-
-
-if __name__ == "__main__":
-    check_request_head(
-        "https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862"
-    )

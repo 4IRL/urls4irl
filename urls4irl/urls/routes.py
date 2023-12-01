@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request
 from flask_login import current_user
 from urls4irl import db
 from urls4irl.models import Utub, Utub_Urls, URLS, Url_Tags
@@ -106,7 +106,8 @@ def add_url(utub_id: int):
         url_string = utub_new_url_form.url_string.data
 
         try:
-            normalized_url = check_request_head(url_string)
+            user_agent = request.headers.get("User-agent")
+            normalized_url = check_request_head(url_string, user_agent)
         except InvalidURLError:
             # URL was unable to be verified as a valid URL
             return (
