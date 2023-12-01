@@ -527,7 +527,11 @@ function removeTag(tagID) {
 // Prepares post request inputs for removal of a URL
 function removeTagSetup(tagID) {
   let postURL =
-    REMOVE_TAG_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID() + "/" +
+    REMOVE_TAG_ROUTE +
+    getCurrentUTubID() +
+    "/" +
+    getSelectedURLID() +
+    "/" +
     tagID;
 
   return postURL;

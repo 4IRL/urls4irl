@@ -73,11 +73,11 @@ function getCurrentUTubID() {
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function UTubIDFromName(name) {
   let UTubIDs = [];
-  
+
   UTubs.forEach(function (UTub) {
     if (UTub.name === name) UTubIDs.push(UTub.id);
-  })
-  return UTubIDs
+  });
+  return UTubIDs;
 }
 
 // Streamline the AJAX call to db for updated info

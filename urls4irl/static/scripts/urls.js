@@ -30,7 +30,7 @@ $(document).ready(function () {
 
 // Function to count number of URLs in current UTub
 function numOfURLs() {
-  return 
+  return;
 }
 
 // function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
@@ -588,7 +588,7 @@ function addURLSuccess(response) {
 
   $("#URLFocusRow").append(URLcol);
 
-  showIfHidden($("#accessAllURLsBtn"))
+  showIfHidden($("#accessAllURLsBtn"));
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
@@ -679,7 +679,7 @@ function editURL() {
     }
   });
 }
-d
+d;
 // Prepares post request inputs for edition of a URL
 function editURLSetup() {
   let postURL = EDIT_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
