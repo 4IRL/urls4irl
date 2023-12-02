@@ -8,3 +8,5 @@ flask_session/
 miscellaneous/
 *.DS_Store
 .pytest_cache/
+jquery*.js
+bootstrap*.js*
