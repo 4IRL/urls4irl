@@ -10,3 +10,4 @@ miscellaneous/
 .pytest_cache/
 jquery*.js
 bootstrap*.js*
+bootstrap*.css*

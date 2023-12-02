@@ -6,8 +6,8 @@ from tests.models_for_test import (
     valid_empty_utub_2,
     valid_empty_utub_3,
 )
-from urls4irl.models import Utub, Utub_Users
-from urls4irl.utils import strings as U4I_STRINGS
+from src.models import Utub, Utub_Users
+from src.utils import strings as U4I_STRINGS
 
 ADD_UTUB_FORM = U4I_STRINGS.UTUB_FORM
 UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS

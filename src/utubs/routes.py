@@ -1,10 +1,11 @@
 from flask import Blueprint, jsonify
 from flask_login import current_user
-from urls4irl import db
-from urls4irl.models import Utub, Utub_Users
-from urls4irl.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
-from urls4irl.utils import strings as U4I_STRINGS
-from urls4irl.utils.email_validation import email_validation_required
+
+from src import db
+from src.models import Utub, Utub_Users
+from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
+from src.utils import strings as U4I_STRINGS
+from src.utils.email_validation import email_validation_required
 
 utubs = Blueprint("utubs", __name__)
 

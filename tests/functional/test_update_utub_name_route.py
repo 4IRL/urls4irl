@@ -1,8 +1,8 @@
 from flask import url_for
 from flask_login import current_user
 
-from urls4irl.models import Utub, Utub_Urls, Utub_Users, Url_Tags
-from urls4irl.utils import strings as U4I_STRINGS
+from src.models import Utub, Utub_Urls, Utub_Users, Url_Tags
+from src.utils import strings as U4I_STRINGS
 
 UTUB_FORM = U4I_STRINGS.UTUB_FORM
 UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS

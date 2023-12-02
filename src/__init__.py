@@ -5,8 +5,9 @@ from flask_migrate import Migrate
 from flask_session import Session
 from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
-from urls4irl.config import Config
-from urls4irl.utils.email_sender import EmailSender
+
+from src.config import Config
+from src.utils.email_sender import EmailSender
 
 sess = Session()
 
@@ -40,11 +41,11 @@ def create_app(
     if production:
         email_sender.in_production()
 
-    from urls4irl.main.routes import main
-    from urls4irl.utubs.routes import utubs
-    from urls4irl.users.routes import users
-    from urls4irl.urls.routes import urls
-    from urls4irl.tags.routes import tags
+    from src.main.routes import main
+    from src.utubs.routes import utubs
+    from src.users.routes import users
+    from src.urls.routes import urls
+    from src.tags.routes import tags
 
     app.register_blueprint(main)
     app.register_blueprint(utubs)

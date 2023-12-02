@@ -4,10 +4,10 @@ from flask_login import current_user
 
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
-from urls4irl import db
-from urls4irl.models import URLS, Utub_Urls, Utub, Url_Tags, User
-from urls4irl.utils.constants import EMAIL_CONSTANTS
-from urls4irl.utils import strings as U4I_STRINGS
+from src import db
+from src.models import User
+from src.utils.constants import EMAIL_CONSTANTS
+from src.utils import strings as U4I_STRINGS
 
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 REGISTER_FORM = U4I_STRINGS.REGISTER_FORM

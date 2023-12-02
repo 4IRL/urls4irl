@@ -2,9 +2,9 @@ from flask import url_for
 from flask_login import current_user
 
 from tests.models_for_test import valid_empty_utub_1
-from urls4irl.models import Utub, Utub_Users, Utub_Urls, Url_Tags
-from urls4irl import db
-from urls4irl.utils import strings as U4I_STRINGS
+from src.models import Utub, Utub_Users, Utub_Urls, Url_Tags
+from src import db
+from src.utils import strings as U4I_STRINGS
 
 REMOVE_UTUB_FORM = U4I_STRINGS.UTUB_FORM
 UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS

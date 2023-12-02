@@ -1,4 +1,5 @@
 from datetime import datetime
+
 from flask import (
     Blueprint,
     jsonify,
@@ -12,9 +13,10 @@ from flask import (
 )
 from flask_login import current_user, login_user, logout_user
 from requests import Response
-from urls4irl import db, login_manager, email_sender
-from urls4irl.models import Utub, Utub_Users, User, EmailValidation, ForgotPassword
-from urls4irl.users.forms import (
+
+from src import db, login_manager, email_sender
+from src.models import Utub, Utub_Users, User, EmailValidation, ForgotPassword
+from src.users.forms import (
     LoginForm,
     UserRegistrationForm,
     UTubNewUserForm,
@@ -22,9 +24,9 @@ from urls4irl.users.forms import (
     ForgotPasswordForm,
     ResetPasswordForm,
 )
-from urls4irl.utils import strings as U4I_STRINGS
-from urls4irl.utils.constants import EMAIL_CONSTANTS
-from urls4irl.utils.email_validation import email_validation_required
+from src.utils import strings as U4I_STRINGS
+from src.utils.constants import EMAIL_CONSTANTS
+from src.utils.email_validation import email_validation_required
 
 users = Blueprint("users", __name__)
 

@@ -1,9 +1,9 @@
 from flask import url_for
 from flask_login import current_user
 
-from urls4irl import db
-from urls4irl.models import Utub, URLS, Utub_Urls, Utub_Users, Tags, Url_Tags
-from urls4irl.utils import strings as U4I_STRINGS
+from src import db
+from src.models import Utub, URLS, Utub_Urls, Utub_Users, Tags, Url_Tags
+from src.utils import strings as U4I_STRINGS
 
 TAG_FORM = U4I_STRINGS.TAG_FORM
 TAG_SUCCESS = U4I_STRINGS.TAGS_SUCCESS

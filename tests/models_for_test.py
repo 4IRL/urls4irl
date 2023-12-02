@@ -1,4 +1,4 @@
-from urls4irl.utils import strings as U4I_STRINGS
+from src.utils import strings as U4I_STRINGS
 
 MODEL_STRS = U4I_STRINGS.MODELS
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE

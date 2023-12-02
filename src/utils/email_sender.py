@@ -1,9 +1,11 @@
-from flask import render_template
 from json import dumps
+
+from flask import render_template
 from requests import Response
 from mailjet_rest import Client
 from mailjet_rest.client import ApiError, TimeoutError
-from urls4irl.utils.strings import STD_JSON_RESPONSE, EMAILS, CONFIG_ENVS
+
+from src.utils.strings import STD_JSON_RESPONSE, EMAILS, CONFIG_ENVS
 
 
 # Standard response for JSON messages
