@@ -1,9 +1,9 @@
 from flask import url_for
 from flask_login import current_user
 
-from urls4irl.models import Utub, URLS, Utub_Urls
+from src.models import Utub, URLS, Utub_Urls
 from tests.models_for_test import valid_url_strings
-from urls4irl.utils import strings as U4I_STRINGS
+from src.utils import strings as U4I_STRINGS
 
 URL_FORM = U4I_STRINGS.URL_FORM
 URL_SUCCESS = U4I_STRINGS.URL_SUCCESS

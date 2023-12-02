@@ -1,6 +1,11 @@
 name: Tests
 
-on: push
+on: 
+  push:
+  pull_request:
+    branches:
+      - main
+
 permissions:
   contents: write
 
@@ -73,7 +78,7 @@ jobs:
       - name: Check for modified files
         id: git-check-python
         run: |
-          git config --global --add safe.directory /__w/urls4irl/urls4irl;   
+          git config --global --add safe.directory /__w/urls4irl/src;   
           echo "modified=$(if git diff-index --quiet HEAD --; then echo "false"; else echo "true"; fi)" >> $GITHUB_OUTPUT
 
       - name: Setup node

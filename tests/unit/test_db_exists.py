@@ -1,7 +1,7 @@
 from sqlalchemy import inspect
 
-from urls4irl import db
-from urls4irl.models import URLS, Utub, User, Utub_Urls, Utub_Users, Url_Tags
+from src import db
+from src.models import URLS, Utub, User, Utub_Urls, Utub_Users, Url_Tags
 
 
 def test_db_created_correctly(app):

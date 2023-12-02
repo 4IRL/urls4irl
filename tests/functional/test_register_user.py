@@ -5,8 +5,8 @@ from werkzeug.security import check_password_hash
 
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
-from urls4irl.models import User
-from urls4irl.utils import strings as U4I_STRINGS
+from src.models import User
+from src.utils import strings as U4I_STRINGS
 
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 REGISTER_FORM = U4I_STRINGS.REGISTER_FORM

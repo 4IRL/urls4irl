@@ -2,10 +2,10 @@ from datetime import datetime, timedelta
 from flask import url_for
 
 from tests.models_for_test import valid_user_1
-from urls4irl import db
-from urls4irl.models import User, ForgotPassword
-from urls4irl.utils import constants as U4I_CONSTANTS
-from urls4irl.utils import strings as U4I_STRINGS
+from src import db
+from src.models import User, ForgotPassword
+from src.utils import constants as U4I_CONSTANTS
+from src.utils import strings as U4I_STRINGS
 
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 REGISTER_FORM = U4I_STRINGS.REGISTER_FORM

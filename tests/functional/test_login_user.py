@@ -6,8 +6,8 @@ from pytest import raises
 
 from tests.models_for_test import invalid_user_1, valid_user_1
 from tests.utils_for_test import get_csrf_token
-from urls4irl.utils import strings as U4I_STRINGS
-from urls4irl.models import User
+from src.utils import strings as U4I_STRINGS
+from src.models import User
 
 LOGIN_FORM = U4I_STRINGS.LOGIN_FORM
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE

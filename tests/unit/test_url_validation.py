@@ -1,5 +1,6 @@
-from urls4irl.utils import url_validation as url_valid
 from pytest import raises
+
+from src.utils import url_validation as url_valid
 
 valid_urls = {
     "https://www.google.com/": [

@@ -1,4 +1,4 @@
-from urls4irl import create_app
+from src import create_app
 from os import environ
 from dotenv import load_dotenv
 

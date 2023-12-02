@@ -1,14 +1,15 @@
 from flask import Blueprint, jsonify, request
 from flask_login import current_user
-from urls4irl import db
-from urls4irl.models import Utub, Utub_Urls, URLS, Url_Tags
-from urls4irl.urls.forms import (
+
+from src import db
+from src.models import Utub, Utub_Urls, URLS, Url_Tags
+from src.urls.forms import (
     UTubNewURLForm,
     UTubEditURLForm,
 )
-from urls4irl.utils.url_validation import InvalidURLError, check_request_head
-from urls4irl.utils import strings as U4I_STRINGS
-from urls4irl.utils.email_validation import email_validation_required
+from src.utils.url_validation import InvalidURLError, check_request_head
+from src.utils import strings as U4I_STRINGS
+from src.utils.email_validation import email_validation_required
 
 urls = Blueprint("urls", __name__)
 

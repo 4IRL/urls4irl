@@ -1,9 +1,9 @@
 from flask import url_for
 from flask_login import current_user
 
-from urls4irl import db
-from urls4irl.models import User, ForgotPassword
-from urls4irl.utils import strings as U4I_STRINGS
+from src import db
+from src.models import User, ForgotPassword
+from src.utils import strings as U4I_STRINGS
 
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD

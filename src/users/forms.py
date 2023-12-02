@@ -1,9 +1,9 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
-from urls4irl.models import User
-from urls4irl.utils import strings as U4I_STRINGS
-from urls4irl.utils.constants import USER_CONSTANTS
+from src.models import User
+from src.utils import strings as U4I_STRINGS
+from src.utils.constants import USER_CONSTANTS
 
 USER_FAILURE = U4I_STRINGS.USER_FAILURE
 LOGIN_REGISTER_FORM = U4I_STRINGS.REGISTER_LOGIN_FORM

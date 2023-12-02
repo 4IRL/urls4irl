@@ -3,9 +3,9 @@ from datetime import timedelta
 from flask import url_for
 from flask_login import FlaskLoginClient, current_user
 
-from urls4irl import create_app, db
-from urls4irl.config import TestingConfig
-from urls4irl.models import (
+from src import create_app, db
+from src.config import TestingConfig
+from src.models import (
     User,
     Utub,
     Utub_Users,
@@ -26,7 +26,7 @@ from tests.models_for_test import (
     valid_url_strings,
     all_tags,
 )
-from urls4irl.utils import strings as U4I_STRINGS
+from src.utils import strings as U4I_STRINGS
 
 MODEL_STRS = U4I_STRINGS.MODELS
 USER_STRS = U4I_STRINGS.REGISTER_FORM

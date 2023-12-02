@@ -1,8 +1,9 @@
-from flask_login import login_required, current_user
-from urls4irl.models import EmailValidation
-from functools import wraps
 from flask import session, url_for, redirect
-from urls4irl.utils.strings import EMAILS
+from flask_login import login_required, current_user
+from functools import wraps
+
+from src.models import EmailValidation
+from src.utils.strings import EMAILS
 
 
 def email_validation_required(func):

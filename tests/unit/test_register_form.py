@@ -1,5 +1,6 @@
 from flask import url_for, request
-from urls4irl.utils import strings as U4I_STRINGS
+
+from src.utils import strings as U4I_STRINGS
 
 REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE

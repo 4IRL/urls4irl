@@ -1,8 +1,8 @@
 from flask import redirect, url_for, request, render_template, abort, jsonify, Blueprint
 from flask_login import current_user
-from urls4irl.models import Utub
-from urls4irl.utils.email_validation import email_validation_required
-from urls4irl.utils.strings import EMAIL_VALIDATION_MODAL_CALL
+
+from src.models import Utub
+from src.utils.email_validation import email_validation_required
 
 main = Blueprint("main", __name__)
 

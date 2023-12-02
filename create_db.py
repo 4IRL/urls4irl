@@ -3,7 +3,7 @@ Creates the app's database if not already created.
 https://stackoverflow.com/questions/43713124/creating-a-database-in-flask-sqlalchemy    
 """
 
-from urls4irl import db
+from src import db
 from flask import current_app as app
 
 # from flask_session import SqlAlchemySessionInterface
