@@ -464,8 +464,8 @@ def send_validation_email():
 
 
 def _handle_email_sending_result(email_result: Response):
-    status_code = email_result.status_code
-    json_response = email_result.json()
+    status_code: int = email_result.status_code
+    json_response: dict = email_result.json()
 
     if status_code == 200:
         return (
@@ -476,16 +476,21 @@ def _handle_email_sending_result(email_result: Response):
         )
 
     elif status_code < 500:
-        message = json_response[EMAILS.MESSAGES]
-        errors = message[EMAILS.MAILJET_ERRORS]
+        message = json_response.get(EMAILS.MESSAGES, EMAILS.ERROR_WITH_MAILJET)
+        if message == EMAILS.ERROR_WITH_MAILJET:
+            errors = message
+        else:
+            errors = message.get(EMAILS.MAILJET_ERRORS, EMAILS.ERROR_WITH_MAILJET)
 
-        return jsonify(
-            {
+        return (
+            jsonify(
+                {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: EMAILS.EMAIL_FAILED,
                 STD_JSON.ERROR_CODE: 3,
                 STD_JSON.ERRORS: errors,
-            },
+                }
+            ), 
             400,
         )
 
@@ -495,8 +500,11 @@ def _handle_email_sending_result(email_result: Response):
 
 def _handle_mailjet_failure(email_result: Response, error_code: int = 1):
     json_response = email_result.json()
-    message = json_response[EMAILS.MESSAGES]
-    errors = message[EMAILS.MAILJET_ERRORS]
+    message = json_response.get(EMAILS.MESSAGES, EMAILS.ERROR_WITH_MAILJET)
+    if message == EMAILS.ERROR_WITH_MAILJET:
+        errors = message
+    else:
+        errors = message.get(EMAILS.MAILJET_ERRORS, EMAILS.ERROR_WITH_MAILJET)
     return (
         jsonify(
             {
