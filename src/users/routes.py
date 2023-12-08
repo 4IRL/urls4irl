@@ -485,12 +485,12 @@ def _handle_email_sending_result(email_result: Response):
         return (
             jsonify(
                 {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: EMAILS.EMAIL_FAILED,
-                STD_JSON.ERROR_CODE: 3,
-                STD_JSON.ERRORS: errors,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: EMAILS.EMAIL_FAILED,
+                    STD_JSON.ERROR_CODE: 3,
+                    STD_JSON.ERRORS: errors,
                 }
-            ), 
+            ),
             400,
         )
 
