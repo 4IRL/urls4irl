@@ -121,7 +121,8 @@ function handleUserChangedPassword() {
 function emailValidationModalOpener(tokenExpired = "") {
   $.get("/confirm_email", function (data) {
     $("#SplashModal .modal-content").html(data);
-    $("#SplashModal")
+    const splashModal = $("#SplashModal");
+    splashModal
       .modal()
       .on("hide.bs.modal", function (e) {
         let previouslyClicked = false;
@@ -198,17 +199,26 @@ function showSplashModalAlertBanner(message, category) {
     .text(message);
 }
 
+function showSplashModal() {
+  const splashModal = $("#SplashModal");
+  // splashModal.addClass("show");
+  splashModal.show();
+}
+
 function verifyValidSplashForm() {
   if ($("#SplashModalAlertBanner").length !== 1) {
     window.location.replace("/");
   }
 }
 
+function disableInputFields() {
+  $("input").attr("disabled", true);
+}
+
 function loginModalOpener(url) {
   $.get(url, function (data, textStatus, xhr) {
     $("#SplashModal .modal-content").html(data);
     verifyValidSplashForm();
-    $("#SplashModal").modal();
     setToRegisterButton();
     setForgotPasswordButton();
     $("#submit").click(function (event) {
@@ -235,6 +245,7 @@ function loginModalOpener(url) {
             case 1: {
               // User found but email not yet validated
               handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
+              disableInputFields();
               break;
             }
             case 2: {
@@ -255,7 +266,6 @@ function registerModalOpener(url) {
   $.get(url, function (data) {
     $("#SplashModal .modal-content").html(data);
     verifyValidSplashForm();
-    $("#SplashModal").modal();
     setToLoginButton();
     const registerButton = $("#submit");
     registerButton.click(function (event) {
@@ -282,6 +292,7 @@ function registerModalOpener(url) {
             case 1: {
               // User found but email not yet validated
               handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
+              disableInputFields();
               break;
             }
             case 2: {
