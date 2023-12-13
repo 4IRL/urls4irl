@@ -14,6 +14,51 @@
     {% endif %}
     {% endblock %}
 
+
+    {% if config["USE_LOCAL_JS_BUNDLES"] %}
+    <!-- Use local JS and CSS bundles -->
+    <!-- JS -->
+
+    <!-- jQuery - v3.7.1 -->
+    <script src="/static/scripts/jquery-3.7.1.min.js"></script>
+
+    <!-- Bootstrap bundle with popper - v5.2.3 -->
+    <script src="/static/scripts/bootstrap.bundle.min.js"></script>
+
+    <!-- CSS -->
+
+    <!-- Bootstrap CSS - v5.2.3 -->
+    <link rel="stylesheet" href="/static/styles/bootstrap.min.css">
+
+    <!-- Font -->
+    <link rel="stylesheet" href="/static/styles/font-awesome.min.css">
+
+    {% else %}
+    <!-- Use CDNs for JS and CSS bundles -->
+    <!-- JS -->
+
+    <!-- jQuery - v3.7.1 -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"
+        integrity="sha256-/JqT3SQfawRcv/BIHPThkBvs0OEvtFFmqPF/lYI/Cxo=" crossorigin="anonymous"></script>
+
+    <!-- Bootstrap bundle with popper - v5.2.3 -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/js/bootstrap.bundle.min.js"
+        integrity="sha384-kenU1KFdBIe4zVF0s0G1M5b4hcpxyD9F7jL+jjXkk+Q2h455rYXK/7HAuoJl+0I4"
+        crossorigin="anonymous"></script>
+
+    <!-- CSS -->
+
+    <!-- Bootstrap CSS - v5.2.3 -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.3/dist/css/bootstrap.min.css" rel="stylesheet"
+        integrity="sha384-rbsA2VBKQhggwzxH7pPCaAqO46MgnOM80zW1RWuH61DGLwZJEdK2Kadq2F9CUG65" crossorigin="anonymous">
+
+    <!-- Font -->
+    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,700" rel="stylesheet">
+    <link href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css" rel="stylesheet">
+
+
+    {% endif %}
+
     <!-- JS -->
 
     <!-- Add jQuery to aid with DOM manipulation -->
@@ -21,7 +66,7 @@
         integrity="sha256-9/aliU8dGd2tb6OSsuzixeV4y/faTqgFtohetphbbj0=" crossorigin="anonymous"></script> -->
 
     <!-- Add jQuery to aid with DOM manipulation -- local dev -->
-    <script src="/static/scripts/jquery-3.6.0.js"></script>
+    <!-- <script src="/static/scripts/jquery-3.6.0.js"></script> -->
 
 
     <!-- Bootstrap Bundle with Popper -->
@@ -30,27 +75,27 @@
     crossorigin="anonymous"></script>  -->
 
     <!-- Bootstrap -- local dev -->
-    <script src="/static/scripts/bootstrap.min.js"></script>
-    <script src="/static/scripts/bootstrap.bundle.min.js"></script>
+    <!-- <script src="/static/scripts/bootstrap.min.js"></script>
+    <script src="/static/scripts/bootstrap.bundle.min.js"></script> -->
 
     <!-- Google Font -->
-    <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,700" rel="stylesheet">
+    <!-- <link href="https://fonts.googleapis.com/css?family=Nunito:200,300,400,700" rel="stylesheet"> -->
 
     <!-- CSS -->
     <!-- Bootstrap -->
     <!-- https://getbootstrap.com/docs/4.3/getting-started/introduction/ -->
-    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
+    <!-- <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css"
         integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css">
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.9.1/font/bootstrap-icons.css"> -->
 
     <!-- Bootstrap -- local dev -->
-    <link rel="stylesheet" href="/static/styles/bootstrap.min.css">
+    <!-- <link rel="stylesheet" href="/static/styles/bootstrap.min.css"> -->
     <!-- <link rel="stylesheet" href="/static/styles/bootstrap-reboot.min.css"> -->
     <!-- <link rel="stylesheet" href="/static/styles/bootstrap-grid.min.css"> -->
 
     <!-- FontAwesome -- comment out for local dev -->
     <!-- https://fontawesome.com/v4/get-started/ -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css">
+    <!-- <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.4.0/css/font-awesome.min.css"> -->
 
     <!-- Custom CSS adjustments -->
     <link rel="stylesheet" href="/static/styles/app.css">
@@ -65,26 +110,12 @@
 <body class="d-flex flex-column vh-100">
     <!-- Navigation Bar -->
     <nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0 fixed-top">
-        <div class="navbar-collapse collapse w-100 order-1 order-md-0 dual-collapse2">
-            <ul class="navbar-nav mr-auto">
-                <li class="nav-item active">
-                    <a class="nav-link" href="{{url_for('main.home')}}">Home</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="javascript:;">Link</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="javascript:;">Link</a>
-                </li>
-            </ul>
-        </div>
-        <div class="mx-auto order-0">
-            <a class="navbar-brand mx-auto" href="#">URLS4IRL</a>
-            <button class="navbar-toggler" type="button" data-toggle="collapse" data-target=".dual-collapse2">
-                <span class="navbar-toggler-icon"></span>
-            </button>
-        </div>
-        <div class="navbar-collapse collapse w-100 order-3 dual-collapse2">
+        <a class="navbar-brand navbar-start" href="#">URLS4IRL</a>
+        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
+            aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+            <span class="navbar-toggler-icon"></span>
+        </button>
+        <div class="navbar-collapse collapse w-100 order-3 navbar-end" id="navbarNavDropdown">
             <ul class="navbar-nav ml-auto">
                 {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
                 <li id="{{current_user.id}}" class="nav-item user">
@@ -140,8 +171,7 @@
     </div>
 
     {% else %}
-    <div class="modal fade" id="SplashModal" tabindex="-1" role="dialog" aria-labelledby="FormModal"
-        aria-hidden="true">
+    <div class="modal fade" id="SplashModal" tabindex="-1" role="dialog" aria-labelledby="FormModal" aria-hidden="true">
         <div class="modal-dialog" id="SplashModal" role="document">
             <div class="modal-content">
             </div>

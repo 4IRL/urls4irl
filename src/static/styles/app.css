@@ -1,3 +1,7 @@
+:root {
+    --splashGreen: #28a745;
+}
+
 html,
 body {
     height: 100%;
@@ -517,10 +521,33 @@ i.fa-check-square {
 .jumbotron {
     background: rgba(248, 248, 248, 0.74);
     padding: 6rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .splash-button {
     margin-top: 10px;
+    width: 20%;
+    min-width: 250px;
+    max-width: 450px;
+    background-color: var(--splashGreen);
+    border-color: var(--splashGreen);
+}
+
+.center-brand {
+    position: absolute;
+    top: 0.875rem;
+    left: 50%;
+}
+
+.navbar-end,
+.navbar-start {
+    margin-inline: 20px;
+}
+
+.navbar-end {
+    justify-content: flex-end;
 }
 
 .login-register-label {

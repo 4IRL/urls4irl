@@ -21,6 +21,10 @@ class Config:
     MAILJET_API_KEY = environ.get(CONFIG_ENVS.MAILJET_API_KEY)
     MAILJET_SECRET_KEY = environ.get(CONFIG_ENVS.MAILJET_SECRET_KEY)
     TESTING = False
+    USE_LOCAL_JS_BUNDLES = False
+
+    def must_use_local_js_bundles():
+        Config.USE_LOCAL_JS_BUNDLES = True
 
 
 class TestingConfig(Config):
