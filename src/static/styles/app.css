@@ -544,6 +544,12 @@ i.fa-check-square {
 .navbar-end,
 .navbar-start {
     margin-inline: 20px;
+    height: inherit;
+}
+
+.navbar-start {
+    display: flex;
+    align-items: center;
 }
 
 .navbar-end {
@@ -633,7 +639,7 @@ i.fa-check-square {
     text-align: center;
 }
 
-/* ID sepcific */
+/* ID specific */
 
 #body {
     min-height: 380px;
@@ -648,6 +654,24 @@ i.fa-check-square {
     justify-content: center;
     position: relative;
     min-height: calc(100vh-56px);
+}
+
+#iconContainer {
+    height: inherit;
+    display: flex;
+    padding-top: initial !important;
+    padding-inline: 10px;
+    align-items: center;
+}
+
+#mainNavbar {
+    height: 50px;
+}
+
+#u4iFavicon {
+    height: 90%;
+    width: auto;
+    max-width: initial;
 }
 
 #pageContent {
