@@ -122,16 +122,14 @@ function emailValidationModalOpener(tokenExpired = "") {
   $.get("/confirm_email", function (data) {
     $("#SplashModal .modal-content").html(data);
     const splashModal = $("#SplashModal");
-    splashModal
-      .modal()
-      .on("hide.bs.modal", function (e) {
-        let previouslyClicked = false;
-        if (!previouslyClicked) {
-          logoutUser();
-          previouslyClicked = true;
-          $("#SplashModal").off("hide.bs.modal");
-        }
-      });
+    splashModal.modal().on("hide.bs.modal", function (e) {
+      let previouslyClicked = false;
+      if (!previouslyClicked) {
+        logoutUser();
+        previouslyClicked = true;
+        $("#SplashModal").off("hide.bs.modal");
+      }
+    });
     setCloseModalButton(true);
     if (tokenExpired !== undefined && tokenExpired.length != 0) {
       showSplashModalAlertBanner(tokenExpired, "info");
