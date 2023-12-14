@@ -158,6 +158,10 @@ i.fa-check-square {
     float: right;
 }
 
+.green-clickable {
+    color: var(--splashGreen);
+}
+
 .tag-remove {
     padding: 0rem;
     vertical-align: unset;
