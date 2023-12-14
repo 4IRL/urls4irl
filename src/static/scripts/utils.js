@@ -26,6 +26,14 @@ function AJAXCall(type, url, data) {
   }));
 }
 
+function bindKeyToFunction(f, keyTarget) {
+  $(document).keypress(function(e) {
+    if (e.keyCode === keyTarget) {
+      return f;
+    }
+  })
+}
+
 // Rebind Enter key to current function submission
 // $(document).on("keyup", function (e) {
 //   if (e.keyCode === 13) {

@@ -387,6 +387,8 @@ function sameNameWarningShowModal(mode, UTubID) {
 function addUTubShowInput() {
   showInput("createUTub");
   highlightInput($("#createUTub"));
+  bindKeyToFunction(addUTub(), 13);
+  bindKeyToFunction(addUTubHideInput(), 27);
 }
 
 // Hides new UTub input fields
