@@ -236,7 +236,6 @@ i.fa-check-square {
 }
 
 .col-lg-4 {
-    width: 0;
     flex-shrink: 1;
     transition: all 250ms ease;
 }
@@ -247,7 +246,6 @@ i.fa-check-square {
 }
 
 .col-xl-3 {
-    width: 0;
     flex-shrink: 1;
     transition: all 250ms ease;
 }

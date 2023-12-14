@@ -679,7 +679,7 @@ function editURL() {
     }
   });
 }
-d;
+
 // Prepares post request inputs for edition of a URL
 function editURLSetup() {
   let postURL = EDIT_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
