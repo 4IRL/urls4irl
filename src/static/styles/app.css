@@ -1,3 +1,8 @@
+:root {
+    --splashGreen: #28a745;
+    --splashLabelGreen: #2ecc71;
+}
+
 html,
 body {
     height: 100%;
@@ -14,9 +19,8 @@ h1 {
     font-size: 2.5em;
 }
 
-h2,
-.login-register-label {
-    color: #2ecc71;
+h2 {
+    color: var(--splashLabelGreen);
 }
 
 p {
@@ -517,15 +521,48 @@ i.fa-check-square {
 .jumbotron {
     background: rgba(248, 248, 248, 0.74);
     padding: 6rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
 }
 
 .splash-button {
     margin-top: 10px;
+    width: 20%;
+    min-width: 250px;
+    max-width: 450px;
+    background-color: var(--splashGreen);
+    border-color: var(--splashGreen);
 }
 
+.center-brand {
+    position: absolute;
+    top: 0.875rem;
+    left: 50%;
+}
+
+.navbar-end,
+.navbar-start {
+    margin-inline: 20px;
+}
+
+.navbar-end {
+    justify-content: flex-end;
+}
+
+.forgot-password-email-label,
 .login-register-label {
     font-weight: 700;
     font-size: 120%;
+    color: var(--splashLabelGreen);
+}
+
+.login-register-label {
+    padding-top: 20px;
+}
+
+.first-in-register-login-form>label {
+    padding-top: 0;
 }
 
 .modal-open {
@@ -538,6 +575,10 @@ i.fa-check-square {
 
 .modal-close {
     width: auto;
+}
+
+.modal-content {
+    padding: 1%;
 }
 
 .validate-email-title {
@@ -557,9 +598,16 @@ i.fa-check-square {
     box-sizing: border-box;
 }
 
-.login-buttons {
+.login-register-buttons {
     display: inline-block;
     vertical-align: top;
+    background-color: var(--splashGreen);
+    border-color: var(--splashGreen);
+}
+
+.register-login-modal-footer {
+    justify-content: center;
+    margin-top: 20px;
 }
 
 .validate-email-text {
@@ -646,4 +694,9 @@ i.fa-check-square {
 
 #ForgotPasswordText {
     color: black;
+}
+
+#EmailValidationFooter {
+    flex-wrap: nowrap;
+    justify-content: center;
 }

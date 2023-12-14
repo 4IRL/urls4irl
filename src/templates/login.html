@@ -2,20 +2,18 @@
     if (document.querySelector('head').childElementCount === 1) {
         window.location.href = '/';
     };
-    let isValidSplashForm = true;
 </script>
 <form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>
     <div class="modal-header">
         <h4 class="modal-title">Login!</h4>
-        <button type="button" class="close close-register-login-modal" data-dismiss="modal" aria-label="close">
-            <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close close-register-login-modal" data-bs-dismiss="modal" aria-label="close">
         </button>
     </div>
     <div class="modal-body">
         {{ login_form.hidden_tag() }}
         <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
         <fieldset class="form-group">
-            <div class="form-group">
+            <div class="form-group first-in-register-login-form">
                 {{ login_form.username.label(class="form-control-label login-register-label")}}
                 {% if login_form.username.errors %}
                 {{ login_form.username(class="form-control login-register-form-group is-invalid") }}
@@ -48,9 +46,9 @@
             </div>
         </fieldset>
     </div>
-    <div class="modal-footer">
-        {{ login_form.submit(class="btn btn-success login-register-form-group login-buttons center-block col-4 mr-4")}}
-        <a class="btn btn-success col-7 login-register-form-group to-register login-buttons center-block"
+    <div class="modal-footer register-login-modal-footer">
+        {{ login_form.submit(class="btn btn-success login-register-form-group login-register-buttons center-block col-4 mr-4")}}
+        <a class="btn btn-success col-7 login-register-form-group to-register login-register-buttons center-block"
             href="javascript:;">Register</a>
     </div>
 </form>

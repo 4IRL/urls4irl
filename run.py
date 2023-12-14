@@ -8,6 +8,7 @@ if environ.get("PRODUCTION") is None:
     quit()
 
 is_production_env_var = environ.get("PRODUCTION")
+use_local_js_bundles_var = environ.get("USE_LOCAL_BUNDLES", default="false")
 
 if is_production_env_var.lower() not in ("false", "true"):
     print("Invalid PRODUCTION environment variable.")
@@ -15,7 +16,9 @@ if is_production_env_var.lower() not in ("false", "true"):
 else:
     is_production = True if is_production_env_var.lower() == "true" else False
 
-app = create_app(production=is_production)
+use_local_js_bundles = True if use_local_js_bundles_var.lower() == "true" else False
+
+app = create_app(production=is_production, use_local_js_bundles=use_local_js_bundles)
 
 if __name__ == "__main__":
     if not is_production:

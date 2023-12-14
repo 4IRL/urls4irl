@@ -2,21 +2,19 @@
     if (document.querySelector('head').childElementCount === 1) {
         window.location.href = '/';
     };
-    let isValidSplashForm = true;
 </script>
 
 <form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>
     <div class="modal-header">
         <h4 class="modal-title">Register</h4>
-        <button type="button" class="close close-register-login-modal" data-dismiss="modal" aria-label="close">
-            <span aria-hidden="true">&times;</span>
+        <button type="button" class="btn-close close-register-login-modal" data-bs-dismiss="modal" aria-label="close">
         </button>
     </div>
     <div class="modal-body">
         {{ register_form.hidden_tag() }}
         <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
         <fieldset class="form-group">
-            <div class="form-group">
+            <div class="form-group first-in-register-login-form">
                 {{ register_form.username.label(class="form-control-label login-register-label")}}
                 {% if register_form.username.errors %}
                 {{ register_form.username(class="form-control login-register-form-group is-invalid") }}
@@ -83,8 +81,8 @@
             </div>
         </fieldset>
     </div>
-    <div class="modal-footer">
-        {{ register_form.submit(class="btn btn-success login-register-form-group col-12")}}
+    <div class="modal-footer register-login-modal-footer">
+        {{ register_form.submit(class="btn btn-success login-register-form-group col-12 login-register-buttons")}}
     </div>
 </form>
 <div class="d-flex justify-content-center register-to-login-footer">
