@@ -17,15 +17,15 @@
         <div class="col-3 col-lg-3 mb-md-0 text-right d-flex justify-content-center flex-row">
 
             <!-- Production (1/5) -->
-            <i id="createUTubButton" class="green-clickable mx-1">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+            <i id="createUTubBtn" class="green-clickable mx-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor"
                     class="bi bi-plus-square-fill text-success" viewBox="0 0 16 16">
                     <path
                         d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
                 </svg>
             </i>
-            <i id="deleteUTubButton" class="mx-1" style="display:none">
-                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+            <i id="deleteUTubBtn" class="mx-1" style="display:none">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor"
                     class="bi bi-x-square-fill text-danger" viewBox="0 0 16 16">
                     <path
                         d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
@@ -74,7 +74,7 @@
                     <input type="text" id="editUTubName" class="userInput">
 
                     <!-- Production (3/5) -->
-                    <i id="submitEditUTubButton" class="mx-1" type="button">
+                    <i id="submitEditUTubBtn" class="mx-1" type="button">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                             class="bi bi-check-square-fill  text-success" viewBox="0 0 16 16">
                             <path
@@ -85,7 +85,7 @@
                 </div>
 
                 <!-- Production (4/5) -->
-                <i id="editUTubButton" class="mx-1" style="display: none; color: #545454">
+                <i id="editUTubBtn" class="mx-1" style="display: none; color: #545454">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
                         class="bi bi-pencil-square" viewBox="0 0 16 16">
                         <path
@@ -118,10 +118,6 @@
                 </div>
             </div>
             <div class="col-3 col-lg-3 mb-md-0 text-right">
-
-                <!-- Local Dev (5/5) -->
-                <!-- <button id="addURLBtn" class="bi bi-plus-square-fill fa-2x btn-success mx-1" style="display: none;">+</button> -->
-                <!-- Local Dev (5/5) -->
 
                 <!-- Production (5/5) -->
                 <button id="accessAllURLsBtn" class="btn btn-primary mx-1" style="display: none;">Access All URLs in
@@ -188,10 +184,10 @@
 
 <!-- Home Page JS -->
 <script src="{{ url_for('static', filename='scripts/utils.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/utubs.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/tags.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/urls.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/users.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/dragdropswap.js') }}"></script>
 
 {% endblock %}

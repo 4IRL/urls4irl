@@ -43,6 +43,10 @@ form {
     /* So the width will be 100% + 17px */
 }
 
+svg {
+    width: 30;
+    height: 30;
+}
 
 img {
     max-width: 50%;
