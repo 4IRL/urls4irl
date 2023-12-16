@@ -57,7 +57,7 @@ def home():
             int(member.user_id) for member in utub.members
         ]:
             # User is not member of the UTub they are requesting
-            abort(403)
+            abort(404)
 
         utub_data_serialized = utub.serialized
 
