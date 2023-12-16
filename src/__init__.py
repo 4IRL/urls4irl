@@ -8,6 +8,7 @@ from flask_wtf.csrf import CSRFProtect
 
 from src.config import Config
 from src.utils.email_sender import EmailSender
+from src.utils.error_handler import handle_404_response
 
 sess = Session()
 
@@ -56,6 +57,8 @@ def create_app(
     app.register_blueprint(users)
     app.register_blueprint(urls)
     app.register_blueprint(tags)
+
+    app.register_error_handler(404, handle_404_response)
 
     if not testing:
         migrate.init_app(app)
