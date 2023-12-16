@@ -1801,7 +1801,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         data=add_tag_form,
     )
 
-    assert add_tag_response.status_code == 404
+    assert add_tag_response.status_code == 400
 
     # Ensure json response from server is valid
     add_tag_response_json = add_tag_response.json

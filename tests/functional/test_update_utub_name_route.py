@@ -267,7 +267,7 @@ def test_update_utub_empty_name_as_creator(
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 404
+    assert edit_utub_name_response.status_code == 400
 
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
@@ -372,7 +372,7 @@ def test_update_utub_name_only_spaces_as_creator(
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 404
+    assert edit_utub_name_response.status_code == 400
 
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
@@ -752,7 +752,7 @@ def test_update_name_of_utub_too_long_name(
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 404
+    assert edit_utub_name_response.status_code == 400
 
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json
@@ -854,7 +854,7 @@ def test_update_name_of_utub_missing_name_field_form(
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 404
+    assert edit_utub_name_response.status_code == 400
 
     # Ensure JSON response is correct
     edit_utub_name_json_response = edit_utub_name_response.json

@@ -175,7 +175,7 @@ def register_user():
                             STD_JSON.ERRORS: register_form.errors,
                         }
                     ),
-                    401,
+                    400,
                 )
             else:
                 login_user(
@@ -203,7 +203,7 @@ def register_user():
                     STD_JSON.ERRORS: register_form.errors,
                 }
             ),
-            401,
+            400,
         )
 
     return render_template("register_user.html", register_form=register_form)
@@ -380,7 +380,7 @@ def add_user(utub_id: int):
                     STD_JSON.ERRORS: utub_new_user_form.errors,
                 }
             ),
-            404,
+            400,
         )
 
     return (
@@ -549,10 +549,10 @@ def validate_email(token: str):
                 db.session.delete(user_of_invalid_email)
                 db.session.delete(invalid_email)
             db.session.commit()
-        return abort(404)
+        abort(404)
 
     if not user_to_validate.email_confirm.confirm_url == token:
-        return abort(404)
+        abort(404)
 
     user_to_validate.email_confirm.validate()
     user_to_validate.email_confirm.confirm_url = ""

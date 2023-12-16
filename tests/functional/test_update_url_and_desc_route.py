@@ -1837,7 +1837,7 @@ def test_update_valid_url_with_empty_url_and_empty_desc_as_utub_creator(
         data=edit_url_string_desc_form,
     )
 
-    assert edit_url_string_desc_form.status_code == 404
+    assert edit_url_string_desc_form.status_code == 400
 
     # Assert JSON response from server is valid
     json_response = edit_url_string_desc_form.json
@@ -1952,7 +1952,7 @@ def test_update_valid_url_with_empty_url_and_valid_desc_as_utub_creator(
         data=edit_url_string_desc_form,
     )
 
-    assert edit_url_string_desc_form.status_code == 404
+    assert edit_url_string_desc_form.status_code == 400
 
     # Assert JSON response from server is valid
     json_response = edit_url_string_desc_form.json
@@ -2512,7 +2512,7 @@ def test_update_valid_url_with_missing_url_field_and_valid_desc_as_utub_creator(
         data=edit_url_string_desc_form,
     )
 
-    assert edit_url_string_desc_form.status_code == 404
+    assert edit_url_string_desc_form.status_code == 400
 
     # Assert JSON response from server is valid
     json_response = edit_url_string_desc_form.json
@@ -2623,7 +2623,7 @@ def test_update_valid_url_with_valid_url_and_missing_valid_desc_as_utub_creator(
         data=edit_url_string_desc_form,
     )
 
-    assert edit_url_string_desc_form.status_code == 404
+    assert edit_url_string_desc_form.status_code == 400
 
     # Assert JSON response from server is valid
     json_response = edit_url_string_desc_form.json

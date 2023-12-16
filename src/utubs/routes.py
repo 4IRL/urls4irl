@@ -65,7 +65,7 @@ def create_utub():
                     STD_JSON.ERRORS: utub_form.errors,
                 }
             ),
-            404,
+            400,
         )
 
     return (
@@ -190,7 +190,7 @@ def update_utub_name(utub_id: int):
                     STD_JSON.ERRORS: utub_name_form.errors,
                 }
             ),
-            404,
+            400,
         )
 
     return (
@@ -256,7 +256,7 @@ def update_utub_desc(utub_id: int):
                         STD_JSON.ERROR_CODE: 2,
                     }
                 ),
-                404,
+                400,
             )
 
         if new_utub_description != current_utub_description:
@@ -286,7 +286,7 @@ def update_utub_desc(utub_id: int):
                     STD_JSON.ERRORS: utub_desc_form.errors,
                 }
             ),
-            404,
+            400,
         )
 
     return (

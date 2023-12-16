@@ -225,7 +225,7 @@ def add_url(utub_id: int):
                     STD_JSON.ERRORS: utub_new_url_form.errors,
                 }
             ),
-            404,
+            400,
         )
 
     # Something else went wrong
@@ -436,7 +436,7 @@ def edit_url_and_description(utub_id: int, url_id: int):
                     },
                 }
             ),
-            404,
+            400,
         )
 
     # Invalid form input
@@ -450,7 +450,7 @@ def edit_url_and_description(utub_id: int, url_id: int):
                     STD_JSON.ERRORS: edit_url_form.errors,
                 }
             ),
-            404,
+            400,
         )
 
     # Something else went wrong

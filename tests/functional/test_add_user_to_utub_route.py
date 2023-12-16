@@ -525,7 +525,7 @@ def test_add_nonexistant_user_to_utub(
         url_for("users.add_user", utub_id=only_utub.id), data=add_user_form
     )
 
-    assert add_user_response.status_code == 404
+    assert add_user_response.status_code == 400
 
     with app.app_context():
         # Ensure only one user exists
@@ -666,7 +666,7 @@ def test_add_user_to_utub_invalid_form(
         url_for("users.add_user", utub_id=current_user_utub.id), data=add_user_form
     )
 
-    assert add_user_response.status_code == 404
+    assert add_user_response.status_code == 400
 
     add_user_response_json = add_user_response.json
 
