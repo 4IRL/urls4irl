@@ -27,7 +27,7 @@ def test_register_user_form_only_username_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
@@ -65,7 +65,7 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
@@ -106,7 +106,7 @@ def test_register_user_form_only_valid_email_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
@@ -144,7 +144,7 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
@@ -186,7 +186,7 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
@@ -228,7 +228,7 @@ def test_register_user_form_only_valid_password_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert request.path == url_for("users.register_user")
     response_json = response.json
 
@@ -266,7 +266,7 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert request.path == url_for("users.register_user")
     response_json = response.json
 

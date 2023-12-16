@@ -1023,7 +1023,7 @@ def test_add_url_missing_url(
         url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
     )
 
-    assert add_url_response.status_code == 404
+    assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
@@ -1102,7 +1102,7 @@ def test_add_url_missing_url_description(
         url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
     )
 
-    assert add_url_response.status_code == 404
+    assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE

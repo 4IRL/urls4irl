@@ -42,12 +42,12 @@ def home():
     elif len(request.args) > 1:
         # Too many args in URL
         print("Too many arguments?")
-        return abort(404)
+        abort(404)
 
     else:
         if "UTubID" not in request.args:
             # Wrong argument
-            return abort(404)
+            abort(404)
 
         requested_id = request.args.get("UTubID")
 
@@ -57,7 +57,7 @@ def home():
             int(member.user_id) for member in utub.members
         ]:
             # User is not member of the UTub they are requesting
-            return abort(403)
+            abort(403)
 
         utub_data_serialized = utub.serialized
 

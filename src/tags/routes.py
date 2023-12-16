@@ -145,7 +145,7 @@ def add_tag(utub_id: int, url_id: int):
                     STD_JSON.ERRORS: url_tag_form.errors,
                 }
             ),
-            404,
+            400,
         )
 
     return (
@@ -292,7 +292,7 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
                             STD_JSON.ERROR_CODE: 2,
                         }
                     ),
-                    404,
+                    400,
                 )
 
         tag_on_url_in_utub.tag_id = tag_that_already_exists.id
@@ -328,7 +328,7 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
                     STD_JSON.ERRORS: url_tag_form.errors,
                 }
             ),
-            404,
+            400,
         )
 
     return (
