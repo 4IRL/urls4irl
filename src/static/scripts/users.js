@@ -8,6 +8,21 @@ const REMOVE_USER_ROUTE = "/user/remove/"; // +<int:utub_id>/<int:user_id>
 
 $(document).ready(function () {
   /* Bind click functions */
+  
+  // Add user to UTub
+  $("#addUserBtn").on("click", function (e) {
+    // e.stopPropagation();
+    // e.preventDefault();
+    addUser();
+  });
+  
+  // Remove user from UTub
+  $("#removeUserBtn").on("click", function (e) {
+    // e.stopPropagation();
+    // e.preventDefault();
+    removeUserShowModal();
+  });
+  
 });
 
 /** User Utility Functions **/
@@ -16,12 +31,19 @@ $(document).ready(function () {
 function selectedUserID() {}
 
 // Clear user selection
-function clearUserSelection() {}
+function clearUserSelection() {
+  $("#UTubUsernameInput").val("");
+}
 
 /* User Functions */
 
 // Build center panel URL list for selectedUTub
-function buildUserDeck() {}
+function buildUserDeck(UTubUsers) {
+  
+  for(UTubUser in UTubUsers) {
+    $("#UTubUsers").append(UTubUser.username);
+  }
+}
 
 /** Post data handling **/
 
@@ -57,11 +79,9 @@ function addUser() {
 function addUserSetup() {
   let postURL = ADD_USER_ROUTE + currentUTubID();
 
-  let newURLDescription = $("#newURLDescription").val();
-  let newURL = $("#newURLString").val();
+  let newUsername = $("#UTubUsernameInput").val();
   data = {
-    url_string: newURL,
-    url_description: newURLDescription,
+    username: newUsername
   };
 
   return [postURL, data];
@@ -82,7 +102,7 @@ function addUserFail(response) {
 
 // Show confirmation modal for removal of the selected user from current UTub
 function removeUserShowModal() {
-  let modalTitle = "Are you sure you want to delete this URL from the UTub?";
+  let modalTitle = "Are you sure you want to remove this user from the UTub?";
   $(".modal-title").text(modalTitle);
 
   $("#modalDismiss").on("click", function (e) {
@@ -92,7 +112,7 @@ function removeUserShowModal() {
 
   $("#modalSubmit").on("click", function (e) {
     e.preventDefault();
-    removeURL();
+    removeUser();
   });
 
   $("#confirmModal").modal("show");
@@ -129,7 +149,7 @@ function removeUser() {
 
 // This function will extract the current selection data needed for POST request (user ID)
 function removeUserSetup() {
-  let postURL = REMOVE_URL_ROUTE + currentUTubID() + "/" + selectedURLID();
+  let postURL = REMOVE_USER_ROUTE + currentUTubID();
 
   return postURL;
 }
@@ -139,8 +159,6 @@ function removeUserSuccess() {
   $("#confirmModal").modal("hide");
 
   let cardCol = $("div[urlid=" + selectedURLID() + "]").parent();
-  cardCol.fadeOut();
-  cardCol.remove();
 }
 
 function removeUserFail(xhr, textStatus, error) {

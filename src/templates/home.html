@@ -5,6 +5,7 @@
 <script type="text/javascript">
     var UTubs = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
 </script>
+<!-- 12/17 DP this is visible to the user? Ok? -->
 
 <!-- Left Side Panel -->
 <div id="leftPanel" class="panel col-md-3">
@@ -18,15 +19,15 @@
 
             <!-- Production (1/5) -->
             <i id="createUTubBtn" class="green-clickable mx-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor"
-                    class="bi bi-plus-square-fill text-success" viewBox="0 0 16 16">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill text-success"
+                    viewBox="0 0 16 16">
                     <path
                         d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
                 </svg>
             </i>
             <i id="deleteUTubBtn" class="mx-1" style="display:none">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor"
-                    class="bi bi-x-square-fill text-danger" viewBox="0 0 16 16">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger"
+                    viewBox="0 0 16 16">
                     <path
                         d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
                 </svg></i>
@@ -65,7 +66,7 @@
 </div>
 
 <!-- Center Panel, URLs -->
-<div id="centerPanel" class="panel col-md-7">
+<div id="centerPanel" class="panel col-md-6">
     <div id="URLDeck" class="deck h-100 p-3" style="margin-bottom: -5px;">
         <div class="row justify-content-center mx-2">
             <div class="col-9 col-lg-9 mb-md-0 text-left">
@@ -73,19 +74,16 @@
                 <div class="createDiv" style="display: none">
                     <input type="text" id="editUTubName" class="userInput">
 
-                    <!-- Production (3/5) -->
-                    <i id="submitEditUTubBtn" class="mx-1" type="button">
+                    <i class="submitEditUTubBtn green-clickable mx-1" type="button">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                             class="bi bi-check-square-fill  text-success" viewBox="0 0 16 16">
                             <path
                                 d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z" />
                         </svg>
                     </i>
-                    <!-- Production (3/5) -->
                 </div>
 
-                <!-- Production (4/5) -->
-                <i id="editUTubBtn" class="mx-1" style="display: none; color: #545454">
+                <i class="editUTubBtn mx-1" style="display: none; color: #545454">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
                         class="bi bi-pencil-square" viewBox="0 0 16 16">
                         <path
@@ -94,7 +92,6 @@
                             d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
                     </svg>
                 </i>
-                <!-- Production (4/5) -->
             </div>
             <div class="col-3 col-lg-3 mb-md-0 text-right">
 
@@ -111,11 +108,7 @@
         </div>
         <div class="row justify-content-center mx-2">
             <div class="col-9 col-lg-9 mb-md-0 text-left">
-                <p id="UTubDescription" style="display: inline-block"></p>
-                <div class="createDiv" style="display: none">
-                    <textarea cols="40" rows="5" id="editUTubDescription" class="userInput"
-                        placeholder="Describe the contents of your UTub (optional)"></textarea>
-                </div>
+
             </div>
             <div class="col-3 col-lg-3 mb-md-0 text-right">
 
@@ -144,40 +137,64 @@
 
 <!-- Right Side Panel -->
 
-<div id="rightPanel" class="panel col-md-2">
-    <div id="MembersDeck" class="deck row h-50 md-mb-1 p-3" style="display: block; /*margin-bottom: 5px;*/">
+<div id="rightPanel" class="panel col-md-3">
 
-        <h2>Members</h2>
+    <div id="UTubDescriptionDeck" class="deck row h-50 p-3">
+        <div class="col-9 col-lg-9 mb-md-0">
+            <h2 id="UTubDescriptionDeckHeader">UTub Description</h2>
+        </div>
+
+        <div class="col-3 col-lg-3 mb-md-0 text-right d-flex justify-content-center flex-row">
+            <i class="mx-1 editUTubBtn" style="display: none; color: #545454">
+                <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                    class="bi bi-pencil-square" viewBox="0 0 16 16">
+                    <path
+                        d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                    <path fill-rule="evenodd"
+                        d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                </svg>
+            </i>
+            <i class="submitEditUTubBtn green-clickable mx-1" type="button" style="display: none">
+                <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                    class="bi bi-check-square-fill  text-success" viewBox="0 0 16 16">
+                    <path
+                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z" />
+                </svg>
+            </i>
+        </div>
+        <p id="UTubDescription" style="display: inline-block"></p>
+        <div class="createDiv" style="display: none">
+            <textarea cols="40" rows="5" id="editUTubDescription" class="userInput"
+                placeholder="Describe the contents of your UTub (optional)"></textarea>
+        </div>
+    </div>
+
+    <div id="UsersDeck" class="deck row h-50 md-mb-1 p-3" style="display: block; /*margin-bottom: 5px;*/">
+        <h2 id="UserDeckHeader">Users</h2>
 
         <h5>Owner</h5>
         <span id="UTubOwner"></span>
 
-        <h5>Users</h5>
-        <input type="text" id="UTubUsers">
-        </input>
+        <h5>Username</h5>
+        <div class="createDiv" style="display: none">
+            <input type="text" id="UTubUsernameInput">
+            </input>
 
-        <h5>Actions</h5>
-        <div id="UTubActions" class="row">
-            <button class="btn btn-success mx-3" id="addUser" modal-target="#"
-                onclick="openModal(this.getAttribute('modal-target'))">Add New User</button>
+            <i id="addUserBtn" class="green-clickable mx-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill text-success"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
+                </svg>
+            </i>
 
-            <button class="btn btn-danger mx-3" id="removeUser" modal-target="#"
-                onclick="openModal(this.getAttribute('modal-target'))">Remove Selected User</button>
+            <i id="removeUser" class="mx-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
+                </svg></i>
         </div>
-    </div>
-
-    <div id="ChatDeck" class="deck row h-50 p-3">
-        <h2>Chat</h2>
-        <p class="lead">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
-            beatae, maiores deserunt
-            in voluptatibus
-            aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
-            repellat eveniet quidem
-            voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
-            autem nam ex deserunt debitis
-            eaque ratione! Nobis, quidem assumenda.
-        </p>
     </div>
 </div>
 
