@@ -45,6 +45,71 @@ function buildUserDeck(UTubUsers) {
   }
 }
 
+
+// Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
+function createNewUserInputField() {
+  const wrapper = $(document.createElement("div"));
+  const wrapperInput = $(document.createElement("div"));
+  const wrapperBtns = $(document.createElement("div"));
+
+  const input = $(document.createElement("input"));
+  const submit = $(document.createElement("i"));
+  const cancel = $(document.createElement("i"));
+
+  $(wrapper)
+    .attr({
+      style: "display: none",
+    })
+    .addClass("createDiv row");
+
+  $(wrapperInput).addClass("col-5 col-lg-5 mb-md-0");
+
+  $(input)
+    .attr({
+      type: "text",
+      id: "",
+      placeholder: "Username",
+    })
+    .addClass("UTub userInput");
+
+  wrapperInput.append(input);
+
+  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
+
+  // Add UTub checkbox 
+  let htmlString = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-check-square-fill" viewBox="0 0 16 16">' + '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z"/>' + '</svg>';
+
+  $(submit)
+    .addClass("mx-1 green-clickable")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+    })
+    .html(htmlString);
+
+  wrapperBtns.append(submit);
+
+  // Cancel add UTub x-box 
+  htmlString = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill" viewBox="0 0 16 16">' + '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' + '</svg>';
+  
+  $(cancel)
+    .addClass("mx-1")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      hideIfShown(wrapper);
+    })
+    .html(htmlString);
+
+  wrapperBtns.append(cancel);
+
+  wrapper.append(wrapperInput);
+  wrapper.append(wrapperBtns);
+
+  return wrapper;
+}
+
+
 /** Post data handling **/
 
 /* Add User */

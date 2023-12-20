@@ -1,4 +1,9 @@
-/* General UI Interactions */
+/** U4I-related constants **/
+
+const ICON_WIDTH = 30;
+const ICON_HEIGHT = ICON_WIDTH;
+
+/** U4I UI Interactions **/
 
 $(document).ready(function () {
   // Dev tracking of click-triggered objects
