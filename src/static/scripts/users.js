@@ -67,7 +67,7 @@ function createNewUserInputField() {
   $(input)
     .attr({
       type: "text",
-      id: "",
+      id: "UTubUsernameInput",
       placeholder: "Username",
     })
     .addClass("UTub userInput");
