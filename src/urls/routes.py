@@ -141,7 +141,7 @@ def add_url(utub_id: int):
                 utub_id=utub_id,
                 url_id=url_id,
                 user_id=current_user.id,
-                url_notes=utub_new_url_form.url_title.data,
+                url_title=utub_new_url_form.url_title.data,
             )
             db.session.add(url_utub_user_add)
             db.session.commit()
@@ -191,7 +191,7 @@ def add_url(utub_id: int):
                             URL_SUCCESS.URL: {
                                 URL_SUCCESS.URL_STRING: f"{normalized_url}",
                                 URL_SUCCESS.URL_ID: f"{url_id}",
-                                URL_SUCCESS.url_title: f"{utub_new_url_form.url_title.data}",
+                                URL_SUCCESS.URL_TITLE: f"{utub_new_url_form.url_title.data}",
                             },
                             URL_SUCCESS.UTUB_ID: f"{utub_id}",
                             URL_SUCCESS.UTUB_NAME: f"{utub.name}",
@@ -300,7 +300,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
         if url_to_change_to == url_in_utub.url_in_utub.url_string:
             # Identical URL
 
-            if url_title_to_change_to == url_in_utub.url_notes:
+            if url_title_to_change_to == url_in_utub.url_title:
                 # Identical title
                 return jsonify(
                     {
@@ -314,7 +314,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
 
             else:
                 # Just change the title
-                url_in_utub.url_notes = url_title_to_change_to
+                url_in_utub.title = url_title_to_change_to
                 new_serialized_url = url_in_utub.serialized
                 db.session.commit()
 
@@ -364,7 +364,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
         # Now check if this normalized URL is the same as the original, just in case
         if url_in_database == url_to_change_to:
             # Same URL after normalizing
-            if url_title_to_change_to == url_in_utub.url_notes:
+            if url_title_to_change_to == url_in_utub.url_title:
                 # Identical title
                 return jsonify(
                     {
@@ -378,7 +378,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
 
             else:
                 # Just change the title 
-                url_in_utub.url_notes = url_title_to_change_to
+                url_in_utub.url_title = url_title_to_change_to
                 new_serialized_url = url_in_utub.serialized
                 db.session.commit()
 
@@ -397,8 +397,8 @@ def edit_url_and_title(utub_id: int, url_id: int):
         url_in_utub.url_in_utub = url_in_database
 
         # Finally check and update the title
-        if url_title_to_change_to != url_in_utub.url_notes:
-            url_in_utub.url_notes = url_title_to_change_to
+        if url_title_to_change_to != url_in_utub.url_title:
+            url_in_utub.url_title = url_title_to_change_to
 
         # Find tags associated with URL
         url_tags = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).all()
