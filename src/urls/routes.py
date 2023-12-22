@@ -276,10 +276,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
 
     edit_url_form = EditURLForm()
 
-    if (
-        edit_url_form.validate_on_submit()
-        and edit_url_form.url_title.data is not None
-    ):
+    if edit_url_form.validate_on_submit() and edit_url_form.url_title.data is not None:
         url_to_change_to = edit_url_form.url_string.data.replace(" ", "")
 
         if url_to_change_to == "":
@@ -377,7 +374,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
                 )
 
             else:
-                # Just change the title 
+                # Just change the title
                 url_in_utub.url_title = url_title_to_change_to
                 new_serialized_url = url_in_utub.serialized
                 db.session.commit()

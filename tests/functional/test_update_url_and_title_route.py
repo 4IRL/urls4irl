@@ -284,7 +284,9 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         assert (
             len(
                 Utub_Urls.query.filter_by(
-                    utub_id=utub_member_of.id, url_id=new_url_id, url_title=current_title
+                    utub_id=utub_member_of.id,
+                    url_id=new_url_id,
+                    url_title=current_title,
                 ).all()
             )
             == 1
@@ -2632,8 +2634,7 @@ def test_update_valid_url_with_valid_url_and_missing_valid_title_as_utub_creator
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 4
     assert (
-        json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE]
-        == URL_FAILURE.FIELD_REQUIRED
+        json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE] == URL_FAILURE.FIELD_REQUIRED
     )
 
     with app.app_context():
