@@ -48,7 +48,7 @@ class Utub_Urls(db.Model):
     """
     Represents the Many-to-Many relationship between UTubs and the shared URLs.
     A new entry is created in the URLs table if it is not already added in there. This table
-    indicates which UTubs contain which URLs, as well as any notes/description for that UTub specific URL.
+    indicates which UTubs contain which URLs, as well as the title for that UTub specific URL.
 
     https://stackoverflow.com/questions/52920701/many-to-many-with-three-tables-relating-with-each-other-sqlalchemy
     """
@@ -58,7 +58,7 @@ class Utub_Urls(db.Model):
     utub_id = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
     url_id = db.Column(db.Integer, db.ForeignKey("Urls.id"), primary_key=True)
     user_id = db.Column(db.Integer, db.ForeignKey("User.id"), primary_key=True)
-    url_notes = db.Column(db.String(140), default="")
+    url_title = db.Column(db.String(140), default="")
     added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     user_that_added_url = db.relationship("User", back_populates="utub_urls")
@@ -82,7 +82,7 @@ class Utub_Urls(db.Model):
             MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
             MODEL_STRS.URL_TAGS: url_tags,
             MODEL_STRS.ADDED_BY: self.user_that_added_url.serialized[MODEL_STRS.ID],
-            MODEL_STRS.URL_DESCRIPTION: self.url_notes,
+            MODEL_STRS.URL_TITLE: self.url_title,
         }
 
 
