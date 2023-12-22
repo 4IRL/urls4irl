@@ -10,6 +10,7 @@ URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 MODEL_STRS = U4I_STRINGS.MODELS
 URL_FAILURE = U4I_STRINGS.URL_FAILURE
+ADD_URL_URL = "urls.add_url"
 
 
 def test_add_valid_url_as_utub_member(
@@ -61,7 +62,7 @@ def test_add_valid_url_as_utub_member(
         number_of_urls_in_db = len(URLS.query.all())
         url_id_to_add = url_to_add.id
         url_string_to_add = url_to_add.url_string
-        url_description_to_add = f"This is {url_string_to_add}"
+        url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
         utub_name_to_add = current_utub_member_of.name
 
@@ -84,11 +85,11 @@ def test_add_valid_url_as_utub_member(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
     )
 
     assert add_url_response.status_code == 200
@@ -181,7 +182,7 @@ def test_add_valid_url_as_utub_creator(
         number_of_urls_in_db = len(URLS.query.all())
         url_id_to_add = url_to_add.id
         url_string_to_add = url_to_add.url_string
-        url_description_to_add = f"This is {url_string_to_add}"
+        url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
         utub_name_to_add = current_utub_member_of.name
 
@@ -204,10 +205,10 @@ def test_add_valid_url_as_utub_creator(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
     )
 
     assert add_url_response.status_code == 200
@@ -312,11 +313,11 @@ def test_add_invalid_url_as_utub_member(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: "AAAA",
-        URL_FORM.URL_DESCRIPTION: "This is AAAA",
+        URL_FORM.URL_TITLE: "This is AAAA",
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
     )
 
     assert add_url_response.status_code == 400
@@ -411,11 +412,11 @@ def test_add_invalid_url_as_utub_creator(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: "AAAA",
-        URL_FORM.URL_DESCRIPTION: "This is AAAA",
+        URL_FORM.URL_TITLE: "This is AAAA",
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
     )
 
     assert add_url_response.status_code == 400
@@ -482,11 +483,11 @@ def test_add_valid_url_to_nonexistent_utub(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: valid_url_string,
-        URL_FORM.URL_DESCRIPTION: valid_url_description,
+        URL_FORM.URL_TITLE: valid_url_description,
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
     )
 
     assert add_url_response.status_code == 404
@@ -547,11 +548,11 @@ def test_add_valid_url_to_utub_not_a_member_of(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: valid_url_string,
-        URL_FORM.URL_DESCRIPTION: valid_url_description,
+        URL_FORM.URL_TITLE: valid_url_description,
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=id_of_utub_not_member_of), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=id_of_utub_not_member_of), data=add_url_form
     )
 
     assert add_url_response.status_code == 403
@@ -645,11 +646,11 @@ def test_add_fresh_url_to_utub(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: valid_url_to_add,
-        URL_FORM.URL_DESCRIPTION: f"This is {valid_url_to_add}",
+        URL_FORM.URL_TITLE: f"This is {valid_url_to_add}",
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=id_of_utub_that_is_creator_of),
+        url_for(ADD_URL_URL, utub_id=id_of_utub_that_is_creator_of),
         data=add_url_form,
     )
 
@@ -730,7 +731,7 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         url_that_user_added = url_association_that_user_added.url_in_utub
         url_id = url_that_user_added.id
         url_string_to_add = url_that_user_added.url_string
-        url_description_to_add = url_association_that_user_added.url_notes
+        url_title_to_add = url_association_that_user_added.url_title
 
         number_of_urls_in_utub = len(
             Utub_Urls.query.filter(
@@ -746,11 +747,11 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=id_of_utub_that_is_creator_of),
+        url_for(ADD_URL_URL, utub_id=id_of_utub_that_is_creator_of),
         data=add_url_form,
     )
 
@@ -820,7 +821,7 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
         url_that_user_did_not_add = url_association_that_user_did_not_add.url_in_utub
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
-        url_description_to_add = url_association_that_user_did_not_add.url_notes
+        url_title_to_add = url_association_that_user_did_not_add.url_title
 
         number_of_urls_in_utub = len(
             Utub_Urls.query.filter(
@@ -836,11 +837,11 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=id_of_utub_that_is_creator_of),
+        url_for(ADD_URL_URL, utub_id=id_of_utub_that_is_creator_of),
         data=add_url_form,
     )
 
@@ -910,7 +911,7 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         url_that_user_did_not_add = url_association_that_user_did_not_add.url_in_utub
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
-        url_description_to_add = url_association_that_user_did_not_add.url_notes
+        url_title_to_add = url_association_that_user_did_not_add.url_title
 
         number_of_urls_in_utub = len(
             Utub_Urls.query.filter(
@@ -926,11 +927,11 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=id_of_utub_that_is_member_of), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=id_of_utub_that_is_member_of), data=add_url_form
     )
 
     assert add_url_response.status_code == 400
@@ -1006,7 +1007,7 @@ def test_add_url_missing_url(
         # Grab a URL to add
         url_to_add = URLS.query.first()
         url_string_to_add = url_to_add.url_string
-        url_description_to_add = f"This is {url_string_to_add}"
+        url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
 
         # Get initial number of UTub-URL associations
@@ -1016,11 +1017,11 @@ def test_add_url_missing_url(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: "",
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
     )
 
     assert add_url_response.status_code == 400
@@ -1059,7 +1060,7 @@ def test_add_url_missing_url_description(
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
         STD_JSON.ERROR_CODE: 4,
         STD_JSON.ERRORS: {
-            URL_FORM.URL_DESCRIPTION: ["This field is required."]
+            URL_FORM.URL_TITLE: ["This field is required."]
         }
     }
     """
@@ -1095,11 +1096,11 @@ def test_add_url_missing_url_description(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: "",
+        URL_FORM.URL_TITLE: "",
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
     )
 
     assert add_url_response.status_code == 400
@@ -1109,7 +1110,7 @@ def test_add_url_missing_url_description(
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
     assert (
-        add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_DESCRIPTION]
+        add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE]
         == URL_FAILURE.FIELD_REQUIRED
     )
 
@@ -1139,7 +1140,7 @@ def test_add_url_missing_csrf_token(
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
         STD_JSON.ERROR_CODE: 4,
         STD_JSON.ERRORS: {
-            URL_FORM.URL_DESCRIPTION: ["This field is required."]
+            URL_FORM.URL_TITLE: ["This field is required."]
         }
     }
     """
@@ -1174,11 +1175,11 @@ def test_add_url_missing_csrf_token(
     # Add the URL to the UTub
     add_url_form = {
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: "",
+        URL_FORM.URL_TITLE: "",
     }
 
     add_url_response = client.post(
-        url_for("urls.add_url", utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
     )
 
     # Assert invalid response code
