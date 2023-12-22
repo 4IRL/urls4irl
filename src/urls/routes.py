@@ -257,7 +257,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
     utub_owner_id = int(utub.created_by.id)
 
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
-    url_in_utub = Utub_Urls.query.filter(
+    url_in_utub: Utub_Urls = Utub_Urls.query.filter(
         Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
     ).first_or_404()
 
@@ -314,7 +314,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
 
             else:
                 # Just change the title
-                url_in_utub.title = url_title_to_change_to
+                url_in_utub.url_title = url_title_to_change_to
                 new_serialized_url = url_in_utub.serialized
                 db.session.commit()
 
