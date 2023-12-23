@@ -1,7 +1,17 @@
+/** Colors and themes **/
+
 :root {
     --splashGreen: #28a745;
     --splashLabelGreen: #2ecc71;
+    --pageBackgroundColor: #1f2424;
+    --borderColor: #343c3d;
+    --deckHeaderGreen: #28a745; 
+    --deckSelectionGreen: #60daaa; 
+    --cardBackgroundColor: #282f2f;
+    --UTubDescriptionColor: white;
 }
+
+/** HTML DOM Elements **/
 
 html,
 body {
@@ -9,10 +19,8 @@ body {
     margin: 0;
     padding: 0;
     /* overflow-y: hidden; */
-    background-color: #1f2424;
+    background-color: var(--pageBackgroundColor);
 }
-
-/* HTML Element */
 
 h1 {
     font-weight: 300;
@@ -20,11 +28,11 @@ h1 {
 }
 
 h2 {
-    color: var(--splashLabelGreen);
+    color: var(--deckHeaderGreen);
 }
 
 p {
-    color: white;
+    color: var(--UTubDescriptionColor);
 }
 
 a {
@@ -43,10 +51,6 @@ form {
     /* So the width will be 100% + 17px */
 }
 
-svg {
-    width: 30;
-    height: 30;
-}
 
 img {
     max-width: 50%;
@@ -85,8 +89,8 @@ input[type=radio] {
     background: none;
     border: 0;
     box-sizing: border-box;
-    box-shadow: inset 0 0 0 2px #60daaa;
-    color: #60daaa;
+    box-shadow: inset 0 0 0 2px var(--deckSelectionGreen);
+    color: var(--deckSelectionGreen);
     font-size: inherit;
     font-weight: 700;
     margin: 1em;
@@ -98,35 +102,6 @@ input[type=radio] {
     vertical-align: middle;
 }
 
-/* input[type=radio] {
-    margin-left: 5px;
-    margin-right: 5px;
-    padding-left: 5px;
-    padding-right: 5px;
-    border-radius: 15px;
-    display: none;
-
-    -webkit-appearance: button;
-
-    border: double 2px #00F;
-
-    background-color: #0b0095;
-    color: #FFF;
-    white-space: nowrap;
-    overflow: hidden;
-
-    width: 15px;
-    height: 15px;
-} 
-input[type=radio]:checked {
-    background-color: #000;
-    border-left-color: #06F;
-    border-right-color: #06F;
-}
-input[type=radio]:hover {
-    box-shadow: 0px 0px 5px #1300ff;
-} */
-
 input[type=radio]::before,
 input[type=radio]::after {
     box-sizing: border-box;
@@ -136,7 +111,65 @@ input[type=radio]::after {
     height: 100%;
 }
 
-/* Class specific */
+/** Class specific **/
+
+/* Page display */
+
+.panel {
+    height: 100%;
+    padding-top: 50px;
+    padding-bottom: 20px;
+    padding-left: 3px;
+    padding-right: 3px;
+    overflow-y: hidden;
+}
+
+.deck {
+    width: 100%;
+    /* margin-bottom: 5px; */
+    background: var(--backgroundColor);
+    border: 2px solid var(--borderColor);
+    border-radius: 30px;
+    color: var(--deckSelectionGreen);
+    overflow: hidden;
+}
+
+.deckContent {
+    width: 100%;
+    height: 90%;
+    margin: 0px;
+    overflow: hidden;
+}
+
+.card {
+    background-color: var(--cardBackgroundColor);
+    height: 100%;
+    margin: 2px;
+    border: 2px solid var(--borderColor);
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.card-title {
+    color: #1abc9c;
+}
+
+.card-text {
+    color: #8c9b9d;
+}
+
+/* Buttons */
+
+svg {
+    width: 30;
+    height: 30;
+}
+
+.green-clickable {
+    color: var(--splashGreen);
+}
+
+/* Tags */
 
 span.tag {
     color: rgb(254, 115, 1);
@@ -158,14 +191,6 @@ span.tag:hover .tag-remove {
     font-size: 100%;
 }
 
-i.fa-check-square {
-    float: right;
-}
-
-.green-clickable {
-    color: var(--splashGreen);
-}
-
 .tag-remove {
     padding: 0rem;
     vertical-align: unset;
@@ -176,50 +201,6 @@ i.fa-check-square {
 .tag-remove:focus {
     outline: none;
     box-shadow: none;
-}
-
-.panel {
-    height: 100%;
-    padding-top: 50px;
-    padding-bottom: 20px;
-    padding-left: 2.5px;
-    padding-right: 2.5px;
-    overflow-y: hidden;
-}
-
-.deck {
-    width: 100%;
-    height: 100%;
-    margin: 0px;
-    background: #1f2424;
-    border: 2px solid #343c3d;
-    border-radius: 30px;
-    color: #60daaa;
-    overflow: hidden;
-}
-
-.deckContent {
-    width: 100%;
-    height: 90%;
-    margin: 0px;
-    overflow: hidden;
-}
-
-.card {
-    background-color: #282f2f;
-    height: 100%;
-    margin: 2px;
-    border: 2px solid #343c3d;
-    border-radius: 20px;
-    cursor: pointer;
-}
-
-.card-title {
-    color: #1abc9c;
-}
-
-.card-text {
-    color: #8c9b9d;
 }
 
 .selected {
