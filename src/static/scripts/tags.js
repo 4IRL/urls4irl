@@ -111,10 +111,8 @@ function createTaginURL(tagID, string) {
   let removeButton = document.createElement("a");
 
   $(tagSpan)
-    .attr({
-      class: "tag",
-      tagid: tagID,
-    })
+    .attr({ tagid: tagID })
+    .addClass("tag")
     .text(string);
 
   $(removeButton)

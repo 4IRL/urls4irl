@@ -104,6 +104,7 @@ function buildUTubDeck(UTubs) {
   resetUTubDeck();
   const parent = $("#listUTubs");
   let NumOfUTubs = UTubs.length ? UTubs.length : 0;
+  console.log(NumOfUTubs)
 
   if (NumOfUTubs !== 0) {
     // Instantiate deck with list of UTubs accessible to current user
@@ -230,7 +231,7 @@ function changeUTub(selectedUTubID) {
     let dictURLs = selectedUTub.urls;
     let dictTags = selectedUTub.tags;
     let dictUsers = selectedUTub.members;
-    let creator = selectedUTub.created_by;
+    let creatorID = selectedUTub.created_by;
     let currentUserID = $(".user").attr("id");
 
     // UTubDeck display updates
@@ -243,9 +244,7 @@ function changeUTub(selectedUTubID) {
     buildURLDeck(dictURLs, dictTags);
 
     // RH panels
-    // Consider moving UTub description to bottom right?
-    // $('#UTubInfo').text(selectedUTub.description);
-    buildUserDeck(dictUsers);
+    buildUserDeck(dictUsers, creatorID);
   });
 }
 

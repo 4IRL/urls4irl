@@ -8,27 +8,27 @@ const REMOVE_USER_ROUTE = "/user/remove/"; // +<int:utub_id>/<int:user_id>
 
 $(document).ready(function () {
   /* Bind click functions */
-  
+
   // Add user to UTub
   $("#addUserBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     addUser();
   });
-  
+
   // Remove user from UTub
   $("#removeUserBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     removeUserShowModal();
   });
-  
+
 });
 
 /** User Utility Functions **/
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
-function selectedUserID() {}
+function selectedUserID() { }
 
 // Clear user selection
 function clearUserSelection() {
@@ -38,13 +38,45 @@ function clearUserSelection() {
 /* User Functions */
 
 // Build center panel URL list for selectedUTub
-function buildUserDeck(UTubUsers) {
-  
-  for(UTubUser in UTubUsers) {
-    $("#UTubUsers").append(UTubUser.username);
+function buildUserDeck(UTubUsers, creatorID) {
+  const parent = $("#UTubUsers");
+
+  parent.append(createNewUserInputField());
+
+  for (UTubUser in UTubUsers) {
+    if (UTubUser.id !== creatorID) {
+      let userListItem = createUTubSelector(UTubUser);
+
+      parent.append(userListItem);
+    }
   }
 }
 
+// Creates user list item 
+function createUTubSelector(UTubUser) {
+  console.log(UTubUser)
+  let userListItem = document.createElement("li");
+  let userSpan = document.createElement("span");
+  let removeButton = document.createElement("a");
+
+  $(userSpan).attr({ userid: UTubID })
+  .addClass("user")
+  .html("<b>" + UTubUser.username + "</b>");
+
+  $(removeButton)
+    .attr({ class: "btn btn-sm btn-outline-link border-0 user-remove" })
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      removeUser(tagID);
+    });
+  removeButton.innerHTML = "&times;";
+
+  $(userSpan).append(removeButton);
+  $(userListItem).append(userSpan);
+
+  return userListItem;
+}
 
 // Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
 function createNewUserInputField() {
@@ -91,7 +123,7 @@ function createNewUserInputField() {
 
   // Cancel add UTub x-box 
   htmlString = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill" viewBox="0 0 16 16">' + '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' + '</svg>';
-  
+
   $(cancel)
     .addClass("mx-1")
     .on("click", function (e) {
@@ -142,7 +174,7 @@ function addUser() {
 
 // This function will extract the current selection data needed for POST request (user ID)
 function addUserSetup() {
-  let postURL = ADD_USER_ROUTE + currentUTubID();
+  let postURL = ADD_USER_ROUTE + getCurrentUTubID();
 
   let newUsername = $("#UTubUsernameInput").val();
   data = {
@@ -153,7 +185,7 @@ function addUserSetup() {
 }
 
 // Perhaps update a scrollable/searchable list of users?
-function addUserSuccess(response) {}
+function addUserSuccess(response) { }
 
 function addUserFail(response) {
   console.log("Basic implementation. Needs revision");
@@ -186,9 +218,9 @@ function removeUserShowModal() {
 }
 
 // Handles post request and response for removing a user from current UTub, after confirmation
-function removeUser() {
+function removeUser(userID) {
   // Extract data to submit in POST request
-  postURL = removeUserSetup();
+  postURL = removeUserSetup(userID);
 
   let request = AJAXCall("post", postURL, []);
 
@@ -197,7 +229,7 @@ function removeUser() {
     console.log("success");
 
     if (xhr.status == 200) {
-      removeUserSuccess();
+      removeUserSuccess(userID);
     }
   });
 
@@ -213,13 +245,13 @@ function removeUser() {
 }
 
 // This function will extract the current selection data needed for POST request (user ID)
-function removeUserSetup() {
-  let postURL = REMOVE_USER_ROUTE + currentUTubID();
+function removeUserSetup(userID) {
+  let postURL = REMOVE_USER_ROUTE + getCurrentUTubID() + "/" + userID;
 
   return postURL;
 }
 
-function removeUserSuccess() {
+function removeUserSuccess(userID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
