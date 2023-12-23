@@ -13,8 +13,8 @@ $(document).ready(function () {
 
   $("svg").attr({
     width: 30,
-    height: 30
-  })
+    height: 30,
+  });
 
   // CSRF token initialization for non-modal POST requests
   let csrftoken = $("meta[name=csrf-token]").attr("content");
@@ -130,16 +130,15 @@ function bindKeyToFunction(f, keyTarget) {
     if (e.keyCode === keyTarget) {
       f;
     }
-  })
+  });
 }
-
 
 function bindKeyToFunction(f, keyTarget) {
   $(document).keypress(function (e) {
     if (e.keyCode === keyTarget) {
       return f;
     }
-  })
+  });
 }
 // $(document).on("keyup", function (e) {
 //   if (e.keyCode === 13) {
