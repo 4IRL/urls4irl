@@ -27,7 +27,7 @@ $(document).ready(function () {
 /** User Utility Functions **/
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
-function selectedUserID() { }
+function selectedUserID() {}
 
 // Clear user selection
 function clearUserSelection() {
@@ -51,16 +51,17 @@ function buildUserDeck(UTubUsers, creatorID) {
   }
 }
 
-// Creates user list item 
+// Creates user list item
 function createUTubSelector(UTubUser) {
   // console.log(UTubUser)
   let userListItem = document.createElement("li");
   let userSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
-  $(userSpan).attr({ userid: UTubID })
-  .addClass("user")
-  .html("<b>" + UTubUser.username + "</b>");
+  $(userSpan)
+    .attr({ userid: UTubID })
+    .addClass("user")
+    .html("<b>" + UTubUser.username + "</b>");
 
   $(removeButton)
     .attr({ class: "btn btn-sm btn-outline-link border-0 user-remove" })
@@ -123,8 +124,11 @@ function createNewUserInputField() {
 
   wrapperBtns.append(submit);
 
-  // Cancel add UTub x-box 
-  htmlString = '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill" viewBox="0 0 16 16">' + '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' + '</svg>';
+  // Cancel add UTub x-box
+  htmlString =
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill" viewBox="0 0 16 16">' +
+    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
+    "</svg>";
 
   $(cancel)
     .addClass("mx-1")
@@ -186,7 +190,7 @@ function addUserSetup() {
 }
 
 // Perhaps update a scrollable/searchable list of users?
-function addUserSuccess(response) { }
+function addUserSuccess(response) {}
 
 function addUserFail(response) {
   console.log("Basic implementation. Needs revision");
