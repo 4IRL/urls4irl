@@ -756,8 +756,8 @@ function deleteUTubSuccess() {
   hideIfShown($("#addURLBtn"));
   hideIfShown($("#UTubDescription"));
 
-  console.log(UTubs.length)
-  displayUpdateUTubChange(UTubs.length-1);
+  console.log(UTubs.length);
+  displayUpdateUTubChange(UTubs.length - 1);
 }
 
 function deleteUTubFailure(xhr, textStatus, error) {
