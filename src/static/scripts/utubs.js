@@ -104,23 +104,26 @@ function buildUTubDeck(UTubs) {
   resetUTubDeck();
   const parent = $("#listUTubs");
   let NumOfUTubs = UTubs.length ? UTubs.length : 0;
-  console.log(NumOfUTubs)
 
   if (NumOfUTubs !== 0) {
     // Instantiate deck with list of UTubs accessible to current user
     for (let i = 0; i < NumOfUTubs; i++) {
+      console.log(createUTubSelector(UTubs[i].name, UTubs[i].id, i))
       parent.append(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
     }
   }
 
   parent.append(createNewUTubInputField());
 
+  console.log("Test")
   // Display changes needed regardless of UTubDeck status
   displayUpdateUTubChange();
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
 function createUTubSelector(UTubName, UTubID, index) {
+  
+  console.log("Test")
   let label = document.createElement("label");
   let radio = document.createElement("input");
 
@@ -258,6 +261,7 @@ function displayUpdateUTubChange() {
   } else {
     // User has access to UTubs
     $("#UTubDeckHeader").text("UTubs");
+    console.log("Test")
     $("#TagDeckHeader").text("Tags");
 
     if (selectedUTub) {

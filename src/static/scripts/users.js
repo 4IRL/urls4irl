@@ -54,7 +54,7 @@ function buildUserDeck(UTubUsers, creatorID) {
 
 // Creates user list item 
 function createUTubSelector(UTubUser) {
-  console.log(UTubUser)
+  // console.log(UTubUser)
   let userListItem = document.createElement("li");
   let userSpan = document.createElement("span");
   let removeButton = document.createElement("a");
