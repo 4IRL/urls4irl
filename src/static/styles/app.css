@@ -120,8 +120,7 @@ input[type=radio]::after {
 
 .panel {
     height: 100%;
-    padding-left: 20px;
-    padding-right: 20px;
+    padding-bottom: 10px;
     overflow-y: hidden;
 }
 
@@ -142,23 +141,6 @@ input[type=radio]::after {
     height: 90%;
     margin: 0px;
     overflow: hidden;
-}
-
-.card {
-    background-color: var(--cardBackgroundColor);
-    height: 100%;
-    margin: 2px;
-    border: 2px solid var(--borderColor);
-    border-radius: 20px;
-    cursor: pointer;
-}
-
-.card-title {
-    color: #1abc9c;
-}
-
-.card-text {
-    color: #8c9b9d;
 }
 
 /* Buttons */
@@ -207,6 +189,23 @@ span.tag:hover .tag-remove {
 }
 
 /* URLs */
+
+.card {
+    background-color: var(--cardBackgroundColor);
+    height: 100%;
+    margin: 2px;
+    border: 2px solid var(--borderColor);
+    border-radius: 20px;
+    cursor: pointer;
+}
+
+.card-title {
+    color: #1abc9c;
+}
+
+.card-text {
+    color: #8c9b9d;
+}
 
 .selected {
     border: 5px solid rgb(13, 255, 0);
@@ -378,7 +377,7 @@ span.user:hover .user-remove {
     transform: rotate(-135deg);
 }
 
-/* Icon 3*/
+/* Icon 2 */
 
 .animated-icon2 span:nth-child(1) {
     top: 0px;
@@ -419,7 +418,7 @@ span.user:hover .user-remove {
     left: 50%;
 }
 
-/* Icon 4 */
+/* Icon 3 */
 
 .animated-icon3 span:nth-child(1) {
     top: 0px;
@@ -659,7 +658,7 @@ span.user:hover .user-remove {
     text-align: center;
 }
 
-/* ID sepcific */
+/* ID specific */
 
 #body {
     min-height: 380px;
