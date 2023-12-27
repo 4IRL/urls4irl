@@ -108,21 +108,18 @@ function buildUTubDeck(UTubs) {
   if (NumOfUTubs !== 0) {
     // Instantiate deck with list of UTubs accessible to current user
     for (let i = 0; i < NumOfUTubs; i++) {
-      console.log(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
       parent.append(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
     }
   }
 
   parent.append(createNewUTubInputField());
 
-  console.log("Test");
   // Display changes needed regardless of UTubDeck status
-  displayUpdateUTubChange();
+  displayUpdateUTubChange(NumOfUTubs);
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
 function createUTubSelector(UTubName, UTubID, index) {
-  console.log("Test");
   let label = document.createElement("label");
   let radio = document.createElement("input");
 
@@ -183,7 +180,7 @@ function createNewUTubInputField() {
     "col-3 mb-md-0 text-right d-flex justify-content-center flex-row",
   );
 
-  // Add UTub checkbox
+  // Submit addUTub checkbox
   let htmlString =
     '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="b=i bi-check-square-fill" viewBox="0 0 16 16" width="' +
     ICON_WIDTH +
@@ -217,12 +214,7 @@ function createNewUTubInputField() {
 
   // Cancel add UTub x-box
   htmlString =
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger" viewBox="0 0 16 16" width="' +
-    ICON_WIDTH +
-    '" height="' +
-    ICON_HEIGHT +
-    '">' +
-    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger" viewBox="0 0 16 16"  <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
     "</svg>";
 
   $(cancel)
@@ -262,13 +254,13 @@ function changeUTub(selectedUTubID) {
     buildURLDeck(dictURLs, dictTags);
 
     // RH panels
-    buildUserDeck(dictUsers, creatorID);
+    // buildUserDeck(dictUsers, creatorID);
   });
 }
 
 // Updates page display in response to current UTubDeck status.
-function displayUpdateUTubChange() {
-  if (!UTubs.length) {
+function displayUpdateUTubChange(NumOfUTubs) {
+  if (!NumOfUTubs) {
     // User has access to no UTubs
     $("#UTubDeckHeader").text("Create a UTub");
 
@@ -276,7 +268,6 @@ function displayUpdateUTubChange() {
   } else {
     // User has access to UTubs
     $("#UTubDeckHeader").text("UTubs");
-    console.log("Test");
     $("#TagDeckHeader").text("Tags");
 
     if (selectedUTub) {
@@ -319,6 +310,7 @@ function displayUpdateUTubActive(selectedUTub) {
 
   // UTubDeck display updates
   showIfHidden($("#deleteUTubBtn"));
+  $("#UTubDeckHeader").text("UTubs");
   // Unselect any already selected UTub
   let departureUTubLabel = $("#listUTubs").find(".active");
   if (departureUTubLabel) {
@@ -764,7 +756,8 @@ function deleteUTubSuccess() {
   hideIfShown($("#addURLBtn"));
   hideIfShown($("#UTubDescription"));
 
-  displayUpdateUTubChange();
+  console.log(UTubs.length)
+  displayUpdateUTubChange(UTubs.length-1);
 }
 
 function deleteUTubFailure(xhr, textStatus, error) {

@@ -12,6 +12,7 @@
     --UTubDescriptionColor: white;
     
     --spanRemoveColor: rgb(254, 115, 1);
+
 }
 
 /** HTML DOM Elements **/
@@ -53,7 +54,6 @@ form {
     box-sizing: content-box;
     /* So the width will be 100% + 17px */
 }
-
 
 img {
     max-width: 50%;
@@ -120,18 +120,18 @@ input[type=radio]::after {
 
 .panel {
     height: 100%;
-    padding-top: 50px;
-    padding-bottom: 20px;
-    padding-left: 3px;
-    padding-right: 3px;
+    padding-left: 20px;
+    padding-right: 20px;
     overflow-y: hidden;
 }
 
 .deck {
     width: 100%;
-    /* margin-bottom: 5px; */
+    margin-bottom: 5px;
     background: var(--backgroundColor);
     border: 2px solid var(--borderColor);
+    border-top: 4px solid var(--borderColor);
+    border-bottom: 4px solid var(--borderColor);
     border-radius: 30px;
     color: var(--deckSelectionGreen);
     overflow: hidden;
@@ -666,19 +666,11 @@ span.user:hover .user-remove {
     position: relative;
 }
 
-#mainPanel {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    align-content: center;
-    justify-content: center;
-    position: relative;
-    min-height: calc(100vh-56px);
-}
-
 #pageContent {
     margin: 0;
+    margin-bottom: -15px;
     height: 100vh;
+    padding-top: 50px;
 }
 
 #ModalForm {

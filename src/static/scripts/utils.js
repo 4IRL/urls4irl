@@ -12,8 +12,8 @@ $(document).ready(function () {
   });
 
   $("svg").attr({
-    width: 30,
-    height: 30,
+    width: ICON_WIDTH,
+    height: ICON_HEIGHT,
   });
 
   // CSRF token initialization for non-modal POST requests
@@ -133,7 +133,8 @@ function bindKeyToFunction(f, keyTarget) {
   });
 }
 
-function bindKeyToFunction(f, keyTarget) {
+// Unbind key
+function unbindKeyToFunction(f, keyTarget) {
   $(document).keypress(function (e) {
     if (e.keyCode === keyTarget) {
       return f;

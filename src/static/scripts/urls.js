@@ -151,6 +151,7 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
   const addTagBtn = document.createElement("button");
   const editURLBtn = document.createElement("button");
   const submitEditBtn = document.createElement("i"); // Submit changes after 'edit' operations
+  const cancelEditBtn = document.createElement("i"); // Cancel changes after 'edit' operations, populate with pre-edit values
   const remURLBtn = document.createElement("button");
 
   $(col)
@@ -282,9 +283,7 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
     });
 
   $(remURLBtn)
-    .attr({
-      type: "button",
-    })
+    .attr({ type: "button" })
     .addClass("card-link btn btn-danger remURLBtn")
     .text("Remove")
     .on("click", function (e) {
@@ -293,17 +292,46 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
       removeURLShowModal();
     });
 
+
+  // Submit editURL checkbox
+  let htmlString =
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="b=i bi-check-square-fill" viewBox="0 0 16 16" width="' +
+    ICON_WIDTH +
+    '" height="' +
+    ICON_HEIGHT +
+    '">' +
+    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z"/>' +
+    "</svg>";
+
   $(submitEditBtn)
-    .attr({
-      type: "button",
-      style: "display: none",
-    })
-    .addClass("fa fa-check-square fa-2x text-success mx-1 submitEditURLBtn")
+  .attr({ style: "display: none" })
+  .addClass("mx-1 green-clickable submitEditURLBtn")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
       editURL();
-    });
+    })
+    .html(htmlString);
+    
+  // Cancel editURL x-box
+  htmlString =
+  '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger" viewBox="0 0 16 16" width="' +
+  ICON_WIDTH +
+  '" height="' +
+  ICON_HEIGHT +
+  '">' +
+  '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
+  "</svg>";
+
+  $(cancelEditBtn)
+    .attr({ style: "display: none" })
+    .addClass("mx-1 cancelEditURLBtn")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      // cancelEditURL();
+    })
+    .html(htmlString);
 
   // Assemble url list items
   $(col).append(card);
@@ -321,6 +349,7 @@ function createURLBlock(URLID, string, description, tagArray, dictTags) {
   $(urlOptions).append(editURLBtn);
   $(urlOptions).append(remURLBtn);
   $(urlOptions).append(submitEditBtn);
+  $(urlOptions).append(cancelEditBtn);
 
   return col;
 }
@@ -604,11 +633,14 @@ function addURLFailure(response) {
 
 // Shows edit URL inputs
 function editURLShowInput() {
-  // Show edit submission button, hide edit request button
+  // Show edit submission button, hide other buttons
   let selectedCardDiv = $(getSelectedURLCard());
   let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
-  showIfHidden(URLOptionsDiv.find("i"));
+  showIfHidden(URLOptionsDiv.find(".submitEditURLBtn"));
+  showIfHidden(URLOptionsDiv.find(".cancelEditURLBtn"));
   hideIfShown(URLOptionsDiv.find(".editURLBtn"));
+  hideIfShown(URLOptionsDiv.find(".addTagBtn"));
+  hideIfShown(URLOptionsDiv.find(".remURLBtn"));
 
   // Hide access URL button
   hideIfShown(URLOptionsDiv.find(".accessURLBtn"));
@@ -629,11 +661,14 @@ function editURLShowInput() {
 
 // Hides edit URL inputs
 function editURLHideInput() {
-  // Hide edit submission icon, show edit request icon
+  // Hide edit submission button, show other buttons
   let selectedCardDiv = $(getSelectedURLCard());
   let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
+  hideIfShown(URLOptionsDiv.find(".submitEditURLBtn"));
+  hideIfShown(URLOptionsDiv.find(".cancelEditURLBtn"));
   showIfHidden($(URLOptionsDiv.find(".editURLBtn")));
-  hideIfShown($(URLOptionsDiv.find("i")));
+  showIfHidden(URLOptionsDiv.find(".addTagBtn"));
+  showIfHidden(URLOptionsDiv.find(".remURLBtn"));
 
   // Show access URL button
   showIfHidden(URLOptionsDiv.find(".accessURLBtn"));
@@ -685,7 +720,6 @@ function editURLSetup() {
   let postURL = EDIT_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
 
   let selectedCardDiv = $(getSelectedURLCard());
-  console.log(selectedCardDiv);
   let editedURLfield = selectedCardDiv.find(".editURLString")[0];
   let editedURL = editedURLfield.value;
   let editedURLDescriptionfield = selectedCardDiv.find(

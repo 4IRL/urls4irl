@@ -44,7 +44,7 @@ function buildUserDeck(UTubUsers, creatorID) {
 
   for (UTubUser in UTubUsers) {
     if (UTubUser.id !== creatorID) {
-      let userListItem = createUTubSelector(UTubUser);
+      let userListItem = createUserSelector(UTubUser);
 
       parent.append(userListItem);
     }
@@ -52,14 +52,14 @@ function buildUserDeck(UTubUsers, creatorID) {
 }
 
 // Creates user list item
-function createUTubSelector(UTubUser) {
+function createUserSelector(UTubUser) {
   // console.log(UTubUser)
   let userListItem = document.createElement("li");
   let userSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
   $(userSpan)
-    .attr({ userid: UTubID })
+    .attr({ userid: UserID })
     .addClass("user")
     .html("<b>" + UTubUser.username + "</b>");
 
