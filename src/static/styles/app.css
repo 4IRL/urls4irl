@@ -126,7 +126,7 @@ input[type=radio]::after {
 
 .deck {
     width: 100%;
-    margin-bottom: 5px;
+    margin-top: 5px;
     margin-left: auto;
     margin-right: auto;
     background: var(--backgroundColor);
@@ -671,7 +671,12 @@ span.user:hover .user-remove {
     margin: 0;
     margin-bottom: -15px;
     height: 100vh;
-    padding-top: 50px;
+    padding-top: 40px;
+    padding-bottom: 5px;
+}
+
+#centerPanel {
+    padding-bottom: 5px;
 }
 
 #ModalForm {
