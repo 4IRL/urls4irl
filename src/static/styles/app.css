@@ -127,6 +127,8 @@ input[type=radio]::after {
 .deck {
     width: 100%;
     margin-bottom: 5px;
+    margin-left: auto;
+    margin-right: auto;
     background: var(--backgroundColor);
     border: 2px solid var(--borderColor);
     border-top: 4px solid var(--borderColor);
