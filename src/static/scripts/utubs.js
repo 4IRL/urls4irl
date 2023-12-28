@@ -31,7 +31,6 @@ $(document).ready(function () {
 
   // Delete UTub
   $("#deleteUTubBtn").on("click", function (e) {
-    console.log("clicked delete UTub");
     // e.stopPropagation();
     // e.preventDefault();
     deleteUTubShowModal();
@@ -308,7 +307,6 @@ function displayUpdateUTubActive(selectedUTub) {
   let UTubDescription = selectedUTub.description;
   let UTubOwnerID = selectedUTub.created_by;
   let UTubUsers = selectedUTub.members; // 12/17 DP change JSON to match route and frontend naming convention, users vs members
-  console.log(selectedUTub);
 
   // UTubDeck display updates
   showIfHidden($("#deleteUTubBtn"));
@@ -688,7 +686,6 @@ function deleteUTubShowModal() {
 
   $("#modalDismiss")
     .addClass("btn btn-default")
-    .text(buttonTextDismiss)
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
@@ -757,8 +754,7 @@ function deleteUTubSuccess() {
   hideIfShown($("#addURLBtn"));
   hideIfShown($("#UTubDescription"));
 
-  console.log(UTubs.length);
-  displayUpdateUTubChange(UTubs.length - 1);
+  displayUpdateUTubChange(UTubs.length);
 }
 
 function deleteUTubFailure(xhr, textStatus, error) {

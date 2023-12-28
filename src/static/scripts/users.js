@@ -15,13 +15,6 @@ $(document).ready(function () {
     // e.preventDefault();
     addUserShowInput();
   });
-
-  // Remove user from UTub
-  $("#removeUserBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
-    removeUserShowModal();
-  });
 });
 
 /** User Utility Functions **/
@@ -30,37 +23,45 @@ $(document).ready(function () {
 function selectedUserID() { }
 
 // Clear user selection
-function clearUserSelection() {
+function resetNewUserForm() {
   $("#UTubUsernameInput").val("");
+}
+
+// Clear the User Deck
+function resetUserDeck() {
+  $("#listUsers").empty();
 }
 
 /* User Functions */
 
 // Build center panel URL list for selectedUTub
 function buildUserDeck(UTubUsers, creatorID) {
+  resetUserDeck();
   const parent = $("#listUsers");
-  console.log(parent)
+  let NumOfUsers = UTubUsers.length ? UTubUsers.length : 0;
 
-  parent.append(createNewUserInputField());
+  // Instantiate deck with list of users with access to current UTub
+  for (let i = 0; i < NumOfUsers; i++) {
+    let UTubUser = UTubUsers[i];
 
-  for (UTubUser in UTubUsers) {
     if (UTubUser.id !== creatorID) {
-      let userListItem = createUserSelector(UTubUser);
-
-      parent.append(userListItem);
+      parent.append(createUserSelector(UTubUser));
     }
   }
+
+  parent.append(createNewUserInputField());
 }
 
 // Creates user list item
 function createUserSelector(UTubUser) {
-  // console.log(UTubUser)
   let userListItem = document.createElement("li");
   let userSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
+  let userID = UTubUser.id;
+
   $(userSpan)
-    .attr({ userid: UTubUser.id })
+    .attr({ userid: userID })
     .addClass("user")
     .html("<b>" + UTubUser.username + "</b>");
 
@@ -69,7 +70,7 @@ function createUserSelector(UTubUser) {
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      removeUser(tagID);
+      removeUserShowModal(userID);
     });
   removeButton.innerHTML = "&times;";
 
@@ -214,7 +215,9 @@ function addUserSetup() {
 }
 
 // Perhaps update a scrollable/searchable list of users?
-function addUserSuccess(response) { }
+function addUserSuccess(response) {
+  changeUTub(getCurrentUTubID());
+ }
 
 function addUserFail(response) {
   console.log("Basic implementation. Needs revision");
@@ -227,19 +230,34 @@ function addUserFail(response) {
 /* Remove User */
 
 // Show confirmation modal for removal of the selected user from current UTub
-function removeUserShowModal() {
+function removeUserShowModal(userID) {
   let modalTitle = "Are you sure you want to remove this user from the UTub?";
-  $(".modal-title").text(modalTitle);
+  let modalBody =
+    "This user will no longer have access to the URLs in this UTub";
+  let buttonTextDismiss = "Keep user";
+  let buttonTextSubmit = "Remove user";
 
-  $("#modalDismiss").on("click", function (e) {
-    e.preventDefault();
-    $("#confirmModal").modal("hide");
-  });
+  $("#confirmModalTitle").text(modalTitle);
 
-  $("#modalSubmit").on("click", function (e) {
-    e.preventDefault();
-    removeUser();
-  });
+  $("#confirmModalBody").text(modalBody);
+
+  $("#modalDismiss")
+    .addClass("btn btn-default")
+    .off("click")
+    .on("click", function (e) {
+      e.preventDefault();
+      $("#confirmModal").modal("hide");
+    })
+    .text(buttonTextDismiss);
+
+  $("#modalSubmit")
+    .removeClass()
+    .addClass("btn btn-danger")
+    .text(buttonTextSubmit)
+    .on("click", function (e) {
+      e.preventDefault();
+      removeUser(userID);
+    });
 
   $("#confirmModal").modal("show");
 
@@ -284,7 +302,9 @@ function removeUserSuccess(userID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let cardCol = $("div[urlid=" + selectedURLID() + "]").parent();
+  let userListItem = $("span[userid=" + userID + "]").parent();
+  userListItem.fadeOut();
+  userListItem.remove();
 }
 
 function removeUserFail(xhr, textStatus, error) {
