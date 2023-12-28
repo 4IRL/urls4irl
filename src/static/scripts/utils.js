@@ -126,20 +126,26 @@ function AJAXCall(type, url, data) {
 
 // Bind key to function
 function bindKeyToFunction(f, keyTarget) {
-  $(document).keypress(function (e) {
-    if (e.keyCode === keyTarget) {
-      f;
+  $(document).on('keypress', function (e) {
+    if (e.which == keyTarget) {
+      console.log("1 key bound")
+      f();
     }
   });
 }
 
 // Unbind key
-function unbindKeyToFunction(f, keyTarget) {
-  $(document).keypress(function (e) {
-    if (e.keyCode === keyTarget) {
-      return f;
-    }
-  });
+function unbindKeys() {
+  let keyList = [13, 27];
+
+  console.log(keyList.length + " keys unbinded")
+  for (i = 0; i < keyList.length; i++) {
+    $(document).keypress(function (e) {
+      if (e.keyCode === keyList[i]) {
+        return;
+      }
+    });
+  }
 }
 // $(document).on("keyup", function (e) {
 //   if (e.keyCode === 13) {

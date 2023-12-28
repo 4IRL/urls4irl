@@ -83,9 +83,10 @@ function createUserSelector(UTubUser) {
 // Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
 function createNewUserInputField() {
   const wrapper = $(document.createElement("div"));
-  const wrapperInput = $(document.createElement("div"));
+  const wrapperInput = $(document.createElement("fieldset"));// This element wraps the new user input
   const wrapperBtns = $(document.createElement("div"));
 
+  const label = document.createElement("label"); // This element labels the new user field
   const input = $(document.createElement("input"));
   const submit = $(document.createElement("i"));
   const cancel = $(document.createElement("i"));
@@ -97,19 +98,28 @@ function createNewUserInputField() {
     .addClass("createDiv row");
 
   $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
+  
+  $(label)
+    .attr({
+      for: "UTubUsernameInput",
+      style: "display:block",
+    })
+    .html("<b> Username </b>");
 
   $(input)
     .attr({
-      type: "text",
       id: "UTubUsernameInput",
+      type: "text",
       placeholder: "Username",
     })
     .addClass("User userInput");
 
-  wrapperInput.append(input);
+  wrapperInput
+  .append(label)
+  .append(input);
 
   $(wrapperBtns).addClass(
-    "col-3 mb-md-0 text-right d-flex justify-content-center flex-row",
+    "col-3 mb-md-0 py-4 d-flex flex-row",
   );
 
   // Submit addUser checkbox
