@@ -20,7 +20,7 @@ $(document).ready(function () {
 /** User Utility Functions **/
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
-function selectedUserID() { }
+function selectedUserID() {}
 
 // Clear user selection
 function resetNewUserForm() {
@@ -174,7 +174,6 @@ function addUserShowInput() {
 function addUserHideInput() {
   hideInput("UTubUsernameInput");
 }
-
 
 function addUser() {
   // Extract data to submit in POST request
