@@ -27,7 +27,7 @@ $(document).ready(function () {
 /** User Utility Functions **/
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
-function selectedUserID() { }
+function selectedUserID() {}
 
 // Clear user selection
 function clearUserSelection() {
@@ -39,7 +39,7 @@ function clearUserSelection() {
 // Build center panel URL list for selectedUTub
 function buildUserDeck(UTubUsers, creatorID) {
   const parent = $("#listUsers");
-  console.log(parent)
+  console.log(parent);
 
   parent.append(createNewUserInputField());
 
@@ -174,7 +174,6 @@ function addUserHideInput() {
   hideInput("UTubUsernameInput");
 }
 
-
 function addUser() {
   // Extract data to submit in POST request
   [postURL, data] = addUserSetup();
@@ -214,7 +213,7 @@ function addUserSetup() {
 }
 
 // Perhaps update a scrollable/searchable list of users?
-function addUserSuccess(response) { }
+function addUserSuccess(response) {}
 
 function addUserFail(response) {
   console.log("Basic implementation. Needs revision");
