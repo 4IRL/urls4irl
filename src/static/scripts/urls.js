@@ -186,14 +186,12 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
 
   $(urlString).addClass("card-text URLString").text(string);
 
-  $(editWrap)
-    .attr({ style: "display: none" })
-    .addClass("createDiv form-group");
+  $(editWrap).attr({ style: "display: none" }).addClass("createDiv form-group");
 
   $(editURLTitleLabel)
     .attr({
       for: "editURLTitle-" + URLID,
-      style: "display:block"
+      style: "display:block",
     })
     .html("<b> URL Title </b>");
 
@@ -215,7 +213,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   $(editURLStringLabel)
     .attr({
       for: "editURL-" + URLID,
-      style: "display:block"
+      style: "display:block",
     })
     .html("<b> URL </b>");
 
@@ -234,9 +232,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     .append(editURLStringLabel)
     .append(editURLStringInput);
 
-  $(editWrap)
-    .append(editWrap1)
-    .append(editWrap2);
+  $(editWrap).append(editWrap1).append(editWrap2);
 
   $(urlTags)
     .attr({
@@ -422,7 +418,7 @@ function createNewURLInputField() {
   $(newURLTitleLabel)
     .attr({
       for: "newURLTitle",
-      style: "display:block"
+      style: "display:block",
     })
     .html("<b> URL Title </b>");
 
@@ -434,14 +430,12 @@ function createNewURLInputField() {
     size: "50",
   });
 
-  $(newWrap1)
-    .append(newURLTitleLabel)
-    .append(newURLTitle);
+  $(newWrap1).append(newURLTitleLabel).append(newURLTitle);
 
   $(newURLStringLabel)
     .attr({
       for: "newURLString",
-      style: "display:block"
+      style: "display:block",
     })
     .html("<b> URL </b>");
 
@@ -453,14 +447,9 @@ function createNewURLInputField() {
     size: "50",
   });
 
-  $(newWrap2)
-    .append(newURLStringLabel)
-    .append(newURLString);
+  $(newWrap2).append(newURLStringLabel).append(newURLString);
 
-
-  $(newWrap)
-    .append(newWrap1)
-    .append(newWrap2);
+  $(newWrap).append(newWrap1).append(newWrap2);
 
   $(urlTags).attr({ class: "card-body URLTags" });
 
@@ -774,9 +763,7 @@ function editURLSetup() {
   let selectedCardDiv = $(getSelectedURLCard());
   let editedURLfield = selectedCardDiv.find(".editURLString")[0];
   let editedURL = editedURLfield.value;
-  let editedURLTitlefield = selectedCardDiv.find(
-    ".editURLTitle",
-  )[0];
+  let editedURLTitlefield = selectedCardDiv.find(".editURLTitle")[0];
   let editedURLTitle = editedURLTitlefield.value;
   data = {
     url_string: editedURL,

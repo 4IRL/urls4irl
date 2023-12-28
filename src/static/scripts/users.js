@@ -216,7 +216,7 @@ function addUserSetup() {
 // Perhaps update a scrollable/searchable list of users?
 function addUserSuccess(response) {
   changeUTub(getCurrentUTubID());
- }
+}
 
 function addUserFail(response) {
   console.log("Basic implementation. Needs revision");
