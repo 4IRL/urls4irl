@@ -346,10 +346,8 @@ function checkSameNameUTub(mode, name) {
   // Toggle boolean to determine whether to display warning modal
   if (sameNameCounter > 0) sameNameBool = true;
 
-  if (sameNameBool)
-    sameNameWarningShowModal(mode, UTubIDFromName(name));
-  else 
-  mode ? addUTub() : editUTub();;
+  if (sameNameBool) sameNameWarningShowModal(mode, UTubIDFromName(name));
+  else mode ? addUTub() : editUTub();
 }
 
 // Counts number of UTubs with the same name
@@ -421,16 +419,16 @@ function addUTubShowInput() {
   showInput("createUTub");
   highlightInput($("#createUTub"));
 
-  console.log("show it")
-  $(document).on('keypress', function (e) {
+  console.log("show it");
+  $(document).on("keypress", function (e) {
     if (e.which == 13) {
-      checkSameNameUTub(1, $("#createUTub").val())
+      checkSameNameUTub(1, $("#createUTub").val());
     }
   });
-  
-  $(document).on('keypress', function (e) {
+
+  $(document).on("keypress", function (e) {
     if (e.which == 27) {
-      console.log("1 key bound")
+      console.log("1 key bound");
       addUTubHideInput();
     }
   });
@@ -464,7 +462,7 @@ function addUTub() {
 
     addUTubFail(response, textStatus, xhr);
   });
-  
+
   unbindKeys();
 }
 
@@ -479,7 +477,7 @@ function addUTubSetup() {
 // Handle creation of new UTub
 function addUTubSuccess(response) {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
-  
+
   let UTubID = response.UTub_ID;
 
   resetNewUTubForm();
@@ -519,7 +517,10 @@ function addUTubFail(response, textStatus, xhr) {
     }
   }
   console.log(
-    "Failure. Error code: " + response.responseJSON.Error_code + ". Status: " + response.responseJSON.Message,
+    "Failure. Error code: " +
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
   );
 }
 
@@ -684,7 +685,7 @@ function editUTubFail(response, textStatus, xhr) {
 function deleteUTubHideModal() {
   $("#confirmModal").modal("hide");
   unbindKeys();
- }
+}
 
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal() {
@@ -706,7 +707,7 @@ function deleteUTubShowModal() {
       deleteUTubHideModal();
     })
     .text(buttonTextDismiss);
-    bindKeyToFunction(deleteUTubHideModal, 27)
+  bindKeyToFunction(deleteUTubHideModal, 27);
 
   $("#modalSubmit")
     .removeClass()
@@ -716,7 +717,7 @@ function deleteUTubShowModal() {
       e.preventDefault();
       deleteUTub();
     });
-    bindKeyToFunction(deleteUTub, 13)
+  bindKeyToFunction(deleteUTub, 13);
 
   $("#confirmModal").modal("show");
 
@@ -744,9 +745,9 @@ function deleteUTub() {
 
     deleteUTubFailure(response, textStatus, xhr);
   });
-  
+
   unbindKeys();
-  console.log("")
+  console.log("");
 }
 
 // Prepares post request inputs to delete the current UTub
