@@ -182,7 +182,7 @@ UNABLE_TO_REMOVE_URL = "Unable to remove this URL."
 UNABLE_TO_ADD_URL = "Unable to add this URL."
 URL_IN_UTUB = "URL already in UTub."
 UNABLE_TO_ADD_URL_FORM = "Unable to add this URL, please check inputs."
-UNABLE_TO_MODIFY_URL_FORM = "Unable to modify this URL, please check inputs."
+UNABLE_TO_MODIFY_URL_FORM = "Unable to update, please check inputs."
 UNABLE_TO_MODIFY_URL = "Unable to modify this URL."
 EMPTY_URL = "URL cannot be empty."
 
@@ -201,11 +201,13 @@ class URL_FAILURE(FAILURE_GENERAL):
 # Strings for URL no change
 URL_AND_TITLE_NOT_MODIFIED = "URL and URL title were not modified."
 URL_NOT_MODIFIED = "URL not modified."
+URL_TITLE_NOT_MODIFIED = "URL title not modified."
 
 
 class URL_NO_CHANGE:
     URL_AND_TITLE_NOT_MODIFIED = URL_AND_TITLE_NOT_MODIFIED
     URL_NOT_MODIFIED = URL_NOT_MODIFIED 
+    URL_TITLE_NOT_MODIFIED = URL_TITLE_NOT_MODIFIED
 
 
 # Strings for tags success
@@ -458,3 +460,4 @@ class CONFIG_ENVS:
 # General Identifiers
 class IDENTIFIERS:
     SPLASH_PAGE = "Welcome to URLS4IRL"
+    HTML_404 = "404 - Invalid Request"

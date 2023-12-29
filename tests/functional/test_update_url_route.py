@@ -34,14 +34,14 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         STD_JSON.MESSAGE: URL_SUCCESS.URL_MODIFIED,
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
-            "url_id": ID of URL that was modified to,
-            "url_string": The URL that was newly modified to,
+            "url_id": ID of URL that was modified,
+            "url_string": The URL that was newly modified,
             "url_tags": An array of tag ID's associated with this URL
             "added_by": Id of the user who added this, should be the user modifying it
             "url_title": String representing the URL title in this UTub
         }
         URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub where this
+        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -173,14 +173,14 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         STD_JSON.MESSAGE: URL_SUCCESS.URL_MODIFIED,
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
-            MODEL_STRS.URL_ID: ID of URL that was modified to,
-            URL_FORM.URL_STRING: The URL that was newly modified to,
+            MODEL_STRS.URL_ID: ID of URL that was modified,
+            URL_FORM.URL_STRING: The URL that was newly modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
             MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
         URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub where this
+        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -313,14 +313,14 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         STD_JSON.MESSAGE: URL_SUCCESS.URL_MODIFIED,
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
-            MODEL_STRS.URL_ID: ID of URL that was modified to,
-            URL_FORM.URL_STRING: The URL that was newly modified to,
+            MODEL_STRS.URL_ID: ID of URL that was modified,
+            URL_FORM.URL_STRING: The URL that was newly modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
             MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
         URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub where this
+        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -463,14 +463,14 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         STD_JSON.MESSAGE: URL_SUCCESS.URL_MODIFIED,
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
-            MODEL_STRS.URL_ID: ID of URL that was modified to,
-            URL_FORM.URL_STRING: The URL that was newly modified to,
+            MODEL_STRS.URL_ID: ID of URL that was modified,
+            URL_FORM.URL_STRING: The URL that was newly modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
             MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
         URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub where this
+        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -615,14 +615,14 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         STD_JSON.MESSAGE: URL_NO_CHANGE.URL_NOT_MODIFIED,
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
-            MODEL_STRS.URL_ID: ID of URL that was modified to,
-            URL_FORM.URL_STRING: The URL that was newly modified to,
+            MODEL_STRS.URL_ID: ID of URL that was modified,
+            URL_FORM.URL_STRING: The URL that was newly modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
             MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
         URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub where this
+        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -734,14 +734,14 @@ def test_update_valid_url_with_same_url_as_url_adder(
         STD_JSON.MESSAGE: URL_NO_CHANGE.URL_NOT_MODIFIED,
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
-            MODEL_STRS.URL_ID: ID of URL that was modified to,
-            URL_FORM.URL_STRING: The URL that was newly modified to,
+            MODEL_STRS.URL_ID: ID of URL that was modified,
+            URL_FORM.URL_STRING: The URL that was newly modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
             MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
         URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub where this
+        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register

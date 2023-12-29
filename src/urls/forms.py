@@ -60,6 +60,7 @@ class EditURLForm(FlaskForm):
 
     submit = SubmitField("Edit URL!")
 
+
 class EditURLTitleForm(FlaskForm):
     """
     Form to edit a URL in this UTub. Inherits from FlaskForm.
@@ -68,6 +69,6 @@ class EditURLTitleForm(FlaskForm):
         url_title (Stringfield): Required. Maximum 2000 chars? TODO
     """
 
-    url_title = StringField("URL Title", validators=[Length(max=140)])
+    url_title = StringField("URL Title", validators=[InputRequired(), Length(max=140)])
 
     submit = SubmitField("Edit URL Title!")
