@@ -96,9 +96,11 @@ function highlightInput(inputEl) {
   }
 }
 
-// Hides any active input fields 
+// Hides any active input fields
 function hideInputs() {
-  $(".createDiv").each(function () { hideIfShown($(this)) });
+  $(".createDiv").each(function () {
+    hideIfShown($(this));
+  });
 }
 
 // Hide specified input field. Typically done if user successfully completes, or cancels an action
@@ -108,7 +110,7 @@ function hideInput(handle) {
   hideIfShown(inputDiv);
 }
 
-// Clears any active input fields 
+// Clears any active input fields
 function clearInputs() {
   $(".userInput").val("");
 }
@@ -162,7 +164,7 @@ function unbindEnter() {
     if (e.which == 13) {
       return;
     }
-  });  
+  });
 }
 // $(document).on("keyup", function (e) {
 //   if (e.keyCode === 13) {

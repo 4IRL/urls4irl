@@ -57,7 +57,7 @@ $(document).ready(function () {
     hideInputs();
     deselectAllURLs();
     editUTubShowInput();
-    
+
     // Bind enter key (keycode 13) to submit user input
     // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
     unbindEnter();
@@ -679,7 +679,12 @@ function editUTubFail(response, textStatus, xhr) {
       $("#" + key).addClass("is-invalid");
     }
   }
-  console.log("Failure. Error code: " + response.responseJSON.Error_code + ". Status: " + response.responseJSON.Message);
+  console.log(
+    "Failure. Error code: " +
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
+  );
 }
 
 /* Delete UTub */
@@ -805,5 +810,10 @@ function deleteUTubFailure(xhr, textStatus, error) {
       $("#" + key).addClass("is-invalid");
     }
   }
-  console.log("Failure. Error code: " + response.error.Error_code + ". Status: " + response.error.Message);
+  console.log(
+    "Failure. Error code: " +
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
+  );
 }

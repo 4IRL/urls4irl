@@ -23,7 +23,9 @@ $(document).ready(function () {
     // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see failed attempt under bindKeyToFunction() in utils.js)
     unbindEnter();
     $(document).bind("keypress", function (e) {
-      if (e.which == 13) { addURL() }
+      if (e.which == 13) {
+        addURL();
+      }
     });
   });
 
@@ -32,8 +34,10 @@ $(document).ready(function () {
     // e.stopPropagation();
     // e.preventDefault();
     if (numOfURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
-      accessAllWarningShowModal()
-    } else { accessAllURLsInUTub() }
+      accessAllWarningShowModal();
+    } else {
+      accessAllURLsInUTub();
+    }
   });
 });
 
@@ -90,8 +94,9 @@ function accessLink(url_string) {
 
 // Show confirmation modal for opening all URLs in UTub
 function accessAllWarningShowModal() {
-  let modalTitle = "Are you sure you want to open all " + numOfURLs() + " URLs in this UTub?";
-  let modalDismiss = "Cancel"
+  let modalTitle =
+    "Are you sure you want to open all " + numOfURLs() + " URLs in this UTub?";
+  let modalDismiss = "Cancel";
 
   $("#confirmModalTitle").text(modalTitle);
 
@@ -105,8 +110,8 @@ function accessAllWarningShowModal() {
     .text(modalDismiss);
 
   $("#modalSubmit")
-  .removeClass()
-  .addClass("btn btn-success")
+    .removeClass()
+    .addClass("btn btn-success")
     .on("click", function (e) {
       e.preventDefault();
       accessAllURLsInUTub();
@@ -699,7 +704,7 @@ function addURLSuccess(response) {
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
 function addURLFailure(response) {
-  console.log(response)
+  console.log(response);
   console.log("Basic implementation. Needs revision");
   console.log(response.responseJSON.Error_code);
   console.log(response.responseJSON.Message);
