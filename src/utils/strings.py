@@ -161,6 +161,7 @@ URL_ADDED = "URL added to UTub."
 URL_REMOVED = "URL removed from this UTub."
 URL_TITLE_MODIFIED = "URL title was modified."
 URL_OR_TITLE_MODIFIED = "URL and/or URL title modified."
+URL_MODIFIED = "URL modified."
 
 
 class URL_SUCCESS(SUCCESS_GENERAL):
@@ -173,6 +174,7 @@ class URL_SUCCESS(SUCCESS_GENERAL):
     URL_CREATED_ADDED = URL_CREATED_ADDED
     URL_TITLE_MODIFIED = URL_TITLE_MODIFIED
     URL_OR_TITLE_MODIFIED = URL_OR_TITLE_MODIFIED
+    URL_MODIFIED = URL_MODIFIED
 
 
 # Strings for URL failure
@@ -180,7 +182,7 @@ UNABLE_TO_REMOVE_URL = "Unable to remove this URL."
 UNABLE_TO_ADD_URL = "Unable to add this URL."
 URL_IN_UTUB = "URL already in UTub."
 UNABLE_TO_ADD_URL_FORM = "Unable to add this URL, please check inputs."
-UNABLE_TO_MODIFY_URL_FORM = "Unable to modify this URL, please check inputs."
+UNABLE_TO_MODIFY_URL_FORM = "Unable to update, please check inputs."
 UNABLE_TO_MODIFY_URL = "Unable to modify this URL."
 EMPTY_URL = "URL cannot be empty."
 
@@ -198,10 +200,14 @@ class URL_FAILURE(FAILURE_GENERAL):
 
 # Strings for URL no change
 URL_AND_TITLE_NOT_MODIFIED = "URL and URL title were not modified."
+URL_NOT_MODIFIED = "URL not modified."
+URL_TITLE_NOT_MODIFIED = "URL title not modified."
 
 
 class URL_NO_CHANGE:
     URL_AND_TITLE_NOT_MODIFIED = URL_AND_TITLE_NOT_MODIFIED
+    URL_NOT_MODIFIED = URL_NOT_MODIFIED
+    URL_TITLE_NOT_MODIFIED = URL_TITLE_NOT_MODIFIED
 
 
 # Strings for tags success
@@ -454,3 +460,4 @@ class CONFIG_ENVS:
 # General Identifiers
 class IDENTIFIERS:
     SPLASH_PAGE = "Welcome to URLS4IRL"
+    HTML_404 = "404 - Invalid Request"
