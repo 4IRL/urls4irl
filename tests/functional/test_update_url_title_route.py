@@ -66,10 +66,12 @@ def test_update_url_title_utub_creator(
         assert utub_creator_of.utub_creator == current_user.id
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(utub_id=utub_creator_of.id).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id
+        ).first()
         current_title = url_in_this_utub.url_title
         current_url = url_in_this_utub.url_in_utub.url_string
-        current_url_id = url_in_this_utub.url_id 
+        current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
             Utub_Urls.query.filter_by(
@@ -114,13 +116,8 @@ def test_update_url_title_utub_creator(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_TITLE_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == NEW_TITLE
-    assert (
-        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
-        == current_url_id
-    )
-    assert (
-        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
-    )
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_creator_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
@@ -132,7 +129,8 @@ def test_update_url_title_utub_creator(
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id).first()
+            utub_id=utub_creator_of.id, url_id=current_url_id
+        ).first()
         assert new_url_item.url_title == NEW_TITLE
         assert new_url_item.url_id == current_url_id
 
@@ -189,7 +187,7 @@ def test_update_url_title_url_adder(
         ).first()
         current_title = url_in_this_utub.url_title
         current_url = url_in_this_utub.url_in_utub.url_string
-        current_url_id = url_in_this_utub.url_id 
+        current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
             Utub_Urls.query.filter_by(
@@ -235,13 +233,8 @@ def test_update_url_title_url_adder(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_TITLE_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == NEW_TITLE
-    assert (
-        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
-        == current_url_id
-    )
-    assert (
-        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
-    )
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
@@ -310,10 +303,12 @@ def test_update_url_title_with_same_title_utub_creator(
         assert utub_creator_of.utub_creator == current_user.id
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(utub_id=utub_creator_of.id).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id
+        ).first()
         current_title = url_in_this_utub.url_title
         current_url = url_in_this_utub.url_in_utub.url_string
-        current_url_id = url_in_this_utub.url_id 
+        current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
             Utub_Urls.query.filter_by(
@@ -358,13 +353,8 @@ def test_update_url_title_with_same_title_utub_creator(
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == current_title
-    assert (
-        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
-        == current_url_id
-    )
-    assert (
-        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
-    )
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_creator_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
@@ -376,7 +366,8 @@ def test_update_url_title_with_same_title_utub_creator(
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id).first()
+            utub_id=utub_creator_of.id, url_id=current_url_id
+        ).first()
         assert new_url_item.url_title == current_title
         assert new_url_item.url_id == current_url_id
 
@@ -432,7 +423,7 @@ def test_update_url_title_with_same_title_url_adder(
         ).first()
         current_title = url_in_this_utub.url_title
         current_url = url_in_this_utub.url_in_utub.url_string
-        current_url_id = url_in_this_utub.url_id 
+        current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
             Utub_Urls.query.filter_by(
@@ -478,13 +469,8 @@ def test_update_url_title_with_same_title_url_adder(
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == current_title
-    assert (
-        int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
-        == current_url_id
-    )
-    assert (
-        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
-    )
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
     assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
@@ -546,12 +532,11 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
 
         # Get the URL in this UTub
         url_in_this_utub = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub_member_of.id, 
-            Utub_Urls.user_id != current_user.id
+            Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.user_id != current_user.id
         ).first()
         current_title = url_in_this_utub.url_title
         current_url = url_in_this_utub.url_in_utub.url_string
-        current_url_id = url_in_this_utub.url_id 
+        current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
             Utub_Urls.query.filter_by(
@@ -617,7 +602,9 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(utub_id=utub_member_of.id, url_id=current_url_id).all()
+            Url_Tags.query.filter_by(
+                utub_id=utub_member_of.id, url_id=current_url_id
+            ).all()
         ) == len(associated_tags)
 
 
@@ -640,7 +627,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
         STD_JSON.ERROR_CODE: 3,
-        STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field 
+        STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field
         {
             URL_FAILURE.URL_TITLE: [URL_FAILURE.FIELD_REQUIRED,]
         }
@@ -656,9 +643,11 @@ def test_update_url_title_with_empty_title_as_utub_creator(
         assert utub_creator_of.utub_creator == current_user.id
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(utub_id=utub_creator_of.id).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id
+        ).first()
         current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id 
+        current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
             Utub_Urls.query.filter_by(
@@ -699,7 +688,10 @@ def test_update_url_title_with_empty_title_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 3
-    assert json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE] == URL_FAILURE.FIELD_REQUIRED
+    assert (
+        json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE]
+        == URL_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -708,7 +700,8 @@ def test_update_url_title_with_empty_title_as_utub_creator(
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id).first()
+            utub_id=utub_creator_of.id, url_id=current_url_id
+        ).first()
         assert new_url_item.url_title == current_title
         assert new_url_item.url_id == current_url_id
 
@@ -754,7 +747,7 @@ def test_update_url_title_as_member_of_other_utub(
         # Get the URL of another UTub
         url_not_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id != utub_creator_of.id,
-            Utub_Urls.user_id != current_user.id
+            Utub_Urls.user_id != current_user.id,
         ).first()
         utub_id = url_not_in_this_utub.utub_id
         current_url_id = url_not_in_this_utub.url_id
@@ -777,8 +770,6 @@ def test_update_url_title_as_member_of_other_utub(
         num_of_url_tag_assocs = len(Url_Tags.query.all())
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
-
-
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -809,15 +800,14 @@ def test_update_url_title_as_member_of_other_utub(
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_id, url_id=current_url_id).first()
+            utub_id=utub_id, url_id=current_url_id
+        ).first()
         assert new_url_item.url_title == current_title
         assert new_url_item.url_id == current_url_id
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
-                utub_id=utub_id, url_id=current_url_id
-            ).all()
+            Url_Tags.query.filter_by(utub_id=utub_id, url_id=current_url_id).all()
         ) == len(associated_tags)
 
 
@@ -839,7 +829,7 @@ def test_update_url_title_with_missing_title_field_utub_creator(
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
         STD_JSON.ERROR_CODE: 2,
-        STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field 
+        STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field
         {
             URL_FAILURE.URL_TITLE: [URL_FAILURE.FIELD_REQUIRED,]
         }
@@ -854,9 +844,11 @@ def test_update_url_title_with_missing_title_field_utub_creator(
         assert utub_creator_of.utub_creator == current_user.id
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(utub_id=utub_creator_of.id).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id
+        ).first()
         current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id 
+        current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
             Utub_Urls.query.filter_by(
@@ -896,7 +888,10 @@ def test_update_url_title_with_missing_title_field_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 2
-    assert json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE] == URL_FAILURE.FIELD_REQUIRED
+    assert (
+        json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE]
+        == URL_FAILURE.FIELD_REQUIRED
+    )
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -905,7 +900,8 @@ def test_update_url_title_with_missing_title_field_utub_creator(
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id).first()
+            utub_id=utub_creator_of.id, url_id=current_url_id
+        ).first()
         assert new_url_item.url_title == current_title
         assert new_url_item.url_id == current_url_id
 
@@ -926,8 +922,8 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
     WHEN the creator attempts to modify the URL title with a form missing the CSRF token, via a POST to:
         "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
             URL_FORM.URL_TITLE: String containing a new URL title
-    THEN verify that the url-utub-user associations and url-tag are unchanged all other URL associations 
-        are kept consistent, the server sends back a 400 HTTP status code, 
+    THEN verify that the url-utub-user associations and url-tag are unchanged all other URL associations
+        are kept consistent, the server sends back a 400 HTTP status code,
         and the server sends back the appropriate HTML response
 
     Proper HTML response contains the following:
@@ -942,9 +938,11 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
         assert utub_creator_of.utub_creator == current_user.id
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(utub_id=utub_creator_of.id).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id
+        ).first()
         current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id 
+        current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
             Utub_Urls.query.filter_by(
@@ -964,9 +962,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
-    edit_url_string_title_form = {
-        URL_FORM.URL_TITLE: current_title + "AAA"
-    }
+    edit_url_string_title_form = {URL_FORM.URL_TITLE: current_title + "AAA"}
 
     edit_url_string_title_form = client.post(
         url_for(
@@ -987,7 +983,8 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id).first()
+            utub_id=utub_creator_of.id, url_id=current_url_id
+        ).first()
         assert new_url_item.url_title == current_title
         assert new_url_item.url_id == current_url_id
 
@@ -1009,8 +1006,8 @@ def test_update_url_title_of_nonexistent_url(
         "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: A new URL title
-    THEN verify that the url-utub-user associations and url-tag are unchanged, 
-        all other URL associations are kept consistent, the server sends back a 404 HTTP 
+    THEN verify that the url-utub-user associations and url-tag are unchanged,
+        all other URL associations are kept consistent, the server sends back a 404 HTTP
         status code, and the server sends back the appropriate HTML page response
 
     HTML Response will contain the following text:
@@ -1069,8 +1066,8 @@ def test_update_url_title_in_nonexistent_utub(
         "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: A new URL title
-    THEN verify that the url-utub-user associations and url-tag are unchanged, 
-        all other URL associations are kept consistent, the server sends back a 404 HTTP 
+    THEN verify that the url-utub-user associations and url-tag are unchanged,
+        all other URL associations are kept consistent, the server sends back a 404 HTTP
         status code, and the server sends back the appropriate HTML page response
 
     HTML Response will contain the following text:
@@ -1079,7 +1076,7 @@ def test_update_url_title_in_nonexistent_utub(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     NEW_TITLE = "This is my newest github.com."
-    NONEXISTENT_UTUB_ID= 999
+    NONEXISTENT_UTUB_ID = 999
 
     # Get the URL of another UTub
     NONEXISTENT_URL_ID = 999

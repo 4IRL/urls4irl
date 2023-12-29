@@ -84,7 +84,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
 
     edit_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: validated_new_fresh_url
+        URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
     edit_url_string_form = client.post(

@@ -258,7 +258,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
     utub = Utub.query.get_or_404(utub_id)
     utub_owner_id = int(utub.created_by.id)
 
-    # Search through all urls in the UTub for the one that matches the prescribed 
+    # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
     url_in_utub: Utub_Urls = Utub_Urls.query.filter(
         Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
@@ -482,7 +482,7 @@ def edit_url(utub_id: int, url_id: int):
     utub = Utub.query.get_or_404(utub_id)
     utub_owner_id = int(utub.created_by.id)
 
-    # Search through all urls in the UTub for the one that matches the prescribed 
+    # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
     url_in_utub: Utub_Urls = Utub_Urls.query.filter(
         Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
@@ -630,7 +630,7 @@ def edit_url(utub_id: int, url_id: int):
         ),
         404,
     )
-    
+
 
 @urls.route("/urlTitle/edit/<int:utub_id>/<int:url_id>", methods=["POST"])
 @email_validation_required
@@ -647,7 +647,7 @@ def edit_url_title(utub_id: int, url_id: int):
     utub = Utub.query.get_or_404(utub_id)
     utub_owner_id = int(utub.created_by.id)
 
-    # Search through all urls in the UTub for the one that matches the prescribed 
+    # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
     url_in_utub: Utub_Urls = Utub_Urls.query.filter(
         Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
