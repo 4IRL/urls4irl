@@ -34,6 +34,13 @@ $(document).ready(function () {
     return false;
   });
 
+  // Bind esc key (keycode 27) to hide any visible user input createDivs
+  $(document).bind("keyup", function (e) {
+    if (e.which == 27) {
+      hideInputs();
+    }
+  });
+
   // Keyboard navigation between selected UTubs or URLs
   $(document).on("keyup", function (e) {
     let keycode = e.keyCode ? e.keyCode : e.which;
@@ -89,11 +96,26 @@ function highlightInput(inputEl) {
   }
 }
 
-// Hide input fields if user successfully completes, or cancels an action
+// Hides any active input fields 
+function hideInputs() {
+  $(".createDiv").each(function () { hideIfShown($(this)) });
+}
+
+// Hide specified input field. Typically done if user successfully completes, or cancels an action
 function hideInput(handle) {
   let inputEl = $("#" + handle);
   let inputDiv = inputEl.closest(".createDiv");
   hideIfShown(inputDiv);
+}
+
+// Clears any active input fields 
+function clearInputs() {
+  $(".userInput").val("");
+}
+
+// Clear specified input field. Typically done if user successfully completes, or cancels an action
+function clearInput(handle) {
+  $("#" + handle).val("");
 }
 
 // Where el is the DOM element you'd like to test for visibility
