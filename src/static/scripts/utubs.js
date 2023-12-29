@@ -26,10 +26,13 @@ $(document).ready(function () {
   $("#createUTubBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
+    hideInputs();
+    deselectAllURLs();
     addUTubShowInput();
 
     // Bind enter key (keycode 13) to submit user input
     // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
+    unbindEnter();
     $(document).bind("keypress", function (e) {
       if (e.which == 13) {
         checkSameNameUTub(1, $("#createUTub").val());
@@ -51,8 +54,13 @@ $(document).ready(function () {
   $(".editUTubBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
+    hideInputs();
+    deselectAllURLs();
     editUTubShowInput();
     
+    // Bind enter key (keycode 13) to submit user input
+    // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
+    unbindEnter();
     $(document).bind("keypress", function (e) {
       if (e.which == 13) {
         checkSameNameUTub(0, $("#editUTubName").val());
@@ -233,6 +241,8 @@ function createNewUTubInputField() {
 
 // User selected a UTub, display data
 function changeUTub(selectedUTubID) {
+  hideInputs();
+
   getUtubInfo(selectedUTubID).then(function (selectedUTub) {
     // Parse incoming data, pass them into subsequent functions as required
     let dictURLs = selectedUTub.urls;
@@ -428,27 +438,12 @@ function sameNameWarningShowModal(mode, UTubID) {
 function addUTubShowInput() {
   showInput("createUTub");
   highlightInput($("#createUTub"));
-
-  console.log("show it")
-  $(document).on('keypress', function (e) {
-    if (e.which == 13) {
-      checkSameNameUTub(1, $("#createUTub").val())
-    }
-  });
-
-  $(document).on("keypress", function (e) {
-    if (e.which == 27) {
-      console.log("1 key bound");
-      addUTubHideInput();
-    }
-  });
-  // bindKeyToFunction(addUTubHideInput, 27);
 }
 
 // Hides new UTub input fields
 function addUTubHideInput() {
   hideInput("createUTub");
-  unbindKeys(); // unbinding doesn't seem to work...
+  unbindEnter(); // unbinding doesn't seem to work...
 }
 
 // Handles post request and response for adding a new UTub
@@ -473,7 +468,7 @@ function addUTub() {
     addUTubFail(response, textStatus, xhr);
   });
 
-  unbindKeys();
+  unbindEnter();
 }
 
 // Handles preparation for post request to create a new UTub
@@ -692,7 +687,7 @@ function editUTubFail(response, textStatus, xhr) {
 // Hide confirmation modal for deletion of the current UTub
 function deleteUTubHideModal() {
   $("#confirmModal").modal("hide");
-  unbindKeys();
+  unbindEnter();
 }
 
 // Show confirmation modal for deletion of the current UTub
@@ -713,6 +708,7 @@ function deleteUTubShowModal() {
     .on("click", function (e) {
       e.preventDefault();
       deleteUTubHideModal();
+      unbindEnter();
     })
     .text(buttonTextDismiss);
   bindKeyToFunction(deleteUTubHideModal, 27);
@@ -754,8 +750,7 @@ function deleteUTub() {
     deleteUTubFailure(response, textStatus, xhr);
   });
 
-  unbindKeys();
-  console.log("");
+  unbindEnter();
 }
 
 // Prepares post request inputs to delete the current UTub
@@ -810,5 +805,5 @@ function deleteUTubFailure(xhr, textStatus, error) {
       $("#" + key).addClass("is-invalid");
     }
   }
-  console.log("Failure. Error code: " + response.responseJSON.Error_code + ". Status: " + response.responseJSON.Message);
+  console.log("Failure. Error code: " + response.error.Error_code + ". Status: " + response.error.Message);
 }

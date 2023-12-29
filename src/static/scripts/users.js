@@ -13,7 +13,17 @@ $(document).ready(function () {
   $("#addUserBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
+    hideInputs();
+    deselectAllURLs();
     addUserShowInput();
+    // Bind enter key (keycode 13) to submit user input
+    // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
+    unbindEnter();
+    $(document).bind("keypress", function (e) {
+      if (e.which == 13) {
+        addUser();
+      }
+    });
   });
 });
 

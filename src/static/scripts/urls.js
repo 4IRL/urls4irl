@@ -4,7 +4,7 @@
 const ADD_URL_ROUTE = "/url/add/"; // +<int:utub_id>
 const EDIT_URL_ROUTE = "/url/edit/"; // +<int:utub_id>/<int:url_id>
 const REMOVE_URL_ROUTE = "/url/remove/"; // +<int:utub_id>/<int:url_id>
-const ACCESS_ALL_URLS_LIMIT_WARNING = 4;
+const ACCESS_ALL_URLS_LIMIT_WARNING = 3;
 
 /** URL UI Interactions **/
 
@@ -21,6 +21,7 @@ $(document).ready(function () {
 
     // Bind enter key (keycode 13) to submit user input
     // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see failed attempt under bindKeyToFunction() in utils.js)
+    unbindEnter();
     $(document).bind("keypress", function (e) {
       if (e.which == 13) { addURL() }
     });
@@ -56,12 +57,6 @@ function getSelectedURLCard() {
 // Prevent deselection of URL while modifying its values (e.g. adding a tag, editing URL string or title)
 function unbindSelectBehavior() {
   $(getSelectedURLCard().closest(".cardCol")).off("click");
-  $(document).on("keyup", function (e) {
-    let keycode = e.keyCode ? e.keyCode : e.which;
-    if (keycode == 27) {
-      // ESC key, unbind action
-    }
-  });
 }
 
 // Rebinds selection click behavior after URL-modifying post requests are complete
@@ -153,7 +148,7 @@ function resetURLDeck() {
 
 // Build center panel URL list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
-  console.log(dictURLs)
+  // console.log(dictURLs) Here for debugging...sometimes URL title won't show up on changeUTub()-->buildURLDeck()
   resetURLDeck();
   let UPRRow = $("#UPRRow");
 

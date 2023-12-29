@@ -146,7 +146,7 @@ function AJAXCall(type, url, data) {
   }));
 }
 
-// Bind key to function
+// Bind key to function... doesn't work universally, just in modals, as of 12/29
 function bindKeyToFunction(f, keyTarget) {
   $(document).on("keypress", function (e) {
     if (e.which == keyTarget) {
@@ -156,18 +156,13 @@ function bindKeyToFunction(f, keyTarget) {
   });
 }
 
-// Unbind key
-function unbindKeys() {
-  let keyList = [13, 27];
-
-  console.log(keyList.length + " keys unbinded");
-  for (i = 0; i < keyList.length; i++) {
-    $(document).keypress(function (e) {
-      if (e.keyCode === keyList[i]) {
-        return;
-      }
-    });
-  }
+// Unbind enter key
+function unbindEnter() {
+  $(document).unbind("keypress", function (e) {
+    if (e.which == 13) {
+      return;
+    }
+  });  
 }
 // $(document).on("keyup", function (e) {
 //   if (e.keyCode === 13) {
