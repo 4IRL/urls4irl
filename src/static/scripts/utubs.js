@@ -294,6 +294,7 @@ function displayUpdateUTubInactive() {
 
   // UserDeck display updates
   $("#UserDeckHeader").text("Select a UTub");
+  hideIfShown($("#addUserBtn"));
 }
 
 // Handles display changes in response to UTubs change or creation
@@ -348,6 +349,7 @@ function displayUpdateUTubActive(selectedUTub) {
   });
   $("#UserDeckHeader").text("Users");
   $("#UTubOwner").text(UTubOwnerUsername);
+  showIfHidden($("#addUserBtn"));
 }
 
 /** Post data handling **/

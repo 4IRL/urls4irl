@@ -30,7 +30,9 @@ $(document).ready(function () {
 /** User Utility Functions **/
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
-function selectedUserID() {}
+function getCurrentUserID() {
+  return $("li.nav-item.user").attr("id");
+}
 
 // Clear user selection
 function resetNewUserForm() {
@@ -59,7 +61,9 @@ function buildUserDeck(UTubUsers, creatorID) {
     }
   }
 
-  parent.append(createNewUserInputField());
+  if (getCurrentUserID() == creatorID) {
+    parent.append(createNewUserInputField());
+  }
 }
 
 // Creates user list item
