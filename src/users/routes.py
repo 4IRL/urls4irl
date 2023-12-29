@@ -304,10 +304,10 @@ def delete_user(utub_id: int, user_id: int):
 @email_validation_required
 def add_user(utub_id: int):
     """
-    Creater of utub wants to add a user to the utub.
+    Creator of utub wants to add a user to the utub.
 
     Args:
-        utub_id (int): The utub that this user is being added to
+        utub_id (int): The utub to which this user is being added
     """
     utub = Utub.query.get_or_404(utub_id)
 

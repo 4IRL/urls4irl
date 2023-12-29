@@ -71,7 +71,8 @@
     <title>URLS4IRL</title>
 </head>
 
-<body class="d-flex flex-column vh-100">
+<body class="vh-100"> 
+    <!-- d-flex flex-column -->
     <!-- Navigation Bar -->
     <nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0 fixed-top">
         <a class="navbar-brand navbar-start" href="#">
@@ -123,8 +124,7 @@
                 <form id="ModalForm" name="stepForm" class="form" method="post" action="" novalidate>
                     <div class="modal-header">
                         <h4 id="confirmModalTitle" class="modal-title"></h4>
-                        <button type="button" class="close" data-dismiss="modal" aria-label="close">
-                            <span aria-hidden="true">&times;</span>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="close">
                         </button>
                     </div>
                     <div id="confirmModalBody" class="modal-body">

@@ -8,6 +8,13 @@ const REMOVE_USER_ROUTE = "/user/remove/"; // +<int:utub_id>/<int:user_id>
 
 $(document).ready(function () {
   /* Bind click functions */
+
+  // Add user to UTub
+  $("#addUserBtn").on("click", function (e) {
+    // e.stopPropagation();
+    // e.preventDefault();
+    addUserShowInput();
+  });
 });
 
 /** User Utility Functions **/
@@ -16,16 +23,157 @@ $(document).ready(function () {
 function selectedUserID() {}
 
 // Clear user selection
-function clearUserSelection() {}
+function resetNewUserForm() {
+  $("#UTubUsernameInput").val("");
+}
+
+// Clear the User Deck
+function resetUserDeck() {
+  $("#listUsers").empty();
+}
 
 /* User Functions */
 
 // Build center panel URL list for selectedUTub
-function buildUserDeck() {}
+function buildUserDeck(UTubUsers, creatorID) {
+  resetUserDeck();
+  const parent = $("#listUsers");
+  let NumOfUsers = UTubUsers.length ? UTubUsers.length : 0;
+
+  // Instantiate deck with list of users with access to current UTub
+  for (let i = 0; i < NumOfUsers; i++) {
+    let UTubUser = UTubUsers[i];
+
+    if (UTubUser.id !== creatorID) {
+      parent.append(createUserSelector(UTubUser));
+    }
+  }
+
+  parent.append(createNewUserInputField());
+}
+
+// Creates user list item
+function createUserSelector(UTubUser) {
+  let userListItem = document.createElement("li");
+  let userSpan = document.createElement("span");
+  let removeButton = document.createElement("a");
+
+  let userID = UTubUser.id;
+
+  $(userSpan)
+    .attr({ userid: userID })
+    .addClass("user")
+    .html("<b>" + UTubUser.username + "</b>");
+
+  $(removeButton)
+    .attr({ class: "btn btn-sm btn-outline-link border-0 user-remove" })
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      removeUserShowModal(userID);
+    });
+  removeButton.innerHTML = "&times;";
+
+  $(userSpan).append(removeButton);
+  $(userListItem).append(userSpan);
+
+  return userListItem;
+}
+
+// Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
+function createNewUserInputField() {
+  const wrapper = $(document.createElement("div"));
+  const wrapperInput = $(document.createElement("div"));
+  const wrapperBtns = $(document.createElement("div"));
+
+  const input = $(document.createElement("input"));
+  const submit = $(document.createElement("i"));
+  const cancel = $(document.createElement("i"));
+
+  $(wrapper)
+    .attr({
+      style: "display: none",
+    })
+    .addClass("createDiv row");
+
+  $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
+
+  $(input)
+    .attr({
+      type: "text",
+      id: "UTubUsernameInput",
+      placeholder: "Username",
+    })
+    .addClass("User userInput");
+
+  wrapperInput.append(input);
+
+  $(wrapperBtns).addClass(
+    "col-3 mb-md-0 text-right d-flex justify-content-center flex-row",
+  );
+
+  // Submit addUser checkbox
+  let htmlString =
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="b=i bi-check-square-fill" viewBox="0 0 16 16" width="' +
+    ICON_WIDTH +
+    '" height="' +
+    ICON_HEIGHT +
+    '">' +
+    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z"/></svg>';
+
+  $(submit)
+    .addClass("mx-1 green-clickable")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      addUser();
+    })
+    .html(htmlString);
+
+  wrapperBtns.append(submit);
+
+  // Cancel add User x-box
+  htmlString =
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger" viewBox="0 0 16 16" width="' +
+    ICON_WIDTH +
+    '" height="' +
+    ICON_HEIGHT +
+    '">' +
+    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/></svg>';
+
+  $(cancel)
+    .addClass("mx-1")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      hideIfShown(wrapper);
+    })
+    .html(htmlString);
+
+  wrapperBtns.append(cancel);
+
+  wrapper.append(wrapperInput);
+  wrapper.append(wrapperBtns);
+
+  return wrapper;
+}
 
 /** Post data handling **/
 
 /* Add User */
+
+// Shows new User input fields
+function addUserShowInput() {
+  showInput("UTubUsernameInput");
+  highlightInput($("#UTubUsernameInput"));
+  // bindKeyToFunction(addUTub(), 13);
+  // bindKeyToFunction(addUTubHideInput(), 27);
+}
+
+// Hides new User input fields
+function addUserHideInput() {
+  hideInput("UTubUsernameInput");
+}
 
 function addUser() {
   // Extract data to submit in POST request
@@ -55,20 +203,20 @@ function addUser() {
 
 // This function will extract the current selection data needed for POST request (user ID)
 function addUserSetup() {
-  let postURL = ADD_USER_ROUTE + currentUTubID();
+  let postURL = ADD_USER_ROUTE + getCurrentUTubID();
 
-  let newURLDescription = $("#newURLDescription").val();
-  let newURL = $("#newURLString").val();
+  let newUsername = $("#UTubUsernameInput").val();
   data = {
-    url_string: newURL,
-    url_description: newURLDescription,
+    username: newUsername,
   };
 
   return [postURL, data];
 }
 
 // Perhaps update a scrollable/searchable list of users?
-function addUserSuccess(response) {}
+function addUserSuccess(response) {
+  changeUTub(getCurrentUTubID());
+}
 
 function addUserFail(response) {
   console.log("Basic implementation. Needs revision");
@@ -81,19 +229,34 @@ function addUserFail(response) {
 /* Remove User */
 
 // Show confirmation modal for removal of the selected user from current UTub
-function removeUserShowModal() {
-  let modalTitle = "Are you sure you want to delete this URL from the UTub?";
-  $(".modal-title").text(modalTitle);
+function removeUserShowModal(userID) {
+  let modalTitle = "Are you sure you want to remove this user from the UTub?";
+  let modalBody =
+    "This user will no longer have access to the URLs in this UTub";
+  let buttonTextDismiss = "Keep user";
+  let buttonTextSubmit = "Remove user";
 
-  $("#modalDismiss").on("click", function (e) {
-    e.preventDefault();
-    $("#confirmModal").modal("hide");
-  });
+  $("#confirmModalTitle").text(modalTitle);
 
-  $("#modalSubmit").on("click", function (e) {
-    e.preventDefault();
-    removeURL();
-  });
+  $("#confirmModalBody").text(modalBody);
+
+  $("#modalDismiss")
+    .addClass("btn btn-default")
+    .off("click")
+    .on("click", function (e) {
+      e.preventDefault();
+      $("#confirmModal").modal("hide");
+    })
+    .text(buttonTextDismiss);
+
+  $("#modalSubmit")
+    .removeClass()
+    .addClass("btn btn-danger")
+    .text(buttonTextSubmit)
+    .on("click", function (e) {
+      e.preventDefault();
+      removeUser(userID);
+    });
 
   $("#confirmModal").modal("show");
 
@@ -101,9 +264,9 @@ function removeUserShowModal() {
 }
 
 // Handles post request and response for removing a user from current UTub, after confirmation
-function removeUser() {
+function removeUser(userID) {
   // Extract data to submit in POST request
-  postURL = removeUserSetup();
+  postURL = removeUserSetup(userID);
 
   let request = AJAXCall("post", postURL, []);
 
@@ -112,7 +275,7 @@ function removeUser() {
     console.log("success");
 
     if (xhr.status == 200) {
-      removeUserSuccess();
+      removeUserSuccess(userID);
     }
   });
 
@@ -128,19 +291,19 @@ function removeUser() {
 }
 
 // This function will extract the current selection data needed for POST request (user ID)
-function removeUserSetup() {
-  let postURL = REMOVE_URL_ROUTE + currentUTubID() + "/" + selectedURLID();
+function removeUserSetup(userID) {
+  let postURL = REMOVE_USER_ROUTE + getCurrentUTubID() + "/" + userID;
 
   return postURL;
 }
 
-function removeUserSuccess() {
+function removeUserSuccess(userID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let cardCol = $("div[urlid=" + selectedURLID() + "]").parent();
-  cardCol.fadeOut();
-  cardCol.remove();
+  let userListItem = $("span[userid=" + userID + "]").parent();
+  userListItem.fadeOut();
+  userListItem.remove();
 }
 
 function removeUserFail(xhr, textStatus, error) {

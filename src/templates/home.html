@@ -5,26 +5,34 @@
 <script type="text/javascript">
     var UTubs = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
 </script>
+<!-- 12/17 DP this is visible to the user? Ok? -->
 
-<!-- Left Side Panel -->
+<!-- Left Panel -->
+
 <div id="leftPanel" class="panel col-md-3">
 
-    <!-- UPR LH Panel, UTubs -->
-    <div id="UTubDeck" class="deck row h-50 md-mb-1 p-3" style="display:flex /*margin-bottom: 5px;*/">
-        <div class="col-9 col-lg-9 mb-md-0">
+    <!-- UTubs -->
+    <div id="UTubDeck" class="deck row h-50 p-3">
+        <div class="col-6 col-lg-6">
             <h2 id="UTubDeckHeader"></h2>
         </div>
-        <div class="col-3 col-lg-3 mb-md-0 text-right d-flex justify-content-center flex-row">
+        <div class="col-6 col-lg-6 d-flex flex-row-reverse">
+            <!-- Delete UTub button -->
+            <i id="deleteUTubBtn" class="mx-1" style="display:none">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
+                </svg></i>
 
-            <!-- Local Dev (1/5) -->
-            <!-- <button id="createUTubButton" class="bi bi-plus-square-fill fa-2x btn-success mx-1">+</button>
-                <button id="deleteUTubButton" class="bi bi-x-square-fill fa-2x btn-danger mx-1" style="display:none">X</button> -->
-            <!-- Local Dev (1/5) -->
-
-            <!-- Production (1/5) -->
-            <i id="createUTubButton" class="bi bi-plus-square-fill fa-2x text-success mx-1"></i>
-            <i id="deleteUTubButton" class="bi bi-x-square-fill fa-2x text-danger mx-1" style="display:none"></i>
-            <!-- Production (1/5) -->
+            <!-- Create UTub button -->
+            <i id="createUTubBtn" class="green-clickable mx-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
+                </svg>
+            </i>
         </div>
 
         <div class="deckContent">
@@ -35,25 +43,33 @@
     </div>
 
 
-    <!-- LWR LH Panel, Tags -->
+    <!-- Tags -->
     <div id="TagDeck" class="deck row h-50 p-3">
-        <div class="col-9 col-lg-9 mb-md-0">
+        <div class="col-9 col-lg-9">
             <h2 id="TagDeckHeader">No UTub Selected</h2>
         </div>
-        <div class="col-3 col-lg-3 mb-md-0 text-right">
+        <div class="col-3 col-lg-3 text-right">
             <div class="d-flex justify-content-center flex-row">
+                <!-- Creating disassociated tags is not yet implemented as of 12/21/2023. Not considered MVP functionality. -->
+                <!-- Create Tag button -->
+                <!-- <i id="createTagButton" class="green-clickable mx-1" style="display:none">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
+                        viewBox="0 0 16 16">
+                        <path
+                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
+                    </svg>
+                </i> -->
 
-                <!-- Local Dev (2/5) -->
-                <!-- <button class="bi bi-plus-square-fill fa-2x btn-success mx-1" id="createTagButton" style="display:none">+</button>
-                <button class="bi bi-pencil-square fa-2x btn-warning mx-1" id="editTagButton" style="display:none">edit</button>
-                <button class="fa fa-check-square fa-2x btn-success mx-1" id="submitTagButton" style="display:none">check</button> -->
-                <!-- Local Dev (2/5) -->
-
-                <!-- Production (2/5) -->
-                <!-- <i class="bi bi-plus-square-fill fa-2x text-success mx-1" id="createTagButton" style="display:none"></i>
-                <i class="bi bi-pencil-square fa-2x text-warning mx-1" id="editTagButton" style="display:none"></i>
-                <i class="fa fa-check-square fa-2x text-success mx-1" id="submitTagButton" style="display:none"></i> -->
-                <!-- Production (2/5) -->
+                <!-- Edit Tag button -->
+                <!-- <i id="editTagButton" class="mx-1" style="display: none; color: #545454">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        class="bi bi-pencil-square" viewBox="0 0 16 16">
+                        <path
+                            d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                        <path fill-rule="evenodd"
+                            d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                    </svg>
+                </i> -->
             </div>
         </div>
         <div class="deckContent form-group">
@@ -65,62 +81,57 @@
     </div>
 </div>
 
-<!-- Center Panel, URLs -->
-<div id="centerPanel" class="panel col-md-7">
-    <div id="URLDeck" class="deck h-100 p-3" style="margin-bottom: -5px;">
-        <div class="row justify-content-center mx-2">
-            <div class="col-9 col-lg-9 mb-md-0 text-left">
-                <h2 id="URLDeckHeader" style="display: inline-block"></h2>
+<!-- Left Panel -->
+
+<!-- Center Panel -->
+
+<div id="centerPanel" class="panel col-md-6">
+    <div id="URLDeck" class="deck row h-100 p-3">
+        <div class="row justify-content-center">
+
+            <div class="col-9 col-lg-9" style="display:flex">
+                <!-- UTub name -->
+                <h2 id="URLDeckHeader"></h2>
+
+                <!-- Edit UTub name -->
                 <div class="createDiv" style="display: none">
                     <input type="text" id="editUTubName" class="userInput">
-                    <!-- Local Dev (3/5) -->
-                    <!-- <button id="submitEditUTubButton" class="fa fa-check-square fa-2x text-success mx-1" type="button">check</button> -->
-                    <!-- Local Dev (3/5) -->
 
-                    <!-- Production (3/5) -->
-                    <i id="submitEditUTubButton" class="fa fa-check-square fa-2x text-success mx-1" type="button"></i>
-                    <!-- Production (3/5) -->
+                    <!-- Submit edit UTub name -->
+                    <i class="submitEditUTubBtn green-clickable mx-1 py-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                            class="bi bi-check-square-fill" viewBox="0 0 16 16">
+                            <path
+                                d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z" />
+                        </svg>
+                    </i>
                 </div>
 
-                <!-- Local Dev (4/5) -->
-                <!-- <button id="editUTubButton" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454">edit</button> -->
-                <!-- Local Dev (4/5) -->
-
-                <!-- Production (4/5) -->
-                <i id="editUTubButton" class="bi bi-pencil-square fa-2x mx-1" style="display: none; color: #545454"></i>
-                <!-- Production (4/5) -->
+                <!-- Edit UTub button -->
+                <i class="editUTubBtn mx-1 py-2" style="display: none; color: #545454">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        class="bi bi-pencil-square" viewBox="0 0 16 16">
+                        <path
+                            d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                        <path fill-rule="evenodd"
+                            d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                    </svg>
+                </i>
             </div>
-            <div class="col-3 col-lg-3 mb-md-0 text-right">
 
-                <!-- Local Dev (5/5) -->
-                <!-- <button id="addURLBtn" class="bi bi-plus-square-fill fa-2x btn-success mx-1" style="display: none;">+</button> -->
-                <!-- Local Dev (5/5) -->
-
-                <!-- Production (5/5) -->
-                <i id="addURLBtn" class="bi bi-plus-square-fill fa-2x text-success mx-1" style="display: none;"></i>
-                <!-- Production (5/5) -->
-            </div>
-        </div>
-        <div class="row justify-content-center mx-2">
-            <div class="col-9 col-lg-9 mb-md-0 text-left">
-                <p id="UTubDescription" style="display: inline-block"></p>
-                <div class="createDiv" style="display: none">
-                    <textarea cols="40" rows="5" id="editUTubDescription" class="userInput"
-                        placeholder="Describe the contents of your UTub (optional)"></textarea>
-                </div>
-            </div>
-            <div class="col-3 col-lg-3 mb-md-0 text-right">
-
-                <!-- Local Dev (5/5) -->
-                <!-- <button id="addURLBtn" class="bi bi-plus-square-fill fa-2x btn-success mx-1" style="display: none;">+</button> -->
-                <!-- Local Dev (5/5) -->
-
-                <!-- Production (5/5) -->
-                <button id="accessAllURLsBtn" class="btn btn-primary mx-1" style="display: none;">Access All URLs in UTub</button> 
-                <!-- Production (5/5) -->
+            <div class="col-3 col-lg-3 d-flex flex-row-reverse">
+                <!-- Add URL button -->
+                <i id="addURLBtn" class="green-clickable mx-1" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        class="bi bi-plus-square-fill" viewBox="0 0 16 16">
+                        <path
+                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
+                    </svg>
+                </i>
             </div>
         </div>
-        <div class="deckContent justify-content-center">
+
+        <div class="row deckContent justify-content-center">
             <div id="listURLs">
                 <!-- Current selected UTub's URLs will be displayed here -->
                 <div id="UPRRow" class="row list-content justify-content-center board-list">
@@ -134,56 +145,94 @@
                 </div>
             </div>
         </div>
+
+        <!-- Access all URLs button -->
+        <div class="row justify-content-center">
+            <button id="accessAllURLsBtn" class="btn btn-primary " style="display: none; width: 25%">Access All URLs in
+                UTub</button>
+        </div>
     </div>
 </div>
 
-<!-- Right Side Panel -->
+<!-- Center Panel -->
 
-<div id="rightPanel" class="panel col-md-2">
-    <div id="MembersDeck" class="deck row h-50 md-mb-1 p-3" style="display: block; /*margin-bottom: 5px;*/">
+<!-- Right Panel -->
 
-        <h2>Members</h2>
+<div id="rightPanel" class="panel col-md-3">
 
-        <h5>Owner</h5>
-        <span id="UTubOwner"></span>
+    <div id="UTubDescriptionDeck" class="deck row h-50 p-3">
+        <div class="row">
+            <div class="col-9 col-lg-9" style="display:flex">
+                <h2 id="UTubDescriptionDeckHeader">UTub Description</h2>
+            </div>
 
-        <h5>Users</h5>
-        <select id="UTubUsers">
-            <option disabled selected value> -- Select a UTub -- </option>
-        </select>
+            <div class="col-3 col-lg-3 d-flex flex-row-reverse">
+                <!-- Edit button -->
+                <i class="editUTubBtn mx-1 py-2" style="display: none; color: #545454">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                        class="bi bi-pencil-square" viewBox="0 0 16 16">
+                        <path
+                            d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                        <path fill-rule="evenodd"
+                            d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                    </svg>
+                </i>
+                <!-- Submit edit button -->
+                <i class="submitEditUTubBtn green-clickable mx-1 py-2" style="display: none">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
+                        class="bi bi-check-square-fill" viewBox="0 0 16 16">
+                        <path
+                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z" />
+                    </svg>
+                </i>
+            </div>
+        </div>
 
-        <h5>Actions</h5>
-        <div id="UTubActions" class="row">
-            <button class="btn btn-success mx-3" id="addUser" modal-target="#"
-                onclick="openModal(this.getAttribute('modal-target'))">Add New User</button>
-
-            <button class="btn btn-danger mx-3" id="removeUser" modal-target="#"
-                onclick="openModal(this.getAttribute('modal-target'))">Remove Selected User</button>
+        <div class="row">
+            <!-- UTub Descriptiion -->
+            <p id="UTubDescription" style="display: inline-block"></p>
+            <div class="createDiv" style="display: none">
+                <textarea cols="40" rows="5" id="editUTubDescription" class="userInput"
+                    placeholder="Describe the contents of your UTub (optional)"></textarea>
+            </div>
         </div>
     </div>
 
-    <div id="ChatDeck" class="deck row h-50 p-3">
-        <h2>Chat</h2>
-        <p class="lead">
-            Lorem ipsum dolor sit amet consectetur adipisicing elit. Neque, iste molestiae
-            beatae, maiores deserunt
-            in voluptatibus
-            aspernatur architecto excepturi delectus soluta? Ipsa, deleniti dolorem hic consequatur
-            repellat eveniet quidem
-            voluptate necessitatibus dolorum delectus minus vitae, ut, veritatis sint ipsum magnam
-            autem nam ex deserunt debitis
-            eaque ratione! Nobis, quidem assumenda.
-        </p>
+
+    <div id="UsersDeck" class="deck row h-50 p-3">
+        <div class="col-6 col-lg-6">
+            <h2 id="UserDeckHeader">Users</h2>
+        </div>
+        <div class="col-6 col-lg-6 d-flex flex-row-reverse">
+            <!-- Add user button -->
+            <i id="addUserBtn" class="green-clickable mx-1">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
+                    viewBox="0 0 16 16">
+                    <path
+                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
+                </svg>
+            </i>
+        </div>
+
+        <div class="deckContent">
+            <h5><u><b>Owner</b></u></h5>
+            <span id="UTubOwner"></span>
+            <h5><u><b>Users</b></u></h5>
+            <form id="listUsers">
+                <!-- Users -->
+            </form>
+        </div>
     </div>
 </div>
 
+<!-- Right Panel -->
 
 <!-- Home Page JS -->
 <script src="{{ url_for('static', filename='scripts/utils.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/home.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/utubs.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/tags.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/urls.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/users.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/dragdropswap.js') }}"></script>
 
 {% endblock %}
