@@ -672,7 +672,7 @@ def add_one_url_to_each_utub_no_tags(app, add_urls_to_database):
             new_utub_url_user_association.user_that_added_url = user
             new_utub_url_user_association.user_id = user.id
 
-            new_utub_url_user_association.url_notes = f"This is {url.url_string}"
+            new_utub_url_user_association.url_title = f"This is {url.url_string}"
 
             db.session.add(new_utub_url_user_association)
 
@@ -757,7 +757,7 @@ def add_two_users_and_all_urls_to_each_utub_no_tags(
             new_utub_url_user_association.user_that_added_url = new_user
             new_utub_url_user_association.user_id = next_member_id
 
-            new_utub_url_user_association.url_notes = f"This is {new_url.url_string}"
+            new_utub_url_user_association.url_title = f"This is {new_url.url_string}"
 
             db.session.add(new_utub_url_user_association)
 
@@ -971,7 +971,7 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
             new_utub_url_user_association.user_that_added_url = user_added
             new_utub_url_user_association.user_id = new_url.id
 
-            new_utub_url_user_association.url_notes = f"This is {new_url.url_string}"
+            new_utub_url_user_association.url_title = f"This is {new_url.url_string}"
 
             db.session.add(new_utub_url_user_association)
 
@@ -1080,7 +1080,7 @@ def add_all_urls_and_users_to_each_utub_no_tags(
                     new_url_in_utub.url_in_utub = other_url
                     new_url_in_utub.user_id = other_url.id
                     new_url_in_utub.utub = utub
-                    new_url_in_utub.url_notes = f"This is {other_url.url_string}"
+                    new_url_in_utub.url_title = f"This is {other_url.url_string}"
                     db.session.add(new_url_in_utub)
 
         db.session.commit()

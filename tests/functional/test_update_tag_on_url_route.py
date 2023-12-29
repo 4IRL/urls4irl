@@ -971,7 +971,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         data=add_tag_form,
     )
 
-    assert modify_tag_response.status_code == 404
+    assert modify_tag_response.status_code == 400
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
@@ -1344,7 +1344,7 @@ def test_modify_tag_with_missing_tag_field(
         data=add_tag_form,
     )
 
-    assert modify_tag_response.status_code == 404
+    assert modify_tag_response.status_code == 400
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json

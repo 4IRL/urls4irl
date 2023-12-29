@@ -571,6 +571,12 @@ span.user:hover .user-remove {
 .navbar-end,
 .navbar-start {
     margin-inline: 20px;
+    height: inherit;
+}
+
+.navbar-start {
+    display: flex;
+    align-items: center;
 }
 
 .navbar-end {
@@ -665,6 +671,24 @@ span.user:hover .user-remove {
 #body {
     min-height: 380px;
     position: relative;
+}
+
+#iconContainer {
+    height: inherit;
+    display: flex;
+    padding-top: initial !important;
+    padding-inline: 10px;
+    align-items: center;
+}
+
+#mainNavbar {
+    height: 50px;
+}
+
+#u4iFavicon {
+    height: 90%;
+    width: auto;
+    max-width: initial;
 }
 
 #pageContent {

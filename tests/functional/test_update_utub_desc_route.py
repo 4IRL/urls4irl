@@ -748,7 +748,7 @@ def test_update_utub_description_too_long(
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 404
+    assert edit_utub_desc_response.status_code == 400
 
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
@@ -845,7 +845,7 @@ def test_update_utub_description_missing_description_field(
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 404
+    assert edit_utub_desc_response.status_code == 400
 
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
