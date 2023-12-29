@@ -13,14 +13,7 @@ $(document).ready(function () {
   $("#addUserBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
-    addUser();
-  });
-
-  // Remove user from UTub
-  $("#removeUserBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
-    removeUserShowModal();
+    addUserShowInput();
   });
 });
 
@@ -30,36 +23,45 @@ $(document).ready(function () {
 function selectedUserID() {}
 
 // Clear user selection
-function clearUserSelection() {
+function resetNewUserForm() {
   $("#UTubUsernameInput").val("");
+}
+
+// Clear the User Deck
+function resetUserDeck() {
+  $("#listUsers").empty();
 }
 
 /* User Functions */
 
 // Build center panel URL list for selectedUTub
 function buildUserDeck(UTubUsers, creatorID) {
-  const parent = $("#UTubUsers");
+  resetUserDeck();
+  const parent = $("#listUsers");
+  let NumOfUsers = UTubUsers.length ? UTubUsers.length : 0;
 
-  parent.append(createNewUserInputField());
+  // Instantiate deck with list of users with access to current UTub
+  for (let i = 0; i < NumOfUsers; i++) {
+    let UTubUser = UTubUsers[i];
 
-  for (UTubUser in UTubUsers) {
     if (UTubUser.id !== creatorID) {
-      let userListItem = createUserSelector(UTubUser);
-
-      parent.append(userListItem);
+      parent.append(createUserSelector(UTubUser));
     }
   }
+
+  parent.append(createNewUserInputField());
 }
 
 // Creates user list item
 function createUserSelector(UTubUser) {
-  // console.log(UTubUser)
   let userListItem = document.createElement("li");
   let userSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
+  let userID = UTubUser.id;
+
   $(userSpan)
-    .attr({ userid: UserID })
+    .attr({ userid: userID })
     .addClass("user")
     .html("<b>" + UTubUser.username + "</b>");
 
@@ -68,7 +70,7 @@ function createUserSelector(UTubUser) {
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      removeUser(tagID);
+      removeUserShowModal(userID);
     });
   removeButton.innerHTML = "&times;";
 
@@ -94,7 +96,7 @@ function createNewUserInputField() {
     })
     .addClass("createDiv row");
 
-  $(wrapperInput).addClass("col-5 col-lg-5 mb-md-0");
+  $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
 
   $(input)
     .attr({
@@ -102,33 +104,42 @@ function createNewUserInputField() {
       id: "UTubUsernameInput",
       placeholder: "Username",
     })
-    .addClass("UTub userInput");
+    .addClass("User userInput");
 
   wrapperInput.append(input);
 
-  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
+  $(wrapperBtns).addClass(
+    "col-3 mb-md-0 text-right d-flex justify-content-center flex-row",
+  );
 
-  // Add UTub checkbox
+  // Submit addUser checkbox
   let htmlString =
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-check-square-fill" viewBox="0 0 16 16">' +
-    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z"/>' +
-    "</svg>";
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="b=i bi-check-square-fill" viewBox="0 0 16 16" width="' +
+    ICON_WIDTH +
+    '" height="' +
+    ICON_HEIGHT +
+    '">' +
+    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z"/></svg>';
 
   $(submit)
     .addClass("mx-1 green-clickable")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
+      addUser();
     })
     .html(htmlString);
 
   wrapperBtns.append(submit);
 
-  // Cancel add UTub x-box
+  // Cancel add User x-box
   htmlString =
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill" viewBox="0 0 16 16">' +
-    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
-    "</svg>";
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger" viewBox="0 0 16 16" width="' +
+    ICON_WIDTH +
+    '" height="' +
+    ICON_HEIGHT +
+    '">' +
+    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/></svg>';
 
   $(cancel)
     .addClass("mx-1")
@@ -150,6 +161,19 @@ function createNewUserInputField() {
 /** Post data handling **/
 
 /* Add User */
+
+// Shows new User input fields
+function addUserShowInput() {
+  showInput("UTubUsernameInput");
+  highlightInput($("#UTubUsernameInput"));
+  // bindKeyToFunction(addUTub(), 13);
+  // bindKeyToFunction(addUTubHideInput(), 27);
+}
+
+// Hides new User input fields
+function addUserHideInput() {
+  hideInput("UTubUsernameInput");
+}
 
 function addUser() {
   // Extract data to submit in POST request
@@ -190,7 +214,9 @@ function addUserSetup() {
 }
 
 // Perhaps update a scrollable/searchable list of users?
-function addUserSuccess(response) {}
+function addUserSuccess(response) {
+  changeUTub(getCurrentUTubID());
+}
 
 function addUserFail(response) {
   console.log("Basic implementation. Needs revision");
@@ -203,19 +229,34 @@ function addUserFail(response) {
 /* Remove User */
 
 // Show confirmation modal for removal of the selected user from current UTub
-function removeUserShowModal() {
+function removeUserShowModal(userID) {
   let modalTitle = "Are you sure you want to remove this user from the UTub?";
-  $(".modal-title").text(modalTitle);
+  let modalBody =
+    "This user will no longer have access to the URLs in this UTub";
+  let buttonTextDismiss = "Keep user";
+  let buttonTextSubmit = "Remove user";
 
-  $("#modalDismiss").on("click", function (e) {
-    e.preventDefault();
-    $("#confirmModal").modal("hide");
-  });
+  $("#confirmModalTitle").text(modalTitle);
 
-  $("#modalSubmit").on("click", function (e) {
-    e.preventDefault();
-    removeUser();
-  });
+  $("#confirmModalBody").text(modalBody);
+
+  $("#modalDismiss")
+    .addClass("btn btn-default")
+    .off("click")
+    .on("click", function (e) {
+      e.preventDefault();
+      $("#confirmModal").modal("hide");
+    })
+    .text(buttonTextDismiss);
+
+  $("#modalSubmit")
+    .removeClass()
+    .addClass("btn btn-danger")
+    .text(buttonTextSubmit)
+    .on("click", function (e) {
+      e.preventDefault();
+      removeUser(userID);
+    });
 
   $("#confirmModal").modal("show");
 
@@ -260,7 +301,9 @@ function removeUserSuccess(userID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let cardCol = $("div[urlid=" + selectedURLID() + "]").parent();
+  let userListItem = $("span[userid=" + userID + "]").parent();
+  userListItem.fadeOut();
+  userListItem.remove();
 }
 
 function removeUserFail(xhr, textStatus, error) {
