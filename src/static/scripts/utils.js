@@ -148,9 +148,9 @@ function AJAXCall(type, url, data) {
 
 // Bind key to function
 function bindKeyToFunction(f, keyTarget) {
-  $(document).on('keypress', function (e) {
+  $(document).on("keypress", function (e) {
     if (e.which == keyTarget) {
-      console.log("1 key bound")
+      console.log("1 key bound");
       f();
     }
   });
@@ -160,7 +160,7 @@ function bindKeyToFunction(f, keyTarget) {
 function unbindKeys() {
   let keyList = [13, 27];
 
-  console.log(keyList.length + " keys unbinded")
+  console.log(keyList.length + " keys unbinded");
   for (i = 0; i < keyList.length; i++) {
     $(document).keypress(function (e) {
       if (e.keyCode === keyList[i]) {

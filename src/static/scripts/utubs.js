@@ -356,10 +356,8 @@ function checkSameNameUTub(mode, name) {
   // Toggle boolean to determine whether to display warning modal
   if (sameNameCounter > 0) sameNameBool = true;
 
-  if (sameNameBool)
-    sameNameWarningShowModal(mode, UTubIDFromName(name));
-  else
-    mode ? addUTub() : editUTub();;
+  if (sameNameBool) sameNameWarningShowModal(mode, UTubIDFromName(name));
+  else mode ? addUTub() : editUTub();
 }
 
 // Counts number of UTubs with the same name
@@ -433,17 +431,17 @@ function addUTubShowInput() {
 
   console.log("show it")
   $(document).on('keypress', function (e) {
-    if (e.which === 13) {
-      console.log("enter key bound")
+    if (e.which == 13) {
       checkSameNameUTub(1, $("#createUTub").val())
     }
-  })
-    .on('keyup', function (e) {
-      if (e.which === 27) { // not firing...
-        console.log("esc key bound")
-        addUTubHideInput();
-      }
-    });
+  });
+
+  $(document).on("keypress", function (e) {
+    if (e.which == 27) {
+      console.log("1 key bound");
+      addUTubHideInput();
+    }
+  });
   // bindKeyToFunction(addUTubHideInput, 27);
 }
 
@@ -528,7 +526,12 @@ function addUTubFail(response, textStatus, xhr) {
       $("#" + key).addClass("is-invalid");
     }
   }
-  console.log("Failure. Error code: " + response.responseJSON.Error_code + ". Status: " + response.responseJSON.Message);
+  console.log(
+    "Failure. Error code: " +
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
+  );
 }
 
 /* Edit UTub */
@@ -712,7 +715,7 @@ function deleteUTubShowModal() {
       deleteUTubHideModal();
     })
     .text(buttonTextDismiss);
-  bindKeyToFunction(deleteUTubHideModal, 27)
+  bindKeyToFunction(deleteUTubHideModal, 27);
 
   $("#modalSubmit")
     .removeClass()
@@ -722,7 +725,7 @@ function deleteUTubShowModal() {
       e.preventDefault();
       deleteUTub();
     });
-  bindKeyToFunction(deleteUTub, 13)
+  bindKeyToFunction(deleteUTub, 13);
 
   $("#confirmModal").modal("show");
 
@@ -752,7 +755,7 @@ function deleteUTub() {
   });
 
   unbindKeys();
-  console.log("")
+  console.log("");
 }
 
 // Prepares post request inputs to delete the current UTub
