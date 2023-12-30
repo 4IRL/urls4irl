@@ -5,12 +5,12 @@
     --splashLabelGreen: #2ecc71;
     --pageBackgroundColor: #1f2424;
     --borderColor: #343c3d;
-    --deckHeaderGreen: #28a745; 
-    --deckSelectionGreen: #60daaa; 
+    --deckHeaderGreen: #28a745;
+    --deckSelectionGreen: #60daaa;
 
     --cardBackgroundColor: #282f2f;
     --UTubDescriptionColor: white;
-    
+
     --spanRemoveColor: rgb(254, 115, 1);
 
 }
@@ -695,7 +695,7 @@ span.user:hover .user-remove {
     margin: 0;
     margin-bottom: -15px;
     height: 100vh;
-    padding-top: 40px;
+    padding-top: 50px;
     padding-bottom: 5px;
 }
 
