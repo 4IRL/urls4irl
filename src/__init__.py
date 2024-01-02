@@ -11,7 +11,7 @@ from flask_wtf.csrf import CSRFProtect
 from src.config import Config
 from src.utils.email_sender import EmailSender
 from src.utils.error_handler import (
-    handle_404_response, 
+    handle_404_response,
     handle_429_response_default_ratelimit,
 )
 
@@ -50,7 +50,7 @@ def create_app(
     limiter = Limiter(
         key_func=get_remote_address,
         default_limits=["2/second", "100/minute"],
-        default_limits_exempt_when=lambda : True if testing else False,
+        default_limits_exempt_when=lambda: True if testing else False,
         on_breach=handle_429_response_default_ratelimit,
         storage_uri="redis://localhost:6379" if production else "memory://",
         storage_options={"socket_connect_timeout": 30},
