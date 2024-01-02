@@ -1,5 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_session import Session
@@ -8,7 +10,10 @@ from flask_wtf.csrf import CSRFProtect
 
 from src.config import Config
 from src.utils.email_sender import EmailSender
-from src.utils.error_handler import handle_404_response
+from src.utils.error_handler import (
+    handle_404_response, 
+    handle_429_response_default_ratelimit,
+)
 
 sess = Session()
 
@@ -41,6 +46,16 @@ def create_app(
     login_manager.init_app(app)
 
     cors_sess.init_app(app)
+
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=["2/second", "100/minute"],
+        on_breach=handle_429_response_default_ratelimit,
+        storage_uri="redis://localhost:6379" if production else "memory://",
+        storage_options={"socket_connect_timeout": 30},
+    )
+
+    limiter.init_app(app)
 
     email_sender.init_app(app)
     if production:

@@ -7,6 +7,7 @@ FAILURE = "Failure"
 SUCCESS = "Success"
 NO_CHANGE = "No change"
 BASE_URL = "https://urls4irl.app/"
+TOO_MANY_REQUESTS = "Too many requests."
 
 
 class STD_JSON_RESPONSE:
@@ -17,6 +18,7 @@ class STD_JSON_RESPONSE:
     FAILURE = FAILURE
     SUCCESS = SUCCESS
     NO_CHANGE = NO_CHANGE
+    TOO_MANY_REQUESTS = TOO_MANY_REQUESTS
 
 
 # Strings for all forms
