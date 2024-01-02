@@ -31,11 +31,11 @@ email_sender = EmailSender()
 
 def create_app(
     config_class: Config = Config,
-    testing: bool = False,
     production: bool = False,
     use_local_js_bundles: bool = False,
 ):
     config_class.must_use_local_js_bundles() if use_local_js_bundles else None
+    testing = config_class.TESTING
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -50,6 +50,7 @@ def create_app(
     limiter = Limiter(
         key_func=get_remote_address,
         default_limits=["2/second", "100/minute"],
+        default_limits_exempt_when=lambda : True if testing else False,
         on_breach=handle_429_response_default_ratelimit,
         storage_uri="redis://localhost:6379" if production else "memory://",
         storage_options={"socket_connect_timeout": 30},
