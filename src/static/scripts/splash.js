@@ -236,7 +236,7 @@ function loginModalOpener(url) {
 
       request.fail(function (xhr, textStatus, error) {
         if (
-          xhr.status == 401 &&
+          xhr.status == 400 &&
           xhr.responseJSON.hasOwnProperty("Error_code")
         ) {
           switch (xhr.responseJSON.Error_code) {
@@ -283,7 +283,7 @@ function registerModalOpener(url) {
 
       request.fail(function (xhr, textStatus, error) {
         if (
-          xhr.status == 401 &&
+          xhr.status == 400 &&
           xhr.responseJSON.hasOwnProperty("Error_code")
         ) {
           switch (xhr.responseJSON.Error_code) {

@@ -239,7 +239,7 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
     )
 
     # Assert invalid response code
-    assert invalid_new_utub_response.status_code == 404
+    assert invalid_new_utub_response.status_code == 400
 
     # Validate the JSON response from the backend indicating bad form inputs
     invalid_new_utub_response_json = invalid_new_utub_response.json

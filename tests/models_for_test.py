@@ -117,7 +117,7 @@ valid_url_with_tag_1 = {
     MODEL_STRS.URL_STRING: "https://www.google.com/",
     MODEL_STRS.URL_TAGS: valid_tag_ids,
     MODEL_STRS.ADDED_BY: 1,
-    MODEL_STRS.URL_DESCRIPTION: "",
+    MODEL_STRS.URL_TITLE: "",
 }
 
 valid_url_with_tag_2 = {
@@ -125,7 +125,7 @@ valid_url_with_tag_2 = {
     MODEL_STRS.URL_STRING: "https://www.facebook.com/",
     MODEL_STRS.URL_TAGS: valid_tag_ids,
     MODEL_STRS.ADDED_BY: 2,
-    MODEL_STRS.URL_DESCRIPTION: "",
+    MODEL_STRS.URL_TITLE: "",
 }
 
 valid_url_with_tag_3 = {
@@ -133,7 +133,7 @@ valid_url_with_tag_3 = {
     MODEL_STRS.URL_STRING: "https://www.microsoft.com/",
     MODEL_STRS.URL_TAGS: valid_tag_ids,
     MODEL_STRS.ADDED_BY: 3,
-    MODEL_STRS.URL_DESCRIPTION: "",
+    MODEL_STRS.URL_TITLE: "",
 }
 
 """
@@ -232,7 +232,7 @@ for utub, user, url in zip(all_empty_utubs, valid_users, all_urls_no_tags):
                     MODEL_STRS.URL_STRING: url[MODEL_STRS.URL],
                     MODEL_STRS.URL_TAGS: [],
                     MODEL_STRS.ADDED_BY: user[MODEL_STRS.ID],
-                    MODEL_STRS.URL_DESCRIPTION: f"This is {url[MODEL_STRS.URL]}",
+                    MODEL_STRS.URL_TITLE: f"This is {url[MODEL_STRS.URL]}",
                 }
             ],
             MODEL_STRS.TAGS: [],
@@ -263,7 +263,7 @@ for utub in all_empty_utubs:
                     MODEL_STRS.URL_STRING: url[MODEL_STRS.URL],
                     MODEL_STRS.URL_TAGS: [tag[MODEL_STRS.ID] for tag in all_tags],
                     MODEL_STRS.ADDED_BY: url[MODEL_STRS.ID],
-                    MODEL_STRS.URL_DESCRIPTION: f"This is {url[MODEL_STRS.URL]}",
+                    MODEL_STRS.URL_TITLE: f"This is {url[MODEL_STRS.URL]}",
                 }
                 for url in all_urls_no_tags
             ],

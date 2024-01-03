@@ -1,5 +1,7 @@
 from flask import Flask
 from flask_cors import CORS
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_session import Session
@@ -8,6 +10,10 @@ from flask_wtf.csrf import CSRFProtect
 
 from src.config import Config
 from src.utils.email_sender import EmailSender
+from src.utils.error_handler import (
+    handle_404_response,
+    handle_429_response_default_ratelimit,
+)
 
 sess = Session()
 
@@ -25,11 +31,11 @@ email_sender = EmailSender()
 
 def create_app(
     config_class: Config = Config,
-    testing: bool = False,
     production: bool = False,
     use_local_js_bundles: bool = False,
 ):
     config_class.must_use_local_js_bundles() if use_local_js_bundles else None
+    testing = config_class.TESTING
     app = Flask(__name__)
     app.config.from_object(config_class)
 
@@ -40,6 +46,17 @@ def create_app(
     login_manager.init_app(app)
 
     cors_sess.init_app(app)
+
+    limiter = Limiter(
+        key_func=get_remote_address,
+        default_limits=["2/second", "100/minute"],
+        default_limits_exempt_when=lambda: True if testing else False,
+        on_breach=handle_429_response_default_ratelimit,
+        storage_uri="redis://localhost:6379" if production else "memory://",
+        storage_options={"socket_connect_timeout": 30},
+    )
+
+    limiter.init_app(app)
 
     email_sender.init_app(app)
     if production:
@@ -56,6 +73,8 @@ def create_app(
     app.register_blueprint(users)
     app.register_blueprint(urls)
     app.register_blueprint(tags)
+
+    app.register_error_handler(404, handle_404_response)
 
     if not testing:
         migrate.init_app(app)

@@ -62,84 +62,33 @@
     <!-- Custom CSS adjustments -->
     <link rel="stylesheet" href="/static/styles/app.css">
 
-    <!-- Fix to remove favicon.ico error -->
-    <!-- https://stackoverflow.com/questions/31075893/how-to-fix-favicon-ico-error-failed-to-load-resource-neterr-empty-response -->
-    <link rel="shortcut icon" href="#">
+    <!-- Favicon -->
+    <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-touch-icon.png">
+    <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
+    <link rel="manifest" href="/static/favicon/site.webmanifest">
 
     <title>URLS4IRL</title>
 </head>
 
 <body class="vh-100"> 
-    <!-- d-flex flex-column -->
+    <!-- Includes jinja2 generated routes globally for use by frontend -->
+    {% include '_routes.html' %}
+
     <!-- Navigation Bar -->
-    <nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0 fixed-top">
-        <a class="navbar-brand navbar-start" href="#">URLS4IRL</a>
-        <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
-            aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-            <span class="navbar-toggler-icon"></span>
-        </button>
-        <div class="navbar-collapse collapse w-100 order-3 navbar-end" id="navbarNavDropdown">
-            <ul class="navbar-nav ml-auto">
-                {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
-                <li id="{{current_user.id}}" class="nav-item user">
-                    <a class="nav-link" href="javascript:;"> Logged in as {{current_user.username}}</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link" href="{{url_for('users.logout')}}">Logout</a>
-                </li>
-                {% else %}
-                <li class="nav-item">
-                    <a class="nav-link to-login" href="javascript:;">Login</a>
-                </li>
-                <li class="nav-item">
-                    <a class="nav-link to-register" href="javascript:;">Register</a>
-                </li>
-                {% endif %}
-            </ul>
-        </div>
-    </nav>
+    {% include 'components/navbar.html' %}
     <!-- Navigation Bar -->
 
     {% block modal_extender %}
     <!-- Modal -->
     {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
 
-    <div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="FormModal"
-        aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-                <script type="text/javascript">
-                    if (document.querySelector('head').childElementCount === 1) {
-                        window.location.href = '/home';
-                    };
-                </script>
-
-                <form id="ModalForm" name="stepForm" class="form" method="post" action="" novalidate>
-                    <div class="modal-header">
-                        <h4 id="confirmModalTitle" class="modal-title"></h4>
-                        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="close">
-                        </button>
-                    </div>
-                    <div id="confirmModalBody" class="modal-body">
-                    </div>
-                    <div class="modal-footer">
-                        <button id="modalDismiss" type="button" class="btn btn-default" data-dismiss="modal"></button>
-                        <button id="modalRedirect" type="button" class="btn btn-default" data-dismiss="modal"></button>
-                        <button id="modalSubmit" type="submit" class="btn btn-danger" data-dismiss="modal"></button>
-                    </div>
-                </form>
-            </div>
-        </div>
-    </div>
+    {% include 'modals/homeModalBase.html' %}
 
     {% else %}
-    <div class="modal fade" id="SplashModal" tabindex="-1" role="dialog" aria-labelledby="FormModal"
-        style="display: none;" aria-hidden="true">
-        <div class="modal-dialog" role="document">
-            <div class="modal-content">
-            </div>
-        </div>
-    </div>
+
+    {% include 'modals/splashModalBase.html' %}
+
     {% endif %}
     <!-- Modal -->
     {% endblock %}

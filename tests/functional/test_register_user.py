@@ -114,7 +114,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     )
 
     # Check that does not reroute
-    assert response.status_code == 401
+    assert response.status_code == 400
     assert request.path == url_for("users.register_user")
     assert len(response.history) == 0
 

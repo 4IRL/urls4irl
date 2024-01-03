@@ -5,12 +5,12 @@
     --splashLabelGreen: #2ecc71;
     --pageBackgroundColor: #1f2424;
     --borderColor: #343c3d;
-    --deckHeaderGreen: #28a745; 
-    --deckSelectionGreen: #60daaa; 
+    --deckHeaderGreen: #28a745;
+    --deckSelectionGreen: #60daaa;
 
     --cardBackgroundColor: #282f2f;
     --UTubDescriptionColor: white;
-    
+
     --spanRemoveColor: rgb(254, 115, 1);
 
 }
@@ -571,6 +571,12 @@ span.user:hover .user-remove {
 .navbar-end,
 .navbar-start {
     margin-inline: 20px;
+    height: inherit;
+}
+
+.navbar-start {
+    display: flex;
+    align-items: center;
 }
 
 .navbar-end {
@@ -667,11 +673,29 @@ span.user:hover .user-remove {
     position: relative;
 }
 
+#iconContainer {
+    height: inherit;
+    display: flex;
+    padding-top: initial !important;
+    padding-inline: 10px;
+    align-items: center;
+}
+
+#mainNavbar {
+    height: 50px;
+}
+
+#u4iFavicon {
+    height: 90%;
+    width: auto;
+    max-width: initial;
+}
+
 #pageContent {
     margin: 0;
     margin-bottom: -15px;
     height: 100vh;
-    padding-top: 40px;
+    padding-top: 50px;
     padding-bottom: 5px;
 }
 

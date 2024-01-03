@@ -161,7 +161,7 @@ function buildURLDeck(dictURLs, dictTags) {
     let URLcol = createURLBlock(
       dictURLs[i].url_ID,
       dictURLs[i].url_string,
-      dictURLs[i].url_description,
+      dictURLs[i].url_title,
       dictURLs[i].url_tags,
       dictTags,
     );
@@ -677,7 +677,7 @@ function addURLSetup() {
   let newURL = $("#newURLString").val();
   data = {
     url_string: newURL,
-    url_description: newURLTitle,
+    url_title: newURLTitle,
   };
 
   return [postURL, data];
@@ -691,7 +691,7 @@ function addURLSuccess(response) {
   let URLcol = createURLBlock(
     response.URL.url_ID,
     response.URL.url_string,
-    response.URL.url_description,
+    response.URL.url_title,
     [],
     [],
   );
@@ -808,7 +808,7 @@ function editURLSetup() {
   let editedURLTitle = editedURLTitlefield.value;
   data = {
     url_string: editedURL,
-    url_description: editedURLTitle,
+    url_title: editedURLTitle,
   };
 
   return [postURL, data];
@@ -818,7 +818,7 @@ function editURLSetup() {
 function editURLSuccess(response) {
   // Extract response data
   let editedURLID = response.URL.url_ID;
-  let editedURLTitle = response.URL.url_description;
+  let editedURLTitle = response.URL.url_title;
   let editedURLString = response.URL.url_string;
 
   // If edit URL action, rebind the ability to select/deselect URL by clicking it
