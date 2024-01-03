@@ -283,7 +283,7 @@ function removeUserShowModal(userID) {
       removeUser(userID);
     })
     .text(buttonTextSubmit);
-    bindKeyToFunction(removeUser, userID, 13);
+  bindKeyToFunction(removeUser, userID, 13);
 
   $("#confirmModal").modal("show");
 

@@ -536,9 +536,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
 
@@ -694,9 +694,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.responseJSON.Error_code +
-    ". Status: " +
-    response.responseJSON.Message,
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
   );
 }
 
@@ -824,8 +824,8 @@ function deleteUTubFailure(xhr, textStatus, error) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
