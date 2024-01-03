@@ -13,14 +13,26 @@ $(document).ready(function () {
   $("#addUserBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
+    hideInputs();
+    deselectAllURLs();
     addUserShowInput();
+    // Bind enter key (keycode 13) to submit user input
+    // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
+    unbindEnter();
+    $(document).bind("keypress", function (e) {
+      if (e.which == 13) {
+        addUser();
+      }
+    });
   });
 });
 
 /** User Utility Functions **/
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
-function selectedUserID() {}
+function getCurrentUserID() {
+  return $("li.nav-item.user").attr("id");
+}
 
 // Clear user selection
 function resetNewUserForm() {
@@ -35,7 +47,7 @@ function resetUserDeck() {
 /* User Functions */
 
 // Build center panel URL list for selectedUTub
-function buildUserDeck(UTubUsers, creatorID) {
+function buildUserDeck(UTubUsers, UTubOwnerID) {
   resetUserDeck();
   const parent = $("#listUsers");
   let NumOfUsers = UTubUsers.length ? UTubUsers.length : 0;
@@ -44,12 +56,14 @@ function buildUserDeck(UTubUsers, creatorID) {
   for (let i = 0; i < NumOfUsers; i++) {
     let UTubUser = UTubUsers[i];
 
-    if (UTubUser.id !== creatorID) {
+    if (UTubUser.id !== UTubOwnerID) {
       parent.append(createUserSelector(UTubUser));
     }
   }
 
-  parent.append(createNewUserInputField());
+  if (getCurrentUserID() == UTubOwnerID) {
+    parent.append(createNewUserInputField());
+  }
 }
 
 // Creates user list item
@@ -83,9 +97,10 @@ function createUserSelector(UTubUser) {
 // Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
 function createNewUserInputField() {
   const wrapper = $(document.createElement("div"));
-  const wrapperInput = $(document.createElement("div"));
+  const wrapperInput = $(document.createElement("fieldset")); // This element wraps the new user input
   const wrapperBtns = $(document.createElement("div"));
 
+  const label = document.createElement("label"); // This element labels the new user field
   const input = $(document.createElement("input"));
   const submit = $(document.createElement("i"));
   const cancel = $(document.createElement("i"));
@@ -98,19 +113,24 @@ function createNewUserInputField() {
 
   $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
 
+  $(label)
+    .attr({
+      for: "UTubUsernameInput",
+      style: "display:block",
+    })
+    .html("<b> Username </b>");
+
   $(input)
     .attr({
-      type: "text",
       id: "UTubUsernameInput",
+      type: "text",
       placeholder: "Username",
     })
     .addClass("User userInput");
 
-  wrapperInput.append(input);
+  wrapperInput.append(label).append(input);
 
-  $(wrapperBtns).addClass(
-    "col-3 mb-md-0 text-right d-flex justify-content-center flex-row",
-  );
+  $(wrapperBtns).addClass("col-3 mb-md-0 py-4 d-flex flex-row");
 
   // Submit addUser checkbox
   let htmlString =
@@ -166,8 +186,6 @@ function createNewUserInputField() {
 function addUserShowInput() {
   showInput("UTubUsernameInput");
   highlightInput($("#UTubUsernameInput"));
-  // bindKeyToFunction(addUTub(), 13);
-  // bindKeyToFunction(addUTubHideInput(), 27);
 }
 
 // Hides new User input fields
@@ -228,6 +246,12 @@ function addUserFail(response) {
 
 /* Remove User */
 
+// Hide confirmation modal for removal of the selected user
+function removeUserHideModal() {
+  $("#confirmModal").modal("hide");
+  unbindEnter();
+}
+
 // Show confirmation modal for removal of the selected user from current UTub
 function removeUserShowModal(userID) {
   let modalTitle = "Are you sure you want to remove this user from the UTub?";
@@ -245,9 +269,10 @@ function removeUserShowModal(userID) {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      $("#confirmModal").modal("hide");
+      removeUserHideModal();
     })
     .text(buttonTextDismiss);
+  bindKeyToFunction(removeUserHideModal, 27);
 
   $("#modalSubmit")
     .removeClass()
@@ -256,7 +281,9 @@ function removeUserShowModal(userID) {
     .on("click", function (e) {
       e.preventDefault();
       removeUser(userID);
-    });
+    })
+    .text(buttonTextSubmit);
+  bindKeyToFunction(removeUser, userID, 13);
 
   $("#confirmModal").modal("show");
 

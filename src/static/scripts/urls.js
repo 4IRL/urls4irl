@@ -4,6 +4,7 @@
 const ADD_URL_ROUTE = "/url/add/"; // +<int:utub_id>
 const EDIT_URL_ROUTE = "/url/edit/"; // +<int:utub_id>/<int:url_id>
 const REMOVE_URL_ROUTE = "/url/remove/"; // +<int:utub_id>/<int:url_id>
+const ACCESS_ALL_URLS_LIMIT_WARNING = 3;
 
 /** URL UI Interactions **/
 
@@ -12,17 +13,31 @@ $(document).ready(function () {
 
   // Add new URL to current UTub
   $("#addURLBtn").on("click", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
+    // e.stopPropagation();
+    // e.preventDefault();
+    hideInputs();
     deselectAllURLs();
     addURLShowInput();
+
+    // Bind enter key (keycode 13) to submit user input
+    // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see failed attempt under bindKeyToFunction() in utils.js)
+    unbindEnter();
+    $(document).bind("keypress", function (e) {
+      if (e.which == 13) {
+        addURL();
+      }
+    });
   });
 
   // Open all URLs in UTub in separate tabs
   $("#accessAllURLsBtn").on("click", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
-    accessAllLinksInUTub();
+    // e.stopPropagation();
+    // e.preventDefault();
+    if (numOfURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
+      accessAllWarningShowModal();
+    } else {
+      accessAllURLsInUTub();
+    }
   });
 });
 
@@ -30,7 +45,7 @@ $(document).ready(function () {
 
 // Function to count number of URLs in current UTub
 function numOfURLs() {
-  return;
+  return $(".card.url").length - 1; // minus 1 to discount createURL block
 }
 
 // function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
@@ -46,12 +61,6 @@ function getSelectedURLCard() {
 // Prevent deselection of URL while modifying its values (e.g. adding a tag, editing URL string or title)
 function unbindSelectBehavior() {
   $(getSelectedURLCard().closest(".cardCol")).off("click");
-  $(document).on("keyup", function (e) {
-    let keycode = e.keyCode ? e.keyCode : e.which;
-    if (keycode == 27) {
-      // ESC key, unbind action
-    }
-  });
 }
 
 // Rebinds selection click behavior after URL-modifying post requests are complete
@@ -83,8 +92,39 @@ function accessLink(url_string) {
   }
 }
 
+// Show confirmation modal for opening all URLs in UTub
+function accessAllWarningShowModal() {
+  let modalTitle =
+    "Are you sure you want to open all " + numOfURLs() + " URLs in this UTub?";
+  let modalDismiss = "Cancel";
+
+  $("#confirmModalTitle").text(modalTitle);
+
+  $("#modalDismiss")
+    .on("click", function (e) {
+      e.preventDefault();
+      $("#confirmModal").modal("hide");
+    })
+    .removeClass()
+    .addClass("btn btn-danger")
+    .text(modalDismiss);
+
+  $("#modalSubmit")
+    .removeClass()
+    .addClass("btn btn-success")
+    .on("click", function (e) {
+      e.preventDefault();
+      accessAllURLsInUTub();
+    })
+    .text("Open all URLs");
+
+  $("#confirmModal").modal("show");
+
+  hideIfShown($("#modalRedirect"));
+}
+
 // Opens all URLs in UTub in separate tabs
-function accessAllLinksInUTub() {
+function accessAllURLsInUTub() {
   getUtubInfo(getCurrentUTubID()).then(function (selectedUTub) {
     let dictURLs = selectedUTub.urls;
 
@@ -113,6 +153,7 @@ function resetURLDeck() {
 
 // Build center panel URL list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
+  // console.log(dictURLs) Here for debugging...sometimes URL title won't show up on changeUTub()-->buildURLDeck()
   resetURLDeck();
   let UPRRow = $("#UPRRow");
 
@@ -326,7 +367,11 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      editURL();
+      $(document).bind("keypress", function (e) {
+        if (e.which == 13) {
+          editURL();
+        }
+      });
     })
     .html(htmlString);
 
@@ -343,11 +388,6 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   $(cancelEditBtn)
     .attr({ style: "display: none" })
     .addClass("mx-1 cancelEditURLBtn")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      // cancelEditURL();
-    })
     .html(htmlString);
 
   // Assemble url list items
@@ -663,6 +703,7 @@ function addURLSuccess(response) {
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
 function addURLFailure(response) {
+  console.log(response);
   console.log("Basic implementation. Needs revision");
   console.log(response.responseJSON.Error_code);
   console.log(response.responseJSON.Message);
@@ -707,7 +748,7 @@ function editURLHideInput() {
   let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
   hideIfShown(URLOptionsDiv.find(".submitEditURLBtn"));
   hideIfShown(URLOptionsDiv.find(".cancelEditURLBtn"));
-  showIfHidden($(URLOptionsDiv.find(".editURLBtn")));
+  showIfHidden(URLOptionsDiv.find(".editURLBtn"));
   showIfHidden(URLOptionsDiv.find(".addTagBtn"));
   showIfHidden(URLOptionsDiv.find(".remURLBtn"));
 
@@ -717,12 +758,12 @@ function editURLHideInput() {
   // Hide input fields
   let inputElURLString = selectedCardDiv.find(".editURLString");
   let inputDivURLString = inputElURLString.closest(".createDiv");
-  hideIfShown($(inputDivURLString));
+  hideIfShown(inputDivURLString);
 
   // Show published values
   let URLInfoDiv = inputElURLString.closest(".URLInfo");
-  showIfHidden($(URLInfoDiv.find("h5")));
-  showIfHidden($(URLInfoDiv.find("p")));
+  showIfHidden(URLInfoDiv.find("h5"));
+  showIfHidden(URLInfoDiv.find("p"));
 
   // Update URL options display
   hideIfShown(selectedCardDiv.find(".submitEditURLBtn"));
@@ -820,26 +861,35 @@ function editURLFail(response) {
 
 /* Remove URL */
 
+// Hide confirmation modal for removal of the selected URL
+function removeURLHideModal() {
+  $("#confirmModal").modal("hide");
+  unbindEnter();
+}
+
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function removeURLShowModal() {
   let modalTitle = "Are you sure you want to delete this URL from the UTub?";
-  let modalDismiss = "Just kidding";
+  let buttonTextDismiss = "Just kidding";
+  let buttonTextSubmit = "Remove URL";
 
   $("#confirmModalTitle").text(modalTitle);
 
   $("#modalDismiss")
     .on("click", function (e) {
       e.preventDefault();
-      $("#confirmModal").modal("hide");
+      removeURLHideModal();
     })
-    .text(modalDismiss);
+    .text(buttonTextDismiss);
+  bindKeyToFunction(removeURLHideModal, 27);
 
   $("#modalSubmit")
     .on("click", function (e) {
       e.preventDefault();
       removeURL();
     })
-    .text("Remove URL");
+    .text(buttonTextSubmit);
+  bindKeyToFunction(removeURL, 13);
 
   $("#confirmModal").modal("show");
 
@@ -886,7 +936,7 @@ function removeURLSuccess() {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let cardCol = $("div[urlid=" + getSelectedURLID() + "]").parent();
+  let cardCol = $("div[urlid=" + getSelectedURLID() + "]").closest("li");
   cardCol.fadeOut();
   cardCol.remove();
 }
