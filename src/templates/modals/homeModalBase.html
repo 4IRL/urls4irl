@@ -1,0 +1,27 @@
+<div class="modal fade" id="confirmModal" tabindex="-1" role="dialog" aria-labelledby="FormModal"
+    aria-hidden="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <script type="text/javascript">
+                if (document.querySelector('head').childElementCount === 1) {
+                    window.location.href = '/home';
+                };
+            </script>
+
+            <form id="ModalForm" name="stepForm" class="form" method="post" action="" novalidate>
+                <div class="modal-header">
+                    <h4 id="confirmModalTitle" class="modal-title"></h4>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="close">
+                    </button>
+                </div>
+                <div id="confirmModalBody" class="modal-body">
+                </div>
+                <div class="modal-footer">
+                    <button id="modalDismiss" type="button" class="btn btn-default" data-dismiss="modal"></button>
+                    <button id="modalRedirect" type="button" class="btn btn-default" data-dismiss="modal"></button>
+                    <button id="modalSubmit" type="submit" class="btn btn-danger" data-dismiss="modal"></button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
