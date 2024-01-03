@@ -47,7 +47,7 @@ function resetUserDeck() {
 /* User Functions */
 
 // Build center panel URL list for selectedUTub
-function buildUserDeck(UTubUsers, creatorID) {
+function buildUserDeck(UTubUsers, UTubOwnerID) {
   resetUserDeck();
   const parent = $("#listUsers");
   let NumOfUsers = UTubUsers.length ? UTubUsers.length : 0;
@@ -56,12 +56,12 @@ function buildUserDeck(UTubUsers, creatorID) {
   for (let i = 0; i < NumOfUsers; i++) {
     let UTubUser = UTubUsers[i];
 
-    if (UTubUser.id !== creatorID) {
+    if (UTubUser.id !== UTubOwnerID) {
       parent.append(createUserSelector(UTubUser));
     }
   }
 
-  if (getCurrentUserID() == creatorID) {
+  if (getCurrentUserID() == UTubOwnerID) {
     parent.append(createNewUserInputField());
   }
 }
@@ -186,8 +186,6 @@ function createNewUserInputField() {
 function addUserShowInput() {
   showInput("UTubUsernameInput");
   highlightInput($("#UTubUsernameInput"));
-  // bindKeyToFunction(addUTub(), 13);
-  // bindKeyToFunction(addUTubHideInput(), 27);
 }
 
 // Hides new User input fields
@@ -248,6 +246,12 @@ function addUserFail(response) {
 
 /* Remove User */
 
+// Hide confirmation modal for removal of the selected user
+function removeUserHideModal() {
+  $("#confirmModal").modal("hide");
+  unbindEnter();
+}
+
 // Show confirmation modal for removal of the selected user from current UTub
 function removeUserShowModal(userID) {
   let modalTitle = "Are you sure you want to remove this user from the UTub?";
@@ -265,9 +269,10 @@ function removeUserShowModal(userID) {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      $("#confirmModal").modal("hide");
+      removeUserHideModal();
     })
     .text(buttonTextDismiss);
+  bindKeyToFunction(removeUserHideModal, 27);
 
   $("#modalSubmit")
     .removeClass()
@@ -276,7 +281,9 @@ function removeUserShowModal(userID) {
     .on("click", function (e) {
       e.preventDefault();
       removeUser(userID);
-    });
+    })
+    .text(buttonTextSubmit);
+    bindKeyToFunction(removeUser, userID, 13);
 
   $("#confirmModal").modal("show");
 

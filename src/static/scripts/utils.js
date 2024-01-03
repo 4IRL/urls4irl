@@ -101,6 +101,8 @@ function hideInputs() {
   $(".createDiv").each(function () {
     hideIfShown($(this));
   });
+  editURLHideInput();
+  editUTubHideInput();
 }
 
 // Hide specified input field. Typically done if user successfully completes, or cancels an action
@@ -127,16 +129,18 @@ function isHidden(el) {
 
 // Checks jqueryObj display status, and shows it if hidden
 function showIfHidden(jqueryObj) {
-  if (isHidden(jqueryObj[0])) {
-    jqueryObj.show();
-  }
+  for (let i = 0; i < jqueryObj.length; i++)
+    if (isHidden(jqueryObj[i])) {
+      jqueryObj.show();
+    }
 }
 
 // Checks jqueryObj display status, and hides it if shown
 function hideIfShown(jqueryObj) {
-  if (!isHidden(jqueryObj[0])) {
-    jqueryObj.hide();
-  }
+  for (let i = 0; i < jqueryObj.length; i++)
+    if (!isHidden(jqueryObj[i])) {
+      jqueryObj.hide();
+    }
 }
 
 // AJAX request
@@ -152,8 +156,16 @@ function AJAXCall(type, url, data) {
 function bindKeyToFunction(f, keyTarget) {
   $(document).on("keypress", function (e) {
     if (e.which == keyTarget) {
-      console.log("1 key bound");
       f();
+    }
+  });
+}
+
+// Bind key to function... doesn't work universally, just in modals, as of 01/03. Optional parameter...may be a better way to define like in MATLAB f(f, ~, keyTarget) when unused
+function bindKeyToFunction(f, input, keyTarget) {
+  $(document).on("keypress", function (e) {
+    if (e.which == keyTarget) {
+      f(input);
     }
   });
 }
@@ -166,6 +178,8 @@ function unbindEnter() {
     }
   });
 }
+
+// I'd like a universal function to bind enter key but it doesn't work...01/03/24
 // $(document).on("keyup", function (e) {
 //   if (e.keyCode === 13) {
 //     e.preventDefault();

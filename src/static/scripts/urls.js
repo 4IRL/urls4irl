@@ -367,7 +367,11 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      editURL();
+      $(document).bind("keypress", function (e) {
+        if (e.which == 13) {
+          editURL();
+        }
+      });
     })
     .html(htmlString);
 
@@ -384,11 +388,6 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   $(cancelEditBtn)
     .attr({ style: "display: none" })
     .addClass("mx-1 cancelEditURLBtn")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      // cancelEditURL();
-    })
     .html(htmlString);
 
   // Assemble url list items
@@ -749,7 +748,7 @@ function editURLHideInput() {
   let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
   hideIfShown(URLOptionsDiv.find(".submitEditURLBtn"));
   hideIfShown(URLOptionsDiv.find(".cancelEditURLBtn"));
-  showIfHidden($(URLOptionsDiv.find(".editURLBtn")));
+  showIfHidden(URLOptionsDiv.find(".editURLBtn"));
   showIfHidden(URLOptionsDiv.find(".addTagBtn"));
   showIfHidden(URLOptionsDiv.find(".remURLBtn"));
 
@@ -759,12 +758,12 @@ function editURLHideInput() {
   // Hide input fields
   let inputElURLString = selectedCardDiv.find(".editURLString");
   let inputDivURLString = inputElURLString.closest(".createDiv");
-  hideIfShown($(inputDivURLString));
+  hideIfShown(inputDivURLString);
 
   // Show published values
   let URLInfoDiv = inputElURLString.closest(".URLInfo");
-  showIfHidden($(URLInfoDiv.find("h5")));
-  showIfHidden($(URLInfoDiv.find("p")));
+  showIfHidden(URLInfoDiv.find("h5"));
+  showIfHidden(URLInfoDiv.find("p"));
 
   // Update URL options display
   hideIfShown(selectedCardDiv.find(".submitEditURLBtn"));
@@ -862,26 +861,35 @@ function editURLFail(response) {
 
 /* Remove URL */
 
+// Hide confirmation modal for removal of the selected URL
+function removeURLHideModal() {
+  $("#confirmModal").modal("hide");
+  unbindEnter();
+}
+
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function removeURLShowModal() {
   let modalTitle = "Are you sure you want to delete this URL from the UTub?";
-  let modalDismiss = "Just kidding";
+  let buttonTextDismiss = "Just kidding";
+  let buttonTextSubmit = "Remove URL";
 
   $("#confirmModalTitle").text(modalTitle);
 
   $("#modalDismiss")
     .on("click", function (e) {
       e.preventDefault();
-      $("#confirmModal").modal("hide");
+      removeURLHideModal();
     })
-    .text(modalDismiss);
+    .text(buttonTextDismiss);
+  bindKeyToFunction(removeURLHideModal, 27);
 
   $("#modalSubmit")
     .on("click", function (e) {
       e.preventDefault();
       removeURL();
     })
-    .text("Remove URL");
+    .text(buttonTextSubmit);
+  bindKeyToFunction(removeURL, 13);
 
   $("#confirmModal").modal("show");
 
@@ -928,7 +936,7 @@ function removeURLSuccess() {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let cardCol = $("div[urlid=" + getSelectedURLID() + "]").parent();
+  let cardCol = $("div[urlid=" + getSelectedURLID() + "]").closest("li");
   cardCol.fadeOut();
   cardCol.remove();
 }

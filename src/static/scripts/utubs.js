@@ -248,7 +248,7 @@ function changeUTub(selectedUTubID) {
     let dictURLs = selectedUTub.urls;
     let dictTags = selectedUTub.tags;
     let dictUsers = selectedUTub.members;
-    let creatorID = selectedUTub.created_by;
+    let UTubOwnerID = selectedUTub.created_by;
 
     // UTubDeck display updates
     displayUpdateUTubActive(selectedUTub);
@@ -260,7 +260,7 @@ function changeUTub(selectedUTubID) {
     buildURLDeck(dictURLs, dictTags);
 
     // RH panels
-    buildUserDeck(dictUsers, creatorID);
+    buildUserDeck(dictUsers, UTubOwnerID);
   });
 }
 
@@ -349,7 +349,11 @@ function displayUpdateUTubActive(selectedUTub) {
   });
   $("#UserDeckHeader").text("Users");
   $("#UTubOwner").text(UTubOwnerUsername);
-  showIfHidden($("#addUserBtn"));
+  if (getCurrentUserID() == UTubOwnerID) {
+    showIfHidden($("#addUserBtn"));
+  } else {
+    hideIfShown($("#addUserBtn"));
+  }
 }
 
 /** Post data handling **/
@@ -385,6 +389,12 @@ function numSameNameUTub(name) {
   return counter;
 }
 
+// Hides modal for UTub same name action confirmation
+function sameNameWarningHideModal() {
+  $("#confirmModal").modal("hide");
+  unbindEnter();
+}
+
 // Handles a double check if user inputs a new UTub name similar to one already existing. mode 1 'add', mode 0 'edit'
 function sameNameWarningShowModal(mode, UTubID) {
   let modalTitle = "Are you sure you want to create a new UTub with this name?";
@@ -403,10 +413,12 @@ function sameNameWarningShowModal(mode, UTubID) {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      $("#confirmModal").modal("hide");
+      sameNameWarningHideModal();
       highlightInput(mode ? $("#createUTub") : $("#editUTubName"));
     });
+  bindKeyToFunction(sameNameWarningHideModal, 27);
 
+  showIfHidden($("#modalRedirect"));
   $("#modalRedirect")
     .addClass("btn btn-primary")
     .text(buttonTextRedirect)
@@ -425,13 +437,12 @@ function sameNameWarningShowModal(mode, UTubID) {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      $("#confirmModal").modal("hide");
       mode ? addUTub() : editUTub();
     });
+  // bindKeyToFunction(removeURL, 13);
+  // 01/03/24 may want to separate sameNameWarningShowModal for add and edit
 
   $("#confirmModal").modal("show");
-
-  showIfHidden($("#modalRedirect"));
 }
 
 /* Add UTub */
@@ -525,9 +536,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
 
@@ -683,9 +694,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
-      ". Status: " +
-      response.responseJSON.Message,
+    response.responseJSON.Error_code +
+    ". Status: " +
+    response.responseJSON.Message,
   );
 }
 
@@ -715,7 +726,6 @@ function deleteUTubShowModal() {
     .on("click", function (e) {
       e.preventDefault();
       deleteUTubHideModal();
-      unbindEnter();
     })
     .text(buttonTextDismiss);
   bindKeyToFunction(deleteUTubHideModal, 27);
@@ -814,8 +824,8 @@ function deleteUTubFailure(xhr, textStatus, error) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
