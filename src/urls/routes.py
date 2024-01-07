@@ -180,6 +180,7 @@ def add_url(utub_id: int):
                     utub_id=utub_id,
                     url_id=already_created_url.id,
                     user_id=current_user.id,
+                    url_title=utub_new_url_form.url_title.data,
                 )
                 db.session.add(new_url_utub_association)
                 db.session.commit()
