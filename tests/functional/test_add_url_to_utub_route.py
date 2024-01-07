@@ -120,10 +120,10 @@ def test_add_valid_url_as_utub_member(
         assert url_id_to_add in [url.url_id for url in current_utub_member_of.utub_urls]
 
         url_in_utub = Utub_Urls.query.filter(
-                            Utub_Urls.utub_id == utub_id_to_add_to,
-                            Utub_Urls.url_id == url_id_to_add,
-                            Utub_Urls.user_id == current_user.id,
-                        ).all()
+            Utub_Urls.utub_id == utub_id_to_add_to,
+            Utub_Urls.url_id == url_id_to_add,
+            Utub_Urls.user_id == current_user.id,
+        ).all()
 
         # Ensure Url-Utub-User association exists
         assert len(url_in_utub) == 1
@@ -239,10 +239,10 @@ def test_add_valid_url_as_utub_creator(
         assert url_id_to_add in [url.url_id for url in current_utub_member_of.utub_urls]
 
         url_in_utub = Utub_Urls.query.filter(
-                            Utub_Urls.utub_id == utub_id_to_add_to,
-                            Utub_Urls.url_id == url_id_to_add,
-                            Utub_Urls.user_id == current_user.id,
-                        ).all()
+            Utub_Urls.utub_id == utub_id_to_add_to,
+            Utub_Urls.url_id == url_id_to_add,
+            Utub_Urls.user_id == current_user.id,
+        ).all()
 
         # Ensure Url-Utub-User association exists
         assert len(url_in_utub) == 1
@@ -685,9 +685,9 @@ def test_add_fresh_url_to_utub(
         assert len(current_utub_creator_of.utub_urls) == 1
 
         url_in_utub = Utub_Urls.query.filter(
-                            Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                            Utub_Urls.user_id == current_user.id,
-                        ).all()
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).all()
 
         # Ensure Url-Utub-User association exists
         assert len(url_in_utub) == 1
