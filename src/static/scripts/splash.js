@@ -236,7 +236,7 @@ function loginModalOpener(url) {
 
       request.fail(function (xhr, textStatus, error) {
         if (
-          xhr.status == 400 &&
+          xhr.status == 401 &&
           xhr.responseJSON.hasOwnProperty("Error_code")
         ) {
           switch (xhr.responseJSON.Error_code) {
