@@ -99,9 +99,9 @@ def check_request_head(url: str, user_agent: str = None) -> str:
 
     try:
         headers = {
-            "User-Agent": random.choice(USER_AGENTS)
-            if user_agent is None
-            else user_agent
+            "User-Agent": (
+                random.choice(USER_AGENTS) if user_agent is None else user_agent
+            )
         }
         response = requests.get(url, timeout=10, headers=headers)
 
