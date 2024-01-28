@@ -3,6 +3,7 @@ Contains database models for URLS4IRL.
 
 # https://docs.sqlalchemy.org/en/14/orm/backref.html
 """
+
 from datetime import datetime
 
 import jwt
@@ -396,9 +397,9 @@ class Utub(db.Model):
             MODEL_STRS.NAME: self.name,
             MODEL_STRS.CREATED_BY: self.utub_creator,
             MODEL_STRS.CREATED_AT: self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
-            MODEL_STRS.DESCRIPTION: self.utub_description
-            if self.utub_description is not None
-            else "",
+            MODEL_STRS.DESCRIPTION: (
+                self.utub_description if self.utub_description is not None else ""
+            ),
             MODEL_STRS.MEMBERS: [member.serialized for member in self.members],
             MODEL_STRS.URLS: [url_in_utub.serialized for url_in_utub in self.utub_urls],
             MODEL_STRS.TAGS: utub_tags,

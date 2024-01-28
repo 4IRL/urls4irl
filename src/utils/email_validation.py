@@ -18,9 +18,9 @@ def email_validation_required(func):
             current_user_email_validation: EmailValidation = (
                 EmailValidation.query.get_or_404(current_user_id)
             )
-            session[
-                EMAILS.EMAIL_VALIDATED_SESS_KEY
-            ] = current_user_email_validation.is_validated
+            session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = (
+                current_user_email_validation.is_validated
+            )
             is_email_validated = session[EMAILS.EMAIL_VALIDATED_SESS_KEY]
 
         if not is_email_validated:
