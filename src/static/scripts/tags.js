@@ -426,7 +426,7 @@ function addTagSuccess(response) {
   let string = response.Tag.tag_string;
 
   // Update Tags deck
-  hideIfShown($("#TagDeckSubheader").closest('.row'));
+  hideIfShown($("#TagDeckSubheader").closest(".row"));
 
   if (!isTagInDeck(tagid)) createTaginDeck(tagid, string);
 

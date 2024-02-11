@@ -643,7 +643,7 @@ function displayState2URLDeck(selectedUTub) {
 
   $("#editUTubName").val(UTubName);
   showIfHidden($(".editUTubBtn"));
-  
+
   showIfHidden($("#addURLBtn"));
 }
 
