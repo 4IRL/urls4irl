@@ -178,6 +178,10 @@ function createNewUserInputField() {
   return wrapper;
 }
 
+function displayState0UserDeck() {
+  hideIfShown($("#addUserBtn"));
+}
+
 /** Post data handling **/
 
 /* Add User */

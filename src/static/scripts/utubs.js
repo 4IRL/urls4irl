@@ -83,8 +83,15 @@ function getCurrentUTubID() {
   return $(".UTub.active").attr("utubid");
 }
 
+// Streamline the extraction of a UTub array element from its ID
+function UTubElemFromID(id) {
+  UTubs.forEach(function (UTub) {
+    if (UTub.id === id) return UTubIDs;
+  });
+}
+
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
-function UTubIDFromName(name) {
+function UTubIDsFromName(name) {
   let UTubIDs = [];
 
   UTubs.forEach(function (UTub) {
@@ -118,16 +125,19 @@ function buildUTubDeck(UTubs) {
   let NumOfUTubs = UTubs.length ? UTubs.length : 0;
 
   if (NumOfUTubs !== 0) {
+    displayState1UTubDeck();
+
     // Instantiate deck with list of UTubs accessible to current user
     for (let i = 0; i < NumOfUTubs; i++) {
       parent.append(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
     }
+  } else {
+    displayState0UTubDeck();
   }
 
   parent.append(createNewUTubInputField());
 
   // Display changes needed regardless of UTubDeck status
-  displayUpdateUTubChange(NumOfUTubs);
   displayUpdateUTubInactive();
 }
 
@@ -240,7 +250,7 @@ function createNewUTubInputField() {
 }
 
 // User selected a UTub, display data
-function changeUTub(selectedUTubID) {
+function selectUTub(selectedUTubID) {
   hideInputs();
 
   getUtubInfo(selectedUTubID).then(function (selectedUTub) {
@@ -251,7 +261,7 @@ function changeUTub(selectedUTubID) {
     let UTubOwnerID = selectedUTub.created_by;
 
     // UTubDeck display updates
-    displayUpdateUTubActive(selectedUTub);
+    displayState2UTubDeck(selectedUTub);
 
     // Tag deck display updates
     buildTagDeck(dictTags);
@@ -262,52 +272,11 @@ function changeUTub(selectedUTubID) {
     // RH panels
     buildUserDeck(dictUsers, UTubOwnerID);
   });
+
+  bindUTubSelectionBehavior();
 }
 
-// Updates page display in response to current UTubDeck status.
-function displayUpdateUTubChange(NumOfUTubs) {
-  if (!NumOfUTubs) {
-    // User has access to no UTubs
-    $("#UTubDeckHeader").text("Create a UTub");
-
-    $("#URLDeckHeader").text("<----------- Oops, no UTubs! Create one!");
-  } else {
-    // User has access to UTubs
-    $("#UTubDeckHeader").text("UTubs");
-    $("#TagDeckHeader").text("Tags");
-  }
-}
-
-// New user, or user has deleted their final UTub, base site displayed
-function displayUpdateUTubInactive() {
-  // UTubDeck display updates
-  hideIfShown($("#deleteUTubBtn"));
-
-  // TagDeck display updates
-  $("#TagDeckHeader").text("No UTub Selected");
-
-  // URLDeck display updates
-  $("#URLDeckHeader").text("Select a UTub");
-
-  // UTubDescriptionDeck display updates
-  $("#UTubDescriptionDeckHeader").text("Select a UTub");
-
-  // UserDeck display updates
-  $("#UserDeckHeader").text("Select a UTub");
-  hideIfShown($("#addUserBtn"));
-}
-
-// Handles display changes in response to UTubs change or creation
-function displayUpdateUTubActive(selectedUTub) {
-  let UTubName = selectedUTub.name;
-  let UTubID = selectedUTub.id;
-  let UTubDescription = selectedUTub.description;
-  let UTubOwnerID = selectedUTub.created_by;
-  let UTubUsers = selectedUTub.members; // 12/17 DP change JSON to match route and frontend naming convention, users vs members
-
-  // UTubDeck display updates
-  showIfHidden($("#deleteUTubBtn"));
-  $("#UTubDeckHeader").text("UTubs");
+function bindUTubSelectionBehavior() {
   // Unselect any already selected UTub
   let departureUTubLabel = $("#listUTubs").find(".active");
   if (departureUTubLabel) {
@@ -325,21 +294,97 @@ function displayUpdateUTubActive(selectedUTub) {
   selectedUTubLabel.addClass("active");
   // Unbind selection function
   $(selectedUTubLabel).off("click");
+}
 
-  // URLDeck display updates
-  $("#URLDeckHeader").text(UTubName);
+// Display state 0: Clean slate
+function displayState0UTubDeck() {
+  // Subheader prompt user to create a UTub
+  showIfHidden($("#UTubDeckSubheader").closest('.row'));
+  $("#UTubDeckSubheader").text("Create a UTub");
+
+  // Hide delete UTub button
+  hideIfShown($('#deleteUTubBtn'));
+}
+
+// Display state 1: UTubs list, none selected
+function displayState1UTubDeck() {
+  // Subheader prompt hidden
+  showIfHidden($("#UTubDeckSubheader").closest('.row'));
+  $("#UTubDeckSubheader").text("Select a UTub");
+
+  // Hide delete UTub button
+  hideIfShown($('#deleteUTubBtn'));
+}
+
+// Display state 2: UTubs list, none selected
+function displayState2UTubDeck(selectedUTub) {
+  // Subheader prompt hidden
+  hideIfShown($("#UTubDeckSubheader").closest('.row'));
+  $("#UTubDeckSubheader").text("");
+
+  // Show delete UTub button
+  showIfHidden($('#deleteUTubBtn'));
+
+  // UTubDescriptionDeck display updates
   $("#UTubDescription").text(UTubDescription);
-  $("#editUTubName").val(UTubName);
   $("#editUTubDescription").val(UTubDescription);
+}
 
-  showIfHidden($(".editUTubBtn"));
-  showIfHidden($("#addURLBtn"));
+// Display state 0: Clean slate
+function displayState0UTubDescriptionDeck() {
+  // Subheader prompt user to create a UTub
+  showIfHidden($("#UTubDeckSubheader").closest('.row'))
+  $("#UTubDeckSubheader").text("Create a UTub");
+
+  // Hide delete UTub button
+  hideIfShown($('#deleteUTubBtn'));
+}
+
+// Display state 1: No UTub selected
+function displayState1UTubDescriptionDeck() {
+  // Subheader prompt hidden
+  hideIfShown($("#UTubDeckSubheader").closest('.row'))
+
+  // Hide delete UTub button
+  hideIfShown($('#deleteUTubBtn'));
+}
+
+// Display state 2: UTub selected, no description
+function displayState2UTubDescriptionDeck() {
+  // Subheader prompt hidden
+  hideIfShown($("#UTubDeckSubheader").closest('.row'))
+
+  // Hide delete UTub button
+  hideIfShown($('#deleteUTubBtn'));
+}
+
+// Display state 3: UTub selected, description exists
+function displayState3UTubDescriptionDeck(selectedUTub) {
+  // Subheader prompt hidden
+  hideIfShown($("#UTubDeckSubheader").closest('.row'))
+
+  // Show delete UTub button
+  showIfHidden($('#deleteUTubBtn'));
+
+  // UTubDescriptionDeck display updates
+  $("#UTubDescription").text(UTubDescription);
+  $("#editUTubDescription").val(UTubDescription);
+}
+
+// Handles display changes in response to UTubs change or creation
+function displayUpdateUTubActive(selectedUTub) {
+  let UTubName = selectedUTub.name;
+  let UTubID = selectedUTub.id;
+  let UTubDescription = selectedUTub.description;
+  let UTubOwnerID = selectedUTub.created_by;
+  let UTubUsers = selectedUTub.members; // 12/17 DP change JSON to match route and frontend naming convention, users vs members
+
+
+
+
   if (selectedUTub.urls.length > 0) showIfHidden($("#accessAllURLsBtn"));
   else hideIfShown($("#accessAllURLsBtn"));
   showIfHidden($("#UTubDescription"));
-
-  // UTubDescriptionDeck display updates
-  $("#UTubDescriptionDeckHeader").text("UTub Description");
 
   // UserDeck display updates
   // Extract owner username
@@ -372,7 +417,7 @@ function checkSameNameUTub(mode, name) {
   // Toggle boolean to determine whether to display warning modal
   if (sameNameCounter > 0) sameNameBool = true;
 
-  if (sameNameBool) sameNameWarningShowModal(mode, UTubIDFromName(name));
+  if (sameNameBool) sameNameWarningShowModal(mode, UTubIDsFromName(name));
   else mode ? addUTub() : editUTub();
 }
 
@@ -536,9 +581,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
 
@@ -694,9 +739,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
-      ". Status: " +
-      response.responseJSON.Message,
+    response.responseJSON.Error_code +
+    ". Status: " +
+    response.responseJSON.Message,
   );
 }
 
@@ -787,15 +832,13 @@ function deleteUTubSuccess() {
   UTubSelector.fadeOut();
   UTubSelector.remove();
 
-  // Update UTub center panel
-  $("#URLDeckHeader")[0].innerHTML = "Select a UTub";
-
   hideIfShown($(".editUTubBtn"));
   hideIfShown($("#addURLBtn"));
   hideIfShown($("#UTubDescription"));
 
-  displayUpdateUTubChange(UTubs.length);
-  displayUpdateUTubInactive();
+  UTubs.splice( $.inArray(UTubElemFromID(currentUTubID), UTubs) ,1 );
+  
+  buildUTubDeck(UTubs);
 }
 
 function deleteUTubFailure(xhr, textStatus, error) {
@@ -824,8 +867,8 @@ function deleteUTubFailure(xhr, textStatus, error) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }

@@ -149,7 +149,7 @@ function resetURLDeck() {
   $("#LWRRow").empty();
 }
 
-/* URL Functions */
+/** URL Functions **/
 
 // Build center panel URL list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
@@ -623,6 +623,28 @@ function toggleSelectedURL(selectedURLID) {
       activeRow = $("#LWRRow");
     }
   }
+}
+
+// Display state 0: Clean slate
+function displayState0URLDeck() {
+  $("#URLDeckHeader").text("URLs");
+  showIfHidden($(".editUTubBtn"));
+
+  hideIfShown($("#addURLBtn"));
+}
+
+function displayState1URLDeck() {
+  $("#URLDeckHeader").text("URLs");
+  showIfHidden($(".editUTubBtn"));
+}
+
+function displayState2URLDeck(selectedUTub) {
+  $("#URLDeckHeader").text(selectedUTub.name);
+
+  $("#editUTubName").val(UTubName);
+  showIfHidden($(".editUTubBtn"));
+  
+  showIfHidden($("#addURLBtn"));
 }
 
 /** Post data handling **/
