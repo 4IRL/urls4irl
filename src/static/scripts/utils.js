@@ -186,3 +186,19 @@ function unbindEnter() {
 //     e.target.blur();
 //   }
 // });
+
+function displayState0() {
+  displayState0UTubDeck();
+  displayState0TagDeck();
+  displayState0URLDeck();
+  displayState0UTubDescriptionDeck();
+  displayState0UserDeck();
+}
+
+function displayState1() {
+  displayState1UTubDeck();
+  displayState1TagDeck();
+  displayState1URLDeck();
+  displayState1UTubDescriptionDeck();
+  displayState1UserDeck();
+}
