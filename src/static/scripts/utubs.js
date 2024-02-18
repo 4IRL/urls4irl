@@ -14,9 +14,9 @@ $(document).ready(function () {
   try {
     buildUTubDeck(UTubs);
   } catch (error) {
-    console.log("Something is wrong!")
-    console.log(error)
-    
+    console.log("Something is wrong!");
+    console.log(error);
+
     $("#listUTubs").append(createNewUTubInputField());
   }
 
@@ -86,7 +86,7 @@ function getCurrentUTubID() {
 // Streamline the jQuery selector for the UTub Selector.
 function UTubSelectorElemFromID(id) {
   let UTubSelectors = $("#listUTubs").children();
-  UTubSelectors = UTubSelectors.split(UTubSelectors.length-1);
+  UTubSelectors = UTubSelectors.split(UTubSelectors.length - 1);
   $("#listUTubs").forEach(function (UTubSelector) {
     if (UTubSelector.utubid === id) return UTubSelector;
   });
@@ -329,7 +329,7 @@ function displayState2UTubDeck(selectedUTub) {
   showIfHidden($("#deleteUTubBtn"));
 
   // Apply active class to selected UTub
-  UTubSelectorElemFromID(selectedUTub.id).addClass("active")
+  UTubSelectorElemFromID(selectedUTub.id).addClass("active");
 
   // UTubDescriptionDeck display updates
   $("#UTubDescription").text(UTubDescription);
@@ -519,7 +519,7 @@ function addUTub() {
     console.log("success");
 
     if (xhr.status == 200) {
-      console.log(response)
+      console.log(response);
       addUTubSuccess(response);
     }
   });
