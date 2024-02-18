@@ -14,10 +14,10 @@ $(document).ready(function () {
   try {
     buildUTubDeck(UTubs);
   } catch (error) {
+    console.log("Something is wrong!")
+    console.log(error)
+    
     $("#listUTubs").append(createNewUTubInputField());
-
-    // Display changes needed regardless of UTubDeck status
-    displayUpdateUTubInactive(); // selectedUTub variable set to null. If buildUTubDeck(UTubs) is called, no UTub has been selected yet
   }
 
   /* Bind click functions */
@@ -101,7 +101,7 @@ function UTubIDsFromName(name) {
 }
 
 // Streamline the AJAX call to db for updated info
-function getUtubInfo(selectedUTubID) {
+function getUTubInfo(selectedUTubID) {
   return $.getJSON("/home?UTubID=" + selectedUTubID);
 }
 
@@ -111,16 +111,10 @@ function resetNewUTubForm() {
   hideIfShown($("#createUTub").closest(".createDiv"));
 }
 
-// Clear the UTub Deck
-function resetUTubDeck() {
-  $("#listUTubs").empty();
-}
-
 /** UTub Functions **/
 
 // Assembles components of the UTubDeck (top left panel)
 function buildUTubDeck(UTubs) {
-  resetUTubDeck();
   const parent = $("#listUTubs");
   let NumOfUTubs = UTubs.length ? UTubs.length : 0;
 
@@ -136,9 +130,6 @@ function buildUTubDeck(UTubs) {
   }
 
   parent.append(createNewUTubInputField());
-
-  // Display changes needed regardless of UTubDeck status
-  displayUpdateUTubInactive();
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
@@ -157,7 +148,7 @@ function createUTubSelector(UTubName, UTubID, index) {
   $(label).on("click", function (e) {
     e.stopPropagation();
     e.preventDefault();
-    changeUTub(UTubID);
+    displayState2UTubDeck(UTubID);
   });
 
   $(radio).attr({
@@ -253,7 +244,7 @@ function createNewUTubInputField() {
 function selectUTub(selectedUTubID) {
   hideInputs();
 
-  getUtubInfo(selectedUTubID).then(function (selectedUTub) {
+  getUTubInfo(selectedUTubID).then(function (selectedUTub) {
     // Parse incoming data, pass them into subsequent functions as required
     let dictURLs = selectedUTub.urls;
     let dictTags = selectedUTub.tags;
@@ -318,12 +309,17 @@ function displayState1UTubDeck() {
 
 // Display state 2: UTubs list, none selected
 function displayState2UTubDeck(selectedUTub) {
+  let UTubDescription = selectedUTub.description;
+
+  // UTubDeck display updates
   // Subheader prompt hidden
   hideIfShown($("#UTubDeckSubheader").closest(".row"));
   $("#UTubDeckSubheader").text("");
 
   // Show delete UTub button
   showIfHidden($("#deleteUTubBtn"));
+
+  
 
   // UTubDescriptionDeck display updates
   $("#UTubDescription").text(UTubDescription);
@@ -513,6 +509,7 @@ function addUTub() {
     console.log("success");
 
     if (xhr.status == 200) {
+      console.log(response)
       addUTubSuccess(response);
     }
   });
@@ -550,13 +547,14 @@ function addUTubSuccess(response) {
     : 0;
   let nextIndex = index + 1;
 
+  // Create and append newly created UTub selector
   $("#listUTubs").append(
     createUTubSelector(response.UTub_name, UTubID, nextIndex),
   );
   // Reorder createDiv after latest created UTub selector
   $("#listUTubs").append(createUTub);
 
-  changeUTub(UTubID);
+  selectUTub(selectedUTubID);
 }
 
 function addUTubFail(response, textStatus, xhr) {
