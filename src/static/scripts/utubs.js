@@ -83,6 +83,15 @@ function getCurrentUTubID() {
   return $(".UTub.active").attr("utubid");
 }
 
+// Streamline the jQuery selector for the UTub Selector.
+function UTubSelectorElemFromID(id) {
+  let UTubSelectors = $("#listUTubs").children();
+  UTubSelectors = UTubSelectors.split(UTubSelectors.length-1);
+  $("#listUTubs").forEach(function (UTubSelector) {
+    if (UTubSelector.utubid === id) return UTubSelector;
+  });
+}
+
 // Streamline the extraction of a UTub array element from its ID
 function UTubElemFromID(id) {
   UTubs.forEach(function (UTub) {
@@ -319,7 +328,8 @@ function displayState2UTubDeck(selectedUTub) {
   // Show delete UTub button
   showIfHidden($("#deleteUTubBtn"));
 
-  
+  // Apply active class to selected UTub
+  UTubSelectorElemFromID(selectedUTub.id).addClass("active")
 
   // UTubDescriptionDeck display updates
   $("#UTubDescription").text(UTubDescription);
