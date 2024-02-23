@@ -2,7 +2,7 @@ from flask import url_for
 from flask_login import current_user
 
 from src.models import Utub, Utub_Urls, Url_Tags, URLS
-from src.utils.url_validation import check_request_head
+from src.utils.url_validation import find_common_url
 from src.utils import strings as U4I_STRINGS
 
 URL_FORM = U4I_STRINGS.URL_FORM
@@ -47,7 +47,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "github.com"
+    NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
 
@@ -55,7 +55,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         assert utub_creator_of.utub_creator == current_user.id
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = check_request_head(NEW_FRESH_URL)
+        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
@@ -188,7 +188,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "github.com"
+    NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is only a member of
         utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
@@ -197,7 +197,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         assert utub_member_of.utub_creator != current_user.id
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = check_request_head(NEW_FRESH_URL)
+        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
@@ -331,8 +331,8 @@ def test_update_url_title_with_fresh_valid_url_as_utub_creator(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "github.com"
-    NEW_TITLE = "This is my newest github.com!"
+    NEW_FRESH_URL = "yahoo.com"
+    NEW_TITLE = "This is my newest yahoo.com!"
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
 
@@ -340,7 +340,7 @@ def test_update_url_title_with_fresh_valid_url_as_utub_creator(
         assert utub_creator_of.utub_creator == current_user.id
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = check_request_head(NEW_FRESH_URL)
+        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
@@ -473,8 +473,8 @@ def test_update_url_title_with_fresh_valid_url_as_url_adder(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "github.com"
-    NEW_TITLE = "This is my newest github.com!"
+    NEW_FRESH_URL = "yahoo.com"
+    NEW_TITLE = "This is my newest yahoo.com!"
     with app.app_context():
         # Get UTub this user is only a member of
         utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
@@ -483,7 +483,7 @@ def test_update_url_title_with_fresh_valid_url_as_url_adder(
         assert utub_member_of.utub_creator != current_user.id
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = check_request_head(NEW_FRESH_URL)
+        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
@@ -2016,8 +2016,8 @@ def test_update_url_title_with_fresh_valid_url_as_another_current_utub_member(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "github.com"
-    NEW_TITLE = "This is my newest github.com!"
+    NEW_FRESH_URL = "yahoo.com"
+    NEW_TITLE = "This is my newest yahoo.com!"
     with app.app_context():
         # Get UTub this user is only a member of
         utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
@@ -2026,7 +2026,7 @@ def test_update_url_title_with_fresh_valid_url_as_another_current_utub_member(
         assert utub_member_of.utub_creator != current_user.id
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = check_request_head(NEW_FRESH_URL)
+        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
@@ -2151,8 +2151,8 @@ def test_update_url_title_with_fresh_valid_url_as_other_utub_member(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "github.com"
-    NEW_TITLE = "This is my newest github.com!"
+    NEW_FRESH_URL = "yahoo.com"
+    NEW_TITLE = "This is my newest yahoo.com!"
     with app.app_context():
         # Get UTub this user is not a member of
         utub_user_not_member_of = Utub.query.get(3)
@@ -2168,7 +2168,7 @@ def test_update_url_title_with_fresh_valid_url_as_other_utub_member(
         ]
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = check_request_head(NEW_FRESH_URL)
+        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL not in this UTub
@@ -2302,8 +2302,8 @@ def test_update_url_title_with_fresh_valid_url_as_other_utub_creator(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "github.com"
-    NEW_TITLE = "This is my newest github.com!"
+    NEW_FRESH_URL = "yahoo.com"
+    NEW_TITLE = "This is my newest yahoo.com!"
     with app.app_context():
         # Get UTub this user is not a member of
         all_utubs = Utub.query.all()
@@ -2331,7 +2331,7 @@ def test_update_url_title_with_fresh_valid_url_as_other_utub_creator(
         assert all_utubs[i].utub_creator == current_user.id
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = check_request_head(NEW_FRESH_URL)
+        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL not in this UTub
@@ -2579,7 +2579,7 @@ def test_update_valid_url_with_valid_url_and_missing_valid_title_as_utub_creator
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_URL = "github.com"
+    NEW_URL = "yahoo.com"
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
 
@@ -2679,7 +2679,7 @@ def test_update_valid_url_with_valid_url_and_valid_title_missing_csrf(
     """
     client, _, _, app = login_first_user_without_register
 
-    NEW_URL = "github.com"
+    NEW_URL = "yahoo.com"
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
 

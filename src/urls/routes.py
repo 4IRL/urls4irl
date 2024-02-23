@@ -9,7 +9,7 @@ from src.urls.forms import (
     EditURLForm,
     EditURLTitleForm,
 )
-from src.utils.url_validation import InvalidURLError, check_request_head
+from src.utils.url_validation import InvalidURLError, find_common_url
 from src.utils import strings as U4I_STRINGS
 from src.utils.email_validation import email_validation_required
 
@@ -110,7 +110,7 @@ def add_url(utub_id: int):
 
         try:
             user_agent = request.headers.get("User-agent")
-            normalized_url = check_request_head(url_string, user_agent)
+            normalized_url = find_common_url(url_string, user_agent)
         except InvalidURLError:
             # URL was unable to be verified as a valid URL
             return (
@@ -331,7 +331,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
 
         # Here the user wants to try to change or modify the URL
         try:
-            normalized_url = check_request_head(url_to_change_to)
+            normalized_url = find_common_url(url_to_change_to)
         except InvalidURLError:
             # URL was unable to be verified as a valid URL
             return (
@@ -535,7 +535,7 @@ def edit_url(utub_id: int, url_id: int):
 
         # Here the user wants to try to change or modify the URL
         try:
-            normalized_url = check_request_head(url_to_change_to)
+            normalized_url = find_common_url(url_to_change_to)
         except InvalidURLError:
             # URL was unable to be verified as a valid URL
             return (

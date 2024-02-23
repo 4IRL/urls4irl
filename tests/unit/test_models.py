@@ -1,5 +1,5 @@
 from src.models import User, Utub, URLS, Tags
-from src.utils.url_validation import check_request_head
+from src.utils.url_validation import find_common_url
 
 new_user = {
     "username": "FakeUserName1234",
@@ -68,11 +68,11 @@ def test_url_model():
     THEN ensure all fields are filled out correctly
     """
     new_url_object = URLS(
-        normalized_url=check_request_head(new_url["url_string"]),
+        normalized_url=find_common_url(new_url["url_string"]),
         current_user_id=new_url["creator"],
     )
 
-    assert new_url_object.url_string == check_request_head(new_url["url_string"])
+    assert new_url_object.url_string == find_common_url(new_url["url_string"])
     assert new_url_object.created_by == new_url["creator"]
     assert len(new_url_object.url_tags) == 0
 
