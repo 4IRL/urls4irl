@@ -79,7 +79,8 @@ def test_valid_urls():
     for valid_url in valid_urls:
         urls_to_check = valid_urls[valid_url]
         for url in urls_to_check:
-            assert valid_url == url_valid.check_request_head(url)
+            commonized_url = url_valid.find_common_url(url)
+            assert valid_url == commonized_url
 
 
 def test_invalid_urls():
@@ -90,7 +91,7 @@ def test_invalid_urls():
     """
     for invalid_url in invalid_urls:
         with raises(url_valid.InvalidURLError):
-            url_valid.check_request_head(invalid_url)
+            url_valid.find_common_url(invalid_url)
 
 
 def test_urls_requiring_valid_user_agent():
@@ -101,4 +102,4 @@ def test_urls_requiring_valid_user_agent():
     THEN ensure that these urls are now validated properly
     """
     for unknown_url in urls_needing_valid_user_agent:
-        assert unknown_url == url_valid.check_request_head(unknown_url)
+        assert unknown_url == url_valid.find_common_url(unknown_url)

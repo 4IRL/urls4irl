@@ -2,7 +2,7 @@ from flask import url_for
 from flask_login import current_user
 
 from src.models import Utub, Utub_Urls, Url_Tags, URLS, User
-from src.utils.url_validation import check_request_head
+from src.utils.url_validation import find_common_url
 from src.utils import strings as U4I_STRINGS
 
 URL_FORM = U4I_STRINGS.URL_FORM
@@ -58,7 +58,7 @@ def test_update_url_title_utub_creator(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_TITLE = "This is my newest github.com!"
+    NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
 
@@ -173,7 +173,7 @@ def test_update_url_title_url_adder(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_TITLE = "This is my newest github.com!"
+    NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
         # Get UTub this user is only a member of
         utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
@@ -522,7 +522,7 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_TITLE = "This is my newest github.com!"
+    NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
         # Get UTub this user is only a member of
         utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
@@ -737,7 +737,7 @@ def test_update_url_title_as_member_of_other_utub(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_TITLE = "This is my newest github.com."
+    NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
 
@@ -1015,7 +1015,7 @@ def test_update_url_title_of_nonexistent_url(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_TITLE = "This is my newest github.com."
+    NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
         utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
         utub_id = utub_creator_of.id
@@ -1075,7 +1075,7 @@ def test_update_url_title_in_nonexistent_utub(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_TITLE = "This is my newest github.com."
+    NEW_TITLE = "This is my newest facebook.com."
     NONEXISTENT_UTUB_ID = 999
 
     # Get the URL of another UTub

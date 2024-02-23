@@ -11,3 +11,4 @@ miscellaneous/
 jquery*.js
 bootstrap*.js*
 bootstrap*.css*
+*.code-workspace
