@@ -84,7 +84,7 @@ valid_url_without_tag_1 = {
 
 valid_url_without_tag_2 = {
     MODEL_STRS.ID: 2,
-    MODEL_STRS.URL: "https://www.facebook.com/",
+    MODEL_STRS.URL: "https://github.com/",
     MODEL_STRS.TAGS: [],
 }
 
@@ -122,7 +122,7 @@ valid_url_with_tag_1 = {
 
 valid_url_with_tag_2 = {
     MODEL_STRS.URL_ID: 2,
-    MODEL_STRS.URL_STRING: "https://www.facebook.com/",
+    MODEL_STRS.URL_STRING: "https://github.com/",
     MODEL_STRS.URL_TAGS: valid_tag_ids,
     MODEL_STRS.ADDED_BY: 2,
     MODEL_STRS.URL_TITLE: "",

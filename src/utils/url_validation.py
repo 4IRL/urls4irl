@@ -24,6 +24,7 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 """
 
 from url_normalize import url_normalize
+from urllib.parse import unquote
 import random
 import requests
 
@@ -36,6 +37,10 @@ USER_AGENTS = (
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
 )
+
+COMMON_REDIRECTS = {
+    "https://www.facebook.com/login/?next=",
+}
 
 
 class InvalidURLError(Exception):
@@ -72,8 +77,53 @@ def normalize_url(url: str) -> str:
 
     return return_val
 
+def generate_random_user_agent() -> str:
+    return random.choice(USER_AGENTS)
 
-def check_request_head(url: str, user_agent: str = None) -> str:
+def perform_head_request(url: str) -> requests.Response:
+    random_user_agent = generate_random_user_agent()
+    try:
+        headers = {
+            "User-Agent": random_user_agent,
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+        }
+        response = requests.head(url, timeout=5, headers=headers)
+
+    except requests.exceptions.ReadTimeout:
+        # Try a get request instead
+        return perform_get_request(url, random_user_agent)
+
+    except requests.exceptions.ConnectionError:
+        raise InvalidURLError
+
+    except requests.exceptions.MissingSchema:
+        raise InvalidURLError
+
+    else:
+        return response
+
+def perform_get_request(url: str, random_user_agent: str) -> requests.Response:
+    try:
+        headers = {
+            "User-Agent": random_user_agent,
+        }
+        response = requests.get(url, timeout=10, headers=headers)
+
+    except requests.exceptions.ReadTimeout:
+        raise InvalidURLError
+
+    except requests.exceptions.ConnectionError:
+        raise InvalidURLError
+
+    except requests.exceptions.MissingSchema:
+        raise InvalidURLError
+
+    else:
+        return response
+
+
+
+def find_common_url(url: str, user_agent: str = None) -> str:
     """
     Status codes: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
 
@@ -96,23 +146,7 @@ def check_request_head(url: str, user_agent: str = None) -> str:
     """
 
     url = normalize_url(url)
-
-    try:
-        headers = {
-            "User-Agent": (
-                random.choice(USER_AGENTS) if user_agent is None else user_agent
-            )
-        }
-        response = requests.get(url, timeout=10, headers=headers)
-
-    except requests.exceptions.ReadTimeout:
-        raise InvalidURLError
-
-    except requests.exceptions.ConnectionError:
-        raise InvalidURLError
-
-    except requests.exceptions.MissingSchema:
-        raise InvalidURLError
+    response = perform_head_request(url)
 
     status_code = response.status_code
 
@@ -132,5 +166,19 @@ def check_request_head(url: str, user_agent: str = None) -> str:
             return url
 
         else:
+            if status_code == 302 and any((common_redirect in location for common_redirect in COMMON_REDIRECTS)):
+                # Common redirects, where sometimes 'www.facebook.com' could send you to the following:
+                #       'https://www.facebook.com/login/?next=https%3A%2F%2Fwww.facebook.com%2F'
+                # Forces the return of 'https://www.facebook.com', which comes after the ?next= query param
+                return filter_out_common_redirect(url)
+
             # Redirect was found, provide the redirect URL
             return location
+
+def filter_out_common_redirect(url: str) -> str:
+    for common_redirect in COMMON_REDIRECTS:
+        if common_redirect in url:
+            url = url.removeprefix(common_redirect)
+            return unquote(url)
+
+    return unquote(url)
