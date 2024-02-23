@@ -1,7 +1,8 @@
+from flask import url_for
 from flask_login import current_user
 
-from urls4irl.models import Utub, Utub_Urls, Tags, Url_Tags
-from urls4irl.utils import strings as U4I_STRINGS
+from src.models import Utub, Utub_Urls, Tags, Url_Tags
+from src.utils import strings as U4I_STRINGS
 
 TAG_FORM = U4I_STRINGS.TAG_FORM
 TAG_SUCCESS = U4I_STRINGS.TAGS_SUCCESS
@@ -100,7 +101,12 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
     }
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -249,7 +255,12 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
     }
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -408,7 +419,12 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
     }
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -568,7 +584,12 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
     }
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -690,7 +711,12 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
     }
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -809,7 +835,12 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
     }
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -931,11 +962,16 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
     }
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_creator_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
-    assert modify_tag_response.status_code == 404
+    assert modify_tag_response.status_code == 400
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
@@ -1053,7 +1089,12 @@ def test_modify_tag_on_another_utub_url(
     }
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_not_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_not_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
@@ -1149,7 +1190,12 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_creator_of}/{invalid_url_id}/1",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_creator_of,
+            url_id=invalid_url_id,
+            tag_id=1,
+        ),
         data=add_tag_form,
     )
     assert modify_tag_response.status_code == 404
@@ -1194,7 +1240,13 @@ def test_modify_tag_on_url_in_nonexistent_utub(
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{invalid_utub_id}/{invalid_url_id}/1", data=add_tag_form
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=invalid_utub_id,
+            url_id=invalid_url_id,
+            tag_id=1,
+        ),
+        data=add_tag_form,
     )
     assert modify_tag_response.status_code == 404
 
@@ -1283,11 +1335,16 @@ def test_modify_tag_with_missing_tag_field(
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token}
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 
-    assert modify_tag_response.status_code == 404
+    assert modify_tag_response.status_code == 400
 
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
@@ -1400,7 +1457,12 @@ def test_modify_tag_with_missing_csrf_token(
     add_tag_form = {TAG_FORM.TAG_STRING: tag_string_of_tag}
 
     modify_tag_response = client.post(
-        f"/tag/url/modify/{utub_id_user_is_member_of}/{url_id_to_add_tag_to}/{curr_tag_id_on_url}",
+        url_for(
+            "tags.modify_tag_on_url",
+            utub_id=utub_id_user_is_member_of,
+            url_id=url_id_to_add_tag_to,
+            tag_id=curr_tag_id_on_url,
+        ),
         data=add_tag_form,
     )
 

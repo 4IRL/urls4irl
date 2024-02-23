@@ -1,9 +1,9 @@
 import json
 
 import tests.models_for_test as v_models
-from urls4irl.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
-from urls4irl import db
-from urls4irl.utils import strings as U4I_STRINGS
+from src.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
+from src import db
+from src.utils import strings as U4I_STRINGS
 
 MODEL_STRS = U4I_STRINGS.MODELS
 USER_STRS = U4I_STRINGS.REGISTER_FORM

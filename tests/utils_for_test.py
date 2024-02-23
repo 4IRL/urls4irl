@@ -1,6 +1,6 @@
 import re
 import sqlalchemy
-from urls4irl.config import TestingConfig
+from src.config import TestingConfig
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
