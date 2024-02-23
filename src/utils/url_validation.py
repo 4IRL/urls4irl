@@ -77,15 +77,17 @@ def normalize_url(url: str) -> str:
 
     return return_val
 
+
 def generate_random_user_agent() -> str:
     return random.choice(USER_AGENTS)
+
 
 def perform_head_request(url: str) -> requests.Response:
     random_user_agent = generate_random_user_agent()
     try:
         headers = {
             "User-Agent": random_user_agent,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
         }
         response = requests.head(url, timeout=5, headers=headers)
 
@@ -101,6 +103,7 @@ def perform_head_request(url: str) -> requests.Response:
 
     else:
         return response
+
 
 def perform_get_request(url: str, random_user_agent: str) -> requests.Response:
     try:
@@ -120,7 +123,6 @@ def perform_get_request(url: str, random_user_agent: str) -> requests.Response:
 
     else:
         return response
-
 
 
 def find_common_url(url: str, user_agent: str = None) -> str:
@@ -166,7 +168,9 @@ def find_common_url(url: str, user_agent: str = None) -> str:
             return url
 
         else:
-            if status_code == 302 and any((common_redirect in location for common_redirect in COMMON_REDIRECTS)):
+            if status_code == 302 and any(
+                (common_redirect in location for common_redirect in COMMON_REDIRECTS)
+            ):
                 # Common redirects, where sometimes 'www.facebook.com' could send you to the following:
                 #       'https://www.facebook.com/login/?next=https%3A%2F%2Fwww.facebook.com%2F'
                 # Forces the return of 'https://www.facebook.com', which comes after the ?next= query param
@@ -174,6 +178,7 @@ def find_common_url(url: str, user_agent: str = None) -> str:
 
             # Redirect was found, provide the redirect URL
             return location
+
 
 def filter_out_common_redirect(url: str) -> str:
     for common_redirect in COMMON_REDIRECTS:
