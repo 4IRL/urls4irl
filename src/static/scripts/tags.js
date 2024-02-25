@@ -62,47 +62,36 @@ function buildTagDeck(dictTags) {
   const parent = $("#listTags");
 
   // Tag deck display updates
-  // showIfHidden($("#createTagButton"));
+  // Instantiate TagDeck (bottom left panel) with tags in current UTub
+  hideIfShown($("#noTagsHeader"));
+  $("#TagDeck").find("h2")[0].innerHTML = "Tags";
+  // showIfHidden($("#editTagButton"));
 
-  if (dictTags.length == 0) {
-    // User has no Tags in this UTub
-    $("#TagDeck").find("h2")[0].innerHTML = "Create a Tag";
-    // hideIfShown($("#editTagButton"));
-    showIfHidden($("#noTagsHeader"));
+  // 1. Select all checkbox
+  createTaginDeck(0, "selectAll");
 
-    // New Tag input text field. Initially hidden, shown when create Tag is requested
-    createTaginDeck(0, "newTag");
-  } else {
-    // Instantiate TagDeck (bottom left panel) with tags in current UTub
-    hideIfShown($("#noTagsHeader"));
-    $("#TagDeck").find("h2")[0].innerHTML = "Tags";
-    // showIfHidden($("#editTagButton"));
+  // 2. New Tag input text field. Initially hidden, shown when create Tag is requested
+  createTaginDeck(0, "newTag");
 
-    // 1. Select all checkbox
-    createTaginDeck(0, "selectAll");
-
-    // 2. New Tag input text field. Initially hidden, shown when create Tag is requested
-    createTaginDeck(0, "newTag");
-
-    // 3a. Alpha sort tags based on tag_string
-    dictTags.sort(function (a, b) {
-      const tagA = a.tag_string.toUpperCase(); // ignore upper and lowercase
-      const tagB = b.tag_string.toUpperCase(); // ignore upper and lowercase
-      if (tagA < tagB) {
-        return -1;
-      }
-      if (tagA > tagB) {
-        return 1;
-      }
-      // tags must be equal
-      return 0;
-    });
-
-    // 3b. Loop through all tags and provide checkbox input for filtering
-    for (let i in dictTags) {
-      createTaginDeck(dictTags[i].id, dictTags[i].tag_string);
+  // 3a. Alpha sort tags based on tag_string
+  dictTags.sort(function (a, b) {
+    const tagA = a.tag_string.toUpperCase(); // ignore upper and lowercase
+    const tagB = b.tag_string.toUpperCase(); // ignore upper and lowercase
+    if (tagA < tagB) {
+      return -1;
     }
+    if (tagA > tagB) {
+      return 1;
+    }
+    // tags must be equal
+    return 0;
+  });
+
+  // 3b. Loop through all tags and provide checkbox input for filtering
+  for (let i in dictTags) {
+    createTaginDeck(dictTags[i].id, dictTags[i].tag_string);
   }
+
 }
 
 // Handle URL deck display changes related to creating a new tag
@@ -332,6 +321,31 @@ function filterURLDeck() {
       $(URLcardst[i]).parent().show();
     }
   }
+}
+
+/** Tags Display State Functions **/
+
+// Display state 0: Clean slate, no UTub selected
+function displayState0TagDeck() {
+  // Subheader prompt hidden
+  hideIfShown($("#TagDeckSubheader").closest(".row"));
+}
+
+// Display state 1: Selected UTub has URLs, no Tags
+function displayState1TagDeck() {
+  // Subheader prompt shown
+  let TagDeckSubheader = $("#TagDeckSubheader")
+  showIfHidden(TagDeckSubheader.closest(".row"));
+  TagDeckSubheader.text("Add a tag to a URL");
+}
+
+// Display state 2: Selected UTub has URLs and Tags, none selected
+function displayState2TagDeck(dictTags) {
+  // Subheader prompt shown
+  let TagDeckSubheader = $("#TagDeckSubheader")
+  showIfHidden(TagDeckSubheader.closest(".row"));
+  TagDeckSubheader.text("0 filters applied");
+
 }
 
 /** Post data handling **/

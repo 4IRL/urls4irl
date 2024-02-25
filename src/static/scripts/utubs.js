@@ -263,16 +263,19 @@ function bindUTubSelectionBehavior() {
     $(departureUTubSelector).on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      displayState2UTubDeck(departureUTubLabel.attr("utubid"));
+      displayState2UTubDeck(departureUTubSelector.attr("utubid"));
     });
   }
 }
 
+/** UTub Display State Functions **/
+
 // Display state 0: Clean slate
 function displayState0UTubDeck() {
-  // Subheader prompt user to create a UTub
-  showIfHidden($("#UTubDeckSubheader").closest(".row"));
-  $("#UTubDeckSubheader").text("Create a UTub");
+  // Subheader to prompt user to create a UTub shown
+  let UTubDeckSubheader = $("#UTubDeckSubheader")
+  showIfHidden(UTubDeckSubheader.closest(".row"));
+  UTubDeckSubheader.text("Create a UTub");
 
   // Hide delete UTub button
   hideIfShown($("#deleteUTubBtn"));
@@ -280,10 +283,11 @@ function displayState0UTubDeck() {
 
 // Display state 1: UTubs list, none selected
 function displayState1UTubDeck() {
-  // Subheader prompt hidden
-  showIfHidden($("#UTubDeckSubheader").closest(".row"));
-  $("#UTubDeckSubheader").text("Select a UTub");
-
+  // Subheader prompt shown
+  let UTubDeckSubheader = $("#UTubDeckSubheader")
+  showIfHidden(UTubDeckSubheader.closest(".row"));
+  UTubDeckSubheader.text("Select a UTub");
+  
   // Hide delete UTub button
   hideIfShown($("#deleteUTubBtn"));
 }
@@ -326,6 +330,8 @@ function displayState2UTubDeck(selectedUTubID) {
     else displayState1UTubDescriptionDeck();
   });
 }
+
+/** UTub Description Display State Functions **/
 
 // Display state 0: Clean slate, no UTub selected
 function displayState0UTubDescriptionDeck() {
@@ -380,33 +386,6 @@ function displayState3UTubDescriptionDeck(UTubDescription) {
   let editUTubDescription = $("#editUTubDescription");
   hideIfShown(editUTubDescription.closest(".createDiv"));
   editUTubDescription.val(UTubDescription);
-}
-
-// Handles display changes in response to UTubs change or creation
-function displayUpdateUTubActive(selectedUTub) {
-  let UTubName = selectedUTub.name;
-  let UTubID = selectedUTub.id;
-  let UTubDescription = selectedUTub.description;
-  let UTubOwnerID = selectedUTub.created_by;
-  let UTubUsers = selectedUTub.members; // 12/17 DP change JSON to match route and frontend naming convention, users vs members
-
-  if (selectedUTub.urls.length > 0) showIfHidden($("#accessAllURLsBtn"));
-  else hideIfShown($("#accessAllURLsBtn"));
-  showIfHidden($("#UTubDescription"));
-
-  // UserDeck display updates
-  // Extract owner username
-  let UTubOwnerUsername = "";
-  UTubUsers.forEach(function (user) {
-    if (user.id === UTubOwnerID) UTubOwnerUsername = user.username;
-  });
-  $("#UserDeckHeader").text("Users");
-  $("#UTubOwner").text(UTubOwnerUsername);
-  if (getCurrentUserID() == UTubOwnerID) {
-    showIfHidden($("#addUserBtn"));
-  } else {
-    hideIfShown($("#addUserBtn"));
-  }
 }
 
 /** Post data handling **/
