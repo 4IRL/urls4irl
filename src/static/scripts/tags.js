@@ -11,20 +11,6 @@ const REMOVE_TAG_ROUTE = "/tag/remove/"; // +<int:utub_id>/<int:url_id>/<int:tag
 $(document).ready(function () {
   /* Bind click functions */
 
-  // Create unassociated tag
-  // $("#createTagButton").on("click", function (e) {
-  //   e.stopPropagation();
-  //   e.preventDefault();
-  //   addTagInDeckShowInput();
-  // });
-
-  // Edit tags
-  // $("#editTagButton").on("click", function (e) {
-  //   e.stopPropagation();
-  //   e.preventDefault();
-  //   editTagsInDeckShowInput();
-  // });
-
   // Complete edit tags
   $("#submitTagButton").on("click", function (e) {
     e.stopPropagation();
@@ -43,6 +29,7 @@ function currentTagDeckIDs() {
   });
   return tagIDList;
 }
+
 // 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
 // Function to evaluate whether newly added tag already exists in Tag Deck
 function isTagInDeck(tagid) {
@@ -54,27 +41,9 @@ function resetTagDeck() {
   $("#listTags").empty();
 }
 
-/* Tag Functions */
-
-// Build LH panel tag list in selectedUTub
-function buildTagDeck(dictTags) {
-  resetTagDeck();
-  const parent = $("#listTags");
-
-  // Tag deck display updates
-  // Instantiate TagDeck (bottom left panel) with tags in current UTub
-  hideIfShown($("#noTagsHeader"));
-  $("#TagDeck").find("h2")[0].innerHTML = "Tags";
-  // showIfHidden($("#editTagButton"));
-
-  // 1. Select all checkbox
-  createTaginDeck(0, "selectAll");
-
-  // 2. New Tag input text field. Initially hidden, shown when create Tag is requested
-  createTaginDeck(0, "newTag");
-
-  // 3a. Alpha sort tags based on tag_string
-  dictTags.sort(function (a, b) {
+// Alphasort tags
+function alphasortTags(dictTags) {
+  return dictTags.sort(function (a, b) {
     const tagA = a.tag_string.toUpperCase(); // ignore upper and lowercase
     const tagB = b.tag_string.toUpperCase(); // ignore upper and lowercase
     if (tagA < tagB) {
@@ -86,10 +55,22 @@ function buildTagDeck(dictTags) {
     // tags must be equal
     return 0;
   });
+}
 
-  // 3b. Loop through all tags and provide checkbox input for filtering
+/* Tag Functions */
+
+// Build LH panel tag list in selectedUTub
+function buildTagDeck(dictTags) {
+  resetTagDeck();
+
+  const parent = $("#listTags");
+
+  // Select all checkbox
+  parent.append(createTaginDeck(0, "selectAll"));
+
+  // Loop through all tags and provide checkbox input for filtering
   for (let i in dictTags) {
-    createTaginDeck(dictTags[i].id, dictTags[i].tag_string);
+    parent.append(createTaginDeck(dictTags[i].id, dictTags[i].tag_string));
   }
 
 }
@@ -214,7 +195,7 @@ function createTaginDeck(tagid, string) {
       container.append(submit);
     }
 
-    $("#listTags").append(container);
+    return container;
   } else {
     // Regular tag creation
 
@@ -228,11 +209,7 @@ function createTaginDeck(tagid, string) {
 
     $(container).append(label);
 
-    // Move "createTag" element to the end of list
-    let tagList = $("#listTags").children();
-    const createTagEl = $(tagList[tagList.length - 1]).detach();
-    $("#listTags").append(container);
-    $("#listTags").append(createTagEl);
+    return container;
   }
 }
 

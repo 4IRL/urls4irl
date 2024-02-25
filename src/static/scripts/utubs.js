@@ -287,7 +287,7 @@ function displayState1UTubDeck() {
   let UTubDeckSubheader = $("#UTubDeckSubheader")
   showIfHidden(UTubDeckSubheader.closest(".row"));
   UTubDeckSubheader.text("Select a UTub");
-  
+
   // Hide delete UTub button
   hideIfShown($("#deleteUTubBtn"));
 }
@@ -296,9 +296,10 @@ function displayState1UTubDeck() {
 function displayState2UTubDeck(selectedUTubID) {
   hideInputs();
 
-  // UTubDeck display updates
   // Subheader prompt hidden
-  hideIfShown($("#UTubDeckSubheader").closest(".row"));
+  let UTubDeckSubheader = $("#UTubDeckSubheader")
+  showIfHidden(UTubDeckSubheader.closest(".row"));
+  UTubDeckSubheader.text(UTubs.length + " Accessible UTubs");
 
   bindUTubSelectionBehavior();
   unbindUTubSelectionBehavior(selectedUTubID);
