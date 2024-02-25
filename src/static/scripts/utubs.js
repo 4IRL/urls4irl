@@ -85,7 +85,7 @@ function getActiveUTubID() {
 
 // Streamline the jQuery selector for the UTub Selector.
 function UTubSelectorElemFromID(id) {
-  return $("label.UTub[utubid='" + id + "']")
+  return $("label.UTub[utubid='" + id + "']");
 }
 
 // Streamline the extraction of a UTub array element from its ID
@@ -321,9 +321,8 @@ function displayState2UTubDeck(selectedUTubID) {
     // // RH panels
     // if(dictUsers) displayState1UserDeck(dictUsers, UTubOwnerID);
     // else displayState0UserDeck();
-    
 
-    if(UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
+    if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
     else displayState1UTubDescriptionDeck();
   });
 }
@@ -570,7 +569,7 @@ function addUTubSuccess(response) {
   // Reorder createDiv after latest created UTub selector
   $("#listUTubs").append(createUTub);
 
-  displayState2UTubDeck(UTubID)
+  displayState2UTubDeck(UTubID);
 }
 
 function addUTubFail(response, textStatus, xhr) {
@@ -592,9 +591,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
 
@@ -750,9 +749,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.responseJSON.Error_code +
-    ". Status: " +
-    response.responseJSON.Message,
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
   );
 }
 
@@ -880,8 +879,8 @@ function deleteUTubFailure(xhr, textStatus, error) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
