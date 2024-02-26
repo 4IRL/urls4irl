@@ -316,12 +316,19 @@ function displayState1TagDeck() {
   TagDeckSubheader.text("Add a tag to a URL");
 }
 
-// Display state 2: Selected UTub has URLs and Tags, none selected
+// Display state 2: Selected UTub has URLs and Tags, Select All and all tags selected
 function displayState2TagDeck(dictTags) {
   // Subheader prompt shown
   let TagDeckSubheader = $("#TagDeckSubheader")
   showIfHidden(TagDeckSubheader.closest(".row"));
-  TagDeckSubheader.text("0 filters applied");
+  TagDeckSubheader.text("0 of " + dictTags.length + " filters applied");
+
+}
+
+// Display state 3: Selected UTub has URLs and Tags, Select All and some unselected
+function displayState3TagDeck(dictTags) {
+  // Subheader prompt shown
+  $("#TagDeckSubheader").text( + " filters applied");
 
 }
 

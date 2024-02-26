@@ -270,7 +270,7 @@ function bindUTubSelectionBehavior() {
 
 /** UTub Display State Functions **/
 
-// Display state 0: Clean slate
+// Display state 0: Clean slate, no UTubs
 function displayState0UTubDeck() {
   // Subheader to prompt user to create a UTub shown
   let UTubDeckSubheader = $("#UTubDeckSubheader")
@@ -307,21 +307,23 @@ function displayState2UTubDeck(selectedUTubID) {
   // Show delete UTub button
   showIfHidden($("#deleteUTubBtn"));
 
+  // May separate into function selectUTub(selectedUTubID) {}
   getUTubInfo(selectedUTubID).then(function (selectedUTub) {
     // Parse incoming data, pass them into subsequent functions as required
+    let UTubName = selectedUTub.name;
     let dictURLs = selectedUTub.urls;
     let dictTags = selectedUTub.tags;
     let dictUsers = selectedUTub.members;
     let UTubOwnerID = selectedUTub.created_by;
     let UTubDescription = selectedUTub.description;
 
-    // // Tag deck display updates
-    // if(dictTags) displayState2TagDeck(dictTags);
-    // else displayState1TagDeck();
+    // Tag deck display updates
+    if(dictTags) displayState2TagDeck(dictTags);
+    else displayState1TagDeck();
 
-    // // Center panel
-    // if(dictURLs) displayState1URLDeck(dictURLs, dictTags);
-    // else displayState0URLDeck();
+    // Center panel
+    if(dictURLs) displayState2URLDeck(UTubName, dictURLs);
+    else displayState1URLDeck(UTubName);
 
     // // RH panels
     // if(dictUsers) displayState1UserDeck(dictUsers, UTubOwnerID);
