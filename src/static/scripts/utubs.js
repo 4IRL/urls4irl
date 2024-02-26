@@ -130,11 +130,36 @@ function buildUTubDeck(UTubs) {
     for (let i = 0; i < NumOfUTubs; i++) {
       parent.append(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
     }
-  } else {
-    displayState0UTubDeck();
-  }
+  } else displayState0UTubDeck();
 
   parent.append(createNewUTubInputField());
+}
+
+// May separate into 
+function selectUTub(selectedUTubID) {
+  getUTubInfo(selectedUTubID).then(function (selectedUTub) {
+    // Parse incoming data, pass them into subsequent functions as required
+    let UTubName = selectedUTub.name;
+    let dictURLs = selectedUTub.urls;
+    let dictTags = selectedUTub.tags;
+    let dictUsers = selectedUTub.members;
+    let UTubOwnerID = selectedUTub.created_by;
+    let UTubDescription = selectedUTub.description;
+
+    // Tag deck display updates
+    if (dictTags) displayState2TagDeck(dictTags);
+    else displayState1TagDeck();
+
+    // Center panel
+    buildURLDeck(dictURLs, dictTags) 
+
+    // // RH panels
+    // if(dictUsers) displayState1UserDeck(dictUsers, UTubOwnerID);
+    // else displayState0UserDeck();
+
+    if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
+    else displayState1UTubDescriptionDeck();
+  });
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
@@ -306,32 +331,6 @@ function displayState2UTubDeck(selectedUTubID) {
 
   // Show delete UTub button
   showIfHidden($("#deleteUTubBtn"));
-
-  // May separate into function selectUTub(selectedUTubID) {}
-  getUTubInfo(selectedUTubID).then(function (selectedUTub) {
-    // Parse incoming data, pass them into subsequent functions as required
-    let UTubName = selectedUTub.name;
-    let dictURLs = selectedUTub.urls;
-    let dictTags = selectedUTub.tags;
-    let dictUsers = selectedUTub.members;
-    let UTubOwnerID = selectedUTub.created_by;
-    let UTubDescription = selectedUTub.description;
-
-    // Tag deck display updates
-    if(dictTags) displayState2TagDeck(dictTags);
-    else displayState1TagDeck();
-
-    // Center panel
-    if(dictURLs) displayState2URLDeck(UTubName, dictURLs);
-    else displayState1URLDeck(UTubName);
-
-    // // RH panels
-    // if(dictUsers) displayState1UserDeck(dictUsers, UTubOwnerID);
-    // else displayState0UserDeck();
-
-    if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
-    else displayState1UTubDescriptionDeck();
-  });
 }
 
 /** UTub Description Display State Functions **/
@@ -573,9 +572,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
 
@@ -731,9 +730,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
-      ". Status: " +
-      response.responseJSON.Message,
+    response.responseJSON.Error_code +
+    ". Status: " +
+    response.responseJSON.Message,
   );
 }
 
@@ -861,8 +860,8 @@ function deleteUTubFailure(xhr, textStatus, error) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
