@@ -155,19 +155,25 @@ function resetURLDeck() {
 function buildURLDeck(dictURLs, dictTags) {
   resetURLDeck();
   const parent = $("#UPRRow");
-  let NumOfUTubs = UTubs.length ? UTubs.length : 0;
+  let NumOfURLs = dictURLs.length ? dictURLs.length : 0;
 
-  for (let i = 0; i < dictURLs.length; i++) {
-    let URLcol = createURLBlock(
-      dictURLs[i].url_ID,
-      dictURLs[i].url_string,
-      dictURLs[i].url_title,
-      dictURLs[i].url_tags,
-      dictTags,
-    );
+  if (NumOfUTubs !== 0) {
+    displayState2URLDeck(UTubName, dictURLs);
 
-    parent.append(URLcol);
+    // Instantiate deck with list of URLs stored in current UTub
+    for (let i = 0; i < dictURLs.length; i++) {
+      let URLcol = createURLBlock(
+        dictURLs[i].url_ID,
+        dictURLs[i].url_string,
+        dictURLs[i].url_title,
+        dictURLs[i].url_tags,
+        dictTags,
+      );
+
+      parent.append(URLcol);
+    }
   }
+  else displayState1URLDeck(UTubName);
 
   // New URL create block
   $("#URLFocusRow").append(createNewURLInputField());
@@ -658,7 +664,7 @@ function displayState2URLDeck(UTubName, dictURLs) {
   // Subheader prompt shown
   let URLDeckSubheader = $("#URLDeckSubheader")
   showIfHidden(URLDeckSubheader.closest(".row"));
-  URLDeckSubheader.text(dictURLs.length + dictURLs.length===1?"URL":" URLs" + " stored");
+  URLDeckSubheader.text(dictURLs.length + dictURLs.length === 1 ? "URL" : " URLs" + " stored");
 }
 
 /** Post data handling **/
