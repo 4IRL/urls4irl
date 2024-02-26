@@ -153,9 +153,9 @@ function resetURLDeck() {
 
 // Build center panel URL list for selectedUTub
 function buildURLDeck(dictURLs, dictTags) {
-  // console.log(dictURLs) Here for debugging...sometimes URL title won't show up on changeUTub()-->buildURLDeck()
   resetURLDeck();
-  let UPRRow = $("#UPRRow");
+  const parent = $("#UPRRow");
+  let NumOfUTubs = UTubs.length ? UTubs.length : 0;
 
   for (let i = 0; i < dictURLs.length; i++) {
     let URLcol = createURLBlock(
@@ -166,7 +166,7 @@ function buildURLDeck(dictURLs, dictTags) {
       dictTags,
     );
 
-    UPRRow.append(URLcol);
+    parent.append(URLcol);
   }
 
   // New URL create block
@@ -625,26 +625,40 @@ function toggleSelectedURL(selectedURLID) {
   }
 }
 
-// Display state 0: Clean slate
+/** UTub Display State Functions **/
+
+// Display state 0: Clean slate, no UTub selected
 function displayState0URLDeck() {
   $("#URLDeckHeader").text("URLs");
-  showIfHidden($(".editUTubBtn"));
-
+  hideIfShown($(".URLDeckSubheader").closest(".row"));
+  hideIfShown($(".editUTubBtn"));
   hideIfShown($("#addURLBtn"));
 }
 
-function displayState1URLDeck() {
-  $("#URLDeckHeader").text("URLs");
-  showIfHidden($(".editUTubBtn"));
-}
-
-function displayState2URLDeck(selectedUTub) {
-  $("#URLDeckHeader").text(selectedUTub.name);
-
+// Display state 1: UTub selected, no URLs
+function displayState1URLDeck(UTubName) {
+  $("#URLDeckHeader").text(UTubName);
   $("#editUTubName").val(UTubName);
   showIfHidden($(".editUTubBtn"));
-
   showIfHidden($("#addURLBtn"));
+
+  // Subheader prompt shown
+  let URLDeckSubheader = $("#URLDeckSubheader")
+  showIfHidden(URLDeckSubheader.closest(".row"));
+  URLDeckSubheader.text("Add a URL");
+}
+
+// Display state 2: UTub selected, URL list
+function displayState2URLDeck(UTubName, dictURLs) {
+  $("#URLDeckHeader").text(selectedUTub.name);
+  $("#editUTubName").val(UTubName);
+  showIfHidden($(".editUTubBtn"));
+  showIfHidden($("#addURLBtn"));
+
+  // Subheader prompt shown
+  let URLDeckSubheader = $("#URLDeckSubheader")
+  showIfHidden(URLDeckSubheader.closest(".row"));
+  URLDeckSubheader.text(dictURLs.length + dictURLs.length===1?"URL":" URLs" + " stored");
 }
 
 /** Post data handling **/
