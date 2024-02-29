@@ -172,8 +172,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
 
       parent.append(URLcol);
     }
-  }
-  else displayState1URLDeck(UTubName);
+  } else displayState1URLDeck(UTubName);
 
   // New URL create block
   $("#URLFocusRow").append(createNewURLInputField());
@@ -649,11 +648,13 @@ function displayState1URLDeck(UTubName, numOfURLs) {
   showIfHidden($("#addURLBtn"));
 
   // Subheader prompt
-  let URLDeckSubheader = $("#URLDeckSubheader")
+  let URLDeckSubheader = $("#URLDeckSubheader");
   if (numOfURLs) {
     showIfHidden(URLDeckSubheader.closest(".row"));
-    console.log(numOfURLs)
-    URLDeckSubheader.text(numOfURLs + numOfURLs === 1 ? " URL" : " URLs" + " stored");
+    console.log(numOfURLs);
+    URLDeckSubheader.text(
+      numOfURLs + numOfURLs === 1 ? " URL" : " URLs" + " stored",
+    );
   } else {
     showIfHidden(URLDeckSubheader.closest(".row"));
     URLDeckSubheader.text("Add a URL");
@@ -735,7 +736,7 @@ function addURLSuccess(response) {
 
   $("#URLFocusRow").append(URLcol);
 
-  displayState1URLDeck(UTubName, numOfURLs())
+  displayState1URLDeck(UTubName, numOfURLs());
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
@@ -962,8 +963,7 @@ function removeURL() {
 
 // Prepares post request inputs for removal of a URL
 function removeURLSetup() {
-  let postURL =
-    REMOVE_URL_ROUTE + getActiveUTubID() + "/" + getSelectedURLID();
+  let postURL = REMOVE_URL_ROUTE + getActiveUTubID() + "/" + getSelectedURLID();
 
   return postURL;
 }
