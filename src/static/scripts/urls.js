@@ -173,10 +173,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
       parent.append(URLcol);
     }
   }
-  else {
-    console.log(UTubName)
-    displayState1URLDeck(UTubName);
-  }
+  else displayState1URLDeck(UTubName);
 
   // New URL create block
   $("#URLFocusRow").append(createNewURLInputField());
