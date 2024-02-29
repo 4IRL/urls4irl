@@ -41,6 +41,7 @@ function resetNewUserForm() {
 
 // Clear the User Deck
 function resetUserDeck() {
+  $("#UTubOwner").empty();
   $("#listUsers").empty();
 }
 
@@ -64,15 +65,16 @@ function buildUserDeck(dictUsers, UTubOwnerID) {
     }
   }
 
+  console.log(numOfUsers)
+  // Prompt owner to add users if none
+  if (numOfUsers === 1) showIfHidden($("#UserDeckSubheader").closest(".row"));
+  else hideIfShown($("#UserDeckSubheader").closest(".row"));
+
   // Ability to add users is restricted to UTub owner
   if (ownerBool) {
-    displayState1UserDeck();
+    showIfHidden($("#addUserBtn"));
     parent.append(createNewUserInputField());
-
-    // Prompt owner to add users if none
-    if (numOfUsers > 1) showIfHidden($("#addUserBtn"));
-
-  } else displayState0UserDeck();
+  } else hideIfShown($("#addUserBtn"));
 
 }
 
@@ -200,21 +202,6 @@ function createNewUserInputField() {
   return wrapper;
 }
 
-/** User Display State Functions **/
-
-// Display state 0: UTub selected, user is not owner
-function displayState0UserDeck() {
-  hideIfShown($("#addUserBtn"));
-  hideIfShown($("#UserDeckSubheader").closest(".row"))
-}
-
-// Display state 1: UTub selected, no users. State only accessible by UTub owners
-function displayState1UserDeck() {
-  showIfHidden($("#addUserBtn"));
-  showIfHidden($("#UserDeckSubheader").closest(".row"))
-}
-
-
 /** Post data handling **/
 
 /* Add User */
@@ -270,7 +257,10 @@ function addUserSetup() {
 
 // Perhaps update a scrollable/searchable list of users?
 function addUserSuccess(response) {
-  selectUTub(getActiveUTubID());
+  console.log(response)
+  let UTubUsers = response.UTub_users;
+  console.log(UTubUsers[UTubUsers.length-1])
+  $("#listUsers").append(createUserSelector(UTubUsers[UTubUsers.length-1]));
 }
 
 function addUserFail(response) {

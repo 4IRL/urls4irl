@@ -85,7 +85,7 @@ function getActiveUTubID() {
 
 // Streamline the jQuery selector for the UTub Selector.
 function UTubSelectorElemFromID(id) {
-  return $("label.UTub[utubid='" + id + "']");
+  return $("div.UTub[utubid='" + id + "']");
 }
 
 // Streamline the extraction of a UTub array element from its ID
@@ -171,22 +171,24 @@ function selectUTub(selectedUTubID) {
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
 function createUTubSelector(UTubName, UTubID, index) {
+  let container = document.createElement("div");
   let label = document.createElement("label");
   let radio = document.createElement("input");
 
-  $(label).attr({
-    utubid: UTubID,
-    for: "UTub-" + UTubID,
-    class: "UTub draw",
-    position: index,
-  });
-  label.innerHTML = "<b>" + UTubName + "</b>";
   // Bind display state change function on click
-  $(label).on("click", function (e) {
+  $(container).addClass("UTub draw")
+  .attr({
+    utubid: UTubID,
+    position: index,
+  })
+  .on("click", function (e) {
     e.stopPropagation();
     e.preventDefault();
-    selectUTub(UTubID)
+    selectUTub(UTubID);
   });
+  container.innerHTML = "<b>" + UTubName + "</b>";
+
+  $(label).attr({ for: "UTub-" + UTubID });
 
   $(radio).attr({
     type: "radio",
@@ -194,9 +196,10 @@ function createUTubSelector(UTubName, UTubID, index) {
     value: UTubName,
   });
 
-  $(label).append(radio);
+  $(container).append(label);
+  $(container).append(radio);
 
-  return label;
+  return container;
 }
 
 // Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
