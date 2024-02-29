@@ -21,6 +21,11 @@ $(document).ready(function () {
 
 /* Tag Utility Functions */
 
+// Function to count number of tags in current UTub
+function numOfTags() {
+  return $("#listTags").length - 1; // minus 1 to discount createURL block
+}
+
 // Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
 function currentTagDeckIDs() {
   let tagList = $(".tagFilter");
@@ -62,7 +67,7 @@ function alphasortTags(dictTags) {
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
   resetTagDeck();
-  
+
   let numOfTags = dictTags.length ? dictTags.length : 0;
 
   if (numOfTags) {
@@ -328,7 +333,6 @@ function displayState2TagDeck(dictTags) {
   let TagDeckSubheader = $("#TagDeckSubheader")
   showIfHidden(TagDeckSubheader.closest(".row"));
   TagDeckSubheader.text("0 of " + dictTags.length + " filters applied");
-
 }
 
 // Display state 3: Selected UTub has URLs and Tags, Select All and some unselected
@@ -345,7 +349,7 @@ function displayState3TagDeck(dictTags) {
 // DP 09/17 do we need the ability to addTagtoURL interstitially before addURL is completed?
 
 // Displays new Tag input prompt on selected URL
-function addTagToURLShowInput() {
+function addTagShowInput() {
   // Prevent deselection of URL while modifying its values
   unbindSelectBehavior();
 
@@ -402,7 +406,7 @@ function addTag() {
 // Prepares post request inputs for addition of a new Tag to URL
 function addTagSetup() {
   // Assemble post request route
-  let postURL = ADD_TAG_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
+  let postURL = ADD_TAG_ROUTE + getActiveUTubID() + "/" + getSelectedURLID();
 
   // Assemble submission data
   let URLTagDeck = $(getSelectedURLCard()).find(".URLTags");
@@ -429,14 +433,13 @@ function addTagSuccess(response) {
   let tagid = response.Tag.id;
   let string = response.Tag.tag_string;
 
-  // Update Tags deck
-  hideIfShown($("#TagDeckSubheader").closest(".row"));
-
   if (!isTagInDeck(tagid)) createTaginDeck(tagid, string);
 
   // Update tags in URL
   let tagSpan = createTaginURL(tagid, string);
   URLTagDeck.append(tagSpan);
+
+  displayState2TagDeck(dictTags)
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new Tag
@@ -527,7 +530,7 @@ function removeTag(tagID) {
 function removeTagSetup(tagID) {
   let postURL =
     REMOVE_TAG_ROUTE +
-    getCurrentUTubID() +
+    getActiveUTubID() +
     "/" +
     getSelectedURLID() +
     "/" +

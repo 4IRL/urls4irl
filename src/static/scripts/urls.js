@@ -158,7 +158,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
   let numOfURLs = dictURLs.length ? dictURLs.length : 0;
 
   if (numOfURLs !== 0) {
-    displayState2URLDeck(UTubName, numOfURLs);
+    displayState1URLDeck(UTubName, numOfURLs);
 
     // Instantiate deck with list of URLs stored in current UTub
     for (let i = 0; i < dictURLs.length; i++) {
@@ -332,7 +332,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      addTagToURLShowInput();
+      addTagShowInput();
     });
 
   $(editURLBtn)
@@ -652,11 +652,14 @@ function displayState1URLDeck(UTubName, numOfURLs) {
   let URLDeckSubheader = $("#URLDeckSubheader")
   if (numOfURLs) {
     showIfHidden(URLDeckSubheader.closest(".row"));
-    URLDeckSubheader.text(numOfURLs + numOfURLs === 1 ? "URL" : " URLs" + " stored");
+    console.log(numOfURLs)
+    URLDeckSubheader.text(numOfURLs + numOfURLs === 1 ? " URL" : " URLs" + " stored");
   } else {
     showIfHidden(URLDeckSubheader.closest(".row"));
     URLDeckSubheader.text("Add a URL");
   }
+
+  showIfHidden($("#accessAllURLsBtn"));
 }
 
 /** Post data handling **/
@@ -732,7 +735,7 @@ function addURLSuccess(response) {
 
   $("#URLFocusRow").append(URLcol);
 
-  showIfHidden($("#accessAllURLsBtn"));
+  displayState1URLDeck(UTubName, numOfURLs())
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
