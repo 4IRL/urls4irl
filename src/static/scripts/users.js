@@ -47,22 +47,34 @@ function resetUserDeck() {
 /* User Functions */
 
 // Build center panel URL list for selectedUTub
-function buildUserDeck(UTubUsers, UTubOwnerID) {
+function buildUserDeck(dictUsers, UTubOwnerID) {
   resetUserDeck();
   const parent = $("#listUsers");
-  let NumOfUsers = UTubUsers.length ? UTubUsers.length : 0;
+  let numOfUsers = dictUsers.length ? dictUsers.length : 0;
+  let ownerBool = getCurrentUserID() == UTubOwnerID;
 
-  // Instantiate deck with list of users with access to current UTub
-  for (let i = 0; i < NumOfUsers; i++) {
-    let UTubUser = UTubUsers[i];
+  if (numOfUsers > 1) {
+    hideIfShown($("#UserDeckSubheader").closest(".row"))
+    ownerBool ? showIfHidden($("#addUserBtn")) : displayState0UserDeck();
 
-    if (UTubUser.id !== UTubOwnerID) {
-      parent.append(createUserSelector(UTubUser));
+    // Instantiate deck with list of users with access to current UTub
+    for (let i = 0; i < numOfUsers; i++) {
+      let UTubUser = dictUsers[i];
+
+      if (UTubUser.id !== UTubOwnerID) {
+        parent.append(createUserSelector(UTubUser));
+      }
     }
   }
+  else {
+    // No other users 
+    if (ownerBool) {
+      // Ability to add users is restricted to UTub owner
+      displayState1UserDeck();
 
-  if (getCurrentUserID() == UTubOwnerID) {
-    parent.append(createNewUserInputField());
+      parent.append(createNewUserInputField());
+
+    } else displayState0UserDeck();
   }
 }
 
@@ -178,9 +190,20 @@ function createNewUserInputField() {
   return wrapper;
 }
 
+/** User Display State Functions **/
+
+// Display state 0: UTub selected, user is not owner
 function displayState0UserDeck() {
   hideIfShown($("#addUserBtn"));
+  hideIfShown($("#UserDeckSubheader").closest(".row"))
 }
+
+// Display state 1: UTub selected, no users. State only accessible by UTub owners
+function displayState1UserDeck() {
+  showIfHidden($("#addUserBtn"));
+  showIfHidden($("#UserDeckSubheader").closest(".row"))
+}
+
 
 /** Post data handling **/
 

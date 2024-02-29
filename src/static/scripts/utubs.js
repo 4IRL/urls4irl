@@ -121,13 +121,13 @@ function resetNewUTubForm() {
 // Assembles components of the UTubDeck (top left panel)
 function buildUTubDeck(UTubs) {
   const parent = $("#listUTubs");
-  let NumOfUTubs = UTubs.length ? UTubs.length : 0;
+  let numOfUTubs = UTubs.length ? UTubs.length : 0;
 
-  if (NumOfUTubs !== 0) {
+  if (numOfUTubs !== 0) {
     displayState1UTubDeck();
 
     // Instantiate deck with list of UTubs accessible to current user
-    for (let i = 0; i < NumOfUTubs; i++) {
+    for (let i = 0; i < numOfUTubs; i++) {
       parent.append(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
     }
   } else displayState0UTubDeck();
@@ -135,7 +135,7 @@ function buildUTubDeck(UTubs) {
   parent.append(createNewUTubInputField());
 }
 
-// May separate into 
+// Handles progagating changes across page related to a UTub selection
 function selectUTub(selectedUTubID) {
   getUTubInfo(selectedUTubID).then(function (selectedUTub) {
     // Parse incoming data, pass them into subsequent functions as required
@@ -146,19 +146,25 @@ function selectUTub(selectedUTubID) {
     let UTubOwnerID = selectedUTub.created_by;
     let UTubDescription = selectedUTub.description;
 
-    // Tag deck display updates
-    if (dictTags) displayState2TagDeck(dictTags);
-    else displayState1TagDeck();
+    // LH panels
+    // UTub deck
+    displayState2UTubDeck(selectedUTubID)
+
+    // Tag deck
+    buildTagDeck(dictTags)
 
     // Center panel
-    buildURLDeck(dictURLs, dictTags) 
+    // URL deck
+    console.log(UTubName)
+    buildURLDeck(UTubName, dictURLs, dictTags) 
 
-    // // RH panels
-    // if(dictUsers) displayState1UserDeck(dictUsers, UTubOwnerID);
-    // else displayState0UserDeck();
-
+    // RH panels
+    // UTub Description deck
     if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
     else displayState1UTubDescriptionDeck();
+    
+    // Users deck
+    buildURLDeck(dictUsers, UTubOwnerID) 
   });
 }
 
@@ -178,7 +184,7 @@ function createUTubSelector(UTubName, UTubID, index) {
   $(label).on("click", function (e) {
     e.stopPropagation();
     e.preventDefault();
-    displayState2UTubDeck(UTubID);
+    selectUTub(UTubID)
   });
 
   $(radio).attr({
@@ -288,7 +294,7 @@ function bindUTubSelectionBehavior() {
     $(departureUTubSelector).on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      displayState2UTubDeck(departureUTubSelector.attr("utubid"));
+      selectUTub(departureUTubSelector.attr("utubid"));
     });
   }
 }
@@ -355,6 +361,14 @@ function displayState1UTubDescriptionDeck() {
 
   // Edit UTub Description button shown
   showIfHidden($("#editUTubBtn"));
+  
+  // Update description values
+  let p = $("#UTubDescription");
+  hideIfShown(p);
+  p.text("");
+  let editUTubDescription = $("#editUTubDescription");
+  hideIfShown(editUTubDescription.closest(".createDiv"));
+  editUTubDescription.val("");
 }
 
 // Display state 2: UTub selected, description exists
@@ -690,8 +704,7 @@ function editUTubNameSuccess(response) {
   editedUTubLabel.find("b").text(UTubName);
 
   // URLDeck display updates
-  $("#URLDeckHeader").text(UTubName);
-  $("#editUTubName").val(UTubName);
+  displayState1URLDeck(UTubName, numOfURLs())
 }
 
 //
@@ -700,10 +713,7 @@ function editUTubDescriptionSuccess(response) {
 
   if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
 
-  // URLDeck display updates
-  $("#UTubDescription").text(UTubDescription);
-  $("#editUTubDescription").val(UTubDescription);
-
+  displayState2UTubDescriptionDeck(UTubDescription);
   editUTubHideInput();
 }
 
