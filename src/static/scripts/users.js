@@ -53,29 +53,39 @@ function buildUserDeck(dictUsers, UTubOwnerID) {
   let numOfUsers = dictUsers.length ? dictUsers.length : 0;
   let ownerBool = getCurrentUserID() == UTubOwnerID;
 
-  if (numOfUsers > 1) {
-    hideIfShown($("#UserDeckSubheader").closest(".row"))
-    ownerBool ? showIfHidden($("#addUserBtn")) : displayState0UserDeck();
+  // Instantiate deck with list of users with access to current UTub
+  for (let i = 0; i < numOfUsers; i++) {
+    let UTubUser = dictUsers[i];
 
-    // Instantiate deck with list of users with access to current UTub
-    for (let i = 0; i < numOfUsers; i++) {
-      let UTubUser = dictUsers[i];
-
-      if (UTubUser.id !== UTubOwnerID) {
-        parent.append(createUserSelector(UTubUser));
-      }
+    if (UTubUser.id !== UTubOwnerID) {
+      parent.append(createUserSelector(UTubUser));
+    } else {
+      $("#UTubOwner").append(createOwnerPill(UTubUser));
     }
   }
-  else {
-    // No other users 
-    if (ownerBool) {
-      // Ability to add users is restricted to UTub owner
-      displayState1UserDeck();
 
-      parent.append(createNewUserInputField());
+  // Ability to add users is restricted to UTub owner
+  if (ownerBool) {
+    displayState1UserDeck();
+    parent.append(createNewUserInputField());
 
-    } else displayState0UserDeck();
-  }
+    // Prompt owner to add users if none
+    if (numOfUsers > 1) showIfHidden($("#addUserBtn"));
+
+  } else displayState0UserDeck();
+
+}
+
+// Creates user list item
+function createOwnerPill(UTubUser) {
+  let userSpan = document.createElement("span");
+
+  $(userSpan)
+    .attr({ userid: UTubUser.id })
+    .addClass("user")
+    .html("<b>" + UTubUser.username + "</b>");
+
+  return userSpan;
 }
 
 // Creates user list item
@@ -248,7 +258,7 @@ function addUser() {
 
 // This function will extract the current selection data needed for POST request (user ID)
 function addUserSetup() {
-  let postURL = ADD_USER_ROUTE + getCurrentUTubID();
+  let postURL = ADD_USER_ROUTE + getActiveUTubID();
 
   let newUsername = $("#UTubUsernameInput").val();
   data = {
@@ -260,7 +270,7 @@ function addUserSetup() {
 
 // Perhaps update a scrollable/searchable list of users?
 function addUserSuccess(response) {
-  changeUTub(getCurrentUTubID());
+  selectUTub(getActiveUTubID());
 }
 
 function addUserFail(response) {
@@ -346,7 +356,7 @@ function removeUser(userID) {
 
 // This function will extract the current selection data needed for POST request (user ID)
 function removeUserSetup(userID) {
-  let postURL = REMOVE_USER_ROUTE + getCurrentUTubID() + "/" + userID;
+  let postURL = REMOVE_USER_ROUTE + getActiveUTubID() + "/" + userID;
 
   return postURL;
 }

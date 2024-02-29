@@ -146,6 +146,8 @@ function selectUTub(selectedUTubID) {
     let UTubOwnerID = selectedUTub.created_by;
     let UTubDescription = selectedUTub.description;
 
+    console.log(selectedUTub)
+
     // LH panels
     // UTub deck
     displayState2UTubDeck(selectedUTubID)
@@ -155,7 +157,6 @@ function selectUTub(selectedUTubID) {
 
     // Center panel
     // URL deck
-    console.log(UTubName)
     buildURLDeck(UTubName, dictURLs, dictTags) 
 
     // RH panels
@@ -164,7 +165,7 @@ function selectUTub(selectedUTubID) {
     else displayState1UTubDescriptionDeck();
     
     // Users deck
-    buildURLDeck(dictUsers, UTubOwnerID) 
+    buildUserDeck(dictUsers, UTubOwnerID) 
   });
 }
 
