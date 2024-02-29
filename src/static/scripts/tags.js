@@ -62,17 +62,23 @@ function alphasortTags(dictTags) {
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
   resetTagDeck();
+  
+  let numOfTags = dictTags.length ? dictTags.length : 0;
 
-  const parent = $("#listTags");
+  if (numOfTags) {
+    displayState2TagDeck(dictTags);
 
-  // Select all checkbox
-  parent.append(createTaginDeck(0, "selectAll"));
+    const parent = $("#listTags");
 
-  // Loop through all tags and provide checkbox input for filtering
-  for (let i in dictTags) {
-    parent.append(createTaginDeck(dictTags[i].id, dictTags[i].tag_string));
+    // Select all checkbox
+    parent.append(createTaginDeck(0, "selectAll"));
+
+    // Loop through all tags and provide checkbox input for filtering
+    for (let i in dictTags) {
+      parent.append(createTaginDeck(dictTags[i].id, dictTags[i].tag_string));
+    }
   }
-
+  else displayState1TagDeck();
 }
 
 // Handle URL deck display changes related to creating a new tag
@@ -328,7 +334,7 @@ function displayState2TagDeck(dictTags) {
 // Display state 3: Selected UTub has URLs and Tags, Select All and some unselected
 function displayState3TagDeck(dictTags) {
   // Subheader prompt shown
-  $("#TagDeckSubheader").text( + " filters applied");
+  $("#TagDeckSubheader").text(+ " filters applied");
 
 }
 

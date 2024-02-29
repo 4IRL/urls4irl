@@ -125,7 +125,7 @@ function accessAllWarningShowModal() {
 
 // Opens all URLs in UTub in separate tabs
 function accessAllURLsInUTub() {
-  getUtubInfo(getCurrentUTubID()).then(function (selectedUTub) {
+  getUtubInfo(getActiveUTubID()).then(function (selectedUTub) {
     let dictURLs = selectedUTub.urls;
 
     for (i = 0; i < dictURLs.length; i++) {
@@ -152,13 +152,13 @@ function resetURLDeck() {
 /** URL Functions **/
 
 // Build center panel URL list for selectedUTub
-function buildURLDeck(dictURLs, dictTags) {
+function buildURLDeck(UTubName, dictURLs, dictTags) {
   resetURLDeck();
   const parent = $("#UPRRow");
-  let NumOfURLs = dictURLs.length ? dictURLs.length : 0;
+  let numOfURLs = dictURLs.length ? dictURLs.length : 0;
 
-  if (NumOfUTubs !== 0) {
-    displayState2URLDeck(UTubName, dictURLs);
+  if (numOfURLs !== 0) {
+    displayState2URLDeck(UTubName, numOfURLs);
 
     // Instantiate deck with list of URLs stored in current UTub
     for (let i = 0; i < dictURLs.length; i++) {
@@ -173,7 +173,10 @@ function buildURLDeck(dictURLs, dictTags) {
       parent.append(URLcol);
     }
   }
-  else displayState1URLDeck(UTubName);
+  else {
+    console.log(UTubName)
+    displayState1URLDeck(UTubName);
+  }
 
   // New URL create block
   $("#URLFocusRow").append(createNewURLInputField());
@@ -631,7 +634,7 @@ function toggleSelectedURL(selectedURLID) {
   }
 }
 
-/** UTub Display State Functions **/
+/** URL Display State Functions **/
 
 // Display state 0: Clean slate, no UTub selected
 function displayState0URLDeck() {
@@ -641,30 +644,22 @@ function displayState0URLDeck() {
   hideIfShown($("#addURLBtn"));
 }
 
-// Display state 1: UTub selected, no URLs
-function displayState1URLDeck(UTubName) {
+// Display state 1: UTub selected, URL list or subheader prompt
+function displayState1URLDeck(UTubName, numOfURLs) {
   $("#URLDeckHeader").text(UTubName);
   $("#editUTubName").val(UTubName);
   showIfHidden($(".editUTubBtn"));
   showIfHidden($("#addURLBtn"));
 
-  // Subheader prompt shown
+  // Subheader prompt
   let URLDeckSubheader = $("#URLDeckSubheader")
-  showIfHidden(URLDeckSubheader.closest(".row"));
-  URLDeckSubheader.text("Add a URL");
-}
-
-// Display state 2: UTub selected, URL list
-function displayState2URLDeck(UTubName, dictURLs) {
-  $("#URLDeckHeader").text(selectedUTub.name);
-  $("#editUTubName").val(UTubName);
-  showIfHidden($(".editUTubBtn"));
-  showIfHidden($("#addURLBtn"));
-
-  // Subheader prompt shown
-  let URLDeckSubheader = $("#URLDeckSubheader")
-  showIfHidden(URLDeckSubheader.closest(".row"));
-  URLDeckSubheader.text(dictURLs.length + dictURLs.length === 1 ? "URL" : " URLs" + " stored");
+  if (numOfURLs) {
+    showIfHidden(URLDeckSubheader.closest(".row"));
+    URLDeckSubheader.text(numOfURLs + numOfURLs === 1 ? "URL" : " URLs" + " stored");
+  } else {
+    showIfHidden(URLDeckSubheader.closest(".row"));
+    URLDeckSubheader.text("Add a URL");
+  }
 }
 
 /** Post data handling **/
@@ -712,7 +707,7 @@ function addURL() {
 // Prepares post request inputs for addition of a new URL
 function addURLSetup() {
   // Assemble post request route
-  let postURL = ADD_URL_ROUTE + getCurrentUTubID();
+  let postURL = ADD_URL_ROUTE + getActiveUTubID();
 
   // Assemble submission data
   let newURLTitle = $("#newURLTitle").val();
@@ -841,7 +836,7 @@ function editURL() {
 
 // Prepares post request inputs for edition of a URL
 function editURLSetup() {
-  let postURL = EDIT_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
+  let postURL = EDIT_URL_ROUTE + getActiveUTubID() + "/" + getSelectedURLID();
 
   let selectedCardDiv = $(getSelectedURLCard());
   let editedURLfield = selectedCardDiv.find(".editURLString")[0];
@@ -968,7 +963,7 @@ function removeURL() {
 // Prepares post request inputs for removal of a URL
 function removeURLSetup() {
   let postURL =
-    REMOVE_URL_ROUTE + getCurrentUTubID() + "/" + getSelectedURLID();
+    REMOVE_URL_ROUTE + getActiveUTubID() + "/" + getSelectedURLID();
 
   return postURL;
 }
