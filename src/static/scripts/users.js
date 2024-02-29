@@ -65,7 +65,7 @@ function buildUserDeck(dictUsers, UTubOwnerID) {
     }
   }
 
-  console.log(numOfUsers)
+  console.log(numOfUsers);
   // Prompt owner to add users if none
   if (numOfUsers === 1) showIfHidden($("#UserDeckSubheader").closest(".row"));
   else hideIfShown($("#UserDeckSubheader").closest(".row"));
@@ -75,7 +75,6 @@ function buildUserDeck(dictUsers, UTubOwnerID) {
     showIfHidden($("#addUserBtn"));
     parent.append(createNewUserInputField());
   } else hideIfShown($("#addUserBtn"));
-
 }
 
 // Creates user list item
@@ -257,10 +256,10 @@ function addUserSetup() {
 
 // Perhaps update a scrollable/searchable list of users?
 function addUserSuccess(response) {
-  console.log(response)
+  console.log(response);
   let UTubUsers = response.UTub_users;
-  console.log(UTubUsers[UTubUsers.length-1])
-  $("#listUsers").append(createUserSelector(UTubUsers[UTubUsers.length-1]));
+  console.log(UTubUsers[UTubUsers.length - 1]);
+  $("#listUsers").append(createUserSelector(UTubUsers[UTubUsers.length - 1]));
 }
 
 function addUserFail(response) {

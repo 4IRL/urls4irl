@@ -82,8 +82,7 @@ function buildTagDeck(dictTags) {
     for (let i in dictTags) {
       parent.append(createTaginDeck(dictTags[i].id, dictTags[i].tag_string));
     }
-  }
-  else displayState1TagDeck();
+  } else displayState1TagDeck();
 }
 
 // Handle URL deck display changes related to creating a new tag
@@ -322,7 +321,7 @@ function displayState0TagDeck() {
 // Display state 1: Selected UTub has URLs, no Tags
 function displayState1TagDeck() {
   // Subheader prompt shown
-  let TagDeckSubheader = $("#TagDeckSubheader")
+  let TagDeckSubheader = $("#TagDeckSubheader");
   showIfHidden(TagDeckSubheader.closest(".row"));
   TagDeckSubheader.text("Add a tag to a URL");
 }
@@ -330,7 +329,7 @@ function displayState1TagDeck() {
 // Display state 2: Selected UTub has URLs and Tags, Select All and all tags selected
 function displayState2TagDeck(dictTags) {
   // Subheader prompt shown
-  let TagDeckSubheader = $("#TagDeckSubheader")
+  let TagDeckSubheader = $("#TagDeckSubheader");
   showIfHidden(TagDeckSubheader.closest(".row"));
   TagDeckSubheader.text("0 of " + dictTags.length + " filters applied");
 }
@@ -338,8 +337,7 @@ function displayState2TagDeck(dictTags) {
 // Display state 3: Selected UTub has URLs and Tags, Select All and some unselected
 function displayState3TagDeck(dictTags) {
   // Subheader prompt shown
-  $("#TagDeckSubheader").text(+ " filters applied");
-
+  $("#TagDeckSubheader").text(+" filters applied");
 }
 
 /** Post data handling **/
@@ -439,7 +437,7 @@ function addTagSuccess(response) {
   let tagSpan = createTaginURL(tagid, string);
   URLTagDeck.append(tagSpan);
 
-  displayState2TagDeck(dictTags)
+  displayState2TagDeck(dictTags);
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new Tag

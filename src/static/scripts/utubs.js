@@ -146,26 +146,26 @@ function selectUTub(selectedUTubID) {
     let UTubOwnerID = selectedUTub.created_by;
     let UTubDescription = selectedUTub.description;
 
-    console.log(selectedUTub)
+    console.log(selectedUTub);
 
     // LH panels
     // UTub deck
-    displayState2UTubDeck(selectedUTubID)
+    displayState2UTubDeck(selectedUTubID);
 
     // Tag deck
-    buildTagDeck(dictTags)
+    buildTagDeck(dictTags);
 
     // Center panel
     // URL deck
-    buildURLDeck(UTubName, dictURLs, dictTags) 
+    buildURLDeck(UTubName, dictURLs, dictTags);
 
     // RH panels
     // UTub Description deck
     if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
     else displayState1UTubDescriptionDeck();
-    
+
     // Users deck
-    buildUserDeck(dictUsers, UTubOwnerID) 
+    buildUserDeck(dictUsers, UTubOwnerID);
   });
 }
 
@@ -176,16 +176,17 @@ function createUTubSelector(UTubName, UTubID, index) {
   let radio = document.createElement("input");
 
   // Bind display state change function on click
-  $(container).addClass("UTub draw")
-  .attr({
-    utubid: UTubID,
-    position: index,
-  })
-  .on("click", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
-    selectUTub(UTubID);
-  });
+  $(container)
+    .addClass("UTub draw")
+    .attr({
+      utubid: UTubID,
+      position: index,
+    })
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      selectUTub(UTubID);
+    });
   container.innerHTML = "<b>" + UTubName + "</b>";
 
   $(label).attr({ for: "UTub-" + UTubID });
@@ -308,7 +309,7 @@ function bindUTubSelectionBehavior() {
 // Display state 0: Clean slate, no UTubs
 function displayState0UTubDeck() {
   // Subheader to prompt user to create a UTub shown
-  let UTubDeckSubheader = $("#UTubDeckSubheader")
+  let UTubDeckSubheader = $("#UTubDeckSubheader");
   showIfHidden(UTubDeckSubheader.closest(".row"));
   UTubDeckSubheader.text("Create a UTub");
 
@@ -319,7 +320,7 @@ function displayState0UTubDeck() {
 // Display state 1: UTubs list, none selected
 function displayState1UTubDeck() {
   // Subheader prompt shown
-  let UTubDeckSubheader = $("#UTubDeckSubheader")
+  let UTubDeckSubheader = $("#UTubDeckSubheader");
   showIfHidden(UTubDeckSubheader.closest(".row"));
   UTubDeckSubheader.text("Select a UTub");
 
@@ -332,7 +333,7 @@ function displayState2UTubDeck(selectedUTubID) {
   hideInputs();
 
   // Subheader prompt hidden
-  let UTubDeckSubheader = $("#UTubDeckSubheader")
+  let UTubDeckSubheader = $("#UTubDeckSubheader");
   showIfHidden(UTubDeckSubheader.closest(".row"));
   UTubDeckSubheader.text(UTubs.length + " Accessible UTubs");
 
@@ -365,7 +366,7 @@ function displayState1UTubDescriptionDeck() {
 
   // Edit UTub Description button shown
   showIfHidden($("#editUTubBtn"));
-  
+
   // Update description values
   let p = $("#UTubDescription");
   hideIfShown(p);
@@ -590,9 +591,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
 
@@ -708,7 +709,7 @@ function editUTubNameSuccess(response) {
   editedUTubLabel.find("b").text(UTubName);
 
   // URLDeck display updates
-  displayState1URLDeck(UTubName, numOfURLs())
+  displayState1URLDeck(UTubName, numOfURLs());
 }
 
 //
@@ -744,9 +745,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.responseJSON.Error_code +
-    ". Status: " +
-    response.responseJSON.Message,
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
   );
 }
 
@@ -874,8 +875,8 @@ function deleteUTubFailure(xhr, textStatus, error) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
