@@ -45,7 +45,7 @@ function resetUserDeck() {
   $("#listUsers").empty();
 }
 
-/* User Functions */
+/** User Functions **/
 
 // Build center panel URL list for selectedUTub
 function buildUserDeck(dictUsers, UTubOwnerID) {
@@ -61,24 +61,25 @@ function buildUserDeck(dictUsers, UTubOwnerID) {
     if (UTubUser.id !== UTubOwnerID) {
       parent.append(createUserSelector(UTubUser));
     } else {
-      $("#UTubOwner").append(createOwnerPill(UTubUser));
+      $("#UTubOwner").append(createOwnerBadge(UTubUser));
     }
   }
 
-  console.log(numOfUsers);
-  // Prompt owner to add users if none
-  if (numOfUsers === 1) showIfHidden($("#UserDeckSubheader").closest(".row"));
-  else hideIfShown($("#UserDeckSubheader").closest(".row"));
+  // Subheader prompt
+  let UserDeckSubheader = $("#UserDeckSubheader");
+  if (numOfUsers === 1) UserDeckSubheader.text("Add a user");
+  else UserDeckSubheader.text(numOfUsers + " active users");
 
   // Ability to add users is restricted to UTub owner
   if (ownerBool) {
     showIfHidden($("#addUserBtn"));
     parent.append(createNewUserInputField());
   } else hideIfShown($("#addUserBtn"));
+
 }
 
 // Creates user list item
-function createOwnerPill(UTubUser) {
+function createOwnerBadge(UTubUser) {
   let userSpan = document.createElement("span");
 
   $(userSpan)
@@ -256,10 +257,10 @@ function addUserSetup() {
 
 // Perhaps update a scrollable/searchable list of users?
 function addUserSuccess(response) {
-  console.log(response);
+  console.log(response)
   let UTubUsers = response.UTub_users;
-  console.log(UTubUsers[UTubUsers.length - 1]);
-  $("#listUsers").append(createUserSelector(UTubUsers[UTubUsers.length - 1]));
+  console.log(UTubUsers[UTubUsers.length-1])
+  $("#listUsers").append(createUserSelector(UTubUsers[UTubUsers.length-1]));
 }
 
 function addUserFail(response) {
