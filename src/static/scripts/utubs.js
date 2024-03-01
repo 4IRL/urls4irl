@@ -146,8 +146,6 @@ function selectUTub(selectedUTubID) {
     let UTubOwnerID = selectedUTub.created_by;
     let UTubDescription = selectedUTub.description;
 
-    console.log(selectedUTub);
-
     // LH panels
     // UTub deck
     displayState2UTubDeck(selectedUTubID);

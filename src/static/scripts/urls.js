@@ -59,7 +59,7 @@ function getSelectedURLCard() {
 }
 
 // Prevent deselection of URL while modifying its values (e.g. adding a tag, editing URL string or title)
-function unbindSelectBehavior() {
+function unbindSelectURLBehavior() {
   $(getSelectedURLCard().closest(".cardCol")).off("click");
 }
 
@@ -232,7 +232,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
 
   $(urlString).addClass("card-text URLString").text(string);
 
-  $(editWrap).attr({ style: "display: none" }).addClass("createDiv form-group");
+  $(editWrap).addClass("createDiv form-group").attr({ style: "display: none" });
 
   $(editURLTitleLabel)
     .attr({
@@ -295,7 +295,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       }
     });
 
-    let tagSpan = createTaginURL(tag.id, tag.tag_string);
+    let tagSpan = createTagBadgeInURL(tag.id, tag.tag_string);
 
     $(urlTags).append(tagSpan);
   }
@@ -543,6 +543,82 @@ function createNewURLInputField() {
   return col;
 }
 
+// Handle URL deck display changes related to creating a new tag
+function createTagBadgeInURL(tagID, string) {
+  let tagSpan = document.createElement("span");
+  let removeButton = document.createElement("a");
+
+  $(tagSpan).attr({ tagid: tagID }).addClass("tag").text(string);
+
+  $(removeButton)
+    .attr({ class: "btn btn-sm btn-outline-link border-0 tag-remove" })
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      removeTag(tagID);
+    });
+  removeButton.innerHTML = "&times;";
+
+  $(tagSpan).append(removeButton);
+
+  return tagSpan;
+}
+
+// Add a new URL tag input text field. Initially hidden, shown when Create Tag is requested. Input field recreated here to ensure at the end of list after creation of new URL
+function createNewTagInputField() {
+  const wrapper = $(document.createElement("div"));
+  const wrapperInput = $(document.createElement("div"));
+  const wrapperBtns = $(document.createElement("div"));
+
+  const input = document.createElement("input");
+  const submit = document.createElement("i");
+  const cancel = $(document.createElement("i"));
+
+  $(wrapper)
+    .attr({
+      style: "display: none",
+    })
+    .addClass("createDiv row");
+
+  $(wrapperInput).addClass("col-3 col-lg-3 mb-md-0");
+
+  $(input)
+    .attr({
+      type: "text",
+      placeholder: "Attribute Tag to URL",
+    })
+    .addClass("tag userInput addTag");
+
+  wrapperInput.append(input);
+
+  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
+
+  $(submit)
+    .addClass("fa fa-check-square fa-2x text-success mx-1")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      addTag();
+    });
+
+  wrapperBtns.append(submit);
+
+  $(cancel)
+    .addClass("fa bi-x-square-fill fa-2x text-danger mx-1")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      hideIfShown(wrapper);
+    });
+
+  wrapperBtns.append(cancel);
+
+  wrapper.append(wrapperInput);
+  wrapper.append(wrapperBtns);
+
+  return wrapper;
+}
+
 // Display updates related to selection of a URL
 function selectURL(selectedCardCol) {
   const card = selectedCardCol.find(".card");
@@ -630,6 +706,50 @@ function toggleSelectedURL(selectedURLID) {
   }
 }
 
+// Handles filtering URLs based on Tag Deck state
+function filterURLDeck() {
+  let spanObjs = $("span.tag");
+  if (filteredTag.hasClass("selected")) {
+    spanObjs.show();
+  } else {
+    spanObjs.hide();
+    selAll.removeClass("selected");
+  }
+
+
+  let URLcardst = $("div.url");
+  for (let i = 0; i < URLcardst.length; i++) {
+    let tagList = $(URLcardst[i]).find("span.tag");
+
+    // If no tags associated with this URL, ignore. Unaffected by filter functionality
+    if (tagList.length === 0) {
+      continue;
+    }
+
+    // If all tags for given URL are style="display: none;", hide parent URL card
+    let inactiveTagBool = tagList.map((i) =>
+      tagList[i].style.display == "none" ? true : false,
+    );
+    // Manipulate mapped Object
+    let boolArray = Object.entries(inactiveTagBool);
+    boolArray.pop();
+    boolArray.pop();
+
+    // Default to hide URL
+    let hideURLBool = true;
+    boolArray.forEach((e) => (hideURLBool &= e[1]));
+
+    // If url <div.card.url> has no tag <span>s in activeTagIDs, hide card column (so other cards shift into its position)
+    if (hideURLBool) {
+      $(URLcardst[i]).parent().hide();
+    }
+    // If tag reactivated, show URL
+    else {
+      $(URLcardst[i]).parent().show();
+    }
+  }
+}
+
 /** URL Display State Functions **/
 
 // Display state 0: Clean slate, no UTub selected
@@ -649,16 +769,14 @@ function displayState1URLDeck(UTubName, numOfURLs) {
 
   // Subheader prompt
   let URLDeckSubheader = $("#URLDeckSubheader");
+  showIfHidden(URLDeckSubheader.closest(".row"));
   if (numOfURLs) {
-    showIfHidden(URLDeckSubheader.closest(".row"));
-    console.log(numOfURLs);
-    URLDeckSubheader.text(
-      numOfURLs + numOfURLs === 1 ? " URL" : " URLs" + " stored",
-    );
-  } else {
-    showIfHidden(URLDeckSubheader.closest(".row"));
-    URLDeckSubheader.text("Add a URL");
-  }
+    let stringURLPlurality = numOfURLs === 1 ? " URL" : " URLs" 
+    let string = 
+    numOfURLs + stringURLPlurality + " stored"; 
+    URLDeckSubheader.text(string);
+    // URLDeckSubheader.text(numOfURLs + numOfURLs === 1 ? " URL" : " URLs" + " stored");
+  } else URLDeckSubheader.text("Add a URL");
 
   showIfHidden($("#accessAllURLsBtn"));
 }
@@ -776,7 +894,7 @@ function editURLShowInput() {
   hideIfShown($(URLInfoDiv.find("p")));
 
   // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
-  unbindSelectBehavior();
+  unbindSelectURLBehavior();
 }
 
 // Hides edit URL inputs
