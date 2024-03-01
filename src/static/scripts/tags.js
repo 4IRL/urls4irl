@@ -152,16 +152,6 @@ function filterAllTags() {
   // Toggle all filter tags to match "Select All" checked status
   selectedBool ? tagFilterList.addClass("selected") : tagFilterList.removeClass("selected")
 
-  // // Loop works but may be less efficient
-  // for (let i = 0; i < tagFilterList.length; i++) {
-  //   let tagFilter = tagFilterList[i];
-  //   if (selectedBool) {
-  //     if (!tagFilter.hasClass("selected")) tagFilter.addClass("selected");
-  //   } else {
-  //     if (tagFilter.hasClass("selected")) tagFilter.removeClass("selected");
-  //   }
-  // }
-
   displayState2TagDeck();
 }
 

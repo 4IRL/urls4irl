@@ -549,7 +549,7 @@ function createTagBadgeInURL(tagID, string) {
   let removeButton = document.createElement("a");
 
   $(tagSpan)
-    .addClass("tag")
+    .addClass("tagBadge")
     .attr({ tagid: tagID })
     .text(string);
 
@@ -711,6 +711,7 @@ function toggleSelectedURL(selectedURLID) {
 
 // Filters all URLs with tags
 function filterAllTaggedURLs() {
+  hideInputs();
   let URLcardst = $("div.url");
   for (let i = 0; i < URLcardst.length; i++) {
     let tagList = $(URLcardst[i]).find("span.tag");
@@ -747,7 +748,7 @@ function filterAllTaggedURLs() {
 // Filters URLs based on Tag Deck state
 function filterURL(tagID) {
   hideInputs();
-  let filteredTagList = $(".tagFilter[tagid=" + tagID + "]");
+  let filteredTagList = $(".tagBadge[tagid=" + tagID + "]");
 
 
   let spanObjs = $("span.tag");
