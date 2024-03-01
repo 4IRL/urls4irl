@@ -87,8 +87,6 @@ function buildTagDeck(dictTags) {
   let numOfTags = dictTags.length ? dictTags.length : 0;
 
   if (numOfTags) {
-    displayState2TagDeck(dictTags);
-
     const parent = $("#listTags");
 
     // Select all checkbox
@@ -98,6 +96,8 @@ function buildTagDeck(dictTags) {
     for (let i in dictTags) {
       parent.append(createTagFilterInDeck(dictTags[i].id, dictTags[i].tag_string));
     }
+
+    displayState2TagDeck();
   } else displayState1TagDeck();
 }
 
@@ -110,7 +110,7 @@ function createSelectAllTagFilterInDeck() {
     .attr({
       id: "selectAll",
       tagid: "all",
-      onclick: 'filterAllTags(); filterURLDeck()',
+      onclick: 'filterAllTags(); filterAllTaggedURLs()',
     });
   $(label).attr({
     for: "selectAll",
@@ -123,17 +123,17 @@ function createSelectAllTagFilterInDeck() {
 }
 
 // Creates tag filter for addition to Tag deck
-function createTagFilterInDeck(tagid, string) {
+function createTagFilterInDeck(tagID, string) {
   const container = document.createElement("div");
   const label = document.createElement("label");
 
   $(container).addClass("tagFilter selected")
     .attr({
-      tagid: tagid,
-      onclick: "filterTags(event," + tagid + "); filterURLDeck()",
+      tagid: tagID,
+      onclick: "filterTag(" + tagID + "); filterURL(" + tagID + ")",
     });
 
-  $(label).attr({ for: "Tag-" + tagid });
+  $(label).attr({ for: "Tag-" + tagID });
   label.innerHTML += string;
 
   $(container).append(label);
@@ -161,48 +161,22 @@ function filterAllTags() {
   //     if (tagFilter.hasClass("selected")) tagFilter.removeClass("selected");
   //   }
   // }
+
+  displayState2TagDeck();
 }
 
 // Update Tag Deck display in response to tag filter selection
-function filterTags(e, tagID) {
-  let filteredTag = $(e.target).closest("div");
+function filterTag(tagID) {
+  let filteredTag = $(".tagFilter[tagid=" + tagID + "]");
   filteredTag.toggleClass("selected");
-
+  
   let selAll = $("#selectAll");
-  let tagList = $(".tagFilter");
 
-  if (tagID == "all") {
-  } else {
-    // Different conditions for selectAll behavior. If any other filters are unselected, then selectAll should be unselected. If all other filters are selected, then selectAll should be selected.
-    if (selAll.hasClass("selected")) {
-      if ($(".tagFilter").length > $(".tagFilter.selected").length) {
-        selAll.removeClass("selected");
-      }
-    } else {
-      if ($(".tagFilter").length - 1 == $(".tagFilter.selected").length) {
-        selAll.addClass("selected");
-      }
-    }
+  let selectedBool = filteredTag.hasClass("selected");
+  // Toggle SelectAll filter to reflect tagFilter selection
+  selectedBool ? selAll.addClass("selected") : selAll.removeClass("selected")
 
-    // Alternate formulation, does not work as of 04/17/23. selectAll select status should match the summed boolean select status of all other filters
-
-    // let selAllBool;
-
-    // for (let i in tagList) {
-    //     console.log(i)
-    //     console.log(tagList[i])
-    //     console.log($(tagList[i]))
-    //     selAllBool &= $(tagList[i]).hasClass('selected');
-    // }
-
-    // selAllBool ? selAll.addClass('selected') :
-    //     selAll.removeClass('selected')
-
-    // Handle filtering in URL deck
-    $("span[tagid=" + tagID + "]").toggle();
-  }
-
-  displayState2TagDeck()
+  displayState2TagDeck();
 }
 
 /** Tags Display State Functions **/
@@ -226,9 +200,8 @@ function displayState2TagDeck() {
   let numOfTags = getNumOfTags();
   let TagDeckSubheader = $("#TagDeckSubheader");
   showIfHidden(TagDeckSubheader.closest(".row"));
-  TagDeckSubheader.text(numOfTags-getActiveTagIDs().length + " of " + numOfTags + " filters applied");
+  TagDeckSubheader.text(numOfTags - getActiveTagIDs().length + " of " + numOfTags + " filters applied");
 }
-
 
 /** Post data handling **/
 
@@ -328,7 +301,7 @@ function addTagSuccess(response) {
   let tagSpan = createTaginURL(tagid, string);
   URLTagDeck.append(tagSpan);
 
-  displayState2TagDeck(dictTags);
+  displayState2TagDeck();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new Tag
