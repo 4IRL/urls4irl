@@ -211,14 +211,14 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     });
 
   $(card)
+    .addClass("card url")
     .attr({
       urlid: URLID,
       // draggable: "true",
       ondrop: "dropIt(event)",
       ondragover: "allowDrop(event)",
       ondragstart: "dragStart(event)",
-    })
-    .addClass("card url");
+    });
 
   // $(cardImg).attr({
   //     'src': '...',
@@ -548,10 +548,13 @@ function createTagBadgeInURL(tagID, string) {
   let tagSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
-  $(tagSpan).attr({ tagid: tagID }).addClass("tag").text(string);
+  $(tagSpan)
+    .addClass("tag")
+    .attr({ tagid: tagID })
+    .text(string);
 
   $(removeButton)
-    .attr({ class: "btn btn-sm btn-outline-link border-0 tag-remove" })
+    .addClass("btn btn-sm btn-outline-link border-0 tag-remove")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -706,8 +709,47 @@ function toggleSelectedURL(selectedURLID) {
   }
 }
 
-// Handles filtering URLs based on Tag Deck state
-function filterURLDeck() {
+// Filters all URLs with tags
+function filterAllTaggedURLs() {
+  let URLcardst = $("div.url");
+  for (let i = 0; i < URLcardst.length; i++) {
+    let tagList = $(URLcardst[i]).find("span.tag");
+
+    // If no tags associated with this URL, ignore. Unaffected by filter functionality
+    if (tagList.length === 0) {
+      continue;
+    }
+
+    // If all tags for given URL are style="display: none;", hide parent URL card
+    let inactiveTagBool = tagList.map((i) =>
+      tagList[i].style.display == "none" ? true : false,
+    );
+    // Manipulate mapped Object
+    let boolArray = Object.entries(inactiveTagBool);
+    boolArray.pop();
+    boolArray.pop();
+
+    // Default to hide URL
+    let hideURLBool = true;
+    boolArray.forEach((e) => (hideURLBool &= e[1]));
+
+    // If url <div.card.url> has no tag <span>s in activeTagIDs, hide card column (so other cards shift into its position)
+    if (hideURLBool) {
+      $(URLcardst[i]).parent().hide();
+    }
+    // If tag reactivated, show URL
+    else {
+      $(URLcardst[i]).parent().show();
+    }
+  }
+}
+
+// Filters URLs based on Tag Deck state
+function filterURL(tagID) {
+  hideInputs();
+  let filteredTagList = $(".tagFilter[tagid=" + tagID + "]");
+
+
   let spanObjs = $("span.tag");
   if (filteredTag.hasClass("selected")) {
     spanObjs.show();
@@ -715,7 +757,7 @@ function filterURLDeck() {
     spanObjs.hide();
     selAll.removeClass("selected");
   }
-
+  $("span[tagid=" + tagID + "]").toggle();
 
   let URLcardst = $("div.url");
   for (let i = 0; i < URLcardst.length; i++) {
@@ -771,9 +813,9 @@ function displayState1URLDeck(UTubName, numOfURLs) {
   let URLDeckSubheader = $("#URLDeckSubheader");
   showIfHidden(URLDeckSubheader.closest(".row"));
   if (numOfURLs) {
-    let stringURLPlurality = numOfURLs === 1 ? " URL" : " URLs" 
-    let string = 
-    numOfURLs + stringURLPlurality + " stored"; 
+    let stringURLPlurality = numOfURLs === 1 ? " URL" : " URLs"
+    let string =
+      numOfURLs + stringURLPlurality + " stored";
     URLDeckSubheader.text(string);
     // URLDeckSubheader.text(numOfURLs + numOfURLs === 1 ? " URL" : " URLs" + " stored");
   } else URLDeckSubheader.text("Add a URL");
