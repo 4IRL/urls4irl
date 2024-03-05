@@ -33,7 +33,7 @@ $(document).ready(function () {
   $("#accessAllURLsBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
-    if (numOfURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
+    if (getNumOfURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
       accessAllWarningShowModal();
     } else {
       accessAllURLsInUTub();
@@ -44,8 +44,8 @@ $(document).ready(function () {
 /** URL Utility Functions **/
 
 // Function to count number of URLs in current UTub
-function numOfURLs() {
-  return $(".card.url").length - 1; // minus 1 to discount createURL block
+function getNumOfURLs() {
+  return $(".url").length;
 }
 
 // function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
@@ -95,7 +95,7 @@ function accessLink(url_string) {
 // Show confirmation modal for opening all URLs in UTub
 function accessAllWarningShowModal() {
   let modalTitle =
-    "Are you sure you want to open all " + numOfURLs() + " URLs in this UTub?";
+    "Are you sure you want to open all " + getNumOfURLs() + " URLs in this UTub?";
   let modalDismiss = "Cancel";
 
   $("#confirmModalTitle").text(modalTitle);
@@ -155,11 +155,10 @@ function resetURLDeck() {
 function buildURLDeck(UTubName, dictURLs, dictTags) {
   resetURLDeck();
   const parent = $("#UPRRow");
-  let numOfURLs = dictURLs.length ? dictURLs.length : 0;
+  let numOfURLs = dictURLs.length;
+  numOfURLs = numOfURLs ? numOfURLs : 0;
 
   if (numOfURLs !== 0) {
-    displayState1URLDeck(UTubName, numOfURLs);
-
     // Instantiate deck with list of URLs stored in current UTub
     for (let i = 0; i < dictURLs.length; i++) {
       let URLcol = createURLBlock(
@@ -172,10 +171,13 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
 
       parent.append(URLcol);
     }
-  } else displayState1URLDeck(UTubName);
 
+  }
+  
   // New URL create block
   $("#URLFocusRow").append(createNewURLInputField());
+  
+  displayState1URLDeck(UTubName);
 }
 
 // Create a URL block to add to current UTub/URLDeck
@@ -443,7 +445,7 @@ function createNewURLInputField() {
   $(card).attr({
     urlid: 0,
     id: "addURL",
-    class: "card url selected",
+    class: "card selected",
     // draggable: "true",
     ondrop: "dropIt(event)",
     ondragover: "allowDrop(event)",
@@ -748,48 +750,20 @@ function filterAllTaggedURLs() {
 // Filters URLs based on Tag Deck state
 function filterURL(tagID) {
   hideInputs();
+
   let filteredTagList = $(".tagBadge[tagid=" + tagID + "]");
+  filteredTagList.toggle();
 
+  let URLCards = $(".url");
+  for (let i = 0; i < URLCards.length; i++) {
+    let cardCol = $(URLCards[i]).closest(".cardCol");
+    let showURLBool; // Default showing URL
+    let tagsRemaining = cardCol.find("span.tagBadge").length;
+    console.log(tagsRemaining)
 
-  let spanObjs = $("span.tag");
-  if (filteredTag.hasClass("selected")) {
-    spanObjs.show();
-  } else {
-    spanObjs.hide();
-    selAll.removeClass("selected");
-  }
-  $("span[tagid=" + tagID + "]").toggle();
+    tagsRemaining > 0 ? showURLBool = 1 : showURLBool = 0;
 
-  let URLcardst = $("div.url");
-  for (let i = 0; i < URLcardst.length; i++) {
-    let tagList = $(URLcardst[i]).find("span.tag");
-
-    // If no tags associated with this URL, ignore. Unaffected by filter functionality
-    if (tagList.length === 0) {
-      continue;
-    }
-
-    // If all tags for given URL are style="display: none;", hide parent URL card
-    let inactiveTagBool = tagList.map((i) =>
-      tagList[i].style.display == "none" ? true : false,
-    );
-    // Manipulate mapped Object
-    let boolArray = Object.entries(inactiveTagBool);
-    boolArray.pop();
-    boolArray.pop();
-
-    // Default to hide URL
-    let hideURLBool = true;
-    boolArray.forEach((e) => (hideURLBool &= e[1]));
-
-    // If url <div.card.url> has no tag <span>s in activeTagIDs, hide card column (so other cards shift into its position)
-    if (hideURLBool) {
-      $(URLcardst[i]).parent().hide();
-    }
-    // If tag reactivated, show URL
-    else {
-      $(URLcardst[i]).parent().show();
-    }
+    showURLBool ? cardCol.show() : cardCol.hide();
   }
 }
 
@@ -803,8 +777,9 @@ function displayState0URLDeck() {
   hideIfShown($("#addURLBtn"));
 }
 
-// Display state 1: UTub selected, URL list or subheader prompt
-function displayState1URLDeck(UTubName, numOfURLs) {
+// Display state 1: UTub selected, URL list and subheader prompt
+function displayState1URLDeck(UTubName) {
+  let numOfURLs = getNumOfURLs();
   $("#URLDeckHeader").text(UTubName);
   $("#editUTubName").val(UTubName);
   showIfHidden($(".editUTubBtn"));
@@ -897,7 +872,7 @@ function addURLSuccess(response) {
 
   $("#URLFocusRow").append(URLcol);
 
-  displayState1URLDeck(UTubName, numOfURLs());
+  displayState1URLDeck(UTubName, getNumOfURLs());
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
