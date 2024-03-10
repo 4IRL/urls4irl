@@ -188,6 +188,7 @@ function unbindEnter() {
 // });
 
 function displayState0() {
+  hideInputs();
   displayState0UTubDeck();
   displayState0TagDeck();
   displayState0URLDeck();

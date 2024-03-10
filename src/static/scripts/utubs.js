@@ -10,14 +10,14 @@ const ROUTE_DELETE_UTUB = "/utub/delete/"; // +<int:utub_id>
 /** UTub UI Interactions **/
 
 $(document).ready(function () {
+  displayState0();
   // Instantiate UTubDeck with user's accessible UTubs
   try {
     buildUTubDeck(UTubs);
+    $("#listUTubs").append(createNewUTubInputField());
   } catch (error) {
     console.log("Something is wrong!");
     console.log(error);
-
-    $("#listUTubs").append(createNewUTubInputField());
   }
 
   /* Bind click functions */
@@ -29,15 +29,6 @@ $(document).ready(function () {
     hideInputs();
     deselectAllURLs();
     addUTubShowInput();
-
-    // Bind enter key (keycode 13) to submit user input
-    // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
-    unbindEnter();
-    $(document).bind("keypress", function (e) {
-      if (e.which == 13) {
-        checkSameNameUTub(1, $("#createUTub").val());
-      }
-    });
   });
 
   // Delete UTub
@@ -51,28 +42,12 @@ $(document).ready(function () {
   });
 
   // Edit UTub name and description
-  $(".editUTubBtn").on("click", function (e) {
+  $("#editUTubBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     hideInputs();
     deselectAllURLs();
     editUTubShowInput();
-
-    // Bind enter key (keycode 13) to submit user input
-    // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
-    unbindEnter();
-    $(document).bind("keypress", function (e) {
-      if (e.which == 13) {
-        checkSameNameUTub(0, $("#editUTubName").val());
-      }
-    });
-  });
-
-  // Complete edit UTub name and description
-  $(".submitEditUTubBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
-    checkSameNameUTub(0, $("#editUTubName").val());
   });
 });
 
@@ -427,7 +402,7 @@ function displayState3UTubDescriptionDeck(UTubDescription) {
 
 /** Post data handling **/
 
-// Checks if submitted UTub name exists in db
+// Checks if submitted UTub name exists in db. mode is 0 for editUTub, 1 for addUTub
 function checkSameNameUTub(mode, name) {
   // Count UTubs with same name
   let sameNameCounter = 0;
@@ -520,6 +495,15 @@ function sameNameWarningShowModal(mode, UTubID) {
 function addUTubShowInput() {
   showInput("createUTub");
   highlightInput($("#createUTub"));
+
+  // Bind enter key (keycode 13) to submit user input
+  // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
+  unbindEnter();
+  $(document).bind("keypress", function (e) {
+    if (e.which == 13) {
+      checkSameNameUTub(1, $("#createUTub").val());
+    }
+  });
 }
 
 // Hides new UTub input fields
@@ -533,6 +517,7 @@ function addUTub() {
   // Extract data to submit in POST request
   [postURL, data] = addUTubSetup();
 
+  console.log("About to make post AJAX call")
   let request = AJAXCall("post", postURL, data);
 
   // Handle response
@@ -606,9 +591,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
 
@@ -619,15 +604,24 @@ function editUTubShowInput() {
   // Hide exisitng values and edit button
   hideIfShown($("#URLDeckHeader"));
   hideIfShown($("#UTubDescription"));
-  hideIfShown($(".editUTubBtn"));
+  hideIfShown($("#editUTubBtn"));
   hideIfShown($("#addURLBtn"));
 
   // Show temporary div element containing UTub description
   showInput("editUTubDescription");
-  showIfHidden($(".submitEditUTubBtn"));
+  showIfHidden($("#submitEditUTubBtn"));
 
   // Show temporary div element containing UTub name
   showInput("editUTubName");
+
+  // Bind enter key (keycode 13) to submit user input
+  // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
+  unbindEnter();
+  $(document).bind("keypress", function (e) {
+    if (e.which == 13) {
+      checkSameNameUTub(0, $("#editUTubName").val());
+    }
+  });
 }
 
 // Hides input fields for editing an exiting UTub's name and description
@@ -635,12 +629,12 @@ function editUTubHideInput() {
   // Hide exisitng values and edit button
   showIfHidden($("#URLDeckHeader"));
   showIfHidden($("#UTubDescription"));
-  showIfHidden($(".editUTubBtn"));
+  showIfHidden($("#editUTubBtn"));
   showIfHidden($("#addURLBtn"));
 
   // Show temporary div element containing UTub description
   hideInput("editUTubDescription");
-  hideIfShown($(".submitEditUTubBtn"));
+  hideIfShown($("#submitEditUTubBtn"));
 
   // Show temporary div element containing UTub name
   hideInput("editUTubName");
@@ -761,9 +755,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
-      ". Status: " +
-      response.responseJSON.Message,
+    response.responseJSON.Error_code +
+    ". Status: " +
+    response.responseJSON.Message,
   );
 }
 
@@ -856,7 +850,7 @@ function deleteUTubSuccess() {
   UTubSelector.fadeOut();
   UTubSelector.remove();
 
-  hideIfShown($(".editUTubBtn"));
+  hideIfShown($("#editUTubBtn"));
   hideIfShown($("#addURLBtn"));
   hideIfShown($("#UTubDescription"));
 
@@ -892,8 +886,8 @@ function deleteUTubFailure(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }

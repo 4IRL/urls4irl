@@ -215,6 +215,8 @@ function createNewUserInputField() {
 
 // Display state 0: Clean slate, no UTub selected
 function displayState0UserDeck() {
+  resetUserDeck();
+  
   // Subheader prompt hidden
   hideIfShown($("#UserDeckSubheader").closest(".row"));
 }
