@@ -35,7 +35,8 @@ function getActiveTagIDs() {
     let tagFilter = tagFilterList[i];
     // if ($(tagFilter).hasClass("selected")) activeTagIDList.push($(tagFilter).tagid)
     // if ($(tagFilter).hasClass("selected")) [activeTagIDList, $(tagFilter).tagid]
-    if ($(tagFilter).hasClass("selected")) activeTagIDList.push($(tagFilter).attr('tagid'))
+    if ($(tagFilter).hasClass("selected"))
+      activeTagIDList.push($(tagFilter).attr("tagid"));
     // if ($(tagFilter).hasClass("selected")) [activeTagIDList, $(tagFilter).attr('tagid')]
   }
 
@@ -94,7 +95,9 @@ function buildTagDeck(dictTags) {
 
     // Loop through all tags and provide checkbox input for filtering
     for (let i in dictTags) {
-      parent.append(createTagFilterInDeck(dictTags[i].id, dictTags[i].tag_string));
+      parent.append(
+        createTagFilterInDeck(dictTags[i].id, dictTags[i].tag_string),
+      );
     }
 
     displayState2TagDeck();
@@ -106,12 +109,11 @@ function createSelectAllTagFilterInDeck() {
   const container = document.createElement("div");
   const label = document.createElement("label");
 
-  $(container).addClass("selected")
-    .attr({
-      id: "selectAll",
-      tagid: "all",
-      onclick: 'filterAllTags(); filterAllTaggedURLs()',
-    });
+  $(container).addClass("selected").attr({
+    id: "selectAll",
+    tagid: "all",
+    onclick: "filterAllTags(); filterAllTaggedURLs()",
+  });
   $(label).attr({
     for: "selectAll",
   });
@@ -127,7 +129,8 @@ function createTagFilterInDeck(tagID, string) {
   const container = document.createElement("div");
   const label = document.createElement("label");
 
-  $(container).addClass("tagFilter selected")
+  $(container)
+    .addClass("tagFilter selected")
     .attr({
       tagid: tagID,
       onclick: "filterTag(" + tagID + "); filterURL(" + tagID + ")",
@@ -150,7 +153,9 @@ function filterAllTags() {
 
   let tagFilterList = $(".tagFilter");
   // Toggle all filter tags to match "Select All" checked status
-  selectedBool ? tagFilterList.addClass("selected") : tagFilterList.removeClass("selected")
+  selectedBool
+    ? tagFilterList.addClass("selected")
+    : tagFilterList.removeClass("selected");
 
   displayState2TagDeck();
 }
@@ -159,12 +164,12 @@ function filterAllTags() {
 function filterTag(tagID) {
   let filteredTag = $(".tagFilter[tagid=" + tagID + "]");
   filteredTag.toggleClass("selected");
-  
+
   let selAll = $("#selectAll");
 
   let selectedBool = filteredTag.hasClass("selected");
   // Toggle SelectAll filter to reflect tagFilter selection
-  selectedBool ? selAll.addClass("selected") : selAll.removeClass("selected")
+  selectedBool ? selAll.addClass("selected") : selAll.removeClass("selected");
 
   displayState2TagDeck();
 }
@@ -190,7 +195,13 @@ function displayState2TagDeck() {
   let numOfTags = getNumOfTags();
   let TagDeckSubheader = $("#TagDeckSubheader");
   showIfHidden(TagDeckSubheader.closest(".row"));
-  TagDeckSubheader.text(numOfTags - getActiveTagIDs().length + " of " + numOfTags + " filters applied");
+  TagDeckSubheader.text(
+    numOfTags -
+      getActiveTagIDs().length +
+      " of " +
+      numOfTags +
+      " filters applied",
+  );
 }
 
 /** Post data handling **/
