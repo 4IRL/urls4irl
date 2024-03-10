@@ -87,7 +87,6 @@ function buildUserDeck(dictUsers, UTubOwnerID) {
     showIfHidden($("#addUserBtn"));
     parent.append(createNewUserInputField());
   } else hideIfShown($("#addUserBtn"));
-
 }
 
 // Creates user list item
@@ -231,7 +230,13 @@ function displayState2UserDeck() {
   let numOfTags = getNumOfTags();
   let UserDeckSubheader = $("#UserDeckSubheader");
   showIfHidden(UserDeckSubheader.closest(".row"));
-  UserDeckSubheader.text(numOfTags - getActiveTagIDs().length + " of " + numOfTags + " filters applied");
+  UserDeckSubheader.text(
+    numOfTags -
+      getActiveTagIDs().length +
+      " of " +
+      numOfTags +
+      " filters applied",
+  );
 }
 
 /** Post data handling **/

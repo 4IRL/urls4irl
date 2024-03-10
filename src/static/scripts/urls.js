@@ -95,7 +95,9 @@ function accessLink(url_string) {
 // Show confirmation modal for opening all URLs in UTub
 function accessAllWarningShowModal() {
   let modalTitle =
-    "Are you sure you want to open all " + getNumOfURLs() + " URLs in this UTub?";
+    "Are you sure you want to open all " +
+    getNumOfURLs() +
+    " URLs in this UTub?";
   let modalDismiss = "Cancel";
 
   $("#confirmModalTitle").text(modalTitle);
@@ -171,7 +173,6 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
 
       parent.append(URLcol);
     }
-
   }
 
   // New URL create block
@@ -212,15 +213,13 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       toggleSelectedURL(URLID);
     });
 
-  $(card)
-    .addClass("card url")
-    .attr({
-      urlid: URLID,
-      // draggable: "true",
-      ondrop: "dropIt(event)",
-      ondragover: "allowDrop(event)",
-      ondragstart: "dragStart(event)",
-    });
+  $(card).addClass("card url").attr({
+    urlid: URLID,
+    // draggable: "true",
+    ondrop: "dropIt(event)",
+    ondragover: "allowDrop(event)",
+    ondragstart: "dragStart(event)",
+  });
 
   // $(cardImg).attr({
   //     'src': '...',
@@ -550,10 +549,7 @@ function createTagBadgeInURL(tagID, string) {
   let tagSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
-  $(tagSpan)
-    .addClass("tagBadge")
-    .attr({ tagid: tagID })
-    .text(string);
+  $(tagSpan).addClass("tagBadge").attr({ tagid: tagID }).text(string);
 
   $(removeButton)
     .addClass("btn btn-sm btn-outline-link border-0 tag-remove")
@@ -759,9 +755,9 @@ function filterURL(tagID) {
     let cardCol = $(URLCards[i]).closest(".cardCol");
     let showURLBool; // Default showing URL
     let tagsRemaining = cardCol.find("span.tagBadge").length;
-    console.log(tagsRemaining)
+    console.log(tagsRemaining);
 
-    tagsRemaining > 0 ? showURLBool = 1 : showURLBool = 0;
+    tagsRemaining > 0 ? (showURLBool = 1) : (showURLBool = 0);
 
     showURLBool ? cardCol.show() : cardCol.hide();
   }
@@ -790,9 +786,8 @@ function displayState1URLDeck() {
   let URLDeckSubheader = $("#URLDeckSubheader");
   showIfHidden(URLDeckSubheader.closest(".row"));
   if (numOfURLs) {
-    let stringURLPlurality = numOfURLs === 1 ? " URL" : " URLs"
-    let string =
-      numOfURLs + stringURLPlurality + " stored";
+    let stringURLPlurality = numOfURLs === 1 ? " URL" : " URLs";
+    let string = numOfURLs + stringURLPlurality + " stored";
     URLDeckSubheader.text(string);
     // URLDeckSubheader.text(numOfURLs + numOfURLs === 1 ? " URL" : " URLs" + " stored");
     showIfHidden($("#accessAllURLsBtn"));
