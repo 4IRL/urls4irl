@@ -98,7 +98,7 @@ function buildTagDeck(dictTags) {
     }
 
     displayState2TagDeck();
-  } else displayState1TagDeck();
+  } else displayState0TagDeck();
 }
 
 // Creates Select All tag filter for addition to Tag deck

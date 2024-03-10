@@ -34,9 +34,15 @@ function getCurrentUserID() {
   return $("li.nav-item.user").attr("id");
 }
 
+// Simple function to streamline the jQuery selector extraction of selected UTub creator user ID. And makes it easier in case the ID is encoded in a new location in the future
+function getCurrentUTubCreatorID() {
+  return $("#UTubOwner").find("span").attr("userid");
+}
+
 // Clear user selection
 function resetNewUserForm() {
   $("#UTubUsernameInput").val("");
+  hideIfShown($("#UTubUsernameInput").closest(".createDiv"));
 }
 
 // Clear the User Deck
@@ -52,18 +58,24 @@ function buildUserDeck(dictUsers, UTubOwnerID) {
   resetUserDeck();
   const parent = $("#listUsers");
   let numOfUsers = dictUsers.length ? dictUsers.length : 0;
-  let ownerBool = getCurrentUserID() == UTubOwnerID;
+  let ownerBool;
+  let UTubUser;
+  let UTubUserID;
 
   // Instantiate deck with list of users with access to current UTub
   for (let i = 0; i < numOfUsers; i++) {
-    let UTubUser = dictUsers[i];
+    UTubUser = dictUsers[i];
+    UTubUserID = UTubUser.id;
+    ownerBool = UTubUserID == UTubOwnerID;
 
-    if (UTubUser.id !== UTubOwnerID) {
-      parent.append(createUserSelector(UTubUser));
+    if (ownerBool) {
+      $("#UTubOwner").append(createOwnerBadge(UTubOwnerID, UTubUser.username));
     } else {
-      $("#UTubOwner").append(createOwnerBadge(UTubUser));
+      parent.append(createUserSelector(UTubUserID, UTubUser.username));
     }
   }
+
+  ownerBool = getCurrentUTubCreatorID() == UTubOwnerID;
 
   // Subheader prompt
   let UserDeckSubheader = $("#UserDeckSubheader");
@@ -79,36 +91,34 @@ function buildUserDeck(dictUsers, UTubOwnerID) {
 }
 
 // Creates user list item
-function createOwnerBadge(UTubUser) {
+function createOwnerBadge(UTubOwnerID, UTubUsername) {
   let userSpan = document.createElement("span");
 
   $(userSpan)
-    .attr({ userid: UTubUser.id })
+    .attr({ userid: UTubOwnerID })
     .addClass("user")
-    .html("<b>" + UTubUser.username + "</b>");
+    .html("<b>" + UTubUsername + "</b>");
 
   return userSpan;
 }
 
 // Creates user list item
-function createUserSelector(UTubUser) {
+function createUserSelector(UTubUserID, UTubUsername) {
   let userListItem = document.createElement("li");
   let userSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
-  let userID = UTubUser.id;
-
   $(userSpan)
-    .attr({ userid: userID })
+    .attr({ userid: UTubUserID })
     .addClass("user")
-    .html("<b>" + UTubUser.username + "</b>");
+    .html("<b>" + UTubUsername + "</b>");
 
   $(removeButton)
     .attr({ class: "btn btn-sm btn-outline-link border-0 user-remove" })
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      removeUserShowModal(userID);
+      removeUserShowModal(UTubUserID);
     });
   removeButton.innerHTML = "&times;";
 
@@ -202,6 +212,28 @@ function createNewUserInputField() {
   return wrapper;
 }
 
+/** User Display State Functions **/
+
+// Display state 0: Clean slate, no UTub selected
+function displayState0UserDeck() {
+  // Subheader prompt hidden
+  hideIfShown($("#UserDeckSubheader").closest(".row"));
+}
+
+// Display state 1: Selected UTub has no Users
+function displayState1UserDeck() {
+  // Subheader prompt shown
+  showIfHidden($("#UserDeckSubheader").closest(".row"));
+}
+
+// Display state 2: Selected UTub has Users
+function displayState2UserDeck() {
+  let numOfTags = getNumOfTags();
+  let UserDeckSubheader = $("#UserDeckSubheader");
+  showIfHidden(UserDeckSubheader.closest(".row"));
+  UserDeckSubheader.text(numOfTags - getActiveTagIDs().length + " of " + numOfTags + " filters applied");
+}
+
 /** Post data handling **/
 
 /* Add User */
@@ -257,10 +289,12 @@ function addUserSetup() {
 
 // Perhaps update a scrollable/searchable list of users?
 function addUserSuccess(response) {
-  console.log(response)
+  resetNewUserForm();
+
   let UTubUsers = response.UTub_users;
-  console.log(UTubUsers[UTubUsers.length-1])
-  $("#listUsers").append(createUserSelector(UTubUsers[UTubUsers.length-1]));
+  let newUser = UTubUsers[UTubUsers.length - 1];
+
+  $("#listUsers").append(createUserSelector(response.User_ID_added, newUser));
 }
 
 function addUserFail(response) {
