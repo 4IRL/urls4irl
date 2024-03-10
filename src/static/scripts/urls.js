@@ -768,7 +768,7 @@ function filterURL(tagID) {
 // Display state 0: Clean slate, no UTub selected
 function displayState0URLDeck() {
   $("#URLDeckHeader").text("URLs");
-  hideIfShown($(".URLDeckSubheader").closest(".row"));
+  hideIfShown($("#URLDeckSubheader").closest(".row"));
   hideIfShown($(".editUTubBtn"));
   hideIfShown($("#addURLBtn"));
 }
