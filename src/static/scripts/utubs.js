@@ -110,6 +110,11 @@ function getUTubIDFromName(name) {
   return UTubIDs;
 }
 
+// Streamline the jQuery selector extraction of UTub name.
+function getCurrentUTubName() {
+  return $("div.UTub.active").find(".UTubName").text();
+}
+
 // Streamline the AJAX call to db for updated info
 function getUTubInfo(selectedUTubID) {
   return $.getJSON("/home?UTubID=" + selectedUTubID);
@@ -160,7 +165,7 @@ function selectUTub(selectedUTubID) {
 
     // LH panels
     // UTub deck
-    displayState2UTubDeck(selectedUTubID);
+    displayState2UTubDeck(selectedUTubID, UTubOwnerID);
 
     // Tag deck
     buildTagDeck(dictTags);
@@ -182,22 +187,26 @@ function selectUTub(selectedUTubID) {
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
 function createUTubSelector(UTubName, UTubID, index) {
   let container = document.createElement("div");
+  let name = document.createElement("b");
   let label = document.createElement("label");
   let radio = document.createElement("input");
 
-  // Bind display state change function on click
   $(container)
     .addClass("UTub draw")
     .attr({
       utubid: UTubID,
       position: index,
     })
+    // Bind display state change function on click
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
       selectUTub(UTubID);
     });
-  container.innerHTML = "<b>" + UTubName + "</b>";
+
+  $(name)
+    .addClass("UTubName")
+    .text(UTubName);
 
   $(label).attr({ for: "UTub-" + UTubID });
 
@@ -207,6 +216,7 @@ function createUTubSelector(UTubName, UTubID, index) {
     value: UTubName,
   });
 
+  $(container).append(name);
   $(container).append(label);
   $(container).append(radio);
 
@@ -339,7 +349,7 @@ function displayState1UTubDeck() {
 }
 
 // Display state 2: UTubs list, 1x selected
-function displayState2UTubDeck(selectedUTubID) {
+function displayState2UTubDeck(selectedUTubID, UTubOwnerID) {
   hideInputs();
 
   // Subheader prompt hidden
@@ -347,11 +357,14 @@ function displayState2UTubDeck(selectedUTubID) {
   showIfHidden(UTubDeckSubheader.closest(".row"));
   UTubDeckSubheader.text($("#listUTubs > .UTub").length + " Accessible UTubs");
 
+  // Bind selection behavior to depature UTub, unbind from selected UTub
   bindUTubSelectionBehavior();
   unbindUTubSelectionBehavior(selectedUTubID);
 
-  // Show delete UTub button
-  showIfHidden($("#deleteUTubBtn"));
+
+  if (getCurrentUserID() == UTubOwnerID) {
+    showIfHidden($("#deleteUTubBtn"));
+  } else hideIfShown($("#deleteUTubBtn"));
 }
 
 /** UTub Description Display State Functions **/
@@ -490,7 +503,7 @@ function sameNameWarningShowModal(mode, UTubID) {
       e.preventDefault();
       $("#confirmModal").modal("hide");
       mode ? addUTubHideInput() : editUTubHideInput();
-      displayState2UTubDeck(UTubID);
+      displayState2UTubDeck(UTubID, getCurrentUTubCreatorID());
     });
 
   $("#modalSubmit")
@@ -559,10 +572,9 @@ function addUTubSetup() {
 // Handle creation of new UTub
 function addUTubSuccess(response) {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
+  resetNewUTubForm();
 
   let UTubID = response.UTub_ID;
-
-  resetNewUTubForm();
 
   if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
 
@@ -719,7 +731,7 @@ function editUTubNameSuccess(response) {
   editedUTubLabel.find("b").text(UTubName);
 
   // Display updates
-  displayState2UTubDeck(getActiveUTubID())
+  displayState2UTubDeck(getActiveUTubID(), getCurrentUTubCreatorID());
   displayState1URLDeck(UTubName)
 }
 
@@ -857,10 +869,11 @@ function deleteUTubSuccess() {
 
   UTubs.splice($.inArray(getUTubObjFromID(currentUTubID), UTubs), 1);
 
+  displayState0();
   buildUTubDeck(UTubs);
 }
 
-function deleteUTubFailure(xhr, textStatus, error) {
+function deleteUTubFailure(response, textStatus, xhr) {
   console.log("Error: Could not delete UTub");
 
   if (xhr.status == 409) {
