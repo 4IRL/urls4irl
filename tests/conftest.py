@@ -271,11 +271,11 @@ def user_attempts_reset_password(app, register_first_user, load_login_page):
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for("users.forgot_password"))
+    forgot_password_response = client.get(url_for("splash.forgot_password"))
     csrf_token = get_csrf_token(forgot_password_response.data)
 
     client.post(
-        url_for("users.forgot_password"),
+        url_for("splash.forgot_password"),
         data={
             USER_STRS.EMAIL: new_user[USER_STRS.EMAIL],
             USER_STRS.CSRF_TOKEN: csrf_token,
@@ -323,11 +323,11 @@ def user_attempts_reset_password_one_hour_old(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for("users.forgot_password"))
+    forgot_password_response = client.get(url_for("splash.forgot_password"))
     csrf_token = get_csrf_token(forgot_password_response.data)
 
     client.post(
-        url_for("users.forgot_password"),
+        url_for("splash.forgot_password"),
         data={
             USER_STRS.EMAIL: new_user[USER_STRS.EMAIL],
             USER_STRS.CSRF_TOKEN: csrf_token,

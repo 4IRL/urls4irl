@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request, render_template, abort
 from flask_login import current_user
 
 from src import db
@@ -13,6 +13,50 @@ utubs = Blueprint("utubs", __name__)
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
 UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
+
+@utubs.route("/home", methods=["GET"])
+@email_validation_required
+def home():
+    """
+    Home page for logged in user. Loads and displays all UTubs, and contained URLs.
+
+    Args:
+        /home : With no args, this returns all UTubIDs for the given user
+        /home?UTubID=[int] = Where the integer value is the associated UTubID
+                                that the user clicked on
+
+    Returns:
+        - All UTubIDs if no args
+        - Requested UTubID if a valid arg
+
+    """
+    if not request.args:
+        # User got here without any arguments in the URL
+        # Therefore, only provide UTub name and UTub ID
+        utub_details = jsonify(current_user.serialized_on_initial_load)
+        return render_template("home.html", utubs_for_this_user=utub_details.json)
+
+    elif "UTubID" in request.args and len(request.args) == 1:
+        return get_single_utub(request.args.get("UTubID"))
+
+    abort(404)
+
+
+def get_single_utub(utub_id: str):
+    """
+    Retrieves data for a single UTub, and returns it in a serialized format
+    """
+    utub = Utub.query.get_or_404(utub_id)
+
+    if int(current_user.get_id()) not in [
+        int(member.user_id) for member in utub.members
+    ]:
+        # User is not member of the UTub they are requesting
+        abort(404)
+
+    utub_data_serialized = utub.serialized
+
+    return jsonify(utub_data_serialized)
 
 
 @utubs.route("/utub/new", methods=["POST"])

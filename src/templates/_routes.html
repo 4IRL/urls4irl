@@ -45,9 +45,9 @@
 
                 // User routes
                 this.addUser = (utub_id) => 
-                    "{{url_for('users.add_user', utub_id=-1)}}".replace("-1", utub_id);
+                    "{{url_for('members.add_member', utub_id=-1)}}".replace("-1", utub_id);
                 this.deleteUser = (utub_id, user_id) => 
-                    "{{url_for('users.delete_user', utub_id=-1, user_id=-4)}}"
+                    "{{url_for('members.delete_member', utub_id=-1, user_id=-4)}}"
                         .replace("-1", utub_id)
                         .replace("-4", user_id);
 

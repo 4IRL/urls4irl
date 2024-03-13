@@ -16,7 +16,7 @@ def test_register_user_form_only_username_csrf(load_register_page):
 
     client, csrf_token_string = load_register_page
     response = client.post(
-        url_for("users.register_user"),
+        url_for("splash.register_user"),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "FakeUserName123",
@@ -28,7 +28,7 @@ def test_register_user_form_only_username_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for("splash.register_user")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -66,7 +66,7 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for("splash.register_user")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -107,7 +107,7 @@ def test_register_user_form_only_valid_email_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for("splash.register_user")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -145,7 +145,7 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for("splash.register_user")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -187,7 +187,7 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for("splash.register_user")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -229,7 +229,7 @@ def test_register_user_form_only_valid_password_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for("splash.register_user")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -267,7 +267,7 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for("splash.register_user")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -309,5 +309,5 @@ def test_register_user_form_no_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for("splash.register_user")
     assert b"<p>The CSRF token is missing.</p>" in response.data

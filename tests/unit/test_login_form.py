@@ -26,7 +26,7 @@ def test_login_no_password(load_login_page):
     )
 
     assert response.status_code == 401
-    assert request.path == url_for("users.login")
+    assert request.path == url_for("splash.login")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -61,7 +61,7 @@ def test_login_no_username(load_login_page):
     )
 
     assert response.status_code == 401
-    assert request.path == url_for("users.login")
+    assert request.path == url_for("splash.login")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -93,7 +93,7 @@ def test_login_no_username_or_password(load_login_page):
     )
 
     assert response.status_code == 401
-    assert request.path == url_for("users.login")
+    assert request.path == url_for("splash.login")
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -120,5 +120,5 @@ def test_login_no_csrf(load_login_page):
     response = client.post("/login", data={})
 
     assert response.status_code == 400
-    assert request.path == url_for("users.login")
+    assert request.path == url_for("splash.login")
     assert b"<p>The CSRF token is missing.</p>" in response.data

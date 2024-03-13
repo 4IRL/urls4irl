@@ -8,7 +8,7 @@ from src.utils import strings as U4I_STRINGS
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD
 IDENTIFIERS = U4I_STRINGS.IDENTIFIERS
-RESET_PASSWORD_URL = "users.reset_password"
+RESET_PASSWORD_URL = "splash.reset_password"
 NEW_PASSWORD = "NEW_PASSWORD!"
 
 
@@ -79,7 +79,7 @@ def test_expired_token_deletes_object_and_redirects(
     assert len(reset_response.history) == 1
     redirected_response = reset_response.history[-1]
     assert redirected_response.status_code == 302
-    assert redirected_response.location == url_for("main.splash")
+    assert redirected_response.location == url_for("splash.splash_page")
     assert reset_response.status_code == 200
     assert IDENTIFIERS.SPLASH_PAGE.encode() in reset_response.data
 

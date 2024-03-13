@@ -62,15 +62,17 @@ def create_app(
     if production:
         email_sender.in_production()
 
-    from src.main.routes import main
+    from src.splash.routes import splash 
     from src.utubs.routes import utubs
     from src.users.routes import users
+    from src.members.routes import members
     from src.urls.routes import urls
     from src.tags.routes import tags
 
-    app.register_blueprint(main)
+    app.register_blueprint(splash)
     app.register_blueprint(utubs)
     app.register_blueprint(users)
+    app.register_blueprint(members)
     app.register_blueprint(urls)
     app.register_blueprint(tags)
 

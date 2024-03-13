@@ -1,5 +1,4 @@
 from datetime import datetime
-
 from flask import (
     Blueprint,
     jsonify,
@@ -11,24 +10,20 @@ from flask import (
     session,
     Response,
 )
-from flask_login import current_user, login_user, logout_user
-from requests import Response
+from flask_login import current_user, login_user
 
-from src import db, login_manager, email_sender
-from src.models import Utub, Utub_Users, User, EmailValidation, ForgotPassword
+from requests import Response
+from src import db, email_sender
+from src.models import User, EmailValidation, ForgotPassword
 from src.users.forms import (
     LoginForm,
     UserRegistrationForm,
-    UTubNewUserForm,
     ValidateEmailForm,
     ForgotPasswordForm,
     ResetPasswordForm,
 )
 from src.utils import strings as U4I_STRINGS
 from src.utils.constants import EMAIL_CONSTANTS
-from src.utils.email_validation import email_validation_required
-
-users = Blueprint("users", __name__)
 
 # Standard response for JSON messages
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
@@ -39,89 +34,25 @@ EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
 RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD
 FORGOT_PASSWORD = U4I_STRINGS.FORGOT_PASSWORD
 
-
-@login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+splash = Blueprint("splash", __name__)
 
 
-@login_manager.unauthorized_handler
-def unauthorized():
-    if not current_user.is_authenticated:
-        return redirect(url_for("main.splash"))
-    if current_user.is_authenticated and not current_user.email_confirm.is_validated:
-        return redirect(url_for("users.confirm_email_after_register"))
-
-
-'''
-@users.route("/login", methods=["GET", "POST"])
-def login():
-    """Login page. Allows user to register or login."""
+@splash.route("/", methods=["GET"])
+def splash_page():
+    """Splash page for an unlogged in user."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return redirect(url_for("users.confirm_email_after_register"))
-        return redirect(url_for("main.home"))
+            return render_template("splash.html", email_validation_modal=True)
+        return redirect(url_for("utubs.home"))
+    return render_template("splash.html")
 
-    login_form = LoginForm()
-
-    if request.method == "GET":
-        return render_template("login.html", login_form=login_form)
-
-    if login_form.validate_on_submit():
-        username = login_form.username.data
-        user: User = User.query.filter_by(username=username).first()
-        login_user(user)  # Can add Remember Me functionality here
-        if not user.email_confirm.is_validated:
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
-                        STD_JSON.ERROR_CODE: 1,
-                    }
-                ),
-                401,
-            )
-
-        next_page = request.args.get(
-            "next"
-        )  # Takes user to the page they wanted to originally before being logged in
-
-        return redirect(next_page) if next_page else url_for("main.home")
-
-    # Input form errors
-    if login_form.errors is not None:
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
-                    STD_JSON.ERROR_CODE: 2,
-                    STD_JSON.ERRORS: login_form.errors,
-                }
-            ),
-            401,
-        )
-
-    return render_template("login.html", login_form=login_form)
-'''
-
-@users.route("/logout")
-def logout():
-    """Logs user out by clearing session details. Returns to login page."""
-    logout_user()
-    if EMAILS.EMAIL_VALIDATED_SESS_KEY in session.keys():
-        session.pop(EMAILS.EMAIL_VALIDATED_SESS_KEY)
-    return redirect(url_for("main.splash"))
-
-'''
-@users.route("/register", methods=["GET", "POST"])
+@splash.route("/register", methods=["GET", "POST"])
 def register_user():
     """Allows a user to register an account."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
             return redirect(url_for("users.confirm_email_after_register"))
-        return redirect(url_for("main.home"))
+        return redirect(url_for("utubs.home"))
 
     register_form: UserRegistrationForm = UserRegistrationForm()
 
@@ -208,215 +139,78 @@ def register_user():
         )
 
     return render_template("register_user.html", register_form=register_form)
-'''
 
-'''
-@users.route("/user/remove/<int:utub_id>/<int:user_id>", methods=["POST"])
-@email_validation_required
-def delete_user(utub_id: int, user_id: int):
-    """
-    Delete a user from a Utub. The creator of the Utub can delete anyone but themselves.
-    Any user can remove themselves from a UTub they did not create.
+@splash.route("/login", methods=["GET", "POST"])
+def login():
+    """Login page. Allows user to register or login."""
+    if current_user.is_authenticated:
+        if not current_user.email_confirm.is_validated:
+            return redirect(url_for("users.confirm_email_after_register"))
+        return redirect(url_for("utubs.home"))
 
-    Args:
-        utub_id (int): ID of the UTub to remove the user from
-        user_id (int): ID of the User to remove from the UTub
-    """
-    current_utub = Utub.query.get_or_404(utub_id)
+    login_form = LoginForm()
 
-    if user_id == current_utub.created_by.id:
-        # Creator tried to delete themselves, not allowed
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
-                    STD_JSON.ERROR_CODE: 1,
-                }
-            ),
-            400,
-        )
+    if request.method == "GET":
+        return render_template("login.html", login_form=login_form)
 
-    current_user_ids_in_utub = [member.user_id for member in current_utub.members]
-    current_user_id = current_user.id
-
-    # User can't remove if current user is not in this current UTub's members
-    # User can't remove if current user is not creator of UTub and requested user is not same as current user
-    current_user_not_in_utub = current_user_id not in current_user_ids_in_utub
-    member_trying_to_remove_another_member = (
-        current_user_id != current_utub.created_by.id and user_id != current_user_id
-    )
-
-    if current_user_not_in_utub or member_trying_to_remove_another_member:
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
-                    STD_JSON.ERROR_CODE: 2,
-                }
-            ),
-            403,
-        )
-
-    if user_id not in current_user_ids_in_utub:
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.USER_NOT_IN_UTUB,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
-                    STD_JSON.ERROR_CODE: 3,
-                }
-            ),
-            404,
-        )
-
-    user_to_delete_in_utub = Utub_Users.query.filter(
-        Utub_Users.utub_id == utub_id, Utub_Users.user_id == user_id
-    ).first_or_404()
-
-    deleted_user = User.query.get(user_id)
-    deleted_user_username = deleted_user.username
-
-    db.session.delete(user_to_delete_in_utub)
-    db.session.commit()
-
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: USER_SUCCESS.USER_REMOVED,
-                USER_SUCCESS.USER_ID_REMOVED: f"{user_id}",
-                USER_SUCCESS.USERNAME_REMOVED: f"{deleted_user_username}",
-                USER_SUCCESS.UTUB_ID: f"{utub_id}",
-                USER_SUCCESS.UTUB_NAME: f"{current_utub.name}",
-                USER_SUCCESS.UTUB_USERS: [
-                    user.to_user.username for user in current_utub.members
-                ],
-            }
-        ),
-        200,
-    )
-
-
-@users.route("/user/add/<int:utub_id>", methods=["POST"])
-@email_validation_required
-def add_user(utub_id: int):
-    """
-    Creator of utub wants to add a user to the utub.
-
-    Args:
-        utub_id (int): The utub to which this user is being added
-    """
-    utub = Utub.query.get_or_404(utub_id)
-
-    if int(utub.created_by.id) != int(current_user.get_id()):
-        # User not authorized to add a user to this UTub
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.NOT_AUTHORIZED,
-                    STD_JSON.ERROR_CODE: 1,
-                }
-            ),
-            403,
-        )
-
-    utub_new_user_form = UTubNewUserForm()
-
-    if utub_new_user_form.validate_on_submit():
-        username = utub_new_user_form.username.data
-
-        new_user = User.query.filter_by(username=username).first_or_404()
-        already_in_utub = [
-            member for member in utub.members if int(member.user_id) == int(new_user.id)
-        ]
-
-        if already_in_utub:
-            # User already exists in UTub
+    if login_form.validate_on_submit():
+        username = login_form.username.data
+        user: User = User.query.filter_by(username=username).first()
+        login_user(user)  # Can add Remember Me functionality here
+        if not user.email_confirm.is_validated:
             return (
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: USER_FAILURE.USER_ALREADY_IN_UTUB,
-                        STD_JSON.ERROR_CODE: 2,
+                        STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
+                        STD_JSON.ERROR_CODE: 1,
                     }
                 ),
-                400,
+                401,
             )
 
-        else:
-            new_user_to_utub = Utub_Users()
-            new_user_to_utub.to_user = new_user
-            utub.members.append(new_user_to_utub)
-            db.session.commit()
+        next_page = request.args.get(
+            "next"
+        )  # Takes user to the page they wanted to originally before being logged in
 
-            # Successfully added user to UTub
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.SUCCESS,
-                        STD_JSON.MESSAGE: USER_SUCCESS.USER_ADDED,
-                        USER_SUCCESS.USER_ID_ADDED: int(new_user.id),
-                        USER_SUCCESS.UTUB_ID: int(utub_id),
-                        USER_SUCCESS.UTUB_NAME: f"{utub.name}",
-                        USER_SUCCESS.UTUB_USERS: [
-                            user.to_user.username for user in utub.members
-                        ],
-                    }
-                ),
-                200,
-            )
+        return redirect(next_page) if next_page else url_for("utubs.home")
 
-    if utub_new_user_form.errors is not None:
+    # Input form errors
+    if login_form.errors is not None:
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
-                    STD_JSON.ERROR_CODE: 3,
-                    STD_JSON.ERRORS: utub_new_user_form.errors,
+                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
+                    STD_JSON.ERROR_CODE: 2,
+                    STD_JSON.ERRORS: login_form.errors,
                 }
             ),
-            400,
+            401,
         )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
-                STD_JSON.ERROR_CODE: 4,
-            }
-        ),
-        404,
-    )
-'''
-'''
-@users.route("/confirm_email", methods=["GET"])
+    return render_template("login.html", login_form=login_form)
+
+@splash.route("/confirm_email", methods=["GET"])
 def confirm_email_after_register():
     if current_user.is_anonymous:
-        return redirect(url_for("main.splash"))
+        return redirect(url_for("splash.splash_page"))
     if current_user.email_confirm.is_validated:
-        return redirect(url_for("main.home"))
+        return redirect(url_for("utubs.home"))
     return render_template(
         "email_validation/email_needs_validation_modal.html",
         validate_email_form=ValidateEmailForm(),
     )
 
 
-@users.route("/send_validation_email", methods=["POST"])
+@splash.route("/send_validation_email", methods=["POST"])
 def send_validation_email():
     current_email_validation: EmailValidation = EmailValidation.query.filter(
         EmailValidation.user_id == current_user.id
     ).first_or_404()
 
     if current_email_validation.is_validated:
-        return redirect(url_for("main.home"))
+        return redirect(url_for("utubs.home"))
 
     if current_email_validation.check_if_too_many_attempts():
         db.session.commit()
@@ -520,7 +314,7 @@ def _handle_mailjet_failure(email_result: Response, error_code: int = 1):
     )
 
 
-@users.route("/validate/<string:token>", methods=["GET"])
+@splash.route("/validate/<string:token>", methods=["GET"])
 def validate_email(token: str):
     user_to_validate, expired = User.verify_token(token, EMAILS.VALIDATE_EMAIL)
 
@@ -561,15 +355,15 @@ def validate_email(token: str):
     db.session.commit()
     login_user(user_to_validate)
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
-    return redirect(url_for("main.home"))
+    return redirect(url_for("utubs.home"))
 
 
-@users.route("/forgot_password", methods=["GET", "POST"])
+@splash.route("/forgot_password", methods=["GET", "POST"])
 def forgot_password():
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
             return redirect(url_for("users.confirm_email_after_register"))
-        return redirect(url_for("main.home"))
+        return redirect(url_for("utubs.home"))
 
     forgot_password_form = ForgotPasswordForm()
     if request.method == "GET":
@@ -637,10 +431,10 @@ def _handle_after_forgot_password_form_validated(
 
             if not email_sender.is_production() and not email_sender.is_testing():
                 print(
-                    f"Sending this to the user's email:\n{url_for('users.reset_password', token=forgot_password_obj.reset_token, _external=True)}"
+                    f"Sending this to the user's email:\n{url_for('splash.reset_password', token=forgot_password_obj.reset_token, _external=True)}"
                 )
             url_for_reset = url_for(
-                "users.reset_password",
+                "splash.reset_password",
                 token=forgot_password_obj.reset_token,
                 _external=True,
             )
@@ -684,14 +478,14 @@ def _create_or_reset_forgot_password_object_for_user(
     return forgot_password
 
 
-@users.route("/confirm_password_reset", methods=["GET"])
+@splash.route("/confirm_password_reset", methods=["GET"])
 def confirm_password_reset():
     return render_template(
         "password_reset/reset_password.html", reset_password_form=ResetPasswordForm()
     )
 
 
-@users.route("/reset_password/<string:token>", methods=["GET", "POST"])
+@splash.route("/reset_password/<string:token>", methods=["GET", "POST"])
 def reset_password(token: str):
     reset_password_user, expired = User.verify_token(
         token, RESET_PASSWORD.RESET_PASSWORD_KEY
@@ -703,7 +497,7 @@ def reset_password(token: str):
         ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()
-        return redirect(url_for("main.splash"))
+        return redirect(url_for("splash.splash_page"))
 
     if not reset_password_user:
         # Invalid token
@@ -779,4 +573,50 @@ def _validate_resetting_password(
         ),
         200,
     )
+'''
+@splash.route("/home", methods=["GET"])
+@email_validation_required
+def home():
+    """
+    Splash page for logged in user. Loads and displays all UTubs, and contained URLs.
+
+    Args:
+        /home : With no args, this returns all UTubIDs for the given user
+        /home?UTubID=[int] = Where the integer value is the associated UTubID
+                                that the user clicked on
+
+    Returns:
+        - All UTubIDs if no args
+        - Requested UTubID if a valid arg
+
+    """
+    if not request.args:
+        # User got here without any arguments in the URL
+        # Therefore, only provide UTub name and UTub ID
+        utub_details = jsonify(current_user.serialized_on_initial_load)
+        return render_template("home.html", utubs_for_this_user=utub_details.json)
+
+    elif len(request.args) > 1:
+        # Too many args in URL
+        print("Too many arguments?")
+        abort(404)
+
+    else:
+        if "UTubID" not in request.args:
+            # Wrong argument
+            abort(404)
+
+        requested_id = request.args.get("UTubID")
+
+        utub = Utub.query.get_or_404(requested_id)
+
+        if int(current_user.get_id()) not in [
+            int(member.user_id) for member in utub.members
+        ]:
+            # User is not member of the UTub they are requesting
+            abort(404)
+
+        utub_data_serialized = utub.serialized
+
+        return jsonify(utub_data_serialized)
 '''
