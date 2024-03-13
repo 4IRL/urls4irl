@@ -51,7 +51,7 @@ def register_user():
     """Allows a user to register an account."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return redirect(url_for("users.confirm_email_after_register"))
+            return redirect(url_for("splash.confirm_email_after_register"))
         return redirect(url_for("utubs.home"))
 
     register_form: UserRegistrationForm = UserRegistrationForm()
@@ -145,7 +145,7 @@ def login():
     """Login page. Allows user to register or login."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return redirect(url_for("users.confirm_email_after_register"))
+            return redirect(url_for("splash.confirm_email_after_register"))
         return redirect(url_for("utubs.home"))
 
     login_form = LoginForm()
@@ -246,10 +246,10 @@ def send_validation_email():
 
     if not email_sender.is_production() and not email_sender.is_testing():
         print(
-            f"Sending this to the user's email:\n{url_for('users.validate_email', token=current_email_validation.confirm_url, _external=True)}"
+            f"Sending this to the user's email:\n{url_for('splash.validate_email', token=current_email_validation.confirm_url, _external=True)}"
         )
     url_for_confirmation = url_for(
-        "users.validate_email",
+        "splash.validate_email",
         token=current_email_validation.confirm_url,
         _external=True,
     )
@@ -362,7 +362,7 @@ def validate_email(token: str):
 def forgot_password():
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return redirect(url_for("users.confirm_email_after_register"))
+            return redirect(url_for("splash.confirm_email_after_register"))
         return redirect(url_for("utubs.home"))
 
     forgot_password_form = ForgotPasswordForm()
@@ -573,50 +573,3 @@ def _validate_resetting_password(
         ),
         200,
     )
-'''
-@splash.route("/home", methods=["GET"])
-@email_validation_required
-def home():
-    """
-    Splash page for logged in user. Loads and displays all UTubs, and contained URLs.
-
-    Args:
-        /home : With no args, this returns all UTubIDs for the given user
-        /home?UTubID=[int] = Where the integer value is the associated UTubID
-                                that the user clicked on
-
-    Returns:
-        - All UTubIDs if no args
-        - Requested UTubID if a valid arg
-
-    """
-    if not request.args:
-        # User got here without any arguments in the URL
-        # Therefore, only provide UTub name and UTub ID
-        utub_details = jsonify(current_user.serialized_on_initial_load)
-        return render_template("home.html", utubs_for_this_user=utub_details.json)
-
-    elif len(request.args) > 1:
-        # Too many args in URL
-        print("Too many arguments?")
-        abort(404)
-
-    else:
-        if "UTubID" not in request.args:
-            # Wrong argument
-            abort(404)
-
-        requested_id = request.args.get("UTubID")
-
-        utub = Utub.query.get_or_404(requested_id)
-
-        if int(current_user.get_id()) not in [
-            int(member.user_id) for member in utub.members
-        ]:
-            # User is not member of the UTub they are requesting
-            abort(404)
-
-        utub_data_serialized = utub.serialized
-
-        return jsonify(utub_data_serialized)
-'''

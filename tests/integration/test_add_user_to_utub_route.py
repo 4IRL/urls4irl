@@ -198,7 +198,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     # Remove this user first
     remove_user_response = client.post(
         url_for(
-            "users.delete_user",
+            "members.delete_member",
             utub_id=utub_user_created.id,
             user_id=other_user_id_in_utub_with_urls,
         ),

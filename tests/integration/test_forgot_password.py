@@ -13,6 +13,9 @@ RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD
 FORGOT_PASSWORD = U4I_STRINGS.FORGOT_PASSWORD
 USER_CONSTANTS = U4I_CONSTANTS.USER_CONSTANTS
 FORGOT_PASSWORD_MODAL_TITLE = '<h4 class="modal-title">Forgot your password?</h4>'
+FORGOT_PASSWORD_URL = "splash.forgot_password"
+HOME_URL = "utubs.home"
+CONFIRM_EMAIL_URL = "splash.confirm_email_after_register"
 
 
 def test_user_logged_in_email_validated_cannot_access_forgot_password(
@@ -27,14 +30,14 @@ def test_user_logged_in_email_validated_cannot_access_forgot_password(
     client, _, _, _ = login_first_user_without_register
 
     forgot_password_response = client.get(
-        url_for("users.forgot_password"), follow_redirects=True
+        url_for(FORGOT_PASSWORD_URL), follow_redirects=True
     )
 
     # Only one redirect to user home page
     assert len(forgot_password_response.history) == 1
     redirect_response = forgot_password_response.history[0]
 
-    assert redirect_response.location == url_for("main.home")
+    assert redirect_response.location == url_for(HOME_URL)
     assert redirect_response.status_code == 302
 
 
@@ -64,14 +67,14 @@ def test_user_registered_not_email_validated_cannot_access_forgot_password(
     assert register_response.status_code == 201
 
     forgot_password_response = client.get(
-        url_for("users.forgot_password"), follow_redirects=True
+        url_for(FORGOT_PASSWORD_URL), follow_redirects=True
     )
 
     # Only one redirect to user home page
     assert len(forgot_password_response.history) == 1
     redirect_response = forgot_password_response.history[0]
 
-    assert redirect_response.location == url_for("users.confirm_email_after_register")
+    assert redirect_response.location == url_for(CONFIRM_EMAIL_URL)
     assert redirect_response.status_code == 302
 
 
@@ -84,7 +87,7 @@ def test_valid_user_requests_forgot_password_form(register_first_user, load_logi
     """
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for("users.forgot_password"))
+    forgot_password_response = client.get(url_for(FORGOT_PASSWORD_URL))
 
     assert forgot_password_response.status_code == 200
     assert FORGOT_PASSWORD_MODAL_TITLE.encode() in forgot_password_response.data
@@ -101,10 +104,10 @@ def test_valid_user_posts_forgot_password_form_without_csrf(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    client.get(url_for("users.forgot_password"))
+    client.get(url_for(FORGOT_PASSWORD_URL))
 
     forgot_password_post_response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
     )
 
@@ -134,7 +137,7 @@ def test_forgot_password_with_invalid_email_fails(load_login_page):
     improper_email = "Cat"
 
     response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: improper_email,
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
@@ -177,7 +180,7 @@ def test_forgot_password_with_email_not_in_database(app, load_login_page):
         num_of_forgot_password_objs = len(ForgotPassword.query.all())
 
     response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: nonregistered_user[FORGOT_PASSWORD.EMAIL],
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
@@ -223,7 +226,7 @@ def test_forgot_password_with_validated_email(
         user_id = user.id
 
     response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
@@ -272,7 +275,7 @@ def test_forgot_password_with_non_validated_email(
         user_id = user.id
 
     response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
@@ -321,7 +324,7 @@ def test_forgot_password_rate_limits_correctly(
 
     initial_send_time = datetime.utcnow()
     first_response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
@@ -330,7 +333,7 @@ def test_forgot_password_rate_limits_correctly(
 
     second_send_time = datetime.utcnow()
     second_response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
@@ -389,7 +392,7 @@ def test_forgot_password_generates_token_correctly(
         user_id = user.id
 
     forgot_password_response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: valid_user_1[FORGOT_PASSWORD.EMAIL],
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
@@ -445,7 +448,7 @@ def test_user_requests_reset_after_password_reset_object_older_than_hour(
     ) = user_attempts_reset_password_one_hour_old
 
     forgot_password_response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
@@ -502,7 +505,7 @@ def test_two_forgot_password_attempts_more_than_minute_apart_increments_attempts
         db.session.commit()
 
     forgot_password_response = client.post(
-        url_for("users.forgot_password"),
+        url_for(FORGOT_PASSWORD_URL),
         data={
             FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,

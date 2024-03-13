@@ -24,7 +24,7 @@ def email_validation_required(func):
             is_email_validated = session[EMAILS.EMAIL_VALIDATED_SESS_KEY]
 
         if not is_email_validated:
-            return redirect(url_for("main.splash"))
+            return redirect(url_for("splash.splash_page"))
         return func(*args, **kwargs)
 
     return decorated_view
