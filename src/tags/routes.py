@@ -4,16 +4,14 @@ from flask_login import current_user
 from src import db
 from src.models import Utub, Url_Tags, Tags, Utub_Urls
 from src.tags.forms import UTubNewUrlTagForm
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_NO_CHANGE, TAGS_SUCCESS
 from src.utils.email_validation import email_validation_required
 
 tags = Blueprint("tags", __name__)
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-TAGS_FAILURE = U4I_STRINGS.TAGS_FAILURE
-TAGS_NO_CHANGE = U4I_STRINGS.TAGS_NO_CHANGE
-TAGS_SUCCESS = U4I_STRINGS.TAGS_SUCCESS
+STD_JSON = STD_JSON_RESPONSE
 
 
 @tags.route("/tag/add/<int:utub_id>/<int:url_id>", methods=["POST"])

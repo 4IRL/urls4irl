@@ -3,10 +3,9 @@ import json
 import tests.models_for_test as v_models
 from src.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
 from src import db
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.model_strs import MODELS as MODEL_STRS
+from src.utils.strings.splash_form_strs import REGISTER_FORM
 
-MODEL_STRS = U4I_STRINGS.MODELS
-USER_STRS = U4I_STRINGS.REGISTER_FORM
 
 """
 Serializations to test
@@ -176,8 +175,8 @@ def test_user_serialization_as_member_of_utub():
     for idx, inner_user in enumerate(member_users):
         new_user = User(
             username=inner_user[MODEL_STRS.USERNAME],
-            email=inner_user[USER_STRS.EMAIL],
-            plaintext_password=inner_user[USER_STRS.PASSWORD],
+            email=inner_user[REGISTER_FORM.EMAIL],
+            plaintext_password=inner_user[REGISTER_FORM.PASSWORD],
         )
         new_user.id = idx
         valid_users.append(new_user)
@@ -218,8 +217,8 @@ def test_user_utub_data_serialized_on_initial_load():
     valid_user = v_models.valid_user_1
     new_user = User(
         username=valid_user[MODEL_STRS.USERNAME],
-        email=valid_user[USER_STRS.EMAIL],
-        plaintext_password=valid_user[USER_STRS.PASSWORD],
+        email=valid_user[REGISTER_FORM.EMAIL],
+        plaintext_password=valid_user[REGISTER_FORM.PASSWORD],
     )
 
     valid_utubs = []  # Array used to store the serialized utub data to validate against

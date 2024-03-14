@@ -10,17 +10,14 @@ from src.urls.forms import (
     EditURLTitleForm,
 )
 from src.utils.url_validation import InvalidURLError, find_common_url
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
 from src.utils.email_validation import email_validation_required
 
 urls = Blueprint("urls", __name__)
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-URL_FAILURE = U4I_STRINGS.URL_FAILURE
-URL_NO_CHANGE = U4I_STRINGS.URL_NO_CHANGE
-URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
-
+STD_JSON = STD_JSON_RESPONSE
 
 @urls.route("/url/remove/<int:utub_id>/<int:url_id>", methods=["POST"])
 @email_validation_required

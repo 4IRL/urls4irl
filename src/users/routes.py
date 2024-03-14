@@ -8,19 +8,12 @@ from flask_login import current_user, logout_user
 
 from src import login_manager
 from src.models import User
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
+from src.utils.strings.user_strs import USER_SUCCESS, USER_FAILURE
 
 users = Blueprint("users", __name__)
-
-# Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-USER_FAILURE = U4I_STRINGS.USER_FAILURE
-USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
-EMAILS = U4I_STRINGS.EMAILS
-EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
-RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD
-FORGOT_PASSWORD = U4I_STRINGS.FORGOT_PASSWORD
-
 
 @login_manager.user_loader
 def load_user(user_id):

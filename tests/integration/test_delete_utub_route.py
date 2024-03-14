@@ -4,13 +4,10 @@ from flask_login import current_user
 from tests.models_for_test import valid_empty_utub_1
 from src.models import Utub, Utub_Users, Utub_Urls, Url_Tags
 from src import db
-from src.utils import strings as U4I_STRINGS
-
-REMOVE_UTUB_FORM = U4I_STRINGS.UTUB_FORM
-UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-MODEL_STRS = U4I_STRINGS.MODELS
-UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
+from src.utils.all_routes import ROUTES
+from src.utils.strings.form_strs import UTUB_FORM
+from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 
 
 def test_delete_existing_utub_as_creator_no_tags_urls_members(
@@ -40,8 +37,8 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        url_for("utubs.delete_utub", utub_id=utub_id),
-        data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
+        data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
 
     assert delete_utub_response.status_code == 200
@@ -58,7 +55,7 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
     assert int(delete_utub_json_response[UTUB_SUCCESS.UTUB_ID]) == utub_id
     assert (
         delete_utub_json_response[UTUB_SUCCESS.UTUB_NAME]
-        == valid_empty_utub_1[REMOVE_UTUB_FORM.NAME]
+        == valid_empty_utub_1[UTUB_FORM.NAME]
     )
 
     with app.app_context():
@@ -110,8 +107,8 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        url_for("utubs.delete_utub", utub_id=utub_id_to_delete),
-        data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
+        data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
 
     assert delete_utub_response.status_code == 200
@@ -202,8 +199,8 @@ def test_delete_existing_utub_with_urls_no_tags(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        url_for("utubs.delete_utub", utub_id=utub_id_to_delete),
-        data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
+        data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
 
     assert delete_utub_response.status_code == 200
@@ -294,8 +291,8 @@ def test_delete_existing_utub_with_urls_and_tags(
         initial_num_utubs = len(Utub.query.all())
 
     delete_utub_response = client.post(
-        url_for("utubs.delete_utub", utub_id=utub_id_to_delete),
-        data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
+        data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
 
     assert delete_utub_response.status_code == 200
@@ -356,8 +353,8 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
         assert len(Utub.query.all()) == 0
 
     delete_utub_response = client.post(
-        url_for("utubs.delete_utub", utub_id=1),
-        data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=1),
+        data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
 
     # Ensure 404 sent back after invalid UTub id is requested
@@ -384,7 +381,7 @@ def test_delete_utub_with_invalid_route(login_first_user_with_register):
         assert len(Utub.query.all()) == 0
 
     delete_utub_response = client.post(
-        f"/utub/delete/InvalidRoute", data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token}
+        f"/utub/delete/InvalidRoute", data={UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     # Ensure 404 sent back after invalid UTub id is requested
@@ -407,7 +404,7 @@ def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in
     with app.app_context():
         assert len(Utub.query.all()) == 1
 
-    delete_utub_response = client.post(url_for("utubs.delete_utub", utub_id=utub_id))
+    delete_utub_response = client.post(url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id))
 
     # Ensure 400 sent back after no csrf token included
     assert delete_utub_response.status_code == 400
@@ -449,8 +446,8 @@ def test_delete_utub_as_not_member_or_creator(
 
     for utub_not_in in user_not_in_these_utubs:
         delete_utub_response = client.post(
-            url_for("utubs.delete_utub", utub_id=utub_not_in.utub_id),
-            data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
+            url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_not_in.utub_id),
+            data={UTUB_FORM.CSRF_TOKEN: csrf_token},
         )
 
         assert delete_utub_response.status_code == 403
@@ -535,8 +532,8 @@ def test_delete_utub_as_member_only(
 
     for utub_not_in in only_member_in_these_utubs:
         delete_utub_response = client.post(
-            url_for("utubs.delete_utub", utub_id=utub_not_in.utub_id),
-            data={REMOVE_UTUB_FORM.CSRF_TOKEN: csrf_token},
+            url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_not_in.utub_id),
+            data={UTUB_FORM.CSRF_TOKEN: csrf_token},
         )
 
         assert delete_utub_response.status_code == 403

@@ -5,7 +5,9 @@ from requests import Response
 from mailjet_rest import Client
 from mailjet_rest.client import ApiError, TimeoutError
 
-from src.utils.strings import STD_JSON_RESPONSE, EMAILS, CONFIG_ENVS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.email_validation_strs import EMAILS
+from src.utils.strings.config_strs import CONFIG_ENVS
 
 
 # Standard response for JSON messages

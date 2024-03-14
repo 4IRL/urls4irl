@@ -9,15 +9,14 @@ from src.models import Utub, Utub_Users, User
 from src.users.forms import (
     UTubNewUserForm,
 )
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.user_strs import USER_FAILURE, USER_SUCCESS
 from src.utils.email_validation import email_validation_required
 
 members = Blueprint("members", __name__)
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-USER_FAILURE = U4I_STRINGS.USER_FAILURE
-USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
+STD_JSON = STD_JSON_RESPONSE
 
 @members.route("/user/remove/<int:utub_id>/<int:user_id>", methods=["POST"])
 @email_validation_required

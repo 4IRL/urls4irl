@@ -1,8 +1,5 @@
-from src.utils import strings as U4I_STRINGS
-
-MODEL_STRS = U4I_STRINGS.MODELS
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-USER_FORM = U4I_STRINGS.REGISTER_FORM
+from src.utils.strings.model_strs import MODELS as MODEL_STRS
+from src.utils.strings.splash_form_strs import REGISTER_FORM
 
 """
 Users used for testing logging in correctly
@@ -10,32 +7,32 @@ Models follow what is on a valid registration form
 """
 valid_user_1 = {
     MODEL_STRS.ID: 1,
-    USER_FORM.CSRF_TOKEN: None,
-    USER_FORM.USERNAME: "FakeUserName1234",
-    USER_FORM.EMAIL: "FakeUserName123@email.com",
-    USER_FORM.CONFIRM_EMAIL: "FakeUserName123@email.com",
-    USER_FORM.PASSWORD: "FakePassword1234",
-    USER_FORM.CONFIRM_PASSWORD: "FakePassword1234",
+    REGISTER_FORM.CSRF_TOKEN: None,
+    REGISTER_FORM.USERNAME: "FakeUserName1234",
+    REGISTER_FORM.EMAIL: "FakeUserName123@email.com",
+    REGISTER_FORM.CONFIRM_EMAIL: "FakeUserName123@email.com",
+    REGISTER_FORM.PASSWORD: "FakePassword1234",
+    REGISTER_FORM.CONFIRM_PASSWORD: "FakePassword1234",
 }
 
 valid_user_2 = {
     MODEL_STRS.ID: 2,
-    USER_FORM.CSRF_TOKEN: None,
-    USER_FORM.USERNAME: "CenturyUser1234",
-    USER_FORM.EMAIL: "CenturyUser@email.com",
-    USER_FORM.CONFIRM_EMAIL: "CenturyUser@email.com",
-    USER_FORM.PASSWORD: "CenturyPassword1234",
-    USER_FORM.CONFIRM_PASSWORD: "CenturyPassword1234",
+    REGISTER_FORM.CSRF_TOKEN: None,
+    REGISTER_FORM.USERNAME: "CenturyUser1234",
+    REGISTER_FORM.EMAIL: "CenturyUser@email.com",
+    REGISTER_FORM.CONFIRM_EMAIL: "CenturyUser@email.com",
+    REGISTER_FORM.PASSWORD: "CenturyPassword1234",
+    REGISTER_FORM.CONFIRM_PASSWORD: "CenturyPassword1234",
 }
 
 valid_user_3 = {
     MODEL_STRS.ID: 3,
-    USER_FORM.CSRF_TOKEN: None,
-    USER_FORM.USERNAME: "PersonalEntry1234",
-    USER_FORM.EMAIL: "PersonalEntry@email.com",
-    USER_FORM.CONFIRM_EMAIL: "PersonalEntry@email.com",
-    USER_FORM.PASSWORD: "PersonalPassword1234",
-    USER_FORM.CONFIRM_PASSWORD: "PersonalPassword1234",
+    REGISTER_FORM.CSRF_TOKEN: None,
+    REGISTER_FORM.USERNAME: "PersonalEntry1234",
+    REGISTER_FORM.EMAIL: "PersonalEntry@email.com",
+    REGISTER_FORM.CONFIRM_EMAIL: "PersonalEntry@email.com",
+    REGISTER_FORM.PASSWORD: "PersonalPassword1234",
+    REGISTER_FORM.CONFIRM_PASSWORD: "PersonalPassword1234",
 }
 
 valid_users = (
@@ -48,12 +45,12 @@ valid_users = (
 User who will never be added to the database
 """
 invalid_user_1 = {
-    USER_FORM.CSRF_TOKEN: None,
-    USER_FORM.USERNAME: "NeverFindMe1234",
-    USER_FORM.EMAIL: "NeverFindMe1234@email.com",
-    USER_FORM.CONFIRM_EMAIL: "NeverFindMe1234@email.com",
-    USER_FORM.PASSWORD: "NeverPassByMe1234",
-    USER_FORM.CONFIRM_PASSWORD: "NeverPassByMe1234",
+    REGISTER_FORM.CSRF_TOKEN: None,
+    REGISTER_FORM.USERNAME: "NeverFindMe1234",
+    REGISTER_FORM.EMAIL: "NeverFindMe1234@email.com",
+    REGISTER_FORM.CONFIRM_EMAIL: "NeverFindMe1234@email.com",
+    REGISTER_FORM.PASSWORD: "NeverPassByMe1234",
+    REGISTER_FORM.CONFIRM_PASSWORD: "NeverPassByMe1234",
 }
 
 """
@@ -179,7 +176,7 @@ for utub, user in zip(all_empty_utubs, valid_users):
             MODEL_STRS.MEMBERS: [
                 {
                     MODEL_STRS.ID: user[MODEL_STRS.ID],
-                    USER_FORM.USERNAME: user[USER_FORM.USERNAME],
+                    REGISTER_FORM.USERNAME: user[REGISTER_FORM.USERNAME],
                 }
             ],
             MODEL_STRS.URLS: [],
@@ -200,7 +197,7 @@ for utub, user in zip(all_empty_utubs, valid_users):
             MODEL_STRS.MEMBERS: [
                 {
                     MODEL_STRS.ID: all_user[MODEL_STRS.ID],
-                    USER_FORM.USERNAME: all_user[USER_FORM.USERNAME],
+                    REGISTER_FORM.USERNAME: all_user[REGISTER_FORM.USERNAME],
                 }
                 for all_user in valid_users
             ],
@@ -222,7 +219,7 @@ for utub, user, url in zip(all_empty_utubs, valid_users, all_urls_no_tags):
             MODEL_STRS.MEMBERS: [
                 {
                     MODEL_STRS.ID: all_user[MODEL_STRS.ID],
-                    USER_FORM.USERNAME: all_user[USER_FORM.USERNAME],
+                    REGISTER_FORM.USERNAME: all_user[REGISTER_FORM.USERNAME],
                 }
                 for all_user in valid_users
             ],
@@ -253,7 +250,7 @@ for utub in all_empty_utubs:
             MODEL_STRS.MEMBERS: [
                 {
                     MODEL_STRS.ID: all_user[MODEL_STRS.ID],
-                    USER_FORM.USERNAME: all_user[USER_FORM.USERNAME],
+                    REGISTER_FORM.USERNAME: all_user[REGISTER_FORM.USERNAME],
                 }
                 for all_user in valid_users
             ],

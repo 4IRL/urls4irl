@@ -2,11 +2,10 @@ from os import environ, path
 
 from dotenv import load_dotenv
 
-from src.utils.strings import CONFIG_ENVS
+from src.utils.strings.config_strs import CONFIG_ENVS
 
 basedir = path.abspath(path.dirname(__file__))
 load_dotenv(path.join(basedir, ".env"))
-
 
 class Config:
     """Set Flask config variables."""

@@ -14,8 +14,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from src import db
 from src.utils.constants import EMAIL_CONSTANTS, USER_CONSTANTS
-from src.utils.strings import MODELS as MODEL_STRS
-from src.utils.strings import EMAILS, CONFIG_ENVS, RESET_PASSWORD
+from src.utils.strings.config_strs import CONFIG_ENVS
+from src.utils.strings.email_validation_strs import EMAILS
+from src.utils.strings.model_strs import MODELS as MODEL_STRS
+from src.utils.strings.reset_password_strs import RESET_PASSWORD
 
 
 """

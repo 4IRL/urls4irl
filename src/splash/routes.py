@@ -1,4 +1,3 @@
-from datetime import datetime
 from flask import (
     Blueprint,
     jsonify,
@@ -8,11 +7,9 @@ from flask import (
     request,
     abort,
     session,
-    Response,
 )
 from flask_login import current_user, login_user
 
-from requests import Response
 from src import db, email_sender
 from src.models import User, EmailValidation, ForgotPassword
 from src.users.forms import (
@@ -22,17 +19,20 @@ from src.users.forms import (
     ForgotPasswordForm,
     ResetPasswordForm,
 )
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
+from src.utils.strings.user_strs import USER_FAILURE, USER_SUCCESS
+from src.utils.all_routes import ROUTES
 from src.utils.constants import EMAIL_CONSTANTS
+from src.splash.utils import ( 
+    _handle_after_forgot_password_form_validated,
+    _handle_email_sending_result, 
+    _validate_resetting_password
+)
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-USER_FAILURE = U4I_STRINGS.USER_FAILURE
-USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
-EMAILS = U4I_STRINGS.EMAILS
-EMAILS_FAILURE = U4I_STRINGS.EMAILS_FAILURE
-RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD
-FORGOT_PASSWORD = U4I_STRINGS.FORGOT_PASSWORD
+STD_JSON = STD_JSON_RESPONSE
 
 splash = Blueprint("splash", __name__)
 
@@ -43,16 +43,17 @@ def splash_page():
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
             return render_template("splash.html", email_validation_modal=True)
-        return redirect(url_for("utubs.home"))
+        return redirect(url_for(ROUTES.UTUBS.HOME))
     return render_template("splash.html")
+
 
 @splash.route("/register", methods=["GET", "POST"])
 def register_user():
     """Allows a user to register an account."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return redirect(url_for("splash.confirm_email_after_register"))
-        return redirect(url_for("utubs.home"))
+            return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
+        return redirect(url_for(ROUTES.UTUBS.HOME))
 
     register_form: UserRegistrationForm = UserRegistrationForm()
 
@@ -140,13 +141,14 @@ def register_user():
 
     return render_template("register_user.html", register_form=register_form)
 
+
 @splash.route("/login", methods=["GET", "POST"])
 def login():
     """Login page. Allows user to register or login."""
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return redirect(url_for("splash.confirm_email_after_register"))
-        return redirect(url_for("utubs.home"))
+            return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
+        return redirect(url_for(ROUTES.UTUBS.HOME))
 
     login_form = LoginForm()
 
@@ -173,7 +175,7 @@ def login():
             "next"
         )  # Takes user to the page they wanted to originally before being logged in
 
-        return redirect(next_page) if next_page else url_for("utubs.home")
+        return redirect(next_page) if next_page else url_for(ROUTES.UTUBS.HOME)
 
     # Input form errors
     if login_form.errors is not None:
@@ -191,12 +193,13 @@ def login():
 
     return render_template("login.html", login_form=login_form)
 
+
 @splash.route("/confirm_email", methods=["GET"])
 def confirm_email_after_register():
     if current_user.is_anonymous:
-        return redirect(url_for("splash.splash_page"))
+        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
     if current_user.email_confirm.is_validated:
-        return redirect(url_for("utubs.home"))
+        return redirect(url_for(ROUTES.UTUBS.HOME))
     return render_template(
         "email_validation/email_needs_validation_modal.html",
         validate_email_form=ValidateEmailForm(),
@@ -210,7 +213,7 @@ def send_validation_email():
     ).first_or_404()
 
     if current_email_validation.is_validated:
-        return redirect(url_for("utubs.home"))
+        return redirect(url_for(ROUTES.UTUBS.HOME))
 
     if current_email_validation.check_if_too_many_attempts():
         db.session.commit()
@@ -246,10 +249,10 @@ def send_validation_email():
 
     if not email_sender.is_production() and not email_sender.is_testing():
         print(
-            f"Sending this to the user's email:\n{url_for('splash.validate_email', token=current_email_validation.confirm_url, _external=True)}"
+            f"Sending this to the user's email:\n{url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=current_email_validation.confirm_url, _external=True)}"
         )
     url_for_confirmation = url_for(
-        "splash.validate_email",
+        ROUTES.SPLASH.VALIDATE_EMAIL,
         token=current_email_validation.confirm_url,
         _external=True,
     )
@@ -257,61 +260,6 @@ def send_validation_email():
         current_user.email, current_user.username, url_for_confirmation
     )
     return _handle_email_sending_result(email_send_result)
-
-
-def _handle_email_sending_result(email_result: Response):
-    status_code: int = email_result.status_code
-    json_response: dict = email_result.json()
-
-    if status_code == 200:
-        return (
-            jsonify(
-                {STD_JSON.STATUS: STD_JSON.SUCCESS, STD_JSON.MESSAGE: EMAILS.EMAIL_SENT}
-            ),
-            200,
-        )
-
-    elif status_code < 500:
-        message = json_response.get(EMAILS.MESSAGES, EMAILS.ERROR_WITH_MAILJET)
-        if message == EMAILS.ERROR_WITH_MAILJET:
-            errors = message
-        else:
-            errors = message.get(EMAILS.MAILJET_ERRORS, EMAILS.ERROR_WITH_MAILJET)
-
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: EMAILS.EMAIL_FAILED,
-                    STD_JSON.ERROR_CODE: 3,
-                    STD_JSON.ERRORS: errors,
-                }
-            ),
-            400,
-        )
-
-    else:
-        return _handle_mailjet_failure(email_result, 4)
-
-
-def _handle_mailjet_failure(email_result: Response, error_code: int = 1):
-    json_response = email_result.json()
-    message = json_response.get(EMAILS.MESSAGES, EMAILS.ERROR_WITH_MAILJET)
-    if message == EMAILS.ERROR_WITH_MAILJET:
-        errors = message
-    else:
-        errors = message.get(EMAILS.MAILJET_ERRORS, EMAILS.ERROR_WITH_MAILJET)
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: EMAILS.ERROR_WITH_MAILJET,
-                STD_JSON.ERROR_CODE: error_code,
-                STD_JSON.ERRORS: errors,
-            }
-        ),
-        400,
-    )
 
 
 @splash.route("/validate/<string:token>", methods=["GET"])
@@ -355,15 +303,15 @@ def validate_email(token: str):
     db.session.commit()
     login_user(user_to_validate)
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
-    return redirect(url_for("utubs.home"))
+    return redirect(url_for(ROUTES.UTUBS.HOME))
 
 
 @splash.route("/forgot_password", methods=["GET", "POST"])
 def forgot_password():
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
-            return redirect(url_for("splash.confirm_email_after_register"))
-        return redirect(url_for("utubs.home"))
+            return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
+        return redirect(url_for(ROUTES.UTUBS.HOME))
 
     forgot_password_form = ForgotPasswordForm()
     if request.method == "GET":
@@ -400,84 +348,6 @@ def forgot_password():
     )
 
 
-def _handle_after_forgot_password_form_validated(
-    forgot_password_form: ForgotPasswordForm,
-) -> Response:
-    user_with_email: User = User.query.filter_by(
-        email=forgot_password_form.email.data
-    ).first()
-
-    if user_with_email is not None:
-        if not user_with_email.email_confirm.is_validated:
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.SUCCESS,
-                        STD_JSON.MESSAGE: FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
-                    }
-                ),
-                200,
-            )
-
-        # Check if user has already tried to reset their password before
-        prev_forgot_password: ForgotPassword = user_with_email.forgot_password
-        forgot_password_obj = _create_or_reset_forgot_password_object_for_user(
-            user_with_email, prev_forgot_password
-        )
-
-        if forgot_password_obj.is_not_rate_limited():
-            forgot_password_obj.increment_attempts()
-            db.session.commit()
-
-            if not email_sender.is_production() and not email_sender.is_testing():
-                print(
-                    f"Sending this to the user's email:\n{url_for('splash.reset_password', token=forgot_password_obj.reset_token, _external=True)}"
-                )
-            url_for_reset = url_for(
-                "splash.reset_password",
-                token=forgot_password_obj.reset_token,
-                _external=True,
-            )
-            email_send_result = email_sender.send_password_reset_email(
-                user_with_email.email, user_with_email.username, url_for_reset
-            )
-            if email_send_result.status_code >= 500:
-                return _handle_mailjet_failure(email_send_result)
-
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: FORGOT_PASSWORD.EMAIL_SENT_MESSAGE,
-            }
-        ),
-        200,
-    )
-
-
-def _create_or_reset_forgot_password_object_for_user(
-    user: User, forgot_password: ForgotPassword
-):
-    if forgot_password is None:
-        new_token = user.get_password_reset_token()
-        forgot_password = ForgotPassword(reset_token=new_token)
-        user.forgot_password = forgot_password
-        db.session.add(forgot_password)
-        db.session.commit()
-
-    else:
-        if (
-            forgot_password.is_not_rate_limited()
-            and forgot_password.is_more_than_hour_old()
-        ):
-            forgot_password.attempts = 0
-            forgot_password.reset_token = user.get_password_reset_token()
-            forgot_password.initial_attempt = datetime.utcnow()
-            db.session.commit()
-
-    return forgot_password
-
-
 @splash.route("/confirm_password_reset", methods=["GET"])
 def confirm_password_reset():
     return render_template(
@@ -497,7 +367,7 @@ def reset_password(token: str):
         ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()
-        return redirect(url_for("splash.splash_page"))
+        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
     if not reset_password_user:
         # Invalid token
@@ -542,34 +412,3 @@ def reset_password(token: str):
             400,
         )
 
-
-def _validate_resetting_password(
-    reset_password_user: User, reset_password_form: ResetPasswordForm
-) -> tuple[Response, int]:
-    if reset_password_user.is_new_password_same_as_previous(
-        reset_password_form.new_password.data
-    ):
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: RESET_PASSWORD.SAME_PASSWORD,
-                    STD_JSON.ERROR_CODE: 1,
-                }
-            ),
-            400,
-        )
-
-    reset_password_user.change_password(reset_password_form.new_password.data)
-    forgot_password_obj = reset_password_user.forgot_password
-    db.session.delete(forgot_password_obj)
-    db.session.commit()
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: RESET_PASSWORD.PASSWORD_RESET,
-            }
-        ),
-        200,
-    )

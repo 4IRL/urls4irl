@@ -2,13 +2,10 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
 from src.models import User
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
+from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM
+from src.utils.strings.user_strs import USER_FAILURE
 from src.utils.constants import USER_CONSTANTS
-
-USER_FAILURE = U4I_STRINGS.USER_FAILURE
-LOGIN_REGISTER_FORM = U4I_STRINGS.REGISTER_LOGIN_FORM
-FORGOT_PASSWORD_FORM = U4I_STRINGS.FORGOT_PASSWORD
-RESET_PASSWORD_FORM = U4I_STRINGS.RESET_PASSWORD
 
 
 class UserRegistrationForm(FlaskForm):
@@ -25,29 +22,29 @@ class UserRegistrationForm(FlaskForm):
     """
 
     username = StringField(
-        LOGIN_REGISTER_FORM.USERNAME_TEXT,
+        REGISTER_LOGIN_FORM.USERNAME_TEXT,
         validators=[
             InputRequired(),
             Length(min=4, max=USER_CONSTANTS.MAX_USERNAME_LENGTH),
         ],
     )
     email = StringField(
-        LOGIN_REGISTER_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
+        REGISTER_LOGIN_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
     )
     confirm_email = StringField(
-        LOGIN_REGISTER_FORM.CONFIRM_EMAIL_TEXT,
-        validators=[InputRequired(), EqualTo(LOGIN_REGISTER_FORM.EMAIL)],
+        REGISTER_LOGIN_FORM.CONFIRM_EMAIL_TEXT,
+        validators=[InputRequired(), EqualTo(REGISTER_LOGIN_FORM.EMAIL)],
     )
     password = PasswordField(
-        LOGIN_REGISTER_FORM.PASSWORD_TEXT,
+        REGISTER_LOGIN_FORM.PASSWORD_TEXT,
         validators=[InputRequired(), Length(min=12, max=64)],
     )
     confirm_password = PasswordField(
-        LOGIN_REGISTER_FORM.CONFIRM_PASSWORD_TEXT,
-        validators=[InputRequired(), EqualTo(LOGIN_REGISTER_FORM.PASSWORD)],
+        REGISTER_LOGIN_FORM.CONFIRM_PASSWORD_TEXT,
+        validators=[InputRequired(), EqualTo(REGISTER_LOGIN_FORM.PASSWORD)],
     )
 
-    submit = SubmitField(LOGIN_REGISTER_FORM.REGISTER)
+    submit = SubmitField(REGISTER_LOGIN_FORM.REGISTER)
 
     def validate_username(self, username):
         """Validates username is unique in the db"""
@@ -77,13 +74,13 @@ class LoginForm(FlaskForm):
     """
 
     username = StringField(
-        LOGIN_REGISTER_FORM.USERNAME_TEXT, validators=[InputRequired()]
+        REGISTER_LOGIN_FORM.USERNAME_TEXT, validators=[InputRequired()]
     )
     password = PasswordField(
-        LOGIN_REGISTER_FORM.PASSWORD_TEXT, validators=[InputRequired()]
+        REGISTER_LOGIN_FORM.PASSWORD_TEXT, validators=[InputRequired()]
     )
 
-    submit = SubmitField(LOGIN_REGISTER_FORM.LOGIN)
+    submit = SubmitField(REGISTER_LOGIN_FORM.LOGIN)
 
     def validate_username(self, username):
         user: User = User.query.filter_by(username=username.data).first()
@@ -101,32 +98,32 @@ class LoginForm(FlaskForm):
 
 
 class ValidateEmailForm(FlaskForm):
-    submit = SubmitField(LOGIN_REGISTER_FORM.SEND_EMAIL_VALIDATION)
+    submit = SubmitField(REGISTER_LOGIN_FORM.SEND_EMAIL_VALIDATION)
 
 
 class ForgotPasswordForm(FlaskForm):
     email = StringField(
-        FORGOT_PASSWORD_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
+        FORGOT_PASSWORD.EMAIL_TEXT, validators=[InputRequired(), Email()]
     )
 
-    submit = SubmitField(FORGOT_PASSWORD_FORM.SEND_PASSWORD_RESET_EMAIL)
+    submit = SubmitField(FORGOT_PASSWORD.SEND_PASSWORD_RESET_EMAIL)
 
 
 class ResetPasswordForm(FlaskForm):
     new_password = PasswordField(
-        RESET_PASSWORD_FORM.NEW_PASSWORD,
+        RESET_PASSWORD.NEW_PASSWORD,
         validators=[InputRequired(), Length(min=12, max=64)],
     )
     confirm_new_password = PasswordField(
-        RESET_PASSWORD_FORM.CONFIRM_NEW_PASSWORD,
+        RESET_PASSWORD.CONFIRM_NEW_PASSWORD,
         validators=[InputRequired()],
     )
 
-    submit = SubmitField(RESET_PASSWORD_FORM.RESET_YOUR_PASSWORD)
+    submit = SubmitField(RESET_PASSWORD.RESET_YOUR_PASSWORD)
 
     def validate_confirm_new_password(self, confirm_new_password):
         if confirm_new_password.data != self.new_password.data:
-            raise ValidationError(RESET_PASSWORD_FORM.PASSWORDS_NOT_IDENTICAL)
+            raise ValidationError(RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL)
 
 
 class UTubNewUserForm(FlaskForm):
@@ -138,7 +135,7 @@ class UTubNewUserForm(FlaskForm):
     """
 
     username = StringField(
-        LOGIN_REGISTER_FORM.USERNAME_TEXT,
+        REGISTER_LOGIN_FORM.USERNAME_TEXT,
         validators=[InputRequired(), Length(min=1, max=30)],
     )
 

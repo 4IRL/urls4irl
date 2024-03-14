@@ -2,6 +2,7 @@ import pytest
 from datetime import timedelta
 from flask import url_for
 from flask_login import FlaskLoginClient, current_user
+import warnings
 
 from src import create_app, db
 from src.config import TestingConfig
@@ -26,14 +27,19 @@ from tests.models_for_test import (
     valid_url_strings,
     all_tags,
 )
-from src.utils import strings as U4I_STRINGS
+from src.utils.all_routes import ROUTES
+from src.utils.strings import model_strs, reset_password_strs
 
-MODEL_STRS = U4I_STRINGS.MODELS
-USER_STRS = U4I_STRINGS.REGISTER_FORM
 
+warnings.filterwarnings("ignore", category=DeprecationWarning)#, message="'flask.Markup' is deprecated and will be removed in Flask 2.4. Import 'markupsafe.Markup' instead.")
+@pytest.fixture
+def ignore_deprecation_warning():
+    warnings.filterwarnings("ignore", category=DeprecationWarning)
+    yield
+    warnings.resetwarnings()
 
 @pytest.fixture
-def app():
+def app(ignore_deprecation_warning):
     config = TestingConfig()
     app_for_test = create_app(config)
     yield app_for_test
@@ -119,9 +125,9 @@ def register_first_user(app):
     # Add a new user for testing
     with app.app_context():
         new_user = User(
-            username=valid_user_1[USER_STRS.USERNAME],
-            email=valid_user_1[USER_STRS.EMAIL],
-            plaintext_password=valid_user_1[USER_STRS.PASSWORD],
+            username=valid_user_1[model_strs.USERNAME],
+            email=valid_user_1[model_strs.EMAIL],
+            plaintext_password=valid_user_1[model_strs.PASSWORD],
         )
 
         new_email_validation = EmailValidation(
@@ -153,9 +159,9 @@ def register_first_user_without_email_validation(app):
     # Add a new user for testing
     with app.app_context():
         new_user = User(
-            username=valid_user_1[USER_STRS.USERNAME],
-            email=valid_user_1[USER_STRS.EMAIL],
-            plaintext_password=valid_user_1[USER_STRS.PASSWORD],
+            username=valid_user_1[model_strs.USERNAME],
+            email=valid_user_1[model_strs.EMAIL],
+            plaintext_password=valid_user_1[model_strs.PASSWORD],
         )
 
         new_email_validation = EmailValidation(
@@ -192,9 +198,9 @@ def register_all_but_first_user(app):
     with app.app_context():
         for user in all_users:
             new_user = User(
-                username=user[USER_STRS.USERNAME],
-                email=user[USER_STRS.EMAIL],
-                plaintext_password=user[USER_STRS.PASSWORD],
+                username=user[model_strs.USERNAME],
+                email=user[model_strs.EMAIL],
+                plaintext_password=user[model_strs.PASSWORD],
             )
 
             new_email_validation = EmailValidation(
@@ -231,9 +237,9 @@ def register_multiple_users(app):
     with app.app_context():
         for user in all_users:
             new_user = User(
-                username=user[USER_STRS.USERNAME],
-                email=user[USER_STRS.EMAIL],
-                plaintext_password=user[USER_STRS.PASSWORD],
+                username=user[model_strs.USERNAME],
+                email=user[model_strs.EMAIL],
+                plaintext_password=user[model_strs.PASSWORD],
             )
 
             new_email_validation = EmailValidation(
@@ -271,20 +277,20 @@ def user_attempts_reset_password(app, register_first_user, load_login_page):
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for("splash.forgot_password"))
+    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
     csrf_token = get_csrf_token(forgot_password_response.data)
 
     client.post(
-        url_for("splash.forgot_password"),
+        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
         data={
-            USER_STRS.EMAIL: new_user[USER_STRS.EMAIL],
-            USER_STRS.CSRF_TOKEN: csrf_token,
+            reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[reset_password_strs.FORGOT_PASSWORD.EMAIL],
+            reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
     )
 
     with app.app_context():
         user_to_reset: User = User.query.filter(
-            User.email == new_user[USER_STRS.EMAIL]
+            User.email == new_user[reset_password_strs.FORGOT_PASSWORD.EMAIL]
         ).first()
         password_reset_obj: ForgotPassword = ForgotPassword.query.filter(
             ForgotPassword.user_id == user_to_reset.id
@@ -323,20 +329,20 @@ def user_attempts_reset_password_one_hour_old(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for("splash.forgot_password"))
+    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
     csrf_token = get_csrf_token(forgot_password_response.data)
 
     client.post(
-        url_for("splash.forgot_password"),
+        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
         data={
-            USER_STRS.EMAIL: new_user[USER_STRS.EMAIL],
-            USER_STRS.CSRF_TOKEN: csrf_token,
+            reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[reset_password_strs.FORGOT_PASSWORD.EMAIL],
+            reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
     )
 
     with app.app_context():
         user_to_reset: User = User.query.filter(
-            User.email == new_user[USER_STRS.EMAIL]
+            User.email == new_user[model_strs.EMAIL]
         ).first()
         password_reset_obj: ForgotPassword = ForgotPassword.query.filter(
             ForgotPassword.user_id == user_to_reset.id
@@ -447,9 +453,9 @@ def add_single_utub_as_user_without_logging_in(app, register_first_user):
     first_user_dict, first_user_object = register_first_user
     with app.app_context():
         new_utub = Utub(
-            name=valid_empty_utub_1[MODEL_STRS.NAME],
+            name=valid_empty_utub_1[model_strs.NAME],
             utub_creator=1,
-            utub_description=valid_empty_utub_1[U4I_STRINGS.UTUB_DESCRIPTION],
+            utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
         )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = first_user_object
@@ -471,9 +477,9 @@ def add_single_user_to_utub_without_logging_in(app, register_multiple_users):
     with app.app_context():
         creator = User.query.get(1)
         new_utub = Utub(
-            name=valid_empty_utub_1[MODEL_STRS.NAME],
+            name=valid_empty_utub_1[model_strs.NAME],
             utub_creator=creator.id,
-            utub_description=valid_empty_utub_1[U4I_STRINGS.UTUB_DESCRIPTION],
+            utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
         )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = creator
@@ -502,9 +508,9 @@ def add_multiple_users_to_utub_without_logging_in(app, register_multiple_users):
     with app.app_context():
         creator = User.query.get(1)
         new_utub = Utub(
-            name=valid_empty_utub_1[MODEL_STRS.NAME],
+            name=valid_empty_utub_1[model_strs.NAME],
             utub_creator=creator.id,
-            utub_description=valid_empty_utub_1[U4I_STRINGS.UTUB_DESCRIPTION],
+            utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
         )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = creator
@@ -544,9 +550,9 @@ def add_single_utub_as_user_after_logging_in(login_first_user_with_register):
 
     with app.app_context():
         new_utub = Utub(
-            name=valid_empty_utub_1[MODEL_STRS.NAME],
+            name=valid_empty_utub_1[model_strs.NAME],
             utub_creator=valid_user.id,
-            utub_description=valid_empty_utub_1[U4I_STRINGS.UTUB_DESCRIPTION],
+            utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
         )
 
         creator_to_utub = Utub_Users()
@@ -574,9 +580,9 @@ def every_user_makes_a_unique_utub(app, register_multiple_users):
         other_users = User.query.all()
         for utub_data, other_user in zip(all_empty_utubs, other_users):
             new_utub = Utub(
-                name=utub_data[MODEL_STRS.NAME],
+                name=utub_data[model_strs.NAME],
                 utub_creator=other_user.id,
-                utub_description=utub_data[MODEL_STRS.UTUB_DESCRIPTION],
+                utub_description=utub_data[model_strs.UTUB_DESCRIPTION],
             )
 
             creator_to_utub = Utub_Users()
@@ -638,7 +644,7 @@ def add_urls_to_database(app, every_user_makes_a_unique_utub):
 def add_tags_to_database(app, register_multiple_users):
     with app.app_context():
         for idx, tag in enumerate(all_tags):
-            new_tag = Tags(tag_string=tag[MODEL_STRS.TAG_STRING], created_by=idx + 1)
+            new_tag = Tags(tag_string=tag[model_strs.TAG_STRING], created_by=idx + 1)
             db.session.add(new_tag)
         db.session.commit()
 

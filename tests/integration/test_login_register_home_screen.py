@@ -1,8 +1,6 @@
 from flask import url_for, request
 
-LOGIN_URL = "splash.login"
-REGISTER_URL = "splash.register_user"
-SPLASH_URL = "splash.splash_page"
+from src.utils.all_routes import ROUTES
 
 
 def test_get_home_screen_not_logged_in(app_with_server_name, client):
@@ -13,7 +11,7 @@ def test_get_home_screen_not_logged_in(app_with_server_name, client):
     """
     with client:
         with app_with_server_name.app_context():
-            response = client.get(url_for(SPLASH_URL), follow_redirects=True)
+            response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE), follow_redirects=True)
 
         # Hits splash page
         assert response.status_code == 200
@@ -31,11 +29,11 @@ def test_post_home_screen_not_logged_in(app_with_server_name, client):
     """
     with client:
         with app_with_server_name.app_context():
-            response = client.post(url_for(SPLASH_URL), follow_redirects=True)
+            response = client.post(url_for(ROUTES.SPLASH.SPLASH_PAGE), follow_redirects=True)
 
         assert response.status_code == 405
         assert len(response.history) == 0
-        assert request.path != url_for(LOGIN_URL)
+        assert request.path != url_for(ROUTES.SPLASH.LOGIN)
 
 
 def test_get_login_screen_not_logged_in(app_with_server_name, client):
@@ -46,7 +44,7 @@ def test_get_login_screen_not_logged_in(app_with_server_name, client):
     """
     with client:
         with app_with_server_name.app_context():
-            response = client.get(url_for(LOGIN_URL))
+            response = client.get(url_for(ROUTES.SPLASH.LOGIN))
 
         assert response.status_code == 200
 
@@ -63,7 +61,7 @@ def test_get_login_screen_not_logged_in(app_with_server_name, client):
             in response.data
         )
 
-        assert request.path == url_for(LOGIN_URL)
+        assert request.path == url_for(ROUTES.SPLASH.LOGIN)
 
 def test_get_register_screen_not_logged_in(app_with_server_name, client):
     """
@@ -73,7 +71,7 @@ def test_get_register_screen_not_logged_in(app_with_server_name, client):
     """
     with client:
         with app_with_server_name.app_context():
-            response = client.get(url_for(REGISTER_URL))
+            response = client.get(url_for(ROUTES.SPLASH.REGISTER))
 
         assert response.status_code == 200
 
@@ -102,4 +100,4 @@ def test_get_register_screen_not_logged_in(app_with_server_name, client):
             in response.data
         )
 
-        assert request.path == url_for(REGISTER_URL)
+        assert request.path == url_for(ROUTES.SPLASH.REGISTER)

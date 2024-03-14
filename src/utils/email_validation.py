@@ -3,7 +3,7 @@ from flask_login import login_required, current_user
 from functools import wraps
 
 from src.models import EmailValidation
-from src.utils.strings import EMAILS
+from src.utils.strings.email_validation_strs import EMAILS
 
 
 def email_validation_required(func):

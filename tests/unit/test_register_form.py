@@ -1,10 +1,8 @@
 from flask import url_for, request
 
-from src.utils import strings as U4I_STRINGS
-
-REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-REGISTER_FAILURE = U4I_STRINGS.USER_FAILURE
+from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.splash_form_strs import REGISTER_FORM
+from src.utils.strings.user_strs import USER_FAILURE as REGISTER_FAILURE
 
 
 def test_register_user_form_only_username_csrf(load_register_page):

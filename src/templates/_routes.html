@@ -3,7 +3,7 @@
         constructor() {
             if (!Routes.instance) {
                 // UTub routes
-                this.addUtub = "{{url_for('utubs.create_utub')}}";
+                this.addUtub = "{{url_for('utubs.add_utub')}}";
                 this.deleteUtub = (utub_id) => 
                     "{{url_for('utubs.delete_utub', utub_id=-1)}}".replace("-1", utub_id);
                 this.editUtubName = (utub_id) => 

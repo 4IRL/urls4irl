@@ -4,15 +4,16 @@ from flask_login import current_user
 from src import db
 from src.models import Utub, Utub_Users
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.utub_strs import UTUB_SUCCESS, UTUB_FAILURE
 from src.utils.email_validation import email_validation_required
 
 utubs = Blueprint("utubs", __name__)
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
-UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
+STD_JSON = STD_JSON_RESPONSE
+UTUB_FAILURE = UTUB_FAILURE
+UTUB_SUCCESS = UTUB_SUCCESS
 
 @utubs.route("/home", methods=["GET"])
 @email_validation_required
@@ -61,7 +62,7 @@ def get_single_utub(utub_id: str):
 
 @utubs.route("/utub/new", methods=["POST"])
 @email_validation_required
-def create_utub():
+def add_utub():
     """
     User wants to create a new utub.
     Assocation Object:
@@ -343,3 +344,4 @@ def update_utub_desc(utub_id: int):
         ),
         404,
     )
+
