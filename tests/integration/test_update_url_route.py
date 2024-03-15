@@ -16,8 +16,8 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with a URL not already in the database via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL with a URL not already in the database via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             "csrf_token": String containing CSRF token for validation
             "url_string": String of URL to add
     THEN verify that the new URL is stored in the database with same title, the url-utub-user associations and url-tag are
@@ -83,7 +83,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_creator_of.id,
@@ -155,8 +155,8 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
 ):
     """
     GIVEN a valid member of a UTub that has members, URLs added by each member, and tags associated with each URL
-    WHEN the member attempts to modify the URL with a URL not already in the database, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the member attempts to modify the URL with a URL not already in the database, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the new URL is stored in the database with same title, the url-utub-user associations and url-tag are
@@ -225,7 +225,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_member_of.id,
@@ -296,8 +296,8 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with a URL already in the database, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL with a URL already in the database, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the url-utub-user associations and url-tag are modified correctly, all other URL associations are kept consistent,
@@ -373,7 +373,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_creator_of.id,
@@ -446,8 +446,8 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
 ):
     """
     GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the url adder attempts to modify the URL with a URL already in the database, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the url adder attempts to modify the URL with a URL already in the database, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the url-utub-user associations and url-tag are modified correctly, all other URL associations are kept consistent,
@@ -521,7 +521,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_member_of.id,
@@ -598,8 +598,8 @@ def test_update_valid_url_with_same_url_as_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with the same URL already in the database, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL with the same URL already in the database, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the url-utub-user associations and url-tag are modified correctly, all other URL associations are kept consistent,
@@ -663,7 +663,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         URL_FORM.URL_STRING: url_in_utub_string,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_creator_of.id,
@@ -717,8 +717,8 @@ def test_update_valid_url_with_same_url_as_url_adder(
 ):
     """
     GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the url adder attempts to modify the URL with the same URL, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the url adder attempts to modify the URL with the same URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the url-utub-user associations and url-tag are modified correctly, all other URL associations are kept consistent,
@@ -786,7 +786,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
         URL_FORM.URL_STRING: url_string_of_url_in_utub,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_member_of.id,
@@ -846,8 +846,8 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with an invalid URL, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL with an invalid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the url-utub-user associations and url-tag are not modified, all other URL associations are kept consistent,
@@ -898,7 +898,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         URL_FORM.URL_STRING: "AAAAA",
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_creator_of.id,
@@ -946,8 +946,8 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
 ):
     """
     GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the url adder attempts to modify the URL with an invalid URL, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the url adder attempts to modify the URL with an invalid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the url-utub-user associations and url-tag are not modified, all other URL associations are kept consistent,
@@ -1003,7 +1003,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         URL_FORM.URL_STRING: INVALID_URL,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_member_of.id,
@@ -1052,8 +1052,8 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with an empty URL, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL with an empty URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the url-utub-user associations and url-tag are unmodified, all other URL associations are kept consistent,
@@ -1109,7 +1109,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
         URL_FORM.URL_STRING: NEW_URL,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_creator_of.id,
@@ -1161,8 +1161,8 @@ def test_update_url_title_with_fresh_valid_url_as_another_current_utub_member(
 ):
     """
     GIVEN a valid member of a UTub that has members, URLs, and tags associated with each URL
-    WHEN the member attempts to modify the URL and did not add the URL, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the member attempts to modify the URL and did not add the URL, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the backend denies the user, the url-utub-user associations and url-tag are not modified,
@@ -1222,7 +1222,7 @@ def test_update_url_title_with_fresh_valid_url_as_another_current_utub_member(
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_member_of.id,
@@ -1293,8 +1293,8 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
 ):
     """
     GIVEN a valid member of a UTub that has members, URLs, and tags associated with each URL
-    WHEN the member attempts to modify the URL title and change the URL for a URL of another UTub, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the member attempts to modify the URL title and change the URL for a URL of another UTub, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the backend denies the user, the url-utub-user associations and url-tag are not modified,
@@ -1366,7 +1366,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_user_not_member_of.id,
@@ -1441,8 +1441,8 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with each URL
-    WHEN the member attempts to modify the URL title and change the URL for a URL of another UTub, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the member attempts to modify the URL title and change the URL for a URL of another UTub, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the backend denies the user, the url-utub-user associations and url-tag are not modified,
@@ -1526,7 +1526,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_user_not_member_of.id,
@@ -1602,8 +1602,8 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with a missing URL field, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL with a missing URL field, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN verify that the url-utub-user associations and url-tag are unmodified, all other URL associations are kept consistent,
         the server sends back a 404 HTTP status code, and the server sends back the appropriate JSON response
@@ -1655,7 +1655,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
         URL_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_creator_of.id,
@@ -1708,8 +1708,8 @@ def test_update_valid_url_with_valid_url_missing_csrf(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with a missing CSRF token, and a valid URL, via a POST to
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL with a missing CSRF token, and a valid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.URL_STRING: String of URL to add
     THEN the UTub-user-URL associations are consistent across the change, all URLs/URL titles titles are kept consistent,
         the server sends back a 400 HTTP status code, and the server sends back the appropriate HTML element
@@ -1753,7 +1753,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         URL_FORM.URL_STRING: NEW_URL,
     }
 
-    edit_url_string_form = client.post(
+    edit_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL,
             utub_id=utub_creator_of.id,

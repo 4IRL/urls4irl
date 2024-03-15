@@ -14,7 +14,7 @@ def test_update_valid_utub_description_as_creator(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
     WHEN the creator attempts to modify the UTub description to a new description, via a POST to
-        "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN verify that the new UTub description is stored in the database, the utub-user associations are
@@ -63,7 +63,7 @@ def test_update_valid_utub_description_as_creator(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 
@@ -113,7 +113,7 @@ def test_update_valid_empty_utub_description_as_creator(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with
     WHEN the creator attempts to modify the UTub description to an empty description, via a POST to
-        "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN verify that the new UTub description is stored in the database, the utub-user associations are
@@ -162,7 +162,7 @@ def test_update_valid_empty_utub_description_as_creator(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 
@@ -212,7 +212,7 @@ def test_update_only_spaces_utub_description_as_creator(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with
     WHEN the creator attempts to modify the UTub description to a description containing only spaces, via a POST to
-        "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN verify that the new UTub description is stored in the database as an empty string, the utub-user
@@ -261,7 +261,7 @@ def test_update_only_spaces_utub_description_as_creator(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 
@@ -311,7 +311,7 @@ def test_update_utub_description_with_same_description_as_creator(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with
     WHEN the creator attempts to modify the UTub description to the same description, via a POST to
-        "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN verify that the new UTub description is stored in the database, the UTub-user associations are
@@ -357,7 +357,7 @@ def test_update_utub_description_with_same_description_as_creator(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 
@@ -402,7 +402,7 @@ def test_update_utub_description_as_member(
     GIVEN a valid member of a UTub that has members, URLs, and tags associated with, and given only
         creators are allowed to modify UTub descriptions
     WHEN the member attempts to modify the UTub description to a new description, via a POST to
-        "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
@@ -454,7 +454,7 @@ def test_update_utub_description_as_member(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 
@@ -504,7 +504,7 @@ def test_update_utub_description_as_creator_of_other_utub(
     GIVEN a valid member of a UTub that has members, URLs, and tags associated with, and given only
         creators are allowed to modify UTub descriptions, and this member is creator of another UTub
     WHEN the member attempts to modify the UTub description to a new description, via a POST to
-        "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
@@ -562,7 +562,7 @@ def test_update_utub_description_as_creator_of_other_utub(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 
@@ -612,7 +612,7 @@ def test_update_utub_description_of_invalid_utub(
     GIVEN a valid member of a UTub that has members, URLs, and tags associated with, and given only
         creators are allowed to modify UTub descriptions, and this member is creator of another UTub
     WHEN the member attempts to modify the UTub description of a nonexistent UTub, via a POST to
-        "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
@@ -652,7 +652,7 @@ def test_update_utub_description_of_invalid_utub(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=invalid_utub_id), data=utub_desc_form
     )
 
@@ -686,7 +686,7 @@ def test_update_utub_description_too_long(
         creators are allowed to modify UTub descriptions
     WHEN the creator attempts to modify the UTub description to a new description that is longer than
         500 characters, via a POST to:
-        "/utub/edit_description/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
@@ -741,7 +741,7 @@ def test_update_utub_description_too_long(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 
@@ -795,7 +795,7 @@ def test_update_utub_description_missing_description_field(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with, and given only
         creators are allowed to modify UTub descriptions
     WHEN the creator attempts to modify the UTub description, via a POST to:
-        "/utub/edit_description/<utub_id: int>" with invalid form data that doens't contain
+        "/utubs/<utub_id: int>/description" with invalid form data that doens't contain
             the UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM field, following this format:
             UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
@@ -838,7 +838,7 @@ def test_update_utub_description_missing_description_field(
         UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 
@@ -885,7 +885,7 @@ def test_update_utub_description_missing_csrf_token(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with, and given only
         creators are allowed to modify UTub descriptions
     WHEN the creator attempts to modify the UTub description, via a POST to:
-        "/utub/edit_description/<utub_id: int>" with invalid form data that doens't contain
+        "/utubs/<utub_id: int>/description" with invalid form data that doens't contain
             the UTUB_DESCRIPTION_FORM.CSRF_TOKEN field, following this format:
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
@@ -922,7 +922,7 @@ def test_update_utub_description_missing_csrf_token(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.post(
+    edit_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id), data=utub_desc_form
     )
 

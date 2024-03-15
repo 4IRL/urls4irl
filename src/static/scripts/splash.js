@@ -23,7 +23,7 @@ function setForgotPasswordButton() {
   $(".to-forgot-password")
     .off("click")
     .on("click", function () {
-      forgotPasswordModalOpener("/forgot_password");
+      forgotPasswordModalOpener("/forgot-password");
     });
 }
 
@@ -49,7 +49,7 @@ function logoutUser() {
 }
 
 function resetPasswordModalOpener() {
-  $.get("/confirm_password_reset", function (data) {
+  $.get("/confirm-password-reset", function (data) {
     $("#SplashModal .modal-content").html(data);
     $("#SplashModal")
       .modal()
@@ -119,7 +119,7 @@ function handleUserChangedPassword() {
 }
 
 function emailValidationModalOpener(tokenExpired = "") {
-  $.get("/confirm_email", function (data) {
+  $.get("/confirm-email", function (data) {
     $("#SplashModal .modal-content").html(data);
     const splashModal = $("#SplashModal");
     splashModal.modal().on("hide.bs.modal", function (e) {
@@ -137,7 +137,7 @@ function emailValidationModalOpener(tokenExpired = "") {
     $("#submit").click(function (event) {
       event.preventDefault();
       let request = $.ajax({
-        url: "/send_validation_email",
+        url: "/send-validation-email",
         type: "POST",
         data: $("#ModalForm").serialize(),
       });

@@ -16,7 +16,7 @@ from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 def test_add_utub_with_valid_form(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page
-    WHEN they make a new UTub for themselves and do a POST to "/utub/new" with valid form data
+    WHEN they make a new UTub for themselves and do a POST to "/utubs" with valid form data
     THEN verify that the server responds with a 200 and valid JSON, that the DB contains the UTub, and
         DB contains the correct UTub data
 
@@ -104,7 +104,7 @@ def test_add_utub_with_same_name(
     """
     GIVEN a valid logged in user on the home page
     WHEN they make a new UTub for themselves with the same name as
-        a previous UTub and do a POST to "/utub/new" with valid form data
+        a previous UTub and do a POST to "/utubs" with valid form data
     THEN verify that the server responds with a 200 and valid JSON, that the DB contains the UTub, and
         DB contains the correct UTub data
 
@@ -184,7 +184,7 @@ def test_add_utub_with_same_name(
 def test_add_utub_with_get_request(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page
-    WHEN they make a new UTub for themselves and do a GET to "/utub/new" with valid form data
+    WHEN they make a new UTub for themselves and do a GET to "/utubs" with valid form data
     THEN verify that the server responds with a 405 invalid request status code, and that no
         UTubs are added to the database
     """
@@ -208,7 +208,7 @@ def test_add_utub_with_get_request(login_first_user_with_register):
 def test_add_utub_with_invalid_form(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page
-    WHEN they make a new UTub for themselves and do a POST to "/utub/new" with invalid form data
+    WHEN they make a new UTub for themselves and do a POST to "/utubs" with invalid form data
     THEN verify that the server responds with a 404 and a JSON containing error messages, and that no
         UTub has been added to the database
 
@@ -275,7 +275,7 @@ def test_add_utub_with_no_csrf_token(login_first_user_with_register):
 def test_add_multiple_valid_utubs(login_first_user_with_register):
     """
     GIVEN a valid user on the home page
-    WHEN they make multiple empty UTubs by POST'ing to "/utub/new" with valid UTub form data
+    WHEN they make multiple empty UTubs by POST'ing to "/utubs" with valid UTub form data
     THEN ensure that the correct 200 status code and JSON response is given, as well as ensuring
         the UTub data is stored as well as the UTub-User association data
     """

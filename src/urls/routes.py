@@ -19,7 +19,7 @@ urls = Blueprint("urls", __name__)
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
 
-@urls.route("/url/remove/<int:utub_id>/<int:url_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>", methods=["DELETE"])
 @email_validation_required
 def remove_url(utub_id: int, url_id: int):
     """
@@ -76,7 +76,7 @@ def remove_url(utub_id: int, url_id: int):
         )
 
 
-@urls.route("/url/add/<int:utub_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls", methods=["POST"])
 @email_validation_required
 def add_url(utub_id: int):
     """
@@ -241,7 +241,7 @@ def add_url(utub_id: int):
     )
 
 
-@urls.route("/urlAndTitle/edit/<int:utub_id>/<int:url_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>", methods=["PUT"])
 @email_validation_required
 def edit_url_and_title(utub_id: int, url_id: int):
     """
@@ -464,7 +464,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
     )
 
 
-@urls.route("/url/edit/<int:utub_id>/<int:url_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>", methods=["PATCH"])
 @email_validation_required
 def edit_url(utub_id: int, url_id: int):
     """
@@ -630,7 +630,7 @@ def edit_url(utub_id: int, url_id: int):
     )
 
 
-@urls.route("/urlTitle/edit/<int:utub_id>/<int:url_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>/title", methods=["PATCH"])
 @email_validation_required
 def edit_url_title(utub_id: int, url_id: int):
     """

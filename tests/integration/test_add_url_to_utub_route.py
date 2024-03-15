@@ -17,7 +17,7 @@ def test_add_valid_url_as_utub_member(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a (previously generated) URL to a UTub they are a part of
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, that a new Url_UTub-User association exists where it didn't before,
         with the correct URL title
@@ -138,7 +138,7 @@ def test_add_valid_url_as_utub_creator(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a (previously generated) URL to a UTub they are a creator of
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Url_UTub-User association exists where it didn't before
 
@@ -257,7 +257,7 @@ def test_add_invalid_url_as_utub_member(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a nonexistant URL to a UTub they are a part of
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new new Url_UTub-User association exists
 
@@ -356,7 +356,7 @@ def test_add_invalid_url_as_utub_creator(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a nonexistant URL to a UTub they are a creator of
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new new Url_UTub-User association exists
 
@@ -455,7 +455,7 @@ def test_add_valid_url_to_nonexistent_utub(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a (previously generated) URL to a nonexistent UTub
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -501,7 +501,7 @@ def test_add_valid_url_to_utub_not_a_member_of(
     GIVEN 3 users and 3 UTubs, with only the creators in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a (previously generated) URL to a UTub the user is not a part of
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 403 HTTP status code, the server sends back the proper
         JSON response, and no new Url-UTub-User associations are added
 
@@ -584,7 +584,7 @@ def test_add_fresh_url_to_utub(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and no URLs
         currently in the database or associated with the UTubs
     WHEN the user tries to add a fresh and valid URL to a UTub they are a creator of
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Url_UTub-User association exists, and that a new URL entity is created
 
@@ -702,7 +702,7 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that they already added the URL to, as the creator of the UTub
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
@@ -792,7 +792,7 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that someone else added, as the creator of the UTub
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
@@ -881,7 +881,7 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that someone else added, as the member of the UTub
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
@@ -970,7 +970,7 @@ def test_add_url_missing_url(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a URL with an empty 'url_string' field in the form
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
         is sent by the server
 
@@ -1130,7 +1130,7 @@ def test_add_url_missing_csrf_token(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a URL with an empty 'url_title' field in the form
-        - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
+        - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
         is sent by the server
 

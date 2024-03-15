@@ -14,7 +14,7 @@ def test_remove_valid_user_from_utub_as_creator(
 ):
     """
     GIVEN a logged in user who is creator of a UTub that has another member in it, with no URLs or tags in the UTub
-    WHEN the logged in user tries to remove second user by POST to "/user/remove/<int: utub_id>/<int: user_id>" with valid
+    WHEN the logged in user tries to remove second user by DELETE to "/utubs/<int:utub_id>/members/<int:user_id>" with valid
         information and a valid CSRF token
     THEN ensure the user gets removed from the UTub by checking UTub-User associations, that the server responds with a
         200 HTTP status code, and that the server sends back the proper JSON response
@@ -55,7 +55,7 @@ def test_remove_valid_user_from_utub_as_creator(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Remove second user
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=second_user_in_utub.id
         ),
@@ -100,7 +100,7 @@ def test_remove_self_from_utub_as_member(
 ):
     """
     GIVEN a logged in user who is a member of a UTub
-    WHEN the logged in user tries to leave the UTub by POST to "/user/remove/<int: utub_id>/<int: user_id>" with valid
+    WHEN the logged in user tries to leave the UTub by DELETE to "/utubs/<int:utub_id>/members/<int:user_id>" with valid
         information and a valid CSRF token
     THEN ensure the user gets removed from the UTub by checking UTub-User associations, that the server responds with a
         200 HTTP status code, and that the server sends back the proper JSON response
@@ -139,7 +139,7 @@ def test_remove_self_from_utub_as_member(
         current_user_username = current_user.username
 
     # Remove self from UTub
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user_id),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -183,7 +183,7 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
     """
     GIVEN a logged in user who is creator of a UTub that has another member in it, and this user has added URLs that also have tags
         associated with them
-    WHEN the logged in user tries to remove second user by POST to "/user/remove/<int: utub_id>/<int: user_id>" with valid
+    WHEN the logged in user tries to remove second user by DELETE to "/utubs/<int:utub_id>/members/<int:user_id>" with valid
         information and a valid CSRF token
     THEN ensure the user gets removed from the UTub by checking UTub-User associations, that the server responds with a
         200 HTTP status code, and that the server sends back the proper JSON response
@@ -257,7 +257,7 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Remove second user
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=second_user_in_utub.id
         ),
@@ -323,7 +323,7 @@ def test_remove_self_from_utub_as_creator(
 ):
     """
     GIVEN a logged in user who is a creator of a UTub
-    WHEN the logged in user tries to leave the UTub by POST to "/user/remove/<int: utub_id>/<int: user_id>" with valid
+    WHEN the logged in user tries to leave the UTub by DELETE to "/utubs/<int:utub_id>/members/<int:user_id>" with valid
         information and a valid CSRF token
     THEN ensure the user does not get removed from the UTub, the server responds with a 400 HTTP status code,
         and that the server sends back the proper JSON response
@@ -356,7 +356,7 @@ def test_remove_self_from_utub_as_creator(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Remove self from UTub
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -392,7 +392,7 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
 ):
     """
     GIVEN a logged in user who is a member of a UTub
-    WHEN the logged in user tries to leave the UTub by POST to "/user/remove/<int: utub_id>/<int: user_id>" with valid
+    WHEN the logged in user tries to leave the UTub by DELETE to "/utubs/<int:utub_id>/members/<int:user_id>" with valid
         information and no CSRF token
     THEN ensure the user does not get removed from the UTub by checking UTub-User associations, that the server responds with a
         400 HTTP status code indicating no CSRF token included
@@ -418,7 +418,7 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Remove self from UTub
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
     )
 
@@ -443,7 +443,7 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
 ):
     """
     GIVEN a logged in user who is creator of a UTub that has another member in it
-    WHEN the logged in user tries to remove second user by POST to "/user/remove/<int: utub_id>/<int: user_id>" with valid
+    WHEN the logged in user tries to remove second user by DELETE to "/utubs/<int:utub_id>/members/<int:user_id>" with valid
         information and a missing CSRF token
     THEN ensure the user does not get removed from the UTub by checking UTub-User associations, that the server responds
         with a 400 HTTP status code indicating the CSRF token is missing
@@ -475,7 +475,7 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Remove second user
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
     )
 
@@ -503,7 +503,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
 ):
     """
     GIVEN a valid existing user and a nonexistent UTub
-    WHEN the user requests to remove themselves from the UTub via a POST to "/user/remove/<int: utub_id>/<int: user_id>"
+    WHEN the user requests to remove themselves from the UTub via a DELETE to "/utubs/<int:utub_id>/members/<int:user_id>"
     THEN ensure that a 404 status code response is given when the UTub cannot be found in the database
     """
 
@@ -525,7 +525,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Remove self from UTub
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=invalid_utub_id, user_id=current_user.id),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -535,7 +535,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
 
     # Ensure 404 response is given no matter what USER ID
     for num in range(10):
-        remove_user_response = client.post(
+        remove_user_response = client.delete(
             url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=invalid_utub_id, user_id=num),
             data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
         )
@@ -553,7 +553,7 @@ def test_remove_invalid_user_from_utub_as_creator(
 ):
     """
     GIVEN a creator of a UTub that is currently logged in
-    WHEN the user requests to remove a nonexistent member from the UTub via a POST to "/user/remove/<int: utub_id>/<int: user_id>"
+    WHEN the user requests to remove a nonexistent member from the UTub via a DELETE to "/utubs/<int:utub_id>/members/<int:user_id>"
     THEN ensure that a 404 status code response is given when the user cannot be found in the UTub, and the proper JSON response is given
 
     Proper JSON response is as follows:
@@ -590,7 +590,7 @@ def test_remove_invalid_user_from_utub_as_creator(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Remove self from UTub
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=user_id_not_in_utub
         ),
@@ -616,7 +616,7 @@ def test_remove_invalid_user_from_utub_as_member(
 ):
     """
     GIVEN a member of a UTub that is currently logged in
-    WHEN the user requests to remove a nonexistent member from the UTub via a POST to "/user/remove/<int: utub_id>/<int: user_id>"
+    WHEN the user requests to remove a nonexistent member from the UTub via a DELETE to "/utubs/<int:utub_id>/members/<int:user_id>"
     THEN ensure that a 403 status code response is given when the user cannot be found in the UTub, and the proper JSON response is given
 
     Proper JSON response is as follows:
@@ -656,7 +656,7 @@ def test_remove_invalid_user_from_utub_as_member(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Remove self from UTub
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=user_id_not_in_utub
         ),
@@ -685,8 +685,8 @@ def test_remove_another_member_from_same_utub_as_member(
 ):
     """
     GIVEN a logged in user who is a member of a UTub with another member and the creator
-    WHEN the logged in user tries to remove the other member (not the creator) from the UTub by POST to
-        "/user/remove/<int: utub_id>/<int: user_id>" with valid information and a valid CSRF token
+    WHEN the logged in user tries to remove the other member (not the creator) from the UTub by DELETE to
+        "/utubs/<int:utub_id>/members/<int:user_id>" with valid information and a valid CSRF token
     THEN ensure the other member does not get removed from the UTub by checking UTub-User associations,
         that the server responds with a 403 HTTP status code, and that the server sends back the proper JSON response
 
@@ -723,7 +723,7 @@ def test_remove_another_member_from_same_utub_as_member(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Attempt to remove other user from UTub as a member
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=other_utub_member.id
         ),
@@ -770,8 +770,8 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
         UTUB 1 -> Creator == 1, nobody else
         UTUB 2 -> Creator == 2, contains 3
 
-    WHEN the logged in user tries to remove the other member (not the creator) from the other UTub by POST to
-        "/user/remove/<int: utub_id>/<int: user_id>" with valid information and a valid CSRF token
+    WHEN the logged in user tries to remove the other member (not the creator) from the other UTub by DELETE to
+        "/utubs/<int:utub_id>/members/<int:user_id>" with valid information and a valid CSRF token
     THEN ensure the other member does not get removed from the UTub by checking UTub-User associations,
         that the server responds with a 403 HTTP status code, and that the server sends back the proper JSON response
 
@@ -814,7 +814,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to remove the third user from second user's UTub as the first user
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=second_user_utub.id, user_id=third_user.id
         ),
@@ -860,8 +860,8 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
 
         Have logged in user with ID == 2 try to remove User 1 from UTub 3
 
-    WHEN the logged in user tries to remove the other member (not the creator) from the other UTub by POST to
-        "/user/remove/<int: utub_id>/<int: user_id>" with valid information and a valid CSRF token
+    WHEN the logged in user tries to remove the other member (not the creator) from the other UTub by DELETE to
+        "/utubs/<int:utub_id>/members/<int:user_id>" with valid information and a valid CSRF token
     THEN ensure the other member does not get removed from the UTub by checking UTub-User associations,
         that the server responds with a 403 HTTP status code, and that the server sends back the proper JSON response
 
@@ -915,7 +915,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
         initial_num_user_utubs = len(Utub_Users.query.all())
 
     # Try to remove the first user from second user's UTub as the first user
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
             utub_id=new_utub_from_third_user.id,

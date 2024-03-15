@@ -18,7 +18,7 @@ def test_user_logged_in_email_validated_cannot_access_forgot_password(
 ):
     """
     GIVEN a user who is already logged in and email validated
-    WHEN they try to make a GET to the /forgot_password URL
+    WHEN they try to make a GET to the /forgot-password URL
     THEN ensure they cannot access - only access is from non-logged in users
         who are email validated. User should get redirected to their home page
     """
@@ -41,7 +41,7 @@ def test_user_registered_not_email_validated_cannot_access_forgot_password(
 ):
     """
     GIVEN a user who just registered and the email confirmation modal has popped up
-    WHEN they try to make a GET to the /forgot_password URL
+    WHEN they try to make a GET to the /forgot-password URL
     THEN ensure they cannot access - only access is from non-logged in users
         who are email validated. User should get redirected to the email confirmation page
     """
@@ -76,7 +76,7 @@ def test_user_registered_not_email_validated_cannot_access_forgot_password(
 def test_valid_user_requests_forgot_password_form(register_first_user, load_login_page):
     """
     GIVEN a user who is not logged in but is email validated and registered
-    WHEN they try to make a GET to the /forgot_password URL
+    WHEN they try to make a GET to the /forgot-password URL
     THEN server successfully sends the user the forgot password form and responds with
         200 status code
     """
@@ -93,7 +93,7 @@ def test_valid_user_posts_forgot_password_form_without_csrf(
 ):
     """
     GIVEN a user who is not logged in but is email validated and registered
-    WHEN they try to make a POST to the /forgot_password URL with a missing CSRF token
+    WHEN they try to make a POST to the /forgot-password URL with a missing CSRF token
     THEN server responds with a 400 and proper error message
     """
     new_user, _ = register_first_user

@@ -14,7 +14,7 @@ def test_add_valid_users_to_utub_as_creator(
 ):
     """
     GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
-    WHEN the user wants to add two other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
+    WHEN the user wants to add two other valid users to their UTub by POST to "/utubs/<int:utub_id>/members" with
         correct form data, following the following format:
             ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
             ADD_USER_FORM.USERNAME: Username of the user to add
@@ -127,7 +127,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     """
     GIVEN a logged-in user who is creator of a UTub that contains other members
     WHEN the creator first removes another user who has added URLs, then wants to add the users back to their UTub by POST to
-        "/user/add/<int: utub_id>" with correct form data, following the following format:
+        "/utubs/<int:utub_id>/members" with correct form data, following the following format:
             ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
             ADD_USER_FORM.USERNAME: Username of the user to add
     THEN ensure that the backend responds with a 200 HTTP status code, that the database contains the newly added
@@ -192,9 +192,9 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
         all_url_tags_in_utub = len(Url_Tags.query.all())
 
     # Remove this user first
-    remove_user_response = client.post(
+    remove_user_response = client.delete(
         url_for(
-            "members.remove_member",
+            ROUTES.MEMBERS.REMOVE_MEMBER,
             utub_id=utub_user_created.id,
             user_id=other_user_id_in_utub_with_urls,
         ),
@@ -268,7 +268,7 @@ def test_add_valid_users_to_utub_as_member(
 ):
     """
     GIVEN a logged-in user who is member of a UTub
-    WHEN the user wants to add another other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
+    WHEN the user wants to add another other valid users to their UTub by POST to "/utubs/<int:utub_id>/members" with
         correct form data, following the following format:
             ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
             ADD_USER_FORM.USERNAME: Username of the user to add
@@ -349,7 +349,7 @@ def test_add_duplicate_user_to_utub(
 ):
     """
     GIVEN a logged-in user who owns a UTub that has another user as a member
-    WHEN the creator wants to add the same other user to their UTub by POST to "/user/add/<int: utub_id>" with
+    WHEN the creator wants to add the same other user to their UTub by POST to "/utubs/<int:utub_id>/members" with
         correct form data, following the following format:
             ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
             ADD_USER_FORM.USERNAME: Username of the user to add
@@ -440,7 +440,7 @@ def test_add_user_to_nonexistant_utub(
 ):
     """
     GIVEN a logged-in user and other valid registered users with no UTubs created
-    WHEN the logged-in user wants to another user to a UTub (none exist) by POST to "/user/add/<int: utub_id>" with
+    WHEN the logged-in user wants to another user to a UTub (none exist) by POST to "/utubs/<int:utub_id>/members" with
         correct form data, following the following format:
             ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
             ADD_USER_FORM.USERNAME: Username of the user to add
@@ -488,7 +488,7 @@ def test_add_nonexistant_user_to_utub(
 ):
     """
     GIVEN a logged-in user and their single UTub and no other registered users with no UTubs created
-    WHEN the logged-in user wants to another user to their UTub by POST to "/user/add/<int: utub_id>" with
+    WHEN the logged-in user wants to another user to their UTub by POST to "/utubs/<int:utub_id>/members" with
         correct form data, following the following format:
             ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
             ADD_USER_FORM.USERNAME: Username of an unregistered user
@@ -541,7 +541,7 @@ def test_add_user_to_another_users_utub(
 ):
     """
     GIVEN three valid users, first one being logged in, and each user has their own UTub and themselves being the only member
-    WHEN the logged-in user wants to add another user to another person's UTub by POST to "/user/add/<int: utub_id>" with
+    WHEN the logged-in user wants to add another user to another person's UTub by POST to "/utubs/<int:utub_id>/members" with
         correct form data, following the following format:
             ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
             ADD_USER_FORM.USERNAME: Username of an unregistered user
@@ -628,7 +628,7 @@ def test_add_user_to_utub_invalid_form(
 ):
     """
     GIVEN a logged-in user who is member of a UTub
-    WHEN the user wants to add another other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
+    WHEN the user wants to add another other valid users to their UTub by POST to "/utubs/<int:utub_id>/members" with
         incorrect form data (missing ADD_USER_FORM.USERNAME), following the following format:
             ADD_USER_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN ensure that the backend responds with a 404 HTTP status code,and the correct JSON response
@@ -685,7 +685,7 @@ def test_add_user_to_utub_missing_csrf_token(
 ):
     """
     GIVEN a logged-in user who is member of a UTub
-    WHEN the user wants to add another other valid users to their UTub by POST to "/user/add/<int: utub_id>" with
+    WHEN the user wants to add another other valid users to their UTub by POST to "/utubs/<int:utub_id>/members" with
         a missing CSRF token
     THEN ensure that the backend responds with a 404 HTTP status code,and the correct JSON response
     """

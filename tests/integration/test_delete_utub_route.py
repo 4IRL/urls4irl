@@ -1,5 +1,6 @@
-from flask import url_for
-from flask_login import current_user
+from flask import Flask, url_for
+from flask_login import current_user, FlaskLoginClient
+from typing import Generator
 
 from tests.models_for_test import valid_empty_utub_1
 from src.models import Utub, Utub_Users, Utub_Urls, Url_Tags
@@ -15,7 +16,7 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
 ):
     """
     GIVEN a valid existing user and a UTub they have created
-    WHEN the user requests to delete the UTub via a POST to "/utub/delete/<int: utub_id>"
+    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
     THEN ensure that a 200 status code response is given, and the proper JSON response
         indicating the successful deletion of the UTub is included.
         Additionally, this user and UTub are the only existing entities so ensure that
@@ -36,7 +37,7 @@ def test_delete_existing_utub_as_creator_no_tags_urls_members(
         # Get initial count of UTubs
         initial_num_utubs = len(Utub.query.all())
 
-    delete_utub_response = client.post(
+    delete_utub_response = client.delete(
         url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
         data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
@@ -69,7 +70,7 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
 ):
     """
     GIVEN a valid existing user and a UTub they have created that contains members but no URLs nor tags
-    WHEN the user requests to delete the UTub via a POST to "/utub/delete/<int: utub_id>"
+    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
     THEN ensure that a 200 status code response is given, and the proper JSON response
         indicating the successful deletion of the UTub is included.
         Ensure all User-UTub associations, URL-UTub associations, and URL-Tag associations are deleted.
@@ -106,7 +107,7 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
 
         initial_num_utubs = len(Utub.query.all())
 
-    delete_utub_response = client.post(
+    delete_utub_response = client.delete(
         url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
         data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
@@ -161,7 +162,7 @@ def test_delete_existing_utub_with_urls_no_tags(
 ):
     """
     GIVEN a valid existing user and a UTub they have created that contains members, URLs but no tags on URLs
-    WHEN the user requests to delete the UTub via a POST to "/utub/delete/<int: utub_id>"
+    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
     THEN ensure that a 200 status code response is given, and the proper JSON response
         indicating the successful deletion of the UTub is included.
         Ensure all User-UTub associations, URL-UTub associations, and URL-Tag associations are deleted.
@@ -198,7 +199,7 @@ def test_delete_existing_utub_with_urls_no_tags(
 
         initial_num_utubs = len(Utub.query.all())
 
-    delete_utub_response = client.post(
+    delete_utub_response = client.delete(
         url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
         data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
@@ -253,7 +254,7 @@ def test_delete_existing_utub_with_urls_and_tags(
 ):
     """
     GIVEN a valid existing user and a UTub they have created that contains members, URLs, and tags on those URLs
-    WHEN the user requests to delete the UTub via a POST to "/utub/delete/<int: utub_id>"
+    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
     THEN ensure that a 200 status code response is given, and the proper JSON response
         indicating the successful deletion of the UTub is included.
         Ensure all User-UTub associations, URL-UTub associations, and URL-Tag associations are deleted.
@@ -290,7 +291,7 @@ def test_delete_existing_utub_with_urls_and_tags(
 
         initial_num_utubs = len(Utub.query.all())
 
-    delete_utub_response = client.post(
+    delete_utub_response = client.delete(
         url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_to_delete),
         data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
@@ -343,7 +344,7 @@ def test_delete_existing_utub_with_urls_and_tags(
 def test_delete_nonexistent_utub(login_first_user_with_register):
     """
     GIVEN a valid existing user and a nonexistent UTub
-    WHEN the user requests to delete the UTub via a POST to "/utub/delete/1"
+    WHEN the user requests to delete the UTub via a DELETE to "/utubs/1"
     THEN ensure that a 404 status code response is given when the UTub cannot be found in the database
     """
     client, csrf_token, _, app = login_first_user_with_register
@@ -352,7 +353,7 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
     with app.app_context():
         assert len(Utub.query.all()) == 0
 
-    delete_utub_response = client.post(
+    delete_utub_response = client.delete(
         url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=1),
         data={UTUB_FORM.CSRF_TOKEN: csrf_token},
     )
@@ -368,10 +369,10 @@ def test_delete_nonexistent_utub(login_first_user_with_register):
 def test_delete_utub_with_invalid_route(login_first_user_with_register):
     """
     GIVEN a valid existing user
-    WHEN the user requests to delete a UTub via a POST to "/utub/delete/InvalidRouteArgument"
+    WHEN the user requests to delete a UTub via a DELETE to "/utubs/InvalidRouteArgument"
     THEN ensure that a 404 status code response is given due to the invalid route used
 
-    Correct url should be: "/utub/delete/<int: utub_id>" Where utub_id is an integer representing the ID of the UTub
+    Correct url should be: "/utubs/<int: utub_id>" Where utub_id is an integer representing the ID of the UTub
         to delete
     """
     client, csrf_token, _, app = login_first_user_with_register
@@ -380,8 +381,8 @@ def test_delete_utub_with_invalid_route(login_first_user_with_register):
     with app.app_context():
         assert len(Utub.query.all()) == 0
 
-    delete_utub_response = client.post(
-        f"/utub/delete/InvalidRoute", data={UTUB_FORM.CSRF_TOKEN: csrf_token}
+    delete_utub_response = client.delete(
+        f"/utubs/InvalidRoute", data={UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     # Ensure 404 sent back after invalid UTub id is requested
@@ -395,7 +396,7 @@ def test_delete_utub_with_invalid_route(login_first_user_with_register):
 def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in):
     """
     GIVEN a valid existing user with a single UTub, utub ID == 1
-    WHEN the user requests to delete a UTub via a POST to "/utub/delete/1" without a CSRF token included
+    WHEN the user requests to delete a UTub via a DELETE to "/utubs/1" without a CSRF token included
     THEN ensure that a 400 status code response is given due to not including the CSRF
     """
     client, utub_id, _, app = add_single_utub_as_user_after_logging_in
@@ -404,7 +405,7 @@ def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in
     with app.app_context():
         assert len(Utub.query.all()) == 1
 
-    delete_utub_response = client.post(url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id))
+    delete_utub_response = client.delete(url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id))
 
     # Ensure 400 sent back after no csrf token included
     assert delete_utub_response.status_code == 400
@@ -420,7 +421,7 @@ def test_delete_utub_as_not_member_or_creator(
 ):
     """
     GIVEN three sets of users, with each user having created their own UTub
-    WHEN one user tries to delete the other two users' UTubs via POST to "/utub/dete/<int: utub_id>"
+    WHEN one user tries to delete the other two users' UTubs via DELETE to "/utubs/<int: utub_id>"
     THEN ensure response status code is 403, and proper JSON response indicating error is given
 
     JSON response should be formatted as follows:
@@ -445,7 +446,7 @@ def test_delete_utub_as_not_member_or_creator(
         assert len(user_not_in_these_utubs) == 2
 
     for utub_not_in in user_not_in_these_utubs:
-        delete_utub_response = client.post(
+        delete_utub_response = client.delete(
             url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_not_in.utub_id),
             data={UTUB_FORM.CSRF_TOKEN: csrf_token},
         )
@@ -481,7 +482,7 @@ def test_delete_utub_as_member_only(
     """
     GIVEN three sets of users, with each user having created their own UTub
     WHEN one user who is a member of all three UTubs,
-        tries to delete the other two users' UTubs via POST to "/utub/dete/<int: utub_id>"
+        tries to delete the other two users' UTubs via DELETE to "/utubs/<int: utub_id>"
     THEN ensure response status code is 403, and proper JSON response indicating error is given
 
     JSON response should be formatted as follows:
@@ -531,7 +532,7 @@ def test_delete_utub_as_member_only(
     only_member_in_these_utubs = user_not_in_these_utubs
 
     for utub_not_in in only_member_in_these_utubs:
-        delete_utub_response = client.post(
+        delete_utub_response = client.delete(
             url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_not_in.utub_id),
             data={UTUB_FORM.CSRF_TOKEN: csrf_token},
         )

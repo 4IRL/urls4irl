@@ -16,8 +16,8 @@ def test_update_url_title_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN the creator attempts to modify the URL title, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: String of new title
     THEN verify that title is modified in the database, the url-utub-user associations and url-tag are
@@ -83,7 +83,7 @@ def test_update_url_title_utub_creator(
         URL_FORM.URL_TITLE: NEW_TITLE,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
@@ -131,8 +131,8 @@ def test_update_url_title_url_adder(
 ):
     """
     GIVEN a valid member of a UTub that has members, URL added by the member, and tags associated with each URL
-    WHEN the member attempts to modify the URL title, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the member attempts to modify the URL title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: String of new title
     THEN verify that the new title is modified in the database, the url-utub-user associations and url-tag are
@@ -200,7 +200,7 @@ def test_update_url_title_url_adder(
         URL_FORM.URL_TITLE: NEW_TITLE,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
@@ -254,8 +254,8 @@ def test_update_url_title_with_same_title_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN the creator attempts to modify the URL title with the same title, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL title with the same title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: String of same title
     THEN verify that title is not modified in the database, the url-utub-user associations and url-tag are
@@ -320,7 +320,7 @@ def test_update_url_title_with_same_title_utub_creator(
         URL_FORM.URL_TITLE: current_title,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
@@ -368,8 +368,8 @@ def test_update_url_title_with_same_title_url_adder(
 ):
     """
     GIVEN a valid member of a UTub that has members, URL added by the member, and tags associated with each URL
-    WHEN the member attempts to modify the URL title with the same title, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the member attempts to modify the URL title with the same title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: String of same title
     THEN verify that the title is the same in the database, the url-utub-user associations and url-tag are
@@ -436,7 +436,7 @@ def test_update_url_title_with_same_title_url_adder(
         URL_FORM.URL_TITLE: current_title,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
@@ -489,8 +489,8 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
 ):
     """
     GIVEN a valid member of a UTub that has members, URL not added by the member, and tags associated with each URL
-    WHEN the member attempts to modify the URL title, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the member attempts to modify the URL title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: String of new title
     THEN verify that the title is not modified in the database, the url-utub-user associations and url-tag are
@@ -549,7 +549,7 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
         URL_FORM.URL_TITLE: NEW_TITLE,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
@@ -598,8 +598,8 @@ def test_update_url_title_with_empty_title_as_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN the creator attempts to modify the URL title to an empty title, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL title to an empty title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: Empty string
     THEN verify that title is modified in the database, the url-utub-user associations and url-tag are
@@ -656,7 +656,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
         URL_FORM.URL_TITLE: NEW_TITLE,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
@@ -704,8 +704,8 @@ def test_update_url_title_as_member_of_other_utub(
     """
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
     WHEN a member that isn't the creator/adder, but is also a creator and member of two other UTubs,
-        attempts to modify the URL title to an empty title, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+        attempts to modify the URL title to an empty title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: Empty string
     THEN verify the url-utub-user associations and url-tag are
@@ -760,7 +760,7 @@ def test_update_url_title_as_member_of_other_utub(
         URL_FORM.URL_TITLE: NEW_TITLE,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_id,
@@ -801,8 +801,8 @@ def test_update_url_title_with_missing_title_field_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN the creator attempts to modify the URL title with a form missing the title field, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL title with a form missing the title field, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN verify that title is not modified in the database, the url-utub-user associations and url-tag are
         unchanged, all other URL associations are kept consistent,
@@ -856,7 +856,7 @@ def test_update_url_title_with_missing_title_field_utub_creator(
         URL_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
@@ -903,8 +903,8 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN the creator attempts to modify the URL title with a form missing the CSRF token, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN the creator attempts to modify the URL title with a form missing the CSRF token, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.URL_TITLE: String containing a new URL title
     THEN verify that the url-utub-user associations and url-tag are unchanged all other URL associations
         are kept consistent, the server sends back a 400 HTTP status code,
@@ -948,7 +948,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
 
     edit_url_string_title_form = {URL_FORM.URL_TITLE: current_title + "AAA"}
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
@@ -986,8 +986,8 @@ def test_update_url_title_of_nonexistent_url(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN a member, attempts to modify the URL title of a URL that does not exist, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN a member, attempts to modify the URL title of a URL that does not exist, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: A new URL title
     THEN verify that the url-utub-user associations and url-tag are unchanged,
@@ -1019,7 +1019,7 @@ def test_update_url_title_of_nonexistent_url(
         URL_FORM.URL_TITLE: NEW_TITLE,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_id,
@@ -1046,8 +1046,8 @@ def test_update_url_title_in_nonexistent_utub(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN a member, attempts to modify the URL title of a URL in a UTub that does not exist, via a POST to:
-        "/url/edit/<utub_id: int>/<url_id: int>" with valid form data, following this format:
+    WHEN a member, attempts to modify the URL title of a URL in a UTub that does not exist, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: A new URL title
     THEN verify that the url-utub-user associations and url-tag are unchanged,
@@ -1075,7 +1075,7 @@ def test_update_url_title_in_nonexistent_utub(
         URL_FORM.URL_TITLE: NEW_TITLE,
     }
 
-    edit_url_string_title_form = client.post(
+    edit_url_string_title_form = client.patch(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=NONEXISTENT_UTUB_ID,

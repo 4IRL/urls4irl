@@ -16,7 +16,7 @@ def test_remove_tag_from_url_as_utub_creator(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to remove a tag from a URL as the creator of the current UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -99,7 +99,7 @@ def test_remove_tag_from_url_as_utub_creator(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=utub_id_this_user_creator_of,
@@ -176,7 +176,7 @@ def test_remove_tag_from_url_as_utub_member(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to remove a tag from a URL as a member of a UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -259,7 +259,7 @@ def test_remove_tag_from_url_as_utub_member(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=utub_id_this_user_member_of,
@@ -335,7 +335,7 @@ def test_remove_tag_from_url_with_one_tag(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 1 tag associated
     WHEN the user tries to remove a tag from a URL as a member of a UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -418,7 +418,7 @@ def test_remove_tag_from_url_with_one_tag(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=utub_id_this_user_member_of,
@@ -495,7 +495,7 @@ def test_remove_last_tag_from_utub(
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 1 tag associated
     WHEN the user tries to remove a tag from a URL as a member of a UTub, and the tag is not associated with any other
         URLs in that UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -579,7 +579,7 @@ def test_remove_last_tag_from_utub(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=utub_id_this_user_member_of,
@@ -657,7 +657,7 @@ def test_remove_tag_from_url_with_five_tags(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 1 URL in each UTub, and each URL has 5 tag associated
     WHEN the user tries to remove a tag from a URL as a member of a UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -762,7 +762,7 @@ def test_remove_tag_from_url_with_five_tags(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=utub_id_user_is_member_of,
@@ -836,7 +836,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_creator(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to remove a nonexistent tag from a URL as the creator of the current UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -885,7 +885,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_creator(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=utub_id_this_user_creator_of,
@@ -929,7 +929,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to remove a nonexistent tag from a URL as the member of the current UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -981,7 +981,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=utub_id_this_user_member_of,
@@ -1029,7 +1029,7 @@ def test_remove_tag_from_url_but_not_member_of_utub(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to remove a newly added tag from a URL as not a member of the UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -1096,7 +1096,7 @@ def test_remove_tag_from_url_but_not_member_of_utub(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=utub_id_not_member_of,
@@ -1139,7 +1139,7 @@ def test_remove_tag_from_url_from_nonexistent_utub(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to remove a a tag from a URL within a nonexistent UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -1207,7 +1207,7 @@ def test_remove_tag_from_url_from_nonexistent_utub(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=nonexistent_utub_id,
@@ -1259,7 +1259,7 @@ def test_remove_tag_from_nonexistent_url_utub(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with it
     WHEN the user tries to remove a a tag from a nonexistent URL within a UTub
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -1315,7 +1315,7 @@ def test_remove_tag_from_nonexistent_url_utub(
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=existing_utub_id,
@@ -1364,7 +1364,7 @@ def test_remove_tag_with_no_csrf_token(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to remove a tag from a URL without including the CSRF token
-        - By POST to "/tag/remove/<utub_id: int>/<url_id: int>/<tag_id: int> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to remove tag from,
             "tag_id": An integer representing Tag ID to remove from the URL
@@ -1406,7 +1406,7 @@ def test_remove_tag_with_no_csrf_token(
     # Remove tag from this URL
     add_tag_form = {}
 
-    remove_tag_response = client.post(
+    remove_tag_response = client.delete(
         url_for(
             ROUTES.TAGS.REMOVE_TAG,
             utub_id=existing_utub_id,

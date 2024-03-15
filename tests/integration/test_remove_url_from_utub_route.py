@@ -15,7 +15,7 @@ def test_remove_url_as_utub_creator_no_tags(
 ):
     """
     GIVEN a logged-in creator of a UTub who has added a valid URL to their UTub, with no tags
-    WHEN the creator wishes to remove the URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    WHEN the creator wishes to remove the URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
     THEN the server responds with a 200 HTTP status code, the UTub-User-URL association is removed from the database,
         and the server sends back the correct JSON reponse
 
@@ -76,7 +76,7 @@ def test_remove_url_as_utub_creator_no_tags(
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Remove URL from UTub as UTub creator
-    remove_url_response = client.post(
+    remove_url_response = client.delete(
         url_for(
             ROUTES.URLS.REMOVE_URL, utub_id=current_user_utub.id, url_id=url_id_to_remove
         ),
@@ -123,7 +123,7 @@ def test_remove_url_as_utub_member_no_tags(
 ):
     """
     GIVEN a logged-in member of a UTub who has added a valid URL to their UTub, with no tags
-    WHEN the creator wishes to remove the URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    WHEN the creator wishes to remove the URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
     THEN the server responds with a 200 HTTP status code, the UTub-User-URL association is removed from the database,
         and the server sends back the correct JSON reponse
 
@@ -217,7 +217,7 @@ def test_remove_url_as_utub_member_no_tags(
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Remove URL from UTub as UTub member
-    remove_url_response = client.post(
+    remove_url_response = client.delete(
         url_for(ROUTES.URLS.REMOVE_URL, utub_id=current_user_utub.id, url_id=missing_url.id),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -262,7 +262,7 @@ def test_remove_url_from_utub_not_member_of(
 ):
     """
     GIVEN a logged-in member of a UTub, with two other UTub the user is not a part of that also contains URLs
-    WHEN the user wishes to remove the URL from another UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    WHEN the user wishes to remove the URL from another UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
     THEN the server responds with a 403 HTTP status code, the UTub-User-URL association is not removed from the database,
         and the server sends back the correct JSON reponse
 
@@ -301,7 +301,7 @@ def test_remove_url_from_utub_not_member_of(
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Remove the URL from the other user's UTub while logged in as member of another UTub
-    remove_url_response = client.post(
+    remove_url_response = client.delete(
         url_for(
             ROUTES.URLS.REMOVE_URL,
             utub_id=utub_current_user_not_part_of.id,
@@ -342,7 +342,7 @@ def test_remove_invalid_nonexistant_url_as_utub_creator(
 ):
     """
     GIVEN a logged-in creator of a UTub
-    WHEN the user wishes to remove a nonexistant URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    WHEN the user wishes to remove a nonexistant URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
     THEN the server responds with a 404 HTTP status code, and the database has no changes
     """
 
@@ -388,7 +388,7 @@ def test_remove_invalid_nonexistant_url_as_utub_creator(
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Attempt to remove nonexistant URL from UTub as creator of UTub
-    remove_url_response = client.post(
+    remove_url_response = client.delete(
         url_for(
             ROUTES.URLS.REMOVE_URL,
             utub_id=id_of_utub_current_user_creator_of,
@@ -420,7 +420,7 @@ def test_remove_invalid_nonexistant_url_as_utub_member(
 ):
     """
     GIVEN a logged-in creator of a UTub
-    WHEN the user wishes to remove a nonexistant URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    WHEN the user wishes to remove a nonexistant URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
     THEN the server responds with a 404 HTTP status code, and the database has no changes
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -468,7 +468,7 @@ def test_remove_invalid_nonexistant_url_as_utub_member(
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Attempt to remove nonexistant URL from UTub as creator of UTub
-    remove_url_response = client.post(
+    remove_url_response = client.delete(
         url_for(
             ROUTES.URLS.REMOVE_URL,
             utub_id=id_of_utub_current_user_member_of,
@@ -500,7 +500,7 @@ def test_remove_url_as_utub_creator_with_tags(
 ):
     """
     GIVEN a logged-in creator of a UTub who has a valid URL in their UTub, with tags
-    WHEN the creator wishes to remove the URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    WHEN the creator wishes to remove the URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
     THEN the server responds with a 200 HTTP status code, the UTub-User-URL association is removed from the database,
         the UTub-URL-Tag association is removed from the database, and the server sends back the correct JSON reponse
 
@@ -568,7 +568,7 @@ def test_remove_url_as_utub_creator_with_tags(
         )
 
     # Attempt to remove URL that contains tag from UTub as creator of UTub
-    remove_url_response = client.post(
+    remove_url_response = client.delete(
         url_for(
             ROUTES.URLS.REMOVE_URL,
             utub_id=utub_id_to_remove_url_from,
@@ -627,7 +627,7 @@ def test_remove_url_as_utub_member_with_tags(
 ):
     """
     GIVEN a logged-in member of a UTub who has added a valid URL to their UTub, with tags
-    WHEN the creator wishes to remove the URL from the UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>"
+    WHEN the creator wishes to remove the URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
     THEN the server responds with a 200 HTTP status code, the UTub-User-URL association is removed from the database,
         the UTub-URL-Tag association is removed from the database, and the server sends back the correct JSON reponse
 
@@ -698,7 +698,7 @@ def test_remove_url_as_utub_member_with_tags(
         )
 
     # Remove URL from UTub as UTub member
-    remove_url_response = client.post(
+    remove_url_response = client.delete(
         url_for(
             ROUTES.URLS.REMOVE_URL,
             utub_id=utub_id_to_remove_url_from,
@@ -747,8 +747,8 @@ def test_remove_url_from_utub_no_csrf_token(
 ):
     """
     GIVEN a logged-in member of a UTub, with two other UTub the user is not a part of that also contains URLs
-    WHEN the user wishes to remove the URL from another UTub by making a POST to "/url/remove/<int: utub_id>/<int: url_id>",
-        where the POST does not contain a valid CSRF token
+    WHEN the user wishes to remove the URL from another UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>",
+        where the DELETE does not contain a valid CSRF token
     THEN the server responds with a 400 HTTP status code, the UTub-User-URL association is not removed from the database,
         and the server sends back an HTML element indicating a missing CSRF token
     """
@@ -781,7 +781,7 @@ def test_remove_url_from_utub_no_csrf_token(
         initial_utub_urls = len(Utub_Urls.query.all())
 
     # Remove the URL from the other user's UTub while logged in as member of another UTub
-    remove_url_response = client.post(
+    remove_url_response = client.delete(
         url_for(
             ROUTES.URLS.REMOVE_URL,
             utub_id=utub_current_user_not_part_of.id,

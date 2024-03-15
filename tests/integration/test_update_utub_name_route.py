@@ -14,7 +14,7 @@ def test_update_valid_utub_name_as_creator(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to a new name, via a POST to
-        "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the new UTub name is stored in the database, the utub-user associations are
@@ -60,7 +60,7 @@ def test_update_valid_utub_name_as_creator(
 
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
@@ -113,7 +113,7 @@ def test_update_valid_utub_same_name_as_creator(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to the same name, via a POST to
-        "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is still identical in the database, the utub-user associations are
@@ -157,7 +157,7 @@ def test_update_valid_utub_same_name_as_creator(
 
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
@@ -210,7 +210,7 @@ def test_update_utub_empty_name_as_creator(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to an empty name, via a POST to
-        "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
@@ -259,7 +259,7 @@ def test_update_utub_empty_name_as_creator(
 
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
@@ -315,7 +315,7 @@ def test_update_utub_name_only_spaces_as_creator(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to a name with only spaces, via a POST to
-        "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
@@ -364,7 +364,7 @@ def test_update_utub_name_only_spaces_as_creator(
 
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
@@ -419,7 +419,7 @@ def test_update_utub_name_as_member(
     """
     GIVEN a valid member of a UTub that has other members, a creator
     WHEN the member attempts to modify the UTub name to a new name, via a POST to
-        "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
@@ -467,7 +467,7 @@ def test_update_utub_name_as_member(
 
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
@@ -510,7 +510,7 @@ def test_update_utub_name_as_creator_of_another_utub(
     """
     GIVEN a valid member of a UTub that has other members, a creator, URLs, and tags associated with all URLs
     WHEN the member attempts to modify the UTub name to a new name, via a POST to
-        "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
@@ -563,7 +563,7 @@ def test_update_utub_name_as_creator_of_another_utub(
 
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
@@ -606,7 +606,7 @@ def test_update_name_of_invalid_utub(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name of an invalid UTub via a POST to
-        "/utub/edit_name/<utub_id: int>" with valid form data, following this format:
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             "utub_name": New UTub name to add
     THEN verify that the UTub names have not changed in the database, the utub-user associations are
@@ -649,7 +649,7 @@ def test_update_name_of_invalid_utub(
         UTUB_FORM.NAME: utub_of_user.name + "Hello",
     }
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=utub_id_to_test), data=utub_name_form
     )
 
@@ -692,7 +692,7 @@ def test_update_name_of_utub_too_long_name(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs, and that
         the max length of a UTub name is 30 characters
     WHEN the creator attempts to modify the UTub name of an invalid UTub via a POST to
-        "/utub/edit_name/<utub_id: int>" with invalid form data that does not contain the UTUB_FORM.NAME field, following this format:
+        "/utubs/<utub_id: int>/name" with invalid form data that does not contain the UTUB_FORM.NAME field, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
             UTUB_FORM.NAME: New UTub name to add (longer than 30 characters)
     THEN verify that the UTub names have not changed in the database, the utub-user associations are
@@ -744,7 +744,7 @@ def test_update_name_of_utub_too_long_name(
 
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
@@ -800,7 +800,7 @@ def test_update_name_of_utub_missing_name_field_form(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name of an invalid UTub via a POST to
-        "/utub/edit_name/<utub_id: int>" with invalid form data that does not contain the UTUB_FORM.NAME field, following this format:
+        "/utubs/<utub_id: int>/name" with invalid form data that does not contain the UTUB_FORM.NAME field, following this format:
             UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN verify that the UTub names have not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -846,7 +846,7 @@ def test_update_name_of_utub_missing_name_field_form(
         UTUB_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
@@ -902,7 +902,7 @@ def test_update_name_of_utub_missing_csrf_token(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to a new name, via a POST to
-        "/utub/edit_name/<utub_id: int>" with invalid form data (missing csrf_token field), following this format:
+        "/utubs/<utub_id: int>/name" with invalid form data (missing csrf_token field), following this format:
             "utub_name": New UTub name to add
     THEN verify that the new UTub name is stored in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
@@ -940,7 +940,7 @@ def test_update_name_of_utub_missing_csrf_token(
 
     utub_name_form = {UTUB_FORM.NAME: NEW_NAME}
 
-    edit_utub_name_response = client.post(
+    edit_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 

@@ -18,7 +18,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         with all tags on each URL, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to modify a URL's tag with a tag not currently in the database
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -98,7 +98,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         TAG_FORM.TAG_STRING: NEW_TAG,
     }
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_creator_of,
@@ -166,7 +166,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
         with all tags on each URL, and the currently logged in user is a member of a UTub, and one
         URL exists in each UTub, added by the member
     WHEN the user tries to modify a URL's tag with a tag not currently in the database
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -252,7 +252,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
         TAG_FORM.TAG_STRING: NEW_TAG,
     }
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_member_of,
@@ -321,7 +321,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         with all tags on each URL, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to modify a URL's tag by changing it to a tag already contained in the database
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -416,7 +416,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         TAG_FORM.TAG_STRING: new_tag_string,
     }
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_creator_of,
@@ -481,7 +481,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         with all tags on each URL, and the currently logged in user is a member of a UTub, and one
         URL exists in each UTub, added by the member
     WHEN the user tries to modify a URL's tag with a tag not currently in the database
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -581,7 +581,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         TAG_FORM.TAG_STRING: tag_from_database.tag_string,
     }
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_member_of,
@@ -647,7 +647,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         with all tags on each URL, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to modify a URL's tag by changing it to the same tag
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -708,7 +708,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         TAG_FORM.TAG_STRING: tag_string_on_url,
     }
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_creator_of,
@@ -765,7 +765,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         with all tags on each URL, and the currently logged in user is a member of a UTub, and one
         URL exists in each UTub, added by the member
     WHEN the user tries to modify a URL's tag with the same tag
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -832,7 +832,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         TAG_FORM.TAG_STRING: curr_tag_string,
     }
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_member_of,
@@ -888,7 +888,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         with all tags on each URL, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to modify a URL's tag by changing it to a tag already on the URL
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -959,7 +959,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         TAG_FORM.TAG_STRING: tag_to_change_to_string,
     }
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_creator_of,
@@ -1017,7 +1017,7 @@ def test_modify_tag_on_another_utub_url(
         with all tags on each URL, and the currently logged in user is a member of a UTub, and one
         URL exists in each UTub, added by the member
     WHEN the user tries to modify a URL's tag in another UTub
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -1086,7 +1086,7 @@ def test_modify_tag_on_another_utub_url(
         TAG_FORM.TAG_STRING: curr_tag_string,
     }
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_not_member_of,
@@ -1147,7 +1147,7 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
         with all tags on each URL, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to modify a nonexistent URL's tag by changing it to the same tag
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -1187,7 +1187,7 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
     # Add tag to this URL
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_creator_of,
@@ -1215,7 +1215,7 @@ def test_modify_tag_on_url_in_nonexistent_utub(
         with all tags on each URL, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to modify a URL's tag in a nonexistent UTub
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -1237,7 +1237,7 @@ def test_modify_tag_on_url_in_nonexistent_utub(
     # Add tag to this URL
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=invalid_utub_id,
@@ -1265,7 +1265,7 @@ def test_modify_tag_with_missing_tag_field(
         with all tags on each URL, and the currently logged in user is a member of a UTub, and one
         URL exists in each UTub, added by the member
     WHEN the user tries to modify a URL's tag but doesn't include tag field in form
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -1332,7 +1332,7 @@ def test_modify_tag_with_missing_tag_field(
     # Add tag to this URL
     add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token}
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_member_of,
@@ -1397,7 +1397,7 @@ def test_modify_tag_with_missing_csrf_token(
         with all tags on each URL, and the currently logged in user is a member of a UTub, and one
         URL exists in each UTub, added by the member
     WHEN the user tries to modify a URL's tag but doesn't include csrf token
-        - By POST to "/tag/url/modify/<utub_id: int>/<url_id: int>/<iag_id: int> where:
+        - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "url_id": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
@@ -1454,7 +1454,7 @@ def test_modify_tag_with_missing_csrf_token(
     # Add tag to this URL
     add_tag_form = {TAG_FORM.TAG_STRING: tag_string_of_tag}
 
-    modify_tag_response = client.post(
+    modify_tag_response = client.put(
         url_for(
             "tags.modify_tag_on_url",
             utub_id=utub_id_user_is_member_of,

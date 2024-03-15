@@ -194,7 +194,7 @@ def login():
     return render_template("login.html", login_form=login_form)
 
 
-@splash.route("/confirm_email", methods=["GET"])
+@splash.route("/confirm-email", methods=["GET"])
 def confirm_email_after_register():
     if current_user.is_anonymous:
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
@@ -206,7 +206,7 @@ def confirm_email_after_register():
     )
 
 
-@splash.route("/send_validation_email", methods=["POST"])
+@splash.route("/send-validation-email", methods=["POST"])
 def send_validation_email():
     current_email_validation: EmailValidation = EmailValidation.query.filter(
         EmailValidation.user_id == current_user.id
@@ -306,7 +306,7 @@ def validate_email(token: str):
     return redirect(url_for(ROUTES.UTUBS.HOME))
 
 
-@splash.route("/forgot_password", methods=["GET", "POST"])
+@splash.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
     if current_user.is_authenticated:
         if not current_user.email_confirm.is_validated:
@@ -348,14 +348,14 @@ def forgot_password():
     )
 
 
-@splash.route("/confirm_password_reset", methods=["GET"])
+@splash.route("/confirm-password-reset", methods=["GET"])
 def confirm_password_reset():
     return render_template(
         "password_reset/reset_password.html", reset_password_form=ResetPasswordForm()
     )
 
 
-@splash.route("/reset_password/<string:token>", methods=["GET", "POST"])
+@splash.route("/reset-password/<string:token>", methods=["GET", "POST"])
 def reset_password(token: str):
     reset_password_user, expired = User.verify_token(
         token, RESET_PASSWORD.RESET_PASSWORD_KEY

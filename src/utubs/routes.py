@@ -60,7 +60,7 @@ def get_single_utub(utub_id: str):
     return jsonify(utub_data_serialized)
 
 
-@utubs.route("/utub/new", methods=["POST"])
+@utubs.route("/utubs", methods=["POST"])
 @email_validation_required
 def add_utub():
     """
@@ -125,7 +125,7 @@ def add_utub():
     )
 
 
-@utubs.route("/utub/delete/<int:utub_id>", methods=["POST"])
+@utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])
 @email_validation_required
 def delete_utub(utub_id: int):
     """
@@ -170,7 +170,7 @@ def delete_utub(utub_id: int):
         )
 
 
-@utubs.route("/utub/edit_name/<int:utub_id>", methods=["POST"])
+@utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])
 @email_validation_required
 def update_utub_name(utub_id: int):
     """
@@ -181,7 +181,7 @@ def update_utub_name(utub_id: int):
     Input is required and the new name cannot be empty. Members cannot update UTub names. Creators
     of other UTubs cannot update another UTub's name. The "name" field must be included in the form.
 
-    On POST:
+    On PATCH:
         The new name is saved to the database for that UTub.
 
     Args:
@@ -250,7 +250,7 @@ def update_utub_name(utub_id: int):
     )
 
 
-@utubs.route("/utub/edit_description/<int:utub_id>", methods=["POST"])
+@utubs.route("/utubs/<int:utub_id>/description", methods=["PATCH"])
 @email_validation_required
 def update_utub_desc(utub_id: int):
     """

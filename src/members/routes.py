@@ -18,7 +18,7 @@ members = Blueprint("members", __name__)
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
 
-@members.route("/user/remove/<int:utub_id>/<int:user_id>", methods=["POST"])
+@members.route("/utubs/<int:utub_id>/members/<int:user_id>", methods=["DELETE"])
 @email_validation_required
 def remove_member(utub_id: int, user_id: int):
     """
@@ -109,7 +109,7 @@ def remove_member(utub_id: int, user_id: int):
     )
 
 
-@members.route("/user/add/<int:utub_id>", methods=["POST"])
+@members.route("/utubs/<int:utub_id>/members", methods=["POST"])
 @email_validation_required
 def add_member(utub_id: int):
     """

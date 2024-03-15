@@ -14,7 +14,7 @@ tags = Blueprint("tags", __name__)
 STD_JSON = STD_JSON_RESPONSE
 
 
-@tags.route("/tag/add/<int:utub_id>/<int:url_id>", methods=["POST"])
+@tags.route("/utubs/<int:utub_id>/urls/<int:url_id>/tags", methods=["POST"])
 @email_validation_required
 def add_tag(utub_id: int, url_id: int):
     """
@@ -158,7 +158,7 @@ def add_tag(utub_id: int, url_id: int):
     )
 
 
-@tags.route("/tag/remove/<int:utub_id>/<int:url_id>/<int:tag_id>", methods=["POST"])
+@tags.route("/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id>", methods=["DELETE"])
 @email_validation_required
 def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
@@ -218,7 +218,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
     )
 
 
-@tags.route("/tag/url/modify/<int:utub_id>/<int:url_id>/<int:tag_id>", methods=["POST"])
+@tags.route("/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id>", methods=["PUT"])
 @email_validation_required
 def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
     """
