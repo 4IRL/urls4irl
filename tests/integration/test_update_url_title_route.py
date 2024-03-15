@@ -1,29 +1,13 @@
 from flask import url_for
 from flask_login import current_user
 
-from src.models import Utub, Utub_Urls, Url_Tags, URLS, User
-from src.utils.url_validation import find_common_url
-from src.utils import strings as U4I_STRINGS
-
-URL_FORM = U4I_STRINGS.URL_FORM
-URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-MODEL_STRS = U4I_STRINGS.MODELS
-URL_FAILURE = U4I_STRINGS.URL_FAILURE
-URL_NO_CHANGE = U4I_STRINGS.URL_NO_CHANGE
-EDIT_URL_TITLE_URL = "urls.edit_url_title"
-
-# TODO: Update title with another title as UTub creator - DONE
-# TODO: Update title with another title as URL adder - DONE
-# TODO: Update title with same title as UTub creator - DONE
-# TODO: Update title with same title as URL adder - DONE
-# TODO: Update title with another title as UTub member (not creator or adder) - DONE
-# TODO: Update title with empty title - DONE
-# TODO: Update title with another title as member of another UTub (not current one) - DONE
-# TODO: Update title with missing title field - DONE
-# TODO: Update title with missing csrf field - DONE
-# TODO: Update title of URL that does not exist - DONE
-# TODO: Update title of URL in UTub that does not exist
+from src.models import Utub, Utub_Urls, Url_Tags, URLS
+from src.utils.all_routes import ROUTES
+from src.utils.strings.form_strs import URL_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.model_strs import MODELS as MODEL_STRS
+from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 
 
 def test_update_url_title_utub_creator(
@@ -101,7 +85,7 @@ def test_update_url_title_utub_creator(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
             url_id=current_url_id,
         ),
@@ -218,7 +202,7 @@ def test_update_url_title_url_adder(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
             url_id=current_url_id,
         ),
@@ -338,7 +322,7 @@ def test_update_url_title_with_same_title_utub_creator(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
             url_id=current_url_id,
         ),
@@ -454,7 +438,7 @@ def test_update_url_title_with_same_title_url_adder(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
             url_id=current_url_id,
         ),
@@ -567,7 +551,7 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
             url_id=current_url_id,
         ),
@@ -674,7 +658,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
             url_id=current_url_id,
         ),
@@ -778,7 +762,7 @@ def test_update_url_title_as_member_of_other_utub(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_id,
             url_id=current_url_id,
         ),
@@ -874,7 +858,7 @@ def test_update_url_title_with_missing_title_field_utub_creator(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
             url_id=current_url_id,
         ),
@@ -966,7 +950,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
             url_id=current_url_id,
         ),
@@ -1037,7 +1021,7 @@ def test_update_url_title_of_nonexistent_url(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_id,
             url_id=NONEXISTENT_URL_ID,
         ),
@@ -1047,7 +1031,7 @@ def test_update_url_title_of_nonexistent_url(
     assert edit_url_string_title_form.status_code == 404
 
     # Assert JSON response from server is valid
-    assert U4I_STRINGS.IDENTIFIERS.HTML_404.encode() in edit_url_string_title_form.data
+    assert IDENTIFIERS.HTML_404.encode() in edit_url_string_title_form.data
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1093,7 +1077,7 @@ def test_update_url_title_in_nonexistent_utub(
 
     edit_url_string_title_form = client.post(
         url_for(
-            EDIT_URL_TITLE_URL,
+            ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=NONEXISTENT_UTUB_ID,
             url_id=NONEXISTENT_URL_ID,
         ),
@@ -1103,7 +1087,7 @@ def test_update_url_title_in_nonexistent_utub(
     assert edit_url_string_title_form.status_code == 404
 
     # Assert JSON response from server is valid
-    assert U4I_STRINGS.IDENTIFIERS.HTML_404.encode() in edit_url_string_title_form.data
+    assert IDENTIFIERS.HTML_404.encode() in edit_url_string_title_form.data
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

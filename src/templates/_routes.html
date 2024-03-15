@@ -14,8 +14,8 @@
                 // URL routes
                 this.addUrl = (utub_id) => 
                     "{{url_for('urls.add_url', utub_id=-1)}}".replace("-1", utub_id);
-                this.deleteUrl = (utub_id, url_id) => 
-                    "{{url_for('urls.delete_url', utub_id=-1, url_id=-2)}}"
+                this.removeUrl = (utub_id, url_id) => 
+                    "{{url_for('urls.remove_url', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
                 this.editUrl = (utub_id, url_id) => 
@@ -44,10 +44,10 @@
                         .replace("-3", tag_id)
 
                 // User routes
-                this.addUser = (utub_id) => 
+                this.addMember = (utub_id) => 
                     "{{url_for('members.add_member', utub_id=-1)}}".replace("-1", utub_id);
-                this.deleteUser = (utub_id, user_id) => 
-                    "{{url_for('members.delete_member', utub_id=-1, user_id=-4)}}"
+                this.removeMember = (utub_id, user_id) => 
+                    "{{url_for('members.remove_member', utub_id=-1, user_id=-4)}}"
                         .replace("-1", utub_id)
                         .replace("-4", user_id);
 

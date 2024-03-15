@@ -4,7 +4,7 @@ Contains all routes for easy insertion into `url_for` flask function
 
 class MEMBER_ROUTES:
     _MEMBERS = "members."
-    DELETE_MEMBER = _MEMBERS + "delete_member"
+    REMOVE_MEMBER = _MEMBERS + "remove_member"
     ADD_MEMBER = _MEMBERS + "add_member"
 
     
@@ -30,7 +30,7 @@ class TAG_ROUTES:
 
 class URL_ROUTES:
     _URLS = "urls."
-    DELETE_URL = _URLS + "delete_url"
+    REMOVE_URL = _URLS + "remove_url"
     ADD_URL = _URLS + "add_url"
     EDIT_URL_AND_TITLE = _URLS + "edit_url_and_title"
     EDIT_URL = _URLS + "edit_url"

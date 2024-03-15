@@ -2,13 +2,10 @@ from flask import url_for
 from flask_login import current_user
 
 from src.models import Utub, Utub_Urls, Utub_Users, Url_Tags
-from src.utils import strings as U4I_STRINGS
-
-UTUB_FORM = U4I_STRINGS.UTUB_FORM
-UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-MODEL_STRS = U4I_STRINGS.MODELS
-UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
+from src.utils.all_routes import ROUTES
+from src.utils.strings.form_strs import UTUB_FORM
+from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 
 
 def test_update_valid_utub_name_as_creator(
@@ -64,7 +61,7 @@ def test_update_valid_utub_name_as_creator(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -161,7 +158,7 @@ def test_update_valid_utub_same_name_as_creator(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -263,7 +260,7 @@ def test_update_utub_empty_name_as_creator(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -368,7 +365,7 @@ def test_update_utub_name_only_spaces_as_creator(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -471,7 +468,7 @@ def test_update_utub_name_as_member(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -567,7 +564,7 @@ def test_update_utub_name_as_creator_of_another_utub(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -653,7 +650,7 @@ def test_update_name_of_invalid_utub(
     }
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=utub_id_to_test), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=utub_id_to_test), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -748,7 +745,7 @@ def test_update_name_of_utub_too_long_name(
     utub_name_form = {UTUB_FORM.CSRF_TOKEN: csrf_token_string, UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -850,7 +847,7 @@ def test_update_name_of_utub_missing_name_field_form(
     }
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse
@@ -944,7 +941,7 @@ def test_update_name_of_utub_missing_csrf_token(
     utub_name_form = {UTUB_FORM.NAME: NEW_NAME}
 
     edit_utub_name_response = client.post(
-        url_for("utubs.update_utub_name", utub_id=current_utub_id), data=utub_name_form
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id), data=utub_name_form
     )
 
     # Ensure valid reponse

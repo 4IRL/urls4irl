@@ -6,13 +6,10 @@ from werkzeug.security import check_password_hash
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
 from src.models import User
-from src.utils import strings as U4I_STRINGS
-
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
-REGISTER_FAILURE = U4I_STRINGS.USER_FAILURE
-REGISTER_URL = "splash.register_user"
-SPLASH_URL = "splash.splash_page"
+from src.utils.all_routes import ROUTES
+from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.splash_form_strs import REGISTER_FORM
+from src.utils.strings.user_strs import USER_FAILURE
 
 
 def test_register_new_user(app, load_register_page):
@@ -35,7 +32,7 @@ def test_register_new_user(app, load_register_page):
     assert new_db_user is None
 
     response = client.post(
-        url_for(REGISTER_URL), data=new_user, follow_redirects=True
+        url_for(ROUTES.SPLASH.REGISTER), data=new_user, follow_redirects=True
     )
 
     # Correctly sends URL to email validation modal
@@ -81,7 +78,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: REGISTER_FAILURE.UNABLE_TO_REGISTER,
+        STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
         STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for invalid form inputs
         STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
             [
@@ -110,14 +107,14 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     assert current_user.is_active is False
 
     response = client.post(
-        url_for(REGISTER_URL),
+        url_for(ROUTES.SPLASH.REGISTER),
         data=already_registered_user_data,
         follow_redirects=True,
     )
 
     # Check that does not reroute
     assert response.status_code == 400
-    assert request.path == url_for(REGISTER_URL)
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     assert len(response.history) == 0
 
     # Ensure json response from server is valid
@@ -125,15 +122,15 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         register_user_response_json[STD_JSON.MESSAGE]
-        == REGISTER_FAILURE.UNABLE_TO_REGISTER
+        == USER_FAILURE.UNABLE_TO_REGISTER
     )
     assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 2
     assert (
-        REGISTER_FAILURE.USERNAME_TAKEN
+        USER_FAILURE.USERNAME_TAKEN
         in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
     )
     assert (
-        REGISTER_FAILURE.EMAIL_TAKEN
+        USER_FAILURE.EMAIL_TAKEN
         in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
     )
 
@@ -146,8 +143,8 @@ def test_register_modal_is_shown(app_with_server_name, client):
     """
     with client:
         with app_with_server_name.app_context():
-            client.get(url_for(SPLASH_URL))
-            response = client.get(url_for(REGISTER_URL))
+            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            response = client.get(url_for(ROUTES.SPLASH.REGISTER))
         assert (
             b'<form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>'
             in response.data
@@ -178,7 +175,7 @@ def test_register_modal_is_shown(app_with_server_name, client):
             b'<input class="form-control login-register-form-group" id="confirm_password" name="confirm_password" required type="password" value="">'
             in response.data
         )
-        assert request.path == url_for(REGISTER_URL)
+        assert request.path == url_for(ROUTES.SPLASH.REGISTER)
 
 
 def test_register_modal_logs_user_in(app_with_server_name, client):
@@ -189,14 +186,14 @@ def test_register_modal_logs_user_in(app_with_server_name, client):
     """
     with client:
         with app_with_server_name.app_context():
-            client.get(url_for(SPLASH_URL))
-            response = client.get(url_for(REGISTER_URL))
+            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            response = client.get(url_for(ROUTES.SPLASH.REGISTER))
         csrf_token = get_csrf_token(response.data)
 
         new_user = deepcopy(valid_user_1)
         new_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
-        response = client.post(url_for(REGISTER_URL), data=new_user)
+        response = client.post(url_for(ROUTES.SPLASH.REGISTER), data=new_user)
 
         assert response.status_code == 201
         assert (
@@ -228,7 +225,7 @@ def test_register_user_missing_csrf(app, load_register_page):
     assert new_db_user is None
 
     response = client.post(
-        url_for(REGISTER_URL),
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
             REGISTER_FORM.EMAIL: valid_user_1[REGISTER_FORM.EMAIL],

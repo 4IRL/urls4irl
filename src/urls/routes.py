@@ -21,14 +21,14 @@ STD_JSON = STD_JSON_RESPONSE
 
 @urls.route("/url/remove/<int:utub_id>/<int:url_id>", methods=["POST"])
 @email_validation_required
-def delete_url(utub_id: int, url_id: int):
+def remove_url(utub_id: int, url_id: int):
     """
-    User wants to delete a URL from a UTub. Only available to owner of that utub,
+    User wants to remove a URL from a UTub. Only available to owner of that utub,
     or whoever added the URL into that Utub.
 
     Args:
-        utub_id (int): The ID of the UTub that contains the URL to be deleted
-        url_id (int): The ID of the URL to be deleted
+        utub_id (int): The ID of the UTub that contains the URL to be removed 
+        url_id (int): The ID of the URL to be removed 
     """
     utub = Utub.query.get_or_404(utub_id)
     utub_owner_id = int(utub.created_by.id)
@@ -42,7 +42,7 @@ def delete_url(utub_id: int, url_id: int):
         # Store serialized data from URL association with UTub and associated tags
         serialized_url_in_utub = url_in_utub.serialized
 
-        # Can only delete URLs as the creator of UTub, or as the adder of that URL
+        # Can only remove URLs as the creator of UTub, or as the adder of that URL
         db.session.delete(url_in_utub)
 
         # Remove all tags associated with this URL in this UTub as well
@@ -64,7 +64,7 @@ def delete_url(utub_id: int, url_id: int):
         )
 
     else:
-        # Can only delete URLs you added, or if you are the creator of this UTub
+        # Can only remove URLs you added, or if you are the creator of this UTub
         return (
             jsonify(
                 {

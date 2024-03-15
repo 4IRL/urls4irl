@@ -3,14 +3,10 @@ from flask_login import current_user
 
 from src import db
 from src.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags
-from src.utils import strings as U4I_STRINGS
-
-GENERAL_FORM = U4I_STRINGS.GENERAL_FORM
-USER_SUCCESS = U4I_STRINGS.USER_SUCCESS
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-MODEL_STRS = U4I_STRINGS.MODELS
-USER_FAILURE = U4I_STRINGS.USER_FAILURE
-REMOVE_MEMBER_FROM_UTUB_URL = "members.delete_member"
+from src.utils.all_routes import ROUTES
+from src.utils.strings.form_strs import GENERAL_FORM
+from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.user_strs import USER_FAILURE, USER_SUCCESS
 
 
 def test_remove_valid_user_from_utub_as_creator(
@@ -61,7 +57,7 @@ def test_remove_valid_user_from_utub_as_creator(
     # Remove second user
     remove_user_response = client.post(
         url_for(
-            REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=second_user_in_utub.id
+            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=second_user_in_utub.id
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -144,7 +140,7 @@ def test_remove_self_from_utub_as_member(
 
     # Remove self from UTub
     remove_user_response = client.post(
-        url_for(REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=current_user_id),
+        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user_id),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -263,7 +259,7 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
     # Remove second user
     remove_user_response = client.post(
         url_for(
-            REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=second_user_in_utub.id
+            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=second_user_in_utub.id
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -361,7 +357,7 @@ def test_remove_self_from_utub_as_creator(
 
     # Remove self from UTub
     remove_user_response = client.post(
-        url_for(REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=current_user.id),
+        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -423,7 +419,7 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
 
     # Remove self from UTub
     remove_user_response = client.post(
-        url_for(REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=current_user.id),
+        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
     )
 
     # Assert invalid response code
@@ -480,7 +476,7 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
 
     # Remove second user
     remove_user_response = client.post(
-        url_for(REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=current_user.id),
+        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
     )
 
     # Assert invalid response code
@@ -530,7 +526,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
 
     # Remove self from UTub
     remove_user_response = client.post(
-        url_for(REMOVE_MEMBER_FROM_UTUB_URL, utub_id=invalid_utub_id, user_id=current_user.id),
+        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=invalid_utub_id, user_id=current_user.id),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -540,7 +536,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
     # Ensure 404 response is given no matter what USER ID
     for num in range(10):
         remove_user_response = client.post(
-            url_for(REMOVE_MEMBER_FROM_UTUB_URL, utub_id=invalid_utub_id, user_id=num),
+            url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=invalid_utub_id, user_id=num),
             data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
         )
 
@@ -596,7 +592,7 @@ def test_remove_invalid_user_from_utub_as_creator(
     # Remove self from UTub
     remove_user_response = client.post(
         url_for(
-            REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=user_id_not_in_utub
+            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=user_id_not_in_utub
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -662,7 +658,7 @@ def test_remove_invalid_user_from_utub_as_member(
     # Remove self from UTub
     remove_user_response = client.post(
         url_for(
-            REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=user_id_not_in_utub
+            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=user_id_not_in_utub
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -729,7 +725,7 @@ def test_remove_another_member_from_same_utub_as_member(
     # Attempt to remove other user from UTub as a member
     remove_user_response = client.post(
         url_for(
-            REMOVE_MEMBER_FROM_UTUB_URL, utub_id=current_utub.id, user_id=other_utub_member.id
+            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=other_utub_member.id
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -820,7 +816,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     # Try to remove the third user from second user's UTub as the first user
     remove_user_response = client.post(
         url_for(
-            REMOVE_MEMBER_FROM_UTUB_URL, utub_id=second_user_utub.id, user_id=third_user.id
+            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=second_user_utub.id, user_id=third_user.id
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -921,7 +917,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
     # Try to remove the first user from second user's UTub as the first user
     remove_user_response = client.post(
         url_for(
-            REMOVE_MEMBER_FROM_UTUB_URL,
+            ROUTES.MEMBERS.REMOVE_MEMBER,
             utub_id=new_utub_from_third_user.id,
             user_id=first_user.id,
         ),

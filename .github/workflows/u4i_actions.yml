@@ -123,4 +123,4 @@ jobs:
           DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
         run: |
           . ./venv/bin/activate;
-          python3 -m pytest -sv 
+          pytest 

@@ -20,9 +20,9 @@ STD_JSON = STD_JSON_RESPONSE
 
 @members.route("/user/remove/<int:utub_id>/<int:user_id>", methods=["POST"])
 @email_validation_required
-def delete_member(utub_id: int, user_id: int):
+def remove_member(utub_id: int, user_id: int):
     """
-    Delete a user from a Utub. The creator of the Utub can delete anyone but themselves.
+    Remove a user from a Utub. The creator of the Utub can remove anyone but themselves.
     Any user can remove themselves from a UTub they did not create.
 
     Args:
@@ -32,7 +32,7 @@ def delete_member(utub_id: int, user_id: int):
     current_utub = Utub.query.get_or_404(utub_id)
 
     if user_id == current_utub.created_by.id:
-        # Creator tried to delete themselves, not allowed
+        # Creator tried to remove themselves, not allowed
         return (
             jsonify(
                 {
@@ -81,14 +81,14 @@ def delete_member(utub_id: int, user_id: int):
             404,
         )
 
-    user_to_delete_in_utub = Utub_Users.query.filter(
+    user_to_remove_in_utub = Utub_Users.query.filter(
         Utub_Users.utub_id == utub_id, Utub_Users.user_id == user_id
     ).first_or_404()
 
-    deleted_user = User.query.get(user_id)
-    deleted_user_username = deleted_user.username
+    removed_user = User.query.get(user_id)
+    removed_user_username = removed_user.username
 
-    db.session.delete(user_to_delete_in_utub)
+    db.session.delete(user_to_remove_in_utub)
     db.session.commit()
 
     return (
@@ -97,7 +97,7 @@ def delete_member(utub_id: int, user_id: int):
                 STD_JSON.STATUS: STD_JSON.SUCCESS,
                 STD_JSON.MESSAGE: USER_SUCCESS.USER_REMOVED,
                 USER_SUCCESS.USER_ID_REMOVED: f"{user_id}",
-                USER_SUCCESS.USERNAME_REMOVED: f"{deleted_user_username}",
+                USER_SUCCESS.USERNAME_REMOVED: f"{removed_user_username}",
                 USER_SUCCESS.UTUB_ID: f"{utub_id}",
                 USER_SUCCESS.UTUB_NAME: f"{current_utub.name}",
                 USER_SUCCESS.UTUB_USERS: [

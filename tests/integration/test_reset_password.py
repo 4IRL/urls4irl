@@ -3,12 +3,12 @@ from flask_login import current_user
 
 from src import db
 from src.models import User, ForgotPassword
+from src.utils.all_routes import ROUTES
+from src.utils.strings.html_identifiers import IDENTIFIERS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.reset_password_strs import RESET_PASSWORD
 from src.utils import strings as U4I_STRINGS
 
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-RESET_PASSWORD = U4I_STRINGS.RESET_PASSWORD
-IDENTIFIERS = U4I_STRINGS.IDENTIFIERS
-RESET_PASSWORD_URL = "splash.reset_password"
 NEW_PASSWORD = "NEW_PASSWORD!"
 
 
@@ -20,7 +20,7 @@ def test_valid_token_receives_reset_password_form(user_attempts_reset_password):
     """
     _, client, _, reset_token, _ = user_attempts_reset_password
 
-    reset_response = client.get(url_for(RESET_PASSWORD_URL, token=reset_token))
+    reset_response = client.get(url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token))
 
     # JS AJAX call to modal that contains reset password form
     assert RESET_PASSWORD.RESET_PASSWORD_MODAL_CALL.encode() in reset_response.data
@@ -73,7 +73,7 @@ def test_expired_token_deletes_object_and_redirects(
         db.session.commit()
 
     reset_response = client.get(
-        url_for(RESET_PASSWORD_URL, token=expired_token), follow_redirects=True
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=expired_token), follow_redirects=True
     )
 
     assert len(reset_response.history) == 1
@@ -114,7 +114,7 @@ def test_invalid_reset_password_token(user_attempts_reset_password):
             == 0
         )
 
-    reset_response = client.get(url_for(RESET_PASSWORD_URL, token=invalid_token))
+    reset_response = client.get(url_for(ROUTES.SPLASH.RESET_PASSWORD, token=invalid_token))
 
     assert reset_response.status_code == 404
 
@@ -141,7 +141,7 @@ def test_not_email_validated_user_with_password_reset_token_fails(
         db.session.add(new_password_reset)
         db.session.commit()
 
-    reset_password_response = client.get(url_for(RESET_PASSWORD_URL, token=reset_token))
+    reset_password_response = client.get(url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token))
 
     assert reset_password_response.status_code == 404
 
@@ -171,7 +171,7 @@ def test_matching_user_reset_token_not_in_database_fails(user_attempts_reset_pas
         invalid_token = user.get_password_reset_token()
 
     reset_password_response = client.get(
-        url_for(RESET_PASSWORD_URL, token=invalid_token)
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=invalid_token)
     )
 
     assert reset_password_response.status_code == 404
@@ -197,7 +197,7 @@ def test_password_reset_object_expires_after_one_hour(
     """
     _, client, _, reset_token, _ = user_attempts_reset_password_one_hour_old
 
-    reset_password_response = client.get(url_for(RESET_PASSWORD_URL, token=reset_token))
+    reset_password_response = client.get(url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token))
 
     assert reset_password_response.status_code == 404
 
@@ -211,7 +211,7 @@ def test_password_reset_without_csrf_fails(user_attempts_reset_password):
     _, client, _, reset_token, _ = user_attempts_reset_password
 
     reset_response = client.post(
-        url_for(RESET_PASSWORD_URL, token=reset_token),
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
         data={
             RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
             RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
@@ -243,7 +243,7 @@ def test_password_reset_without_equal_passwords_fails(user_attempts_reset_passwo
     app, client, new_user, reset_token, csrf_token = user_attempts_reset_password
 
     reset_response = client.post(
-        url_for(RESET_PASSWORD_URL, token=reset_token),
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
         data={
             RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
             RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD + "AAA",
@@ -290,7 +290,7 @@ def test_password_reset_with_identical_to_previous_password_fails(
     _, client, new_user, reset_token, csrf_token = user_attempts_reset_password
 
     reset_response = client.post(
-        url_for(RESET_PASSWORD_URL, token=reset_token),
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
         data={
             RESET_PASSWORD.NEW_PASSWORD_FIELD: new_user[RESET_PASSWORD.PASSWORD],
             RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: new_user[
@@ -325,7 +325,7 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     app, client, new_user, reset_token, csrf_token = user_attempts_reset_password
 
     reset_response = client.post(
-        url_for(RESET_PASSWORD_URL, token=reset_token),
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
         data={
             RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
             RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
