@@ -42,13 +42,20 @@ $(document).ready(function () {
   });
 
   // Edit UTub name and description
-  $("#editUTubBtn").on("click", function (e) {
+  $(".editUTubBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     hideInputs();
     deselectAllURLs();
     editUTubShowInput();
   });
+
+  
+  $(".submitEditUTubBtn ").on("click", function (e) {
+    // e.stopPropagation();
+    // e.preventDefault();
+    checkSameNameUTub(0, $("#editUTubName").val());
+  })
 });
 
 /** UTub Utility Functions **/
@@ -206,23 +213,25 @@ function createNewUTubInputField() {
   const submit = $(document.createElement("i"));
   const cancel = $(document.createElement("i"));
 
-  $(wrapper).addClass("createDiv row").attr({
-    style: "display: none",
-  });
+  $(wrapper)
+    .addClass("createDiv row")
+    .attr({ style: "display: none" });
 
-  $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
+  $(wrapperInput)
+    .addClass("col-9 col-lg-9 mb-md-0");
 
-  $(input).addClass("userInput").attr({
-    type: "text",
-    id: "createUTub",
-    placeholder: "New UTub name",
-  });
+  $(input)
+    .addClass("userInput")
+    .attr({
+      type: "text",
+      id: "createUTub",
+      placeholder: "New UTub name",
+    });
 
   wrapperInput.append(input);
 
-  $(wrapperBtns).addClass(
-    "col-3 mb-md-0 text-right d-flex justify-content-center flex-row",
-  );
+  $(wrapperBtns)
+    .addClass("col-3 mb-md-0 text-right d-flex justify-content-center flex-row");
 
   // Submit addUTub checkbox
   let htmlString =
@@ -374,7 +383,7 @@ function displayState2UTubDescriptionDeck(UTubDescription) {
 
   // Edit UTub Description button shown, submission button hidden
   showIfHidden($("#editUTubBtn"));
-  hideIfShown($("#submitEditUTubBtn"));
+  hideIfShown($(".submitEditUTubBtn"));
 
   // Update description values
   let p = $("#UTubDescription");
@@ -392,7 +401,7 @@ function displayState3UTubDescriptionDeck(UTubDescription) {
 
   // Submission button shown, edit UTub Description button hidden
   hideIfShown($("#editUTubBtn"));
-  showIfHidden($("#submitEditUTubBtn"));
+  showIfHidden($(".submitEditUTubBtn"));
 
   // Update description values
   let editUTubDescription = $("#editUTubDescription");
@@ -412,11 +421,8 @@ function checkSameNameUTub(mode, name) {
     sameNameCounter = 0;
   }
 
-  let sameNameBool = false;
-  // Toggle boolean to determine whether to display warning modal
-  if (sameNameCounter > 0) sameNameBool = true;
-
-  if (sameNameBool) sameNameWarningShowModal(mode, getUTubIDFromName(name));
+  // 
+  if (sameNameCounter > 0) sameNameWarningShowModal(mode, getUTubIDFromName(name));
   else mode ? addUTub() : editUTub();
 }
 
@@ -495,15 +501,6 @@ function sameNameWarningShowModal(mode, UTubID) {
 function addUTubShowInput() {
   showInput("createUTub");
   highlightInput($("#createUTub"));
-
-  // Bind enter key (keycode 13) to submit user input
-  // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
-  unbindEnter();
-  $(document).bind("keypress", function (e) {
-    if (e.which == 13) {
-      checkSameNameUTub(1, $("#createUTub").val());
-    }
-  });
 }
 
 // Hides new UTub input fields
@@ -556,6 +553,7 @@ function addUTubSuccess(response) {
 
   if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
 
+  // Temporarily remove createDiv to reattach after addition of new UTub
   let createUTub = $("#createUTub").closest(".createDiv").detach();
   let index = Number($(".UTub").last().attr("position"))
     ? Number($(".UTub").last().attr("position"))
@@ -604,24 +602,15 @@ function editUTubShowInput() {
   // Hide exisitng values and edit button
   hideIfShown($("#URLDeckHeader"));
   hideIfShown($("#UTubDescription"));
-  hideIfShown($("#editUTubBtn"));
+  hideIfShown($(".editUTubBtn"));
   hideIfShown($("#addURLBtn"));
 
   // Show temporary div element containing UTub description
   showInput("editUTubDescription");
-  showIfHidden($("#submitEditUTubBtn"));
+  showIfHidden($(".submitEditUTubBtn"));
 
   // Show temporary div element containing UTub name
   showInput("editUTubName");
-
-  // Bind enter key (keycode 13) to submit user input
-  // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
-  unbindEnter();
-  $(document).bind("keypress", function (e) {
-    if (e.which == 13) {
-      checkSameNameUTub(0, $("#editUTubName").val());
-    }
-  });
 }
 
 // Hides input fields for editing an exiting UTub's name and description
@@ -629,12 +618,10 @@ function editUTubHideInput() {
   // Hide exisitng values and edit button
   showIfHidden($("#URLDeckHeader"));
   showIfHidden($("#UTubDescription"));
-  showIfHidden($("#editUTubBtn"));
-  showIfHidden($("#addURLBtn"));
 
   // Show temporary div element containing UTub description
   hideInput("editUTubDescription");
-  hideIfShown($("#submitEditUTubBtn"));
+  hideIfShown($(".submitEditUTubBtn"));
 
   // Show temporary div element containing UTub name
   hideInput("editUTubName");
