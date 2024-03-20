@@ -57,33 +57,28 @@ function resetUserDeck() {
 function buildUserDeck(dictUsers, UTubOwnerID) {
   resetUserDeck();
   const parent = $("#listUsers");
-  let numOfUsers = dictUsers.length ? dictUsers.length : 0;
-  let ownerBool;
+  let numOfUsers = dictUsers.length;
   let UTubUser;
   let UTubUserID;
 
   // Instantiate deck with list of users with access to current UTub
   for (let i = 0; i < numOfUsers; i++) {
     UTubUser = dictUsers[i];
+    UTubUsername = UTubUser.username;
     UTubUserID = UTubUser.id;
-    ownerBool = UTubUserID == UTubOwnerID;
 
-    if (ownerBool) {
-      $("#UTubOwner").append(createOwnerBadge(UTubOwnerID, UTubUser.username));
+    if (UTubUserID == UTubOwnerID) {
+      $("#UTubOwner").append(createOwnerBadge(UTubOwnerID, UTubUsername));
     } else {
-      parent.append(createUserSelector(UTubUserID, UTubUser.username));
+      parent.append(createUserBadge(UTubUserID, UTubUsername));
     }
   }
 
-  ownerBool = getCurrentUTubCreatorID() == UTubOwnerID;
-
   // Subheader prompt
-  let UserDeckSubheader = $("#UserDeckSubheader");
-  if (numOfUsers === 1) UserDeckSubheader.text("Add a user");
-  else UserDeckSubheader.text(numOfUsers + " active users");
+  displayState1UserDeck(numOfUsers);
 
   // Ability to add users is restricted to UTub owner
-  if (ownerBool) {
+  if (getCurrentUTubCreatorID() == UTubOwnerID) {
     showIfHidden($("#addUserBtn"));
     parent.append(createNewUserInputField());
   } else hideIfShown($("#addUserBtn"));
@@ -102,7 +97,7 @@ function createOwnerBadge(UTubOwnerID, UTubUsername) {
 }
 
 // Creates user list item
-function createUserSelector(UTubUserID, UTubUsername) {
+function createUserBadge(UTubUserID, UTubUsername) {
   let userListItem = document.createElement("li");
   let userSpan = document.createElement("span");
   let removeButton = document.createElement("a");
@@ -216,7 +211,7 @@ function createNewUserInputField() {
 // Display state 0: Clean slate, no UTub selected
 function displayState0UserDeck() {
   resetUserDeck();
-  
+
   // Subheader prompt hidden
   hideIfShown($("#UserDeckSubheader").closest(".row"));
 }
@@ -225,20 +220,12 @@ function displayState0UserDeck() {
 function displayState1UserDeck() {
   // Subheader prompt shown
   showIfHidden($("#UserDeckSubheader").closest(".row"));
-}
 
-// Display state 2: Selected UTub has Users
-function displayState2UserDeck() {
-  let numOfTags = getNumOfTags();
+  let numOfUsers = $("#listUsers").find("span.user").length + 1; // plus 1 for owner
   let UserDeckSubheader = $("#UserDeckSubheader");
-  showIfHidden(UserDeckSubheader.closest(".row"));
-  UserDeckSubheader.text(
-    numOfTags -
-      getActiveTagIDs().length +
-      " of " +
-      numOfTags +
-      " filters applied",
-  );
+  if (numOfUsers === 1) UserDeckSubheader.text("Add a user");
+  else UserDeckSubheader.text(numOfUsers + " active users");
+  console.log("hello")
 }
 
 /** Post data handling **/
@@ -301,7 +288,15 @@ function addUserSuccess(response) {
   let UTubUsers = response.UTub_users;
   let newUser = UTubUsers[UTubUsers.length - 1];
 
-  $("#listUsers").append(createUserSelector(response.User_ID_added, newUser));
+  // Temporarily remove createDiv to reattach after addition of new User
+  let createUser = $("#UTubUsernameInput").closest(".createDiv").detach();
+
+  // Create and append newly created User badge
+  $("#listUsers").append(createUserBadge(response.User_ID_added, newUser));
+  // Reorder createDiv after latest created UTub selector
+  $("#listUsers").append(createUser);
+
+  displayState1UserDeck();
 }
 
 function addUserFail(response) {
@@ -399,6 +394,9 @@ function removeUserSuccess(userID) {
   let userListItem = $("span[userid=" + userID + "]").parent();
   userListItem.fadeOut();
   userListItem.remove();
+  console.log("hello")
+
+  displayState1UserDeck();
 }
 
 function removeUserFail(xhr, textStatus, error) {
