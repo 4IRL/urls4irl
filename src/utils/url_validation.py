@@ -36,6 +36,10 @@ USER_AGENTS = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.1",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
+    "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
+    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36",
 )
 
 COMMON_REDIRECTS = {
@@ -81,19 +85,23 @@ def normalize_url(url: str) -> str:
 def generate_random_user_agent() -> str:
     return random.choice(USER_AGENTS)
 
+def generate_headers(user_agent: str = None) -> dict[str, str]:
+    return {
+        "User-Agent": generate_random_user_agent() if user_agent is None else user_agent,
+        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        "Accept-Encoding": "*",
+        "Accept-Language": "*"
+    }
 
-def perform_head_request(url: str) -> requests.Response:
-    random_user_agent = generate_random_user_agent()
+
+def perform_head_request(url: str, headers: dict[str, str] = None) -> requests.Response:
     try:
-        headers = {
-            "User-Agent": random_user_agent,
-            "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8",
-        }
-        response = requests.head(url, timeout=5, headers=headers)
+        headers = generate_headers() if headers is None else headers
+        response = requests.head(url, timeout=(3, 6,), headers=headers)
 
     except requests.exceptions.ReadTimeout:
         # Try a get request instead
-        return perform_get_request(url, random_user_agent)
+        return perform_get_request(url, headers)
 
     except requests.exceptions.ConnectionError:
         raise InvalidURLError
@@ -105,15 +113,13 @@ def perform_head_request(url: str) -> requests.Response:
         return response
 
 
-def perform_get_request(url: str, random_user_agent: str) -> requests.Response:
+def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
     try:
-        headers = {
-            "User-Agent": random_user_agent,
-        }
-        response = requests.get(url, timeout=10, headers=headers)
+        response = requests.get(url, timeout=(3, 6,), headers=headers)
 
     except requests.exceptions.ReadTimeout:
-        raise InvalidURLError
+        # Try a random sampling of 3 user agents
+        return random_user_agent_sampling(url)
 
     except requests.exceptions.ConnectionError:
         raise InvalidURLError
@@ -125,7 +131,24 @@ def perform_get_request(url: str, random_user_agent: str) -> requests.Response:
         return response
 
 
-def find_common_url(url: str, user_agent: str = None) -> str:
+def random_user_agent_sampling(url: str) -> requests.Response:
+    attempt = 0
+    while attempt < 3:
+        try:
+            response = requests.get(url, headers=generate_headers())
+        except requests.exceptions.ReadTimeout:
+            attempt += 1
+        except requests.exceptions.ConnectionError:
+            raise InvalidURLError
+        except requests.exceptions.MissingSchema:
+            raise InvalidURLError
+        else:
+            return response
+
+    raise InvalidURLError
+
+
+def find_common_url(url: str, headers: dict[str, str] = None) -> str:
     """
     Status codes: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
 
@@ -148,7 +171,7 @@ def find_common_url(url: str, user_agent: str = None) -> str:
     """
 
     url = normalize_url(url)
-    response = perform_head_request(url)
+    response = perform_head_request(url, headers)
 
     status_code = response.status_code
 
@@ -187,3 +210,7 @@ def filter_out_common_redirect(url: str) -> str:
             return unquote(url)
 
     return unquote(url)
+
+if __name__ == "__main__":
+    # find_common_url('https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862')
+    find_common_url('https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-(16-inch-amd)/len101t0076#ports_slots')

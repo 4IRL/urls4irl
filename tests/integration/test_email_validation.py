@@ -5,7 +5,7 @@ from flask_login import current_user
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
 from src import db
-from src.models import User
+from src.models import User, verify_token
 from src.utils.constants import EMAIL_CONSTANTS
 from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -199,7 +199,7 @@ def test_valid_token_generated_on_user_register(
             User.email == new_user[REGISTER_FORM.EMAIL]
         ).first()
         user_token = registered_user.email_confirm.confirm_url
-        assert User.verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (
+        assert verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (
             registered_user,
             False,
         )
@@ -261,7 +261,7 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
 
-        assert User.verify_token(quick_expiring_token, EMAILS.VALIDATE_EMAIL) == (
+        assert verify_token(quick_expiring_token, EMAILS.VALIDATE_EMAIL) == (
             None,
             True,
         )

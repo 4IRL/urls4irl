@@ -2,12 +2,11 @@ from flask import url_for
 from flask_login import current_user
 
 from src import db
-from src.models import User, ForgotPassword
+from src.models import User, ForgotPassword, verify_token
 from src.utils.all_routes import ROUTES
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.reset_password_strs import RESET_PASSWORD
-from src.utils import strings as U4I_STRINGS
 
 NEW_PASSWORD = "NEW_PASSWORD!"
 
@@ -43,7 +42,7 @@ def test_reset_password_token_can_expire(app, register_first_user):
         ).first()
         quick_expiring_token = user.get_password_reset_token(expires_in=0)
 
-        assert User.verify_token(
+        assert verify_token(
             quick_expiring_token, RESET_PASSWORD.RESET_PASSWORD_KEY
         ) == (
             None,

@@ -3,7 +3,7 @@ from flask import url_for
 
 from tests.models_for_test import valid_user_1
 from src import db
-from src.models import User, ForgotPassword
+from src.models import User, ForgotPassword, verify_token
 from src.utils import constants as U4I_CONSTANTS
 from src.utils.all_routes import ROUTES
 from src.utils.strings.splash_form_strs import REGISTER_FORM
@@ -413,7 +413,7 @@ def test_forgot_password_generates_token_correctly(
         ).first()
 
         token = new_forgot_password.reset_token
-        assert User.verify_token(token, RESET_PASSWORD.RESET_PASSWORD_KEY) == (
+        assert verify_token(token, RESET_PASSWORD.RESET_PASSWORD_KEY) == (
             registered_user,
             False,
         )

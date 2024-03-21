@@ -90,7 +90,7 @@ Now the migrations folder is setup.
 From this directory, run the following command:
 
 ```
-python -m pytest -sv
+pytest
 ```
 
 This will print out a log as well as whether or not tests passed.

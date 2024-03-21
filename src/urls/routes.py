@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user
 
 from src import db
@@ -106,7 +106,7 @@ def add_url(utub_id: int):
         url_string = utub_new_url_form.url_string.data
 
         try:
-            user_agent = request.headers.get("User-agent")
+            user_agent = request.headers if not current_app.testing else None
             normalized_url = find_common_url(url_string, user_agent)
         except InvalidURLError:
             # URL was unable to be verified as a valid URL
