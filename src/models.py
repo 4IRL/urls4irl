@@ -4,6 +4,7 @@ Contains database models for URLS4IRL.
 # https://docs.sqlalchemy.org/en/14/orm/backref.html
 """
 
+from __future__ import annotations
 from datetime import datetime
 
 import jwt
@@ -217,42 +218,41 @@ class User(db.Model, UserMixin):
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],
         )
 
-    @staticmethod
-    def verify_token(token: str, token_key: str) -> tuple[UserMixin, bool]:
-        """
-        Returns a valid user if one found, or None.
-        Boolean indicates whether the token is expired or not.
+def verify_token(token: str, token_key: str) -> tuple[User | None, bool]:
+    """
+    Returns a valid user if one found, or None.
+    Boolean indicates whether the token is expired or not.
 
-        Args:
-            token (str): The token to check
-            token_key (str): The key of the token
+    Args:
+        token (str): The token to check
+        token_key (str): The key of the token
 
-        Returns:
-            tuple[UserMixin, bool]: Returns a User and Boolean
-        """
-        try:
-            username_to_validate = jwt.decode(
-                jwt=token,
-                key=current_app.config[CONFIG_ENVS.SECRET_KEY],
-                algorithms=EMAILS.ALGORITHM,
-            )
-
-        except JWTExceptions.ExpiredSignatureError:
-            return None, True
-
-        except (
-            RuntimeError,
-            TypeError,
-            JWTExceptions.DecodeError,
-        ):
-            return None, False
-
-        return (
-            User.query.filter(
-                User.username == username_to_validate[token_key]
-            ).first_or_404(),
-            False,
+    Returns:
+        tuple[User | None, bool]: Returns a User/None and Boolean
+    """
+    try:
+        username_to_validate = jwt.decode(
+            jwt=token,
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithms=[EMAILS.ALGORITHM],
         )
+
+    except JWTExceptions.ExpiredSignatureError:
+        return None, True
+
+    except (
+        RuntimeError,
+        TypeError,
+        JWTExceptions.DecodeError,
+    ):
+        return None, False
+
+    return (
+        User.query.filter(
+            User.username == username_to_validate[token_key]
+        ).first_or_404(),
+        False,
+    )
 
 
 class EmailValidation(db.Model):

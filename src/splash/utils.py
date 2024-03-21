@@ -1,6 +1,6 @@
 from datetime import datetime
-from flask import jsonify, url_for
-from requests import Response
+from flask import jsonify, url_for, Response 
+import requests
 
 from src import db, email_sender
 from src.models import ForgotPassword, User
@@ -13,7 +13,7 @@ from src.utils.all_routes import ROUTES
 STD_JSON = STD_JSON_RESPONSE
 
 
-def _handle_email_sending_result(email_result: Response):
+def _handle_email_sending_result(email_result: requests.Response):
     status_code: int = email_result.status_code
     json_response: dict = email_result.json()
 
@@ -48,7 +48,7 @@ def _handle_email_sending_result(email_result: Response):
         return _handle_mailjet_failure(email_result, 4)
 
 
-def _handle_mailjet_failure(email_result: Response, error_code: int = 1):
+def _handle_mailjet_failure(email_result: requests.Response, error_code: int = 1):
     json_response = email_result.json()
     message = json_response.get(EMAILS.MESSAGES, EMAILS.ERROR_WITH_MAILJET)
     if message == EMAILS.ERROR_WITH_MAILJET:
@@ -70,7 +70,7 @@ def _handle_mailjet_failure(email_result: Response, error_code: int = 1):
 
 def _handle_after_forgot_password_form_validated(
     forgot_password_form: ForgotPasswordForm,
-) -> Response:
+) -> tuple[Response, int]:
     user_with_email: User = User.query.filter_by(
         email=forgot_password_form.email.data
     ).first()

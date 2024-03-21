@@ -11,7 +11,7 @@ from flask import (
 from flask_login import current_user, login_user
 
 from src import db, email_sender
-from src.models import User, EmailValidation, ForgotPassword
+from src.models import User, EmailValidation, ForgotPassword, verify_token
 from src.users.forms import (
     LoginForm,
     UserRegistrationForm,
@@ -104,7 +104,7 @@ def register_user():
                         {
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
-                            STD_JSON.ERROR_CODE: 2,
+                            STD_JSON.ERROR_CODE: 3,
                             STD_JSON.ERRORS: register_form.errors,
                         }
                     ),
@@ -264,7 +264,9 @@ def send_validation_email():
 
 @splash.route("/validate/<string:token>", methods=["GET"])
 def validate_email(token: str):
-    user_to_validate, expired = User.verify_token(token, EMAILS.VALIDATE_EMAIL)
+    user_to_validate: User
+    expired: bool
+    user_to_validate, expired = verify_token(token, EMAILS.VALIDATE_EMAIL)
 
     if expired:
         invalid_email: EmailValidation = EmailValidation.query.filter(
@@ -280,7 +282,7 @@ def validate_email(token: str):
             "splash.html",
             email_validation_modal=True,
             expired_token=EMAILS.TOKEN_EXPIRED,
-        )
+        ), 400
 
     if not user_to_validate:
         # Link is invalid, so remove any users and email validation rows associated with this token
@@ -357,7 +359,9 @@ def confirm_password_reset():
 
 @splash.route("/reset-password/<string:token>", methods=["GET", "POST"])
 def reset_password(token: str):
-    reset_password_user, expired = User.verify_token(
+    reset_password_user: User
+    expired: bool
+    reset_password_user, expired = verify_token(
         token, RESET_PASSWORD.RESET_PASSWORD_KEY
     )
 
