@@ -256,88 +256,92 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8
 
 ------------------------------------------------------------------------------------------
 
-#### Project Management
+#### Forgot Password
 
 <details>
- <summary><code>GET</code> <code><b>/projects</b></code> <code>(gets all of a user's projects)</code>:white_check_mark:</summary>
+ <summary><code>GET</code> <code><b>/forgot-password</b></code> <code>(renders forgot password modal)</code></summary>
 
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `See below.` | Returns all of a user's projects. |
+> | `200`         | `text/html;charset=utf-8`         | `Renders forgot-password modal.` | Displays the forgot password modal to the user. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User has not validated their email. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
-
-###### 200 HTTP Code Response Body
-
-> ```json
-> {
->     "projects": [
->       {
->           "projectName": "project1",
->           "projectID": 1,
->           "lastUpdated": "2023-10-31T15:45:00Z",
->           "projectLocation": "/api/v1/projects/1",
->           "team": {
->               "teamName": "team1",
->               "teamID": 1, 
->               "teamLocation": "/api/v1/teams/1"
->           }
->       },
->       {
->           "projectName": "project2",
->           "projectID": 2,
->           "lastUpdated": "2023-10-31T15:45:00Z",
->           "projectLocation": "/api/v1/projects/2",
->           "team": {
->               "teamName": "team2",
->               "teamID": 2, 
->               "teamLocation": "/api/v1/teams/2"
->           }
->       } 
->     ]
-> }
-> ```
 
 ##### Example cURL
 
 > ```bash
 > curl -X GET \
->  https://opm-api.propersi.me/api/v1/projects \
->  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
+>  https://urls4irl.app/forgot-password \
+>  -H 'Cookie: YOUR_COOKIE' \
 > ```
 
 </details>
 
 <details>
- <summary><code>POST</code> <code><b>/projects</b></code> <code>(creates a new project)</code>:white_check_mark:</summary>
+ <summary><code>POST</code> <code><b>/forgot-password</b></code> <code>(sends password reset email to user)</code></summary>
 
 ##### Request Payload
 
-> ```json
-> {
->   "projectName": "New Project Name",
->   "teamName": "team1",
->   "teamID": 1,
-> }
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+
+> ```
+> Required form data:
+> email: %email%
+> csrf_token: %csrf_token%
 > ```
 
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `201`         | `application/json`                | `See below.` | **Includes a URI to the project resource in the Location Header** |
-> | `400`         | `application/json`                | `{"code":"400","message":"Project name for that team already exists"}` | Project name for team already exists. Teams must have unique project names. |
-> | `404`         | `application/json`                | `{"code":"404","message":"User not in team, or team does not exist"}` | User not in team, or chosen team does not exist. |
+> | `200`         | `application/json`                | `See below.` | Assuming the email was found in the database and was already validated, a reset-password email is sent. |
+> | `400`         | `application/json`                | `See below.` | Error with Mailjet service. |
+> | `401`         | `application/json`                | `See below` | Error in the form data user sent. |
+> | `404`         | `application/json`                | `See below` | Unexpected error occurred processing forgot password. |
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
 
-###### 201 HTTP Code Response Body
+###### 200 HTTP Code Response Body
+
+To not indicate to the user whether a given email or account already exists, the 200 HTTP response is sent even if an invalid 
+or missing email is provided. However, the reset-password email is only sent if the email is validated and exists within the database.
 
 > ```json
 > {
->     "projectName": "New Project Name",
->     "projectID": 1,
->     "projectLocation": "/api/v1/projects/1"
+>     "status": "Success",
+>     "message": "If you entered a valid email, you should receive a reset password link soon."
+> }
+> ```
+
+###### 400 HTTP Code Response Body - Example
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Error with Mailjet service.",
+>     "errorCode": 3
+> }
+> ```
+
+###### 401 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Email is not valid.",
+>     "errorCode": 1
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Something went wrong.",
+>     "errorCode": 2
 > }
 > ```
 
@@ -345,13 +349,11 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8
 
 > ```bash
 > curl -X POST \
->  https://opm-api.propersi.me/api/v1/projects \
->  -H 'Content-Type: application/json' \
->  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
->  -d '{
->   "projectName": "New Project Name",
->   "teamName": "team1",
->   "teamID": 1 }' 
+>  https://urls4irl.app/forgot-password \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'email=EMAIL'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
 </details>

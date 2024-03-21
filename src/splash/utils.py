@@ -110,7 +110,7 @@ def _handle_after_forgot_password_form_validated(
                 user_with_email.email, user_with_email.username, url_for_reset
             )
             if email_send_result.status_code >= 500:
-                return _handle_mailjet_failure(email_send_result)
+                return _handle_mailjet_failure(email_send_result, error_code=3)
 
     return (
         jsonify(

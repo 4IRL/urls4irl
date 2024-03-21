@@ -22,7 +22,7 @@ from src.users.forms import (
 from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
-from src.utils.strings.user_strs import USER_FAILURE, USER_SUCCESS
+from src.utils.strings.user_strs import USER_FAILURE
 from src.utils.all_routes import ROUTES
 from src.utils.constants import EMAIL_CONSTANTS
 from src.splash.utils import (

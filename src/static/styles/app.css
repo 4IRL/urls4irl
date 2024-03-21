@@ -524,9 +524,10 @@ span.user:hover .user-remove {
 .email-container {
     text-align: center;
     display: flex;
+    align-items: center;
     justify-content: space-between;
     flex-direction: row;
-    align-items: flex-start;
+    flex-wrap: nowrap;
     width: 100%;
 }
 
@@ -657,6 +658,8 @@ span.user:hover .user-remove {
 
 .alert-banner-splash-modal-display {
     display: inherit;
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
 }
 
 .alert-banner-splash-modal-show {

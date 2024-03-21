@@ -51,6 +51,7 @@ function logoutUser() {
 function resetPasswordModalOpener() {
   $.get("/confirm-password-reset", function (data) {
     $("#SplashModal .modal-content").html(data);
+    const newModal = new bootstrap.Modal("#SplashModal").show();
     $("#SplashModal")
       .modal()
       .on("hide.bs.modal", function (e) {
@@ -282,20 +283,17 @@ function registerModalOpener(url) {
       });
 
       request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 400 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1: {
+        if (xhr.responseJSON.hasOwnProperty("Error_code")) {
+          switch (xhr.status) {
+            case 400: {
+              handleImproperFormErrors(xhr.responseJSON);
+              registerButton.removeAttr("disabled");
+              break;
+            }
+            case 401: {
               // User found but email not yet validated
               handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
               disableInputFields();
-              break;
-            }
-            case 2: {
-              handleImproperFormErrors(xhr.responseJSON);
-              registerButton.removeAttr("disabled");
               break;
             }
           }
