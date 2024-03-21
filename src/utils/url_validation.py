@@ -85,19 +85,29 @@ def normalize_url(url: str) -> str:
 def generate_random_user_agent() -> str:
     return random.choice(USER_AGENTS)
 
+
 def generate_headers(user_agent: str = None) -> dict[str, str]:
     return {
-        "User-Agent": generate_random_user_agent() if user_agent is None else user_agent,
+        "User-Agent": (
+            generate_random_user_agent() if user_agent is None else user_agent
+        ),
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "Accept-Encoding": "*",
-        "Accept-Language": "*"
+        "Accept-Language": "*",
     }
 
 
 def perform_head_request(url: str, headers: dict[str, str] = None) -> requests.Response:
     try:
         headers = generate_headers() if headers is None else headers
-        response = requests.head(url, timeout=(3, 6,), headers=headers)
+        response = requests.head(
+            url,
+            timeout=(
+                3,
+                6,
+            ),
+            headers=headers,
+        )
 
     except requests.exceptions.ReadTimeout:
         # Try a get request instead
@@ -115,7 +125,14 @@ def perform_head_request(url: str, headers: dict[str, str] = None) -> requests.R
 
 def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
     try:
-        response = requests.get(url, timeout=(3, 6,), headers=headers)
+        response = requests.get(
+            url,
+            timeout=(
+                3,
+                6,
+            ),
+            headers=headers,
+        )
 
     except requests.exceptions.ReadTimeout:
         # Try a random sampling of 3 user agents
@@ -211,6 +228,9 @@ def filter_out_common_redirect(url: str) -> str:
 
     return unquote(url)
 
+
 if __name__ == "__main__":
     # find_common_url('https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862')
-    find_common_url('https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-(16-inch-amd)/len101t0076#ports_slots')
+    find_common_url(
+        "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-(16-inch-amd)/len101t0076#ports_slots"
+    )

@@ -15,6 +15,7 @@ STD_JSON = STD_JSON_RESPONSE
 UTUB_FAILURE = UTUB_FAILURE
 UTUB_SUCCESS = UTUB_SUCCESS
 
+
 @utubs.route("/home", methods=["GET"])
 @email_validation_required
 def home():
@@ -344,4 +345,3 @@ def update_utub_desc(utub_id: int):
         ),
         404,
     )
-

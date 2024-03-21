@@ -1,22 +1,24 @@
 from src.utils.strings.model_strs import (
-    DESCRIPTION, 
-    EMAIL, 
-    NAME, 
-    PASSWORD, 
-    TAG_STRING, 
-    URL_STRING, 
-    URL_TITLE, 
-    USERNAME, 
-    UTUB_DESCRIPTION    
+    DESCRIPTION,
+    EMAIL,
+    NAME,
+    PASSWORD,
+    TAG_STRING,
+    URL_STRING,
+    URL_TITLE,
+    USERNAME,
+    UTUB_DESCRIPTION,
 )
 
 # Strings for all forms
 CSRF_TOKEN = "csrf_token"
 
+
 class GENERAL_FORM:
     CSRF_TOKEN = CSRF_TOKEN
     EMAIL = EMAIL
     PASSWORD = PASSWORD
+
 
 class TAG_FORM(GENERAL_FORM):
     TAG_STRING = TAG_STRING

@@ -16,6 +16,7 @@ from src.utils.strings.user_strs import USER_FAILURE
 
 VALIDATE_EMAIL_MODAL_TITLE = '<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
 
+
 def test_registered_user_is_not_email_validated(app, load_register_page):
     """
     GIVEN a user trying to register
@@ -111,9 +112,7 @@ def test_registered_not_email_validated_user_access_register_login(load_register
     for url in urls_to_check:
         response = client.get(url, follow_redirects=True)
         assert response.history[0].status_code == 302
-        assert response.history[0].location == url_for(
-           ROUTES.SPLASH.CONFIRM_EMAIL 
-        )
+        assert response.history[0].location == url_for(ROUTES.SPLASH.CONFIRM_EMAIL)
         assert response.status_code == 200
         assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
 

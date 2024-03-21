@@ -113,7 +113,9 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
-    assert int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
+    assert (
+        int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
+    )
     assert add_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
 
     url_serialization_from_server = add_tag_response_json[TAGS_SUCCESS.URL]
@@ -391,10 +393,13 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
-    assert int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
+    assert (
+        int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
+    )
     assert add_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
     assert (
-        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID]) == tag_id_that_exists
+        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
+        == tag_id_that_exists
     )
     assert add_tag_response_json[TAGS_SUCCESS.TAG][TAG_FORM.TAG_STRING] == tag_to_add
 
@@ -546,7 +551,8 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
     assert int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
     assert add_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
     assert (
-        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID]) == tag_id_that_exists
+        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
+        == tag_id_that_exists
     )
     assert add_tag_response_json[TAGS_SUCCESS.TAG][TAG_FORM.TAG_STRING] == tag_to_add
 

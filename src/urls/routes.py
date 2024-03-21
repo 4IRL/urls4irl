@@ -19,6 +19,7 @@ urls = Blueprint("urls", __name__)
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
 
+
 @urls.route("/utubs/<int:utub_id>/urls/<int:url_id>", methods=["DELETE"])
 @email_validation_required
 def remove_url(utub_id: int, url_id: int):
@@ -27,8 +28,8 @@ def remove_url(utub_id: int, url_id: int):
     or whoever added the URL into that Utub.
 
     Args:
-        utub_id (int): The ID of the UTub that contains the URL to be removed 
-        url_id (int): The ID of the URL to be removed 
+        utub_id (int): The ID of the UTub that contains the URL to be removed
+        url_id (int): The ID of the URL to be removed
     """
     utub = Utub.query.get_or_404(utub_id)
     utub_owner_id = int(utub.created_by.id)

@@ -7,6 +7,7 @@ SUCCESS = "Success"
 NO_CHANGE = "No change"
 TOO_MANY_REQUESTS = "Too many requests."
 
+
 class STD_JSON_RESPONSE:
     ERRORS = ERRORS
     STATUS = STATUS

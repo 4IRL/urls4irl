@@ -113,9 +113,12 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
     assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
     assert (
-        int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
+        modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
+    )
+    assert (
+        int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID])
+        == utub_id_user_is_creator_of
     )
     assert (
         modify_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
@@ -267,7 +270,9 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
     assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
+    assert (
+        modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
+    )
     assert (
         int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
     )
@@ -431,9 +436,12 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
     assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
     assert (
-        int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_creator_of
+        modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
+    )
+    assert (
+        int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID])
+        == utub_id_user_is_creator_of
     )
     assert (
         modify_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
@@ -596,7 +604,9 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
     # Ensure json response from server is valid
     modify_tag_response_json = modify_tag_response.json
     assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
+    assert (
+        modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
+    )
     assert (
         int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
     )

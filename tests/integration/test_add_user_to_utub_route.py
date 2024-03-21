@@ -223,7 +223,8 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     }
 
     added_user_response = client.post(
-        url_for(ROUTES.MEMBERS.ADD_MEMBER, utub_id=utub_user_created.id), data=add_user_form
+        url_for(ROUTES.MEMBERS.ADD_MEMBER, utub_id=utub_user_created.id),
+        data=add_user_form,
     )
 
     # Assert correct status code
@@ -399,7 +400,8 @@ def test_add_duplicate_user_to_utub(
     }
 
     add_user_response = client.post(
-        url_for(ROUTES.MEMBERS.ADD_MEMBER, utub_id=current_user_utub_id), data=add_user_form
+        url_for(ROUTES.MEMBERS.ADD_MEMBER, utub_id=current_user_utub_id),
+        data=add_user_form,
     )
 
     assert add_user_response.status_code == 400
@@ -660,7 +662,8 @@ def test_add_user_to_utub_invalid_form(
     add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token}
 
     add_user_response = client.post(
-        url_for(ROUTES.MEMBERS.ADD_MEMBER, utub_id=current_user_utub.id), data=add_user_form
+        url_for(ROUTES.MEMBERS.ADD_MEMBER, utub_id=current_user_utub.id),
+        data=add_user_form,
     )
 
     assert add_user_response.status_code == 400

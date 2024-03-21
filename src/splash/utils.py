@@ -1,5 +1,5 @@
 from datetime import datetime
-from flask import jsonify, url_for, Response 
+from flask import jsonify, url_for, Response
 import requests
 
 from src import db, email_sender

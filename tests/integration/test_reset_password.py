@@ -19,7 +19,9 @@ def test_valid_token_receives_reset_password_form(user_attempts_reset_password):
     """
     _, client, _, reset_token, _ = user_attempts_reset_password
 
-    reset_response = client.get(url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token))
+    reset_response = client.get(
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token)
+    )
 
     # JS AJAX call to modal that contains reset password form
     assert RESET_PASSWORD.RESET_PASSWORD_MODAL_CALL.encode() in reset_response.data
@@ -72,7 +74,8 @@ def test_expired_token_deletes_object_and_redirects(
         db.session.commit()
 
     reset_response = client.get(
-        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=expired_token), follow_redirects=True
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=expired_token),
+        follow_redirects=True,
     )
 
     assert len(reset_response.history) == 1
@@ -113,7 +116,9 @@ def test_invalid_reset_password_token(user_attempts_reset_password):
             == 0
         )
 
-    reset_response = client.get(url_for(ROUTES.SPLASH.RESET_PASSWORD, token=invalid_token))
+    reset_response = client.get(
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=invalid_token)
+    )
 
     assert reset_response.status_code == 404
 
@@ -140,7 +145,9 @@ def test_not_email_validated_user_with_password_reset_token_fails(
         db.session.add(new_password_reset)
         db.session.commit()
 
-    reset_password_response = client.get(url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token))
+    reset_password_response = client.get(
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token)
+    )
 
     assert reset_password_response.status_code == 404
 
@@ -196,7 +203,9 @@ def test_password_reset_object_expires_after_one_hour(
     """
     _, client, _, reset_token, _ = user_attempts_reset_password_one_hour_old
 
-    reset_password_response = client.get(url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token))
+    reset_password_response = client.get(
+        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token)
+    )
 
     assert reset_password_response.status_code == 404
 

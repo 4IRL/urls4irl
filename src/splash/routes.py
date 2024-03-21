@@ -25,10 +25,10 @@ from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWOR
 from src.utils.strings.user_strs import USER_FAILURE, USER_SUCCESS
 from src.utils.all_routes import ROUTES
 from src.utils.constants import EMAIL_CONSTANTS
-from src.splash.utils import ( 
+from src.splash.utils import (
     _handle_after_forgot_password_form_validated,
-    _handle_email_sending_result, 
-    _validate_resetting_password
+    _handle_email_sending_result,
+    _validate_resetting_password,
 )
 
 # Standard response for JSON messages
@@ -278,11 +278,14 @@ def validate_email(token: str):
         invalid_email.reset_attempts()
         db.session.commit()
         login_user(user_with_expired_token)
-        return render_template(
-            "splash.html",
-            email_validation_modal=True,
-            expired_token=EMAILS.TOKEN_EXPIRED,
-        ), 400
+        return (
+            render_template(
+                "splash.html",
+                email_validation_modal=True,
+                expired_token=EMAILS.TOKEN_EXPIRED,
+            ),
+            400,
+        )
 
     if not user_to_validate:
         # Link is invalid, so remove any users and email validation rows associated with this token
@@ -415,4 +418,3 @@ def reset_password(token: str):
             ),
             400,
         )
-

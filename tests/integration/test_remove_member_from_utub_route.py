@@ -57,7 +57,9 @@ def test_remove_valid_user_from_utub_as_creator(
     # Remove second user
     remove_user_response = client.delete(
         url_for(
-            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=second_user_in_utub.id
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=second_user_in_utub.id,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -140,7 +142,11 @@ def test_remove_self_from_utub_as_member(
 
     # Remove self from UTub
     remove_user_response = client.delete(
-        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user_id),
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=current_user_id,
+        ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -259,7 +265,9 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
     # Remove second user
     remove_user_response = client.delete(
         url_for(
-            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=second_user_in_utub.id
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=second_user_in_utub.id,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -357,7 +365,11 @@ def test_remove_self_from_utub_as_creator(
 
     # Remove self from UTub
     remove_user_response = client.delete(
-        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=current_user.id,
+        ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -419,7 +431,11 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
 
     # Remove self from UTub
     remove_user_response = client.delete(
-        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=current_user.id,
+        ),
     )
 
     # Assert invalid response code
@@ -476,7 +492,11 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
 
     # Remove second user
     remove_user_response = client.delete(
-        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=current_user.id),
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=current_user.id,
+        ),
     )
 
     # Assert invalid response code
@@ -526,7 +546,11 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
 
     # Remove self from UTub
     remove_user_response = client.delete(
-        url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=invalid_utub_id, user_id=current_user.id),
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=invalid_utub_id,
+            user_id=current_user.id,
+        ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
@@ -592,7 +616,9 @@ def test_remove_invalid_user_from_utub_as_creator(
     # Remove self from UTub
     remove_user_response = client.delete(
         url_for(
-            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=user_id_not_in_utub
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=user_id_not_in_utub,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -658,7 +684,9 @@ def test_remove_invalid_user_from_utub_as_member(
     # Remove self from UTub
     remove_user_response = client.delete(
         url_for(
-            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=user_id_not_in_utub
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=user_id_not_in_utub,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -725,7 +753,9 @@ def test_remove_another_member_from_same_utub_as_member(
     # Attempt to remove other user from UTub as a member
     remove_user_response = client.delete(
         url_for(
-            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=current_utub.id, user_id=other_utub_member.id
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=other_utub_member.id,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -816,7 +846,9 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     # Try to remove the third user from second user's UTub as the first user
     remove_user_response = client.delete(
         url_for(
-            ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=second_user_utub.id, user_id=third_user.id
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=second_user_utub.id,
+            user_id=third_user.id,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )

@@ -13,6 +13,7 @@ from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWOR
 USER_CONSTANTS = U4I_CONSTANTS.USER_CONSTANTS
 FORGOT_PASSWORD_MODAL_TITLE = '<h4 class="modal-title">Forgot your password?</h4>'
 
+
 def test_user_logged_in_email_validated_cannot_access_forgot_password(
     register_first_user, login_first_user_without_register
 ):

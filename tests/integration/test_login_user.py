@@ -24,7 +24,9 @@ def test_login_registered_and_logged_in_user(login_first_user_with_register):
     new_user = deepcopy(valid_user_1)
     new_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
 
-    response = client.post(url_for(ROUTES.SPLASH.LOGIN), data=new_user, follow_redirects=True)
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN), data=new_user, follow_redirects=True
+    )
 
     # Correctly responds with URL to home page
     assert len(response.history) == 1

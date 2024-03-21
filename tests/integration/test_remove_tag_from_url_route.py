@@ -281,7 +281,8 @@ def test_remove_tag_from_url_as_utub_member(
         == utub_id_this_user_member_of
     )
     assert (
-        remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+        remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
+        == utub_name_this_user_member_of
     )
     assert int(remove_tag_response_json[TAGS_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1
 
@@ -440,7 +441,8 @@ def test_remove_tag_from_url_with_one_tag(
         == utub_id_this_user_member_of
     )
     assert (
-        remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+        remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
+        == utub_name_this_user_member_of
     )
     assert int(remove_tag_response_json[TAGS_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1
 
@@ -601,7 +603,8 @@ def test_remove_last_tag_from_utub(
         == utub_id_this_user_member_of
     )
     assert (
-        remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+        remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
+        == utub_name_this_user_member_of
     )
     assert (
         int(remove_tag_response_json[TAGS_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1 == 0
@@ -783,7 +786,8 @@ def test_remove_tag_from_url_with_five_tags(
         int(remove_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
     )
     assert (
-        remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_this_user_member_of
+        remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
+        == utub_name_this_user_member_of
     )
     assert int(remove_tag_response_json[TAGS_SUCCESS.COUNT_IN_UTUB]) == tag_count - 1
 

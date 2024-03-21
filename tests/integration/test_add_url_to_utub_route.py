@@ -550,7 +550,8 @@ def test_add_valid_url_to_utub_not_a_member_of(
     }
 
     add_url_response = client.post(
-        url_for(ROUTES.URLS.ADD_URL, utub_id=id_of_utub_not_member_of), data=add_url_form
+        url_for(ROUTES.URLS.ADD_URL, utub_id=id_of_utub_not_member_of),
+        data=add_url_form,
     )
 
     assert add_url_response.status_code == 403
@@ -931,7 +932,8 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
     }
 
     add_url_response = client.post(
-        url_for(ROUTES.URLS.ADD_URL, utub_id=id_of_utub_that_is_member_of), data=add_url_form
+        url_for(ROUTES.URLS.ADD_URL, utub_id=id_of_utub_that_is_member_of),
+        data=add_url_form,
     )
 
     assert add_url_response.status_code == 400

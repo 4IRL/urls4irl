@@ -218,6 +218,7 @@ class User(db.Model, UserMixin):
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],
         )
 
+
 def verify_token(token: str, token_key: str) -> tuple[User | None, bool]:
     """
     Returns a valid user if one found, or None.

@@ -11,7 +11,9 @@ def test_get_home_screen_not_logged_in(app_with_server_name, client):
     """
     with client:
         with app_with_server_name.app_context():
-            response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE), follow_redirects=True)
+            response = client.get(
+                url_for(ROUTES.SPLASH.SPLASH_PAGE), follow_redirects=True
+            )
 
         # Hits splash page
         assert response.status_code == 200
@@ -29,7 +31,9 @@ def test_post_home_screen_not_logged_in(app_with_server_name, client):
     """
     with client:
         with app_with_server_name.app_context():
-            response = client.post(url_for(ROUTES.SPLASH.SPLASH_PAGE), follow_redirects=True)
+            response = client.post(
+                url_for(ROUTES.SPLASH.SPLASH_PAGE), follow_redirects=True
+            )
 
         assert response.status_code == 405
         assert len(response.history) == 0
@@ -62,6 +66,7 @@ def test_get_login_screen_not_logged_in(app_with_server_name, client):
         )
 
         assert request.path == url_for(ROUTES.SPLASH.LOGIN)
+
 
 def test_get_register_screen_not_logged_in(app_with_server_name, client):
     """

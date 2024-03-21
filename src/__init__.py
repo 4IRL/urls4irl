@@ -62,7 +62,7 @@ def create_app(
     if production:
         email_sender.in_production()
 
-    from src.splash.routes import splash 
+    from src.splash.routes import splash
     from src.utubs.routes import utubs
     from src.users.routes import users
     from src.members.routes import members

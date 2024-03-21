@@ -78,7 +78,9 @@ def test_remove_url_as_utub_creator_no_tags(
     # Remove URL from UTub as UTub creator
     remove_url_response = client.delete(
         url_for(
-            ROUTES.URLS.REMOVE_URL, utub_id=current_user_utub.id, url_id=url_id_to_remove
+            ROUTES.URLS.REMOVE_URL,
+            utub_id=current_user_utub.id,
+            url_id=url_id_to_remove,
         ),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -218,7 +220,9 @@ def test_remove_url_as_utub_member_no_tags(
 
     # Remove URL from UTub as UTub member
     remove_url_response = client.delete(
-        url_for(ROUTES.URLS.REMOVE_URL, utub_id=current_user_utub.id, url_id=missing_url.id),
+        url_for(
+            ROUTES.URLS.REMOVE_URL, utub_id=current_user_utub.id, url_id=missing_url.id
+        ),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 

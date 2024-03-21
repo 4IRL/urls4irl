@@ -1,4 +1,4 @@
-from src.utils.strings.form_strs import GENERAL_FORM 
+from src.utils.strings.form_strs import GENERAL_FORM
 from src.utils.strings.model_strs import EMAIL, PASSWORD, USERNAME
 
 # Strings for login/register forms

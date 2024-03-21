@@ -31,12 +31,17 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings import model_strs, reset_password_strs
 
 
-warnings.filterwarnings("ignore", category=DeprecationWarning)#, message="'flask.Markup' is deprecated and will be removed in Flask 2.4. Import 'markupsafe.Markup' instead.")
+warnings.filterwarnings(
+    "ignore", category=DeprecationWarning
+)  # , message="'flask.Markup' is deprecated and will be removed in Flask 2.4. Import 'markupsafe.Markup' instead.")
+
+
 @pytest.fixture
 def ignore_deprecation_warning():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     yield
     warnings.resetwarnings()
+
 
 @pytest.fixture
 def app(ignore_deprecation_warning):
@@ -283,7 +288,9 @@ def user_attempts_reset_password(app, register_first_user, load_login_page):
     client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
         data={
-            reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[reset_password_strs.FORGOT_PASSWORD.EMAIL],
+            reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[
+                reset_password_strs.FORGOT_PASSWORD.EMAIL
+            ],
             reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
     )
@@ -335,7 +342,9 @@ def user_attempts_reset_password_one_hour_old(
     client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
         data={
-            reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[reset_password_strs.FORGOT_PASSWORD.EMAIL],
+            reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[
+                reset_password_strs.FORGOT_PASSWORD.EMAIL
+            ],
             reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
     )

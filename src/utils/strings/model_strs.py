@@ -1,4 +1,3 @@
-
 # Strings for standardizing the model serialization
 ID = "id"
 NAME = "name"

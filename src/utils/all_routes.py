@@ -2,12 +2,13 @@
 Contains all routes for easy insertion into `url_for` flask function
 """
 
+
 class MEMBER_ROUTES:
     _MEMBERS = "members."
     REMOVE_MEMBER = _MEMBERS + "remove_member"
     ADD_MEMBER = _MEMBERS + "add_member"
 
-    
+
 class SPLASH_ROUTES:
     _SPLASH = "splash."
     SPLASH_PAGE = _SPLASH + "splash_page"
@@ -58,4 +59,3 @@ class ROUTES:
     URLS = URL_ROUTES
     USERS = USER_ROUTES
     UTUBS = UTUB_ROUTES
-

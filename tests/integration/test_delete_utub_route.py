@@ -405,7 +405,9 @@ def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in
     with app.app_context():
         assert len(Utub.query.all()) == 1
 
-    delete_utub_response = client.delete(url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id))
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id)
+    )
 
     # Ensure 400 sent back after no csrf token included
     assert delete_utub_response.status_code == 400

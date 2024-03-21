@@ -121,8 +121,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     register_user_response_json = response.json
     assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        register_user_response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.UNABLE_TO_REGISTER
+        register_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_REGISTER
     )
     assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 3
     assert (

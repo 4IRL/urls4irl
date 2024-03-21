@@ -18,6 +18,7 @@ members = Blueprint("members", __name__)
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
 
+
 @members.route("/utubs/<int:utub_id>/members/<int:user_id>", methods=["DELETE"])
 @email_validation_required
 def remove_member(utub_id: int, user_id: int):

@@ -13,9 +13,11 @@ URL_OR_TITLE_MODIFIED = "URL and/or URL title modified."
 URL_MODIFIED = "URL modified."
 URL = "URL"
 
+
 class URL_GENERAL:
     URL = URL
     REDIRECT = REDIRECT
+
 
 class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_ADDED = URL_ADDED

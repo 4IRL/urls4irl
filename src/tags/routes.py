@@ -158,7 +158,9 @@ def add_tag(utub_id: int, url_id: int):
     )
 
 
-@tags.route("/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id>", methods=["DELETE"])
+@tags.route(
+    "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id>", methods=["DELETE"]
+)
 @email_validation_required
 def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """

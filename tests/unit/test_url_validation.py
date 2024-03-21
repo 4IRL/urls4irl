@@ -112,13 +112,14 @@ def test_all_user_agents():
     """
     GIVEN URLs that seemed to fail unknowingly, but were due to the request
         failing due to a User-agent indicating a script
-    WHEN the User-Agent is iterated through all random values   
+    WHEN the User-Agent is iterated through all random values
     THEN ensure that these urls are now validated properly
     """
     for user_agent in url_valid.USER_AGENTS:
         header_with_custom_user_agent = url_valid.generate_headers(user_agent)
         for unknown_url in urls_needing_valid_user_agent:
-            assert unknown_url == url_valid.find_common_url(unknown_url, header_with_custom_user_agent)
+            assert unknown_url == url_valid.find_common_url(
+                unknown_url, header_with_custom_user_agent
+            )
             # Avoid any kind of rate limiting or semblance of being a bot
             sleep(0.1)
-

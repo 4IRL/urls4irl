@@ -307,8 +307,7 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
             == valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION]
         )
         assert (
-            new_utub_response_json[UTUB_SUCCESS.UTUB_NAME]
-            == valid_utub[UTUB_FORM.NAME]
+            new_utub_response_json[UTUB_SUCCESS.UTUB_NAME] == valid_utub[UTUB_FORM.NAME]
         )
         assert new_utub_response_json[UTUB_SUCCESS.UTUB_CREATOR_ID] == user.id
         assert isinstance(new_utub_response_json[UTUB_SUCCESS.UTUB_ID], int)
