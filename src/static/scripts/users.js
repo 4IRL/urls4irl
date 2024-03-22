@@ -41,8 +41,8 @@ function getCurrentUTubCreatorID() {
 
 // Clear user selection
 function resetNewUserForm() {
-  $("#UTubUsernameInput").val("");
-  hideIfShown($("#UTubUsernameInput").closest(".createDiv"));
+  $("#addUser").val("");
+  hideIfShown($("#addUser").closest(".createDiv"));
 }
 
 // Clear the User Deck
@@ -143,14 +143,14 @@ function createNewUserInputField() {
 
   $(label)
     .attr({
-      for: "UTubUsernameInput",
+      for: "addUser",
       style: "display:block",
     })
     .html("<b> Username </b>");
 
   $(input)
     .attr({
-      id: "UTubUsernameInput",
+      id: "addUser",
       type: "text",
       placeholder: "Username",
     })
@@ -214,6 +214,8 @@ function displayState0UserDeck() {
 
   // Subheader prompt hidden
   hideIfShown($("#UserDeckSubheader").closest(".row"));
+  
+  hideIfShown($("#addUserBtn"));
 }
 
 // Display state 1: Selected UTub has no Users
@@ -225,7 +227,6 @@ function displayState1UserDeck() {
   let UserDeckSubheader = $("#UserDeckSubheader");
   if (numOfUsers === 1) UserDeckSubheader.text("Add a user");
   else UserDeckSubheader.text(numOfUsers + " active users");
-  console.log("hello")
 }
 
 /** Post data handling **/
@@ -234,13 +235,13 @@ function displayState1UserDeck() {
 
 // Shows new User input fields
 function addUserShowInput() {
-  showInput("UTubUsernameInput");
-  highlightInput($("#UTubUsernameInput"));
+  showInput("addUser");
+  highlightInput($("#addUser"));
 }
 
 // Hides new User input fields
 function addUserHideInput() {
-  hideInput("UTubUsernameInput");
+  hideInput("addUser");
 }
 
 function addUser() {
@@ -273,7 +274,7 @@ function addUser() {
 function addUserSetup() {
   let postURL = ADD_USER_ROUTE + getActiveUTubID();
 
-  let newUsername = $("#UTubUsernameInput").val();
+  let newUsername = $("#addUser").val();
   data = {
     username: newUsername,
   };
@@ -289,7 +290,7 @@ function addUserSuccess(response) {
   let newUser = UTubUsers[UTubUsers.length - 1];
 
   // Temporarily remove createDiv to reattach after addition of new User
-  let createUser = $("#UTubUsernameInput").closest(".createDiv").detach();
+  let createUser = $("#addUser").closest(".createDiv").detach();
 
   // Create and append newly created User badge
   $("#listUsers").append(createUserBadge(response.User_ID_added, newUser));
@@ -394,7 +395,6 @@ function removeUserSuccess(userID) {
   let userListItem = $("span[userid=" + userID + "]").parent();
   userListItem.fadeOut();
   userListItem.remove();
-  console.log("hello")
 
   displayState1UserDeck();
 }

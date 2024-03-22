@@ -771,6 +771,13 @@ function displayState0URLDeck() {
   hideIfShown($("#URLDeckSubheader").closest(".row"));
   hideIfShown($(".editUTubBtn"));
   hideIfShown($("#addURLBtn"));
+  hideIfShown($("#accessAllURLsBtn"));
+
+  if (getNumOfUTubs() > 0) {
+    let URLDeckSubheader = $("#URLDeckSubheader");
+    showIfHidden(URLDeckSubheader.closest(".row"));
+    URLDeckSubheader.text("Select a UTub");
+  }
 }
 
 // Display state 1: UTub selected, URL list and subheader prompt
