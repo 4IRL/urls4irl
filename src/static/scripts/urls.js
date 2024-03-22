@@ -710,35 +710,26 @@ function toggleSelectedURL(selectedURLID) {
 // Filters all URLs with tags
 function filterAllTaggedURLs() {
   hideInputs();
-  let URLcardst = $("div.url");
-  for (let i = 0; i < URLcardst.length; i++) {
-    let tagList = $(URLcardst[i]).find("span.tag");
 
-    // If no tags associated with this URL, ignore. Unaffected by filter functionality
-    if (tagList.length === 0) {
-      continue;
-    }
+  let selectedBool = $("#selectAll").hasClass("selected");
 
-    // If all tags for given URL are style="display: none;", hide parent URL card
-    let inactiveTagBool = tagList.map((i) =>
-      tagList[i].style.display == "none" ? true : false,
-    );
-    // Manipulate mapped Object
-    let boolArray = Object.entries(inactiveTagBool);
-    boolArray.pop();
-    boolArray.pop();
+  let URLCardList = $("div.url");
 
-    // Default to hide URL
-    let hideURLBool = true;
-    boolArray.forEach((e) => (hideURLBool &= e[1]));
+  // For each URL card, verify there remain at least one visible tagBadge, else hide card.
+  for (let i = 0; i < URLCardList.length; i++) {
 
-    // If url <div.card.url> has no tag <span>s in activeTagIDs, hide card column (so other cards shift into its position)
-    if (hideURLBool) {
-      $(URLcardst[i]).parent().hide();
-    }
-    // If tag reactivated, show URL
-    else {
-      $(URLcardst[i]).parent().show();
+    let cardCol = $(URLCardList[i]).closest(".cardCol");
+    let tagBadges = cardCol.find("span.tagBadge");
+
+    if (selectedBool) {
+      // Show all tagBadges and URLs
+      cardCol.show();
+      tagBadges.show();
+
+    } else {
+      // Hide all tagBadges and URLs
+      cardCol.hide();
+      tagBadges.hide();
     }
   }
 }
@@ -752,14 +743,17 @@ function filterURL(tagID) {
 
   let URLCards = $(".url");
   for (let i = 0; i < URLCards.length; i++) {
+    console.log($(URLCards[i]).closest(".cardCol"))
     let cardCol = $(URLCards[i]).closest(".cardCol");
-    let showURLBool; // Default showing URL
-    let tagsRemaining = cardCol.find("span.tagBadge").length;
-    console.log(tagsRemaining);
+    let tags = cardCol.find("span.tagBadge");
+    let hideBool = 1;
 
-    tagsRemaining > 0 ? (showURLBool = 1) : (showURLBool = 0);
+    for (let j = 0; j < tags.length; j++) {
+      console.log(tags[j])
+      if($(tags[j]).is(":hidden")) hideBool = 0;
+    }
 
-    showURLBool ? cardCol.show() : cardCol.hide();
+    hideBool ? cardCol.show() : cardCol.hide();
   }
 }
 
