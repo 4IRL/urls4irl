@@ -296,7 +296,7 @@ function addTagSuccess(response) {
   let tagid = response.Tag.id;
   let string = response.Tag.tag_string;
 
-  if (!isTagInDeck(tagid)) createTaginDeck(tagid, string);
+  if (!isTagInDeck(tagid)) createTagFilterInDeck(tagid, string);
 
   // Update tags in URL
   let tagSpan = createTaginURL(tagid, string);

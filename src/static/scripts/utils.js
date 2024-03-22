@@ -189,11 +189,13 @@ function unbindEnter() {
 
 function displayState0() {
   hideInputs();
-  displayState0UTubDeck();
   displayState0TagDeck();
+  resetTagDeck();
   displayState0URLDeck();
+  resetURLDeck();
   displayState0UTubDescriptionDeck();
   displayState0UserDeck();
+  resetUserDeck();
 }
 
 function displayState1() {
