@@ -165,11 +165,15 @@ function filterTag(tagID) {
   let filteredTag = $(".tagFilter[tagid=" + tagID + "]");
   filteredTag.toggleClass("selected");
 
-  let selAll = $("#selectAll");
+  let tags = $(".tagFilter");
+  let selAllBool = 1;
 
-  let selectedBool = filteredTag.hasClass("selected");
-  // Toggle SelectAll filter to reflect tagFilter selection
-  selectedBool ? selAll.addClass("selected") : selAll.removeClass("selected");
+  console.log(tags)
+  for (let j = 0; j < tags.length; j++) {
+    if ($(tags[j]).is(":hidden")) selAllBool = 0;
+  }
+  
+  selAllBool ? $("#selectAll").addClass("selected") : $("#selectAll").removeClass("selected");
 
   displayState2TagDeck();
 }
@@ -197,10 +201,10 @@ function displayState2TagDeck() {
   showIfHidden(TagDeckSubheader.closest(".row"));
   TagDeckSubheader.text(
     numOfTags -
-      getActiveTagIDs().length +
-      " of " +
-      numOfTags +
-      " filters applied",
+    getActiveTagIDs().length +
+    " of " +
+    numOfTags +
+    " filters applied",
   );
 }
 
@@ -296,10 +300,10 @@ function addTagSuccess(response) {
   let tagid = response.Tag.id;
   let string = response.Tag.tag_string;
 
-  if (!isTagInDeck(tagid)) createTagFilterInDeck(tagid, string);
+  if (!isTagInDeck(tagid)) $("#listTags").append(createTagFilterInDeck(tagid, string));
 
   // Update tags in URL
-  let tagSpan = createTaginURL(tagid, string);
+  let tagSpan = createTagBadgeInURL(tagid, string);
   URLTagDeck.append(tagSpan);
 
   displayState2TagDeck();

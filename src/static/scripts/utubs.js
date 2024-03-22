@@ -126,7 +126,7 @@ function buildUTubDeck(UTubs) {
       parent.append(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
     }
 
-    displayState1UTubDeck();
+    displayState1UTubDeck(null, null);
     displayState0URLDeck();
   } else displayState0UTubDeck();
 
@@ -146,7 +146,7 @@ function selectUTub(selectedUTubID) {
 
     // LH panels
     // UTub deck
-    displayState2UTubDeck(selectedUTubID, UTubOwnerID);
+    displayState1UTubDeck(selectedUTubID, UTubOwnerID);
 
     // Tag deck
     buildTagDeck(dictTags);
@@ -306,36 +306,26 @@ function bindUTubSelectionBehavior() {
 // Display state 0: Clean slate, no UTubs
 function displayState0UTubDeck() {
   // Subheader to prompt user to create a UTub shown
-  let UTubDeckSubheader = $("#UTubDeckSubheader");
-  showIfHidden(UTubDeckSubheader.closest(".row"));
-  UTubDeckSubheader.text("Create a UTub");
+  $("#UTubDeckSubheader").text("Create a UTub");
 
   // Hide delete UTub button
   hideIfShown($("#deleteUTubBtn"));
 }
 
-// Display state 1: UTubs list, none selected
-function displayState1UTubDeck() {
-  // Subheader prompt shown
-  let UTubDeckSubheader = $("#UTubDeckSubheader");
-  showIfHidden(UTubDeckSubheader.closest(".row"));
-  UTubDeckSubheader.text(getNumOfUTubs() + " Accessible UTubs");
-
-  // Hide delete UTub button
-  hideIfShown($("#deleteUTubBtn"));
-}
-
+// Display state 1: UTubs list, none selected. selectedUTubID, UTubOwnerID == null
+// Enter into this state only at page load, or after UTub deletion
 // Display state 2: UTubs list, 1x selected
-function displayState2UTubDeck(selectedUTubID, UTubOwnerID) {
+// Enter into this state change only if new UTub is selected
+// No actions performed within other decks can affect UTub Deck display
+function displayState1UTubDeck(selectedUTubID, UTubOwnerID) {
   hideInputs();
 
-  // Subheader prompt hidden
-  let UTubDeckSubheader = $("#UTubDeckSubheader");
-  showIfHidden(UTubDeckSubheader.closest(".row"));
+  // Subheader to tell user how many UTubs are accessible
+  $("#UTubDeckSubheader").text(getNumOfUTubs() + " Accessible UTubs");
 
   // Bind selection behavior to depature UTub, unbind from selected UTub
   bindUTubSelectionBehavior();
-  unbindUTubSelectionBehavior(selectedUTubID);
+  if (selectedUTubID) unbindUTubSelectionBehavior(selectedUTubID);
 
   if (getCurrentUserID() == UTubOwnerID) {
     showIfHidden($("#deleteUTubBtn"));
@@ -481,7 +471,7 @@ function sameNameWarningShowModal(mode, UTubID) {
       e.preventDefault();
       $("#confirmModal").modal("hide");
       mode ? addUTubHideInput() : editUTubHideInput();
-      displayState2UTubDeck(UTubID, getCurrentUTubCreatorID());
+      displayState1UTubDeck(UTubID, getCurrentUTubCreatorID());
     });
 
   $("#modalSubmit")
@@ -554,10 +544,9 @@ function addUTubSuccess(response) {
 
   let UTubID = response.UTub_ID;
 
-  if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
+  $("#confirmModal").modal("hide");
 
   // Remove createDiv; Reattach after addition of new UTub
-  console.log($("#createUTub").closest(".createDiv"))
   $("#createUTub").closest(".createDiv").remove();
 
   // Create and append newly created UTub selector
@@ -568,7 +557,6 @@ function addUTubSuccess(response) {
 
   // Create new createDiv after latest created UTub selector
   listUTubs.append(createNewUTubInputField());
-  console.log(listUTubs.children())
 
   selectUTub(UTubID);
 }
@@ -708,7 +696,7 @@ function editUTubNameSuccess(response) {
   editedUTubLabel.find("b").text(UTubName);
 
   // Display updates
-  displayState2UTubDeck(getActiveUTubID(), getCurrentUTubCreatorID());
+  displayState1UTubDeck(getActiveUTubID(), getCurrentUTubCreatorID());
   displayState1URLDeck();
 }
 
