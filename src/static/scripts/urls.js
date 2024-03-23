@@ -373,6 +373,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
+      editURL();
       $(document).bind("keypress", function (e) {
         if (e.which == 13) {
           editURL();
@@ -1063,19 +1064,23 @@ function removeURLShowModal() {
   $("#confirmModalTitle").text(modalTitle);
 
   $("#modalDismiss")
+    .off("click")
     .on("click", function (e) {
       e.preventDefault();
       removeURLHideModal();
     })
     .text(buttonTextDismiss);
+  // Esc key cancels operation
   bindKeyToFunction(removeURLHideModal, 27);
 
   $("#modalSubmit")
+    .off("click")
     .on("click", function (e) {
       e.preventDefault();
       removeURL();
     })
     .text(buttonTextSubmit);
+  // Enter key sends operation
   bindKeyToFunction(removeURL, 13);
 
   $("#confirmModal").modal("show");

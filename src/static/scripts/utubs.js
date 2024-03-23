@@ -773,6 +773,7 @@ function deleteUTubShowModal() {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
+    .off("click")
     .on("click", function (e) {
       e.preventDefault();
       deleteUTub();
@@ -831,7 +832,9 @@ function deleteUTubSuccess() {
   // Reset all panels
   displayState0();
 
-  if ($("#listUTubs").children().length == 1) displayState0UTubDeck();
+  displayState1UTubDeck(null, null)
+
+  if ($("#listUTubs").find("div.UTub").length == 0) displayState0UTubDeck();
 }
 
 function deleteUTubFailure(response, textStatus, xhr) {
