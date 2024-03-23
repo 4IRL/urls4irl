@@ -713,23 +713,24 @@ function filterAllTaggedURLs() {
 
   let selectedBool = $("#selectAll").hasClass("selected");
 
-  let URLCardList = $("div.url");
+  let URLCards = $("div.url");
 
   // For each URL card, verify there remain at least one visible tagBadge, else hide card.
-  for (let i = 0; i < URLCardList.length; i++) {
-
-    let cardCol = $(URLCardList[i]).closest(".cardCol");
+  for (let i = 0; i < URLCards.length; i++) {
+    let cardCol = $(URLCards[i]).closest(".cardCol");
     let tagBadges = cardCol.find("span.tagBadge");
 
-    if (selectedBool) {
-      // Show all tagBadges and URLs
-      cardCol.show();
-      tagBadges.show();
-
-    } else {
-      // Hide all tagBadges and URLs
-      cardCol.hide();
-      tagBadges.hide();
+    // Only do something if URL has tags applied
+    if (tagBadges.length > 0) {
+      if (selectedBool) {
+        // Show all tagBadges and URLs
+        cardCol.show();
+        tagBadges.show();
+      } else {
+        // Hide all tagBadges and URLs
+        cardCol.hide();
+        tagBadges.hide();
+      }
     }
   }
 }
@@ -741,19 +742,32 @@ function filterURL(tagID) {
   let filteredTagList = $(".tagBadge[tagid=" + tagID + "]");
   filteredTagList.toggle();
 
-  let URLCards = $(".url");
-  for (let i = 0; i < URLCards.length; i++) {
-    console.log($(URLCards[i]).closest(".cardCol"))
-    let cardCol = $(URLCards[i]).closest(".cardCol");
-    let tags = cardCol.find("span.tagBadge");
-    let hideBool = 1;
+  let URLCards = $("div.url");
+  console.log(URLCards)
 
-    for (let j = 0; j < tags.length; j++) {
-      console.log(tags[j])
-      if($(tags[j]).is(":hidden")) hideBool = 0;
+  for (let i = 0; i < URLCards.length; i++) {
+    console.log($(URLCards[i]).closest(".cardCol").find(".URLTitle").text())
+    let cardCol = $(URLCards[i]).closest(".cardCol");
+    let tagBadges = cardCol.find("span.tagBadge");
+
+    // Default to hiding URL if it has tags
+    // Automaticaly show URL if it doesn't have tags
+    let hideBool = tagBadges.length ? 0 : 1;
+
+    // If all tags are filtered, hide URL
+    for (let j = 0; j < tagBadges.length; j++) {
+      console.log(!($(tagBadges[j]).attr("style") == "display: none;"))
+
+      // If any 1 tag is not "display: none;", then URL remains shown
+      if (!($(tagBadges[j]).attr("style") == "display: none;")) hideBool ||= 1;
     }
 
-    hideBool ? cardCol.show() : cardCol.hide();
+    if (hideBool) {
+      cardCol.show();
+    } else {
+      deselectURL(cardCol);
+      cardCol.hide();
+    }
   }
 }
 

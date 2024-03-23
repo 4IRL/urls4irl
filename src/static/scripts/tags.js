@@ -165,15 +165,15 @@ function filterTag(tagID) {
   let filteredTag = $(".tagFilter[tagid=" + tagID + "]");
   filteredTag.toggleClass("selected");
 
-  let tags = $(".tagFilter");
+  let tagFilters = $(".tagFilter");
   let selAllBool = 1;
 
-  console.log(tags)
-  for (let j = 0; j < tags.length; j++) {
-    if ($(tags[j]).is(":hidden")) selAllBool = 0;
+  for (let j = 0; j < tagFilters.length; j++) {
+    if (!$(tagFilters[j]).hasClass("selected")) selAllBool = 0;
   }
   
-  selAllBool ? $("#selectAll").addClass("selected") : $("#selectAll").removeClass("selected");
+  let selAll = $("#selectAll");
+  selAllBool ? selAll.addClass("selected") : selAll.removeClass("selected");
 
   displayState2TagDeck();
 }
