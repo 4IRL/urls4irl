@@ -101,8 +101,9 @@ function hideInputs() {
   $(".createDiv").each(function () {
     hideIfShown($(this));
   });
-  editURLHideInput();
-  editUTubHideInput();
+  // editURLHideInput();
+  // editUTubNameHideInput();
+  // editUTubDescriptionHideInput();
 }
 
 // Hide specified input field. Typically done if user successfully completes, or cancels an action

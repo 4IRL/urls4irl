@@ -213,13 +213,15 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       toggleSelectedURL(URLID);
     });
 
-  $(card).addClass("card url").attr({
-    urlid: URLID,
-    // draggable: "true",
-    ondrop: "dropIt(event)",
-    ondragover: "allowDrop(event)",
-    ondragstart: "dragStart(event)",
-  });
+  $(card)
+    .addClass("card url")
+    .attr({
+      urlid: URLID,
+      // draggable: "true",
+      ondrop: "dropIt(event)",
+      ondragover: "allowDrop(event)",
+      ondragstart: "dragStart(event)",
+    });
 
   // $(cardImg).attr({
   //     'src': '...',
@@ -227,13 +229,20 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   // })
   // .addClass("card-img-top")
 
-  $(urlInfo).addClass("card-body URLInfo");
+  $(urlInfo)
+    .addClass("card-body URLInfo");
 
-  $(urlTitle).addClass("card-title URLTitle").text(title);
+  $(urlTitle)
+    .addClass("card-title URLTitle")
+    .text(title);
 
-  $(urlString).addClass("card-text URLString").text(string);
+  $(urlString)
+    .addClass("card-text URLString")
+    .text(string);
 
-  $(editWrap).addClass("createDiv form-group").attr({ style: "display: none" });
+  $(editWrap)
+    .addClass("createDiv form-group")
+    .attr({ style: "display: none" });
 
   $(editURLTitleLabel)
     .attr({
@@ -243,14 +252,14 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     .html("<b> URL Title </b>");
 
   $(editURLTitleInput)
+    .addClass("card-title userInput editURLTitle")
     .attr({
       id: "editURLTitle-" + URLID,
       type: "text",
       size: "40",
       value: title,
       placeholder: "Edit URL Title",
-    })
-    .addClass("card-title userInput editURLTitle");
+    });
 
   $(editWrap1)
     .addClass("form-group")
@@ -265,14 +274,14 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     .html("<b> URL </b>");
 
   $(editURLStringInput)
+    .addClass("card-text userInput editURLString")
     .attr({
       id: "editURL-" + URLID,
       type: "text",
       size: "40",
       value: string,
       placeholder: "Edit URL",
-    })
-    .addClass("card-text userInput editURLString");
+    });
 
   $(editWrap2)
     .addClass("form-group")
@@ -988,12 +997,15 @@ function editURL() {
 // Prepares post request inputs for edition of a URL
 function editURLSetup() {
   let postURL = EDIT_URL_ROUTE + getActiveUTubID() + "/" + getSelectedURLID();
+  // let postURL = routes.editURL(getActiveUTubID(), getSelectedURLID());
+  console.log(postURL)
 
   let selectedCardDiv = $(getSelectedURLCard());
   let editedURLfield = selectedCardDiv.find(".editURLString")[0];
   let editedURL = editedURLfield.value;
   let editedURLTitlefield = selectedCardDiv.find(".editURLTitle")[0];
   let editedURLTitle = editedURLTitlefield.value;
+  console.log(editedURLTitle)
   data = {
     url_string: editedURL,
     url_title: editedURLTitle,
@@ -1008,11 +1020,14 @@ function editURLSuccess(response) {
   let editedURLID = response.URL.url_ID;
   let editedURLTitle = response.URL.url_title;
   let editedURLString = response.URL.url_string;
+  console.log(response)
+  console.log(response.URL)
+  console.log(editedURLTitle)
 
   // If edit URL action, rebind the ability to select/deselect URL by clicking it
   rebindSelectBehavior(editedURLID);
 
-  const selectedCardDiv = $(getSelectedURLCard());
+  const selectedCardDiv = $(".selectedURL");
 
   // Update URL ID
   selectedCardDiv.attr("urlid", editedURLID);
@@ -1044,7 +1059,13 @@ function editURLSuccess(response) {
 
 // Displays appropriate prompts and options to user following a failed edition of a URL
 function editURLFail(response) {
-  console.log("Unimplemented");
+  console.log("Error: Could not edit URL");
+  console.log(
+    "Failure. Error code: " +
+    response.responseJSON.Error_code +
+    ". Status: " +
+    response.responseJSON.Message,
+  );
 }
 
 /* Remove URL */

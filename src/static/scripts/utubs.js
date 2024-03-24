@@ -40,20 +40,34 @@ $(document).ready(function () {
     // DP 12/29 bindKeyToFunction() appears to work here. See deleteUTubShowModal();
   });
 
-  // Edit UTub name and description
-  $(".editUTubBtn").on("click", function (e) {
+  // Edit UTub name
+  $("#editUTubNameBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     hideInputs();
     deselectAllURLs();
-    editUTubShowInput();
+    editUTubNameShowInput();
   });
 
 
-  $(".submitEditUTubBtn ").on("click", function (e) {
+  $("#submitEditUTubNameBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     checkSameNameUTub(0, $("#editUTubName").val());
+  })
+
+  // Edit UTub description
+  $("#editUTubDescriptionBtn").on("click", function (e) {
+    // e.stopPropagation();
+    // e.preventDefault();
+    editUTubDescriptionShowInput();
+  });
+
+
+  $("#submitEditUTubDescriptionBtn").on("click", function (e) {
+    // e.stopPropagation();
+    // e.preventDefault();
+    editUTubDescription();
   })
 });
 
@@ -323,9 +337,15 @@ function displayState1UTubDeck(selectedUTubID, UTubOwnerID) {
   // Subheader to tell user how many UTubs are accessible
   $("#UTubDeckSubheader").text(getNumOfUTubs() + " Accessible UTubs");
 
+  // UTub selected
+
   // Bind selection behavior to depature UTub, unbind from selected UTub
   bindUTubSelectionBehavior();
-  if (selectedUTubID) unbindUTubSelectionBehavior(selectedUTubID);
+  if (selectedUTubID) {
+    unbindUTubSelectionBehavior(selectedUTubID);
+    showIfHidden($("#editUTubNameBtn"));
+    showIfHidden($("#editUTubDescriptionBtn"));
+  }
 
   if (getCurrentUserID() == UTubOwnerID) {
     showIfHidden($("#deleteUTubBtn"));
@@ -588,34 +608,48 @@ function addUTubFail(response, textStatus, xhr) {
 
 /* Edit UTub */
 
-// Shows input fields for editing an exiting UTub's name and description
-function editUTubShowInput() {
-  // Hide exisitng values and edit button
-  hideIfShown($("#URLDeckHeader"));
-  hideIfShown($("#UTubDescription"));
-  hideIfShown($(".editUTubBtn"));
-  hideIfShown($("#addURLBtn"));
-
-  // Show temporary div element containing UTub description
-  showInput("editUTubDescription");
-  showIfHidden($(".submitEditUTubBtn"));
-
-  // Show temporary div element containing UTub name
+// Shows input fields for editing an exiting UTub's name 
+function editUTubNameShowInput() {
+  // Show edit fields
   showInput("editUTubName");
+
+  // Hide current name and edit button
+  hideIfShown($("#URLDeckHeader"));
+  hideIfShown($("#editUTubNameBtn"));
+  hideIfShown($("#addURLBtn"));
 }
 
-// Hides input fields for editing an exiting UTub's name and description
-function editUTubHideInput() {
-  // Hide exisitng values and edit button
-  showIfHidden($("#URLDeckHeader"));
-  showIfHidden($("#UTubDescription"));
-
-  // Show temporary div element containing UTub description
-  hideInput("editUTubDescription");
-  hideIfShown($(".submitEditUTubBtn"));
-
-  // Show temporary div element containing UTub name
+// Hides input fields for editing an exiting UTub's name
+function editUTubNameHideInput() {
+  // Hide edit fields
   hideInput("editUTubName");
+
+  // Show values and edit button
+  showIfHidden($("#URLDeckHeader"));
+  showIfHidden($("#editUTubNameBtn"));
+  showIfHidden($("#addURLBtn"));
+}
+
+// Shows input fields for editing an exiting UTub's description
+function editUTubDescriptionShowInput() {
+  // Show edit fields
+  showInput("editUTubDescription");
+  showIfHidden($("#submitEditUTubDescriptionBtn"));
+
+  // Hide current description and edit button
+  hideIfShown($("#UTubDescription"));
+  hideIfShown($("#editUTubDescriptionBtn"));
+}
+
+// Hides input fields for editing an exiting UTub's description
+function editUTubDescriptionHideInput() {
+  // Hide edit fields
+  hideInput("editUTubDescription");
+  hideIfShown($("#submitEditUTubDescriptionBtn"));
+
+  // Show values and edit button
+  showIfHidden($("#UTubDescription"));
+  hideIfShown($("#editUTubDescriptionBtn"));
 }
 
 // Handles post request and response for adding a new UTub
