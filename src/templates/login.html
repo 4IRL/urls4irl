@@ -3,7 +3,9 @@
         window.location.href = '/';
     };
 </script>
-<form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>
+
+
+<form id="ModalForm" method="POST" class="login-register-form" action="/login" novalidate>
     <div class="modal-header">
         <h4 class="modal-title">Login!</h4>
         <button type="button" class="btn-close close-register-login-modal" data-bs-dismiss="modal" aria-label="close">
@@ -52,3 +54,5 @@
             href="javascript:;">Register</a>
     </div>
 </form>
+
+<script src="{{ url_for('static', filename='scripts/splash/login.js') }}"></script>

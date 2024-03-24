@@ -19,13 +19,13 @@ function setToLoginButton() {
     });
 }
 
-function setForgotPasswordButton() {
-  $(".to-forgot-password")
-    .off("click")
-    .on("click", function () {
-      forgotPasswordModalOpener("/forgot-password");
-    });
-}
+// function setForgotPasswordButton() {
+//   $(".to-forgot-password")
+//     .off("click")
+//     .on("click", function () {
+//       forgotPasswordModalOpener("/forgot-password");
+//     });
+// }
 
 function setCloseModalButton(
   shouldLogout = false,
@@ -215,50 +215,20 @@ function disableInputFields() {
 }
 
 function loginModalOpener(url) {
-  $.get(url, function (data, textStatus, xhr) {
-    $("#SplashModal .modal-content").html(data);
-    verifyValidSplashForm();
-    setToRegisterButton();
-    setForgotPasswordButton();
-    $("#submit").click(function (event) {
-      event.preventDefault();
-      let request = $.ajax({
-        url: url,
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
+  const modalOpener = $.get(url);
+  const splashModal = $("#SplashModal .modal-content");
 
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-          $("#SplashModal").modal("hide");
-          window.location.replace(response);
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 401 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1: {
-              // User found but email not yet validated
-              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
-              disableInputFields();
-              break;
-            }
-            case 2: {
-              handleImproperFormErrors(xhr.responseJSON);
-              break;
-            }
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
+  modalOpener.done((data, textStatus, xhr) => {
+    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
   });
+
+  modalOpener.fail(() => {
+    splashModal.html(null);
+    splashModal.html($("<div></div>")
+      .attr("id", "SplashModalAlertBanner")
+      .attr("role", "alert"));
+    showSplashModalAlertBanner("Unable to load login form...", "danger");
+  })
 }
 
 function registerModalOpener(url) {
@@ -357,34 +327,34 @@ function disableSendPasswordResetEmailButton() {
     });
 }
 
-function handleUserHasAccountNotEmailValidated(message) {
-  $(".form-control").removeClass("is-invalid");
-  $(".invalid-feedback").remove();
-  const alertBanner = $("#SplashModalAlertBanner");
-  alertBanner
-    .removeClass("alert-banner-splash-modal-hide")
-    .addClass("alert-info alert-banner-splash-modal-show")
-    .append($("<div>" + message + "</div>"))
-    .append(
-      $(
-        '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
-      )
-        .off("click")
-        .on("click", function () {
-          emailValidationModalOpener();
-        }),
-    );
+// function handleUserHasAccountNotEmailValidated(message) {
+//   $(".form-control").removeClass("is-invalid");
+//   $(".invalid-feedback").remove();
+//   const alertBanner = $("#SplashModalAlertBanner");
+//   alertBanner
+//     .removeClass("alert-banner-splash-modal-hide")
+//     .addClass("alert-info alert-banner-splash-modal-show")
+//     .append($("<div>" + message + "</div>"))
+//     .append(
+//       $(
+//         '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
+//       )
+//         .off("click")
+//         .on("click", function () {
+//           emailValidationModalOpener();
+//         }),
+//     );
 
-  $(".register-to-login-footer").remove();
-  $(".modal-footer").remove();
+//   $(".register-to-login-footer").remove();
+//   $(".modal-footer").remove();
 
-  $(".close-register-login-modal")
-    .off("click")
-    .on("click", function () {
-      $("#SplashModal").modal("hide");
-      logoutUser();
-    });
-}
+//   $(".close-register-login-modal")
+//     .off("click")
+//     .on("click", function () {
+//       $("#SplashModal").modal("hide");
+//       logoutUser();
+//     });
+// }
 
 function handleImproperFormErrors(errorResponse) {
   $(".invalid-feedback").remove();
@@ -407,7 +377,7 @@ function handleImproperFormErrors(errorResponse) {
         displayFormErrors(key, errorMessage);
         break;
       default:
-        // Error for a field that doens't exist
+        // Error for a field that doesn't exist
         console.log("No op.");
     }
   }

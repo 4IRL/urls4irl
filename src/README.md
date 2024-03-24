@@ -297,8 +297,8 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `See below.` | Assuming the email was found in the database and was already validated, a reset-password email is sent. |
-> | `400`         | `application/json`                | `See below.` | Error with Mailjet service. |
+> | `200`         | `application/json`                | `See below` | Assuming the email was found in the database and was already validated, a reset-password email is sent. |
+> | `400`         | `application/json`                | `See below` | Error with Mailjet service. |
 > | `401`         | `application/json`                | `See below` | Error in the form data user sent. |
 > | `404`         | `application/json`                | `See below` | Unexpected error occurred processing forgot password. |
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
