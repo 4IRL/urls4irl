@@ -224,11 +224,13 @@ function loginModalOpener(url) {
 
   modalOpener.fail(() => {
     splashModal.html(null);
-    splashModal.html($("<div></div>")
-      .attr("id", "SplashModalAlertBanner")
-      .attr("role", "alert"));
+    splashModal.html(
+      $("<div></div>")
+        .attr("id", "SplashModalAlertBanner")
+        .attr("role", "alert"),
+    );
     showSplashModalAlertBanner("Unable to load login form...", "danger");
-  })
+  });
 }
 
 function registerModalOpener(url) {
