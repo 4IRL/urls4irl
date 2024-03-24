@@ -720,7 +720,6 @@ span.user:hover .user-remove {
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    margin: 0 auto 10px auto;
     /* Center horizontally */
 }
 

@@ -1,28 +1,39 @@
 $(".to-register")
   .off("click")
-  .on("click", () => openRegisterModal());
+  .on("click", () => openRegisterModalFromLogin());
 
 $(".to-forgot-password")
   .off("click")
-  .on("click", () => forgotPasswordModal());
+  .on("click", () => openForgotPasswordModal());
 
 $("#submit").click((event) => handleLogin(event));
 
-function openRegisterModal() {
-  $.get("/register", (data) => {
-    $("#SplashModal .modal-content").html(data);
+function openRegisterModalFromLogin() {
+  const modalOpener = $.get("/register");
+
+  modalOpener.done((data, textStatus, xhr) => {
+    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+  });
+
+  modalOpener.fail(() => {
+    showSplashModalAlertBanner("Unable to load register form...", "danger");
   });
 }
 
-function forgotPasswordModal() {
-  $.get("/forgot-password", (data) => {
-    $("#SplashModal .modal-content").html(data);
+function openForgotPasswordModal() {
+  const modalOpener = $.get("/forgot-password");
+
+  modalOpener.done((data, textStatus, xhr) => {
+    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+  });
+
+  modalOpener.fail(() => {
+    showSplashModalAlertBanner("Unable to load forgot password form...", "danger");
   });
 }
 
 function handleLogin(event) {
   event.preventDefault();
-  console.log("Handling login");
 
   const loginRequest = $.ajax({
     url: "/login",
@@ -65,32 +76,3 @@ function handleLoginFailure(xhr, textStatus, error) {
   }
 }
 
-function handleUserHasAccountNotEmailValidated(message) {
-  $(".form-control").removeClass("is-invalid");
-  $(".invalid-feedback").remove();
-  const alertBanner = $("#SplashModalAlertBanner");
-  alertBanner
-    .removeClass("alert-banner-splash-modal-hide")
-    .addClass("alert-info alert-banner-splash-modal-show")
-    .append($("<div>" + message + "</div>"))
-    .append(
-      $(
-        '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
-      )
-        .off("click")
-        .on("click", function () {
-          emailValidationModalOpener();
-        }),
-    );
-
-  $(".register-to-login-footer").remove();
-  $(".modal-footer").remove();
-  $("#ForgotPasswordLink").remove();
-
-  $(".close-register-login-modal")
-    .off("click")
-    .on("click", function () {
-      $("#SplashModal").modal("hide");
-      $.get("/logout");
-    });
-}

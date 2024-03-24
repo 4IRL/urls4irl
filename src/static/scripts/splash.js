@@ -19,13 +19,43 @@ function setToLoginButton() {
     });
 }
 
-// function setForgotPasswordButton() {
-//   $(".to-forgot-password")
-//     .off("click")
-//     .on("click", function () {
-//       forgotPasswordModalOpener("/forgot-password");
-//     });
-// }
+function loginModalOpener() {
+  const modalOpener = $.get("/login");
+  const splashModal = $("#SplashModal .modal-content");
+
+  modalOpener.done((data, textStatus, xhr) => {
+    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+  });
+
+  modalOpener.fail(() => {
+    splashModal.html(null);
+    splashModal.html(
+      $("<div></div>")
+        .attr("id", "SplashModalAlertBanner")
+        .attr("role", "alert"),
+    );
+    showSplashModalAlertBanner("Unable to load login form...", "danger");
+  });
+}
+
+function registerModalOpener() {
+  const modalOpener = $.get("/register");
+  const splashModal = $("#SplashModal .modal-content");
+
+  modalOpener.done((data, textStatus, xhr) => {
+    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+  });
+
+  modalOpener.fail(() => {
+    splashModal.html(null);
+    splashModal.html(
+      $("<div></div>")
+        .attr("id", "SplashModalAlertBanner")
+        .attr("role", "alert"),
+    );
+    showSplashModalAlertBanner("Unable to load register form...", "danger");
+  });
+}
 
 function setCloseModalButton(
   shouldLogout = false,
@@ -214,69 +244,6 @@ function disableInputFields() {
   $("input").attr("disabled", true);
 }
 
-function loginModalOpener(url) {
-  const modalOpener = $.get(url);
-  const splashModal = $("#SplashModal .modal-content");
-
-  modalOpener.done((data, textStatus, xhr) => {
-    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
-  });
-
-  modalOpener.fail(() => {
-    splashModal.html(null);
-    splashModal.html(
-      $("<div></div>")
-        .attr("id", "SplashModalAlertBanner")
-        .attr("role", "alert"),
-    );
-    showSplashModalAlertBanner("Unable to load login form...", "danger");
-  });
-}
-
-function registerModalOpener(url) {
-  $.get(url, function (data) {
-    $("#SplashModal .modal-content").html(data);
-    verifyValidSplashForm();
-    setToLoginButton();
-    const registerButton = $("#submit");
-    registerButton.click(function (event) {
-      registerButton.attr("disabled", "disabled");
-      event.preventDefault();
-      let request = $.ajax({
-        url: url,
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
-
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 201) {
-          emailValidationModalOpener();
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (xhr.responseJSON.hasOwnProperty("Error_code")) {
-          switch (xhr.status) {
-            case 400: {
-              handleImproperFormErrors(xhr.responseJSON);
-              registerButton.removeAttr("disabled");
-              break;
-            }
-            case 401: {
-              // User found but email not yet validated
-              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
-              disableInputFields();
-              break;
-            }
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
-  });
-}
 
 function forgotPasswordModalOpener(url) {
   $.get(url, function (data) {
@@ -329,34 +296,34 @@ function disableSendPasswordResetEmailButton() {
     });
 }
 
-// function handleUserHasAccountNotEmailValidated(message) {
-//   $(".form-control").removeClass("is-invalid");
-//   $(".invalid-feedback").remove();
-//   const alertBanner = $("#SplashModalAlertBanner");
-//   alertBanner
-//     .removeClass("alert-banner-splash-modal-hide")
-//     .addClass("alert-info alert-banner-splash-modal-show")
-//     .append($("<div>" + message + "</div>"))
-//     .append(
-//       $(
-//         '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
-//       )
-//         .off("click")
-//         .on("click", function () {
-//           emailValidationModalOpener();
-//         }),
-//     );
+function handleUserHasAccountNotEmailValidated(message) {
+ $(".form-control").removeClass("is-invalid");
+ $(".invalid-feedback").remove();
+ const alertBanner = $("#SplashModalAlertBanner");
+ alertBanner
+   .removeClass("alert-banner-splash-modal-hide")
+   .addClass("alert-info alert-banner-splash-modal-show")
+   .append($("<div>" + message + "</div>"))
+   .append(
+     $(
+       '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
+     )
+       .off("click")
+       .on("click", function () {
+         emailValidationModalOpener();
+       }),
+   );
 
-//   $(".register-to-login-footer").remove();
-//   $(".modal-footer").remove();
+ $(".register-to-login-footer").remove();
+ $(".modal-footer").remove();
 
-//   $(".close-register-login-modal")
-//     .off("click")
-//     .on("click", function () {
-//       $("#SplashModal").modal("hide");
-//       logoutUser();
-//     });
-// }
+ $(".close-register-login-modal")
+   .off("click")
+   .on("click", function () {
+     $("#SplashModal").modal("hide");
+     logoutUser();
+   });
+}
 
 function handleImproperFormErrors(errorResponse) {
   $(".invalid-feedback").remove();
