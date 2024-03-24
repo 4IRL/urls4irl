@@ -639,8 +639,12 @@ span.user:hover .user-remove {
     border-color: var(--splashGreen);
 }
 
+.modal-footer {
+    justify-content: center !important;
+
+}
+
 .register-login-modal-footer {
-    justify-content: center;
     margin-top: 20px;
 }
 

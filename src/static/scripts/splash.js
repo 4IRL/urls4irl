@@ -245,84 +245,33 @@ function disableInputFields() {
 }
 
 
-function forgotPasswordModalOpener(url) {
-  $.get(url, function (data) {
-    $("#SplashModal .modal-content").html(data);
-    $("#SplashModal").modal();
-    $("#submit").click(function (event) {
-      event.preventDefault();
-      let request = $.ajax({
-        url: url,
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
-
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-          $(".form-control").removeClass("is-invalid");
-          $(".invalid-feedback").remove();
-          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
-          disableSendPasswordResetEmailButton();
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 401 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1: {
-              handleImproperFormErrors(xhr.responseJSON);
-            }
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
-  });
-}
-
-function disableSendPasswordResetEmailButton() {
-  const submitButton = $("#submit");
-  submitButton
-    .prop("type", "button")
-    .off("click")
-    .prop("disabled", true)
-    .on("click", function (e) {
-      submitButton.prop("disabled", true);
-    });
-}
-
 function handleUserHasAccountNotEmailValidated(message) {
- $(".form-control").removeClass("is-invalid");
- $(".invalid-feedback").remove();
- const alertBanner = $("#SplashModalAlertBanner");
- alertBanner
-   .removeClass("alert-banner-splash-modal-hide")
-   .addClass("alert-info alert-banner-splash-modal-show")
-   .append($("<div>" + message + "</div>"))
-   .append(
-     $(
-       '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
-     )
-       .off("click")
-       .on("click", function () {
-         emailValidationModalOpener();
-       }),
-   );
+   $(".form-control").removeClass("is-invalid");
+   $(".invalid-feedback").remove();
+   const alertBanner = $("#SplashModalAlertBanner");
+   alertBanner
+     .removeClass("alert-banner-splash-modal-hide")
+     .addClass("alert-info alert-banner-splash-modal-show")
+     .append($("<div>" + message + "</div>"))
+     .append(
+       $(
+         '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
+       )
+         .off("click")
+         .on("click", function () {
+           emailValidationModalOpener();
+         }),
+     );
 
- $(".register-to-login-footer").remove();
- $(".modal-footer").remove();
+   $(".register-to-login-footer").remove();
+   $(".modal-footer").remove();
 
- $(".close-register-login-modal")
-   .off("click")
-   .on("click", function () {
-     $("#SplashModal").modal("hide");
-     logoutUser();
-   });
+   $(".close-register-login-modal")
+     .off("click")
+     .on("click", function () {
+       $("#SplashModal").modal("hide");
+       logoutUser();
+     });
 }
 
 function handleImproperFormErrors(errorResponse) {
