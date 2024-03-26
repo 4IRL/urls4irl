@@ -181,22 +181,22 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   // const cardImg = document.createElement('img');
   const urlInfo = document.createElement("div"); // This element holds the URL title and string
   const urlTitle = document.createElement("h5"); // This element displays the user-created title of the URL
-  const urlString = document.createElement("p"); // This element displays the user's URL
-  const editWrap = document.createElement("fieldset"); // This element wraps the edit field for URL title AND URL string
-  const editWrap1 = document.createElement("div"); // This element wraps the edit field for URL title
+  const editURLTitleBtn = document.createElement("i");
+  const URL = document.createElement("p"); // This element displays the user's URL
+  const editURLBtn = document.createElement("i");
+  const editURLTitleWrap = document.createElement("div"); // This element wraps the edit field for URL title
   const editURLTitleLabel = document.createElement("label"); // This element labels the edit field for URL title
   const editURLTitleInput = document.createElement("input"); // This element is instantiated with the URL title
-  const editWrap2 = document.createElement("div"); // This element wraps the edit field for URL string
-  const editURLStringLabel = document.createElement("label"); // This element labels the edit field for URL string
-  const editURLStringInput = document.createElement("input"); // This element is instantiated with the URL
+  const editURLWrap = document.createElement("div"); // This element wraps the edit field for URL string
+  const editURLLabel = document.createElement("label"); // This element labels the edit field for URL string
+  const editURLInput = document.createElement("input"); // This element is instantiated with the URL
   const urlTags = document.createElement("div");
   const urlOptions = document.createElement("div");
   const accessURLBtn = document.createElement("button");
   const addTagBtn = document.createElement("button");
-  const editURLBtn = document.createElement("button");
   const submitEditBtn = document.createElement("i"); // Submit changes after 'edit' operations
   const cancelEditBtn = document.createElement("i"); // Cancel changes after 'edit' operations, populate with pre-edit values
-  const remURLBtn = document.createElement("button");
+  const delURLBtn = document.createElement("button");
 
   $(col)
     .addClass("cardCol mb-3 col-md-10 col-lg-4 col-xl-3")
@@ -206,13 +206,15 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       toggleSelectedURL(URLID);
     });
 
-  $(card).addClass("card url").attr({
-    urlid: URLID,
-    // draggable: "true",
-    ondrop: "dropIt(event)",
-    ondragover: "allowDrop(event)",
-    ondragstart: "dragStart(event)",
-  });
+  $(card)
+    .addClass("card url")
+    .attr({
+      urlid: URLID,
+      // draggable: "true",
+      ondrop: "dropIt(event)",
+      ondragover: "allowDrop(event)",
+      ondragstart: "dragStart(event)",
+    });
 
   // $(cardImg).attr({
   //     'src': '...',
@@ -220,13 +222,18 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   // })
   // .addClass("card-img-top")
 
-  $(urlInfo).addClass("card-body URLInfo");
+  $(urlInfo)
+    .addClass("card-body URLInfo");
 
-  $(urlTitle).addClass("card-title URLTitle").text(title);
+  $(urlTitle)
+    .addClass("card-title URLTitle")
+    .text(title);
 
-  $(urlString).addClass("card-text URLString").text(string);
-
-  $(editWrap).addClass("createDiv form-group").attr({ style: "display: none" });
+  $(editURLTitleBtn)
+    .addClass("mx-1 py-2")
+    .attr({
+      style: "color: #545454;"
+    });
 
   $(editURLTitleLabel)
     .attr({
@@ -245,10 +252,13 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       placeholder: "Edit URL Title",
     });
 
-  $(editWrap1)
-    .addClass("form-group")
+  $(editURLTitleWrap)
+    .addClass("createDiv form-group")
     .append(editURLTitleLabel)
     .append(editURLTitleInput);
+
+  $(URL).addClass("card-text URLString")
+    .text(string);
 
   $(editURLStringLabel)
     .attr({
@@ -268,17 +278,16 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     });
 
   $(editWrap2)
-    .addClass("form-group")
     .append(editURLStringLabel)
     .append(editURLStringInput);
 
-  $(editWrap).append(editWrap1).append(editWrap2);
+  $(editWrap)
+    .append(editWrap1)
+    .append(editWrap2);
 
   $(urlTags)
-    .attr({
-      style: "display: none",
-    })
-    .addClass("card-body URLTags");
+    .addClass("card-body URLTags")
+    .attr({ style: "display: none" });
 
   // Build tag html strings
   for (let j in tagArray) {
@@ -299,16 +308,12 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
 
   // Buttons
   $(urlOptions)
-    .attr({
-      style: "display: none",
-    })
-    .addClass("card-body URLOptions");
+    .addClass("card-body URLOptions")
+    .attr({ style: "display: none" });
 
   $(accessURLBtn)
-    .attr({
-      type: "button",
-    })
     .addClass("card-link btn btn-primary accessURLBtn")
+    .attr({ type: "button" })
     .text("Access Link")
     .on("click", function (e) {
       e.stopPropagation();
@@ -317,10 +322,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     });
 
   $(addTagBtn)
-    .attr({
-      type: "button",
-    })
     .addClass("card-link btn btn-info addTagBtn")
+    .attr({ type: "button" })
     .text("Add Tag")
     .on("click", function (e) {
       e.stopPropagation();
@@ -329,10 +332,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     });
 
   $(editURLBtn)
-    .attr({
-      type: "button",
-    })
     .addClass("card-link btn btn-warning editURLBtn")
+    .attr({ type: "button" })
     .text("Edit")
     .on("click", function (e) {
       e.stopPropagation();
@@ -340,9 +341,9 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       editURLShowInput();
     });
 
-  $(remURLBtn)
-    .attr({ type: "button" })
+  $(delURLBtn)
     .addClass("card-link btn btn-danger delURLBtn")
+    .attr({ type: "button" })
     .text("Delete")
     .on("click", function (e) {
       e.stopPropagation();
@@ -361,8 +362,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     "</svg>";
 
   $(submitEditBtn)
-    .attr({ style: "display: none" })
     .addClass("mx-1 green-clickable submitEditURLBtn")
+    .attr({ style: "display: none" })
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -395,8 +396,9 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   $(card).append(urlInfo);
 
   $(urlInfo).append(urlTitle);
-  $(urlInfo).append(urlString);
-  $(urlInfo).append(editWrap);
+  $(urlInfo).append(editURLTitleWrap);
+  $(urlInfo).append(URL);
+  $(urlInfo).append(editURLWrap);
 
   $(card).append(urlTags);
 
@@ -404,7 +406,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   $(urlOptions).append(accessURLBtn);
   $(urlOptions).append(addTagBtn);
   $(urlOptions).append(editURLBtn);
-  $(urlOptions).append(remURLBtn);
+  $(urlOptions).append(delURLBtn);
   $(urlOptions).append(submitEditBtn);
   $(urlOptions).append(cancelEditBtn);
 
@@ -429,21 +431,23 @@ function createNewURLInputField() {
   const addURLBtn = document.createElement("button");
   const delURLBtn = document.createElement("button");
 
-  $(col).attr({
-    class: "createDiv cardCol mb-3 col-md-10 col-lg-10 col-xl-10",
-    style: "display: none",
-    // onblur: "hideInput(event)",
-  });
+  $(col)
+    .addClass("createDiv cardCol mb-3 col-md-10 col-lg-10 col-xl-10")
+    .attr({
+      style: "display: none",
+      // onblur: "hideInput(event)",
+    });
 
-  $(card).attr({
-    urlid: 0,
-    id: "addURL",
-    class: "card selected",
-    // draggable: "true",
-    ondrop: "dropIt(event)",
-    ondragover: "allowDrop(event)",
-    ondragstart: "dragStart(event)",
-  });
+  $(card)
+    .addClass("card selected")
+    .attr({
+      urlid: 0,
+      id: "addURL",
+      // draggable: "true",
+      ondrop: "dropIt(event)",
+      ondragover: "allowDrop(event)",
+      ondragstart: "dragStart(event)",
+    });
 
   // $(cardImg).attr({
   //     'class': 'card-img-top',
@@ -451,7 +455,7 @@ function createNewURLInputField() {
   //     'alt': '"Card image cap'
   // })
 
-  $(urlInfo).attr({ class: "card-body URLInfo" });
+  $(urlInfo).addClass("card-body URLInfo");
 
   $(newWrap).addClass("form-group");
 
@@ -462,15 +466,18 @@ function createNewURLInputField() {
     })
     .html("<b> URL Title </b>");
 
-  $(newURLTitle).attr({
-    id: "newURLTitle",
-    class: "card-title userInput",
-    placeholder: "New URL Title",
-    type: "text",
-    size: "50",
-  });
+  $(newURLTitle)
+    .addClass("card-title userInput")
+    .attr({
+      id: "newURLTitle",
+      placeholder: "New URL Title",
+      type: "text",
+      size: "50",
+    });
 
-  $(newWrap1).append(newURLTitleLabel).append(newURLTitle);
+  $(newWrap1)
+    .append(newURLTitleLabel)
+    .append(newURLTitle);
 
   $(newURLStringLabel)
     .attr({
@@ -479,30 +486,35 @@ function createNewURLInputField() {
     })
     .html("<b> URL </b>");
 
-  $(newURLString).attr({
-    id: "newURLString",
-    class: "card-text userInput",
-    placeholder: "New URL",
-    type: "text",
-    size: "50",
-  });
+  $(newURLString)
+    .addClass("card-text userInput")
+    .attr({
+      id: "newURLString",
+      placeholder: "New URL",
+      type: "text",
+      size: "50",
+    });
 
-  $(newWrap2).append(newURLStringLabel).append(newURLString);
+  $(newWrap2)
+    .append(newURLStringLabel)
+    .append(newURLString);
 
-  $(newWrap).append(newWrap1).append(newWrap2);
+  $(newWrap)
+    .append(newWrap1)
+    .append(newWrap2);
 
-  $(urlTags).attr({ class: "card-body URLTags" });
+  $(urlTags).addClass("card-body URLTags");
 
   // Add tag input
   $(urlTags).append(createNewTagInputField());
 
   // Buttons
-  $(urlOptions).attr({ class: "card-body URLOptions" });
+  $(urlOptions).addClass("card-body URLOptions");
 
   $(addURLBtn)
+    .addClass("card-link btn btn-success")
     .attr({
-      class: "card-link btn btn-success",
-      type: "button",
+      type: "button"
     })
     .text("Add URL")
     .on("click", function (e) {
@@ -512,9 +524,9 @@ function createNewURLInputField() {
     });
 
   $(delURLBtn)
+    .addClass("card-link btn btn-danger")
     .attr({
-      class: "card-link btn btn-danger",
-      type: "button",
+      type: "button"
     })
     .text("Cancel")
     .on("click", function (e) {

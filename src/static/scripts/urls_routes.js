@@ -93,7 +93,7 @@ function editURLShowInput() {
     showIfHidden(URLOptionsDiv.find(".cancelEditURLBtn"));
     hideIfShown(URLOptionsDiv.find(".editURLBtn"));
     hideIfShown(URLOptionsDiv.find(".addTagBtn"));
-    hideIfShown(URLOptionsDiv.find(".remURLBtn"));
+    hideIfShown(URLOptionsDiv.find(".delURLBtn"));
 
     // Hide access URL button
     hideIfShown(URLOptionsDiv.find(".accessURLBtn"));

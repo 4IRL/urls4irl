@@ -180,6 +180,22 @@ function unbindEnter() {
   });
 }
 
+// Creates edit button
+function makeEditButton() {
+  const editBtn = document.createElement("i");
+  const svg = document.createElement("svg");
+  const path1 = document.createElement("path");
+  const path2 = document.createElement("path");
+
+  
+  
+  $(svg).append(path1);
+  $(svg).append(path2);
+  $(editBtn).append(svg);
+
+  return editBtn
+}
+
 // I'd like a universal function to bind enter key but it doesn't work...01/03/24
 // $(document).on("keyup", function (e) {
 //   if (e.keyCode === 13) {
