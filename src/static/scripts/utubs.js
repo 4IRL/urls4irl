@@ -437,7 +437,7 @@ function checkSameNameUTub(mode, name) {
   if (!mode) sameNameCounter -= 1;
 
   if (sameNameCounter > 0) sameNameWarningShowModal(mode, getUTubIDFromName(name));
-  else mode ? addUTub() : editUTub();
+  else mode ? addUTub() : editUTubName();
 }
 
 // Counts number of UTubs with the same name
@@ -501,7 +501,7 @@ function sameNameWarningShowModal(mode, UTubID) {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      mode ? addUTub() : editUTub();
+      mode ? addUTub() : editUTubName();
     });
   // bindKeyToFunction(removeURL, 13);
   // 01/03/24 may want to separate sameNameWarningShowModal for add and edit
@@ -653,7 +653,7 @@ function editUTubDescriptionHideInput() {
 }
 
 // Handles post request and response for adding a new UTub
-function editUTub() {
+function editUTubName() {
   // Extract data to submit in POST request
   [postURL, data] = editUTubNameSetup();
 
@@ -665,7 +665,6 @@ function editUTub() {
 
     if (xhr.status == 200) {
       editUTubNameSuccess(response);
-      editUTubDescription();
     }
   });
 
