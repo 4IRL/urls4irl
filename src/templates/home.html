@@ -27,20 +27,6 @@
                         <path
                             d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
                     </svg></i>
-        <div class="row">
-            <!-- Header -->
-            <div class="col-6 col-lg-6">
-                <h2 id="UTubDeckHeader">UTubs</h2>
-            </div>
-            <!-- Icons -->
-            <div class="col-6 col-lg-6 d-flex flex-row-reverse">
-                <!-- Delete UTub button -->
-                <i id="deleteUTubBtn" class="mx-1" style="display:none">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger"
-                        viewBox="0 0 16 16">
-                        <path
-                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
-                    </svg></i>
 
                 <!-- Create UTub button -->
                 <i id="createUTubBtn" class="green-clickable mx-1">
@@ -184,7 +170,8 @@
 
         <!-- Access all URLs button -->
         <div class="row justify-content-center">
-            <button id="accessAllURLsBtn" class="btn btn-primary" style="display: none; width: 25%">Access All URLs in UTub</button>
+            <button id="accessAllURLsBtn" class="btn btn-primary" style="display: none; width: 25%">Access All URLs
+                in UTub</button>
         </div>
     </div>
 </div>
@@ -280,7 +267,7 @@
 <script src="{{ url_for('static', filename='scripts/utubs.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/utubs_routes.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/tags.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/tags_routes.js') }}"></script>
+<!-- <script src="{{ url_for('static', filename='scripts/tags_routes.js') }}"></script> -->
 <script src="{{ url_for('static', filename='scripts/urls.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/urls_routes.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/users.js') }}"></script>

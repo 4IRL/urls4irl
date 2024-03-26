@@ -280,8 +280,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
     });
 
   $(editURLWrap)
-    .append(editURLStringLabel)
-    .append(editURLStringInput);
+    .append(editURLLabel)
+    .append(editURLInput);
 
 
   $(URLInfo)
@@ -404,12 +404,12 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   $(card).append(URLTags);
 
   $(card).append(URLOptions);
-  $(urlOptions).append(accessURLBtn);
-  $(urlOptions).append(addTagBtn);
-  $(urlOptions).append(editURLBtn);
-  $(urlOptions).append(delURLBtn);
-  $(urlOptions).append(submitEditBtn);
-  $(urlOptions).append(cancelEditBtn);
+  $(URLOptions).append(accessURLBtn);
+  $(URLOptions).append(addTagBtn);
+  $(URLOptions).append(editURLBtn);
+  $(URLOptions).append(delURLBtn);
+  $(URLOptions).append(submitEditBtn);
+  $(URLOptions).append(cancelEditBtn);
 
   return col;
 }
@@ -427,8 +427,8 @@ function createNewURLInputField() {
   const newWrap2 = document.createElement("div"); // This element wraps the edit field for URL string
   const newURLStringLabel = document.createElement("label"); // This element labels the input field for URL string
   const newURLString = document.createElement("input"); // This element is instantiated with the URL, or is blank for the creation block
-  const urlTags = document.createElement("div");
-  const urlOptions = document.createElement("div");
+  const URLTags = document.createElement("div");
+  const URLOptions = document.createElement("div");
   const addURLBtn = document.createElement("button");
   const delURLBtn = document.createElement("button");
 
