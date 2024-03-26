@@ -49,12 +49,11 @@ $(document).ready(function () {
     editUTubNameShowInput();
   });
 
-
   $("#submitEditUTubNameBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     checkSameNameUTub(0, $("#editUTubName").val());
-  })
+  });
 
   // Edit UTub description
   $("#editUTubDescriptionBtn").on("click", function (e) {
@@ -63,19 +62,18 @@ $(document).ready(function () {
     editUTubDescriptionShowInput();
   });
 
-
   $("#submitEditUTubDescriptionBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     editUTubDescription();
-  })
+  });
 });
 
 /** UTub Utility Functions **/
 
 // Function to count number of UTubs current user has access to
 function getNumOfUTubs() {
-  return $("#listUTubs > .UTub").length
+  return $("#listUTubs > .UTub").length;
 }
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
@@ -226,25 +224,21 @@ function createNewUTubInputField() {
   const submit = $(document.createElement("i"));
   const cancel = $(document.createElement("i"));
 
-  $(wrapper)
-    .addClass("createDiv row")
-    .attr({ style: "display: none" });
+  $(wrapper).addClass("createDiv row").attr({ style: "display: none" });
 
-  $(wrapperInput)
-    .addClass("col-9 col-lg-9 mb-md-0");
+  $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
 
-  $(input)
-    .addClass("userInput")
-    .attr({
-      type: "text",
-      id: "createUTub",
-      placeholder: "New UTub name",
-    });
+  $(input).addClass("userInput").attr({
+    type: "text",
+    id: "createUTub",
+    placeholder: "New UTub name",
+  });
 
   wrapperInput.append(input);
 
-  $(wrapperBtns)
-    .addClass("col-3 mb-md-0 text-right d-flex justify-content-center flex-row");
+  $(wrapperBtns).addClass(
+    "col-3 mb-md-0 text-right d-flex justify-content-center flex-row",
+  );
 
   // Submit addUTub checkbox
   let htmlString =
@@ -435,7 +429,8 @@ function checkSameNameUTub(mode, name) {
   // If editUTub, ignore one instance of names
   if (!mode) sameNameCounter -= 1;
 
-  if (sameNameCounter > 0) sameNameWarningShowModal(mode, getUTubIDFromName(name));
+  if (sameNameCounter > 0)
+    sameNameWarningShowModal(mode, getUTubIDFromName(name));
   else mode ? addUTub() : editUTubName();
 }
 
@@ -527,7 +522,7 @@ function addUTub() {
   // Extract data to submit in POST request
   [postURL, data] = addUTubSetup();
 
-  console.log("About to make post AJAX call")
+  console.log("About to make post AJAX call");
   let request = AJAXCall("post", postURL, data);
 
   // Handle response
@@ -599,15 +594,15 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
 
 /* Edit UTub */
 
-// Shows input fields for editing an exiting UTub's name 
+// Shows input fields for editing an exiting UTub's name
 function editUTubNameShowInput() {
   // Show edit fields
   showInput("editUTubName");
@@ -764,9 +759,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.responseJSON.Error_code +
-    ". Status: " +
-    response.responseJSON.Message,
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
   );
 }
 
@@ -863,7 +858,7 @@ function deleteUTubSuccess() {
   // Reset all panels
   displayState0();
 
-  displayState1UTubDeck(null, null)
+  displayState1UTubDeck(null, null);
 
   if ($("#listUTubs").find("div.UTub").length == 0) displayState0UTubDeck();
 }
@@ -894,8 +889,8 @@ function deleteUTubFailure(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }

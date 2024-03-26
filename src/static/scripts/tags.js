@@ -171,7 +171,7 @@ function filterTag(tagID) {
   for (let j = 0; j < tagFilters.length; j++) {
     if (!$(tagFilters[j]).hasClass("selected")) selAllBool = 0;
   }
-  
+
   let selAll = $("#selectAll");
   selAllBool ? selAll.addClass("selected") : selAll.removeClass("selected");
 
@@ -201,10 +201,10 @@ function displayState2TagDeck() {
   showIfHidden(TagDeckSubheader.closest(".row"));
   TagDeckSubheader.text(
     numOfTags -
-    getActiveTagIDs().length +
-    " of " +
-    numOfTags +
-    " filters applied",
+      getActiveTagIDs().length +
+      " of " +
+      numOfTags +
+      " filters applied",
   );
 }
 
@@ -300,7 +300,8 @@ function addTagSuccess(response) {
   let tagid = response.Tag.id;
   let string = response.Tag.tag_string;
 
-  if (!isTagInDeck(tagid)) $("#listTags").append(createTagFilterInDeck(tagid, string));
+  if (!isTagInDeck(tagid))
+    $("#listTags").append(createTagFilterInDeck(tagid, string));
 
   // Update tags in URL
   let tagSpan = createTagBadgeInURL(tagid, string);
