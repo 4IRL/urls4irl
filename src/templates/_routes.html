@@ -12,13 +12,13 @@
                     "{{url_for('utubs.update_utub_desc', utub_id=-1)}}".replace("-1", utub_id);
 
                 // URL routes
-                this.addUrl = (utub_id) => 
+                this.addURL = (utub_id) => 
                     "{{url_for('urls.add_url', utub_id=-1)}}".replace("-1", utub_id);
-                this.deleteUrl = (utub_id, url_id) => 
+                this.deleteURL = (utub_id, url_id) => 
                     "{{url_for('urls.delete_url', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
-                this.editUrl = (utub_id, url_id) => 
+                this.editURL = (utub_id, url_id) => 
                     "{{url_for('urls.edit_url', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
