@@ -354,7 +354,7 @@ function displayState0UTubDescriptionDeck() {
   hideIfShown($("#UTubDescriptionDeckSubheader").closest(".row"));
 
   // Edit UTub Description button hidden
-  hideIfShown($("#editUTubBtn"));
+  hideIfShown($("#editUTubDescriptionBtn"));
 
   // Clear description values
   $("#UTubDescription").text("");
@@ -367,7 +367,7 @@ function displayState1UTubDescriptionDeck() {
   showIfHidden($("#UTubDescriptionDeckSubheader").closest(".row"));
 
   // Edit UTub Description button shown
-  showIfHidden($("#editUTubBtn"));
+  showIfHidden($("#editUTubDescriptionBtn"));
 
   // Update description values
   let p = $("#UTubDescription");
@@ -405,8 +405,8 @@ function displayState3UTubDescriptionDeck(UTubDescription) {
   hideIfShown($("#UTubDescriptionDeckSubheader").closest(".row"));
 
   // Submission button shown, edit UTub Description button hidden
-  hideIfShown($("#editUTubBtn"));
-  showIfHidden($(".submitEditUTubBtn"));
+  hideIfShown($("#editUTubDescriptionBtn"));
+  showIfHidden($("#submitEditUTubDescriptionBtn"));
 
   // Update description values
   let editUTubDescription = $("#editUTubDescription");
@@ -545,10 +545,11 @@ function addUTub() {
 
 // Handles preparation for post request to create a new UTub
 function addUTubSetup() {
+  let postURL = routes.addUTub;
   let newUTubName = $("#createUTub").val();
   data = { name: newUTubName };
 
-  return [ROUTE_ADD_UTUB, data];
+  return [postURL, data];
 }
 
 // Handle creation of new UTub
@@ -838,7 +839,8 @@ function deleteUTub() {
 
 // Prepares post request inputs to delete the current UTub
 function deleteUTubSetup() {
-  let postURL = ROUTE_DELETE_UTUB + getActiveUTubID();
+
+  let postURL = routes.deleteUTub(getActiveUTubID());
 
   return postURL;
 }
