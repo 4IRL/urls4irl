@@ -669,7 +669,6 @@ function addUTubSuccess(response) {
   // Remove createDiv; Reattach after addition of new UTub
   $("#createUTub").closest(".createDiv").remove();
 
-
   // Create and append newly created UTub selector
   let index = Number($(".UTub").last().attr("position"));
   let nextIndex = index + 1;
@@ -701,9 +700,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
 
@@ -892,9 +891,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.responseJSON.Error_code +
-    ". Status: " +
-    response.responseJSON.Message,
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
   );
 }
 
@@ -972,7 +971,6 @@ function deleteUTub() {
 
 // Prepares post request inputs to delete the current UTub
 function deleteUTubSetup() {
-
   let postURL = routes.deleteUTub(getActiveUTubID());
 
   return postURL;
@@ -1024,8 +1022,8 @@ function deleteUTubFailure(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-    response.error.Error_code +
-    ". Status: " +
-    response.error.Message,
+      response.error.Error_code +
+      ". Status: " +
+      response.error.Message,
   );
 }
