@@ -804,8 +804,8 @@ function displayState1URLDeck() {
   let UTubName = getCurrentUTubName();
   $("#URLDeckHeader").text(UTubName);
   $("#editUTubName").val(UTubName);
-  showIfHidden($(".editUTubBtn"));
-  showIfHidden($("#addURLBtn"));
+  
+  editUTubNameHideInput();
 
   // Subheader prompt
   let URLDeckSubheader = $("#URLDeckSubheader");
