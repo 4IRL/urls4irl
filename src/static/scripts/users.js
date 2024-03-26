@@ -214,7 +214,7 @@ function displayState0UserDeck() {
 
   // Subheader prompt hidden
   hideIfShown($("#UserDeckSubheader").closest(".row"));
-  
+
   hideIfShown($("#addUserBtn"));
 }
 

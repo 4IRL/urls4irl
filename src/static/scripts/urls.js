@@ -213,15 +213,13 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       toggleSelectedURL(URLID);
     });
 
-  $(card)
-    .addClass("card url")
-    .attr({
-      urlid: URLID,
-      // draggable: "true",
-      ondrop: "dropIt(event)",
-      ondragover: "allowDrop(event)",
-      ondragstart: "dragStart(event)",
-    });
+  $(card).addClass("card url").attr({
+    urlid: URLID,
+    // draggable: "true",
+    ondrop: "dropIt(event)",
+    ondragover: "allowDrop(event)",
+    ondragstart: "dragStart(event)",
+  });
 
   // $(cardImg).attr({
   //     'src': '...',
@@ -229,20 +227,13 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   // })
   // .addClass("card-img-top")
 
-  $(urlInfo)
-    .addClass("card-body URLInfo");
+  $(urlInfo).addClass("card-body URLInfo");
 
-  $(urlTitle)
-    .addClass("card-title URLTitle")
-    .text(title);
+  $(urlTitle).addClass("card-title URLTitle").text(title);
 
-  $(urlString)
-    .addClass("card-text URLString")
-    .text(string);
+  $(urlString).addClass("card-text URLString").text(string);
 
-  $(editWrap)
-    .addClass("createDiv form-group")
-    .attr({ style: "display: none" });
+  $(editWrap).addClass("createDiv form-group").attr({ style: "display: none" });
 
   $(editURLTitleLabel)
     .attr({
@@ -753,10 +744,10 @@ function filterURL(tagID) {
   filteredTagList.toggle();
 
   let URLCards = $("div.url");
-  console.log(URLCards)
+  console.log(URLCards);
 
   for (let i = 0; i < URLCards.length; i++) {
-    console.log($(URLCards[i]).closest(".cardCol").find(".URLTitle").text())
+    console.log($(URLCards[i]).closest(".cardCol").find(".URLTitle").text());
     let cardCol = $(URLCards[i]).closest(".cardCol");
     let tagBadges = cardCol.find("span.tagBadge");
 
@@ -766,7 +757,7 @@ function filterURL(tagID) {
 
     // If all tags are filtered, hide URL
     for (let j = 0; j < tagBadges.length; j++) {
-      console.log(!($(tagBadges[j]).attr("style") == "display: none;"))
+      console.log(!($(tagBadges[j]).attr("style") == "display: none;"));
 
       // If any 1 tag is not "display: none;", then URL remains shown
       if (!($(tagBadges[j]).attr("style") == "display: none;")) hideBool ||= 1;
@@ -804,7 +795,7 @@ function displayState1URLDeck() {
   let UTubName = getCurrentUTubName();
   $("#URLDeckHeader").text(UTubName);
   $("#editUTubName").val(UTubName);
-  
+
   editUTubNameHideInput();
 
   // Subheader prompt
@@ -998,14 +989,14 @@ function editURL() {
 function editURLSetup() {
   let postURL = EDIT_URL_ROUTE + getActiveUTubID() + "/" + getSelectedURLID();
   // let postURL = routes.editURL(getActiveUTubID(), getSelectedURLID());
-  console.log(postURL)
+  console.log(postURL);
 
   let selectedCardDiv = $(getSelectedURLCard());
   let editedURLfield = selectedCardDiv.find(".editURLString")[0];
   let editedURL = editedURLfield.value;
   let editedURLTitlefield = selectedCardDiv.find(".editURLTitle")[0];
   let editedURLTitle = editedURLTitlefield.value;
-  console.log(editedURLTitle)
+  console.log(editedURLTitle);
   data = {
     url_string: editedURL,
     url_title: editedURLTitle,
@@ -1020,9 +1011,9 @@ function editURLSuccess(response) {
   let editedURLID = response.URL.url_ID;
   let editedURLTitle = response.URL.url_title;
   let editedURLString = response.URL.url_string;
-  console.log(response)
-  console.log(response.URL)
-  console.log(editedURLTitle)
+  console.log(response);
+  console.log(response.URL);
+  console.log(editedURLTitle);
 
   // If edit URL action, rebind the ability to select/deselect URL by clicking it
   rebindSelectBehavior(editedURLID);
@@ -1062,9 +1053,9 @@ function editURLFail(response) {
   console.log("Error: Could not edit URL");
   console.log(
     "Failure. Error code: " +
-    response.responseJSON.Error_code +
-    ". Status: " +
-    response.responseJSON.Message,
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
   );
 }
 
