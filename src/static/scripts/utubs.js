@@ -11,7 +11,6 @@ const ROUTE_DELETE_UTUB = "/utub/delete/"; // +<int:utub_id>
 
 $(document).ready(function () {
   displayState0();
-  displayState0();
   // Instantiate UTubDeck with user's accessible UTubs
   try {
     buildUTubDeck(UTubs);
@@ -45,8 +44,6 @@ $(document).ready(function () {
 
   // Edit UTub name
   $("#editUTubNameBtn").on("click", function (e) {
-  // Edit UTub name
-  $("#editUTubNameBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     hideInputs();
@@ -75,8 +72,6 @@ $(document).ready(function () {
   });
 
   $("#submitEditUTubDescriptionBtn").on("click", function (e) {
-  // Edit UTub description
-  $("#editUTubDescriptionBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     editUTubDescriptionShowInput();
@@ -103,7 +98,6 @@ function getNumOfUTubs() {
 }
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
-function getActiveUTubID() {
 function getActiveUTubID() {
   return $(".UTub.active").attr("utubid");
 }
@@ -134,7 +128,6 @@ function getUTubObjFromID(id) {
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function getUTubIDFromName(name) {
-function getUTubIDFromName(name) {
   let UTubIDs = [];
 
   UTubs.forEach(function (UTub) {
@@ -154,7 +147,6 @@ function getCurrentUTubName() {
 }
 
 // Streamline the AJAX call to db for updated info
-function getUTubInfo(selectedUTubID) {
 function getUTubInfo(selectedUTubID) {
   return $.getJSON("/home?UTubID=" + selectedUTubID);
 }
@@ -177,19 +169,11 @@ function buildUTubDeck(UTubs) {
   resetUTubDeck();
   const parent = $("#listUTubs");
   let numOfUTubs = UTubs.length;
-  let numOfUTubs = UTubs.length;
 
-  if (numOfUTubs !== 0) {
   if (numOfUTubs !== 0) {
     // Instantiate deck with list of UTubs accessible to current user
     for (let i = 0; i < numOfUTubs; i++) {
-    for (let i = 0; i < numOfUTubs; i++) {
       parent.append(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
-    }
-
-    displayState1UTubDeck(null, null);
-    displayState0URLDeck();
-  } else displayState0UTubDeck();
     }
 
     displayState1UTubDeck(null, null);
@@ -265,8 +249,6 @@ function selectUTub(selectedUTubID) {
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
 function createUTubSelector(UTubName, UTubID, index) {
-  let container = document.createElement("div");
-  let name = document.createElement("b");
   let container = document.createElement("div");
   let name = document.createElement("b");
   let label = document.createElement("label");
@@ -400,27 +382,6 @@ function createNewUTubInputField() {
   return wrapper;
 }
 
-function unbindUTubSelectionBehavior(selectedUTubID) {
-  // Select new UTub
-  let selectedUTubSelector = getUTubSelectorElemFromID(selectedUTubID);
-  selectedUTubSelector.addClass("active");
-  // Unbind selection function
-  selectedUTubSelector.off("click");
-}
-
-function bindUTubSelectionBehavior() {
-  // Unselect any already selected UTub
-  let departureUTubSelector = getUTubSelectorElemFromID(getActiveUTubID());
-  if (departureUTubSelector) {
-    // Change UTub
-    departureUTubSelector.removeClass("active");
-    // Rebind selection function
-    $(departureUTubSelector).on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      selectUTub(departureUTubSelector.attr("utubid"));
-    });
-  }
 function unbindUTubSelectionBehavior(selectedUTubID) {
   // Select new UTub
   let selectedUTubSelector = getUTubSelectorElemFromID(selectedUTubID);
@@ -700,20 +661,14 @@ function addUTubSetup() {
 function addUTubSuccess(response) {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
   resetNewUTubForm();
-  resetNewUTubForm();
 
   let UTubID = response.UTub_ID;
 
   $("#confirmModal").modal("hide");
-  $("#confirmModal").modal("hide");
 
   // Remove createDiv; Reattach after addition of new UTub
   $("#createUTub").closest(".createDiv").remove();
 
-  // Create and append newly created UTub selector
-  let index = Number($(".UTub").last().attr("position"));
-  // Remove createDiv; Reattach after addition of new UTub
-  $("#createUTub").closest(".createDiv").remove();
 
   // Create and append newly created UTub selector
   let index = Number($(".UTub").last().attr("position"));
@@ -723,13 +678,7 @@ function addUTubSuccess(response) {
 
   // Create new createDiv after latest created UTub selector
   listUTubs.append(createNewUTubInputField());
-  let listUTubs = $("#listUTubs");
-  listUTubs.append(createUTubSelector(response.UTub_name, UTubID, nextIndex));
 
-  // Create new createDiv after latest created UTub selector
-  listUTubs.append(createNewUTubInputField());
-
-  selectUTub(UTubID);
   selectUTub(UTubID);
 }
 
@@ -752,20 +701,14 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
 
 /* Edit UTub */
 
-// Shows input fields for editing an exiting UTub's name
-function editUTubNameShowInput() {
-  // Show edit fields
-  showInput("editUTubName");
-
-  // Hide current name and edit button
 // Shows input fields for editing an exiting UTub's name
 function editUTubNameShowInput() {
   // Show edit fields
@@ -778,12 +721,6 @@ function editUTubNameShowInput() {
   hideIfShown($("#addURLBtn"));
 }
 
-// Hides input fields for editing an exiting UTub's name
-function editUTubNameHideInput() {
-  // Hide edit fields
-  hideInput("editUTubName");
-
-  // Show values and edit button
 // Hides input fields for editing an exiting UTub's name
 function editUTubNameHideInput() {
   // Hide edit fields
@@ -840,7 +777,6 @@ function editUTubDescriptionHideInput() {
 
 // Handles post request and response for adding a new UTub
 function editUTubName() {
-function editUTubName() {
   // Extract data to submit in POST request
   [postURL, data] = editUTubNameSetup();
 
@@ -887,8 +823,7 @@ function editUTubDescription() {
 
 // Handles preparation for post request to edit an existing UTub
 function editUTubNameSetup() {
-  let postURL = ROUTE_EDIT_UTUB_NAME + getActiveUTubID();
-  let postURL = ROUTE_EDIT_UTUB_NAME + getActiveUTubID();
+  let postURL = routes.editUTub(getActiveUTubID());
 
   let editedUTubName = $("#editUTubName").val();
   data = { name: editedUTubName };
@@ -898,8 +833,7 @@ function editUTubNameSetup() {
 
 // Handles preparation for post request to edit an existing UTub
 function editUTubDescriptionSetup() {
-  let postURL = ROUTE_EDIT_UTUB_DESCRIPTION + getActiveUTubID();
-  let postURL = ROUTE_EDIT_UTUB_DESCRIPTION + getActiveUTubID();
+  let postURL = routes.editUTubDescription(getActiveUTubID());
 
   let editedUTubDescription = $("#editUTubDescription").val();
   data = { utub_description: editedUTubDescription };
@@ -958,9 +892,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
-      ". Status: " +
-      response.responseJSON.Message,
+    response.responseJSON.Error_code +
+    ". Status: " +
+    response.responseJSON.Message,
   );
 }
 
@@ -1047,14 +981,10 @@ function deleteUTubSetup() {
 function deleteUTubSuccess() {
   hideInputs();
 
-  hideInputs();
-
   // Close modal
   $("#confirmModal").modal("hide");
 
   // Update UTub Deck
-  let currentUTubID = getActiveUTubID();
-  let UTubSelector = $("div[utubid=" + currentUTubID + "]");
   let currentUTubID = getActiveUTubID();
   let UTubSelector = $("div[utubid=" + currentUTubID + "]");
   UTubSelector.fadeOut();
@@ -1062,17 +992,12 @@ function deleteUTubSuccess() {
 
   // Reset all panels
   displayState0();
-  // Reset all panels
-  displayState0();
 
   displayState1UTubDeck(null, null);
-  displayState1UTubDeck(null, null);
 
-  if ($("#listUTubs").find("div.UTub").length == 0) displayState0UTubDeck();
   if ($("#listUTubs").find("div.UTub").length == 0) displayState0UTubDeck();
 }
 
-function deleteUTubFailure(response, textStatus, xhr) {
 function deleteUTubFailure(response, textStatus, xhr) {
   console.log("Error: Could not delete UTub");
 
@@ -1099,8 +1024,8 @@ function deleteUTubFailure(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
