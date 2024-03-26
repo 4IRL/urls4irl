@@ -179,19 +179,21 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   const col = document.createElement("div");
   const card = document.createElement("div");
   // const cardImg = document.createElement('img');
-  const urlInfo = document.createElement("div"); // This element holds the URL title and string
-  const urlTitle = document.createElement("h5"); // This element displays the user-created title of the URL
-  const editURLTitleBtn = document.createElement("i");
+  const URLInfo = document.createElement("div"); // This element holds the URL title and string
+  const URLTitleWrap = document.createElement("div"); // This element wraps the URL title and edit button
+  const URLTitle = document.createElement("h5"); // This element displays the user-created title of the URL
+  const editURLTitleBtn = makeEditButton(16);
+  const URLWrap = document.createElement("div"); // This element wraps the URL title and edit button
   const URL = document.createElement("p"); // This element displays the user's URL
-  const editURLBtn = document.createElement("i");
+  const editURLBtn = makeEditButton(16);
   const editURLTitleWrap = document.createElement("div"); // This element wraps the edit field for URL title
   const editURLTitleLabel = document.createElement("label"); // This element labels the edit field for URL title
   const editURLTitleInput = document.createElement("input"); // This element is instantiated with the URL title
   const editURLWrap = document.createElement("div"); // This element wraps the edit field for URL string
   const editURLLabel = document.createElement("label"); // This element labels the edit field for URL string
   const editURLInput = document.createElement("input"); // This element is instantiated with the URL
-  const urlTags = document.createElement("div");
-  const urlOptions = document.createElement("div");
+  const URLTags = document.createElement("div");
+  const URLOptions = document.createElement("div");
   const accessURLBtn = document.createElement("button");
   const addTagBtn = document.createElement("button");
   const submitEditBtn = document.createElement("i"); // Submit changes after 'edit' operations
@@ -222,18 +224,14 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   // })
   // .addClass("card-img-top")
 
-  $(urlInfo)
-    .addClass("card-body URLInfo");
 
-  $(urlTitle)
+  $(URLTitle)
     .addClass("card-title URLTitle")
     .text(title);
 
-  $(editURLTitleBtn)
-    .addClass("mx-1 py-2")
-    .attr({
-      style: "color: #545454;"
-    });
+  $(URLTitleWrap)
+    .append(URLTitle)
+    .append(editURLTitleBtn);
 
   $(editURLTitleLabel)
     .attr({
@@ -260,14 +258,18 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   $(URL).addClass("card-text URLString")
     .text(string);
 
-  $(editURLStringLabel)
+  $(URLWrap)
+    .append(URL)
+    .append(editURLBtn);
+
+  $(editURLLabel)
     .attr({
       for: "editURL-" + URLID,
       style: "display:block",
     })
     .html("<b> URL </b>");
 
-  $(editURLStringInput)
+  $(editURLInput)
     .addClass("card-text userInput editURLString")
     .attr({
       id: "editURL-" + URLID,
@@ -277,15 +279,19 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       placeholder: "Edit URL",
     });
 
-  $(editWrap2)
+  $(editURLWrap)
     .append(editURLStringLabel)
     .append(editURLStringInput);
 
-  $(editWrap)
-    .append(editWrap1)
-    .append(editWrap2);
 
-  $(urlTags)
+  $(URLInfo)
+    .addClass("card-body URLInfo")
+    .append(URLTitleWrap)
+    .append(editURLTitleWrap)
+    .append(URLWrap)
+    .append(editURLWrap);
+
+  $(URLTags)
     .addClass("card-body URLTags")
     .attr({ style: "display: none" });
 
@@ -300,14 +306,14 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
 
     let tagSpan = createTagBadgeInURL(tag.id, tag.tag_string);
 
-    $(urlTags).append(tagSpan);
+    $(URLTags).append(tagSpan);
   }
 
   // New tag create span
-  $(urlTags).append(createNewTagInputField());
+  $(URLTags).append(createNewTagInputField());
 
   // Buttons
-  $(urlOptions)
+  $(URLOptions)
     .addClass("card-body URLOptions")
     .attr({ style: "display: none" });
 
@@ -393,16 +399,11 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
 
   // Assemble url list items
   $(col).append(card);
-  $(card).append(urlInfo);
+  $(card).append(URLInfo);
 
-  $(urlInfo).append(urlTitle);
-  $(urlInfo).append(editURLTitleWrap);
-  $(urlInfo).append(URL);
-  $(urlInfo).append(editURLWrap);
+  $(card).append(URLTags);
 
-  $(card).append(urlTags);
-
-  $(card).append(urlOptions);
+  $(card).append(URLOptions);
   $(urlOptions).append(accessURLBtn);
   $(urlOptions).append(addTagBtn);
   $(urlOptions).append(editURLBtn);
