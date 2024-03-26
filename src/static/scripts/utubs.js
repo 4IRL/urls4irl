@@ -391,8 +391,7 @@ function displayState2UTubDescriptionDeck(UTubDescription) {
     hideIfShown($("#UTubDescriptionDeckSubheader").closest(".row"));
 
     // Edit UTub Description button shown, submission button hidden
-    showIfHidden($("#editUTubBtn"));
-    hideIfShown($(".submitEditUTubBtn"));
+    editUTubDescriptionHideInput();
 
     // Update description values
     let p = $("#UTubDescription");
@@ -649,7 +648,7 @@ function editUTubDescriptionHideInput() {
 
   // Show values and edit button
   showIfHidden($("#UTubDescription"));
-  hideIfShown($("#editUTubDescriptionBtn"));
+  showIfHidden($("#editUTubDescriptionBtn"));
 }
 
 // Handles post request and response for adding a new UTub
@@ -740,7 +739,6 @@ function editUTubDescriptionSuccess(response) {
   if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
 
   displayState2UTubDescriptionDeck(UTubDescription);
-  editUTubHideInput();
 }
 
 //
