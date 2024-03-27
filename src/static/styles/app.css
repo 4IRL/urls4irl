@@ -569,7 +569,6 @@ span.user:hover .user-remove {
     left: 50%;
 }
 
-.navbar-end,
 .navbar-start {
     margin-inline: 20px;
     height: inherit;
@@ -580,8 +579,8 @@ span.user:hover .user-remove {
     align-items: center;
 }
 
-.navbar-end {
-    justify-content: flex-end;
+.navbar-toggler {
+    margin-inline-end: 5px;
 }
 
 .forgot-password-email-label,
@@ -603,10 +602,6 @@ span.user:hover .user-remove {
     height: 100%;
 }
 
-.modal-content {
-    width: max-content;
-}
-
 .modal-close {
     width: auto;
 }
@@ -625,7 +620,6 @@ span.user:hover .user-remove {
 .login-register-form {
     overflow-y: hidden;
     padding-right: 0px;
-    width: 500px;
 }
 
 .login-register-form-group {
@@ -752,4 +746,38 @@ span.user:hover .user-remove {
 #EmailValidationFooter {
     flex-wrap: nowrap;
     justify-content: center;
+}
+
+#CloseErrorModalButton {
+    width: 100%;
+}
+
+#SplashModalErrorContent {
+    width: 100%;
+}
+
+#NavbarNavDropdown {
+    justify-content: flex-end;
+    padding-inline-end: 5px;
+}
+
+#ToRegisterFromLogin {
+    background-color: #81979C;
+    border-color: #81979C;
+}
+
+#ToRegisterFromLogin:hover {
+    background-color: #63797E;
+    border-color: #63797E;
+}
+
+@media (max-width: 767px) {
+    #NavbarDropdowns {
+        display: flex;
+        align-items: flex-end;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
 }

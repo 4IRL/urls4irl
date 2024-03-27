@@ -1,5 +1,5 @@
 
-$(".to-login")
+$("#ToLoginFromRegister")
   .off("click")
   .on("click", function () {
     loginModalOpenerFromRegister();
@@ -16,6 +16,14 @@ function loginModalOpenerFromRegister() {
   });
 
   modalOpener.fail(() => {
+    $("#SplashModal .modal-content")
+      .html(null)
+      .html(
+      $("<div></div>")
+        .attr("id", "SplashModalAlertBanner")
+        .attr("role", "alert")
+        .addClass("alert"),
+    );
     showSplashModalAlertBanner("Unable to load login form...", "danger");
   });
 }

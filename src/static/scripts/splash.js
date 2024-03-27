@@ -7,7 +7,7 @@ function setToRegisterButton() {
   $(".to-register")
     .off("click")
     .on("click", function () {
-      registerModalOpener("/register");
+      registerModalOpener();
     });
 }
 
@@ -15,49 +15,39 @@ function setToLoginButton() {
   $(".to-login")
     .off("click")
     .on("click", function () {
-      loginModalOpener("/login");
+      loginModalOpener();
     });
 }
 
 function loginModalOpener() {
   const modalOpener = $.get("/login");
-  const splashModal = $("#SplashModal .modal-content");
 
   modalOpener.done((data, textStatus, xhr) => {
-    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+    if (xhr.status === 200) {
+      $("#SplashModal .modal-content").html(data);
+      bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
+    };
   });
 
   modalOpener.fail(() => {
-    splashModal.html(null);
-    splashModal.html(
-      $("<div></div>")
-        .attr("id", "SplashModalAlertBanner")
-        .attr("role", "alert"),
-    );
-    showSplashModalAlertBanner("Unable to load login form...", "danger");
+    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+    $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
   });
 }
 
 function registerModalOpener() {
   const modalOpener = $.get("/register");
-  let splashModal;
-  if (!splashModal) {
-    splashModal = $("#SplashModal .modal-content");
-  }
 
   modalOpener.done((data, textStatus, xhr) => {
-    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+    if (xhr.status === 200) {
+      $("#SplashModal .modal-content").html(data);
+      bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
+    };
   });
 
   modalOpener.fail(() => {
-    $("#SplashModal .modal-content")
-      .html(null)
-      .html(
-      $("<div></div>")
-        .attr("id", "SplashModalAlertBanner")
-        .attr("role", "alert"),
-    );
-    showSplashModalAlertBanner("Unable to load register form...", "danger");
+    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+    $("#SplashErrorModalAlertBanner").text("Unable to load register form...");
   });
 }
 
@@ -133,71 +123,6 @@ function handleUserChangedPassword() {
     });
 }
 
-/*
-function emailValidationModalOpener(tokenExpired = "") {
-  $.get("/confirm-email", function (data) {
-    $("#SplashModal .modal-content").html(data);
-    const splashModal = $("#SplashModal");
-    splashModal.modal().on("hide.bs.modal", function (e) {
-      let previouslyClicked = false;
-      if (!previouslyClicked) {
-        logoutUser();
-        previouslyClicked = true;
-        $("#SplashModal").off("hide.bs.modal");
-      }
-    });
-    setCloseModalButton(true);
-    if (tokenExpired !== undefined && tokenExpired.length != 0) {
-      showSplashModalAlertBanner(tokenExpired, "info");
-    }
-    $("#submit").click(function (event) {
-      event.preventDefault();
-      let request = $.ajax({
-        url: "/send-validation-email",
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
-
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-          // Email sent!
-          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 429 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1:
-              showSplashModalAlertBanner(xhr.responseJSON.Message, "danger");
-              break;
-            case 2:
-              showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
-              break;
-          }
-        } else if (
-          xhr.status == 400 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          if (
-            xhr.responseJSON.Error_code == 3 ||
-            xhr.responseJSON.Error_code == 4
-          ) {
-            showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
-  });
-}
-*/
-
 function hideSplashModalAlertBanner() {
   $("#SplashModalAlertBanner")
     .removeClass("alert-banner-splash-modal-display")
@@ -212,18 +137,6 @@ function showSplashModalAlertBanner(message, category) {
     .addClass("alert-" + category)
     .addClass("alert-banner-splash-modal-display")
     .text(message);
-}
-
-function showSplashModal() {
-  const splashModal = $("#SplashModal");
-  // splashModal.addClass("show");
-  splashModal.show();
-}
-
-function verifyValidSplashForm() {
-  if ($("#SplashModalAlertBanner").length !== 1) {
-    window.location.replace("/");
-  }
 }
 
 function disableInputFields() {

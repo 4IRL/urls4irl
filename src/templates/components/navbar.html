@@ -1,16 +1,20 @@
 <nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0 fixed-top">
-    <a class="navbar-brand navbar-start" href="#">
+    {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+        <a class="navbar-brand navbar-start" href="/home">
+    {% else %}
+        <a class="navbar-brand navbar-start" href="/">
+    {% endif %}
         URLS4IRL
         <div id="iconContainer">
             <img id="u4iFavicon" src="/static/favicon/android-chrome-192x192.png" />
         </div>
     </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNavDropdown"
-        aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#NavbarNavDropdown"
+        aria-controls="NavbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
         <span class="navbar-toggler-icon"></span>
     </button>
-    <div class="navbar-collapse collapse w-100 order-3 navbar-end" id="navbarNavDropdown">
-        <ul class="navbar-nav ml-auto">
+    <div class="navbar-collapse collapse bg-dark" id="NavbarNavDropdown">
+        <ul id="NavbarDropdowns" class="navbar-nav">
             {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
             <li id="{{current_user.id}}" class="nav-item user">
                 <a class="nav-link" href="javascript:;"> Logged in as {{current_user.username}}</a>

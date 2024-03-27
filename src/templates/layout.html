@@ -84,6 +84,7 @@
     {% if email_token_is_expired %}
 
     {% include 'email_validation/email_needs_validation_modal_expired.html' %}
+    {% include 'modals/splashErrorModalBase.html' %}
 
     {% elif current_user.is_authenticated and current_user.email_confirm.is_validated %}
 
@@ -92,6 +93,7 @@
     {% else %}
 
     {% include 'modals/splashModalBase.html' %}
+    {% include 'modals/splashErrorModalBase.html' %}
 
     {% endif %}
     {% endblock %}

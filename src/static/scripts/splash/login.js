@@ -1,4 +1,4 @@
-$(".to-register")
+$("#ToRegisterFromLogin")
   .off("click")
   .on("click", () => openRegisterModalFromLogin());
 
