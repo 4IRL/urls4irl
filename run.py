@@ -23,7 +23,7 @@ app = create_app(production=is_production, use_local_js_bundles=use_local_js_bun
 if __name__ == "__main__":
     if not is_production:
         print("Not in production.")
-        app.run(port=5000)
+        app.run(host=environ.get("HOST", default=None), port=environ.get("PORT", default="5000"))
     else:
         print("In production.")
         app.run(host="0.0.0.0")

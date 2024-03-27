@@ -1,0 +1,43 @@
+<div class="modal fade show" id="SplashModal" tabindex="-1" aria-labelledby="FormModal" style="display: block;" aria-modal="true" role="dialog">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <script type="text/javascript">
+                if (document.querySelector('head').childElementCount === 1) {
+                    window.location.href = '/';
+                };
+                console.log("Reloading this one!");
+            </script>
+            <form id="ModalForm" method="POST" class="login-register-form validate-email-form" action="" novalidate>
+                <div class="modal-header">
+                    <div class="email-container">
+                        <div id="ValidateEmailIcon">✉️</div>
+                        <h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>
+                        <button type="button" class="btn-close close-modal" data-bs-dismiss="modal" aria-label="close">
+                        </button>
+                    </div>
+                </div>
+                <div class="modal-body">
+                    {{ validate_email_form.hidden_tag() }}
+                    <p id="ValidateEmailText" class="validate-email-text">Your email address has not been validated. To complete
+                        your registration, <strong>please click</strong> the button below to receive a validation email.</p>
+                    <div id="SplashModalAlertBanner" class="alert alert-danger alert-banner-splash-modal-display" role="alert">
+                        {{ expired_token_message }}
+                    </div>
+                </div>
+                <div class="modal-footer" id="EmailValidationFooter">
+                    <button type="button" class="btn btn-warning close-modal login-register-form-group center-block col-4"
+                        data-bs-dismiss="modal">Close</button>
+                    {{ validate_email_form.submit(class="btn btn-success login-register-form-group login-register-buttons center-block
+                    col-8")}}
+                </div>
+            </form>
+
+            <script src="{{ url_for('static', filename='scripts/splash/emailValidation.js') }}"></script>
+        </div>
+    </div>
+</div>
+
+<script type="text/javascript">
+    splashModal = new bootstrap.Modal('#SplashModal');
+    splashModal.show();
+</script>

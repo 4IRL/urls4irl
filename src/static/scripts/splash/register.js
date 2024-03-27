@@ -46,7 +46,6 @@ function handleRegisterSuccess(response, textStatus, xhr) {
 
 function emailValidationModalOpener() {
   const modalOpener = $.get("/confirm-email");
-  const splashModal = $("#SplashModal .modal-content");
 
   modalOpener.done((data, textStatus, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;

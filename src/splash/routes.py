@@ -261,6 +261,33 @@ def send_validation_email():
     )
     return _handle_email_sending_result(email_send_result)
 
+@splash.route("/validate/expired", methods=["GET"])
+def validate_email_expired():
+    expired_token = request.args.get("token", None)
+    if expired_token is None:
+        abort(404)
+
+    invalid_email: EmailValidation = EmailValidation.query.filter(
+        EmailValidation.confirm_url == expired_token
+    ).first_or_404()
+
+    user_with_expired_token: User = invalid_email.user
+    new_token = user_with_expired_token.get_email_validation_token()
+    invalid_email.confirm_url = new_token
+    invalid_email.reset_attempts()
+    db.session.commit()
+    login_user(user_with_expired_token)
+
+    return (
+        render_template(
+            "splash.html",
+            validate_email_form=ValidateEmailForm(),
+            email_token_is_expired=True,
+            expired_token_message=EMAILS.TOKEN_EXPIRED
+        ),
+        200,
+    )
+
 
 @splash.route("/validate/<string:token>", methods=["GET"])
 def validate_email(token: str):
@@ -269,6 +296,8 @@ def validate_email(token: str):
     user_to_validate, expired = verify_token(token, EMAILS.VALIDATE_EMAIL)
 
     if expired:
+        return redirect(url_for("splash.validate_email_expired", token=token))
+        """
         invalid_email: EmailValidation = EmailValidation.query.filter(
             EmailValidation.confirm_url == token
         ).first_or_404()
@@ -286,6 +315,7 @@ def validate_email(token: str):
             ),
             400,
         )
+        """
 
     if not user_to_validate:
         # Link is invalid, so remove any users and email validation rows associated with this token

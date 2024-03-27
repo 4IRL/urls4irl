@@ -40,15 +40,19 @@ function loginModalOpener() {
 
 function registerModalOpener() {
   const modalOpener = $.get("/register");
-  const splashModal = $("#SplashModal .modal-content");
+  let splashModal;
+  if (!splashModal) {
+    splashModal = $("#SplashModal .modal-content");
+  }
 
   modalOpener.done((data, textStatus, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
   });
 
   modalOpener.fail(() => {
-    splashModal.html(null);
-    splashModal.html(
+    $("#SplashModal .modal-content")
+      .html(null)
+      .html(
       $("<div></div>")
         .attr("id", "SplashModalAlertBanner")
         .attr("role", "alert"),
@@ -57,26 +61,6 @@ function registerModalOpener() {
   });
 }
 
-function setCloseModalButton(
-  shouldLogout = false,
-  shouldReplaceWindow = false,
-) {
-  $(".close-modal")
-    .off("click")
-    .on("click", function () {
-      $("#SplashModal").modal("hide");
-      if (shouldLogout) {
-        logoutUser();
-      }
-      if (shouldReplaceWindow) {
-        window.location.replace("/");
-      }
-    });
-}
-
-function logoutUser() {
-  $.get("/logout");
-}
 
 function resetPasswordModalOpener() {
   $.get("/confirm-password-reset", function (data) {
@@ -92,7 +76,7 @@ function resetPasswordModalOpener() {
           $("#SplashModal").off("hide.bs.modal");
         }
       });
-    setCloseModalButton((shouldReplaceWindow = true));
+    //setCloseModalButton((shouldReplaceWindow = true));
 
     $("#submit").click(function (event) {
       event.preventDefault();
@@ -149,6 +133,7 @@ function handleUserChangedPassword() {
     });
 }
 
+/*
 function emailValidationModalOpener(tokenExpired = "") {
   $.get("/confirm-email", function (data) {
     $("#SplashModal .modal-content").html(data);
@@ -211,6 +196,7 @@ function emailValidationModalOpener(tokenExpired = "") {
     });
   });
 }
+*/
 
 function hideSplashModalAlertBanner() {
   $("#SplashModalAlertBanner")
@@ -244,34 +230,34 @@ function disableInputFields() {
   $("input").attr("disabled", true);
 }
 
-
 function handleUserHasAccountNotEmailValidated(message) {
-   $(".form-control").removeClass("is-invalid");
-   $(".invalid-feedback").remove();
-   const alertBanner = $("#SplashModalAlertBanner");
-   alertBanner
-     .removeClass("alert-banner-splash-modal-hide")
-     .addClass("alert-info alert-banner-splash-modal-show")
-     .append($("<div>" + message + "</div>"))
-     .append(
-       $(
-         '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
-       )
-         .off("click")
-         .on("click", function () {
-           emailValidationModalOpener();
-         }),
-     );
+  $(".form-control").removeClass("is-invalid");
+  $(".invalid-feedback").remove();
+  $(".to-forgot-password").remove();
+  const alertBanner = $("#SplashModalAlertBanner");
+  alertBanner
+   .removeClass("alert-banner-splash-modal-hide")
+   .addClass("alert-info alert-banner-splash-modal-show")
+   .append($("<div>" + message + "</div>"))
+   .append(
+     $(
+       '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
+     )
+       .off("click")
+       .on("click", () => {
+          $("#SplashModal").off("hide.bs.modal", logoutOnExit);
+          emailValidationModalOpener();
+       }),
+   );
 
-   $(".register-to-login-footer").remove();
-   $(".modal-footer").remove();
+  $(".register-to-login-footer").remove();
+  $(".modal-footer").remove();
 
-   $(".close-register-login-modal")
-     .off("click")
-     .on("click", function () {
-       $("#SplashModal").modal("hide");
-       logoutUser();
-     });
+  const logoutOnExit = () => { 
+    $.get("/logout") 
+    $("#SplashModal").off("hide.bs.modal", logoutOnExit);
+  };
+  $("#SplashModal").on("hide.bs.modal", logoutOnExit);     
 }
 
 function handleImproperFormErrors(errorResponse) {

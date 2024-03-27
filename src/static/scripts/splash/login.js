@@ -76,3 +76,16 @@ function handleLoginFailure(xhr, textStatus, error) {
   }
 }
 
+function emailValidationModalOpener() {
+  const modalOpener = $.get("/confirm-email");
+
+  modalOpener.done((data, textStatus, xhr) => {
+    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+  });
+
+  modalOpener.fail(() => {
+    showSplashModalAlertBanner("Unable to load email validation modal...", "danger");
+  });
+}
+
+

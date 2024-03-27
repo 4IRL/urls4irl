@@ -3,6 +3,7 @@
         window.location.href = '/';
     };
 </script>
+
 <form id="ModalForm" method="POST" class="login-register-form validate-email-form" action="" novalidate>
     <div class="modal-header">
         <div class="email-container">
@@ -26,6 +27,5 @@
     </div>
 </form>
 
-<script>
-    setCloseModalButton(true);
-</script>
+<script src="{{ url_for('static', filename='scripts/splash/emailValidation.js') }}"></script>
+
