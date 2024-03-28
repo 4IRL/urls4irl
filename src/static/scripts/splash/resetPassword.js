@@ -1,3 +1,5 @@
+"use strict";
+
 $("#submit").click((event) => handleResetPassword(event));
 
 $("#SplashModal").on("hide.bs.modal", function (e) {
@@ -44,7 +46,6 @@ function handleUserChangedPassword() {
     .addClass("btn-warning")
     .on("click", function (e) {
       bootstrap.Modal.getOrCreateInstance("#SplashModal").hide();
-      //window.location.replace("/");
     });
 }
 

@@ -1,3 +1,5 @@
+"use strict";
+
 $("#ToRegisterFromLogin")
   .off("click")
   .on("click", () => openRegisterModalFromLogin());
@@ -9,7 +11,7 @@ $(".to-forgot-password")
 $("#submit").click((event) => handleLogin(event));
 
 function openRegisterModalFromLogin() {
-  const modalOpener = $.get("/register");
+  const modalOpener = $.get(routes.register());
 
   modalOpener.done((data, textStatus, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
@@ -21,7 +23,7 @@ function openRegisterModalFromLogin() {
 }
 
 function openForgotPasswordModal() {
-  const modalOpener = $.get("/forgot-password");
+  const modalOpener = $.get(routes.forgot_password());
 
   modalOpener.done((data, textStatus, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
@@ -36,7 +38,7 @@ function handleLogin(event) {
   event.preventDefault();
 
   const loginRequest = $.ajax({
-    url: "/login",
+    url: routes.login(),
     type: "POST",
     data: $("#ModalForm").serialize(),
   });

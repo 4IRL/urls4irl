@@ -1,3 +1,5 @@
+"use strict";
+
 $("#ToLoginFromRegister")
   .off("click")
   .on("click", function () {
@@ -7,7 +9,7 @@ $("#ToLoginFromRegister")
 $("#submit").click((event) => handleRegister(event));
 
 function loginModalOpenerFromRegister() {
-  const modalOpener = $.get("/login");
+  const modalOpener = $.get(routes.login());
   const splashModal = $("#SplashModal .modal-content");
 
   modalOpener.done((data, textStatus, xhr) => {
@@ -15,14 +17,6 @@ function loginModalOpenerFromRegister() {
   });
 
   modalOpener.fail(() => {
-    $("#SplashModal .modal-content")
-      .html(null)
-      .html(
-      $("<div></div>")
-        .attr("id", "SplashModalAlertBanner")
-        .attr("role", "alert")
-        .addClass("alert"),
-    );
     showSplashModalAlertBanner("Unable to load login form...", "danger");
   });
 }
@@ -32,7 +26,7 @@ function handleRegister(event) {
   $("#submit").attr("disabled", "disabled");
 
   const registerRequest = $.ajax({
-    url: "/register",
+    url: routes.register(),
     type: "POST",
     data: $("#ModalForm").serialize(),
   });

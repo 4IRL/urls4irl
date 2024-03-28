@@ -51,6 +51,16 @@
                         .replace("-1", utub_id)
                         .replace("-4", user_id);
 
+                // Splash routes
+                this.login = () => "{{url_for('splash.login')}}";
+                this.register = () => "{{url_for('splash.register_user')}}";
+                this.confirm_email_after_register = () => "{{url_for('splash.confirm_email_after_register')}}";
+                this.send_validation_email = () => "{{url_for('splash.send_validation_email')}}";
+                this.forgot_password = () => "{{url_for('splash.forgot_password')}}";
+                
+                // Logout
+                this.logout = () => "{{url_for('users.logout')}}";
+
                 Routes.instance = this;
             }
 

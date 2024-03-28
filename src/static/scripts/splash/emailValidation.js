@@ -1,3 +1,4 @@
+"use strict";
 
 $("#submit").click((event) => handleValidateEmail(event));
 
@@ -5,9 +6,9 @@ $("#SplashModal").on("hide.bs.modal", function (e) {
   $("#SplashModal").off("hide.bs.modal");
   const searchParams = new URLSearchParams(window.location.search);
   if (searchParams.has('token')) {
-    window.location.replace("/logout");
+    window.location.replace(routes.logout());
   } else {
-    $.get("/logout");
+    $.get(routes.logout());
   }
 });
 
@@ -15,7 +16,7 @@ function handleValidateEmail(event = null) {
   event !== null ? event.preventDefault() : null;
 
   const validateEmailRequest = $.ajax({
-    url: "/send-validation-email",
+    url: routes.send_validation_email(),
     type: "POST",
     data: $("#ModalForm").serialize(),
   });

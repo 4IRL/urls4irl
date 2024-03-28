@@ -1,3 +1,4 @@
+"use strict";
  
 $("#submit").click((event) => handleForgotPassword(event));
 
@@ -6,7 +7,7 @@ function handleForgotPassword(event) {
   $("#submit").attr("disabled", "disabled");
 
   const forgotPasswordRequest = $.ajax({
-    url: "/forgot-password",
+    url: routes.forgot_password(),
     type: "POST",
     data: $("#ModalForm").serialize(),
   });

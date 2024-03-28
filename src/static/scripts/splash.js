@@ -1,3 +1,5 @@
+"use strict";
+
 $(document).ready(function () {
   setToRegisterButton();
   setToLoginButton();
@@ -20,7 +22,7 @@ function setToLoginButton() {
 }
 
 function loginModalOpener() {
-  const modalOpener = $.get("/login");
+  const modalOpener = $.get(routes.login());
 
   modalOpener.done((data, textStatus, xhr) => {
     if (xhr.status === 200) {
@@ -36,7 +38,7 @@ function loginModalOpener() {
 }
 
 function registerModalOpener() {
-  const modalOpener = $.get("/register");
+  const modalOpener = $.get(routes.register());
 
   modalOpener.done((data, textStatus, xhr) => {
     if (xhr.status === 200) {
@@ -95,14 +97,14 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".modal-footer").remove();
 
   const logoutOnExit = () => { 
-    $.get("/logout") 
+    $.get(routes.logout()) 
     $("#SplashModal").off("hide.bs.modal", logoutOnExit);
   };
   $("#SplashModal").on("hide.bs.modal", logoutOnExit);     
 }
 
 function emailValidationModalOpener() {
-  const modalOpener = $.get("/confirm-email");
+  const modalOpener = $.get(routes.confirm_email_after_register());
 
   modalOpener.done((data, textStatus, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
