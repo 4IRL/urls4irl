@@ -72,7 +72,7 @@ def _handle_after_forgot_password_form_validated(
     forgot_password_form: ForgotPasswordForm,
 ) -> tuple[Response, int]:
     user_with_email: User = User.query.filter_by(
-        email=forgot_password_form.email.data
+        email=forgot_password_form.email.data.lower()
     ).first()
 
     if user_with_email is not None:
@@ -107,7 +107,7 @@ def _handle_after_forgot_password_form_validated(
                 _external=True,
             )
             email_send_result = email_sender.send_password_reset_email(
-                user_with_email.email, user_with_email.username, url_for_reset
+                forgot_password_form.email.data, user_with_email.username, url_for_reset
             )
             if email_send_result.status_code >= 500:
                 return _handle_mailjet_failure(email_send_result, error_code=3)

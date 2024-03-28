@@ -55,7 +55,7 @@ class UserRegistrationForm(FlaskForm):
 
     def validate_email(self, email):
         """Validates username is unique in the db"""
-        user: User = User.query.filter_by(email=email.data).first()
+        user: User = User.query.filter_by(email=email.data.lower()).first()
 
         if user:
             if not user.email_confirm.is_validated:

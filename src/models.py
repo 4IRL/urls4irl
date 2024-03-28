@@ -158,7 +158,7 @@ class User(db.Model, UserMixin):
             plaintext_password (str): Plaintext password to be hashed
         """
         self.username = username
-        self.email = email
+        self.email = email.lower()
         self.password = generate_password_hash(plaintext_password)
         self._email_confirmed = False
 

@@ -40,7 +40,7 @@ def test_reset_password_token_can_expire(app, register_first_user):
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == registered_user[RESET_PASSWORD.EMAIL]
+            User.email == registered_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         quick_expiring_token = user.get_password_reset_token(expires_in=0)
 
@@ -65,7 +65,7 @@ def test_expired_token_deletes_object_and_redirects(
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == registered_user[RESET_PASSWORD.EMAIL]
+            User.email == registered_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         expired_token = user.get_password_reset_token(expires_in=0)
         password_reset = ForgotPassword(reset_token=expired_token)
@@ -81,7 +81,7 @@ def test_expired_token_deletes_object_and_redirects(
     assert len(reset_response.history) == 1
     redirected_response = reset_response.history[-1]
     assert redirected_response.status_code == 302
-    assert redirected_response.location == url_for("splash.splash_page")
+    assert redirected_response.location == url_for(ROUTES.SPLASH.SPLASH_PAGE)
     assert reset_response.status_code == 200
     assert IDENTIFIERS.SPLASH_PAGE.encode() in reset_response.data
 
@@ -137,7 +137,7 @@ def test_not_email_validated_user_with_password_reset_token_fails(
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == registered_user[RESET_PASSWORD.EMAIL]
+            User.email == registered_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         reset_token = user.get_password_reset_token()
         new_password_reset = ForgotPassword(reset_token=reset_token)
@@ -172,7 +172,7 @@ def test_matching_user_reset_token_not_in_database_fails(user_attempts_reset_pas
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == new_user[RESET_PASSWORD.EMAIL]
+            User.email == new_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         invalid_token = user.get_password_reset_token()
 
@@ -275,7 +275,7 @@ def test_password_reset_without_equal_passwords_fails(user_attempts_reset_passwo
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == new_user[RESET_PASSWORD.EMAIL]
+            User.email == new_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         assert user.is_password_correct(new_user[RESET_PASSWORD.PASSWORD])
 
@@ -348,7 +348,7 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == new_user[RESET_PASSWORD.EMAIL]
+            User.email == new_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         assert user.is_password_correct(NEW_PASSWORD) and not user.is_password_correct(
             new_user[RESET_PASSWORD.PASSWORD]
@@ -365,3 +365,4 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     # Ensure no one is logged in
     assert current_user.get_id() is None
     assert current_user.is_active is False
+

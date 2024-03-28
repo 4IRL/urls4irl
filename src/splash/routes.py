@@ -66,7 +66,7 @@ def register_user():
         plain_password = register_form.password.data
         new_user = User(
             username=username,
-            email=email,
+            email=email.lower(),
             plaintext_password=plain_password,
         )
         email_validation_token = new_user.get_email_validation_token()
@@ -113,7 +113,7 @@ def register_user():
             else:
                 login_user(
                     User.query.filter(
-                        User.email == register_form.email.data
+                        User.email == register_form.email.data.lower()
                     ).first_or_404()
                 )
                 return (
@@ -297,25 +297,6 @@ def validate_email(token: str):
 
     if expired:
         return redirect(url_for("splash.validate_email_expired", token=token))
-        """
-        invalid_email: EmailValidation = EmailValidation.query.filter(
-            EmailValidation.confirm_url == token
-        ).first_or_404()
-        user_with_expired_token: User = invalid_email.user
-        new_token = user_with_expired_token.get_email_validation_token()
-        invalid_email.confirm_url = new_token
-        invalid_email.reset_attempts()
-        db.session.commit()
-        login_user(user_with_expired_token)
-        return (
-            render_template(
-                "splash.html",
-                email_validation_modal=True,
-                expired_token=EMAILS.TOKEN_EXPIRED,
-            ),
-            400,
-        )
-        """
 
     if not user_to_validate:
         # Link is invalid, so remove any users and email validation rows associated with this token
@@ -383,13 +364,6 @@ def forgot_password():
     )
 
 
-@splash.route("/confirm-password-reset", methods=["GET"])
-def confirm_password_reset():
-    return render_template(
-        "password_reset/reset_password.html", reset_password_form=ResetPasswordForm()
-    )
-
-
 @splash.route("/reset-password/<string:token>", methods=["GET", "POST"])
 def reset_password(token: str):
     reset_password_user: User
@@ -420,18 +394,20 @@ def reset_password(token: str):
         abort(404)
 
     if (
-        reset_password_user.forgot_password.reset_token != token
-        or reset_password_user.forgot_password.is_more_than_hour_old()
+        reset_password_user.forgot_password is None or
+        reset_password_user.forgot_password.reset_token != token or
+        reset_password_user.forgot_password.is_more_than_hour_old()
     ):
         abort(404)
+
+    reset_password_form = ResetPasswordForm()
 
     if request.method == "GET":
         return render_template(
             "splash.html",
-            forgot_password_modal=True,
+            is_resetting_password=True,
+            reset_password_form = reset_password_form
         )
-
-    reset_password_form = ResetPasswordForm()
 
     if reset_password_form.validate_on_submit():
         return _validate_resetting_password(reset_password_user, reset_password_form)

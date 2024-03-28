@@ -51,78 +51,6 @@ function registerModalOpener() {
   });
 }
 
-
-function resetPasswordModalOpener() {
-  $.get("/confirm-password-reset", function (data) {
-    $("#SplashModal .modal-content").html(data);
-    const newModal = new bootstrap.Modal("#SplashModal").show();
-    $("#SplashModal")
-      .modal()
-      .on("hide.bs.modal", function (e) {
-        let previouslyClicked = false;
-        if (!previouslyClicked) {
-          window.location.replace("/");
-          previouslyClicked = true;
-          $("#SplashModal").off("hide.bs.modal");
-        }
-      });
-    //setCloseModalButton((shouldReplaceWindow = true));
-
-    $("#submit").click(function (event) {
-      event.preventDefault();
-      let request = $.ajax({
-        url: window.location.pathname,
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
-
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-          // Password changed!
-          hideSplashModalAlertBanner();
-          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
-          handleUserChangedPassword();
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 400 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1:
-              $(".form-control").removeClass("is-invalid");
-              $(".invalid-feedback").remove();
-              showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
-              break;
-            case 2:
-              hideSplashModalAlertBanner();
-              handleImproperFormErrors(xhr.responseJSON);
-              break;
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
-  });
-}
-
-function handleUserChangedPassword() {
-  const submitButton = $("#submit");
-  submitButton
-    .off("click")
-    .prop("type", "button")
-    .val("Close")
-    .removeClass("btn-success")
-    .addClass("btn-warning")
-    .on("click", function (e) {
-      window.location.replace("/");
-    });
-}
-
 function hideSplashModalAlertBanner() {
   $("#SplashModalAlertBanner")
     .removeClass("alert-banner-splash-modal-display")
@@ -171,6 +99,18 @@ function handleUserHasAccountNotEmailValidated(message) {
     $("#SplashModal").off("hide.bs.modal", logoutOnExit);
   };
   $("#SplashModal").on("hide.bs.modal", logoutOnExit);     
+}
+
+function emailValidationModalOpener() {
+  const modalOpener = $.get("/confirm-email");
+
+  modalOpener.done((data, textStatus, xhr) => {
+    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+  });
+
+  modalOpener.fail(() => {
+    showSplashModalAlertBanner("Unable to load email validation modal...", "danger");
+  });
 }
 
 function handleImproperFormErrors(errorResponse) {

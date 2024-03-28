@@ -86,6 +86,10 @@
     {% include 'email_validation/email_needs_validation_modal_expired.html' %}
     {% include 'modals/splashErrorModalBase.html' %}
 
+    {% elif is_resetting_password %}
+
+    {% include 'password_reset/reset_password_modal.html' %}
+
     {% elif current_user.is_authenticated and current_user.email_confirm.is_validated %}
 
     {% include 'modals/homeModalBase.html' %}

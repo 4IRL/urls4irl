@@ -72,20 +72,8 @@ function handleLoginFailure(xhr, textStatus, error) {
     }
   } else {
     // TODO: Handle other errors here.
+    showSplashModalAlertBanner("Unable to process request...", "danger");
     console.log("You need to handle other errors!");
   }
 }
-
-function emailValidationModalOpener() {
-  const modalOpener = $.get("/confirm-email");
-
-  modalOpener.done((data, textStatus, xhr) => {
-    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
-  });
-
-  modalOpener.fail(() => {
-    showSplashModalAlertBanner("Unable to load email validation modal...", "danger");
-  });
-}
-
 

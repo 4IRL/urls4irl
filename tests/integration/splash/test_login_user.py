@@ -38,7 +38,7 @@ def test_login_registered_and_logged_in_user(login_first_user_with_register):
     # Test if user logged in
     assert current_user.username == new_user[LOGIN_FORM.USERNAME]
     assert check_password_hash(current_user.password, new_user[LOGIN_FORM.PASSWORD])
-    assert current_user.email == new_user[LOGIN_FORM.EMAIL]
+    assert current_user.email == new_user[LOGIN_FORM.EMAIL].lower()
 
     # Ensure user id's match with  database
     with app.app_context():
@@ -199,7 +199,7 @@ def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
     # Test if user logged in
     assert current_user.username == logged_in_user.username
     assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email
+    assert current_user.email == logged_in_user.email.lower()
     assert int(current_user.get_id()) == logged_in_user.id
 
 
@@ -228,7 +228,7 @@ def test_already_logged_in_user_to_login_page(login_first_user_with_register):
     # Test if user logged in
     assert current_user.username == logged_in_user.username
     assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email
+    assert current_user.email == logged_in_user.email.lower()
     assert int(current_user.get_id()) == logged_in_user.id
 
 
@@ -257,7 +257,7 @@ def test_already_logged_in_user_to_register_page(login_first_user_with_register)
     # Test if user logged in
     assert current_user.username == logged_in_user.username
     assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email
+    assert current_user.email == logged_in_user.email.lower()
     assert int(current_user.get_id()) == logged_in_user.id
 
 
@@ -279,7 +279,7 @@ def test_already_logged_in_user_to_home_page(login_first_user_with_register):
     # Test if user logged in
     assert current_user.username == logged_in_user.username
     assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email
+    assert current_user.email == logged_in_user.email.lower()
     assert int(current_user.get_id()) == logged_in_user.id
 
     assert bytes(f"Logged in as {current_user.username}", "utf-8") in response.data
@@ -308,7 +308,7 @@ def test_user_can_logout_after_login(login_first_user_with_register):
     with raises(AttributeError):
         assert current_user.username != logged_in_user.username
         assert current_user.password != logged_in_user.password
-        assert current_user.email != logged_in_user.email
+        assert current_user.email != logged_in_user.email.lower()
 
     # Ensure no one is logged in
     assert current_user.get_id() is None
@@ -368,7 +368,7 @@ def test_user_can_login_logout_login(login_first_user_with_register):
     # test if user logged in
     assert current_user.username == logged_in_user.username
     assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email
+    assert current_user.email == logged_in_user.email.lower()
 
 
 def test_login_modal_is_shown(app_with_server_name, client):
@@ -382,7 +382,7 @@ def test_login_modal_is_shown(app_with_server_name, client):
             client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
             response = client.get(url_for(ROUTES.SPLASH.LOGIN))
         assert (
-            b'<form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>'
+            b'<form id="ModalForm" method="POST" class="login-register-form" action="/login" novalidate>'
             in response.data
         )
 
@@ -426,4 +426,4 @@ def test_login_modal_logs_user_in(app_with_server_name, client, register_first_u
         assert check_password_hash(
             current_user.password, registered_user_data[LOGIN_FORM.PASSWORD]
         )
-        assert current_user.email == registered_user_data[LOGIN_FORM.EMAIL]
+        assert current_user.email == registered_user_data[LOGIN_FORM.EMAIL].lower()

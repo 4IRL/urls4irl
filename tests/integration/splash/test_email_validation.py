@@ -5,7 +5,7 @@ from flask_login import current_user
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
 from src import db
-from src.models import User, verify_token
+from src.models import User, EmailValidation, verify_token
 from src.utils.constants import EMAIL_CONSTANTS
 from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -21,7 +21,7 @@ def test_registered_user_is_not_email_validated(app, load_register_page):
     """
     GIVEN a user trying to register
     WHEN they submit an registration form
-    THEN ensure they don't have a validated email
+    THEN ensure they don't have a validated email and are shown validation modal
     """
     client, csrf_token = load_register_page
 
@@ -34,35 +34,13 @@ def test_registered_user_is_not_email_validated(app, load_register_page):
     # Assert user gets shown email validation modal
     assert response.status_code == 201
     assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
+    assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
 
     with app.app_context():
         registered_user: User = User.query.filter(
             User.username == valid_user_1[REGISTER_FORM.USERNAME]
         ).first_or_404()
         assert not registered_user.email_confirm.is_validated
-
-
-def test_registered_not_email_validated_user_access_splash_page(load_register_page):
-    """
-    GIVEN a registered user (but not logged in user) without a validated email, after just registering
-    WHEN they try to access the splash page
-    THEN ensure they can, but the email validation modal pops up
-    """
-    client, csrf_token_string = load_register_page
-
-    valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
-    response = client.post(
-        url_for(ROUTES.SPLASH.REGISTER), data=valid_user_1, follow_redirects=True
-    )
-
-    # Correctly sends URL to email validation modal
-    assert response.status_code == 201
-    assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
-
-    response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-    assert response.status_code == 200
-    assert IDENTIFIERS.SPLASH_PAGE.encode() in response.data
-    assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
 
 
 def test_registered_not_email_validated_user_access_home_page(load_register_page):
@@ -87,7 +65,6 @@ def test_registered_not_email_validated_user_access_home_page(load_register_page
     assert response.history[0].location == url_for(ROUTES.SPLASH.SPLASH_PAGE)
     assert response.status_code == 200
     assert IDENTIFIERS.SPLASH_PAGE.encode() in response.data
-    assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
 
 
 def test_registered_not_email_validated_user_access_register_login(load_register_page):
@@ -195,7 +172,7 @@ def test_valid_token_generated_on_user_register(
 
     with app.app_context():
         registered_user: User = User.query.filter(
-            User.email == new_user[REGISTER_FORM.EMAIL]
+            User.email == new_user[REGISTER_FORM.EMAIL].lower()
         ).first()
         user_token = registered_user.email_confirm.confirm_url
         assert verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (
@@ -220,7 +197,7 @@ def test_token_validates_user(app, load_register_page):
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == valid_user_1[REGISTER_FORM.EMAIL]
+            User.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         user_token = user.email_confirm.confirm_url
         assert not user.is_email_authenticated() and not user.email_confirm.is_validated
@@ -240,7 +217,7 @@ def test_token_validates_user(app, load_register_page):
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == valid_user_1[REGISTER_FORM.EMAIL]
+            User.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         assert user.is_email_authenticated() and user.email_confirm.is_validated
         assert user.email_confirm.confirm_url != user_token
@@ -256,7 +233,7 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == registered_user[REGISTER_FORM.EMAIL]
+            User.email == registered_user[REGISTER_FORM.EMAIL].lower()
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
 
@@ -264,6 +241,31 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
             None,
             True,
         )
+
+
+def test_expired_token_accessed_shows_error_to_user(app, register_first_user_without_email_validation, load_register_page):
+    """
+    GIVEN a user trying to validate their email
+    WHEN they click on the validation link in their email after the token has expired
+    THEN ensure that the user is shown the validate email modal again with an error message
+    """
+    registered_user, _ = register_first_user_without_email_validation
+    client, _ = load_register_page
+
+    with app.app_context():
+        user: User = User.query.filter(
+            User.email == registered_user[REGISTER_FORM.EMAIL].lower()
+        ).first()
+        quick_expiring_token = user.get_email_validation_token(expires_in=0)
+        email_validation = EmailValidation(confirm_url=quick_expiring_token)
+        user.email_confirm = email_validation
+        db.session.commit()
+
+    response = client.get(
+        url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=quick_expiring_token), follow_redirects=True
+    )
+
+    assert EMAILS.TOKEN_EXPIRED.encode() in response.data
 
 
 def test_success_on_send_of_email(app, load_register_page):
@@ -361,7 +363,7 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == valid_user_1[REGISTER_FORM.EMAIL]
+            User.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         user.email_confirm.attempts = EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
         user.email_confirm.last_attempt = datetime.utcnow()

@@ -170,7 +170,7 @@ def test_forgot_password_with_email_not_in_database(app, load_login_page):
 
     with app.app_context():
         user_with_email = User.query.filter(
-            User.email == nonregistered_user[FORGOT_PASSWORD.EMAIL]
+            User.email == nonregistered_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()
         assert len(user_with_email) == 0
         num_of_forgot_password_objs = len(ForgotPassword.query.all())
@@ -215,7 +215,7 @@ def test_forgot_password_with_validated_email(
     with app.app_context():
         assert len(ForgotPassword.query.all()) == 0
         all_users_with_email = User.query.filter(
-            User.email == new_user[FORGOT_PASSWORD.EMAIL]
+            User.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()
         assert len(all_users_with_email) == 1
         user = all_users_with_email[-1]
@@ -225,6 +225,56 @@ def test_forgot_password_with_validated_email(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
         data={
             FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
+            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
+        },
+    )
+
+    assert response.status_code == 200
+
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
+
+    with app.app_context():
+        forgot_password_objs = ForgotPassword.query.filter(
+            ForgotPassword.user_id == user_id
+        ).all()
+        assert len(forgot_password_objs) == 1
+        assert forgot_password_objs[-1].attempts == 1
+
+def test_forgot_password_with_validated_email_uppercase(
+    app, register_first_user, load_login_page
+):
+    """
+    GIVEN a user who accesses the forgot password form from the login page
+    WHEN the user inputs an email that has been validated
+    THEN server still shows success with a 200 response status code, with proper JSON response
+        ForgotPassword object is created to keep track of password resets for this user, and
+        attempts are incremented to 1.
+
+    JSON response as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: RESET_PASSWORD.EMAIL_SENT_MESSAGE,
+    }
+    """
+    new_user, _ = register_first_user
+    client, csrf_token = load_login_page
+
+    with app.app_context():
+        assert len(ForgotPassword.query.all()) == 0
+        all_users_with_email = User.query.filter(
+            User.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
+        ).all()
+        assert len(all_users_with_email) == 1
+        assert all_users_with_email[-1].email != new_user[FORGOT_PASSWORD.EMAIL].upper()
+        user = all_users_with_email[-1]
+        user_id = user.id
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
+        data={
+            FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL].upper(),
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
     )
@@ -264,7 +314,7 @@ def test_forgot_password_with_non_validated_email(
     with app.app_context():
         assert len(ForgotPassword.query.all()) == 0
         all_users_with_email = User.query.filter(
-            User.email == new_user[FORGOT_PASSWORD.EMAIL]
+            User.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()
         assert len(all_users_with_email) == 1
         user = all_users_with_email[-1]
@@ -312,7 +362,7 @@ def test_forgot_password_rate_limits_correctly(
     with app.app_context():
         assert len(ForgotPassword.query.all()) == 0
         all_users_with_email = User.query.filter(
-            User.email == new_user[FORGOT_PASSWORD.EMAIL]
+            User.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()
         assert len(all_users_with_email) == 1
         user = all_users_with_email[-1]
@@ -381,7 +431,7 @@ def test_forgot_password_generates_token_correctly(
     with app.app_context():
         assert len(ForgotPassword.query.all()) == 0
         all_users_with_email = User.query.filter(
-            User.email == new_user[FORGOT_PASSWORD.EMAIL]
+            User.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()
         assert len(all_users_with_email) == 1
         user = all_users_with_email[-1]
@@ -410,7 +460,7 @@ def test_forgot_password_generates_token_correctly(
         assert new_forgot_password.user_id == user_id
 
         registered_user = User.query.filter(
-            User.email == new_user[FORGOT_PASSWORD.EMAIL]
+            User.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).first()
 
         token = new_forgot_password.reset_token
@@ -462,7 +512,7 @@ def test_user_requests_reset_after_password_reset_object_older_than_hour(
 
     with app.app_context():
         user: User = User.query.filter(
-            User.email == new_user[FORGOT_PASSWORD.EMAIL]
+            User.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).first()
         new_forgot_password: ForgotPassword = ForgotPassword.query.filter(
             ForgotPassword.user_id == user.id

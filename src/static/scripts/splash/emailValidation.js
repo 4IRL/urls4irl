@@ -11,8 +11,8 @@ $("#SplashModal").on("hide.bs.modal", function (e) {
   }
 });
 
-function handleValidateEmail(event) {
-  event.preventDefault();
+function handleValidateEmail(event = null) {
+  event !== null ? event.preventDefault() : null;
 
   const validateEmailRequest = $.ajax({
     url: "/send-validation-email",
@@ -61,6 +61,16 @@ function handleValidateEmailFailure(xhr, textStatus, error) {
     }
   } else {
     // TODO: Handle other errors here.
+    showSplashModalAlertBanner("Unable to process request...", "danger");
     console.log("You need to handle other errors!");
   }
 }
+
+function sendInitialEmailOnLoad() {
+  // Send validation email after register, but not if token for validation is expired
+  const searchParams = new URLSearchParams(window.location.search);
+  if (!searchParams.has('token')) {
+    handleValidateEmail();
+  }
+}
+sendInitialEmailOnLoad();

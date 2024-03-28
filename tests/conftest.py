@@ -131,7 +131,7 @@ def register_first_user(app):
     with app.app_context():
         new_user = User(
             username=valid_user_1[model_strs.USERNAME],
-            email=valid_user_1[model_strs.EMAIL],
+            email=valid_user_1[model_strs.EMAIL].lower(),
             plaintext_password=valid_user_1[model_strs.PASSWORD],
         )
 
@@ -165,7 +165,7 @@ def register_first_user_without_email_validation(app):
     with app.app_context():
         new_user = User(
             username=valid_user_1[model_strs.USERNAME],
-            email=valid_user_1[model_strs.EMAIL],
+            email=valid_user_1[model_strs.EMAIL].lower(),
             plaintext_password=valid_user_1[model_strs.PASSWORD],
         )
 
@@ -204,7 +204,7 @@ def register_all_but_first_user(app):
         for user in all_users:
             new_user = User(
                 username=user[model_strs.USERNAME],
-                email=user[model_strs.EMAIL],
+                email=user[model_strs.EMAIL].lower(),
                 plaintext_password=user[model_strs.PASSWORD],
             )
 
@@ -243,7 +243,7 @@ def register_multiple_users(app):
         for user in all_users:
             new_user = User(
                 username=user[model_strs.USERNAME],
-                email=user[model_strs.EMAIL],
+                email=user[model_strs.EMAIL].lower(),
                 plaintext_password=user[model_strs.PASSWORD],
             )
 
@@ -297,7 +297,7 @@ def user_attempts_reset_password(app, register_first_user, load_login_page):
 
     with app.app_context():
         user_to_reset: User = User.query.filter(
-            User.email == new_user[reset_password_strs.FORGOT_PASSWORD.EMAIL]
+            User.email == new_user[reset_password_strs.FORGOT_PASSWORD.EMAIL].lower()
         ).first()
         password_reset_obj: ForgotPassword = ForgotPassword.query.filter(
             ForgotPassword.user_id == user_to_reset.id
@@ -351,7 +351,7 @@ def user_attempts_reset_password_one_hour_old(
 
     with app.app_context():
         user_to_reset: User = User.query.filter(
-            User.email == new_user[model_strs.EMAIL]
+            User.email == new_user[model_strs.EMAIL].lower()
         ).first()
         password_reset_obj: ForgotPassword = ForgotPassword.query.filter(
             ForgotPassword.user_id == user_to_reset.id

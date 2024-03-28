@@ -5,7 +5,6 @@
                 if (document.querySelector('head').childElementCount === 1) {
                     window.location.href = '/';
                 };
-                console.log("Reloading this one!");
             </script>
             <form id="ModalForm" method="POST" class="login-register-form validate-email-form" action="" novalidate>
                 <div class="modal-header">
@@ -19,7 +18,8 @@
                 <div class="modal-body">
                     {{ validate_email_form.hidden_tag() }}
                     <p id="ValidateEmailText" class="validate-email-text">Your email address has not been validated. To complete
-                        your registration, <strong>please click</strong> the button below to receive a validation email.</p>
+                        your registration, <strong>check your inbox</strong> and click on the link we sent in the email. If you have not received
+                        the email for some time, click the button below to resend a validation email.</p>
                     <div id="SplashModalAlertBanner" class="alert alert-danger alert-banner-splash-modal-display" role="alert">
                         {{ expired_token_message }}
                     </div>
@@ -38,6 +38,6 @@
 </div>
 
 <script type="text/javascript">
-    splashModal = new bootstrap.Modal('#SplashModal');
+    splashModal = bootstrap.Modal.getOrCreateInstance('#SplashModal');
     splashModal.show();
 </script>

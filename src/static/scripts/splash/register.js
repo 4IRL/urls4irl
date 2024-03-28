@@ -1,4 +1,3 @@
-
 $("#ToLoginFromRegister")
   .off("click")
   .on("click", function () {
@@ -48,20 +47,8 @@ function handleRegister(event) {
 
 function handleRegisterSuccess(response, textStatus, xhr) {
   if (xhr.status === 201) {
-    emailValidationModalOpener();
+    $("#SplashModal .modal-content").html(response);
   }
-}
-
-function emailValidationModalOpener() {
-  const modalOpener = $.get("/confirm-email");
-
-  modalOpener.done((data, textStatus, xhr) => {
-    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
-  });
-
-  modalOpener.fail(() => {
-    showSplashModalAlertBanner("Unable to load email validation modal...", "danger");
-  });
 }
 
 function handleRegisterFailure(xhr, textStatus, error) {
@@ -81,6 +68,7 @@ function handleRegisterFailure(xhr, textStatus, error) {
       }
     } else {
       // TODO: Handle other errors here.
+      showSplashModalAlertBanner("Unable to process request...", "danger");
       console.log("You need to handle other errors!");
     }
 }
