@@ -88,25 +88,15 @@ function addURLFailure(response) {
 function editURLShowInput() {
     // Show edit submission button, hide other buttons
     let selectedCardDiv = $(getSelectedURLCard());
-    let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
-    showIfHidden(URLOptionsDiv.find(".submitEditURLBtn"));
-    showIfHidden(URLOptionsDiv.find(".cancelEditURLBtn"));
-    hideIfShown(URLOptionsDiv.find(".editURLBtn"));
-    hideIfShown(URLOptionsDiv.find(".addTagBtn"));
-    hideIfShown(URLOptionsDiv.find(".delURLBtn"));
 
-    // Hide access URL button
-    hideIfShown(URLOptionsDiv.find(".accessURLBtn"));
+    // Hide URL Options
+    hideIfShown(selectedCardDiv.find(".URLOptions"));
 
-    // Show input fields
-    let inputElURLString = selectedCardDiv.find(".editURLString");
-    let inputDivURLString = inputElURLString.closest(".createDiv");
-    showIfHidden($(inputDivURLString));
+    // Show input field
+    showIfHidden(selectedCardDiv.find(".editURL").closest(".createDiv"));
 
-    // Hide published values
-    let URLInfoDiv = selectedCardDiv.find(".URLInfo");
-    hideIfShown($(URLInfoDiv.find("h5")));
-    hideIfShown($(URLInfoDiv.find("p")));
+    // Hide published value
+    hideIfShown(selectedCardDiv.find(".URL"));
 
     // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
     unbindSelectURLBehavior();
@@ -114,31 +104,20 @@ function editURLShowInput() {
 
 // Hides edit URL inputs
 function editURLHideInput() {
-    // Hide edit submission button, show other buttons
+    // Show edit submission button, hide other buttons
     let selectedCardDiv = $(getSelectedURLCard());
-    let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
-    hideIfShown(URLOptionsDiv.find(".submitEditURLBtn"));
-    hideIfShown(URLOptionsDiv.find(".cancelEditURLBtn"));
-    showIfHidden(URLOptionsDiv.find(".editURLBtn"));
-    showIfHidden(URLOptionsDiv.find(".addTagBtn"));
-    showIfHidden(URLOptionsDiv.find(".remURLBtn"));
 
-    // Show access URL button
-    showIfHidden(URLOptionsDiv.find(".accessURLBtn"));
+    // Show URL Options
+    showIfHidden(selectedCardDiv.find(".URLOptions"));
 
-    // Hide input fields
-    let inputElURLString = selectedCardDiv.find(".editURLString");
-    let inputDivURLString = inputElURLString.closest(".createDiv");
-    hideIfShown(inputDivURLString);
+    // Hide input field
+    hideIfShown(selectedCardDiv.find(".editURL").closest(".createDiv"));
 
-    // Show published values
-    let URLInfoDiv = inputElURLString.closest(".URLInfo");
-    showIfHidden(URLInfoDiv.find("h5"));
-    showIfHidden(URLInfoDiv.find("p"));
+    // Show published value
+    showIfHidden(selectedCardDiv.find(".URL"));
 
-    // Update URL options display
-    hideIfShown(selectedCardDiv.find(".submitEditURLBtn"));
-    showIfHidden(selectedCardDiv.find(".editURLBtn"));
+    // Rebind select behavior
+    rebindSelectBehavior(getSelectedURLID());
 }
 
 // Handles edition of an existing URL
@@ -172,16 +151,10 @@ function editURL() {
 function editURLSetup() {
     let postURL = routes.editURL(getActiveUTubID(), getSelectedURLID());
 
-    let selectedCardDiv = $(getSelectedURLCard());
-    let editedURLfield = selectedCardDiv.find(".editURLString")[0];
-    let editedURL = editedURLfield.value;
-    let editedURLTitlefield = selectedCardDiv.find(".editURLTitle")[0];
-    let editedURLTitle = editedURLTitlefield.value;
-    console.log(editedURLTitle);
-    data = {
-        url_string: editedURL,
-        url_title: editedURLTitle,
-    };
+    let editedURL = $(getSelectedURLCard()).find(".editURL")[0].value;
+    console.log(editedURL)
+
+    data = { url_string: editedURL };
 
     return [postURL, data];
 }
@@ -190,11 +163,7 @@ function editURLSetup() {
 function editURLSuccess(response) {
     // Extract response data
     let editedURLID = response.URL.url_ID;
-    let editedURLTitle = response.URL.url_title;
     let editedURLString = response.URL.url_string;
-    console.log(response);
-    console.log(response.URL);
-    console.log(editedURLTitle);
 
     // If edit URL action, rebind the ability to select/deselect URL by clicking it
     rebindSelectBehavior(editedURLID);
@@ -205,16 +174,10 @@ function editURLSuccess(response) {
     selectedCardDiv.attr("urlid", editedURLID);
 
     // Updating input field placeholders
-    let editURLTitleInput = selectedCardDiv.find(".editURLTitle");
-    editURLTitleInput.text(editedURLTitle);
-    let editURLStringInput = selectedCardDiv.find(".editURLString");
-    editURLStringInput.text(editedURLString);
+    selectedCardDiv.find(".editURL").text(editedURLString);
 
     // Update URL body with latest published data
-    let URLTitleField = selectedCardDiv.find(".URLTitle");
-    URLTitleField.text(editedURLTitle);
-    let URLStringField = selectedCardDiv.find(".URLString");
-    URLStringField.text(editedURLString);
+    selectedCardDiv.find(".URL").text(editedURLString);
 
     // Update URL options
     selectedCardDiv
@@ -246,25 +209,15 @@ function editURLFail(response) {
 function editURLTitleShowInput() {
     // Show edit submission button, hide other buttons
     let selectedCardDiv = $(getSelectedURLCard());
-    let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
-    showIfHidden(URLOptionsDiv.find(".submitEditURLBtn"));
-    showIfHidden(URLOptionsDiv.find(".cancelEditURLBtn"));
-    hideIfShown(URLOptionsDiv.find(".editURLBtn"));
-    hideIfShown(URLOptionsDiv.find(".addTagBtn"));
-    hideIfShown(URLOptionsDiv.find(".remURLBtn"));
 
-    // Hide access URL button
-    hideIfShown(URLOptionsDiv.find(".accessURLBtn"));
+    // Hide URL Options
+    hideIfShown(selectedCardDiv.find(".URLOptions"));
 
-    // Show input fields
-    let inputElURLString = selectedCardDiv.find(".editURLString");
-    let inputDivURLString = inputElURLString.closest(".createDiv");
-    showIfHidden($(inputDivURLString));
+    // Show input field
+    showIfHidden(selectedCardDiv.find(".editURLTitle").closest(".createDiv"));
 
-    // Hide published values
-    let URLInfoDiv = selectedCardDiv.find(".URLInfo");
-    hideIfShown($(URLInfoDiv.find("h5")));
-    hideIfShown($(URLInfoDiv.find("p")));
+    // Hide published value
+    hideIfShown(selectedCardDiv.find(".URLTitle"));
 
     // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
     unbindSelectURLBehavior();
@@ -272,31 +225,20 @@ function editURLTitleShowInput() {
 
 // Hides edit URL inputs
 function editURLTitleHideInput() {
-    // Hide edit submission button, show other buttons
+    // Show edit submission button, hide other buttons
     let selectedCardDiv = $(getSelectedURLCard());
-    let URLOptionsDiv = selectedCardDiv.find(".URLOptions");
-    hideIfShown(URLOptionsDiv.find(".submitEditURLBtn"));
-    hideIfShown(URLOptionsDiv.find(".cancelEditURLBtn"));
-    showIfHidden(URLOptionsDiv.find(".editURLBtn"));
-    showIfHidden(URLOptionsDiv.find(".addTagBtn"));
-    showIfHidden(URLOptionsDiv.find(".remURLBtn"));
 
-    // Show access URL button
-    showIfHidden(URLOptionsDiv.find(".accessURLBtn"));
+    // Show URL Options
+    showIfHidden(selectedCardDiv.find(".URLOptions"));
 
-    // Hide input fields
-    let inputElURLString = selectedCardDiv.find(".editURLString");
-    let inputDivURLString = inputElURLString.closest(".createDiv");
-    hideIfShown(inputDivURLString);
+    // Hide input field
+    hideIfShown(selectedCardDiv.find(".editURLTitle").closest(".createDiv"));
 
-    // Show published values
-    let URLInfoDiv = inputElURLString.closest(".URLInfo");
-    showIfHidden(URLInfoDiv.find("h5"));
-    showIfHidden(URLInfoDiv.find("p"));
+    // Show published value
+    showIfHidden(selectedCardDiv.find(".URLTitle"));
 
-    // Update URL options display
-    hideIfShown(selectedCardDiv.find(".submitEditURLBtn"));
-    showIfHidden(selectedCardDiv.find(".editURLBtn"));
+    // Rebind select behavior
+    rebindSelectBehavior(getSelectedURLID());
 }
 
 // Handles edition of an existing URL
@@ -330,16 +272,10 @@ function editURLTitle() {
 function editURLTitleSetup() {
     let postURL = routes.editURL(getActiveUTubID(), getSelectedURLID());
 
-    let selectedCardDiv = $(getSelectedURLCard());
-    let editedURLfield = selectedCardDiv.find(".editURLString")[0];
-    let editedURL = editedURLfield.value;
-    let editedURLTitlefield = selectedCardDiv.find(".editURLTitle")[0];
-    let editedURLTitle = editedURLTitlefield.value;
-    console.log(editedURLTitle);
-    data = {
-        url_string: editedURL,
-        url_title: editedURLTitle,
-    };
+    let editedURLTitle = $(getSelectedURLCard()).find(".editURLTitle")[0].value;
+    console.log(editedURLTitle)
+    
+    data = { url_title: editedURLTitle };
 
     return [postURL, data];
 }
@@ -349,10 +285,6 @@ function editURLTitleSuccess(response) {
     // Extract response data
     let editedURLID = response.URL.url_ID;
     let editedURLTitle = response.URL.url_title;
-    let editedURLString = response.URL.url_string;
-    console.log(response);
-    console.log(response.URL);
-    console.log(editedURLTitle);
 
     // If edit URL action, rebind the ability to select/deselect URL by clicking it
     rebindSelectBehavior(editedURLID);
@@ -363,28 +295,12 @@ function editURLTitleSuccess(response) {
     selectedCardDiv.attr("urlid", editedURLID);
 
     // Updating input field placeholders
-    let editURLTitleInput = selectedCardDiv.find(".editURLTitle");
-    editURLTitleInput.text(editedURLTitle);
-    let editURLStringInput = selectedCardDiv.find(".editURLString");
-    editURLStringInput.text(editedURLString);
+    selectedCardDiv.find(".editURLTitle").text(editedURLTitle);
 
     // Update URL body with latest published data
-    let URLTitleField = selectedCardDiv.find(".URLTitle");
-    URLTitleField.text(editedURLTitle);
-    let URLStringField = selectedCardDiv.find(".URLString");
-    URLStringField.text(editedURLString);
+    selectedCardDiv.find(".URLTitle").text(editedURLTitle);
 
-    // Update URL options
-    selectedCardDiv
-        .find(".accessURL")
-        .off("click")
-        .on("click", function (e) {
-            e.stopPropagation();
-            e.preventDefault();
-            accessLink(editedURLString);
-        });
-
-    editURLHideInput();
+    editURLTitleHideInput();
 }
 
 // Displays appropriate prompts and options to user following a failed edition of a URL
