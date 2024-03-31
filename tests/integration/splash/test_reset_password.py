@@ -365,4 +365,3 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     # Ensure no one is logged in
     assert current_user.get_id() is None
     assert current_user.is_active is False
-

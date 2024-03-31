@@ -133,6 +133,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
         in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
     )
 
+
 def test_register_user_cased_email(app, load_register_page, register_first_user):
     """
     GIVEN a user to the page
@@ -159,7 +160,7 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
 
     already_registered_user_data[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
     cased_emails = (
-        already_registered_user_data[REGISTER_FORM.EMAIL].upper(), 
+        already_registered_user_data[REGISTER_FORM.EMAIL].upper(),
         already_registered_user_data[REGISTER_FORM.EMAIL].lower(),
     )
 
@@ -193,7 +194,8 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
         register_user_response_json = response.json
         assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
         assert (
-            register_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_REGISTER
+            register_user_response_json[STD_JSON.MESSAGE]
+            == USER_FAILURE.UNABLE_TO_REGISTER
         )
         assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 3
         assert (
@@ -324,4 +326,3 @@ def test_register_user_missing_csrf(app, load_register_page):
         ).first()
 
     assert new_db_user is None
-

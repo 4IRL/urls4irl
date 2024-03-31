@@ -5,7 +5,7 @@ $("#submit").click((event) => handleValidateEmail(event));
 $("#SplashModal").on("hide.bs.modal", function (e) {
   $("#SplashModal").off("hide.bs.modal");
   const searchParams = new URLSearchParams(window.location.search);
-  if (searchParams.has('token')) {
+  if (searchParams.has("token")) {
     window.location.replace(routes.logout());
   } else {
     $.get(routes.logout());
@@ -38,10 +38,7 @@ function handleValidateEmailSuccess(response, textStatus, xhr) {
 }
 
 function handleValidateEmailFailure(xhr, textStatus, error) {
-  if (
-    xhr.status == 429 &&
-    xhr.responseJSON.hasOwnProperty("Error_code")
-  ) {
+  if (xhr.status == 429 && xhr.responseJSON.hasOwnProperty("Error_code")) {
     switch (xhr.responseJSON.Error_code) {
       case 1:
         showSplashModalAlertBanner(xhr.responseJSON.Message, "danger");
@@ -54,10 +51,7 @@ function handleValidateEmailFailure(xhr, textStatus, error) {
     xhr.status == 400 &&
     xhr.responseJSON.hasOwnProperty("Error_code")
   ) {
-    if (
-      xhr.responseJSON.Error_code == 3 ||
-      xhr.responseJSON.Error_code == 4
-    ) {
+    if (xhr.responseJSON.Error_code == 3 || xhr.responseJSON.Error_code == 4) {
       showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
     }
   } else {
@@ -70,7 +64,7 @@ function handleValidateEmailFailure(xhr, textStatus, error) {
 function sendInitialEmailOnLoad() {
   // Send validation email after register, but not if token for validation is expired
   const searchParams = new URLSearchParams(window.location.search);
-  if (!searchParams.has('token')) {
+  if (!searchParams.has("token")) {
     handleValidateEmail();
   }
 }

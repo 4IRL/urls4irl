@@ -46,24 +46,23 @@ function handleRegisterSuccess(response, textStatus, xhr) {
 }
 
 function handleRegisterFailure(xhr, textStatus, error) {
-    if (xhr.responseJSON.hasOwnProperty("Error_code")) {
-      switch (xhr.status) {
-        case 400: {
-          handleImproperFormErrors(xhr.responseJSON);
-          $("#submit").removeAttr("disabled");
-          break;
-        }
-        case 401: {
-          // User found but email not yet validated
-          handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
-          $("input").attr("disabled", true);
-          break;
-        }
+  if (xhr.responseJSON.hasOwnProperty("Error_code")) {
+    switch (xhr.status) {
+      case 400: {
+        handleImproperFormErrors(xhr.responseJSON);
+        $("#submit").removeAttr("disabled");
+        break;
       }
-    } else {
-      // TODO: Handle other errors here.
-      showSplashModalAlertBanner("Unable to process request...", "danger");
-      console.log("You need to handle other errors!");
+      case 401: {
+        // User found but email not yet validated
+        handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
+        $("input").attr("disabled", true);
+        break;
+      }
     }
+  } else {
+    // TODO: Handle other errors here.
+    showSplashModalAlertBanner("Unable to process request...", "danger");
+    console.log("You need to handle other errors!");
+  }
 }
-

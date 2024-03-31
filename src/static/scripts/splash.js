@@ -28,7 +28,7 @@ function loginModalOpener() {
     if (xhr.status === 200) {
       $("#SplashModal .modal-content").html(data);
       bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
-    };
+    }
   });
 
   modalOpener.fail(() => {
@@ -44,7 +44,7 @@ function registerModalOpener() {
     if (xhr.status === 200) {
       $("#SplashModal .modal-content").html(data);
       bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
-    };
+    }
   });
 
   modalOpener.fail(() => {
@@ -79,28 +79,28 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".to-forgot-password").remove();
   const alertBanner = $("#SplashModalAlertBanner");
   alertBanner
-   .removeClass("alert-banner-splash-modal-hide")
-   .addClass("alert-info alert-banner-splash-modal-show")
-   .append($("<div>" + message + "</div>"))
-   .append(
-     $(
-       '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
-     )
-       .off("click")
-       .on("click", () => {
+    .removeClass("alert-banner-splash-modal-hide")
+    .addClass("alert-info alert-banner-splash-modal-show")
+    .append($("<div>" + message + "</div>"))
+    .append(
+      $(
+        '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
+      )
+        .off("click")
+        .on("click", () => {
           $("#SplashModal").off("hide.bs.modal", logoutOnExit);
           emailValidationModalOpener();
-       }),
-   );
+        }),
+    );
 
   $(".register-to-login-footer").remove();
   $(".modal-footer").remove();
 
-  const logoutOnExit = () => { 
-    $.get(routes.logout()) 
+  const logoutOnExit = () => {
+    $.get(routes.logout());
     $("#SplashModal").off("hide.bs.modal", logoutOnExit);
   };
-  $("#SplashModal").on("hide.bs.modal", logoutOnExit);     
+  $("#SplashModal").on("hide.bs.modal", logoutOnExit);
 }
 
 function emailValidationModalOpener() {
@@ -111,7 +111,10 @@ function emailValidationModalOpener() {
   });
 
   modalOpener.fail(() => {
-    showSplashModalAlertBanner("Unable to load email validation modal...", "danger");
+    showSplashModalAlertBanner(
+      "Unable to load email validation modal...",
+      "danger",
+    );
   });
 }
 

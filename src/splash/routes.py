@@ -259,6 +259,7 @@ def send_validation_email():
     )
     return _handle_email_sending_result(email_send_result)
 
+
 @splash.route("/validate/expired", methods=["GET"])
 def validate_email_expired():
     expired_token = request.args.get("token", None)
@@ -281,7 +282,7 @@ def validate_email_expired():
             "splash.html",
             validate_email_form=ValidateEmailForm(),
             email_token_is_expired=True,
-            expired_token_message=EMAILS.TOKEN_EXPIRED
+            expired_token_message=EMAILS.TOKEN_EXPIRED,
         ),
         200,
     )
@@ -392,9 +393,9 @@ def reset_password(token: str):
         abort(404)
 
     if (
-        reset_password_user.forgot_password is None or
-        reset_password_user.forgot_password.reset_token != token or
-        reset_password_user.forgot_password.is_more_than_hour_old()
+        reset_password_user.forgot_password is None
+        or reset_password_user.forgot_password.reset_token != token
+        or reset_password_user.forgot_password.is_more_than_hour_old()
     ):
         abort(404)
 
@@ -404,7 +405,7 @@ def reset_password(token: str):
         return render_template(
             "splash.html",
             is_resetting_password=True,
-            reset_password_form = reset_password_form
+            reset_password_form=reset_password_form,
         )
 
     if reset_password_form.validate_on_submit():

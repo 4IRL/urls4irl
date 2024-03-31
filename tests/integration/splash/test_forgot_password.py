@@ -242,6 +242,7 @@ def test_forgot_password_with_validated_email(
         assert len(forgot_password_objs) == 1
         assert forgot_password_objs[-1].attempts == 1
 
+
 def test_forgot_password_with_validated_email_uppercase(
     app, register_first_user, load_login_page
 ):

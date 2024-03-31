@@ -243,7 +243,9 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
         )
 
 
-def test_expired_token_accessed_shows_error_to_user(app, register_first_user_without_email_validation, load_register_page):
+def test_expired_token_accessed_shows_error_to_user(
+    app, register_first_user_without_email_validation, load_register_page
+):
     """
     GIVEN a user trying to validate their email
     WHEN they click on the validation link in their email after the token has expired
@@ -262,7 +264,8 @@ def test_expired_token_accessed_shows_error_to_user(app, register_first_user_wit
         db.session.commit()
 
     response = client.get(
-        url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=quick_expiring_token), follow_redirects=True
+        url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=quick_expiring_token),
+        follow_redirects=True,
     )
 
     assert EMAILS.TOKEN_EXPIRED.encode() in response.data

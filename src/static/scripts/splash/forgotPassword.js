@@ -1,5 +1,5 @@
 "use strict";
- 
+
 $("#submit").click((event) => handleForgotPassword(event));
 
 function handleForgotPassword(event) {
@@ -41,10 +41,7 @@ function disableSendPasswordResetEmailButton() {
 }
 
 function handleForgotPasswordFailure(xhr, textStatus, error) {
-  if (
-    xhr.status === 401 &&
-    xhr.responseJSON.hasOwnProperty("Error_code")
-  ) {
+  if (xhr.status === 401 && xhr.responseJSON.hasOwnProperty("Error_code")) {
     switch (xhr.responseJSON.Error_code) {
       case 1: {
         handleImproperFormErrors(xhr.responseJSON);

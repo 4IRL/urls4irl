@@ -30,7 +30,10 @@ function openForgotPasswordModal() {
   });
 
   modalOpener.fail(() => {
-    showSplashModalAlertBanner("Unable to load forgot password form...", "danger");
+    showSplashModalAlertBanner(
+      "Unable to load forgot password form...",
+      "danger",
+    );
   });
 }
 
@@ -78,4 +81,3 @@ function handleLoginFailure(xhr, textStatus, error) {
     console.log("You need to handle other errors!");
   }
 }
-
