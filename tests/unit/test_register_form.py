@@ -1,5 +1,6 @@
 from flask import url_for, request
 
+from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 from src.utils.strings.user_strs import USER_FAILURE as REGISTER_FAILURE
@@ -14,7 +15,7 @@ def test_register_user_form_only_username_csrf(load_register_page):
 
     client, csrf_token_string = load_register_page
     response = client.post(
-        url_for("splash.register_user"),
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "FakeUserName123",
@@ -26,7 +27,7 @@ def test_register_user_form_only_username_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 3
@@ -52,7 +53,7 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     INVALID_EMAIL_ADDRESS = ["Invalid email address."]
     client, csrf_token_string = load_register_page
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -64,7 +65,7 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 3
@@ -93,7 +94,7 @@ def test_register_user_form_only_valid_email_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only email and valid email
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -105,7 +106,7 @@ def test_register_user_form_only_valid_email_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -131,7 +132,7 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only confirm email and no email
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -143,7 +144,7 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 3
@@ -173,7 +174,7 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only password, short password
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -185,7 +186,7 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 3
@@ -215,7 +216,7 @@ def test_register_user_form_only_valid_password_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only password, valid password
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -227,7 +228,7 @@ def test_register_user_form_only_valid_password_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 3
@@ -253,7 +254,7 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only password confirm
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -265,7 +266,7 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 3
@@ -295,7 +296,7 @@ def test_register_user_form_no_csrf(load_register_page):
     client, _ = load_register_page
     # Only password confirm
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: "",
             REGISTER_FORM.USERNAME: "",
@@ -307,5 +308,5 @@ def test_register_user_form_no_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     assert b"<p>The CSRF token is missing.</p>" in response.data

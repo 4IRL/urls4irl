@@ -25,14 +25,13 @@ They must contain a positive, non-zero integer value associated with the given e
 #### Splash Page
 
 <details>
- <summary><code>GET</code> <code><b>/</b></code> <code>(brings users to the splash page to login/register)</code></summary>
+ <summary><code>GET</code> <code><b>/</b></code> <code>(brings users to the splash page to login/register/validate email)</code></summary>
 
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `text/html;charset=utf-8`         | `Renders the splash page to the user.` | Splash page shown to user. |
-> | `200`         | `text/html;charset=utf-8`         | `Renders the email confirmation modal to the user.` | If user logged in but not email validated. |
 > | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
 
@@ -41,6 +40,95 @@ They must contain a positive, non-zero integer value associated with the given e
 > ```bash
 > curl -X GET \
 >  https://urls4irl.app/ \
+> ```
+
+</details>
+
+------------------------------------------------------------------------------------------
+
+#### User Login
+
+<details>
+ <summary><code>GET</code> <code><b>/login</b></code> <code>(renders login modal on splash page)</code></summary>
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `text/html;charset=utf-8`         | `Register form HTML passed as response.` | Frontend takes HTML and renders in register modal. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects user and renders the email confirmation modal to the user.` | If user logged in but not email validated. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls4irl.app/login \
+> ```
+
+</details>
+
+<details>
+ <summary><code>POST</code> <code><b>/login</b></code> <code>(logs user in, generates session cookie)</code></summary>
+
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+
+> ```
+> Required form data:
+> username: %username%
+> password: %password%
+> csrf_token: %csrf_token%
+> ```
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `text/html;charset=utf-8`         | `Provides URL to user home page.` | On successful login, sends user to their home page, and generates a session cookie for them. |
+> | `400`         | `application/json`                | `See below.` | Form errors within login form. |
+> | `401`         | `application/json`                | `See below.` | User has not email validated. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 400 HTTP Code Response Body - Example
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to login user.",
+>     "errorCode": 2,
+>     "errors": [ 
+>       "username": ["This field is required."],
+>       "password": ["This field is required."]
+>     ]
+> }
+> ```
+
+###### 401 HTTP Code Response Body - Example
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "An account already exists with that information but the email has not been validated.",
+>     "errorCode": 1,
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X POST \
+>  https://urls4irl.app/register \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'email=EMAIL' \
+>  --data-urlencode 'confirm_email=EMAIL' \
+>  --data-urlencode 'username=USERNAME' \
+>  --data-urlencode 'password=PASSWORD' \
+>  --data-urlencode 'confirm_password=PASSWORD'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
 </details>

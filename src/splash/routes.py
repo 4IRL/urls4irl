@@ -40,9 +40,7 @@ splash = Blueprint("splash", __name__)
 @splash.route("/", methods=["GET"])
 def splash_page():
     """Splash page for an unlogged in user."""
-    if current_user.is_authenticated:
-        if not current_user.email_confirm.is_validated:
-            return render_template("splash.html", email_validation_modal=True)
+    if current_user.is_authenticated and current_user.email_confirm.is_validated:
         return redirect(url_for(ROUTES.UTUBS.HOME))
     return render_template("splash.html")
 
@@ -188,7 +186,7 @@ def login():
                     STD_JSON.ERRORS: login_form.errors,
                 }
             ),
-            401,
+            400,
         )
 
     return render_template("login.html", login_form=login_form)

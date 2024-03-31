@@ -1,5 +1,6 @@
 from flask import url_for, request
 
+from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.splash_form_strs import LOGIN_FORM
 from src.utils.strings.user_strs import USER_FAILURE as LOGIN_FAILURE
@@ -16,15 +17,15 @@ def test_login_no_password(load_login_page):
 
     # No password
     response = client.post(
-        "/login",
+        url_for(ROUTES.SPLASH.LOGIN),
         data={
             LOGIN_FORM.CSRF_TOKEN: csrf_token_string,
             LOGIN_FORM.USERNAME: "FakeUserName123",
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("splash.login")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.LOGIN)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -51,15 +52,15 @@ def test_login_no_username(load_login_page):
 
     # No username
     response = client.post(
-        "/login",
+        url_for(ROUTES.SPLASH.LOGIN),
         data={
             LOGIN_FORM.CSRF_TOKEN: csrf_token_string,
             LOGIN_FORM.PASSWORD: "FakeUserName123",
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("splash.login")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.LOGIN)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -84,14 +85,14 @@ def test_login_no_username_or_password(load_login_page):
 
     # No username or password
     response = client.post(
-        "/login",
+        url_for(ROUTES.SPLASH.LOGIN),
         data={
             LOGIN_FORM.CSRF_TOKEN: csrf_token_string,
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("splash.login")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.LOGIN)
     response_json = response.json
 
     assert int(response_json[STD_JSON.ERROR_CODE]) == 2
@@ -118,5 +119,5 @@ def test_login_no_csrf(load_login_page):
     response = client.post("/login", data={})
 
     assert response.status_code == 400
-    assert request.path == url_for("splash.login")
+    assert request.path == url_for(ROUTES.SPLASH.LOGIN)
     assert b"<p>The CSRF token is missing.</p>" in response.data

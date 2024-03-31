@@ -92,7 +92,7 @@ def test_login_unregistered_user(load_login_page):
         in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME]
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
 
     # Ensure no one is logged in
     assert current_user.get_id() is None
@@ -142,7 +142,7 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
         in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
 
     # Ensure no one is logged in
     assert current_user.get_id() is None

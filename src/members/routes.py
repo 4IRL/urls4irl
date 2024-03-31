@@ -30,7 +30,7 @@ def remove_member(utub_id: int, user_id: int):
         utub_id (int): ID of the UTub to remove the user from
         user_id (int): ID of the User to remove from the UTub
     """
-    current_utub = Utub.query.get_or_404(utub_id)
+    current_utub: Utub = Utub.query.get_or_404(utub_id)
 
     if user_id == current_utub.created_by.id:
         # Creator tried to remove themselves, not allowed
