@@ -48,7 +48,7 @@ function getSelectedURLID() {
 
 // Simple function to streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
 function getSelectedURLCard() {
-  return $("#listURLs").find(".card[urlid = " + getSelectedURLID() + "]")[0];
+  return $("#listURLs").find(".url[urlid = " + getSelectedURLID() + "]");
 }
 
 // Prevent deselection of URL while modifying its values (e.g. adding a tag, editing URL string or title)
