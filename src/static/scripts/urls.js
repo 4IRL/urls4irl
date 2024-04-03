@@ -608,7 +608,7 @@ function createNewTagInputField() {
   $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
 
   $(submit)
-    .addClass("fa fa-check-square fa-2x text-success mx-1")
+    .addClass("mx-1 green-clickable submitAddTag")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -616,18 +616,23 @@ function createNewTagInputField() {
     });
 
   $(cancel)
-    .addClass("fa bi-x-square-fill fa-2x text-danger mx-1")
+    .addClass("mx-1 cancelAddTag")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
       hideIfShown(wrapper);
     });
 
-  $(wrapperInput).append(input);
+  $(wrapperInput)
+    .append(input);
 
-  $(wrapperBtns).append(submit).append(cancel);
+  $(wrapperBtns)
+    .append(submit)
+    .append(cancel);
 
-  $(wrapper).append(wrapperInput).append(wrapperBtns);
+  $(wrapper)
+    .append(wrapperInput)
+    .append(wrapperBtns);
 
   return wrapper;
 }

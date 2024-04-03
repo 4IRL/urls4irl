@@ -10,10 +10,9 @@ function addTagShowInput() {
     let URLCard = getSelectedURLCard();
   
     // Show temporary div element containing input
-    let inputEl = $(URLCard).find(".addTag");
-    let inputDiv = inputEl.closest(".createDiv");
+    let inputEl = URLCard.find(".addTag");
     inputEl.addClass("activeInput");
-    showIfHidden(inputDiv);
+    showIfHidden(inputEl.closest(".createDiv"));
     highlightInput(inputEl);
   
     // 02/29/24 Ideally this input would be a dropdown select input that allowed typing. As user types, selection menu filters on each keypress. User can either choose a suggested existing option, or enter a new custom tag
