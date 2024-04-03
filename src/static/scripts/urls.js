@@ -58,7 +58,8 @@ function unbindSelectURLBehavior() {
 
 // Rebinds selection click behavior after URL-modifying post requests are complete
 function rebindSelectBehavior(URLID) {
-  $(getSelectedURLCard()).closest(".cardCol")
+  $(getSelectedURLCard())
+    .closest(".cardCol")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -211,15 +212,13 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       toggleSelectedURL(URLID);
     });
 
-  $(card)
-    .addClass("card url")
-    .attr({
-      urlid: URLID,
-      // draggable: "true",
-      ondrop: "dropIt(event)",
-      ondragover: "allowDrop(event)",
-      ondragstart: "dragStart(event)",
-    });
+  $(card).addClass("card url").attr({
+    urlid: URLID,
+    // draggable: "true",
+    ondrop: "dropIt(event)",
+    ondragover: "allowDrop(event)",
+    ondragstart: "dragStart(event)",
+  });
 
   // $(cardImg).attr({
   //     'src': '...',
@@ -227,15 +226,11 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   // })
   // .addClass("card-img-top")
 
-  $(URLTitleWrap)
-    .addClass("URLTitle")
-    .attr({
-      style: "display:flex",
-    });
+  $(URLTitleWrap).addClass("URLTitle").attr({
+    style: "display:flex",
+  });
 
-  $(URLTitle)
-    .addClass("card-title")
-    .text(title);
+  $(URLTitle).addClass("card-title").text(title);
 
   $(editURLTitleBtn)
     .addClass("editURLTitleBtn")
@@ -293,13 +288,9 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       });
     });
 
-  $(URLWrap)
-    .addClass("URL")
-    .attr({ style: "display:flex" });
+  $(URLWrap).addClass("URL").attr({ style: "display:flex" });
 
-  $(URL)
-    .addClass("card-text")
-    .text(string);
+  $(URL).addClass("card-text").text(string);
 
   $(editURLBtn)
     .addClass("editURLBtn")
@@ -357,12 +348,9 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       });
     });
 
-  $(URLInfo)
-    .addClass("card-body URLInfo");
+  $(URLInfo).addClass("card-body URLInfo");
 
-  $(URLTags)
-    .addClass("card-body URLTags")
-    .attr({ style: "display: none" });
+  $(URLTags).addClass("card-body URLTags").attr({ style: "display: none" });
 
   // Add tag bades
   for (let j in tagArray) {
@@ -420,17 +408,13 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
 
   $(card).append(URLInfo);
 
-  $(URLTitleWrap)
-    .append(URLTitle)
-    .append(editURLTitleBtn);
+  $(URLTitleWrap).append(URLTitle).append(editURLTitleBtn);
   $(editURLTitleWrap)
     .append(editURLTitleLabel)
     .append(editURLTitleInput)
     .append(submitEditURLTitleBtn)
     .append(cancelEditURLTitleBtn);
-  $(URLWrap)
-    .append(URL)
-    .append(editURLBtn);
+  $(URLWrap).append(URL).append(editURLBtn);
   $(editURLWrap)
     .append(editURLLabel)
     .append(editURLInput)
@@ -445,10 +429,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   $(card).append(URLTags);
 
   $(card).append(URLOptions);
-  $(URLOptions)
-    .append(accessURLBtn)
-    .append(addTagBtn)
-    .append(delURLBtn);
+  $(URLOptions).append(accessURLBtn).append(addTagBtn).append(delURLBtn);
   // $(URLOptions).append(submitEditBtn);
   // $(URLOptions).append(cancelEditBtn);
 
@@ -473,23 +454,19 @@ function createNewURLInputField() {
   const addURLBtn = document.createElement("button");
   const delURLBtn = document.createElement("button");
 
-  $(col)
-    .addClass("createDiv cardCol mb-3 col-md-10 col-lg-10 col-xl-10")
-    .attr({
-      style: "display: none",
-      // onblur: "hideInput(event)",
-    });
+  $(col).addClass("createDiv cardCol mb-3 col-md-10 col-lg-10 col-xl-10").attr({
+    style: "display: none",
+    // onblur: "hideInput(event)",
+  });
 
-  $(card)
-    .addClass("card selected")
-    .attr({
-      urlid: 0,
-      id: "addURL",
-      // draggable: "true",
-      ondrop: "dropIt(event)",
-      ondragover: "allowDrop(event)",
-      ondragstart: "dragStart(event)",
-    });
+  $(card).addClass("card selected").attr({
+    urlid: 0,
+    id: "addURL",
+    // draggable: "true",
+    ondrop: "dropIt(event)",
+    ondragover: "allowDrop(event)",
+    ondragstart: "dragStart(event)",
+  });
 
   // $(cardImg).attr({
   //     'class': 'card-img-top',
@@ -508,18 +485,14 @@ function createNewURLInputField() {
     })
     .html("<b> URL Title </b>");
 
-  $(newURLTitle)
-    .addClass("card-title userInput")
-    .attr({
-      id: "newURLTitle",
-      placeholder: "New URL Title",
-      type: "text",
-      size: "50",
-    });
+  $(newURLTitle).addClass("card-title userInput").attr({
+    id: "newURLTitle",
+    placeholder: "New URL Title",
+    type: "text",
+    size: "50",
+  });
 
-  $(newWrap1)
-    .append(newURLTitleLabel)
-    .append(newURLTitle);
+  $(newWrap1).append(newURLTitleLabel).append(newURLTitle);
 
   $(newURLStringLabel)
     .attr({
@@ -528,22 +501,16 @@ function createNewURLInputField() {
     })
     .html("<b> URL </b>");
 
-  $(newURLString)
-    .addClass("card-text userInput")
-    .attr({
-      id: "newURLString",
-      placeholder: "New URL",
-      type: "text",
-      size: "50",
-    });
+  $(newURLString).addClass("card-text userInput").attr({
+    id: "newURLString",
+    placeholder: "New URL",
+    type: "text",
+    size: "50",
+  });
 
-  $(newWrap2)
-    .append(newURLStringLabel)
-    .append(newURLString);
+  $(newWrap2).append(newURLStringLabel).append(newURLString);
 
-  $(newWrap)
-    .append(newWrap1)
-    .append(newWrap2);
+  $(newWrap).append(newWrap1).append(newWrap2);
 
   $(URLTags).addClass("card-body URLTags");
 
@@ -556,7 +523,7 @@ function createNewURLInputField() {
   $(addURLBtn)
     .addClass("card-link btn btn-success")
     .attr({
-      type: "button"
+      type: "button",
     })
     .text("Add URL")
     .on("click", function (e) {
@@ -568,7 +535,7 @@ function createNewURLInputField() {
   $(delURLBtn)
     .addClass("card-link btn btn-danger")
     .attr({
-      type: "button"
+      type: "button",
     })
     .text("Cancel")
     .on("click", function (e) {
@@ -636,11 +603,9 @@ function createNewTagInputField() {
     })
     .addClass("tag userInput addTag");
 
-  $(wrapperInput)
-    .addClass("col-3 col-lg-3 mb-md-0");
+  $(wrapperInput).addClass("col-3 col-lg-3 mb-md-0");
 
-  $(wrapperBtns)
-    .addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
+  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
 
   $(submit)
     .addClass("fa fa-check-square fa-2x text-success mx-1")
@@ -649,7 +614,6 @@ function createNewTagInputField() {
       e.preventDefault();
       addTag();
     });
-
 
   $(cancel)
     .addClass("fa bi-x-square-fill fa-2x text-danger mx-1")
@@ -661,13 +625,9 @@ function createNewTagInputField() {
 
   $(wrapperInput).append(input);
 
-  $(wrapperBtns)
-    .append(submit)
-    .append(cancel);
+  $(wrapperBtns).append(submit).append(cancel);
 
-  $(wrapper)
-    .append(wrapperInput)
-    .append(wrapperBtns);
+  $(wrapper).append(wrapperInput).append(wrapperBtns);
 
   return wrapper;
 }

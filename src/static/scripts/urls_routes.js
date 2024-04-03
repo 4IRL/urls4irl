@@ -2,395 +2,395 @@
 
 // Displays new URL input prompt
 function addURLHideInput() {
-    hideInput("addURL");
+  hideInput("addURL");
 }
 
 // Displays new URL input prompt
 function addURLShowInput() {
-    showInput("addURL");
-    highlightInput($("#newURLTitle"));
+  showInput("addURL");
+  highlightInput($("#newURLTitle"));
 }
 
 // Handles addition of new URL after user submission
 function addURL() {
-    // Extract data to submit in POST request
-    [postURL, data] = addURLSetup();
+  // Extract data to submit in POST request
+  [postURL, data] = addURLSetup();
 
-    AJAXCall("post", postURL, data);
+  AJAXCall("post", postURL, data);
 
-    // Handle response
-    request.done(function (response, textStatus, xhr) {
-        console.log("success");
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    console.log("success");
 
-        if (xhr.status == 200) {
-            addURLSuccess(response);
-        }
-    });
+    if (xhr.status == 200) {
+      addURLSuccess(response);
+    }
+  });
 
-    request.fail(function (response, textStatus, xhr) {
-        console.log("failed");
+  request.fail(function (response, textStatus, xhr) {
+    console.log("failed");
 
-        if (xhr.status == 404) {
-            // Reroute to custom U4I 404 error page
-        } else {
-            addURLFailure(response);
-        }
-    });
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      addURLFailure(response);
+    }
+  });
 }
 
 // Prepares post request inputs for addition of a new URL
 function addURLSetup() {
-    // Assemble post request route
-    let postURL = routes.addURL(getActiveUTubID());
+  // Assemble post request route
+  let postURL = routes.addURL(getActiveUTubID());
 
-    // Assemble submission data
-    let newURLTitle = $("#newURLTitle").val();
-    let newURL = $("#newURLString").val();
-    data = {
-        url_string: newURL,
-        url_title: newURLTitle,
-    };
+  // Assemble submission data
+  let newURLTitle = $("#newURLTitle").val();
+  let newURL = $("#newURLString").val();
+  data = {
+    url_string: newURL,
+    url_title: newURLTitle,
+  };
 
-    return [postURL, data];
+  return [postURL, data];
 }
 
 // Displays changes related to a successful addition of a new URL
 function addURLSuccess(response) {
-    resetNewURLForm();
+  resetNewURLForm();
 
-    // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
-    let URLcol = createURLBlock(
-        response.URL.url_ID,
-        response.URL.url_string,
-        response.URL.url_title,
-        [],
-        [],
-    );
+  // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
+  let URLcol = createURLBlock(
+    response.URL.url_ID,
+    response.URL.url_string,
+    response.URL.url_title,
+    [],
+    [],
+  );
 
-    $("#URLFocusRow").append(URLcol);
+  $("#URLFocusRow").append(URLcol);
 
-    displayState1URLDeck();
+  displayState1URLDeck();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
 function addURLFailure(response) {
-    console.log(response);
-    console.log("Basic implementation. Needs revision");
-    console.log(response.responseJSON.Error_code);
-    console.log(response.responseJSON.Message);
-    // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to user?
-    // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
+  console.log(response);
+  console.log("Basic implementation. Needs revision");
+  console.log(response.responseJSON.Error_code);
+  console.log(response.responseJSON.Message);
+  // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to user?
+  // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
 }
 
 /* Edit URL */
 
 // Shows edit URL inputs
 function editURLShowInput() {
-    // Show edit submission and cancel button, hide edit button
-    const selectedCardDiv = getSelectedURLCard();
-    const editURLInput = selectedCardDiv.find(".editURL");
-    const URL = selectedCardDiv.find(".URL");
+  // Show edit submission and cancel button, hide edit button
+  const selectedCardDiv = getSelectedURLCard();
+  const editURLInput = selectedCardDiv.find(".editURL");
+  const URL = selectedCardDiv.find(".URL");
 
-    // Show input field
-    showIfHidden(editURLInput.closest(".createDiv"));
+  // Show input field
+  showIfHidden(editURLInput.closest(".createDiv"));
 
-    // Hide published value
-    hideIfShown(URL);
+  // Hide published value
+  hideIfShown(URL);
 
-    // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
-    unbindSelectURLBehavior();
+  // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
+  unbindSelectURLBehavior();
 }
 
 // Hides edit URL inputs
 function editURLHideInput() {
-    // Show edit button, hide other buttons
-    const selectedCardDiv = getSelectedURLCard();
-    const editURLInput = selectedCardDiv.find(".editURL");
-    const URL = selectedCardDiv.find(".URL");
+  // Show edit button, hide other buttons
+  const selectedCardDiv = getSelectedURLCard();
+  const editURLInput = selectedCardDiv.find(".editURL");
+  const URL = selectedCardDiv.find(".URL");
 
-    // Updating input field placeholders
-    editURLInput.text(URL.find('card-text').text());
+  // Updating input field placeholders
+  editURLInput.text(URL.find("card-text").text());
 
-    // Hide input field
-    hideIfShown(editURLInput.closest(".createDiv"));
+  // Hide input field
+  hideIfShown(editURLInput.closest(".createDiv"));
 
-    // Show published value
-    showIfHidden(URL);
+  // Show published value
+  showIfHidden(URL);
 
-    // Rebind select behavior
-    rebindSelectBehavior(getSelectedURLID());
+  // Rebind select behavior
+  rebindSelectBehavior(getSelectedURLID());
 }
 
 // Handles edition of an existing URL
 function editURL() {
-    // Extract data to submit in POST request
-    [postURL, data] = editURLSetup();
+  // Extract data to submit in POST request
+  [postURL, data] = editURLSetup();
 
-    AJAXCall("post", postURL, data);
+  AJAXCall("post", postURL, data);
 
-    // Handle response
-    request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-            editURLSuccess(response);
-        }
-    });
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    if (xhr.status == 200) {
+      editURLSuccess(response);
+    }
+  });
 
-    request.fail(function (response, textStatus, xhr) {
-        if (xhr.status == 404) {
-            // Reroute to custom U4I 404 error page
-        } else {
-            editURLFail(response);
-        }
-    });
+  request.fail(function (response, textStatus, xhr) {
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      editURLFail(response);
+    }
+  });
 }
 
 // Prepares post request inputs for edition of a URL
 function editURLSetup() {
-    let postURL = routes.editURL(getActiveUTubID(), getSelectedURLID());
+  let postURL = routes.editURL(getActiveUTubID(), getSelectedURLID());
 
-    let editedURL = getSelectedURLCard().find(".editURL")[0].value;
+  let editedURL = getSelectedURLCard().find(".editURL")[0].value;
 
-    data = { url_string: editedURL };
+  data = { url_string: editedURL };
 
-    return [postURL, data];
+  return [postURL, data];
 }
 
 // Displays changes related to a successful edition of a URL
 function editURLSuccess(response) {
-    // Extract response data
-    let editedURLID = response.URL.url_ID;
-    let editedURLString = response.URL.url_string;
-    
-    const selectedCardDiv = getSelectedURLCard();
+  // Extract response data
+  let editedURLID = response.URL.url_ID;
+  let editedURLString = response.URL.url_string;
 
-    // Update URL ID
-    selectedCardDiv.attr("urlid", editedURLID);
+  const selectedCardDiv = getSelectedURLCard();
 
-    // If edit URL action, rebind the ability to select/deselect URL by clicking it
-    rebindSelectBehavior(getSelectedURLID());
+  // Update URL ID
+  selectedCardDiv.attr("urlid", editedURLID);
 
-    // Update URL body with latest published data
-    selectedCardDiv.find(".card-text").text(editedURLString);
+  // If edit URL action, rebind the ability to select/deselect URL by clicking it
+  rebindSelectBehavior(getSelectedURLID());
 
-    // Update URL options
-    selectedCardDiv
-        .find(".accessURLBtn")
-        .off("click")
-        .on("click", function (e) {
-            e.stopPropagation();
-            e.preventDefault();
-            accessLink(editedURLString);
-        });
+  // Update URL body with latest published data
+  selectedCardDiv.find(".card-text").text(editedURLString);
 
-    editURLHideInput();
+  // Update URL options
+  selectedCardDiv
+    .find(".accessURLBtn")
+    .off("click")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      accessLink(editedURLString);
+    });
+
+  editURLHideInput();
 }
 
 // Displays appropriate prompts and options to user following a failed edition of a URL
 function editURLFail(response) {
-    console.log("Error: Could not edit URL");
-    console.log(
-        "Failure. Error code: " +
-        response.responseJSON.Error_code +
-        ". Status: " +
-        response.responseJSON.Message,
-    );
+  console.log("Error: Could not edit URL");
+  console.log(
+    "Failure. Error code: " +
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
+  );
 }
 
 /* Edit URL Title */
 
 // Shows edit URL Title inputs
 function editURLTitleShowInput() {
-    // Show edit submission and cancel button, hide edit button
-    const selectedCardDiv = getSelectedURLCard();
-    const editURLTitleInput = selectedCardDiv.find(".editURLTitle");
-    const URLTitle = selectedCardDiv.find(".URLTitle");
+  // Show edit submission and cancel button, hide edit button
+  const selectedCardDiv = getSelectedURLCard();
+  const editURLTitleInput = selectedCardDiv.find(".editURLTitle");
+  const URLTitle = selectedCardDiv.find(".URLTitle");
 
-    // Show input field
-    showIfHidden(editURLTitleInput.closest(".createDiv"));
+  // Show input field
+  showIfHidden(editURLTitleInput.closest(".createDiv"));
 
-    // Hide published value
-    hideIfShown(URLTitle);
+  // Hide published value
+  hideIfShown(URLTitle);
 
-    // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
-    unbindSelectURLBehavior();
+  // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
+  unbindSelectURLBehavior();
 }
 
 // Hides edit URL Title inputs
 function editURLTitleHideInput() {
-    // Show edit button, hide other buttons
-    const selectedCardDiv = getSelectedURLCard();
-    const editURLTitleInput = selectedCardDiv.find(".editURLTitle");
-    const URLTitle = selectedCardDiv.find(".URLTitle");
-    
-    // Updating input field placeholders
-    editURLTitleInput.text(URLTitle.find('card-title').text());
+  // Show edit button, hide other buttons
+  const selectedCardDiv = getSelectedURLCard();
+  const editURLTitleInput = selectedCardDiv.find(".editURLTitle");
+  const URLTitle = selectedCardDiv.find(".URLTitle");
 
-    // Hide input field
-    hideIfShown(editURLTitleInput.closest(".createDiv"));
+  // Updating input field placeholders
+  editURLTitleInput.text(URLTitle.find("card-title").text());
 
-    // Show published value
-    showIfHidden(URLTitle);
+  // Hide input field
+  hideIfShown(editURLTitleInput.closest(".createDiv"));
 
-    // Rebind select behavior
-    rebindSelectBehavior(getSelectedURLID());
+  // Show published value
+  showIfHidden(URLTitle);
+
+  // Rebind select behavior
+  rebindSelectBehavior(getSelectedURLID());
 }
 
 // Handles edition of an existing URL
 function editURLTitle() {
-    // Extract data to submit in POST request
-    [postURL, data] = editURLTitleSetup();
+  // Extract data to submit in POST request
+  [postURL, data] = editURLTitleSetup();
 
-    AJAXCall("post", postURL, data);
+  AJAXCall("post", postURL, data);
 
-    // Handle response
-    request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-            editURLTitleSuccess(response);
-        }
-    });
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    if (xhr.status == 200) {
+      editURLTitleSuccess(response);
+    }
+  });
 
-    request.fail(function (response, textStatus, xhr) {
-        if (xhr.status == 404) {
-            // Reroute to custom U4I 404 error page
-        } else {
-            editURLTitleFail(response);
-        }
-    });
+  request.fail(function (response, textStatus, xhr) {
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      editURLTitleFail(response);
+    }
+  });
 }
 
 // Prepares post request inputs for edition of a URL
 function editURLTitleSetup() {
-    let postURL = routes.editURLTitle(getActiveUTubID(), getSelectedURLID());
+  let postURL = routes.editURLTitle(getActiveUTubID(), getSelectedURLID());
 
-    let editedURLTitle = getSelectedURLCard().find(".editURLTitle")[0].value;
-    
-    data = { url_title: editedURLTitle };
+  let editedURLTitle = getSelectedURLCard().find(".editURLTitle")[0].value;
 
-    return [postURL, data];
+  data = { url_title: editedURLTitle };
+
+  return [postURL, data];
 }
 
 // Displays changes related to a successful edition of a URL
 function editURLTitleSuccess(response) {
-    // Extract response data
-    let editedURLTitle = response.URL.url_title;
+  // Extract response data
+  let editedURLTitle = response.URL.url_title;
 
-    const selectedCardDiv = getSelectedURLCard();
+  const selectedCardDiv = getSelectedURLCard();
 
-    // If edit URL action, rebind the ability to select/deselect URL by clicking it
-    rebindSelectBehavior(getSelectedURLID());
+  // If edit URL action, rebind the ability to select/deselect URL by clicking it
+  rebindSelectBehavior(getSelectedURLID());
 
-    // Update URL body with latest published data
-    selectedCardDiv.find(".card-title").text(editedURLTitle);
+  // Update URL body with latest published data
+  selectedCardDiv.find(".card-title").text(editedURLTitle);
 
-    editURLTitleHideInput();
+  editURLTitleHideInput();
 }
 
 // Displays appropriate prompts and options to user following a failed edition of a URL
 function editURLTitleFail(response) {
-    console.log("Error: Could not edit URL");
-    console.log(
-        "Failure. Error code: " +
-        response.responseJSON.Error_code +
-        ". Status: " +
-        response.responseJSON.Message,
-    );
+  console.log("Error: Could not edit URL");
+  console.log(
+    "Failure. Error code: " +
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
+  );
 }
 
 /* Delete URL */
 
 // Hide confirmation modal for removal of the selected URL
 function deleteURLHideModal() {
-    $("#confirmModal").modal("hide");
-    unbindEnter();
+  $("#confirmModal").modal("hide");
+  unbindEnter();
 }
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function deleteURLShowModal() {
-    let modalTitle = "Are you sure you want to delete this URL from the UTub?";
-    let buttonTextDismiss = "Just kidding";
-    let buttonTextSubmit = "Delete URL";
+  let modalTitle = "Are you sure you want to delete this URL from the UTub?";
+  let buttonTextDismiss = "Just kidding";
+  let buttonTextSubmit = "Delete URL";
 
-    $("#confirmModalTitle").text(modalTitle);
+  $("#confirmModalTitle").text(modalTitle);
 
-    $("#modalDismiss")
-        .off("click")
-        .on("click", function (e) {
-            e.preventDefault();
-            removeURLHideModal();
-        })
-        .text(buttonTextDismiss);
-    // Esc key cancels operation
-    bindKeyToFunction(removeURLHideModal, 27);
+  $("#modalDismiss")
+    .off("click")
+    .on("click", function (e) {
+      e.preventDefault();
+      removeURLHideModal();
+    })
+    .text(buttonTextDismiss);
+  // Esc key cancels operation
+  bindKeyToFunction(removeURLHideModal, 27);
 
-    $("#modalSubmit")
-        .off("click")
-        .on("click", function (e) {
-            e.preventDefault();
-            removeURL();
-        })
-        .text(buttonTextSubmit);
-    // Enter key sends operation
-    bindKeyToFunction(removeURL, 13);
+  $("#modalSubmit")
+    .off("click")
+    .on("click", function (e) {
+      e.preventDefault();
+      removeURL();
+    })
+    .text(buttonTextSubmit);
+  // Enter key sends operation
+  bindKeyToFunction(removeURL, 13);
 
-    $("#confirmModal").modal("show");
+  $("#confirmModal").modal("show");
 
-    hideIfShown($("#modalRedirect"));
+  hideIfShown($("#modalRedirect"));
 }
 
 // Handles post request and response for removing an existing URL from current UTub, after confirmation
 function deleteURL() {
-    // Extract data to submit in POST request
-    postURL = deleteURLSetup();
+  // Extract data to submit in POST request
+  postURL = deleteURLSetup();
 
-    let request = AJAXCall("post", postURL, []);
+  let request = AJAXCall("post", postURL, []);
 
-    // Handle response
-    request.done(function (response, textStatus, xhr) {
-        console.log("success");
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    console.log("success");
 
-        if (xhr.status == 200) {
-            deleteURLSuccess();
-        }
-    });
+    if (xhr.status == 200) {
+      deleteURLSuccess();
+    }
+  });
 
-    request.fail(function (response, textStatus, xhr) {
-        console.log("failed");
+  request.fail(function (response, textStatus, xhr) {
+    console.log("failed");
 
-        if (xhr.status == 404) {
-            // Reroute to custom U4I 404 error page
-        } else {
-            removeURLFail(response);
-        }
-    });
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      removeURLFail(response);
+    }
+  });
 }
 
 // Prepares post request inputs for removal of a URL
 function deleteURLSetup() {
-    let postURL = routes.deleteURL(getActiveUTubID(), getSelectedURLID());
+  let postURL = routes.deleteURL(getActiveUTubID(), getSelectedURLID());
 
-    return postURL;
+  return postURL;
 }
 
 // Displays changes related to a successful removal of a URL
 function deleteURLSuccess() {
-    // Close modal
-    $("#confirmModal").modal("hide");
+  // Close modal
+  $("#confirmModal").modal("hide");
 
-    let cardCol = $("div[urlid=" + getSelectedURLID() + "]").closest(".cardCol");
-    cardCol.fadeOut();
-    cardCol.remove();
+  let cardCol = $("div[urlid=" + getSelectedURLID() + "]").closest(".cardCol");
+  cardCol.fadeOut();
+  cardCol.remove();
 
-    displayState1URLDeck();
+  displayState1URLDeck();
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
 function deleteURLFail(xhr, textStatus, error) {
-    console.log("Error: Could not delete URL");
+  console.log("Error: Could not delete URL");
 
-    if (xhr.status == 409) {
-        console.log(
-            "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-        );
-        console.log("Error: " + error.Error_code);
-    }
-}  
+  if (xhr.status == 409) {
+    console.log(
+      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
+    );
+    console.log("Error: " + error.Error_code);
+  }
+}

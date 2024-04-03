@@ -271,19 +271,15 @@ function createNewUTubInputField() {
   const submitBtn = makeSubmitButton(30);
   const cancelBtn = makeCancelButton(30);
 
-  $(wrapper)
-    .addClass("createDiv row")
-    .attr({ style: "display: none" });
+  $(wrapper).addClass("createDiv row").attr({ style: "display: none" });
 
   $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
 
-  $(input)
-    .addClass("userInput")
-    .attr({
-      type: "text",
-      id: "createUTub",
-      placeholder: "New UTub name",
-    });
+  $(input).addClass("userInput").attr({
+    type: "text",
+    id: "createUTub",
+    placeholder: "New UTub name",
+  });
 
   $(wrapperInput).append(input);
 
@@ -292,9 +288,7 @@ function createNewUTubInputField() {
     .append(submitBtn)
     .append(cancelBtn);
 
-  $(wrapper)
-    .append(wrapperInput)
-    .append(wrapperBtns);
+  $(wrapper).append(wrapperInput).append(wrapperBtns);
 
   return wrapper;
 }

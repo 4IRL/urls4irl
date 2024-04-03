@@ -187,11 +187,11 @@ function makeEditButton(wh) {
   $(editBtn)
     .addClass("mx-1 py-2")
     .attr({
-      style: "color: #545454"
+      style: "color: #545454",
     })
     .html(htmlString);
 
-  return editBtn
+  return editBtn;
 }
 
 // Creates submit button
@@ -208,11 +208,9 @@ function makeSubmitButton(wh) {
     '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z"/>' +
     "</svg>";
 
-  $(submitBtn)
-    .addClass("mx-1 green-clickable")
-    .html(htmlString);
+  $(submitBtn).addClass("mx-1 green-clickable").html(htmlString);
 
-  return submitBtn
+  return submitBtn;
 }
 
 // Creates cancel button
@@ -229,11 +227,9 @@ function makeCancelButton(wh) {
     '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
     "</svg>";
 
-  $(cancelBtn)
-    .addClass("mx-1")
-    .html(htmlString);
+  $(cancelBtn).addClass("mx-1").html(htmlString);
 
-  return cancelBtn
+  return cancelBtn;
 }
 
 // I'd like a universal function to bind enter key but it doesn't work...01/03/24
