@@ -191,7 +191,7 @@ function editUTubDescription() {
 
 // Handles preparation for post request to edit an existing UTub
 function editUTubNameSetup() {
-  let postURL = routes.editUTub(getActiveUTubID());
+  let postURL = routes.editUTubName(getActiveUTubID());
 
   let editedUTubName = $("#editUTubName").val();
   data = { name: editedUTubName };

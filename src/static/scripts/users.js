@@ -31,7 +31,7 @@ $(document).ready(function () {
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
 function getCurrentUserID() {
-  return $("li.nav-item.user").attr("id");
+  return parseInt($("li.nav-item.user").attr("id"));
 }
 
 // Simple function to streamline the jQuery selector extraction of selected UTub creator user ID. And makes it easier in case the ID is encoded in a new location in the future
@@ -222,6 +222,8 @@ function displayState0UserDeck() {
 function displayState1UserDeck() {
   // Subheader prompt shown
   showIfHidden($("#UserDeckSubheader").closest(".row"));
+
+  showIfHidden($("#addUserBtn"));
 
   let numOfUsers = $("#listUsers").find("span.user").length + 1; // plus 1 for owner
   let UserDeckSubheader = $("#UserDeckSubheader");

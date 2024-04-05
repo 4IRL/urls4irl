@@ -211,7 +211,7 @@ function removeTagSuccess(tagID) {
         $("#selectAll").remove();
         displayState1TagDeck();
     } else {
-        displayState1TagDeck();
+        displayState2TagDeck();
     }
 
 }

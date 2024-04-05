@@ -18,17 +18,13 @@ function addUserShowInput() {
     AJAXCall("post", postURL, data);
   
     // Handle response
-    request.done(function (response, textStatus, xhr) {
-      console.log("success");
-  
+    request.done(function (response, textStatus, xhr) {  
       if (xhr.status == 200) {
         addUserSuccess(response);
       }
     });
   
     request.fail(function (response, textStatus, xhr) {
-      console.log("failed");
-  
       if (xhr.status == 404) {
         // Reroute to custom U4I 404 error page
       } else {
@@ -39,7 +35,7 @@ function addUserShowInput() {
   
   // This function will extract the current selection data needed for POST request (user ID)
   function addUserSetup() {
-    let postURL = ADD_USER_ROUTE + getActiveUTubID();
+    let postURL = routes.addUser(getActiveUTubID());
   
     let newUsername = $("#addUser").val();
     data = {
@@ -58,11 +54,13 @@ function addUserShowInput() {
   
     // Temporarily remove createDiv to reattach after addition of new User
     let createUser = $("#addUser").closest(".createDiv").detach();
+
+    const parent = $("#listUsers");
   
     // Create and append newly created User badge
-    $("#listUsers").append(createUserBadge(response.User_ID_added, newUser));
+    parent.append(createUserBadge(response.User_ID_added, newUser));
     // Reorder createDiv after latest created UTub selector
-    $("#listUsers").append(createUser);
+    parent.append(createUser);
   
     displayState1UserDeck();
   }
@@ -130,16 +128,12 @@ function addUserShowInput() {
   
     // Handle response
     request.done(function (response, textStatus, xhr) {
-      console.log("success");
-  
       if (xhr.status == 200) {
         removeUserSuccess(userID);
       }
     });
   
-    request.fail(function (response, textStatus, xhr) {
-      console.log("failed");
-  
+    request.fail(function (response, textStatus, xhr) {  
       if (xhr.status == 404) {
         // Reroute to custom U4I 404 error page
       } else {
@@ -150,7 +144,7 @@ function addUserShowInput() {
   
   // This function will extract the current selection data needed for POST request (user ID)
   function removeUserSetup(userID) {
-    let postURL = REMOVE_USER_ROUTE + getActiveUTubID() + "/" + userID;
+    let postURL = routes.removeUser(getActiveUTubID(), userID);
   
     return postURL;
   }
@@ -167,7 +161,7 @@ function addUserShowInput() {
   }
   
   function removeUserFail(xhr, textStatus, error) {
-    console.log("Error: Could not delete URL");
+    console.log("Error: Could not remove User");
   
     if (xhr.status == 409) {
       console.log(

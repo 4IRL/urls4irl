@@ -70,7 +70,6 @@ $(document).ready(function () {
     // e.stopPropagation();
     // e.preventDefault();
     editUTubDescription();
-    editUTubDescription();
   });
 });
 
@@ -271,24 +270,50 @@ function createNewUTubInputField() {
   const submitBtn = makeSubmitButton(30);
   const cancelBtn = makeCancelButton(30);
 
-  $(wrapper).addClass("createDiv row").attr({ style: "display: none" });
+  $(wrapper).
+    addClass("createDiv row")
+    .attr({ style: "display: none" });
 
-  $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
+  $(wrapperInput)
+    .addClass("col-9 col-lg-9 mb-md-0");
 
-  $(input).addClass("userInput").attr({
-    type: "text",
-    id: "createUTub",
-    placeholder: "New UTub name",
-  });
-
-  $(wrapperInput).append(input);
+  $(input)
+    .addClass("userInput")
+    .attr({
+      type: "text",
+      id: "createUTub",
+      placeholder: "New UTub name",
+    });
 
   $(wrapperBtns)
-    .addClass("col-3 mb-md-0 text-right d-flex justify-content-center flex-row")
+    .addClass("col-3 mb-md-0 text-right d-flex justify-content-center flex-row");
+
+  $(submitBtn)
+    .addClass("mx-1 green-clickable submitCreateUTub")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      checkSameNameUTub(1, $("#createUTub").val());
+    });
+
+  $(cancelBtn)
+    .addClass("mx-1 cancelCreateUTub")
+    .on("click", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      hideIfShown(wrapper);
+    });
+
+  $(wrapperInput)
+    .append(input);
+
+  $(wrapperBtns)
     .append(submitBtn)
     .append(cancelBtn);
 
-  $(wrapper).append(wrapperInput).append(wrapperBtns);
+  $(wrapper)
+    .append(wrapperInput)
+    .append(wrapperBtns);
 
   return wrapper;
 }
@@ -348,7 +373,10 @@ function displayState1UTubDeck(selectedUTubID, UTubOwnerID) {
     showIfHidden($("#editUTubDescriptionBtn"));
   }
 
-  if (getCurrentUserID() == UTubOwnerID) {
+  console.log(getCurrentUserID())
+  console.log(UTubOwnerID)
+
+  if (getCurrentUserID() === UTubOwnerID) {
     showIfHidden($("#deleteUTubBtn"));
   } else hideIfShown($("#deleteUTubBtn"));
 }

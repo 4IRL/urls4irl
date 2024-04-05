@@ -587,14 +587,17 @@ function createNewTagInputField() {
   const wrapperBtns = document.createElement("div");
 
   const input = document.createElement("input");
-  const submit = makeSubmitButton(24);
-  const cancel = makeCancelButton(24);
+  const submitBtn = makeSubmitButton(24);
+  const cancelBtn = makeCancelButton(24);
 
   $(wrapper)
     .attr({
       style: "display: none",
     })
     .addClass("createDiv row");
+
+  $(wrapperInput)
+    .addClass("col-3 col-lg-3 mb-md-0");
 
   $(input)
     .attr({
@@ -603,11 +606,10 @@ function createNewTagInputField() {
     })
     .addClass("tag userInput addTag");
 
-  $(wrapperInput).addClass("col-3 col-lg-3 mb-md-0");
+  $(wrapperBtns)
+    .addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
 
-  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
-
-  $(submit)
+  $(submitBtn)
     .addClass("mx-1 green-clickable submitAddTag")
     .on("click", function (e) {
       e.stopPropagation();
@@ -615,7 +617,7 @@ function createNewTagInputField() {
       addTag();
     });
 
-  $(cancel)
+  $(cancelBtn)
     .addClass("mx-1 cancelAddTag")
     .on("click", function (e) {
       e.stopPropagation();
@@ -627,8 +629,8 @@ function createNewTagInputField() {
     .append(input);
 
   $(wrapperBtns)
-    .append(submit)
-    .append(cancel);
+    .append(submitBtn)
+    .append(cancelBtn);
 
   $(wrapper)
     .append(wrapperInput)
