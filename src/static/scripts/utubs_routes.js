@@ -17,22 +17,16 @@ function addUTub() {
   // Extract data to submit in POST request
   [postURL, data] = addUTubSetup();
 
-  console.log("About to make post AJAX call");
-  console.log("About to make post AJAX call");
   let request = AJAXCall("post", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
-    console.log("success");
-
     if (xhr.status == 200) {
       addUTubSuccess(response);
     }
   });
 
   request.fail(function (response, textStatus, xhr) {
-    console.log("failed");
-
     addUTubFail(response, textStatus, xhr);
   });
 

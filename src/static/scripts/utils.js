@@ -113,6 +113,10 @@ function clearInput(handle) {
   $("#" + handle).val("");
 }
 
+function isEmpty(el) {
+  return !$.trim(el.html())
+}
+
 // Where el is the DOM element you'd like to test for visibility
 function isHidden(el) {
   return el.offsetParent === null;

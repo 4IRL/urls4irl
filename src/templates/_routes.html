@@ -37,7 +37,7 @@
                         .replace("-1", utub_id)
                         .replace("-2", url_id)
                         .replace("-3", tag_id);
-                this.modifyTag = (utub_id, url_id, tag_id) => 
+                this.editTag = (utub_id, url_id, tag_id) => 
                     "{{url_for('tags.modify_tag_on_url', utub_id=-1, url_id=-2, tag_id=-3)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id)

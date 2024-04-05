@@ -1,7 +1,4 @@
-/* Tag-related constants */
 
-// Routes
-const ADD_TAG_ROUTE = "/tag/add/"; // +<int:utub_id>/<int:url_id>
 const EDIT_TAG_ROUTE = "/tag/modify/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
 const REMOVE_TAG_ROUTE = "/tag/remove/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
 // Small DP 09/25 consistency to 'modify' -> 'edit'?
@@ -109,13 +106,16 @@ function createSelectAllTagFilterInDeck() {
   const container = document.createElement("div");
   const label = document.createElement("label");
 
-  $(container).addClass("selected").attr({
-    id: "selectAll",
-    tagid: "all",
-    onclick: "filterAllTags(); filterAllTaggedURLs()",
-  });
+  $(container)
+    .addClass("selected")
+    .attr({
+      id: "selectAll",
+      tagid: "all",
+      onclick: "filterAllTags(); filterAllTaggedURLs()",
+    });
+
   $(label).attr({
-    for: "selectAll",
+    for: "selectAll"
   });
   label.innerHTML = "Select All";
 
@@ -192,6 +192,12 @@ function displayState1TagDeck() {
   let TagDeckSubheader = $("#TagDeckSubheader");
   showIfHidden(TagDeckSubheader.closest(".row"));
   TagDeckSubheader.text("Add a tag to a URL");
+
+  let selectAll = $("#selectAll");
+  // Remove SelectAll button if no tags
+  if (!isEmpty(selectAll)) {
+    selectAll.remove();
+  }
 }
 
 // Display state 2: Selected UTub has URLs and Tags
@@ -201,9 +207,9 @@ function displayState2TagDeck() {
   showIfHidden(TagDeckSubheader.closest(".row"));
   TagDeckSubheader.text(
     numOfTags -
-      getActiveTagIDs().length +
-      " of " +
-      numOfTags +
-      " filters applied",
+    getActiveTagIDs().length +
+    " of " +
+    numOfTags +
+    " filters applied",
   );
 }
