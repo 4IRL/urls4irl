@@ -114,7 +114,7 @@ function clearInput(handle) {
 }
 
 function isEmpty(el) {
-  return !$.trim(el.html())
+  return !$.trim(el.html());
 }
 
 // Where el is the DOM element you'd like to test for visibility

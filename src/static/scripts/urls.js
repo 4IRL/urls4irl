@@ -278,13 +278,9 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       editURLTitleHideInput();
     });
 
-  $(URLWrap)
-    .addClass("URL")
-    .attr({ style: "display:flex" });
+  $(URLWrap).addClass("URL").attr({ style: "display:flex" });
 
-  $(URL)
-    .addClass("card-text")
-    .text(string);
+  $(URL).addClass("card-text").text(string);
 
   $(editURLBtn)
     .addClass("editURLBtn")
@@ -590,8 +586,7 @@ function createNewTagInputField() {
     })
     .addClass("createDiv row");
 
-  $(wrapperInput)
-    .addClass("col-3 col-lg-3 mb-md-0");
+  $(wrapperInput).addClass("col-3 col-lg-3 mb-md-0");
 
   $(input)
     .attr({
@@ -600,8 +595,7 @@ function createNewTagInputField() {
     })
     .addClass("tag userInput addTag");
 
-  $(wrapperBtns)
-    .addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
+  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
 
   $(submitBtn)
     .addClass("mx-1 green-clickable submitAddTag")
@@ -619,16 +613,11 @@ function createNewTagInputField() {
       hideIfShown(wrapper);
     });
 
-  $(wrapperInput)
-    .append(input);
+  $(wrapperInput).append(input);
 
-  $(wrapperBtns)
-    .append(submitBtn)
-    .append(cancelBtn);
+  $(wrapperBtns).append(submitBtn).append(cancelBtn);
 
-  $(wrapper)
-    .append(wrapperInput)
-    .append(wrapperBtns);
+  $(wrapper).append(wrapperInput).append(wrapperBtns);
 
   return wrapper;
 }

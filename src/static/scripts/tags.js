@@ -1,4 +1,3 @@
-
 const EDIT_TAG_ROUTE = "/tag/modify/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
 const REMOVE_TAG_ROUTE = "/tag/remove/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
 // Small DP 09/25 consistency to 'modify' -> 'edit'?
@@ -106,16 +105,14 @@ function createSelectAllTagFilterInDeck() {
   const container = document.createElement("div");
   const label = document.createElement("label");
 
-  $(container)
-    .addClass("selected")
-    .attr({
-      id: "selectAll",
-      tagid: "all",
-      onclick: "filterAllTags(); filterAllTaggedURLs()",
-    });
+  $(container).addClass("selected").attr({
+    id: "selectAll",
+    tagid: "all",
+    onclick: "filterAllTags(); filterAllTaggedURLs()",
+  });
 
   $(label).attr({
-    for: "selectAll"
+    for: "selectAll",
   });
   label.innerHTML = "Select All";
 
@@ -207,9 +204,9 @@ function displayState2TagDeck() {
   showIfHidden(TagDeckSubheader.closest(".row"));
   TagDeckSubheader.text(
     numOfTags -
-    getActiveTagIDs().length +
-    " of " +
-    numOfTags +
-    " filters applied",
+      getActiveTagIDs().length +
+      " of " +
+      numOfTags +
+      " filters applied",
   );
 }

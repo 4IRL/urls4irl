@@ -156,23 +156,19 @@ function createNewUserInputField() {
     })
     .addClass("User userInput");
 
-  wrapperInput
-    .append(label)
-    .append(input);
+  wrapperInput.append(label).append(input);
 
-  $(submitBtn)
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      addUser();
-    });
+  $(submitBtn).on("click", function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    addUser();
+  });
 
-  $(cancelBtn)
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      addUserHideInput();
-    });
+  $(cancelBtn).on("click", function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    addUserHideInput();
+  });
 
   $(wrapperBtns)
     .addClass("col-3 mb-md-0 py-4 d-flex flex-row")
@@ -209,8 +205,7 @@ function displayState1UserDeck() {
 
   if (numOfUsers === 1) {
     UserDeckSubheader.text("Add a user");
-  }
-  else {
+  } else {
     UserDeckSubheader.text(numOfUsers + " active users");
   }
 }
