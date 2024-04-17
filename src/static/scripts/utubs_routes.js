@@ -85,9 +85,9 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }
 
@@ -260,9 +260,9 @@ function editUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
-      ". Status: " +
-      response.responseJSON.Message,
+    response.responseJSON.Error_code +
+    ". Status: " +
+    response.responseJSON.Message,
   );
 }
 
@@ -294,7 +294,7 @@ function deleteUTubShowModal() {
       deleteUTubHideModal();
     })
     .text(buttonTextDismiss);
-  bindKeyToFunction(deleteUTubHideModal, 27);
+  // bindKeyToFunction(deleteUTubHideModal, 27);
 
   $("#modalSubmit")
     .removeClass()
@@ -306,7 +306,7 @@ function deleteUTubShowModal() {
       e.preventDefault();
       deleteUTub();
     });
-  bindKeyToFunction(deleteUTub, 13);
+  // bindKeyToFunction(deleteUTub, 13);
 
   $("#confirmModal").modal("show");
 
@@ -391,8 +391,8 @@ function deleteUTubFailure(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
-      ". Status: " +
-      response.error.Message,
+    response.error.Error_code +
+    ". Status: " +
+    response.error.Message,
   );
 }

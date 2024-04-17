@@ -235,28 +235,25 @@ function createUTubSelector(UTubName, UTubID, index) {
       selectUTub(UTubID);
     });
 
-  $(name).addClass("UTubName").text(UTubName);
+  $(name)
+    .addClass("UTubName")
+    .text(UTubName);
 
-  $(label).attr({ for: "UTub-" + UTubID });
+  $(label)
+    .attr({ for: "UTub-" + UTubID });
 
-  $(name).addClass("UTubName").text(UTubName);
+  $(radio)
+    .attr({
+      type: "radio",
+      id: "UTub-" + UTubID,
+      value: UTubName,
+    });
 
-  $(label).attr({ for: "UTub-" + UTubID });
+  $(container)
+  .append(name)
+  .append(label)
+  .append(radio);
 
-  $(radio).attr({
-    type: "radio",
-    id: "UTub-" + UTubID,
-    value: UTubName,
-  });
-
-  $(container).append(name);
-  $(container).append(label);
-  $(container).append(radio);
-  $(container).append(name);
-  $(container).append(label);
-  $(container).append(radio);
-
-  return container;
   return container;
 }
 

@@ -268,11 +268,6 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       e.stopPropagation();
       e.preventDefault();
       editURLTitle();
-      $(document).bind("keypress", function (e) {
-        if (e.which == 13) {
-          editURL();
-        }
-      });
     });
 
   $(cancelEditURLTitleBtn)
@@ -281,16 +276,15 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       e.stopPropagation();
       e.preventDefault();
       editURLTitleHideInput();
-      $(document).bind("keypress", function (e) {
-        if (e.which == 27) {
-          hideInputs();
-        }
-      });
     });
 
-  $(URLWrap).addClass("URL").attr({ style: "display:flex" });
+  $(URLWrap)
+    .addClass("URL")
+    .attr({ style: "display:flex" });
 
-  $(URL).addClass("card-text").text(string);
+  $(URL)
+    .addClass("card-text")
+    .text(string);
 
   $(editURLBtn)
     .addClass("editURLBtn")
