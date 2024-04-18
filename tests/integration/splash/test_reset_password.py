@@ -242,7 +242,7 @@ def test_password_reset_without_equal_passwords_fails(user_attempts_reset_passwo
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: RESET_PASSWORD.RESET_PASSWORD_INVALID,
-        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERROR_CODE: 1
         STD_JSON.ERRORS: {
             RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: [RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL,]
         }
@@ -265,7 +265,7 @@ def test_password_reset_without_equal_passwords_fails(user_attempts_reset_passwo
     assert (
         reset_response_json[STD_JSON.MESSAGE] == RESET_PASSWORD.RESET_PASSWORD_INVALID
     )
-    assert int(reset_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert int(reset_response_json[STD_JSON.ERROR_CODE]) == 1
     assert (
         reset_response_json[STD_JSON.ERRORS][RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD][
             -1
@@ -278,41 +278,6 @@ def test_password_reset_without_equal_passwords_fails(user_attempts_reset_passwo
             User.email == new_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         assert user.is_password_correct(new_user[RESET_PASSWORD.PASSWORD])
-
-
-def test_password_reset_with_identical_to_previous_password_fails(
-    user_attempts_reset_password,
-):
-    """
-    GIVEN a user trying to reset their password
-    WHEN they submit a reset password form with the password and confirm password equal to their previous passwords
-    THEN ensure server responds indicating the password is same as old password, and a status code of 400
-
-    JSON response as follows:
-    {
-        STD_JSON.STATUS: STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: RESET_PASSWORD.SAME_PASSWORD,
-        STD_JSON.ERROR_CODE: 1
-    }
-    """
-    _, client, new_user, reset_token, csrf_token = user_attempts_reset_password
-
-    reset_response = client.post(
-        url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
-        data={
-            RESET_PASSWORD.NEW_PASSWORD_FIELD: new_user[RESET_PASSWORD.PASSWORD],
-            RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: new_user[
-                RESET_PASSWORD.PASSWORD
-            ],
-            RESET_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
-    )
-
-    assert reset_response.status_code == 400
-    reset_response_json = reset_response.json
-    assert reset_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert reset_response_json[STD_JSON.MESSAGE] == RESET_PASSWORD.SAME_PASSWORD
-    assert int(reset_response_json[STD_JSON.ERROR_CODE]) == 1
 
 
 def test_valid_new_password_changes_password_and_deletes_forgot_password_object(

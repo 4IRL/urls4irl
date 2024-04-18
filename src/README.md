@@ -76,8 +76,8 @@ They must contain a positive, non-zero integer value associated with the given e
 
 Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
 
+Required form data:
 > ```
-> Required form data:
 > username: %username%
 > password: %password%
 > csrf_token: %csrf_token%
@@ -165,8 +165,8 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8
 
 Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
 
+Required form data:
 > ```
-> Required form data:
 > username: %username%
 > email: %email%
 > confirm_email: %confirm email%
@@ -327,7 +327,6 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Renders HTML for email validation modal.` | Renders the modal to email validate, if user is logged in but not email validated. |
 > | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User has been email validated. Redirects user to /home page and renders it. |
 > | `400`         | `text/html;charset=utf-8`         | `Renders splash page and email validation modal.` | Token expired. Token has been reset. |
 > | `404`         | `text/html;charset=utf-8`         | None | Email validation or user for this token does not exist. |
@@ -375,8 +374,8 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8
 
 Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
 
+Required form data:
 > ```
-> Required form data:
 > email: %email%
 > csrf_token: %csrf_token%
 > ```
@@ -419,6 +418,9 @@ or missing email is provided. However, the reset-password email is only sent if 
 > {
 >     "status": "Failure",
 >     "message": "Email is not valid.",
+>     "errors": [
+>         "email": ["Invalid email address".],
+>     ],
 >     "errorCode": 1
 > }
 > ```
@@ -445,127 +447,112 @@ or missing email is provided. However, the reset-password email is only sent if 
 > ```
 
 </details>
+
+------------------------------------------------------------------------------------------
+
+#### Reset Password
+
 <details>
- <summary><code>GET</code> <code><b>/projects/{projectID}</b></code> <code>(gets details for a specific project)</code>:white_check_mark:</summary>
+ <summary><code>GET</code> <code><b>/reset-password/{token}</b></code> <code>(renders reset password modal)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
-> | `projectID` |  required  | int ($int64) | The unique ID of the project |
+> | `token` |  required  | string | The JWT that is unique to the user resetting their password |
 
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `See below.` | Returns details regarding a specific project. |
-> | `403`         | `application/json`                | `{"code":"403","message":"User not in project, or project does not exist"}` | User not in this project, or the project does not exist. |
+> | `200`         | `text/html;charset=utf-8`         | `Renders reset-password modal.` | Displays the reset password modal to the user. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | Token expired. |
+> | `404`         | `text/html;charset=utf-8`         | None | Invalid token, invalid user, user not email authenticated. |
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
-
-###### 200 HTTP Code Response Body
-
-> ```json
-> {
->     "projectName": "project1",
->     "projectID": 1,
->     "lastUpdated": "2024-02-13T14:45:00.023767",  
->     "team": {
->         "teamName": "Team1",
->         "teamID": 1,
->         "teamLocation": "/api/v1/teams/1"
->      },
->     "projectLocation": "/api/v1/projects/1",
->     "columns": [
->      {
->           "columnTitle": "Todo",
->           "columnID": 1,
->           "columnIndex": 0,       # Indicates location on board
->           "columnLocation": "/api/v1/projects/1/columns/1",
->           "tasks": [
->            {
->                 "title": "task1",
->                 "taskID": 1, 
->                 "priority": "High",
->                  "dueDate": "2023-11-01", # Or null  
->                 "comments": 1, # Number of comments on task
->                  "taskIndex": 0, # Used for sorting eventually, default to -1
->                  "assignedTo": {
->                        "username": "username-of-assignee",
->                        "userID": 1,
->                        "userProjectID": 1
->                   }, # Or null
->                  "sprint": {
->                        "sprintID": 1,
->                        "sprintName": "Sprint Name",
->                        "endDate": "2023-11-01",
->                        "sprintLocation": "/api/v1/projects/1/sprints/1"
->                   }, # Or null
->                 "taskLocation": "/api/v1/projects/1/tasks/1"
->            },
->           ]
->      },
->      {
->           "columnTitle": "In progress",
->           "columnID": 2,
->           "columnIndex": 1,       # Indicates location on board
->           "columnLocation": "/api/v1/projects/1/columns/2",
->           "tasks": []
->      },
->      {
->           "columnTitle": "Done",
->           "columnID": 3,
->           "columnIndex": 2,       # Indicates location on board
->           "columnLocation": "/api/v1/projects/1/columns/3",
->           "tasks": []
->      },
->     ]
-> }
-> ```
 
 ##### Example cURL
 
 > ```bash
 > curl -X GET \
->  https://opm-api.propersi.me/api/v1/projects/1 \
->  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
+>  https://urls4irl.app/reset-password/123456789ABCDEFGH \
 > ```
 
 </details>
 
 <details>
- <summary><code>PUT</code> <code><b>/projects/{projectID}</b></code> <code>(modifies specific project details)</code>:white_check_mark:</summary>
+ <summary><code>POST</code> <code><b>/reset-password/{token}</b></code> <code>(resets user password)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
-> | `projectID` |  required  | int ($int64) | The unique ID of the project |
+> | `token` |  required  | string | The JWT that is unique to the user resetting their password |
 
 ##### Request Payload
 
-> ```json
-> {
->   "projectName": "new-name",      # Cannot be deleted, only modified
-> }
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+
+Required form data:
+> ```
+> new_password: %new_password%
+> confirm_new_password: %confirm_new_password%
+> csrf_token: %csrf_token%
 > ```
 
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `{"code":"200","message":"Project name was modified"}` | Modified the project name. |
-> | `400`         | `application/json`                | `{"code":"400","message":"Project name was not changed, name identical to previous"}` | Project name was identical to previous. |
-> | `403`         | `application/json`                | `{"code":"403","message":"User not in project, or project does not exist"}` | User not in this project, or project does not exist. |
+> | `200`         | `application/json`                | `See below` | Password successfully reset. |
+> | `400`         | `application/json`                | `See below` | Password and confirm password must be identical . |
+> | `404`         | `application/json`                | `See below` | Unexpected error occurred processing reset password. |
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+To not indicate to the user whether a given email or account already exists, the 200 HTTP response is sent even if an invalid 
+or missing email is provided. However, the reset-password email is only sent if the email is validated and exists within the database.
+
+> ```json
+> {
+>     "status": "Success",
+>     "message": "Password reset."
+> }
+> ```
+
+###### 400 HTTP Code Response Body - Example
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Could not reset the password.",
+>     "errors": [
+>         "confirm_new_password": ["Passwords are not identical."],
+>     ],
+>     "errorCode": 1
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Something went wrong.",
+>     "errorCode": 2
+> }
+> ```
 
 ##### Example cURL
 
 > ```bash
-> curl -X PUT \
->  https://opm-api.propersi.me/api/v1/projects/1 \
->  -H 'Content-Type: application/json' \
->  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
->  -d '{"projectName":"new-name"}' 
+> curl -X POST \
+>  https://urls4irl.app/reset-password/ABCDEFGH123456789 \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'new_password=PASSWORD'
+>  --data-urlencode 'confirm_new_password=PASSWORD'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
 </details>

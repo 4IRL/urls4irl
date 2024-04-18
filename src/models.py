@@ -165,9 +165,6 @@ class User(db.Model, UserMixin):
     def is_password_correct(self, plaintext_password: str) -> bool:
         return check_password_hash(self.password, plaintext_password)
 
-    def is_new_password_same_as_previous(self, plaintext_password: str) -> bool:
-        return self.is_password_correct(plaintext_password)
-
     def is_email_authenticated(self) -> bool:
         return self.email_confirm.is_validated
 

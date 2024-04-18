@@ -417,9 +417,20 @@ def reset_password(token: str):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: RESET_PASSWORD.RESET_PASSWORD_INVALID,
-                    STD_JSON.ERROR_CODE: 2,
+                    STD_JSON.ERROR_CODE: 1,
                     STD_JSON.ERRORS: reset_password_form.errors,
                 }
             ),
             400,
         )
+
+    return (
+        jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: USER_FAILURE.SOMETHING_WENT_WRONG,
+                STD_JSON.ERROR_CODE: 2,
+            }
+        ),
+        404,
+    )

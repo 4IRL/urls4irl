@@ -40,6 +40,8 @@ USER_AGENTS = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36",
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36", 
+    "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
 )
 
 COMMON_REDIRECTS = {
@@ -94,6 +96,9 @@ def generate_headers(user_agent: str = None) -> dict[str, str]:
         "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
         "Accept-Encoding": "*",
         "Accept-Language": "*",
+        "Sec-Fetch-Dest": "document",
+        "Sec-Fetch-Mode": "navigate",
+        "Sec-Fetch-User": "?1"
     }
 
 
@@ -135,8 +140,8 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
         )
 
     except requests.exceptions.ReadTimeout:
-        # Try a random sampling of 3 user agents
-        return random_user_agent_sampling(url)
+        # Try all user agents
+        return all_user_agent_sampling(url)
 
     except requests.exceptions.ConnectionError:
         raise InvalidURLError
@@ -148,13 +153,12 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
         return response
 
 
-def random_user_agent_sampling(url: str) -> requests.Response:
-    attempt = 0
-    while attempt < 3:
+def all_user_agent_sampling(url: str) -> requests.Response:
+    for agent in USER_AGENTS:
         try:
-            response = requests.get(url, headers=generate_headers())
+            response = requests.get(url, headers=generate_headers(agent), timeout=(3, 6,))
         except requests.exceptions.ReadTimeout:
-            attempt += 1
+            continue
         except requests.exceptions.ConnectionError:
             raise InvalidURLError
         except requests.exceptions.MissingSchema:

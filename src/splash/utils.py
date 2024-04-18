@@ -149,19 +149,6 @@ def _create_or_reset_forgot_password_object_for_user(
 def _validate_resetting_password(
     reset_password_user: User, reset_password_form: ResetPasswordForm
 ) -> tuple[Response, int]:
-    if reset_password_user.is_new_password_same_as_previous(
-        reset_password_form.new_password.data
-    ):
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: RESET_PASSWORD.SAME_PASSWORD,
-                    STD_JSON.ERROR_CODE: 1,
-                }
-            ),
-            400,
-        )
 
     reset_password_user.change_password(reset_password_form.new_password.data)
     forgot_password_obj = reset_password_user.forgot_password
