@@ -127,5 +127,5 @@ def test_random_user_agents():
 
             # Avoid any kind of rate limiting or semblance of being a bot
             sleep(0.1)
-    
+
     assert valid_agent_used == len(urls_needing_valid_user_agent)

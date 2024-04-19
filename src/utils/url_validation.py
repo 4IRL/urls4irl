@@ -40,7 +40,7 @@ USER_AGENTS = (
     "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36", 
+    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
     "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
 )
 
@@ -98,7 +98,7 @@ def generate_headers(user_agent: str = None) -> dict[str, str]:
         "Accept-Language": "*",
         "Sec-Fetch-Dest": "document",
         "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-User": "?1"
+        "Sec-Fetch-User": "?1",
     }
 
 
@@ -156,7 +156,14 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
 def all_user_agent_sampling(url: str) -> requests.Response:
     for agent in USER_AGENTS:
         try:
-            response = requests.get(url, headers=generate_headers(agent), timeout=(3, 6,))
+            response = requests.get(
+                url,
+                headers=generate_headers(agent),
+                timeout=(
+                    3,
+                    6,
+                ),
+            )
         except requests.exceptions.ReadTimeout:
             continue
         except requests.exceptions.ConnectionError:
