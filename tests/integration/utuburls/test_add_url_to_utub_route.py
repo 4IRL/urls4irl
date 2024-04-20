@@ -682,16 +682,16 @@ def test_add_fresh_url_to_utub(
         # Ensure URL now in UTub
         assert len(current_utub_creator_of.utub_urls) == 1
 
-        url_in_utub = Utub_Urls.query.filter(
+        urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
             Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).all()
 
         # Ensure Url-Utub-User association exists
-        assert len(url_in_utub) == 1
+        assert len(urls_in_utub) == 1
 
         # Ensure title updated
-        assert url_in_utub[0].url_title == url_title_to_add
+        assert urls_in_utub[0].url_title == url_title_to_add
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
 
@@ -724,12 +724,12 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         id_of_utub_that_is_creator_of = utub_creator_of.id
 
         # Find the first URL in this UTub that this user added
-        url_association_that_user_added = Utub_Urls.query.filter(
+        url_association_that_user_added: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
 
-        url_that_user_added = url_association_that_user_added.url_in_utub
+        url_that_user_added = url_association_that_user_added.standalone_url
         url_id = url_that_user_added.id
         url_string_to_add = url_that_user_added.url_string
         url_title_to_add = url_association_that_user_added.url_title
@@ -814,12 +814,12 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
         id_of_utub_that_is_creator_of = utub_creator_of.id
 
         # Find the first URL in this UTub that this user added
-        url_association_that_user_did_not_add = Utub_Urls.query.filter(
+        url_association_that_user_did_not_add: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
 
-        url_that_user_did_not_add = url_association_that_user_did_not_add.url_in_utub
+        url_that_user_did_not_add = url_association_that_user_did_not_add.standalone_url
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
         url_title_to_add = url_association_that_user_did_not_add.url_title
@@ -904,12 +904,12 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         assert current_user in [user.to_user for user in utub_member_of.members]
 
         # Find the first URL in this UTub that this user added
-        url_association_that_user_did_not_add = Utub_Urls.query.filter(
+        url_association_that_user_did_not_add: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == id_of_utub_that_is_member_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
 
-        url_that_user_did_not_add = url_association_that_user_did_not_add.url_in_utub
+        url_that_user_did_not_add = url_association_that_user_did_not_add.standalone_url
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
         url_title_to_add = url_association_that_user_did_not_add.url_title

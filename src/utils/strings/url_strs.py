@@ -1,5 +1,5 @@
 from src.utils.strings.json_strs import FAILURE_GENERAL, REDIRECT
-from src.utils.strings.model_strs import ADDED_BY, URL_ID, URL_STRING, URL_TITLE
+from src.utils.strings.model_strs import ADDED_BY, URL_ID, URL_STRING, URL_TITLE, URL_TAGS
 from src.utils.strings.utub_strs import UTUB_GENERAL
 
 # Strings for URL success
@@ -11,7 +11,6 @@ URL_REMOVED = "URL removed from this UTub."
 URL_TITLE_MODIFIED = "URL title was modified."
 URL_OR_TITLE_MODIFIED = "URL and/or URL title modified."
 URL_MODIFIED = "URL modified."
-URL = "URL"
 
 
 class URL_GENERAL:
@@ -30,6 +29,7 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_TITLE_MODIFIED = URL_TITLE_MODIFIED
     URL_OR_TITLE_MODIFIED = URL_OR_TITLE_MODIFIED
     URL_MODIFIED = URL_MODIFIED
+    URL_TAGS = URL_TAGS
 
 
 # Strings for URL failure

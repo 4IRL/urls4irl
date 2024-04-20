@@ -62,32 +62,35 @@ class Utub_Urls(db.Model):
     utub_id: int = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
     url_id: int = db.Column(db.Integer, db.ForeignKey("Urls.id"), primary_key=True)
     user_id: int = db.Column(db.Integer, db.ForeignKey("User.id"), primary_key=True)
-    url_title: int = db.Column(db.String(140), default="")
+    url_title: str = db.Column(db.String(140), default="")
     added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     user_that_added_url = db.relationship("User", back_populates="utub_urls")
-    url_in_utub = db.relationship("URLS")
+    standalone_url: URLS = db.relationship("URLS")
     utub = db.relationship("Utub", back_populates="utub_urls")
 
     @property
     def serialized(self) -> dict:
         """Returns serialized object."""
-
-        # Only return tags for the requested UTub
-        url_tags = []
-        for tag in self.url_in_utub.url_tags:
-            if int(tag.utub_id) == int(self.utub_id):
-                url_tags.append(tag.tag_id)
-
-        url_data = self.url_in_utub.serialized_url
+        url_data = self.standalone_url.serialized_url
 
         return {
             MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
             MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
-            MODEL_STRS.URL_TAGS: url_tags,
+            MODEL_STRS.URL_TAGS: self.associated_tags,
             MODEL_STRS.ADDED_BY: self.user_that_added_url.serialized[MODEL_STRS.ID],
             MODEL_STRS.URL_TITLE: self.url_title,
         }
+
+    @property
+    def associated_tags(self) -> list[int]:
+        # Only return tags for the requested UTub
+        url_tags = []
+        for tag in self.standalone_url.url_tags:
+            if int(tag.utub_id) == int(self.utub_id):
+                url_tags.append(tag.tag_id)
+
+        return url_tags
 
 
 class Url_Tags(db.Model):
@@ -136,7 +139,7 @@ class User(db.Model, UserMixin):
     utubs_created = db.relationship("Utub", backref="created_by", lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     utubs_is_member_of = db.relationship("Utub_Users", back_populates="to_user")
-    email_confirm = db.relationship(
+    email_confirm: EmailValidation = db.relationship(
         "EmailValidation", uselist=False, back_populates="user"
     )
     forgot_password = db.relationship(
@@ -258,7 +261,7 @@ class EmailValidation(db.Model):
 
     __tablename__ = "EmailValidation"
     id: int = db.Column(db.Integer, primary_key=True)
-    user_id: int = db.Column(db.Integer, db.ForeignKey("User.id"))
+    user_id: int = db.Column(db.Integer, db.ForeignKey("User.id"), unique=True)
     confirm_url: int = db.Column(db.String(2000), nullable=False, default="")
     is_validated: bool = db.Column(db.Boolean, default=False)
     attempts: int = db.Column(db.Integer, nullable=False, default=0)
@@ -367,7 +370,7 @@ class Utub(db.Model):
     utub_url_tags = db.relationship(
         "Url_Tags", back_populates="utub_containing_this_tag", cascade="all, delete"
     )
-    utub_urls = db.relationship(
+    utub_urls: list[Utub_Urls] = db.relationship(
         "Utub_Urls", back_populates="utub", cascade="all, delete"
     )
     members: list[Utub_Users] = db.relationship(

@@ -72,7 +72,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Ensure this tag does not exist in the database
@@ -210,7 +210,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Ensure this tag does not exist in the database
@@ -350,7 +350,7 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Ensure this tag exists in the database
@@ -505,7 +505,7 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Ensure this tag exists in the database
@@ -640,7 +640,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
         url_serialization_for_check = url_utub_association.serialized
 
@@ -771,7 +771,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
         url_serialization_for_check = url_utub_association.serialized
 
@@ -1200,7 +1200,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         url_association_with_this_utub = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_that_user_not_member_of
         ).first()
-        url_id_for_url_in_utub = url_association_with_this_utub.url_in_utub.id
+        url_id_for_url_in_utub = url_association_with_this_utub.standalone_url.id
         url_serialization_for_check = url_association_with_this_utub.serialized
 
         # Ensure no tags on this URL already
@@ -1322,7 +1322,7 @@ def test_add_tag_to_url_not_in_utub(
         url_association_not_with_this_utub = Utub_Urls.query.filter(
             Utub_Urls.utub_id != utub_id_user_is_creator_of
         ).first()
-        url_id_for_url_not_in_utub = url_association_not_with_this_utub.url_in_utub.id
+        url_id_for_url_not_in_utub = url_association_not_with_this_utub.standalone_url.id
 
         # Find number of URLs in this UTub
         num_of_urls_in_utub = len(utub_user_is_creator_of.utub_urls)
@@ -1770,7 +1770,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
         url_serialization_for_check = url_utub_association.serialized
 
@@ -1900,7 +1900,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
         url_serialization_for_check = url_utub_association.serialized
 

@@ -54,7 +54,7 @@ def test_update_url_title_utub_creator(
             utub_id=utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url = url_in_this_utub.url_in_utub.url_string
+        current_url = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -166,11 +166,11 @@ def test_update_url_title_url_adder(
         assert utub_member_of.utub_creator != current_user.id
 
         # Get the URL in this UTub
-        url_in_this_utub = Utub_Urls.query.filter_by(
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_member_of.id, user_id=current_user.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url = url_in_this_utub.url_in_utub.url_string
+        current_url = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -291,7 +291,7 @@ def test_update_url_title_with_same_title_utub_creator(
             utub_id=utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url = url_in_this_utub.url_in_utub.url_string
+        current_url = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -402,11 +402,11 @@ def test_update_url_title_with_same_title_url_adder(
         assert utub_member_of.utub_creator != current_user.id
 
         # Get the URL in this UTub
-        url_in_this_utub = Utub_Urls.query.filter_by(
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_member_of.id, user_id=current_user.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url = url_in_this_utub.url_in_utub.url_string
+        current_url = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -511,15 +511,12 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
         # Get UTub this user is only a member of
         utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
 
-        # Verify logged in user is not creator of this UTub
-        assert utub_member_of.utub_creator != current_user.id
-
         # Get the URL in this UTub
-        url_in_this_utub = Utub_Urls.query.filter(
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.user_id != current_user.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url = url_in_this_utub.url_in_utub.url_string
+        current_url = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -535,13 +532,11 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
         associated_tags = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=current_url_id
         ).all()
-        associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
-        current_user_id = current_user.id
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,

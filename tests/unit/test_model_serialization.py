@@ -118,7 +118,7 @@ def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_data
             new_utub_url.utub = utub
             new_utub_url.utub_id = utub.id
             new_utub_url.url_id = url.id
-            new_utub_url.url_in_utub = url
+            new_utub_url.standalone_url = url
             new_utub_url.user_id = utub.id
 
             db.session.add(new_utub_url)

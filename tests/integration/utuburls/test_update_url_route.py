@@ -337,7 +337,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
             ).first()
             is None
         )
-        url_string_of_url_not_in_utub = url_not_in_utub.url_in_utub.url_string
+        url_string_of_url_not_in_utub = url_not_in_utub.standalone_url.url_string
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
 
         # Grab URL that already exists in this UTub
@@ -492,7 +492,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         url_not_in_utub = Utub_Urls.query.filter(
             Utub_Urls.user_id != current_user.id, Utub_Urls.utub_id != utub_member_of.id
         ).first()
-        url_string_of_url_not_in_utub = url_not_in_utub.url_in_utub.url_string
+        url_string_of_url_not_in_utub = url_not_in_utub.standalone_url.url_string
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -634,7 +634,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
-        url_in_utub_string = url_already_in_utub.url_in_utub.url_string
+        url_in_utub_string = url_already_in_utub.standalone_url.url_string
         current_title = url_already_in_utub.url_title
 
         num_of_url_utub_associations = len(
@@ -757,7 +757,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
                 url_in_this_utub = utub_urls
                 url_id_of_url_in_this_utub = url_in_this_utub.url_id
                 current_title = url_in_this_utub.url_title
-                url_string_of_url_in_utub = url_in_this_utub.url_in_utub.url_string
+                url_string_of_url_in_utub = url_in_this_utub.standalone_url.url_string
                 break
 
         num_of_url_utub_associations = len(

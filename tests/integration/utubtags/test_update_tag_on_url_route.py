@@ -67,7 +67,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -224,7 +224,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -375,7 +375,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -544,7 +544,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -689,7 +689,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -813,7 +813,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -931,7 +931,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -1067,7 +1067,7 @@ def test_modify_tag_on_another_utub_url(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_not_member_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -1317,7 +1317,7 @@ def test_modify_tag_with_missing_tag_field(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
@@ -1438,7 +1438,7 @@ def test_modify_tag_with_missing_csrf_token(
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of
         ).first()
-        url_in_this_utub = url_utub_association.url_in_utub
+        url_in_this_utub = url_utub_association.standalone_url
         url_id_to_add_tag_to = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub

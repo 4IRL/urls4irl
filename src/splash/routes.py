@@ -157,8 +157,9 @@ def login():
     if login_form.validate_on_submit():
         username = login_form.username.data
         user: User = User.query.filter_by(username=username).first()
+        email_confirm: EmailValidation = user.email_confirm
         login_user(user)  # Can add Remember Me functionality here
-        if not user.email_confirm.is_validated:
+        if not email_confirm.is_validated:
             return (
                 jsonify(
                     {
