@@ -370,7 +370,7 @@ class Utub(db.Model):
     utub_urls = db.relationship(
         "Utub_Urls", back_populates="utub", cascade="all, delete"
     )
-    members = db.relationship(
+    members: list[Utub_Users] = db.relationship(
         "Utub_Users", back_populates="to_utub", cascade="all, delete, delete-orphan"
     )
 

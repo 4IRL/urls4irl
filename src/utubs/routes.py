@@ -12,8 +12,6 @@ utubs = Blueprint("utubs", __name__)
 
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
-UTUB_FAILURE = UTUB_FAILURE
-UTUB_SUCCESS = UTUB_SUCCESS
 
 
 @utubs.route("/home", methods=["GET"])
@@ -50,8 +48,8 @@ def get_single_utub(utub_id: str):
     """
     utub: Utub = Utub.query.get_or_404(utub_id)
 
-    if int(current_user.get_id()) not in [
-        int(member.user_id) for member in utub.members
+    if current_user.id not in [
+        member.user_id for member in utub.members
     ]:
         # User is not member of the UTub they are requesting
         abort(404)
@@ -79,7 +77,7 @@ def add_utub():
             utub_form.description.data if utub_form.description.data is not None else ""
         )
         new_utub = Utub(
-            name=name, utub_creator=current_user.get_id(), utub_description=description
+            name=name, utub_creator=current_user.id, utub_description=description
         )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = current_user
@@ -91,10 +89,10 @@ def add_utub():
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    UTUB_SUCCESS.UTUB_ID: int(new_utub.id),
-                    UTUB_SUCCESS.UTUB_NAME: f"{new_utub.name}",
-                    UTUB_SUCCESS.UTUB_DESCRIPTION: f"{description}",
-                    UTUB_SUCCESS.UTUB_CREATOR_ID: int(current_user.get_id()),
+                    UTUB_SUCCESS.UTUB_ID: new_utub.id,
+                    UTUB_SUCCESS.UTUB_NAME: new_utub.name,
+                    UTUB_SUCCESS.UTUB_DESCRIPTION: description,
+                    UTUB_SUCCESS.UTUB_CREATOR_ID: current_user.id,
                 }
             ),
             200,
@@ -131,18 +129,16 @@ def add_utub():
 def delete_utub(utub_id: int):
     """
     Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
-    URLS and users.
+    URLS, tags, and users.
 
     https://docs.sqlalchemy.org/en/13/orm/cascades.html#delete
 
     Args:
         utub_id (int): The ID of the UTub to be deleted
     """
-    utub_id_to_delete = int(utub_id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
 
-    utub = Utub.query.get_or_404(utub_id_to_delete)
-
-    if int(current_user.get_id()) != int(utub.created_by.id):
+    if current_user.id != utub.created_by.id:
         return (
             jsonify(
                 {
@@ -162,9 +158,9 @@ def delete_utub(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
-                    UTUB_SUCCESS.UTUB_ID: f"{utub.id}",
-                    UTUB_SUCCESS.UTUB_NAME: f"{utub.name}",
-                    UTUB_SUCCESS.UTUB_DESCRIPTION: f"{utub.utub_description}",
+                    UTUB_SUCCESS.UTUB_ID: utub.id,
+                    UTUB_SUCCESS.UTUB_NAME: utub.name,
+                    UTUB_SUCCESS.UTUB_DESCRIPTION: utub.utub_description,
                 }
             ),
             200,
@@ -188,9 +184,9 @@ def update_utub_name(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub = Utub.query.get_or_404(utub_id)
+    current_utub: Utub = Utub.query.get_or_404(utub_id)
 
-    if int(current_user.get_id()) != current_utub.created_by.id:
+    if current_user.id != current_utub.utub_creator:
         return (
             jsonify(
                 {
@@ -269,16 +265,15 @@ def update_utub_desc(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub = Utub.query.get_or_404(utub_id)
+    current_utub: Utub = Utub.query.get_or_404(utub_id)
 
-    if int(current_user.get_id()) != current_utub.created_by.id:
+    if current_user.id != current_utub.utub_creator:
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
                     STD_JSON.ERROR_CODE: 1,
-                    UTUB_FAILURE.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),
             403,
@@ -291,7 +286,7 @@ def update_utub_desc(utub_id: int):
     utub_desc_form = UTubDescriptionForm()
 
     if utub_desc_form.validate_on_submit():
-        new_utub_description = utub_desc_form.utub_description.data
+        new_utub_description = utub_desc_form.description.data
 
         if new_utub_description is None:
             return (

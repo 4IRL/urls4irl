@@ -19,7 +19,7 @@ URL_ID = "urlID"
 URL_TITLE = "urlTitle"
 ADDED_BY = "addedBy"
 USERNAME = "username"
-UTUB_DESCRIPTION = "UTub_description"
+UTUB_DESCRIPTION = DESCRIPTION
 
 
 class MODELS:

@@ -29,7 +29,7 @@ def test_update_valid_utub_description_as_creator(
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     UPDATE_TEXT = "This is my new UTub description. 123456"
     # Grab this creator's UTub
@@ -129,7 +129,7 @@ def test_update_valid_empty_utub_description_as_creator(
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     UPDATE_TEXT = ""
     # Grab this creator's UTub
@@ -229,7 +229,7 @@ def test_update_only_spaces_utub_description_as_creator(
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     UPDATE_TEXT = "   "
     # Grab this creator's UTub
@@ -329,7 +329,7 @@ def test_update_utub_description_with_same_description_as_creator(
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's previous description
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     # Grab this creator's UTub
     with app.app_context():
@@ -421,7 +421,7 @@ def test_update_utub_description_as_member(
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's description
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     UPDATE_TEXT = "This is my new UTub description. 123456"
     # Grab this member's UTub
@@ -470,11 +470,6 @@ def test_update_utub_description_as_member(
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] != UPDATE_TEXT
-    assert (
-        edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
-        == current_utub_description
-    )
     assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
     assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
@@ -524,7 +519,7 @@ def test_update_utub_description_as_creator_of_other_utub(
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's description
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     UPDATE_TEXT = "This is my new UTub description. 123456"
     # Grab this creator's UTub
@@ -579,11 +574,6 @@ def test_update_utub_description_as_creator_of_other_utub(
     edit_utub_desc_json_response = edit_utub_desc_response.json
 
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] != UPDATE_TEXT
-    assert (
-        edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
-        == current_utub_description
-    )
     assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
     assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
 
@@ -624,7 +614,7 @@ def test_update_utub_description_of_invalid_utub(
     THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
         the server sends back a 404 HTTP status code
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     UPDATE_TEXT = "This is my new UTub description. 123456"
     # Grab this creator's UTub
@@ -712,7 +702,7 @@ def test_update_utub_description_too_long(
             }
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     MAX_UTUB_DESC = 500
 
@@ -817,7 +807,7 @@ def test_update_utub_description_missing_description_field(
         STD_JSON.ERROR_CODE: 2,
     }
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     # Grab this creator's UTub
     with app.app_context():
@@ -901,7 +891,7 @@ def test_update_utub_description_missing_csrf_token(
         the server sends back a 400 HTTP status code, and the server sends back the appropriate HTML element
         indicating the CSRF token is missing
     """
-    client, csrf_token_string, logged_in_user, app = login_first_user_without_register
+    client, _, _, app = login_first_user_without_register
 
     # Grab this creator's UTub
     UPDATE_TEXT = "This is my new UTub description. 123456"

@@ -2,10 +2,10 @@ from src.utils.strings.json_strs import FAILURE_GENERAL
 from src.utils.strings.model_strs import UTUB_DESCRIPTION
 
 # Strings for utub success
-UTUB_ID = "UTub_ID"
-UTUB_NAME = "UTub_name"
-UTUB_USERS = "UTub_users"
-UTUB_CREATOR_ID = "UTub_creator_id"
+UTUB_ID = "utubID"
+UTUB_NAME = "utubName"
+UTUB_USERS = "utubUsers"
+UTUB_CREATOR_ID = "utubCreatorID"
 UTUB_DELETED = "UTub deleted."
 
 
@@ -23,8 +23,8 @@ class UTUB_SUCCESS(UTUB_GENERAL):
 
 # Strings for utub failure
 UNABLE_TO_MAKE_UTUB = "Unable to make a UTub with that information."
-UNABLE_TO_MODIFY_UTUB_NAME = "Unable to modify this UTub's name."
-UNABLE_TO_MODIFY_UTUB_DESC = "Unable to modify this UTub's description."
+UNABLE_TO_MODIFY_UTUB_NAME = "Unable to modify UTub name."
+UNABLE_TO_MODIFY_UTUB_DESC = "Unable to modify UTub description."
 UTUB_DESC_TOO_LONG = "UTub description is too long."
 UTUB_DESC_FIELD_TOO_LONG = ["Field cannot be longer than 500 characters."]
 UTUB_NAME_FIELD_INVALID = ["Field must be between 1 and 30 characters long."]
