@@ -19,8 +19,8 @@ class FORGOT_PASSWORD(GENERAL_FORM):
 
 RESET_PASSWORD_KEY = "reset_password"
 NEW_PASSWORD = "New Password"
-NEW_PASSWORD_FIELD = "new_password"
-CONFIRM_NEW_PASSWORD_FIELD = "confirm_new_password"
+NEW_PASSWORD_FIELD = "newPassword"
+CONFIRM_NEW_PASSWORD_FIELD = "confirmNewPassword"
 CONFIRM_NEW_PASSWORD = "Confirm New Password"
 RESET_YOUR_PASSWORD = "Reset your password"
 RESET_PASSWORD_MODAL_CALL = "resetPassword.js"

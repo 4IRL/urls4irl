@@ -4,10 +4,11 @@ import requests
 
 from src import db, email_sender
 from src.models import ForgotPassword, User
-from src.users.forms import ForgotPasswordForm, ResetPasswordForm
+from src.splash.forms import ForgotPasswordForm, ResetPasswordForm, UserRegistrationForm
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
+from src.utils.strings.splash_form_strs import REGISTER_FORM, REGISTER_LOGIN_FORM
 from src.utils.all_routes import ROUTES
 
 STD_JSON = STD_JSON_RESPONSE
@@ -163,3 +164,25 @@ def _validate_resetting_password(
         ),
         200,
     )
+
+def build_form_errors(form: ResetPasswordForm | UserRegistrationForm) -> dict[str, list[str]]:
+    errors = {}
+    if isinstance(form, ResetPasswordForm):
+        if form.confirm_new_password.errors:
+            errors[RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD] = form.confirm_new_password.errors
+        if form.new_password.errors:
+            errors[RESET_PASSWORD.NEW_PASSWORD_FIELD] = form.new_password.errors
+
+    elif isinstance(form, UserRegistrationForm):
+        if form.username.errors:
+            errors[REGISTER_LOGIN_FORM.USERNAME] = form.username.errors
+        if form.email.errors:
+            errors[REGISTER_LOGIN_FORM.EMAIL] = form.email.errors
+        if form.confirm_email.errors:
+            errors[REGISTER_FORM.CONFIRM_EMAIL] = form.confirm_email.errors
+        if form.password.errors:
+            errors[REGISTER_LOGIN_FORM.PASSWORD] = form.password.errors
+        if form.confirm_password.errors:
+            errors[REGISTER_FORM.CONFIRM_PASSWORD] = form.confirm_password.errors
+
+    return errors

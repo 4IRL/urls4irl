@@ -9,8 +9,10 @@ from src.urls.forms import (
     EditURLForm,
     EditURLTitleForm,
 )
+from src.urls.utils import build_form_errors
 from src.utils.url_validation import InvalidURLError, find_common_url
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
 from src.utils.email_validation import email_validation_required
 
@@ -223,7 +225,7 @@ def add_url(utub_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
                     STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: utub_new_url_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(utub_new_url_form),
                 }
             ),
             400,
@@ -446,7 +448,7 @@ def edit_url_and_title(utub_id: int, url_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
                     STD_JSON.ERROR_CODE: 5,
-                    STD_JSON.ERRORS: edit_url_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(edit_url_form),
                 }
             ),
             400,
@@ -612,7 +614,7 @@ def edit_url(utub_id: int, url_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
                     STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: edit_url_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(edit_url_form),
                 }
             ),
             400,
@@ -722,7 +724,7 @@ def edit_url_title(utub_id: int, url_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
                     STD_JSON.ERROR_CODE: 3,
-                    STD_JSON.ERRORS: edit_url_title_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(edit_url_title_form),
                 }
             ),
             400,

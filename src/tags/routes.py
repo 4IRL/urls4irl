@@ -5,6 +5,7 @@ from src import db
 from src.models import Utub, Url_Tags, Tags, Utub_Urls
 from src.tags.forms import UTubNewUrlTagForm
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.model_strs import MODELS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_NO_CHANGE, TAGS_SUCCESS
 from src.utils.email_validation import email_validation_required
 
@@ -134,13 +135,14 @@ def add_tag(utub_id: int, url_id: int):
 
     # Input form errors
     if url_tag_form.errors is not None:
+        errors = { MODELS.TAG_STRING: url_tag_form.tag_string.errors }
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
                     STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: url_tag_form.errors,
+                    STD_JSON.ERRORS: errors,
                 }
             ),
             400,
@@ -319,13 +321,14 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
 
     # Input form errors
     if url_tag_form.errors is not None:
+        errors = { MODELS.TAG_STRING: url_tag_form.tag_string.errors }
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
                     STD_JSON.ERROR_CODE: 3,
-                    STD_JSON.ERRORS: url_tag_form.errors,
+                    STD_JSON.ERRORS: errors,
                 }
             ),
             400,

@@ -237,7 +237,7 @@ def test_register_modal_is_shown(app_with_server_name, client):
             in response.data
         )
         assert (
-            b'<input class="form-control login-register-form-group" id="confirm_email" name="confirm_email" required type="text" value="">'
+            b'<input class="form-control login-register-form-group" id="confirmEmail" name="confirmEmail" required type="text" value="">'
             in response.data
         )
         assert (
@@ -245,7 +245,7 @@ def test_register_modal_is_shown(app_with_server_name, client):
             in response.data
         )
         assert (
-            b'<input class="form-control login-register-form-group" id="confirm_password" name="confirm_password" required type="password" value="">'
+            b'<input class="form-control login-register-form-group" id="confirmPassword" name="confirmPassword" required type="password" value="">'
             in response.data
         )
         assert request.path == url_for(ROUTES.SPLASH.REGISTER)

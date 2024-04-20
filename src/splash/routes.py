@@ -12,7 +12,7 @@ from flask_login import current_user, login_user
 
 from src import db, email_sender
 from src.models import User, EmailValidation, ForgotPassword, verify_token
-from src.users.forms import (
+from src.splash.forms import (
     LoginForm,
     UserRegistrationForm,
     ValidateEmailForm,
@@ -29,6 +29,7 @@ from src.splash.utils import (
     _handle_after_forgot_password_form_validated,
     _handle_email_sending_result,
     _validate_resetting_password,
+    build_form_errors
 )
 
 # Standard response for JSON messages
@@ -103,7 +104,7 @@ def register_user():
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
                             STD_JSON.ERROR_CODE: 3,
-                            STD_JSON.ERRORS: register_form.errors,
+                            STD_JSON.ERRORS: build_form_errors(register_form),
                         }
                     ),
                     400,
@@ -131,7 +132,7 @@ def register_user():
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
                     STD_JSON.ERROR_CODE: 2,
-                    STD_JSON.ERRORS: register_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(register_form),
                 }
             ),
             400,
@@ -418,7 +419,7 @@ def reset_password(token: str):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: RESET_PASSWORD.RESET_PASSWORD_INVALID,
                     STD_JSON.ERROR_CODE: 1,
-                    STD_JSON.ERRORS: reset_password_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(reset_password_form),
                 }
             ),
             400,

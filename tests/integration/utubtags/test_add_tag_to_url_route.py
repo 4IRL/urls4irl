@@ -1742,7 +1742,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
         STD_JSON.ERROR_CODE : 4,
-        "Errors": {
+        STD_JSON.ERRORS: {
             TAG_FORM.TAG_STRING: ["This field is required."]
         }
     }
@@ -1872,7 +1872,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
         STD_JSON.ERROR_CODE : 4,
-        "Errors": {
+        STD_JSON.ERRORS: {
             TAG_FORM.TAG_STRING: ["This field is required."]
         }
     }

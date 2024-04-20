@@ -131,10 +131,10 @@ function handleImproperFormErrors(errorResponse) {
       case "username":
       case "password":
       case "email":
-      case "confirm_email":
-      case "confirm_password":
-      case "new_password":
-      case "confirm_new_password":
+      case "confirmEmail":
+      case "confirmPassword":
+      case "newPassword":
+      case "confirmNewPassword":
         let errorMessage = errorResponse.Errors[key][0];
         displayFormErrors(key, errorMessage);
         break;

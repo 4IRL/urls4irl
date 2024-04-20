@@ -55,11 +55,11 @@ function handleResetPasswordFailure(xhr, textStatus, error) {
       case 1:
         $(".form-control").removeClass("is-invalid");
         $(".invalid-feedback").remove();
-        showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
+        handleImproperFormErrors(xhr.responseJSON);
         break;
       case 2:
         hideSplashModalAlertBanner();
-        handleImproperFormErrors(xhr.responseJSON);
+        showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
         break;
     }
   } else {

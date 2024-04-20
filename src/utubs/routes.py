@@ -48,7 +48,7 @@ def get_single_utub(utub_id: str):
     """
     Retrieves data for a single UTub, and returns it in a serialized format
     """
-    utub = Utub.query.get_or_404(utub_id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
 
     if int(current_user.get_id()) not in [
         int(member.user_id) for member in utub.members

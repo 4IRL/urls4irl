@@ -120,14 +120,11 @@ Required form data:
 
 > ```bash
 > curl -X POST \
->  https://urls4irl.app/register \
+>  https://urls4irl.app/login \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'email=EMAIL' \
->  --data-urlencode 'confirm_email=EMAIL' \
 >  --data-urlencode 'username=USERNAME' \
 >  --data-urlencode 'password=PASSWORD' \
->  --data-urlencode 'confirm_password=PASSWORD'
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -169,9 +166,9 @@ Required form data:
 > ```
 > username: %username%
 > email: %email%
-> confirm_email: %confirm email%
+> confirmEmail: %confirm email%
 > password: %password%
-> confirm_password: %confirm password%
+> confirmPassword: %confirm password%
 > csrf_token: %csrf_token%
 > ```
 
@@ -216,10 +213,10 @@ Required form data:
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
 >  --data-urlencode 'email=EMAIL' \
->  --data-urlencode 'confirm_email=EMAIL' \
+>  --data-urlencode 'confirmEmail=EMAIL' \
 >  --data-urlencode 'username=USERNAME' \
 >  --data-urlencode 'password=PASSWORD' \
->  --data-urlencode 'confirm_password=PASSWORD'
+>  --data-urlencode 'confirmPassword=PASSWORD'
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -494,8 +491,8 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8
 
 Required form data:
 > ```
-> new_password: %new_password%
-> confirm_new_password: %confirm_new_password%
+> newPassword: %new_password%
+> confirmNewPassword: %confirm_new_password%
 > csrf_token: %csrf_token%
 > ```
 
@@ -509,9 +506,6 @@ Required form data:
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
-
-To not indicate to the user whether a given email or account already exists, the 200 HTTP response is sent even if an invalid 
-or missing email is provided. However, the reset-password email is only sent if the email is validated and exists within the database.
 
 > ```json
 > {
@@ -527,7 +521,7 @@ or missing email is provided. However, the reset-password email is only sent if 
 >     "status": "Failure",
 >     "message": "Could not reset the password.",
 >     "errors": [
->         "confirm_new_password": ["Passwords are not identical."],
+>         "confirmNewPassword": ["Passwords are not identical."],
 >     ],
 >     "errorCode": 1
 > }
@@ -550,37 +544,120 @@ or missing email is provided. However, the reset-password email is only sent if 
 >  https://urls4irl.app/reset-password/ABCDEFGH123456789 \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'new_password=PASSWORD'
->  --data-urlencode 'confirm_new_password=PASSWORD'
+>  --data-urlencode 'newPassword=PASSWORD'
+>  --data-urlencode 'confirmNewPassword=PASSWORD'
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
 </details>
 
+------------------------------------------------------------------------------------------
+
+#### Home Page
+
 <details>
- <summary><code>DELETE</code> <code><b>/projects/{projectID}</b></code> <code>(deletes a project)</code>:white_check_mark:</summary>
-
-##### Parameters
-
-> | name   |  type      | data type      | description                                          |
-> |--------|------------|----------------|------------------------------------------------------|
-> | `projectID` |  required  | int ($int64) | The unique ID of the project |
+ <summary><code>GET</code> <code><b>/home</b></code> <code>(renders user's home page)</code></summary>
 
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `{"code":"200","message":"Project deleted"}` | Successful deletion. |
-> | `400`         | `application/json`                | `{"code":"400","message":"Projects must have zero tasks left before they can be deleted"}` | Tasks must be removed to delete a project. |
-> | `403`         | `application/json`                | `{"code":"403","message":"User not in project, or project does not exist"}` | User not in this project, or project does not exist. |
+> | `200`         | `text/html;charset=utf-8`         | `Renders user's home page.` | Displays the user's home page, with selectable UTubs. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `404`         | `text/html;charset=utf-8`         | None | Unknown error occurred. |
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
 > ```bash
-> curl -X DELETE \
->  https://opm-api.propersi.me/api/v1/projects/1 \
->  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
+> curl -X GET \
+>  https://urls4irl.app/home \
+>  -H 'Cookie: YOUR_COOKIE' \
+> ```
+
+</details>
+<details>
+ <summary><code>GET</code> <code><b>/home?UTubID=[int:UTubID]</b></code> <code>(get specific UTub information)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the requested UTub |
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successful retrieval of individual UTub data. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `404`         | `text/html;charset=utf-8`         | None | Could not find associated UTub, or user not in requested UTub. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "id": 1,
+>     "name": "My UTub"
+>     "createdBy": 1, 
+>     "createdAt": "04/04/2024 04:04:04",
+>     "description": "Here lies the description",
+>     "members": [
+>         {
+>             "id": 1,
+>             "username": "member1"
+>         },
+>         {
+>             "id": 2,
+>             "username": "member2"
+>         }
+>     ],
+>     "urls": [
+>         {
+>             "urlID": 1,
+>             "urlString": "https://urls4irl.app",
+>             "urlTags": [1, 2, 3],
+>             "addedBy": {
+>                 "id": 1,
+>                 "username": "member1"
+>             },
+>             "urlTitle": "Title for URL",
+>         },
+>         {
+>             "urlID": 2,
+>             "urlString": "https://www.github.com",
+>             "urlTags": [2, 3],
+>             "addedBy": {
+>                 "id": 2,
+>                 "username": "member2"
+>             },
+>             "urlTitle": "Title for URL",
+>         }
+>     ],
+>     "tags": [
+>         {
+>             "id": 1,
+>             "tagString": "funny",
+>         },
+>         {
+>             "id": 2,
+>             "tagString": "nice",
+>         },
+>         {
+>             "id": 3,
+>             "tagString": "helpful",
+>         }
+>     ]
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls4irl.app/home?UTubID=1 \
+>  -H 'Cookie: YOUR_COOKIE' \
 > ```
 
 </details>

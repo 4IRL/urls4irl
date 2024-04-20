@@ -2,8 +2,8 @@ from src.utils.strings.form_strs import GENERAL_FORM
 from src.utils.strings.model_strs import EMAIL, PASSWORD, USERNAME
 
 # Strings for login/register forms
-CONFIRM_EMAIL = "confirm_email"
-CONFIRM_PASSWORD = "confirm_password"
+CONFIRM_EMAIL = "confirmEmail"
+CONFIRM_PASSWORD = "confirmPassword"
 USERNAME_TEXT = "Username"
 EMAIL_TEXT = "Email"
 CONFIRM_EMAIL_TEXT = "Confirm Email"
