@@ -1322,7 +1322,9 @@ def test_add_tag_to_url_not_in_utub(
         url_association_not_with_this_utub = Utub_Urls.query.filter(
             Utub_Urls.utub_id != utub_id_user_is_creator_of
         ).first()
-        url_id_for_url_not_in_utub = url_association_not_with_this_utub.standalone_url.id
+        url_id_for_url_not_in_utub = (
+            url_association_not_with_this_utub.standalone_url.id
+        )
 
         # Find number of URLs in this UTub
         num_of_urls_in_utub = len(utub_user_is_creator_of.utub_urls)

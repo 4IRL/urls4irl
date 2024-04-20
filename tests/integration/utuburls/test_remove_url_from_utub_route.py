@@ -85,10 +85,21 @@ def test_remove_url_as_utub_creator_no_tags(
     assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
     assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == current_user_utub.id
     assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == current_user_utub.name
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID] == url_id_to_remove
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING] == url_utub_user_association.standalone_url.url_string
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE] == url_utub_user_association.url_title
-    assert sorted(remove_url_response_json[URL_SUCCESS.URL_TAGS]) == sorted(associated_tags)
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID]
+        == url_id_to_remove
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING]
+        == url_utub_user_association.standalone_url.url_string
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
+        == url_utub_user_association.url_title
+    )
+    assert sorted(remove_url_response_json[URL_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags
+    )
 
     # Ensure proper removal from database
     with app.app_context():
@@ -227,10 +238,20 @@ def test_remove_url_as_utub_member_no_tags(
     assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
     assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == current_user_utub.id
     assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == current_user_utub.name
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID] == missing_url.id
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING] == missing_url.url_string
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE] == NEW_URL_TITLE
-    assert sorted(remove_url_response_json[URL_SUCCESS.URL_TAGS]) == sorted(associated_tags)
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID] == missing_url.id
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING]
+        == missing_url.url_string
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
+        == NEW_URL_TITLE
+    )
+    assert sorted(remove_url_response_json[URL_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags
+    )
 
     # Ensure proper removal from database
     with app.app_context():
@@ -278,7 +299,7 @@ def test_remove_url_from_utub_not_member_of(
             Utub.utub_creator != current_user.id
         ).first()
 
-        # Ensure the currently logged in user is not in this UTub 
+        # Ensure the currently logged in user is not in this UTub
         assert current_user not in [
             user.to_user for user in utub_current_user_not_part_of.members
         ]
@@ -577,12 +598,27 @@ def test_remove_url_as_utub_creator_with_tags(
     remove_url_response_json = remove_url_response.json
     assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
-    assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
-    assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == utub_name_to_remove_url_from
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID] == url_id_to_remove
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING] == url_string_to_remove
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE] == url_in_utub.url_title
-    assert sorted(remove_url_response_json[URL_SUCCESS.URL_TAGS]) == sorted(associated_tags)
+    assert (
+        int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.UTUB_NAME] == utub_name_to_remove_url_from
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID]
+        == url_id_to_remove
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING]
+        == url_string_to_remove
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
+        == url_in_utub.url_title
+    )
+    assert sorted(remove_url_response_json[URL_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags
+    )
 
     # Ensure proper removal from database
     with app.app_context():
@@ -708,12 +744,25 @@ def test_remove_url_as_utub_member_with_tags(
     remove_url_response_json = remove_url_response.json
     assert remove_url_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
-    assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
+    assert (
+        int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
+    )
     assert remove_url_response_json[URL_SUCCESS.UTUB_NAME] == current_user_utub.name
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID] == url_id_to_remove
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING] == url_string_to_remove
-    assert remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE] == url_title_to_remove
-    assert sorted(remove_url_response_json[URL_SUCCESS.URL_TAGS]) == sorted(associated_tags)
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID]
+        == url_id_to_remove
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING]
+        == url_string_to_remove
+    )
+    assert (
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
+        == url_title_to_remove
+    )
+    assert sorted(remove_url_response_json[URL_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags
+    )
 
     # Ensure proper removal from database
     with app.app_context():

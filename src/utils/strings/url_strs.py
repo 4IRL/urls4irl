@@ -1,5 +1,11 @@
 from src.utils.strings.json_strs import FAILURE_GENERAL, REDIRECT
-from src.utils.strings.model_strs import ADDED_BY, URL_ID, URL_STRING, URL_TITLE, URL_TAGS
+from src.utils.strings.model_strs import (
+    ADDED_BY,
+    URL_ID,
+    URL_STRING,
+    URL_TITLE,
+    URL_TAGS,
+)
 from src.utils.strings.utub_strs import UTUB_GENERAL
 
 # Strings for URL success

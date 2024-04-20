@@ -64,7 +64,7 @@ def remove_url(utub_id: int, url_id: int):
                         URL_SUCCESS.URL_ID: url_id,
                         URL_SUCCESS.URL_TITLE: url_in_utub.url_title,
                     },
-                    URL_SUCCESS.URL_TAGS: associated_tags
+                    URL_SUCCESS.URL_TAGS: associated_tags,
                 }
             ),
             200,
@@ -129,7 +129,9 @@ def add_url(utub_id: int):
             )
 
         # Check if URL already exists
-        already_created_url: URLS = URLS.query.filter_by(url_string=normalized_url).first()
+        already_created_url: URLS = URLS.query.filter_by(
+            url_string=normalized_url
+        ).first()
 
         if not already_created_url:
             # If URL does not exist, add it and then associate it with the UTub
@@ -149,7 +151,7 @@ def add_url(utub_id: int):
             utub_url_if_already_exists = Utub_Urls.query.filter_by(
                 utub_id=utub_id, url_id=url_id
             ).first()
-            
+
             if utub_url_if_already_exists is not None:
                 # URL already exists in UTub
                 return (
@@ -162,7 +164,6 @@ def add_url(utub_id: int):
                     ),
                     400,
                 )
-
 
         # Associate URL with given UTub
         url_utub_user_add = Utub_Urls(
@@ -179,7 +180,11 @@ def add_url(utub_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    STD_JSON.MESSAGE: URL_SUCCESS.URL_CREATED_ADDED if not already_created_url else URL_SUCCESS.URL_ADDED,
+                    STD_JSON.MESSAGE: (
+                        URL_SUCCESS.URL_CREATED_ADDED
+                        if not already_created_url
+                        else URL_SUCCESS.URL_ADDED
+                    ),
                     URL_SUCCESS.UTUB_ID: utub_id,
                     URL_SUCCESS.UTUB_NAME: utub.name,
                     URL_SUCCESS.ADDED_BY: current_user.id,
@@ -348,18 +353,24 @@ def edit_url_and_title(utub_id: int, url_id: int):
                 serialized_url_in_utub = url_in_utub.serialized
                 db.session.commit()
 
-            return ( 
-                    jsonify(
+            return (
+                jsonify(
                     {
-                        STD_JSON.STATUS: STD_JSON.SUCCESS if title_diff else STD_JSON.NO_CHANGE,
-                        STD_JSON.MESSAGE: URL_SUCCESS.URL_TITLE_MODIFIED if title_diff else URL_NO_CHANGE.URL_AND_TITLE_NOT_MODIFIED,
+                        STD_JSON.STATUS: (
+                            STD_JSON.SUCCESS if title_diff else STD_JSON.NO_CHANGE
+                        ),
+                        STD_JSON.MESSAGE: (
+                            URL_SUCCESS.URL_TITLE_MODIFIED
+                            if title_diff
+                            else URL_NO_CHANGE.URL_AND_TITLE_NOT_MODIFIED
+                        ),
                         URL_SUCCESS.URL: serialized_url_in_utub,
                         URL_SUCCESS.UTUB_ID: utub.id,
                         URL_SUCCESS.UTUB_NAME: utub.name,
                     }
-                ), 200
+                ),
+                200,
             )
-
 
         # Completely new URL. Now set the URL ID for the old URL to the new URL
         url_in_utub.url_id = url_in_database.id
@@ -552,7 +563,9 @@ def edit_url(utub_id: int, url_id: int):
         url_in_utub.standalone_url = url_in_database
 
         # Find tags associated with URL
-        url_tags: list[Url_Tags] = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).all()
+        url_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+            utub_id=utub_id, url_id=url_id
+        ).all()
 
         for url_tag in url_tags:
             url_tag.url_id = url_in_database.id
@@ -651,7 +664,11 @@ def edit_url_title(utub_id: int, url_id: int):
         return jsonify(
             {
                 STD_JSON.STATUS: STD_JSON.SUCCESS if title_diff else STD_JSON.NO_CHANGE,
-                STD_JSON.MESSAGE: URL_SUCCESS.URL_TITLE_MODIFIED if title_diff else URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED,
+                STD_JSON.MESSAGE: (
+                    URL_SUCCESS.URL_TITLE_MODIFIED
+                    if title_diff
+                    else URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
+                ),
                 URL_SUCCESS.UTUB_ID: utub.id,
                 URL_SUCCESS.UTUB_NAME: utub.name,
                 URL_SUCCESS.URL: serialized_url_in_utub,

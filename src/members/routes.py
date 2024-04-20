@@ -97,7 +97,7 @@ def remove_member(utub_id: int, user_id: int):
                 MEMBER_SUCCESS.UTUB_NAME: current_utub.name,
                 MEMBER_SUCCESS.MEMBER: {
                     MODELS.ID: user_id,
-                    MODELS.USERNAME: removed_user_username
+                    MODELS.USERNAME: removed_user_username,
                 },
             }
         ),
@@ -165,8 +165,8 @@ def add_member(utub_id: int):
                     MEMBER_SUCCESS.UTUB_NAME: utub.name,
                     MEMBER_SUCCESS.MEMBER: {
                         MODELS.USERNAME: new_user.username,
-                        MODELS.ID: new_user.id
-                    }
+                        MODELS.ID: new_user.id,
+                    },
                 }
             ),
             200,

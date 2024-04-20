@@ -30,7 +30,7 @@ def test_add_valid_users_to_utub_as_creator(
         USER_SUCCESS.UTUB_NAME : String representing name of the UTub the user was added to,
         USER_SUCCESS.MEMBER: {
             MODELS.USERNAME: String representing newly added member's username
-            MODELS.ID: Integer representing newly added member's userID 
+            MODELS.ID: Integer representing newly added member's userID
         }
     }
     """
@@ -89,8 +89,14 @@ def test_add_valid_users_to_utub_as_creator(
         # Assert JSON response is valid and contains updated data
         assert added_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
         assert added_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_ADDED
-        assert int(added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID]) == new_user.id
-        assert added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME] == other_user
+        assert (
+            int(added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
+            == new_user.id
+        )
+        assert (
+            added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME]
+            == other_user
+        )
         assert (
             int(added_user_response_json[MEMBER_SUCCESS.UTUB_ID])
             == utub_id_of_current_user
@@ -106,7 +112,7 @@ def test_add_valid_users_to_utub_as_creator(
         with app.app_context():
             assert (
                 len(Utub.query.get(utub_id_of_current_user).members)
-                == current_number_of_users_in_utub 
+                == current_number_of_users_in_utub
             )
             current_utub = Utub.query.get(utub_id_of_current_user)
             assert new_user in [user.to_user for user in current_utub.members]
@@ -116,7 +122,7 @@ def test_add_valid_users_to_utub_as_creator(
             assert other_user in current_users_in_utub
 
             # Ensure correct count of Utub-User associations
-            assert len(Utub_Users.query.all()) == initial_num_user_utubs   
+            assert len(Utub_Users.query.all()) == initial_num_user_utubs
 
 
 def test_add_then_remove_then_add_user_who_has_urls_to_utub(
@@ -140,7 +146,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
         USER_SUCCESS.UTUB_NAME : String representing name of the UTub the user was added to,
         USER_SUCCESS.MEMBER: {
             MODELS.USERNAME: String representing newly added member's username
-            MODELS.ID: Integer representing newly added member's userID 
+            MODELS.ID: Integer representing newly added member's userID
         }
     }
     """
@@ -233,7 +239,10 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
         int(added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
         == other_user_id_in_utub_with_urls
     )
-    assert added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME] == other_user_username
+    assert (
+        added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME]
+        == other_user_username
+    )
     assert int(added_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == utub_user_created.id
     assert added_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == utub_user_created.name
 
@@ -249,7 +258,14 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
             len(Url_Tags.query.filter(Url_Tags.utub_id == utub_user_created.id).all())
             == initial_num_of_url_tags_in_utub
         )
-        assert len(Utub_Users.query.filter(Utub_Users.utub_id == utub_user_created.id).all()) == initial_num_of_users_in_utub
+        assert (
+            len(
+                Utub_Users.query.filter(
+                    Utub_Users.utub_id == utub_user_created.id
+                ).all()
+            )
+            == initial_num_of_users_in_utub
+        )
 
 
 def test_add_valid_users_to_utub_as_member(
@@ -399,7 +415,10 @@ def test_add_duplicate_user_to_utub(
     add_user_response_json = add_user_response.json
 
     assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB
+    assert (
+        add_user_response_json[STD_JSON.MESSAGE]
+        == MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB
+    )
     assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
@@ -661,7 +680,9 @@ def test_add_user_to_utub_invalid_form(
     add_user_response_json = add_user_response.json
 
     assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER
+    assert (
+        add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER
+    )
     assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 3
     assert (
         add_user_response_json[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME]

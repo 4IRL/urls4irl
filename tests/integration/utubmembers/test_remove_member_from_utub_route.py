@@ -77,7 +77,10 @@ def test_remove_valid_user_from_utub_as_creator(
         int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
         == second_user_in_utub.id
     )
-    assert remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME] == second_user_in_utub.username
+    assert (
+        remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME]
+        == second_user_in_utub.username
+    )
     assert int(remove_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == current_utub.id
     assert remove_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == current_utub.name
 
@@ -157,7 +160,8 @@ def test_remove_self_from_utub_as_member(
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
     assert (
-        int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID]) == current_user_id
+        int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
+        == current_user_id
     )
     assert (
         remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME]
@@ -618,7 +622,9 @@ def test_remove_invalid_user_from_utub_as_creator(
     # Ensure proper JSON response
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_NOT_IN_UTUB
+    assert (
+        remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_NOT_IN_UTUB
+    )
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():

@@ -537,7 +537,6 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
-
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: current_url,
