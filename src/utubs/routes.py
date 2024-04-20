@@ -48,9 +48,7 @@ def get_single_utub(utub_id: str):
     """
     utub: Utub = Utub.query.get_or_404(utub_id)
 
-    if current_user.id not in [
-        member.user_id for member in utub.members
-    ]:
+    if current_user.id not in [member.user_id for member in utub.members]:
         # User is not member of the UTub they are requesting
         abort(404)
 
