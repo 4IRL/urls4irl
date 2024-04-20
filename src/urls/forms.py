@@ -15,10 +15,14 @@ class NewURLForm(FlaskForm):
     """
 
     url_string = StringField(
-        "URL", validators=[InputRequired(), Length(min=1, max=2000)], name=MODELS.URL_STRING
+        "URL",
+        validators=[InputRequired(), Length(min=1, max=2000)],
+        name=MODELS.URL_STRING,
     )
     url_title = StringField(
-        "URL Title", validators=[InputRequired(), Length(min=1, max=100)], name=MODELS.URL_TITLE
+        "URL Title",
+        validators=[InputRequired(), Length(min=1, max=100)],
+        name=MODELS.URL_TITLE,
     )
 
     submit = SubmitField("Add URL to this UTub!")
@@ -34,9 +38,13 @@ class EditURLAndTitleForm(FlaskForm):
     """
 
     url_string = StringField(
-        "URL", validators=[InputRequired(), Length(min=1, max=2000)], name=MODELS.URL_STRING
+        "URL",
+        validators=[InputRequired(), Length(min=1, max=2000)],
+        name=MODELS.URL_STRING,
     )
-    url_title = StringField("URL Title", validators=[Length(max=140)], name=MODELS.URL_TITLE)
+    url_title = StringField(
+        "URL Title", validators=[Length(max=140)], name=MODELS.URL_TITLE
+    )
 
     submit = SubmitField("Edit URL!")
 
@@ -57,7 +65,9 @@ class EditURLForm(FlaskForm):
     """
 
     url_string = StringField(
-        "URL", validators=[InputRequired(), Length(min=1, max=2000)], name=MODELS.URL_STRING
+        "URL",
+        validators=[InputRequired(), Length(min=1, max=2000)],
+        name=MODELS.URL_STRING,
     )
 
     submit = SubmitField("Edit URL!")
@@ -71,6 +81,10 @@ class EditURLTitleForm(FlaskForm):
         url_title (Stringfield): Required. Maximum 2000 chars? TODO
     """
 
-    url_title = StringField("URL Title", validators=[InputRequired(), Length(max=140)], name=MODELS.URL_TITLE)
+    url_title = StringField(
+        "URL Title",
+        validators=[InputRequired(), Length(max=140)],
+        name=MODELS.URL_TITLE,
+    )
 
     submit = SubmitField("Edit URL Title!")

@@ -1,7 +1,15 @@
-from src.urls.forms import EditURLAndTitleForm, EditURLForm, EditURLTitleForm, NewURLForm
+from src.urls.forms import (
+    EditURLAndTitleForm,
+    EditURLForm,
+    EditURLTitleForm,
+    NewURLForm,
+)
 from src.utils.strings.model_strs import MODELS
 
-def build_form_errors(form: EditURLAndTitleForm | EditURLForm | EditURLTitleForm | NewURLForm ) -> dict[str, list[str]]:
+
+def build_form_errors(
+    form: EditURLAndTitleForm | EditURLForm | EditURLTitleForm | NewURLForm,
+) -> dict[str, list[str]]:
     errors = {}
     if isinstance(form, NewURLForm) or isinstance(form, EditURLAndTitleForm):
         if form.url_string.errors:

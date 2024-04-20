@@ -5,6 +5,7 @@ from src.models import User
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM
 from src.utils.strings.user_strs import USER_FAILURE
 
+
 class UTubNewUserForm(FlaskForm):
     """
     Form to add a user to a UTub. Inherits from FlaskForm. All fields require data.

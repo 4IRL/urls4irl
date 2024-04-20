@@ -165,11 +165,16 @@ def _validate_resetting_password(
         200,
     )
 
-def build_form_errors(form: ResetPasswordForm | UserRegistrationForm) -> dict[str, list[str]]:
+
+def build_form_errors(
+    form: ResetPasswordForm | UserRegistrationForm,
+) -> dict[str, list[str]]:
     errors = {}
     if isinstance(form, ResetPasswordForm):
         if form.confirm_new_password.errors:
-            errors[RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD] = form.confirm_new_password.errors
+            errors[RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD] = (
+                form.confirm_new_password.errors
+            )
         if form.new_password.errors:
             errors[RESET_PASSWORD.NEW_PASSWORD_FIELD] = form.new_password.errors
 

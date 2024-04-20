@@ -1,4 +1,3 @@
-
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
@@ -7,6 +6,7 @@ from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWOR
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM, REGISTER_FORM
 from src.utils.strings.user_strs import USER_FAILURE
 from src.utils.constants import USER_CONSTANTS
+
 
 class UserRegistrationForm(FlaskForm):
     """
@@ -34,7 +34,7 @@ class UserRegistrationForm(FlaskForm):
     confirm_email = StringField(
         REGISTER_LOGIN_FORM.CONFIRM_EMAIL_TEXT,
         validators=[InputRequired(), EqualTo(REGISTER_LOGIN_FORM.EMAIL)],
-        name=REGISTER_FORM.CONFIRM_EMAIL
+        name=REGISTER_FORM.CONFIRM_EMAIL,
     )
     password = PasswordField(
         REGISTER_LOGIN_FORM.PASSWORD_TEXT,
@@ -43,7 +43,7 @@ class UserRegistrationForm(FlaskForm):
     confirm_password = PasswordField(
         REGISTER_LOGIN_FORM.CONFIRM_PASSWORD_TEXT,
         validators=[InputRequired(), EqualTo(REGISTER_LOGIN_FORM.PASSWORD)],
-        name=REGISTER_FORM.CONFIRM_PASSWORD
+        name=REGISTER_FORM.CONFIRM_PASSWORD,
     )
 
     submit = SubmitField(REGISTER_LOGIN_FORM.REGISTER)
@@ -115,12 +115,12 @@ class ResetPasswordForm(FlaskForm):
     new_password = PasswordField(
         RESET_PASSWORD.NEW_PASSWORD,
         validators=[InputRequired(), Length(min=12, max=64)],
-        name=RESET_PASSWORD.NEW_PASSWORD_FIELD
+        name=RESET_PASSWORD.NEW_PASSWORD_FIELD,
     )
     confirm_new_password = PasswordField(
         RESET_PASSWORD.CONFIRM_NEW_PASSWORD,
         validators=[InputRequired()],
-        name=RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD
+        name=RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD,
     )
 
     submit = SubmitField(RESET_PASSWORD.RESET_YOUR_PASSWORD)

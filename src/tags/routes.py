@@ -135,7 +135,7 @@ def add_tag(utub_id: int, url_id: int):
 
     # Input form errors
     if url_tag_form.errors is not None:
-        errors = { MODELS.TAG_STRING: url_tag_form.tag_string.errors }
+        errors = {MODELS.TAG_STRING: url_tag_form.tag_string.errors}
         return (
             jsonify(
                 {
@@ -321,7 +321,7 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
 
     # Input form errors
     if url_tag_form.errors is not None:
-        errors = { MODELS.TAG_STRING: url_tag_form.tag_string.errors }
+        errors = {MODELS.TAG_STRING: url_tag_form.tag_string.errors}
         return (
             jsonify(
                 {

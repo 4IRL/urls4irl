@@ -29,7 +29,7 @@ from src.splash.utils import (
     _handle_after_forgot_password_form_validated,
     _handle_email_sending_result,
     _validate_resetting_password,
-    build_form_errors
+    build_form_errors,
 )
 
 # Standard response for JSON messages

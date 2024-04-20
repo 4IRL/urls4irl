@@ -13,7 +13,11 @@ class UTubNewUrlTagForm(FlaskForm):
         tag_string (Stringfield): Maximum 30 chars? TODO
     """
 
-    tag_string = StringField("Tag", validators=[InputRequired(), Length(min=1, max=30)], name=MODEL_STRS.TAG_STRING)
+    tag_string = StringField(
+        "Tag",
+        validators=[InputRequired(), Length(min=1, max=30)],
+        name=MODEL_STRS.TAG_STRING,
+    )
 
     submit = SubmitField("Add tag to this URL!")
 
