@@ -6,11 +6,12 @@ from flask_login import current_user
 
 from src import db
 from src.models import Utub, Utub_Users, User
-from src.users.forms import (
-    UTubNewUserForm,
+from src.members.forms import (
+    UTubNewMemberForm,
 )
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
-from src.utils.strings.user_strs import USER_FAILURE, USER_SUCCESS
+from src.utils.strings.model_strs import MODELS
+from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from src.utils.email_validation import email_validation_required
 
 members = Blueprint("members", __name__)
@@ -32,14 +33,13 @@ def remove_member(utub_id: int, user_id: int):
     """
     current_utub: Utub = Utub.query.get_or_404(utub_id)
 
-    if user_id == current_utub.created_by.id:
+    if user_id == current_utub.utub_creator:
         # Creator tried to remove themselves, not allowed
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
+                    STD_JSON.MESSAGE: MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
@@ -47,13 +47,12 @@ def remove_member(utub_id: int, user_id: int):
         )
 
     current_user_ids_in_utub = [member.user_id for member in current_utub.members]
-    current_user_id = current_user.id
 
     # User can't remove if current user is not in this current UTub's members
     # User can't remove if current user is not creator of UTub and requested user is not same as current user
-    current_user_not_in_utub = current_user_id not in current_user_ids_in_utub
+    current_user_not_in_utub = current_user.id not in current_user_ids_in_utub
     member_trying_to_remove_another_member = (
-        current_user_id != current_utub.created_by.id and user_id != current_user_id
+        current_user.id != current_utub.created_by.id and user_id != current_user.id
     )
 
     if current_user_not_in_utub or member_trying_to_remove_another_member:
@@ -61,8 +60,7 @@ def remove_member(utub_id: int, user_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
+                    STD_JSON.MESSAGE: MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
                     STD_JSON.ERROR_CODE: 2,
                 }
             ),
@@ -74,20 +72,18 @@ def remove_member(utub_id: int, user_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.USER_NOT_IN_UTUB,
-                    USER_FAILURE.EMAIL_VALIDATED: str(True),
+                    STD_JSON.MESSAGE: MEMBER_FAILURE.MEMBER_NOT_IN_UTUB,
                     STD_JSON.ERROR_CODE: 3,
                 }
             ),
             404,
         )
 
-    user_to_remove_in_utub = Utub_Users.query.filter(
+    user_to_remove_in_utub: Utub_Users = Utub_Users.query.filter(
         Utub_Users.utub_id == utub_id, Utub_Users.user_id == user_id
     ).first_or_404()
 
-    removed_user = User.query.get(user_id)
-    removed_user_username = removed_user.username
+    removed_user_username = user_to_remove_in_utub.to_user.username
 
     db.session.delete(user_to_remove_in_utub)
     db.session.commit()
@@ -96,14 +92,13 @@ def remove_member(utub_id: int, user_id: int):
         jsonify(
             {
                 STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: USER_SUCCESS.USER_REMOVED,
-                USER_SUCCESS.USER_ID_REMOVED: f"{user_id}",
-                USER_SUCCESS.USERNAME_REMOVED: f"{removed_user_username}",
-                USER_SUCCESS.UTUB_ID: f"{utub_id}",
-                USER_SUCCESS.UTUB_NAME: f"{current_utub.name}",
-                USER_SUCCESS.UTUB_USERS: [
-                    user.to_user.username for user in current_utub.members
-                ],
+                STD_JSON.MESSAGE: MEMBER_SUCCESS.MEMBER_REMOVED,
+                MEMBER_SUCCESS.UTUB_ID: utub_id,
+                MEMBER_SUCCESS.UTUB_NAME: current_utub.name,
+                MEMBER_SUCCESS.MEMBER: {
+                    MODELS.ID: user_id,
+                    MODELS.USERNAME: removed_user_username
+                },
             }
         ),
         200,
@@ -119,30 +114,28 @@ def add_member(utub_id: int):
     Args:
         utub_id (int): The utub to which this user is being added
     """
-    utub = Utub.query.get_or_404(utub_id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
 
-    if int(utub.created_by.id) != int(current_user.get_id()):
-        # User not authorized to add a user to this UTub
+    if utub.utub_creator != current_user.id:
+        # User not authorized to add a member to this UTub
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.NOT_AUTHORIZED,
+                    STD_JSON.MESSAGE: MEMBER_FAILURE.NOT_AUTHORIZED,
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
             403,
         )
 
-    utub_new_user_form = UTubNewUserForm()
+    utub_new_user_form = UTubNewMemberForm()
 
     if utub_new_user_form.validate_on_submit():
         username = utub_new_user_form.username.data
 
-        new_user = User.query.filter_by(username=username).first_or_404()
-        already_in_utub = [
-            member for member in utub.members if int(member.user_id) == int(new_user.id)
-        ]
+        new_user: User = User.query.filter_by(username=username).first_or_404()
+        already_in_utub = new_user.id in (member.user_id for member in utub.members)
 
         if already_in_utub:
             # User already exists in UTub
@@ -150,42 +143,41 @@ def add_member(utub_id: int):
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: USER_FAILURE.USER_ALREADY_IN_UTUB,
+                        STD_JSON.MESSAGE: MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB,
                         STD_JSON.ERROR_CODE: 2,
                     }
                 ),
                 400,
             )
 
-        else:
-            new_user_to_utub = Utub_Users()
-            new_user_to_utub.to_user = new_user
-            utub.members.append(new_user_to_utub)
-            db.session.commit()
+        new_user_to_utub = Utub_Users()
+        new_user_to_utub.to_user = new_user
+        utub.members.append(new_user_to_utub)
+        db.session.commit()
 
-            # Successfully added user to UTub
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.SUCCESS,
-                        STD_JSON.MESSAGE: USER_SUCCESS.USER_ADDED,
-                        USER_SUCCESS.USER_ID_ADDED: int(new_user.id),
-                        USER_SUCCESS.UTUB_ID: int(utub_id),
-                        USER_SUCCESS.UTUB_NAME: f"{utub.name}",
-                        USER_SUCCESS.UTUB_USERS: [
-                            user.to_user.username for user in utub.members
-                        ],
+        # Successfully added user to UTub
+        return (
+            jsonify(
+                {
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: MEMBER_SUCCESS.MEMBER_ADDED,
+                    MEMBER_SUCCESS.UTUB_ID: utub_id,
+                    MEMBER_SUCCESS.UTUB_NAME: utub.name,
+                    MEMBER_SUCCESS.MEMBER: {
+                        MODELS.USERNAME: new_user.username,
+                        MODELS.ID: new_user.id
                     }
-                ),
-                200,
-            )
+                }
+            ),
+            200,
+        )
 
     if utub_new_user_form.errors is not None:
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
+                    STD_JSON.MESSAGE: MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
                     STD_JSON.ERROR_CODE: 3,
                     STD_JSON.ERRORS: utub_new_user_form.errors,
                 }
@@ -197,7 +189,7 @@ def add_member(utub_id: int):
         jsonify(
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_ADD,
+                STD_JSON.MESSAGE: MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
                 STD_JSON.ERROR_CODE: 4,
             }
         ),

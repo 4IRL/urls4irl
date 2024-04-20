@@ -970,154 +970,192 @@ Indicates a missing form field in the payload content.
 > ```
 
 </details>
+
+------------------------------------------------------------------------------------------
+
+#### UTub Members
+
 <details>
- <summary><code>GET</code> <code><b>/home?UTubID=[int:UTubID]</b></code> <code>(get specific UTub information)</code></summary>
+ <summary><code>POST</code> <code><b>/utubs/{UTubID}/members</b></code> <code>(add a member to a UTub)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
-> | `UTubID` |  required  | int ($int64) | The unique ID of the requested UTub |
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to add a member to |
+
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+
+Required form data:
+> ```
+> username: %newMemberName%
+> csrf_token: %csrf_token%
+> ```
+
 
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `See below.` | Successful retrieval of individual UTub data. |
+> | `200`         | `application/json`                | `See below.` | Successfully added a member to the UTub. |
 > | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors in making the new UTub. |
-> | `404`         | `text/html;charset=utf-8`         | None | Could not find associated UTub, or user not in requested UTub. |
+> | `400`         | `application/json`                | `See below.` | Form errors in adding member, or member already in UTub. |
+> | `403`         | `application/json`                | `See below.` | Only UTub creators can add members to UTub. |
+> | `404`         | `application/json`                | `See below.` | Unable to process the form. |
+> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub or member. |
 > | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
 > ```json
 > {
->     "id": 1,
->     "name": "My UTub"
->     "createdBy": 1, 
->     "createdAt": "04/04/2024 04:04:04",
->     "description": "Here lies the description",
->     "members": [
->         {
->             "id": 1,
->             "username": "member1"
->         },
->         {
->             "id": 2,
->             "username": "member2"
->         }
->     ],
->     "urls": [
->         {
->             "urlID": 1,
->             "urlString": "https://urls4irl.app",
->             "urlTags": [1, 2, 3],
->             "addedBy": {
->                 "id": 1,
->                 "username": "member1"
->             },
->             "urlTitle": "Title for URL",
->         },
->         {
->             "urlID": 2,
->             "urlString": "https://www.github.com",
->             "urlTags": [2, 3],
->             "addedBy": {
->                 "id": 2,
->                 "username": "member2"
->             },
->             "urlTitle": "Title for URL",
->         }
->     ],
->     "tags": [
->         {
->             "id": 1,
->             "tagString": "funny",
->         },
->         {
->             "id": 2,
->             "tagString": "nice",
->         },
->         {
->             "id": 3,
->             "tagString": "helpful",
->         }
->     ]
+>     "status": "Success",
+>     "message": "Member added.",
+>     "utubID": 1,
+>     "utubName": "UTub 1",
+>     "member": {
+>         "id": 1,
+>         "username": "BobJoe"
+>     },
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Member already in UTub.",
+>     "errorCode": 2,
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to add that member to this UTub.",
+>     "errorCode": 3,
+>     "errors": {
+>         "username": ["This field is required."],
+>     },
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Not authorized.",
+>     "errorCode": 1,
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to add that member to this UTub.",
+>     "errorCode": 4,
 > }
 > ```
 
 ##### Example cURL
 
 > ```bash
-> curl -X GET \
->  https://urls4irl.app/home?UTubID=1 \
+> curl -X POST \
+>  https://urls4irl.app/utubs/1/members \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'username=UTub Name'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
+> ```
+
+</details>
+
+<details>
+ <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/members/{userID}</b></code> <code>(remove a member from a UTub)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to add a member to |
+> | `userID` |  required  | int ($int64) | The unique ID of the User being removed |
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully removed a member from the UTub. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `400`         | `application/json`                | `See below.` | UTub creator cannot remove themselves. |
+> | `403`         | `application/json`                | `See below.` | Only UTub creators can remove other members. Members can remove themselves. |
+> | `404`         | `application/json`                | `See below.` | Requested member to remove not in requested UTub. |
+> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub or member. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success",
+>     "message": "Member removed.",
+>     "utubID": 1,
+>     "utubName": "UTub 1",
+>     "member": {
+>         "id": 1,
+>         "username": "BobJoe"
+>     },
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "UTub creator cannot remove themselves.",
+>     "errorCode": 1,
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Not allowed to remove a member from this UTub.",
+>     "errorCode": 2,
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Member does not exist or not found in this UTub.",
+>     "errorCode": 3,
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X DELETE \
+>  https://urls4irl.app/utubs/1/members/2 \
 >  -H 'Cookie: YOUR_COOKIE' \
 > ```
 
 </details>
 
 ------------------------------------------------------------------------------------------
-
-#### Users and Project Management
-
-<details>
- <summary><code>GET</code> <code><b>/projects/{projectID}/users</b></code> <code>(gets all users associated with a project)</code>:white_check_mark:</summary>
-
-##### Parameters
-
-> | name   |  type      | data type      | description                                          |
-> |--------|------------|----------------|------------------------------------------------------|
-> | `projectID` |  required  | int ($int64) | The unique ID of the project |
-
-##### Responses
-
-> | http code     | content-type                      | response  | details |
-> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `See below.` | Returns all users associated with a project. |
-> | `403`         | `application/json`                | `{"code":"403","message":"User not in this project, or project does not exist"}` | User not in this project, or project does not exist. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
-
-###### 200 HTTP Code Response Body
-
-> ```json
-> {
->     "projectName": "project1",
->     "projectID": 1,
->     "lastUpdated": "2023-10-31T15:45:00Z",
->     "projectLocation": "/api/v1/projects/1",
->     "team": {
->         "teamName": "Team1",
->         "teamID": 1,
->         "teamLocation": "/api/v1/teams/1"
->      },
->     "users": [
->       {
->           "username": "username1",
->           "userID": 1
->       },
->       {
->           "username": "username2",
->           "userID": 2
->       },
->     ],
->     "currentUser": {
->         "username": "username1",
->         "userID": 1,
->         "userProjectID": 1
->      },
-> }
-> ```
-
-##### Example cURL
-
-> ```bash
-> curl -X GET \
->  https://opm-api.propersi.me/api/v1/projects/1/users \
->  -H 'Authorization: Bearer YOUR_JWT_TOKEN' \
-> ```
-
-</details>
 
 <details>
  <summary><code>POST</code> <code><b>/projects/{projectID}/users</b></code> <code>(add user to project)</code>:white_check_mark:</summary>

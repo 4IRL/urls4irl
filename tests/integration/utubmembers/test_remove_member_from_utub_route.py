@@ -6,7 +6,8 @@ from src.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import GENERAL_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.user_strs import USER_FAILURE, USER_SUCCESS
+from src.utils.strings.model_strs import MODELS
+from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 
 
 def test_remove_valid_user_from_utub_as_creator(
@@ -23,11 +24,12 @@ def test_remove_valid_user_from_utub_as_creator(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : USER_SUCCESS.USER_REMOVED,
-        USER_SUCCESS.USER_ID_REMOVED : Integer representing ID of user removed,
-        USER_SUCCESS.USERNAME_REMOVED: Username of user deleted,
+        USER_SUCCESS.MEMBER : {
+            MODELS.ID : Integer representing ID of user removed,
+            MODELS.USERNAME: Username of user deleted,
+        }
         USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
         USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
-        USER_SUCCESS.UTUB_USERS: Array of string usernames of all members of UTub after the user was removed
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -70,18 +72,14 @@ def test_remove_valid_user_from_utub_as_creator(
     # Ensore JSON response is correct
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
+    assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
     assert (
-        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED])
+        int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
         == second_user_in_utub.id
     )
-    assert (
-        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
-        == second_user_in_utub.username
-    )
-    assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
-    assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
-    assert remove_user_response_json[USER_SUCCESS.UTUB_USERS] == [current_user.username]
+    assert remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME] == second_user_in_utub.username
+    assert int(remove_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == current_utub.id
+    assert remove_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == current_utub.name
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -111,11 +109,12 @@ def test_remove_self_from_utub_as_member(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : USER_SUCCESS.USER_REMOVED,
-        USER_SUCCESS.USER_ID_REMOVED : Integer representing ID of user removed,
-        USER_SUCCESS.USERNAME_REMOVED: Username of user deleted,
+        USER_SUCCESS.MEMBER : {
+            MODELS.ID : Integer representing ID of user removed,
+            MODELS.USERNAME: Username of user deleted,
+        }
         USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
         USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
-        USER_SUCCESS.UTUB_USERS: Array of string usernames of all members of UTub after the user was removed
     }
     """
 
@@ -123,10 +122,10 @@ def test_remove_self_from_utub_as_member(
 
     with app.app_context():
         # Get the only UTub with two members
-        current_utub = Utub.query.first()
+        current_utub: Utub = Utub.query.first()
 
         # Ensure creator is not currently logged in user
-        assert current_utub.created_by != current_user
+        assert current_utub.utub_creator != current_user.id
 
         # Ensure multiple users in this Utub
         assert len(current_utub.members) == 2
@@ -156,20 +155,16 @@ def test_remove_self_from_utub_as_member(
     # Ensore JSON response is correct
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
-    # breakpoint()
+    assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
     assert (
-        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED]) == current_user_id
+        int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID]) == current_user_id
     )
     assert (
-        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
+        remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME]
         == current_user_username
     )
-    assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
-    assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
-    assert (
-        current_user_username not in remove_user_response_json[USER_SUCCESS.UTUB_USERS]
-    )
+    assert int(remove_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == current_utub.id
+    assert remove_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == current_utub.name
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -198,11 +193,12 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : USER_SUCCESS.USER_REMOVED,
-        USER_SUCCESS.USER_ID_REMOVED : Integer representing ID of user removed,
-        USER_SUCCESS.USERNAME_REMOVED: Username of user deleted,
+        USER_SUCCESS.MEMBER : {
+            MODELS.ID : Integer representing ID of user removed,
+            MODELS.USERNAME: Username of user deleted,
+        }
         USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
         USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
-        USER_SUCCESS.UTUB_USERS: Array of string usernames of all members of UTub after the user was removed
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -278,28 +274,21 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
     # Ensore JSON response is correct
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_SUCCESS.USER_REMOVED
+    assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
     assert (
-        int(remove_user_response_json[USER_SUCCESS.USER_ID_REMOVED])
+        int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
         == second_user_in_utub.id
     )
     assert (
-        remove_user_response_json[USER_SUCCESS.USERNAME_REMOVED]
+        remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.USERNAME]
         == second_user_in_utub.username
     )
-    assert int(remove_user_response_json[USER_SUCCESS.UTUB_ID]) == current_utub.id
-    assert remove_user_response_json[USER_SUCCESS.UTUB_NAME] == current_utub.name
-
-    current_users_in_utub = remove_user_response_json[USER_SUCCESS.UTUB_USERS]
+    assert int(remove_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == current_utub.id
+    assert remove_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == current_utub.name
 
     # Ensure database is correctly updated
     with app.app_context():
         current_utub = Utub.query.filter(Utub.utub_creator == current_user.id).first()
-
-        # Ensure proper serialization of user usernames that are left in the UTub
-        assert current_users_in_utub == [
-            user.to_user.username for user in current_utub.members
-        ]
 
         # Ensure second user not in this UTub
         assert second_user_in_utub.id not in [
@@ -339,7 +328,7 @@ def test_remove_self_from_utub_as_creator(
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
+        STD_JSON.MESSAGE : MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
         STD_JSON.ERROR_CODE: 1
     }
     """
@@ -380,7 +369,7 @@ def test_remove_self_from_utub_as_creator(
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         remove_user_response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF
+        == MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF
     )
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 1
 
@@ -583,7 +572,7 @@ def test_remove_invalid_user_from_utub_as_creator(
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : USER_FAILURE.USER_NOT_IN_UTUB,
+        STD_JSON.MESSAGE : MEMBER_FAILURE.USER_NOT_IN_UTUB,
         STD_JSON.ERROR_CODE: 3
     }
     """
@@ -629,7 +618,7 @@ def test_remove_invalid_user_from_utub_as_creator(
     # Ensure proper JSON response
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert remove_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.USER_NOT_IN_UTUB
+    assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_NOT_IN_UTUB
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
@@ -648,7 +637,7 @@ def test_remove_invalid_user_from_utub_as_member(
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+        STD_JSON.MESSAGE : MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
         STD_JSON.ERROR_CODE: 2
     }
     """
@@ -699,7 +688,7 @@ def test_remove_invalid_user_from_utub_as_member(
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         remove_user_response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.INVALID_PERMISSION_TO_REMOVE
+        == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
@@ -721,7 +710,7 @@ def test_remove_another_member_from_same_utub_as_member(
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+        STD_JSON.MESSAGE : MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
         STD_JSON.ERROR_CODE: 2
     }
     """
@@ -768,7 +757,7 @@ def test_remove_another_member_from_same_utub_as_member(
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         remove_user_response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.INVALID_PERMISSION_TO_REMOVE
+        == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
@@ -808,7 +797,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+        STD_JSON.MESSAGE : MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
         STD_JSON.ERROR_CODE: 2
     }
     """
@@ -861,7 +850,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         remove_user_response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.INVALID_PERMISSION_TO_REMOVE
+        == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
@@ -900,7 +889,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : USER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
+        STD_JSON.MESSAGE : MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
         STD_JSON.ERROR_CODE: 2
     }
     """
@@ -964,7 +953,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         remove_user_response_json[STD_JSON.MESSAGE]
-        == USER_FAILURE.INVALID_PERMISSION_TO_REMOVE
+        == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
     assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
