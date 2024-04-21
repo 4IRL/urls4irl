@@ -30,11 +30,11 @@ They must contain a positive, non-zero integer value associated with the given e
 
 ##### Responses
 
-> | http code     | content-type                      | response  | details |
+> | http code     | content-type | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Renders the splash page to the user.` | Splash page shown to user. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `200`         | `text/html;charset=utf−8` | `Renders the splash page to the user.` | Splash page shown to user. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
@@ -56,10 +56,10 @@ They must contain a positive, non-zero integer value associated with the given e
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Register form HTML passed as response.` | Frontend takes HTML and renders in register modal. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user and renders the email confirmation modal to the user.` | If user logged in but not email validated. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `200`         | `text/html;charset=utf−8`         | `Register form HTML passed as response.` | Frontend takes HTML and renders in register modal. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user and renders the email confirmation modal to the user.` | If user logged in but not email validated. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
@@ -75,7 +75,7 @@ They must contain a positive, non-zero integer value associated with the given e
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -88,10 +88,10 @@ Required form data:
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Provides URL to user home page.` | On successful login, sends user to their home page, and generates a session cookie for them. |
+> | `200`         | `text/html;charset=utf−8`         | `Provides URL to user home page.` | On successful login, sends user to their home page, and generates a session cookie for them. |
 > | `400`         | `application/json`                | `See below.` | Form errors within login form. |
 > | `401`         | `application/json`                | `See below.` | User has not email validated. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 400 HTTP Code Response Body - Example
 
@@ -138,8 +138,8 @@ Required form data:
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user to splash page.` | Redirects user to the splash page and removes their session. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user to splash page.` | Redirects user to the splash page and removes their session. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
@@ -161,10 +161,10 @@ Required form data:
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Register form HTML passed as response.` | Frontend takes HTML and renders in register modal. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user and renders the email confirmation modal to the user.` | If user logged in but not email validated. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `200`         | `text/html;charset=utf−8`         | `Register form HTML passed as response.` | Frontend takes HTML and renders in register modal. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user and renders the email confirmation modal to the user.` | If user logged in but not email validated. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
@@ -180,7 +180,7 @@ Required form data:
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -196,10 +196,10 @@ Required form data:
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `201`         | `text/html;charset=utf-8`         | `Renders HTML for email validation modal.` | Once a user is registered, they must be email validated. |
+> | `201`         | `text/html;charset=utf−8`         | `Renders HTML for email validation modal.` | Once a user is registered, they must be email validated. |
 > | `400`         | `application/json`                | `See below.` | Form errors within registration form. |
 > | `401`         | `application/json`                | `See below.` | User has already created this account but not email validated. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 400 HTTP Code Response Body - Example
 
@@ -249,10 +249,10 @@ Required form data:
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Renders HTML for email validation modal.` | Renders the modal to email validate, if user is logged in but not email validated. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User has not made an account to confirm an email for. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `200`         | `text/html;charset=utf−8`         | `Renders HTML for email validation modal.` | Renders the modal to email validate, if user is logged in but not email validated. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User has not made an account to confirm an email for. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
@@ -272,11 +272,11 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Email sent to user for validation. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
 > | `400`         | `application/json`                | `See below.` | Error sending email to given address. |
 > | `400`         | `application/json`                | `See below.` | Error with Mailjet service. |
-> | `404`         | `text/html;charset=utf-8`         | None | User to send email to does not exist. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | User to send email to does not exist. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 > | `429`         | `application/json`                | `See below.` | Too many attempts in an hour. |
 
 ###### 200 HTTP Code Response Body - Example
@@ -344,10 +344,10 @@ Required form data:
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User has been email validated. Redirects user to /home page and renders it. |
-> | `400`         | `text/html;charset=utf-8`         | `Renders splash page and email validation modal.` | Token expired. Token has been reset. |
-> | `404`         | `text/html;charset=utf-8`         | None | Email validation or user for this token does not exist. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User has been email validated. Redirects user to /home page and renders it. |
+> | `400`         | `text/html;charset=utf−8`         | `Renders splash page and email validation modal.` | Token expired. Token has been reset. |
+> | `404`         | `text/html;charset=utf−8`         | None | Email validation or user for this token does not exist. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
@@ -369,10 +369,10 @@ Required form data:
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Renders forgot-password modal.` | Displays the forgot password modal to the user. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User has not validated their email. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `200`         | `text/html;charset=utf−8`         | `Renders forgot-password modal.` | Displays the forgot password modal to the user. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User has not validated their email. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects user to the /home page.` | User already logged in and email validated. Redirects user to /home page and renders it. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
@@ -389,7 +389,7 @@ Required form data:
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -405,7 +405,7 @@ Required form data:
 > | `400`         | `application/json`                | `See below` | Error with Mailjet service. |
 > | `401`         | `application/json`                | `See below` | Error in the form data user sent. |
 > | `404`         | `application/json`                | `See below` | Unexpected error occurred processing forgot password. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -482,10 +482,10 @@ or missing email is provided. However, the reset-password email is only sent if 
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Renders reset-password modal.` | Displays the reset password modal to the user. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | Token expired. |
-> | `404`         | `text/html;charset=utf-8`         | None | Invalid token, invalid user, user not email authenticated. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `200`         | `text/html;charset=utf−8`         | `Renders reset-password modal.` | Displays the reset password modal to the user. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | Token expired. |
+> | `404`         | `text/html;charset=utf−8`         | None | Invalid token, invalid user, user not email authenticated. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ##### Example cURL
 
@@ -507,7 +507,7 @@ or missing email is provided. However, the reset-password email is only sent if 
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -523,7 +523,7 @@ Required form data:
 > | `200`         | `application/json`                | `See below` | Password successfully reset. |
 > | `400`         | `application/json`                | `See below` | Password and confirm password must be identical . |
 > | `404`         | `application/json`                | `See below` | Unexpected error occurred processing reset password. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -582,10 +582,10 @@ Required form data:
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf-8`         | `Renders user's home page, with below JSON embedded.` | Displays the user's home page, with selectable UTubs. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unknown error occurred. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `200`         | `text/html;charset=utf−8`         | `Renders user's home page, with below JSON embedded.` | Displays the user's home page, with selectable UTubs. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unknown error occurred. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code JSON Included in HTML Body
 
@@ -627,9 +627,9 @@ The HTML body on a 200 response contains the following JSON.
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successful retrieval of individual UTub data. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `404`         | `text/html;charset=utf-8`         | None | Could not find associated UTub, or user not in requested UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `404`         | `text/html;charset=utf−8`         | None | Could not find associated UTub, or user not in requested UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -711,11 +711,11 @@ The HTML body on a 200 response contains the following JSON.
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a new UTub. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Form errors in making the new UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unknown error occurred. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unknown error occurred. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -769,10 +769,10 @@ The HTML body on a 200 response contains the following JSON.
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully deleted a UTub. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub to delete UTub. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -815,7 +815,7 @@ The HTML body on a 200 response contains the following JSON.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -828,12 +828,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified a UTub name. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Form errors when processing new UTub name. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub to modify UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -902,7 +902,7 @@ Required form data:
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -915,12 +915,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified the UTub description. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Form errors when processing new UTub description. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub to modify UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1006,7 +1006,7 @@ Indicates a missing form field in the payload content.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -1020,12 +1020,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a member to the UTub. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Form errors in adding member, or member already in UTub. |
 > | `403`         | `application/json`                | `See below.` | Only UTub creators can add members to UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub or member. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub or member. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1113,12 +1113,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully removed a member from the UTub. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | UTub creator cannot remove themselves. |
 > | `403`         | `application/json`                | `See below.` | Only UTub creators can remove other members. Members can remove themselves. |
 > | `404`         | `application/json`                | `See below.` | Requested member to remove not in requested UTub. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub or member. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub or member. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1190,7 +1190,7 @@ Required form data:
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -1204,12 +1204,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a URL to a UTub. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | URL unable to be validated, or already in UTub, or form errors. |
 > | `403`         | `application/json`                | `See below.` | Requesting user not in the requested UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find requested UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1314,10 +1314,10 @@ Indicates form errors with adding this URL to this UTub.
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully removed URL from UTub. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to remove a given URL. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, or URL in UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1368,7 +1368,7 @@ Indicates form errors with adding this URL to this UTub.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -1382,12 +1382,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified a UTub name. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Missing form fields, or unable to validate URL. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, or the URL within the UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or the URL within the UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1500,7 +1500,7 @@ Unable to validate the given URL.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -1513,12 +1513,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified the URL string, or no change. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Form errors, or unable to validate URL. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, or URL in UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1618,7 +1618,7 @@ Unable to validate the given URL.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -1631,12 +1631,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified the URL title, or no change. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Form errors with modifying URL title. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify title of URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, or URL in UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1731,7 +1731,7 @@ Required form data:
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -1744,12 +1744,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a URL to a UTub. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | URL already contains five tags, or form errors. |
 > | `403`         | `application/json`                | `See below.` | Requesting user not in the UTub containing URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find requested UTub or given URL in UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub or given URL in UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1851,10 +1851,10 @@ Indicates form errors with adding this URL to this UTub.
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully removed the tag from the URL in the UTub. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `403`         | `application/json`                | `See below.` | User must be member of UTub to remove a tag from a URL. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, URL in UTub, or tag on URL in UTub. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, URL in UTub, or tag on URL in UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1905,7 +1905,7 @@ Indicates form errors with adding this URL to this UTub.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
 
 Required form data:
 > ```
@@ -1918,12 +1918,12 @@ Required form data:
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified a tag, or no change. |
-> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Missing form fields or tag already on URL. |
 > | `403`         | `application/json`                | `See below.` | Only UTub members can modify a tag on a URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, the URL within the UTub, or the tag on the URL. |
-> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, the URL within the UTub, or the tag on the URL. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
 ###### 200 HTTP Code Response Body
 
