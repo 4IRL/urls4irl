@@ -1596,6 +1596,542 @@ Unable to validate the given URL.
 
 > ```bash
 > curl -X PATCH \
+>  https://urls4irl.app/utubs/1/urls/1 \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'urlString=www.google.com'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
+> ```
+
+</details>
+
+<details>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{urlID}/title</b></code> <code>(edit the title of a URL in a UTub)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
+> | `urlID` |  required  | int ($int64) | The unique ID of the URL with the title to modify |
+
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+
+Required form data:
+> ```
+> urlTitle: %New URL Title%
+> csrf_token: %csrf_token%
+> ```
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully modified the URL title, or no change. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `400`         | `application/json`                | `See below.` | Form errors with modifying URL title. |
+> | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify title of URL. |
+> | `404`         | `application/json`                | `See below.` | Unable to process the form. |
+> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, or URL in UTub. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success" or "No change",
+>     "message": "URL title was modified." or "URL title not modified",
+>     "utubID": 1,
+>     "utubName": "New UTub Name",
+>     "URL": {
+>         "urlID": 1,
+>         "urlString": "https://www.google.com",
+>         "urlTitle": "This is google.",
+>         "urlTags": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
+>         "addedBy": 1,
+>     }
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to update, please check inputs.",
+>     "errorCode": 2,
+>     "errors": {
+>         "urlTitle": ["This field is required."],
+>     }
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to update, please check inputs.",
+>     "errorCode": 3,
+>     "errors": {
+>         "urlString": ["Field cannot be longer than 140 characters."],
+>     }
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to modify this URL.",
+>     "errorCode": 1
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to update, please check inputs.",
+>     "errorCode": 4,
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X PATCH \
+>  https://urls4irl.app/utubs/1/urls/1/title \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'urlTitle=New URL title'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
+> ```
+
+</details>
+
+------------------------------------------------------------------------------------------
+
+#### UTub Tags
+
+<details>
+ <summary><code>POST</code> <code><b>/utubs/{UTubID}/urls/{urlID}/tags</b></code> <code>(add a tag to a URL in a UTub)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
+> | `urlID` |  required  | int ($int64) | The unique ID of the URL to add the tag to |
+
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+
+Required form data:
+> ```
+> tagString: %Tag Here%
+> csrf_token: %csrf_token%
+> ```
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully added a URL to a UTub. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `400`         | `application/json`                | `See below.` | URL already contains five tags, or form errors. |
+> | `403`         | `application/json`                | `See below.` | Requesting user not in the UTub containing URL. |
+> | `404`         | `application/json`                | `See below.` | Unable to process the form. |
+> | `404`         | `text/html;charset=utf-8`         | None | Unable to find requested UTub or given URL in UTub. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success",
+>     "message": "Tag added to this URL.",
+>     "utubID": 1,
+>     "utubName": "UTub 1",
+>     "urlID": 1,
+>     "urlTags": [1, 2, 3, 4],      // Contains newly added tag ID
+>     "tag": {
+>         "tagID": 4,
+>         "tagString": "Hello",
+>     }
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "URLs can only have up to 5 tags.",
+>     "errorCode": 2,
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "URL already has this tag.",
+>     "errorCode": 3,
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+Indicates form errors with adding this URL to this UTub.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to add tag to URL.",
+>     "errorCode": 4,
+>     "errors": {
+>         "tagString": ["This field is required."],
+>     }
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to add tag to URL.",
+>     "errorCode": 1,
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to add tag to URL.",
+>     "errorCode": 5,
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X POST \
+>  https://urls4irl.app/utubs/1/urls/1/tags \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'tagString=Hello'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
+> ```
+
+</details>
+<details>
+ <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{urlID}/tags/{tagID}</b></code> <code>(remove a tag from a URL from a UTub)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
+> | `urlID` |  required  | int ($int64) | The unique ID of the URL with the title to modify |
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully removed URL from UTub. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to remove a given URL. |
+> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, or URL in UTub. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success",
+>     "message": "URL removed from this UTub.",
+>     "utubID": 1,
+>     "utubName": "UTub 1",
+>     "URL": {
+>         "urlString": "https://urls4irl.app/,
+>         "urlID": 1,
+>         "urlTitle": "This is my home page!",
+>     },
+>     "urlTags": [1, 2, 3] // Tag IDs associated with the removed URL, in this UTub
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to remove this URL.",
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X DELETE \
+>  https://urls4irl.app/utubs/1/urls/1 \
+>  -H 'Cookie: YOUR_COOKIE' \
+> ```
+
+</details>
+<details>
+ <summary><code>PUT</code> <code><b>/utubs/{UTubID}/urls/1</b></code> <code>(edit URL string and/or title)</code></summary>
+
+###### Note: This route is deprecated in favor of the individual routes to edit the URL or the URL title
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
+> | `urlID` |  required  | int ($int64) | The unique ID of the URL to modify |
+
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+
+Required form data:
+> ```
+> urlString: %www.google.com%
+> urlTitle: %New URL Title%     // Can be an empty string to delete it         
+> csrf_token: %csrf_token%
+> ```
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully modified a UTub name. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `400`         | `application/json`                | `See below.` | Missing form fields, or unable to validate URL. |
+> | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify URL. |
+> | `404`         | `application/json`                | `See below.` | Unable to process the form. |
+> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, or the URL within the UTub. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+Possible messages include: `URL and URL title were not modified.`, `URL title was modified.`
+
+> ```json
+> {
+>     "status": "Success" or "No change",
+>     "message": "URL and/or URL title modified.",
+>     "utubID": 1,
+>     "utubName": "New UTub Name",
+>     "utubDescription": "My first UTub"
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+`urlString` field must not just include whitespace.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "URL cannot be empty.",
+>     "errorCode": 2,
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+Unable to validate the given URL.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to modify this URL.",
+>     "errorCode": 3,
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+`urlTitle` field must be included in form.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to update, please check inputs.",
+>     "errorCode": 4,
+>     "errors": {
+>         "urlTitle": ["This field is required."],
+>     }
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to update, please check inputs.",
+>     "errorCode": 5,
+>     "errors": {
+>         "urlString": ["This field is required."],
+>     }
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to modify this URL.",
+>     "errorCode": 1
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to modify this URL.",
+>     "errorCode": 6,
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X PATCH \
+>  https://urls4irl.app/utubs/1/urls/1 \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'urlString=www.google.com'
+>  --data-urlencode 'urlTitle=Google'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
+> ```
+
+</details>
+<details>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{urlID}</b></code> <code>(edit the URL string in a UTub)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
+> | `urlID` |  required  | int ($int64) | The unique ID of the URL to modify |
+
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf-8`.
+
+Required form data:
+> ```
+> urlString: %New URL String%
+> csrf_token: %csrf_token%
+> ```
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully modified the URL string, or no change. |
+> | `302`         | `text/html;charset=utf-8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `400`         | `application/json`                | `See below.` | Form errors, or unable to validate URL. |
+> | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify URL. |
+> | `404`         | `application/json`                | `See below.` | Unable to process the form. |
+> | `404`         | `text/html;charset=utf-8`         | None | Unable to find UTub, or URL in UTub. |
+> | `405`         | `text/html;charset=utf-8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success" or "No change",
+>     "message": "URL modified." or "URL not modified",
+>     "utubID": 1,
+>     "utubName": "New UTub Name",
+>     "URL": {
+>         "urlID": 1,
+>         "urlString": "https://www.google.com",
+>         "urlTitle": "This is google.",
+>         "urlTags": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
+>         "addedBy": 1,
+>     }
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "URL cannot be empty.",
+>     "errorCode": 2,
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+Unable to validate the given URL.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to modify this URL.",
+>     "errorCode": 3,
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to update, please check inputs.",
+>     "errorCode": 4,
+>     "errors": {
+>         "urlString": ["This field is required."],
+>     }
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to modify this URL.",
+>     "errorCode": 1
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to update, please check inputs.",
+>     "errorCode": 5,
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X PATCH \
 >  https://urls4irl.app/utubs/1/description \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
