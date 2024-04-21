@@ -72,9 +72,9 @@ def test_remove_tag_from_url_as_utub_creator(
 
         # Get URL serialization for checking
         utub_url_association: Utub_Urls = Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_this_user_creator_of,
-                Utub_Urls.url_id == url_id_to_remove_tag_from,
-            ).first()
+            Utub_Urls.utub_id == utub_id_this_user_creator_of,
+            Utub_Urls.url_id == url_id_to_remove_tag_from,
+        ).first()
         associated_tags = utub_url_association.associated_tags
 
         # Get all Url-Tag associations count
@@ -115,11 +115,22 @@ def test_remove_tag_from_url_as_utub_creator(
         remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
         == utub_name_this_user_creator_of
     )
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (tag_count - 1 > 0)
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
-    assert remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == tag_string_to_remove
-    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted([val for val in associated_tags if val != tag_id_to_remove])
-    assert int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
+        tag_count - 1 > 0
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+    )
+    assert (
+        remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        == tag_string_to_remove
+    )
+    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        [val for val in associated_tags if val != tag_id_to_remove]
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    )
 
     with app.app_context():
         # Ensure tag still exists
@@ -142,7 +153,9 @@ def test_remove_tag_from_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_this_user_creator_of,
             Utub_Urls.url_id == url_id_to_remove_tag_from,
         ).first()
-        assert sorted(final_utub_url_association.associated_tags) == sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS])
+        assert sorted(final_utub_url_association.associated_tags) == sorted(
+            remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure proper number of Url-Tag associations in db
         assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
@@ -210,9 +223,9 @@ def test_remove_tag_from_url_as_utub_member(
 
         # Get URL serialization for checking
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_this_user_member_of,
-                Utub_Urls.url_id == url_id_to_remove_tag_from,
-            ).first()
+            Utub_Urls.utub_id == utub_id_this_user_member_of,
+            Utub_Urls.url_id == url_id_to_remove_tag_from,
+        ).first()
         associated_tags = url_utub_association.associated_tags
 
         # Get all Url-Tag associations count
@@ -253,11 +266,22 @@ def test_remove_tag_from_url_as_utub_member(
         remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
         == utub_name_this_user_member_of
     )
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (tag_count - 1 > 0)
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
-    assert remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == tag_string_to_remove
-    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted([val for val in associated_tags if val != tag_id_to_remove])
-    assert int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
+        tag_count - 1 > 0
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+    )
+    assert (
+        remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        == tag_string_to_remove
+    )
+    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        [val for val in associated_tags if val != tag_id_to_remove]
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    )
 
     with app.app_context():
         # Ensure tag still exists
@@ -280,7 +304,9 @@ def test_remove_tag_from_url_as_utub_member(
             Utub_Urls.utub_id == utub_id_this_user_member_of,
             Utub_Urls.url_id == url_id_to_remove_tag_from,
         ).first()
-        assert sorted(final_utub_url_association.associated_tags) == sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS])
+        assert sorted(final_utub_url_association.associated_tags) == sorted(
+            remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure proper number of Url-Tag associations in db
         assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
@@ -348,9 +374,9 @@ def test_remove_tag_from_url_with_one_tag(
 
         # Get URL serialization for checking
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_this_user_member_of,
-                Utub_Urls.url_id == url_id_to_remove_tag_from,
-            ).first()
+            Utub_Urls.utub_id == utub_id_this_user_member_of,
+            Utub_Urls.url_id == url_id_to_remove_tag_from,
+        ).first()
 
         associated_tags = url_utub_association.associated_tags
 
@@ -392,11 +418,22 @@ def test_remove_tag_from_url_with_one_tag(
         remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
         == utub_name_this_user_member_of
     )
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (tag_count - 1 > 0)
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
-    assert remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == tag_string_to_remove
-    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted([val for val in associated_tags if val != tag_id_to_remove])
-    assert int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
+        tag_count - 1 > 0
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+    )
+    assert (
+        remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        == tag_string_to_remove
+    )
+    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        [val for val in associated_tags if val != tag_id_to_remove]
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    )
 
     with app.app_context():
         # Ensure tag still exists
@@ -420,7 +457,9 @@ def test_remove_tag_from_url_with_one_tag(
             Utub_Urls.url_id == url_id_to_remove_tag_from,
         ).first()
 
-        assert sorted(final_utub_url_association.associated_tags) == sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS])
+        assert sorted(final_utub_url_association.associated_tags) == sorted(
+            remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure proper number of Url-Tag associations in db
         assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
@@ -490,9 +529,9 @@ def test_remove_last_tag_from_utub(
 
         # Get URL serialization for checking
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_this_user_member_of,
-                Utub_Urls.url_id == url_id_to_remove_tag_from,
-            ).first()
+            Utub_Urls.utub_id == utub_id_this_user_member_of,
+            Utub_Urls.url_id == url_id_to_remove_tag_from,
+        ).first()
         associated_tags = url_utub_association.associated_tags
 
         # Get all Url-Tag associations count
@@ -533,11 +572,22 @@ def test_remove_last_tag_from_utub(
         remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
         == utub_name_this_user_member_of
     )
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (tag_count - 1 > 0)
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
-    assert remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == tag_string_to_remove
-    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted([val for val in associated_tags if val != tag_id_to_remove])
-    assert int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
+        tag_count - 1 > 0
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+    )
+    assert (
+        remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        == tag_string_to_remove
+    )
+    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        [val for val in associated_tags if val != tag_id_to_remove]
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    )
 
     with app.app_context():
         # Ensure tag still exists
@@ -556,15 +606,24 @@ def test_remove_last_tag_from_utub(
         )
 
         # Ensure no tags remain in the UTub
-        assert len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_this_user_member_of).all()) == 0
+        assert (
+            len(
+                Url_Tags.query.filter(
+                    Url_Tags.utub_id == utub_id_this_user_member_of
+                ).all()
+            )
+            == 0
+        )
 
         # Grab URL-UTub association
         final_utub_url_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_this_user_member_of,
             Utub_Urls.url_id == url_id_to_remove_tag_from,
         ).first()
-        
-        assert sorted(final_utub_url_association.associated_tags) == sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS])
+
+        assert sorted(final_utub_url_association.associated_tags) == sorted(
+            remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure proper number of Url-Tag associations in db
         assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
@@ -654,9 +713,9 @@ def test_remove_tag_from_url_with_five_tags(
 
         # Get URL serialization for checking
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_this_user_member_of,
-                Utub_Urls.url_id == url_id_to_remove_tag_from,
-            ).first()
+            Utub_Urls.utub_id == utub_id_this_user_member_of,
+            Utub_Urls.url_id == url_id_to_remove_tag_from,
+        ).first()
         associated_tags = url_utub_association.associated_tags
 
         # Get all Url-Tag associations count
@@ -697,11 +756,22 @@ def test_remove_tag_from_url_with_five_tags(
         remove_tag_response_json[TAGS_SUCCESS.UTUB_NAME]
         == utub_name_this_user_member_of
     )
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (tag_count - 1 > 0)
-    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
-    assert remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == tag_string_to_remove
-    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted([val for val in associated_tags if val != tag_id_to_remove])
-    assert int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    assert int(remove_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
+        tag_count - 1 > 0
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+    )
+    assert (
+        remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        == tag_string_to_remove
+    )
+    assert sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        [val for val in associated_tags if val != tag_id_to_remove]
+    )
+    assert (
+        int(remove_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_remove_tag_from
+    )
 
     with app.app_context():
         # Ensure tag still exists
@@ -723,8 +793,9 @@ def test_remove_tag_from_url_with_five_tags(
             Utub_Urls.utub_id == utub_id_this_user_member_of,
             Utub_Urls.url_id == url_id_to_remove_tag_from,
         ).first()
-        assert sorted(final_utub_url_association.associated_tags) == sorted(remove_tag_response_json[TAGS_SUCCESS.URL_TAGS])
-
+        assert sorted(final_utub_url_association.associated_tags) == sorted(
+            remove_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure proper number of Url-Tag associations in db
         assert len(Url_Tags.query.all()) == initial_url_tag_count - 1

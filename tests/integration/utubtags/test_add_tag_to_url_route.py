@@ -114,7 +114,9 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
     assert add_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
     assert int(add_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
     assert add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_STRING] == tag_to_add
-    assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(associated_tags + [new_tag_id])
+    assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags + [new_tag_id]
+    )
 
     with app.app_context():
         # Ensure a tag exists
@@ -231,13 +233,13 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
     new_tag_id = int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
-    assert (
-        int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
-    )
+    assert int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
     assert add_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
     assert int(add_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
     assert add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_STRING] == tag_to_add
-    assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(associated_tags + [new_tag_id])
+    assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags + [new_tag_id]
+    )
 
     with app.app_context():
         # Ensure a tag exists
@@ -366,8 +368,13 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
     assert add_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
     assert int(add_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
     assert add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_STRING] == tag_to_add
-    assert int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID]) == tag_id_that_exists
-    assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(associated_tags + [tag_id_that_exists])
+    assert (
+        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
+        == tag_id_that_exists
+    )
+    assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags + [tag_id_that_exists]
+    )
 
     with app.app_context():
         # Ensure a tag exists
@@ -494,14 +501,17 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
-    assert (
-        int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
-    )
+    assert int(add_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
     assert add_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
     assert int(add_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
     assert add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_STRING] == tag_to_add
-    assert int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID]) == tag_id_that_exists
-    assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(associated_tags + [tag_id_that_exists])
+    assert (
+        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
+        == tag_id_that_exists
+    )
+    assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags + [tag_id_that_exists]
+    )
 
     with app.app_context():
         # Ensure a tag exists

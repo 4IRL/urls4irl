@@ -32,9 +32,7 @@ def add_tag(utub_id: int, url_id: int):
     utub = utub_url_association.utub
 
     user_in_utub = [
-        member.user_id
-        for member in utub.members
-        if member.user_id == current_user.id
+        member.user_id for member in utub.members if member.user_id == current_user.id
     ]
 
     if not user_in_utub:
@@ -128,7 +126,7 @@ def add_tag(utub_id: int, url_id: int):
                     TAGS_SUCCESS.UTUB_NAME: utub.name,
                     TAGS_SUCCESS.URL_ID: url_id,
                     TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
-                    TAGS_SUCCESS.TAG: tag_model.serialized,  
+                    TAGS_SUCCESS.TAG: tag_model.serialized,
                 }
             ),
             200,
@@ -222,7 +220,6 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         ),
         200,
     )
-
 
 
 @tags.route("/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id>", methods=["PUT"])

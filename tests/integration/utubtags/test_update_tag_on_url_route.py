@@ -120,20 +120,31 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         # Ensure a new tag exists
         assert len(Tags.query.all()) == num_tags + 1
 
-        new_tag_from_server: Tags = Tags.query.filter(Tags.tag_string == NEW_TAG).first()
+        new_tag_from_server: Tags = Tags.query.filter(
+            Tags.tag_string == NEW_TAG
+        ).first()
 
         # Assert tag is created
         assert new_tag_from_server is not None
-        assert int(modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == new_tag_from_server.id
-        associated_tags[associated_tags.index(curr_tag_id_on_url)] = new_tag_from_server.id
-        assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(associated_tags)
+        assert (
+            int(modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID])
+            == new_tag_from_server.id
+        )
+        associated_tags[associated_tags.index(curr_tag_id_on_url)] = (
+            new_tag_from_server.id
+        )
+        assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+            associated_tags
+        )
 
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
             Utub_Urls.url_id == url_id_to_add_tag_to,
         ).first()
-        assert sorted(url_utub_association.associated_tags) == sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS])
+        assert sorted(url_utub_association.associated_tags) == sorted(
+            modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure number of Tag-URL association do not change on this URL in this UTub
         assert (
@@ -273,9 +284,16 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
 
         # Assert tag is created
         assert new_tag_from_server is not None
-        assert int(modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == new_tag_from_server.id
-        associated_tags[associated_tags.index(curr_tag_id_on_url)] = new_tag_from_server.id
-        assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(associated_tags)
+        assert (
+            int(modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID])
+            == new_tag_from_server.id
+        )
+        associated_tags[associated_tags.index(curr_tag_id_on_url)] = (
+            new_tag_from_server.id
+        )
+        assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+            associated_tags
+        )
 
         url_utub_association = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
@@ -283,7 +301,9 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
             Utub_Urls.url_id == url_id_to_add_tag_to,
         ).first()
 
-        assert sorted(url_utub_association.associated_tags) == sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS])
+        assert sorted(url_utub_association.associated_tags) == sorted(
+            modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure number of Tag-URL association do not change on this URL in this UTub
         assert (
@@ -419,9 +439,13 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         modify_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
     )
     assert int(modify_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
-    assert modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == new_tag_string
+    assert (
+        modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == new_tag_string
+    )
     associated_tags[associated_tags.index(curr_tag_id_on_url)] = tag_to_replace_with.id
-    assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(associated_tags)
+    assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags
+    )
 
     with app.app_context():
         # Ensure no new tag exists
@@ -432,7 +456,9 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
             Utub_Urls.user_id == current_user.id,
             Utub_Urls.url_id == url_id_to_add_tag_to,
         ).first()
-        assert sorted(url_utub_association.associated_tags) == sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS])
+        assert sorted(url_utub_association.associated_tags) == sorted(
+            modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure number of Tag-URL association do not change on this URL in this UTub
         assert (
@@ -577,10 +603,14 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         modify_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
     )
     assert int(modify_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
-    assert modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == tag_from_database.tag_string
+    assert (
+        modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        == tag_from_database.tag_string
+    )
     associated_tags[associated_tags.index(curr_tag_id_on_url)] = tag_from_database.id
-    assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(associated_tags)
-
+    assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        associated_tags
+    )
 
     with app.app_context():
         # Ensure a new tag does not exist
@@ -591,8 +621,9 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
             Utub_Urls.user_id == current_user.id,
             Utub_Urls.url_id == url_id_to_add_tag_to,
         ).first()
-        assert sorted(url_utub_association.associated_tags) == sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS])
-
+        assert sorted(url_utub_association.associated_tags) == sorted(
+            modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        )
 
         # Ensure number of Tag-URL association do not change on this URL in this UTub
         assert (

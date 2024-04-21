@@ -110,7 +110,9 @@ class Url_Tags(db.Model):
 
     tag_item: Tags = db.relationship("Tags")
     tagged_url: URLS = db.relationship("URLS", back_populates="url_tags")
-    utub_containing_this_tag: Utub = db.relationship("Utub", back_populates="utub_url_tags")
+    utub_containing_this_tag: Utub = db.relationship(
+        "Utub", back_populates="utub_url_tags"
+    )
 
     @property
     def serialized(self) -> dict:
@@ -454,7 +456,4 @@ class Tags(db.Model):
     @property
     def serialized(self):
         """Returns serialized object."""
-        return {
-            MODEL_STRS.ID: self.id, 
-            MODEL_STRS.TAG_STRING: self.tag_string
-            }
+        return {MODEL_STRS.ID: self.id, MODEL_STRS.TAG_STRING: self.tag_string}
