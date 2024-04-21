@@ -62,8 +62,8 @@ function handleLoginSuccess(response, _, xhr) {
 }
 
 function handleLoginFailure(xhr, textStatus, error) {
-  if (xhr.status == 401 && xhr.responseJSON.hasOwnProperty("Error_code")) {
-    switch (xhr.responseJSON.Error_code) {
+  if (xhr.status == 401 && xhr.responseJSON.hasOwnProperty("errorCode")) {
+    switch (xhr.responseJSON.errorCode) {
       case 1: {
         // User found but email not yet validated
         handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);

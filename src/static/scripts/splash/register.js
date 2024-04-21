@@ -46,7 +46,7 @@ function handleRegisterSuccess(response, textStatus, xhr) {
 }
 
 function handleRegisterFailure(xhr, textStatus, error) {
-  if (xhr.responseJSON.hasOwnProperty("Error_code")) {
+  if (xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.status) {
       case 400: {
         handleImproperFormErrors(xhr.responseJSON);

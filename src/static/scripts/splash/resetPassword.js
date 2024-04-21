@@ -50,8 +50,8 @@ function handleUserChangedPassword() {
 }
 
 function handleResetPasswordFailure(xhr, textStatus, error) {
-  if (xhr.status == 400 && xhr.responseJSON.hasOwnProperty("Error_code")) {
-    switch (xhr.responseJSON.Error_code) {
+  if (xhr.status == 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
+    switch (xhr.responseJSON.errorCode) {
       case 1:
         $(".form-control").removeClass("is-invalid");
         $(".invalid-feedback").remove();

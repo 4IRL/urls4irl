@@ -38,8 +38,8 @@ function handleValidateEmailSuccess(response, textStatus, xhr) {
 }
 
 function handleValidateEmailFailure(xhr, textStatus, error) {
-  if (xhr.status == 429 && xhr.responseJSON.hasOwnProperty("Error_code")) {
-    switch (xhr.responseJSON.Error_code) {
+  if (xhr.status == 429 && xhr.responseJSON.hasOwnProperty("errorCode")) {
+    switch (xhr.responseJSON.errorCode) {
       case 1:
         showSplashModalAlertBanner(xhr.responseJSON.Message, "danger");
         break;
@@ -49,9 +49,9 @@ function handleValidateEmailFailure(xhr, textStatus, error) {
     }
   } else if (
     xhr.status == 400 &&
-    xhr.responseJSON.hasOwnProperty("Error_code")
+    xhr.responseJSON.hasOwnProperty("errorCode")
   ) {
-    if (xhr.responseJSON.Error_code == 3 || xhr.responseJSON.Error_code == 4) {
+    if (xhr.responseJSON.errorCode == 3 || xhr.responseJSON.errorCode == 4) {
       showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
     }
   } else {
