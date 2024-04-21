@@ -199,7 +199,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
     db.session.delete(tag_for_url_in_utub)
     db.session.commit()
 
-    num_left_in_utub = Url_Tags.query.filter_by(
+    num_left_in_utub: int = Url_Tags.query.filter_by(
         utub_id=utub_id, tag_id=tag_id
     ).count()
 
@@ -216,7 +216,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
                 TAGS_SUCCESS.UTUB_NAME: utub.name,
                 TAGS_SUCCESS.URL_ID: url_id,
                 TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
-                TAGS_SUCCESS.COUNT_IN_UTUB: num_left_in_utub,
+                TAGS_SUCCESS.TAG_STILL_IN_UTUB: True if num_left_in_utub > 0 else False,
                 TAGS_SUCCESS.TAG: tag_to_remove.serialized,
             }
         ),
@@ -236,7 +236,7 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         url_id (int): The ID of the URL containing tag to be modified
         tag_id (int): The ID of the tag to be modified
     """
-    utub = Utub.query.get_or_404(utub_id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
 
     # Verify user is in UTub
     if current_user.id not in [user.user_id for user in utub.members]:
@@ -248,10 +248,10 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
-            404,
+            403,
         )
 
-    tag_on_url_in_utub = Url_Tags.query.filter_by(
+    tag_on_url_in_utub: Url_Tags = Url_Tags.query.filter_by(
         utub_id=utub_id, url_id=url_id, tag_id=tag_id
     ).first_or_404()
 
@@ -262,11 +262,20 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
 
         # Identical tag
         if new_tag == tag_on_url_in_utub.tag_item.tag_string:
+            url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+                Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_id
+            ).first_or_404()
+
             return (
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.NO_CHANGE,
                         STD_JSON.MESSAGE: TAGS_NO_CHANGE.TAG_NOT_MODIFIED,
+                        TAGS_SUCCESS.UTUB_ID: utub_id,
+                        TAGS_SUCCESS.UTUB_NAME: utub.name,
+                        TAGS_SUCCESS.URL_ID: url_utub_association.url_id,
+                        TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
+                        TAGS_SUCCESS.TAG: tag_on_url_in_utub.tag_item.serialized,
                     }
                 ),
                 200,
@@ -303,7 +312,7 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         tag_on_url_in_utub.tag_id = tag_that_already_exists.id
         tag_on_url_in_utub.tag_item = tag_that_already_exists
 
-        url_utub_association = Utub_Urls.query.filter(
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_id
         ).first_or_404()
 
@@ -313,10 +322,11 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_MODIFIED_ON_URL,
-                    TAGS_SUCCESS.TAG: tag_that_already_exists.serialized,
-                    TAGS_SUCCESS.URL: url_utub_association.serialized,
                     TAGS_SUCCESS.UTUB_ID: utub_id,
                     TAGS_SUCCESS.UTUB_NAME: utub.name,
+                    TAGS_SUCCESS.URL_ID: url_utub_association.url_id,
+                    TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
+                    TAGS_SUCCESS.TAG: tag_that_already_exists.serialized,
                 }
             ),
             200,

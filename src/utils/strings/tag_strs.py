@@ -7,14 +7,14 @@ from src.utils.strings.utub_strs import UTUB_GENERAL
 TAG_ADDED_TO_URL = "Tag added to this URL."
 TAG_REMOVED_FROM_URL = "Tag removed from this URL."
 TAG_MODIFIED_ON_URL = "Tag on this URL modified."
-COUNT_IN_UTUB = "numberOfTagsInUtub"
+TAG_STILL_IN_UTUB = "tagInUTub"
 
 
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     TAG_ADDED_TO_URL = TAG_ADDED_TO_URL
     TAG_REMOVED_FROM_URL = TAG_REMOVED_FROM_URL
     TAG = TAG
-    COUNT_IN_UTUB = COUNT_IN_UTUB
+    TAG_STILL_IN_UTUB = TAG_STILL_IN_UTUB
     TAG_MODIFIED_ON_URL = TAG_MODIFIED_ON_URL
 
 
