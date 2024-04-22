@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from src import db
 from src.models import URLS, Utub_Urls, Utub, Url_Tags
@@ -7,8 +8,8 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
-from src.utils import strings as U4I_STRINGS
 
+pytestmark = pytest.mark.urls
 
 def test_remove_url_as_utub_creator_no_tags(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register

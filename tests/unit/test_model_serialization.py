@@ -1,4 +1,5 @@
 import json
+import pytest
 
 import tests.models_for_test as v_models
 from src.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
@@ -6,6 +7,7 @@ from src import db
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 
+pytestmark = pytest.mark.unit
 
 """
 Serializations to test

@@ -1,8 +1,10 @@
+import pytest
 from sqlalchemy import inspect
 
 from src import db
 from src.models import URLS, Utub, User, Utub_Urls, Utub_Users, Url_Tags
 
+pytestmark = pytest.mark.unit
 
 def test_db_created_correctly(app):
     """

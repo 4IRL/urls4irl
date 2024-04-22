@@ -1,9 +1,10 @@
-from random import randint
 from time import sleep
 
-from pytest import raises
+import pytest
 
 from src.utils import url_validation as url_valid
+
+pytestmark = pytest.mark.unit
 
 valid_urls = {
     "https://www.google.com/": [
@@ -93,7 +94,7 @@ def test_invalid_urls():
     THEN ensure the InvalidURLError exception is raised
     """
     for invalid_url in invalid_urls:
-        with raises(url_valid.InvalidURLError):
+        with pytest.raises(url_valid.InvalidURLError):
             url_valid.find_common_url(invalid_url)
 
 

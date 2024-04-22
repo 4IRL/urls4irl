@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from src import db
 from src.models import User, ForgotPassword, verify_token
@@ -7,6 +8,8 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.reset_password_strs import RESET_PASSWORD
+
+pytestmark = pytest.mark.splash
 
 NEW_PASSWORD = "NEW_PASSWORD!"
 

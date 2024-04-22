@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from src.models import Utub, URLS, Utub_Urls
 from tests.models_for_test import valid_url_strings
@@ -9,6 +10,7 @@ from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
+pytestmark = pytest.mark.urls
 
 def test_add_valid_url_as_utub_member(
     add_urls_to_database, every_user_in_every_utub, login_first_user_without_register

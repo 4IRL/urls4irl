@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from src.models import Utub, Utub_Urls, Url_Tags, URLS
 from src.utils.all_routes import ROUTES
@@ -9,6 +10,7 @@ from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 from src.utils.url_validation import find_common_url
 
+pytestmark = pytest.mark.urls
 
 def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     add_one_url_and_all_users_to_each_utub_with_all_tags,

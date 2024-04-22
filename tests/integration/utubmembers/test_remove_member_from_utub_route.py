@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from src import db
 from src.models import Utub, Utub_Users, User, Utub_Urls, Url_Tags
@@ -9,6 +10,7 @@ from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 
+pytestmark = pytest.mark.members
 
 def test_remove_valid_user_from_utub_as_creator(
     add_single_user_to_utub_without_logging_in, login_first_user_without_register

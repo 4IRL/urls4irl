@@ -1,7 +1,9 @@
-import pytest
 from datetime import timedelta
+import os
+
 from flask import url_for
 from flask_login import FlaskLoginClient, current_user
+import pytest
 import warnings
 
 from src import create_app, db
@@ -30,6 +32,31 @@ from tests.models_for_test import (
 from src.utils.all_routes import ROUTES
 from src.utils.strings import model_strs, reset_password_strs
 
+TEST_SPLIT = (["urls"], ["unit", "utubs"], ["splash", "members", "tags",],)
+
+def pytest_collection_modifyitems(
+        session: pytest.Session,
+        config: pytest.Config,
+        items: list[pytest.Item]
+) -> None:
+    # Change default values to 1 before turning in to GitHub
+    current_worker = int(os.getenv("GITHUB_WORKER_ID", 3)) - 1
+    total_workers = int(os.getenv("GITHUB_TOTAL_WORKERS", 1))
+
+    if total_workers:
+        deselected_items = []
+        selected_items = []
+
+        for item in items:
+            parent_markers = [mark.name for mark in item.parent.own_markers]
+            if not set(TEST_SPLIT[current_worker]) & set(parent_markers):
+                deselected_items.append(item)
+            else:
+                selected_items.append(item)
+
+        print(f"Running markers: {', '.join(TEST_SPLIT[current_worker])}")
+        config.hook.pytest_deselected(items=deselected_items)
+        items[:] = selected_items
 
 warnings.filterwarnings(
     "ignore", category=DeprecationWarning
@@ -41,7 +68,6 @@ def ignore_deprecation_warning():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     yield
     warnings.resetwarnings()
-
 
 @pytest.fixture
 def app(ignore_deprecation_warning):
