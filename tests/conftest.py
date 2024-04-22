@@ -32,7 +32,7 @@ from tests.models_for_test import (
 from src.utils.all_routes import ROUTES
 from src.utils.strings import model_strs, reset_password_strs
 
-TEST_SPLIT = (["urls"], ["unit", "utubs"], ["splash", "members", "tags",],)
+TEST_SPLIT = ({"urls"}, {"unit", "utubs"}, {"splash", "members", "tags"},)
 
 def pytest_collection_modifyitems(
         session: pytest.Session,
@@ -40,16 +40,15 @@ def pytest_collection_modifyitems(
         items: list[pytest.Item]
 ) -> None:
     # Change default values to 1 before turning in to GitHub
-    current_worker = int(os.getenv("GITHUB_WORKER_ID", 3)) - 1
-    total_workers = int(os.getenv("GITHUB_TOTAL_WORKERS", 1))
+    current_worker = int(os.getenv("GITHUB_WORKER_ID", -1)) - 1
 
-    if total_workers:
+    if current_worker >= 0:
         deselected_items = []
         selected_items = []
 
         for item in items:
-            parent_markers = [mark.name for mark in item.parent.own_markers]
-            if not set(TEST_SPLIT[current_worker]) & set(parent_markers):
+            parent_markers = set([mark.name for mark in item.parent.own_markers])
+            if not TEST_SPLIT[current_worker] & parent_markers:
                 deselected_items.append(item)
             else:
                 selected_items.append(item)
