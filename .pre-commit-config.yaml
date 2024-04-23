@@ -11,3 +11,9 @@ repos:
     hooks:
     - id: prettier
       types: [javascript]
+
+  - repo: https://github.com/pycqa/flake8
+    rev: "7.0.0"
+    hooks:
+    - id: flake8
+      args: [--extend-ignore, E501]
