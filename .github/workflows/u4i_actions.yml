@@ -76,9 +76,8 @@ jobs:
           git config --global user.name "${{ secrets.BOT_NAME }}"
           git commit -a -m "[Auto] Format javascript and python"
           git push
-          exit 0;
       
-      # Only run the tests if the no changes were committed and pushed from the formatter
+      # Only run the tests if no changes were committed and pushed from the formatter
       - name: Allow Tests to Run
         if: steps.git-check-python.outputs.modified == 'false' || steps.git-check-javascript.outputs.modified == 'false'
         id: allow-tests
@@ -88,7 +87,6 @@ jobs:
 
   Run-Tests:
     needs: Lint-and-Format
-    #if: needs.Lint-and-Format.outputs.code-pushed == 'false'
     env:
       FLASK_DEBUG: 'development'
       PRODUCTION: 'false'
@@ -100,22 +98,19 @@ jobs:
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
 
-    # Splits tests into mulitple workers
+    # Splits tests into multiple workers
     strategy:
       matrix:
         worker: [[1, 'URL Integration Tests'], [2, 'UTub Integration Tests and Unit Tests'], [3,'Splash/Member/Tag Integration Tests']]
 
-    #name: ${{ matrix.worker[1] }}
-
     name: ${{ (needs.Lint-and-Format.outputs.code-pushed == 'false') && format('{0}', matrix.worker[1]) || format('Skipped - {0}', matrix.worker[1] )}}
 
-    # Service containers to run with `container-job`
+    # Service containers to run with `Run-Tests`
     services:
       # Label used to access the service container
       postgres:
         # Docker Hub image
         image: ${{ (needs.Lint-and-Format.outputs.code-pushed == 'false') && 'postgres' || '' }}
-        #image: postgres
         # Map the ports
         ports:
           - 5432:5432
