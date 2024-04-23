@@ -1,10 +1,10 @@
 name: Linting
 
 on: 
-  push:
-  pull_request:
-    branches:
-      - main
+  workflow_run:
+    workflows: ["Check Formatting"]
+    types:
+      - completed
 
 jobs:
   Lint:
