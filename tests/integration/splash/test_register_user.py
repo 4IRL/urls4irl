@@ -14,6 +14,7 @@ from src.utils.strings.user_strs import USER_FAILURE
 
 pytestmark = pytest.mark.splash
 
+
 def test_register_new_user(app, load_register_page):
     """
     GIVEN a new, unregistered user to the page

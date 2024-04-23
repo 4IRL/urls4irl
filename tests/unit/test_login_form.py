@@ -8,6 +8,7 @@ from src.utils.strings.user_strs import USER_FAILURE as LOGIN_FAILURE
 
 pytestmark = pytest.mark.unit
 
+
 def test_login_no_password(load_login_page):
     """
     GIVEN an unregistered user

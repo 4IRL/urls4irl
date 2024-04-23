@@ -1,5 +1,5 @@
 from flask import url_for
-from flask_login import current_user 
+from flask_login import current_user
 import pytest
 
 from tests.models_for_test import valid_empty_utub_1

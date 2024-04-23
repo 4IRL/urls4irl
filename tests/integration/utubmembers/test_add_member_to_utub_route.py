@@ -12,6 +12,7 @@ from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 
 pytestmark = pytest.mark.members
 
+
 def test_add_valid_users_to_utub_as_creator(
     every_user_makes_a_unique_utub, login_first_user_without_register
 ):

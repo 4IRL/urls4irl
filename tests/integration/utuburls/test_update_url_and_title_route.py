@@ -12,6 +12,7 @@ from src.utils.url_validation import find_common_url
 
 pytestmark = pytest.mark.urls
 
+
 def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,

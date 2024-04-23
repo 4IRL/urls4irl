@@ -14,6 +14,7 @@ from src.utils.strings.user_strs import USER_FAILURE
 
 pytestmark = pytest.mark.splash
 
+
 def test_login_registered_and_logged_in_user(login_first_user_with_register):
     """
     GIVEN a registered and logged in user

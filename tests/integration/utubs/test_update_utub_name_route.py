@@ -10,6 +10,7 @@ from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 
 pytestmark = pytest.mark.utubs
 
+
 def test_update_valid_utub_name_as_creator(
     add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
 ):

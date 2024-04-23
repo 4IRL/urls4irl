@@ -8,6 +8,7 @@ from src.utils.strings.user_strs import USER_FAILURE as REGISTER_FAILURE
 
 pytestmark = pytest.mark.unit
 
+
 def test_register_user_form_only_username_csrf(load_register_page):
     """
     GIVEN an unregistered user

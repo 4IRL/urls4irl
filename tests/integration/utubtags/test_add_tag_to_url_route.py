@@ -13,6 +13,7 @@ from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 
 pytestmark = pytest.mark.tags
 
+
 def test_add_fresh_tag_to_valid_url_as_utub_creator(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ):
@@ -64,14 +65,17 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         associated_tags = url_utub_association.associated_tags
 
         # Ensure this tag does not exist in the database
-        init_num_of_tag_in_db = len(Tags.query.filter(Tags.tag_string == tag_to_add).all())
+        init_num_of_tag_in_db = len(
+            Tags.query.filter(Tags.tag_string == tag_to_add).all()
+        )
 
         # Ensure no Tag-URL association exists in this UTub
-        init_num_of_tags_on_urls = len(Url_Tags.query.filter(
-                                            Url_Tags.utub_id == utub_id_user_is_creator_of, 
-                                            Url_Tags.url_id == url_id_to_add_tag_to,
-                                        ).all()
-                                    )
+        init_num_of_tags_on_urls = len(
+            Url_Tags.query.filter(
+                Url_Tags.utub_id == utub_id_user_is_creator_of,
+                Url_Tags.url_id == url_id_to_add_tag_to,
+            ).all()
+        )
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = len(Url_Tags.query.all())
@@ -111,7 +115,10 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
     with app.app_context():
         # Ensure a tag exists
         assert len(Tags.query.all()) == 1
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == init_num_of_tag_in_db + 1
+        assert (
+            len(Tags.query.filter(Tags.tag_string == tag_to_add).all())
+            == init_num_of_tag_in_db + 1
+        )
         assert Tags.query.filter(Tags.tag_string == tag_to_add).first() is not None
 
         # Ensure a Tag-URL association exists in this UTub

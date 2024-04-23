@@ -32,12 +32,15 @@ from tests.models_for_test import (
 from src.utils.all_routes import ROUTES
 from src.utils.strings import model_strs, reset_password_strs
 
-TEST_SPLIT = ({"urls"}, {"unit", "utubs"}, {"splash", "members", "tags"},)
+TEST_SPLIT = (
+    {"urls"},
+    {"unit", "utubs"},
+    {"splash", "members", "tags"},
+)
+
 
 def pytest_collection_modifyitems(
-        session: pytest.Session,
-        config: pytest.Config,
-        items: list[pytest.Item]
+    session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
 ) -> None:
     # Change default values to 1 before turning in to GitHub
     current_worker = int(os.getenv("GITHUB_WORKER_ID", -1)) - 1
@@ -57,6 +60,7 @@ def pytest_collection_modifyitems(
         config.hook.pytest_deselected(items=deselected_items)
         items[:] = selected_items
 
+
 warnings.filterwarnings(
     "ignore", category=DeprecationWarning
 )  # , message="'flask.Markup' is deprecated and will be removed in Flask 2.4. Import 'markupsafe.Markup' instead.")
@@ -67,6 +71,7 @@ def ignore_deprecation_warning():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     yield
     warnings.resetwarnings()
+
 
 @pytest.fixture
 def app(ignore_deprecation_warning):

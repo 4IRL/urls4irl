@@ -12,6 +12,7 @@ from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
 pytestmark = pytest.mark.urls
 
+
 def test_add_valid_url_as_utub_member(
     add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
 ):

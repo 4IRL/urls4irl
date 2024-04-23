@@ -6,6 +6,7 @@ from src.models import URLS, Utub, User, Utub_Urls, Utub_Users, Url_Tags
 
 pytestmark = pytest.mark.unit
 
+
 def test_db_created_correctly(app):
     """
     GIVEN a valid database with all given tables

@@ -12,6 +12,7 @@ from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 
 pytestmark = pytest.mark.tags
 
+
 def test_remove_tag_from_url_as_utub_creator(
     add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
 ):

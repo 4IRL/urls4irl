@@ -15,6 +15,7 @@ from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 
 pytestmark = pytest.mark.utubs
 
+
 def test_add_utub_with_valid_form(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page

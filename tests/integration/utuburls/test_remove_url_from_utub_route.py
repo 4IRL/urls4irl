@@ -11,6 +11,7 @@ from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
 pytestmark = pytest.mark.urls
 
+
 def test_remove_url_as_utub_creator_no_tags(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ):

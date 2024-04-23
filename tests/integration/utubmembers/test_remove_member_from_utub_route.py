@@ -12,6 +12,7 @@ from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 
 pytestmark = pytest.mark.members
 
+
 def test_remove_valid_user_from_utub_as_creator(
     add_single_user_to_utub_without_logging_in, login_first_user_without_register
 ):
