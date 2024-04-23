@@ -1,4 +1,3 @@
-
 name: Check Formatting
 
 on: 
@@ -36,4 +35,3 @@ jobs:
 
       - name: Prettier
         run: npx prettier --check "**/*.js"
-
