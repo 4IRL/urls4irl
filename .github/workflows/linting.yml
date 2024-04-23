@@ -1,0 +1,31 @@
+name: Linting
+
+on: 
+  push:
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  Lint:
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.head_ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.2'
+          cache: 'pip'
+
+      - name: Verify Python with flake8 
+        uses: py-actions/flake8@v2
+        with:
+            exclude: ".git"
+            args: "--extend-ignore E501"
+
