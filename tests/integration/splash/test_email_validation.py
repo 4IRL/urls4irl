@@ -1,6 +1,7 @@
 from datetime import datetime
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
@@ -13,6 +14,8 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
 from src.utils.strings.user_strs import USER_FAILURE
+
+pytestmark = pytest.mark.splash
 
 VALIDATE_EMAIL_MODAL_TITLE = '<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
 

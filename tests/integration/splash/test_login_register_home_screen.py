@@ -1,6 +1,9 @@
 from flask import url_for, request
+import pytest
 
 from src.utils.all_routes import ROUTES
+
+pytestmark = pytest.mark.splash
 
 
 def test_get_home_screen_not_logged_in(app_with_server_name, client):

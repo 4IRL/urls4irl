@@ -1,11 +1,14 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from src.models import Utub, Utub_Urls, Utub_Users, Url_Tags
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_DESCRIPTION_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+
+pytestmark = pytest.mark.utubs
 
 
 def test_update_valid_utub_description_as_creator(

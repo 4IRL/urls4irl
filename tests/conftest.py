@@ -1,7 +1,9 @@
-import pytest
 from datetime import timedelta
+import os
+
 from flask import url_for
 from flask_login import FlaskLoginClient, current_user
+import pytest
 import warnings
 
 from src import create_app, db
@@ -29,6 +31,34 @@ from tests.models_for_test import (
 )
 from src.utils.all_routes import ROUTES
 from src.utils.strings import model_strs, reset_password_strs
+
+TEST_SPLIT = (
+    {"urls"},
+    {"unit", "utubs"},
+    {"splash", "members", "tags"},
+)
+
+
+def pytest_collection_modifyitems(
+    session: pytest.Session, config: pytest.Config, items: list[pytest.Item]
+) -> None:
+    # Change default values to 1 before turning in to GitHub
+    current_worker = int(os.getenv("GITHUB_WORKER_ID", -1)) - 1
+
+    if current_worker >= 0:
+        deselected_items = []
+        selected_items = []
+
+        for item in items:
+            parent_markers = set([mark.name for mark in item.parent.own_markers])
+            if not TEST_SPLIT[current_worker] & parent_markers:
+                deselected_items.append(item)
+            else:
+                selected_items.append(item)
+
+        print(f"Running markers: {', '.join(TEST_SPLIT[current_worker])}")
+        config.hook.pytest_deselected(items=deselected_items)
+        items[:] = selected_items
 
 
 warnings.filterwarnings(

@@ -1,5 +1,9 @@
+import pytest
+
 from src.models import User, Utub, URLS, Tags
 from src.utils.url_validation import find_common_url
+
+pytestmark = pytest.mark.unit
 
 new_user = {
     "username": "FakeUserName1234",

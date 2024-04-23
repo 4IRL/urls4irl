@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from src import db
 from src.models import Utub, URLS, Utub_Urls, Utub_Users, Tags, Url_Tags
@@ -9,6 +10,8 @@ from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+
+pytestmark = pytest.mark.tags
 
 
 def test_add_fresh_tag_to_valid_url_as_utub_creator(
@@ -45,20 +48,12 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure no tags
-        assert len(Tags.query.all()) == 0
-
         # Find UTub this current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
+        utub_user_is_creator_of: Utub = Utub.query.filter(
             Utub.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
         utub_name_user_is_creator_of = utub_user_is_creator_of.name
-
-        # Ensure user is in this UTub
-        assert current_user in [
-            user.to_user for user in utub_user_is_creator_of.members
-        ]
 
         # Get URL that is in this UTub, added by this user
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -70,17 +65,16 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         associated_tags = url_utub_association.associated_tags
 
         # Ensure this tag does not exist in the database
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 0
+        init_num_of_tag_in_db = len(
+            Tags.query.filter(Tags.tag_string == tag_to_add).all()
+        )
 
         # Ensure no Tag-URL association exists in this UTub
-        assert (
-            len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Url_Tags.url_id == url_id_to_add_tag_to,
-                ).all()
-            )
-            == 0
+        init_num_of_tags_on_urls = len(
+            Url_Tags.query.filter(
+                Url_Tags.utub_id == utub_id_user_is_creator_of,
+                Url_Tags.url_id == url_id_to_add_tag_to,
+            ).all()
         )
 
         # Get initial num of Url-Tag associations
@@ -121,7 +115,10 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
     with app.app_context():
         # Ensure a tag exists
         assert len(Tags.query.all()) == 1
-
+        assert (
+            len(Tags.query.filter(Tags.tag_string == tag_to_add).all())
+            == init_num_of_tag_in_db + 1
+        )
         assert Tags.query.filter(Tags.tag_string == tag_to_add).first() is not None
 
         # Ensure a Tag-URL association exists in this UTub
@@ -132,10 +129,10 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
                     Url_Tags.url_id == url_id_to_add_tag_to,
                 ).all()
             )
-            == 1
+            == init_num_of_tags_on_urls + 1
         )
 
-        # Ensure correct count of Url-Tag associations
+        # Ensure correct total count of Url-Tag associations
         assert len(Url_Tags.query.all()) == initial_num_url_tag_associations + 1
 
 

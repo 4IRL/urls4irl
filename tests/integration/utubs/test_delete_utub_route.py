@@ -1,6 +1,6 @@
-from flask import Flask, url_for
-from flask_login import current_user, FlaskLoginClient
-from typing import Generator
+from flask import url_for
+from flask_login import current_user
+import pytest
 
 from tests.models_for_test import valid_empty_utub_1
 from src.models import Utub, Utub_Users, Utub_Urls, Url_Tags
@@ -9,6 +9,8 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+
+pytestmark = pytest.mark.utubs
 
 
 def test_delete_existing_utub_as_creator_no_tags_urls_members(

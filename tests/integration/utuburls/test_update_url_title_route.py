@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from src.models import Utub, Utub_Urls, Url_Tags, URLS
 from src.utils.all_routes import ROUTES
@@ -8,6 +9,8 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+
+pytestmark = pytest.mark.urls
 
 
 def test_update_url_title_utub_creator(

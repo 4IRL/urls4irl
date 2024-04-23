@@ -1,6 +1,7 @@
 from copy import deepcopy
 from flask import url_for, request
 from flask_login import current_user
+import pytest
 from werkzeug.security import check_password_hash
 
 from tests.models_for_test import valid_user_1
@@ -10,6 +11,8 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 from src.utils.strings.user_strs import USER_FAILURE
+
+pytestmark = pytest.mark.splash
 
 
 def test_register_new_user(app, load_register_page):

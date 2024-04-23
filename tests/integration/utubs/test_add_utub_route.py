@@ -1,5 +1,6 @@
 from flask import url_for
 from flask_login import current_user
+import pytest
 
 from tests.models_for_test import (
     valid_empty_utub_1,
@@ -11,6 +12,8 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+
+pytestmark = pytest.mark.utubs
 
 
 def test_add_utub_with_valid_form(login_first_user_with_register):
