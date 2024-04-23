@@ -13,13 +13,7 @@ function setToRegisterButton() {
     });
 }
 
-function setToLoginButton() {
-  $(".to-login")
-    .off("click")
-    .on("click", function () {
-      loginModalOpener();
-    });
-}
+function setToLoginButton() {$(".to-login").off("click").on("click", function () {loginModalOpener();});}
 
 function loginModalOpener() {
   const modalOpener = $.get(routes.login());
