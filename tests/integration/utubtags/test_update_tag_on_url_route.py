@@ -2,7 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.models import Utub, Utub_Urls, Utub_Users, Tags, Url_Tags
+from src.models import Utub, Utub_Urls, Tags, Url_Tags
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -940,7 +940,6 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         tag_on_url = Url_Tags.query.filter_by(
             utub_id=utub_id_user_is_creator_of, url_id=url_id_to_add_tag_to
         ).first()
-        tag_string_on_url = tag_on_url.tag_item.tag_string
         curr_tag_id_on_url = tag_on_url.tag_id
 
         # Get tag to change to on this URL

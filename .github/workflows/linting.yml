@@ -26,6 +26,6 @@ jobs:
       - name: Verify Python with flake8 
         uses: py-actions/flake8@v2
         with:
-            exclude: ".git"
+            exclude: ".git,migrations"
             args: "--extend-ignore E501"
 

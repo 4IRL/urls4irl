@@ -1,6 +1,6 @@
 """
-Creates the app's database if not already created. 
-https://stackoverflow.com/questions/43713124/creating-a-database-in-flask-sqlalchemy    
+Creates the app's database if not already created.
+https://stackoverflow.com/questions/43713124/creating-a-database-in-flask-sqlalchemy
 """
 
 from src import db

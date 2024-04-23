@@ -442,14 +442,6 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
         # Ensure user is in this UTub
         assert current_user in [user.to_user for user in utub_user_is_member_of.members]
 
-        # Get URL that is in this UTub, not added by this user
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_user_is_member_of,
-                Utub_Urls.user_id != current_user.id,
-            ).all()
-        )
-
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id != current_user.id,
