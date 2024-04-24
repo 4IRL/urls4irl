@@ -72,6 +72,16 @@ jobs:
           python-version: '3.11.2'
           cache: 'pip'
       
+      - name: Setup caching
+        uses: actions/cache@master
+        id: cache
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.11/site-packages/*
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+      
       - name: Install Dependencies
         run: |
           python3.11 -m venv venv;
