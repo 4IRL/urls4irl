@@ -69,8 +69,7 @@ class Utub_Urls(db.Model):
     standalone_url: URLS = db.relationship("URLS")
     utub = db.relationship("Utub", back_populates="utub_urls")
 
-    @property
-    def serialized(self) -> dict:
+    def serialized(self, current_user_id: int, utub_creator: int) -> dict:
         """Returns serialized object."""
         url_data = self.standalone_url.serialized_url
 
@@ -78,8 +77,29 @@ class Utub_Urls(db.Model):
             MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
             MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
             MODEL_STRS.URL_TAGS: self.associated_tags,
-            MODEL_STRS.ADDED_BY: self.user_that_added_url.serialized[MODEL_STRS.ID],
             MODEL_STRS.URL_TITLE: self.url_title,
+            MODEL_STRS.CAN_DELETE: current_user_id == self.user_id
+            or current_user_id == utub_creator,
+        }
+
+    @property
+    def serialized_on_string_edit(self) -> dict:
+        url_data = self.standalone_url.serialized_url
+
+        return {
+            MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
+            MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
+            MODEL_STRS.URL_TAGS: self.associated_tags,
+        }
+
+    @property
+    def serialized_on_title_edit(self) -> dict:
+        url_data = self.standalone_url.serialized_url
+
+        return {
+            MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
+            MODEL_STRS.URL_TITLE: self.url_title,
+            MODEL_STRS.URL_TAGS: self.associated_tags,
         }
 
     @property
@@ -384,8 +404,7 @@ class Utub(db.Model):
         self.utub_creator = utub_creator
         self.utub_description = utub_description
 
-    @property
-    def serialized(self) -> dict[str, list | int | str]:
+    def serialized(self, current_user_id: int) -> dict[str, list | int | str]:
         """Return object in serialized form."""
 
         # self.utub_url_tags may contain repeats of tags since same tags can be on multiple URLs
@@ -406,7 +425,10 @@ class Utub(db.Model):
                 self.utub_description if self.utub_description is not None else ""
             ),
             MODEL_STRS.MEMBERS: [member.serialized for member in self.members],
-            MODEL_STRS.URLS: [url_in_utub.serialized for url_in_utub in self.utub_urls],
+            MODEL_STRS.URLS: [
+                url_in_utub.serialized(current_user_id, self.utub_creator)
+                for url_in_utub in self.utub_urls
+            ],
             MODEL_STRS.TAGS: utub_tags,
         }
 

@@ -1,7 +1,7 @@
 # Strings for standardizing the model serialization
 ID = "id"
 NAME = "name"
-CREATED_BY = "createdBy"
+CREATED_BY = "createdByUserID"
 CREATED_AT = "createdAt"
 DESCRIPTION = "description"
 EMAIL = "email"
@@ -13,13 +13,14 @@ TAG = "tag"
 TAGS = "tags"
 URLS = "urls"
 URL = "URL"
-URL_TAGS = "urlTags"
+URL_TAGS = "urlTagIDs"
 URL_STRING = "urlString"
 URL_ID = "urlID"
 URL_TITLE = "urlTitle"
-ADDED_BY = "addedBy"
+ADDED_BY = "addedByUserID"
 USERNAME = "username"
 IS_CREATOR = "isCreator"
+CAN_DELETE = "canDelete"
 UTUB_DESCRIPTION = DESCRIPTION
 
 
@@ -44,3 +45,4 @@ class MODELS:
     TAG_STRING = TAG_STRING
     UTUB_DESCRIPTION = UTUB_DESCRIPTION
     IS_CREATOR = IS_CREATOR
+    CAN_DELETE = CAN_DELETE

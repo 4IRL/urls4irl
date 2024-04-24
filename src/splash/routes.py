@@ -103,7 +103,7 @@ def register_user():
                         {
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
-                            STD_JSON.ERROR_CODE: 3,
+                            STD_JSON.ERROR_CODE: 2,
                             STD_JSON.ERRORS: build_form_errors(register_form),
                         }
                     ),

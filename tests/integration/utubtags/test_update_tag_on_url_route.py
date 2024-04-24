@@ -34,15 +34,17 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
+            },
+        TAGS_SUCCESS.PREVIOUS_TAG: Object for old tag, with tag id and boolean indicating whether tag still exists in UTub
+            {
+                "id": Integer representing ID of previous tag,
+                TAGS_SUCCESS.TAG_IN_UTUB: Boolean indicating whether old tag still exists in UTub
             }
-        TAGS_SUCCESS.URL_ID : Integer representing ID of the URL the tag was added to in this UTub,
-        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
-        TAGS_SUCCESS.UTUB_ID : Integer representing the ID of the UTub that the URL, user, and tag association is in,
-        TAGS_SUCCESS.UTUB_NAME: String representing name of UTub that the URL, user, and tag association is in
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -53,7 +55,6 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
             Utub.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
-        utub_name_user_is_creator_of = utub_user_is_creator_of.name
 
         # Get URL that is in this UTub
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -109,15 +110,11 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
     assert (
         modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
     )
-    assert (
-        int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID])
-        == utub_id_user_is_creator_of
-    )
-    assert (
-        modify_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
-    )
-    assert int(modify_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
     assert modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == NEW_TAG
+    assert (
+        modify_tag_response_json[TAGS_SUCCESS.PREVIOUS_TAG][MODELS.ID]
+        == curr_tag_id_on_url
+    )
 
     with app.app_context():
         # Ensure a new tag exists
@@ -160,6 +157,18 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
             == num_of_tags_on_url
         )
 
+        count_of_prev_tag_in_utub = Url_Tags.query.filter(
+            Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Url_Tags.tag_id == curr_tag_id_on_url,
+        ).count()
+        assert (
+            modify_tag_response_json[TAGS_SUCCESS.PREVIOUS_TAG][
+                TAGS_SUCCESS.TAG_IN_UTUB
+            ]
+            == count_of_prev_tag_in_utub
+            > 0
+        )
+
         # Ensure correct count of Url-Tag associations
         assert len(Url_Tags.query.all()) == initial_num_url_tag_associations
 
@@ -184,15 +193,17 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
+            },
+        TAGS_SUCCESS.PREVIOUS_TAG: Object for old tag, with tag id and boolean indicating whether tag still exists in UTub
+            {
+                "id": Integer representing ID of previous tag,
+                TAGS_SUCCESS.TAG_IN_UTUB: Boolean indicating whether old tag still exists in UTub
             }
-        TAGS_SUCCESS.URL_ID : Integer representing ID of the URL the tag was added to in this UTub,
-        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
-        TAGS_SUCCESS.UTUB_ID : Integer representing the ID of the UTub that the URL, user, and tag association is in,
-        TAGS_SUCCESS.UTUB_NAME: String representing name of UTub that the URL, user, and tag association is in
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -211,7 +222,6 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
 
         utub_user_is_member_of = utubs_user_is_not_creator_of[i]
         utub_id_user_is_member_of = utub_user_is_member_of.id
-        utub_name_user_is_member_of = utub_user_is_member_of.name
 
         # Ensure user is in this UTub
         assert current_user in [user.to_user for user in utub_user_is_member_of.members]
@@ -270,14 +280,11 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
     assert (
         modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
     )
-    assert (
-        int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
-    )
-    assert (
-        modify_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
-    )
-    assert int(modify_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
     assert modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == NEW_TAG
+    assert (
+        modify_tag_response_json[TAGS_SUCCESS.PREVIOUS_TAG][MODELS.ID]
+        == curr_tag_id_on_url
+    )
 
     with app.app_context():
         # Ensure a new tag exists
@@ -319,6 +326,18 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
             == num_of_tags_on_url
         )
 
+        count_of_prev_tag_in_utub = Url_Tags.query.filter(
+            Url_Tags.utub_id == utub_id_user_is_member_of,
+            Url_Tags.tag_id == curr_tag_id_on_url,
+        ).count()
+        assert (
+            modify_tag_response_json[TAGS_SUCCESS.PREVIOUS_TAG][
+                TAGS_SUCCESS.TAG_IN_UTUB
+            ]
+            == count_of_prev_tag_in_utub
+            > 0
+        )
+
         # Ensure correct count of Url-Tag associations
         assert len(Url_Tags.query.all()) == initial_num_url_tag_associations
 
@@ -344,15 +363,17 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
+            },
+        TAGS_SUCCESS.PREVIOUS_TAG: Object for old tag, with tag id and boolean indicating whether tag still exists in UTub
+            {
+                "id": Integer representing ID of previous tag,
+                TAGS_SUCCESS.TAG_IN_UTUB: Boolean indicating whether old tag still exists in UTub
             }
-        TAGS_SUCCESS.URL_ID : Integer representing ID of the URL the tag was added to in this UTub,
-        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
-        TAGS_SUCCESS.UTUB_ID : Integer representing the ID of the UTub that the URL, user, and tag association is in,
-        TAGS_SUCCESS.UTUB_NAME: String representing name of UTub that the URL, user, and tag association is in
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -363,7 +384,6 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
             Utub.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
-        utub_name_user_is_creator_of = utub_user_is_creator_of.name
 
         # Get URL that is in this UTub
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -435,15 +455,11 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
     )
     assert (
-        int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID])
-        == utub_id_user_is_creator_of
-    )
-    assert (
-        modify_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_creator_of
-    )
-    assert int(modify_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
-    assert (
         modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING] == new_tag_string
+    )
+    assert (
+        modify_tag_response_json[TAGS_SUCCESS.PREVIOUS_TAG][MODELS.ID]
+        == curr_tag_id_on_url
     )
     associated_tags[associated_tags.index(curr_tag_id_on_url)] = tag_to_replace_with.id
     assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
@@ -474,6 +490,18 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
             == num_of_tags_on_url
         )
 
+        count_of_prev_tag_in_utub = Url_Tags.query.filter(
+            Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Url_Tags.tag_id == curr_tag_id_on_url,
+        ).count()
+        assert (
+            modify_tag_response_json[TAGS_SUCCESS.PREVIOUS_TAG][
+                TAGS_SUCCESS.TAG_IN_UTUB
+            ]
+            == count_of_prev_tag_in_utub
+            > 0
+        )
+
         # Ensure correct count of Url-Tag associations
         assert len(Url_Tags.query.all()) == initial_num_url_tag_associations
 
@@ -499,15 +527,17 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
+            },
+        TAGS_SUCCESS.PREVIOUS_TAG: Object for old tag, with tag id and boolean indicating whether tag still exists in UTub
+            {
+                "id": Integer representing ID of previous tag,
+                TAGS_SUCCESS.TAG_IN_UTUB: Boolean indicating whether old tag still exists in UTub
             }
-        TAGS_SUCCESS.URL_ID : Integer representing ID of the URL the tag was added to in this UTub,
-        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
-        TAGS_SUCCESS.UTUB_ID : Integer representing the ID of the UTub that the URL, user, and tag association is in,
-        TAGS_SUCCESS.UTUB_NAME: String representing name of UTub that the URL, user, and tag association is in
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -526,7 +556,6 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
 
         utub_user_is_member_of = utubs_user_is_not_creator_of[i]
         utub_id_user_is_member_of = utub_user_is_member_of.id
-        utub_name_user_is_member_of = utub_user_is_member_of.name
 
         # Ensure user is in this UTub
         assert current_user in [user.to_user for user in utub_user_is_member_of.members]
@@ -600,15 +629,12 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         modify_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_MODIFIED_ON_URL
     )
     assert (
-        int(modify_tag_response_json[TAGS_SUCCESS.UTUB_ID]) == utub_id_user_is_member_of
-    )
-    assert (
-        modify_tag_response_json[TAGS_SUCCESS.UTUB_NAME] == utub_name_user_is_member_of
-    )
-    assert int(modify_tag_response_json[TAGS_SUCCESS.URL_ID]) == url_id_to_add_tag_to
-    assert (
         modify_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
         == tag_from_database.tag_string
+    )
+    assert (
+        modify_tag_response_json[TAGS_SUCCESS.PREVIOUS_TAG][MODELS.ID]
+        == curr_tag_id_on_url
     )
     associated_tags[associated_tags.index(curr_tag_id_on_url)] = tag_from_database.id
     assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
@@ -637,6 +663,17 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
                 ).all()
             )
             == num_of_tags_on_url
+        )
+        count_of_prev_tag_in_utub = Url_Tags.query.filter(
+            Url_Tags.utub_id == utub_id_user_is_member_of,
+            Url_Tags.tag_id == curr_tag_id_on_url,
+        ).count()
+        assert (
+            modify_tag_response_json[TAGS_SUCCESS.PREVIOUS_TAG][
+                TAGS_SUCCESS.TAG_IN_UTUB
+            ]
+            == count_of_prev_tag_in_utub
+            > 0
         )
 
         # Ensure correct count of Url-Tag associations

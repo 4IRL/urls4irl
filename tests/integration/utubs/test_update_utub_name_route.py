@@ -29,7 +29,6 @@ def test_update_valid_utub_name_as_creator(
         STD_JSON.STATUS: STD_JSON.SUCCESS,
         UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed name
         UTUB_SUCCESS.UTUB_NAME: String representing the new name of the UTub
-        UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new name
     }
     """
     client, csrf_token_string, logged_in_user, app = login_first_user_without_register
@@ -76,10 +75,6 @@ def test_update_valid_utub_name_as_creator(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(edit_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert (
-        edit_utub_name_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
-        == current_utub_description
-    )
     assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
 
     # Ensure database is consistent with just updating the UTub name
@@ -174,10 +169,6 @@ def test_update_valid_utub_same_name_as_creator(
 
     assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(edit_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert (
-        edit_utub_name_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION]
-        == current_utub_description
-    )
     assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
 
     # Ensure database is consistent after user requested same name for UTub

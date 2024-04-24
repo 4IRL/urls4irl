@@ -30,7 +30,6 @@ def test_add_valid_users_to_utub_as_creator(
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : USER_SUCCESS.USER_ADDED,
         USER_SUCCESS.UTUB_ID : Integer representing ID of the UTub the user was added to,
-        USER_SUCCESS.UTUB_NAME : String representing name of the UTub the user was added to,
         USER_SUCCESS.MEMBER: {
             MODELS.USERNAME: String representing newly added member's username
             MODELS.ID: Integer representing newly added member's userID
@@ -104,10 +103,6 @@ def test_add_valid_users_to_utub_as_creator(
             int(added_user_response_json[MEMBER_SUCCESS.UTUB_ID])
             == utub_id_of_current_user
         )
-        assert (
-            added_user_response_json[MEMBER_SUCCESS.UTUB_NAME]
-            == utub_of_current_user.to_utub.name
-        )
 
         current_number_of_users_in_utub += 1
         initial_num_user_utubs += 1
@@ -146,7 +141,6 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : USER_SUCCESS.USER_ADDED,
         USER_SUCCESS.UTUB_ID : Integer representing ID of the UTub the user was added to,
-        USER_SUCCESS.UTUB_NAME : String representing name of the UTub the user was added to,
         USER_SUCCESS.MEMBER: {
             MODELS.USERNAME: String representing newly added member's username
             MODELS.ID: Integer representing newly added member's userID
@@ -247,7 +241,6 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
         == other_user_username
     )
     assert int(added_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == utub_user_created.id
-    assert added_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == utub_user_created.name
 
     with app.app_context():
         # Ensure proper counts of all associations after removing then adding user who owned URLs in the UTub

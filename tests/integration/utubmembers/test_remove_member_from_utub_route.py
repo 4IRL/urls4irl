@@ -32,7 +32,6 @@ def test_remove_valid_user_from_utub_as_creator(
             MODELS.USERNAME: Username of user deleted,
         }
         USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
-        USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -85,7 +84,6 @@ def test_remove_valid_user_from_utub_as_creator(
         == second_user_in_utub.username
     )
     assert int(remove_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == current_utub.id
-    assert remove_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == current_utub.name
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -120,7 +118,6 @@ def test_remove_self_from_utub_as_member(
             MODELS.USERNAME: Username of user deleted,
         }
         USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
-        USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
     }
     """
 
@@ -171,7 +168,6 @@ def test_remove_self_from_utub_as_member(
         == current_user_username
     )
     assert int(remove_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == current_utub.id
-    assert remove_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == current_utub.name
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -205,7 +201,6 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
             MODELS.USERNAME: Username of user deleted,
         }
         USER_SUCCESS.UTUB_ID : Interger representing ID of UTub the user was removed from,
-        USER_SUCCESS.UTUB_NAME : String representing name of UTub removed,
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -291,7 +286,6 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
         == second_user_in_utub.username
     )
     assert int(remove_user_response_json[MEMBER_SUCCESS.UTUB_ID]) == current_utub.id
-    assert remove_user_response_json[MEMBER_SUCCESS.UTUB_NAME] == current_utub.name
 
     # Ensure database is correctly updated
     with app.app_context():

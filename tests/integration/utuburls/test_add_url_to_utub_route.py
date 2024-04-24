@@ -34,7 +34,6 @@ def test_add_valid_url_as_utub_member(
             "url_ID" : Integer representing the URL ID,
         },
         URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
-        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub added to,
         URL_SUCCESS.ADDED_BY : Integer representing the ID of current user who added this URL to this UTub
     }
     """
@@ -65,7 +64,6 @@ def test_add_valid_url_as_utub_member(
         url_string_to_add = url_to_add.url_string
         url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
-        utub_name_to_add = current_utub_member_of.name
 
         # Ensure Url-Utub-User association does not exist
         assert (
@@ -99,7 +97,6 @@ def test_add_valid_url_as_utub_member(
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_ADDED
     assert int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == utub_id_to_add_to
-    assert add_url_json_response[URL_SUCCESS.UTUB_NAME] == utub_name_to_add
     assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
     assert (
         add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
@@ -154,7 +151,6 @@ def test_add_valid_url_as_utub_creator(
             URL_SUCCESS.URL_ID : Integer representing the URL ID
         },
         URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
-        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub added to,
         URL_SUCCESS.ADDED_BY : Integer representing the ID of current user who added this URL to this UTub
     }
     """
@@ -185,7 +181,6 @@ def test_add_valid_url_as_utub_creator(
         url_string_to_add = url_to_add.url_string
         url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
-        utub_name_to_add = current_utub_member_of.name
 
         # Ensure Url-Utub-User association does not exist
         assert (
@@ -218,7 +213,6 @@ def test_add_valid_url_as_utub_creator(
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_ADDED
     assert int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == utub_id_to_add_to
-    assert add_url_json_response[URL_SUCCESS.UTUB_NAME] == utub_name_to_add
     assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
     assert (
         add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
@@ -325,7 +319,10 @@ def test_add_invalid_url_as_utub_member(
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL
+    assert (
+        add_url_json_response[STD_JSON.MESSAGE]
+        == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
+    )
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
@@ -424,7 +421,10 @@ def test_add_invalid_url_as_utub_creator(
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL
+    assert (
+        add_url_json_response[STD_JSON.MESSAGE]
+        == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
+    )
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
@@ -601,7 +601,6 @@ def test_add_fresh_url_to_utub(
             URL_SUCCESS.URL_ID : Integer representing the URL ID
         },
         URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
-        URL_SUCCESS.UTUB_NAME : String representing the name of the UTub added to,
         URL_SUCCESS.ADDED_BY : Integer representing the ID of current user who added this URL to this UTub
     }
     """
@@ -614,7 +613,6 @@ def test_add_fresh_url_to_utub(
             Utub.utub_creator == current_user.id
         ).first()
         id_of_utub_that_is_creator_of = utub_creator_of.id
-        name_of_utub_that_is_creator_of = utub_creator_of.name
 
         # Ensure URL not in UTub currently
         assert len(utub_creator_of.utub_urls) == 0
@@ -665,9 +663,6 @@ def test_add_fresh_url_to_utub(
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_CREATED_ADDED
     assert (
         int(add_url_json_response[URL_SUCCESS.UTUB_ID]) == id_of_utub_that_is_creator_of
-    )
-    assert (
-        add_url_json_response[URL_SUCCESS.UTUB_NAME] == name_of_utub_that_is_creator_of
     )
     assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
 

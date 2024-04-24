@@ -95,6 +95,8 @@ Required form data:
 
 ###### 400 HTTP Code Response Body - Example
 
+Invalid form data sent with the request.
+
 > ```json
 > {
 >     "status": "Failure",
@@ -203,11 +205,13 @@ Required form data:
 
 ###### 400 HTTP Code Response Body - Example
 
+Invalid form data sent with the request.
+
 > ```json
 > {
 >     "status": "Failure",
 >     "message": "Unable to register user.",
->     "errorCode": 2 or 3,
+>     "errorCode": 2,
 >     "errors": [ 
 >       "username": ["That username is already taken. Please choose another."],
 >       "email": ["This field is required."]
@@ -277,7 +281,7 @@ Required form data:
 > | `400`         | `application/json`                | `See below.` | Error with Mailjet service. |
 > | `404`         | `text/html;charset=utf−8`         | None | User to send email to does not exist. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
-> | `429`         | `application/json`                | `See below.` | Too many attempts in an hour. |
+> | `429`         | `application/json`                | `See below.` | Too many attempts in an hour, or request done in the past minute. |
 
 ###### 200 HTTP Code Response Body - Example
 
@@ -314,7 +318,17 @@ Required form data:
 > {
 >     "status": "Failure",
 >     "message": "Too many attempts, please wait 1 hour",
->     "errorCode": 1 or 2,
+>     "errorCode": 1,
+> }
+> ```
+
+###### 429 HTTP Code Response Body - Example
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "4 attempts left, please wait 1 minute before sending another email.",
+>     "errorCode": 2,
 > }
 > ```
 
@@ -636,8 +650,9 @@ The HTML body on a 200 response contains the following JSON.
 > ```json
 > {
 >     "id": 1,
->     "name": "My UTub"
->     "createdBy": 1, 
+>     "name": "My UTub",
+>     "createdByUserID": 1, 
+>     "isCreator": false,
 >     "createdAt": "04/04/2024 04:04:04",
 >     "description": "Here lies the description",
 >     "members": [
@@ -654,21 +669,15 @@ The HTML body on a 200 response contains the following JSON.
 >         {
 >             "urlID": 1,
 >             "urlString": "https://urls4irl.app",
->             "urlTags": [1, 2, 3],
->             "addedBy": {
->                 "id": 1,
->                 "username": "member1"
->             },
+>             "urlTagIDs": [1, 2, 3],
+>             "canDelete": true,           // Can only delete if UTub creator, or adder of URL  
 >             "urlTitle": "Title for URL",
 >         },
 >         {
 >             "urlID": 2,
 >             "urlString": "https://www.github.com",
->             "urlTags": [2, 3],
->             "addedBy": {
->                 "id": 2,
->                 "username": "member2"
->             },
+>             "urlTagIDs": [2, 3],
+>             "canDelete": false,             
 >             "urlTitle": "Title for URL",
 >         }
 >     ],
@@ -731,14 +740,26 @@ The HTML body on a 200 response contains the following JSON.
 
 ###### 400/404 HTTP Code Response Body
 
+Invalid form data sent with the request.
+
 > ```json
 > {
 >     "status": "Failure",
 >     "message": "Unable to make a UTub with that information.",
->     "errorCode": 1 or 2,
+>     "errorCode": 1,
 >     "errors": {
 >         "name": ["This field is required."],
 >     },
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to make a UTub with that information.",
+>     "errorCode": 2,
 > }
 > ```
 
@@ -842,11 +863,12 @@ Required form data:
 >     "status": "Success",
 >     "utubID": 1,
 >     "utubName": "New UTub Name",
->     "utubDescription": "My first UTub"
 > }
 > ```
 
 ###### 400 HTTP Code Response Body
+
+Invalid form data sent with the request.
 
 > ```json
 > {
@@ -928,7 +950,6 @@ Required form data:
 > {
 >     "status": "Success",
 >     "utubID": 1,
->     "utubName": "New UTub Name",
 >     "utubDescription": "My first UTub"
 > }
 > ```
@@ -946,6 +967,8 @@ Indicates a missing form field in the payload content.
 > ```
 
 ###### 400 HTTP Code Response Body
+
+Invalid form data sent with the request.
 
 > ```json
 > {
@@ -1034,7 +1057,6 @@ Required form data:
 >     "status": "Success",
 >     "message": "Member added.",
 >     "utubID": 1,
->     "utubName": "UTub 1",
 >     "member": {
 >         "id": 1,
 >         "username": "BobJoe"
@@ -1053,6 +1075,8 @@ Required form data:
 > ```
 
 ###### 400 HTTP Code Response Body
+
+Indicates missing or invalid form data sent with the request.
 
 > ```json
 > {
@@ -1127,7 +1151,6 @@ Required form data:
 >     "status": "Success",
 >     "message": "Member removed.",
 >     "utubID": 1,
->     "utubName": "UTub 1",
 >     "member": {
 >         "id": 1,
 >         "username": "BobJoe"
@@ -1218,10 +1241,9 @@ Required form data:
 >     "status": "Success",
 >     "message": "New URL created and added to UTub." or "URL added to UTub.",
 >     "utubID": 1,
->     "utubName": "UTub 1",
->     "addedBy": 1, 
+>     "addedByUserID": 1, 
 >     "URL": {
->         "urlString": "https://urls4irl.app/,
+>         "urlString": "https://urls4irl.app/",
 >         "urlID": 1,
 >         "urlTitle": "This is my home page!",
 >     }
@@ -1235,7 +1257,7 @@ Indicates the URL could not be validated.
 > ```json
 > {
 >     "status": "Failure",
->     "message": "Unable to add this URL.",
+>     "message": "Unable to validate this URL.",
 >     "errorCode": 2,
 > }
 > ```
@@ -1326,13 +1348,21 @@ Indicates form errors with adding this URL to this UTub.
 >     "status": "Success",
 >     "message": "URL removed from this UTub.",
 >     "utubID": 1,
->     "utubName": "UTub 1",
 >     "URL": {
->         "urlString": "https://urls4irl.app/,
+>         "urlString": "https://urls4irl.app/",
 >         "urlID": 1,
 >         "urlTitle": "This is my home page!",
 >     },
->     "urlTags": [1, 2, 3] // Tag IDs associated with the removed URL, in this UTub
+>     "tags": [
+>       {
+>           "id": 1,
+>           "tagInUTub": true       // Whether this tag still exists in the UTub
+>       },
+>       {
+>           "id": 2,
+>           "tagInUTub": false
+>       },
+>     ] 
 > }
 > ```
 
@@ -1526,19 +1556,17 @@ Required form data:
 > {
 >     "status": "Success" or "No change",
 >     "message": "URL modified." or "URL not modified",
->     "utubID": 1,
->     "utubName": "New UTub Name",
 >     "URL": {
 >         "urlID": 1,
 >         "urlString": "https://www.google.com",
->         "urlTitle": "This is google.",
->         "urlTags": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
->         "addedBy": 1,
+>         "urlTagIDs": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
 >     }
 > }
 > ```
 
 ###### 400 HTTP Code Response Body
+
+`urlString` cannot contain only whitespace or an empty field.
 
 > ```json
 > {
@@ -1555,12 +1583,14 @@ Unable to validate the given URL.
 > ```json
 > {
 >     "status": "Failure",
->     "message": "Unable to modify this URL.",
+>     "message": "Unable to validate this URL.",
 >     "errorCode": 3,
 > }
 > ```
 
 ###### 400 HTTP Code Response Body
+
+Indicates missing or invalid form data sent in the request.
 
 > ```json
 > {
@@ -1644,19 +1674,17 @@ Required form data:
 > {
 >     "status": "Success" or "No change",
 >     "message": "URL title was modified." or "URL title not modified",
->     "utubID": 1,
->     "utubName": "New UTub Name",
 >     "URL": {
 >         "urlID": 1,
->         "urlString": "https://www.google.com",
 >         "urlTitle": "This is google.",
->         "urlTags": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
->         "addedBy": 1,
+>         "urlTagIDs": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
 >     }
 > }
 > ```
 
 ###### 400 HTTP Code Response Body
+
+Indicates missing form data sent in the request.
 
 > ```json
 > {
@@ -1671,13 +1699,15 @@ Required form data:
 
 ###### 400 HTTP Code Response Body
 
+Indicates invalid form data sent in the request.
+
 > ```json
 > {
 >     "status": "Failure",
 >     "message": "Unable to update, please check inputs.",
 >     "errorCode": 3,
 >     "errors": {
->         "urlString": ["Field cannot be longer than 140 characters."],
+>         "urlTitle": ["Field cannot be longer than 140 characters."],
 >     }
 > }
 > ```
@@ -1757,10 +1787,7 @@ Required form data:
 > {
 >     "status": "Success",
 >     "message": "Tag added to this URL.",
->     "utubID": 1,
->     "utubName": "UTub 1",
->     "urlID": 1,
->     "urlTags": [1, 2, 3, 4],      // Contains newly added tag ID
+>     "urlTagIDs": [1, 2, 3, 4],      // Contains newly added tag ID
 >     "tag": {
 >         "tagID": 4,
 >         "tagString": "Hello",
@@ -1790,7 +1817,7 @@ Required form data:
 
 ###### 400 HTTP Code Response Body
 
-Indicates form errors with adding this URL to this UTub.
+Indicates form errors with adding this tag onto this URL in this UTub.
 
 > ```json
 > {
@@ -1862,11 +1889,8 @@ Indicates form errors with adding this URL to this UTub.
 > {
 >     "status": "Success",
 >     "message": "Tag removed from this URL.",
->     "utubID": 1,
->     "utubName": "UTub 1",
->     "urlID": 1,
->     "urlTags": [1, 2, 3],         // Contains tag ID array of tags still on URL
->     "tagInUTub": false            // Indicates if removed tag still exists in UTub
+>     "urlTagIDs": [1, 2, 3],         // Contains tag ID array of tags still on URL
+>     "tagInUTub": false,            // Indicates if removed tag still exists in UTub
 >     "tag": {
 >         "tagID": 4,
 >         "tagString": "Hello",
@@ -1927,20 +1951,30 @@ Required form data:
 
 ###### 200 HTTP Code Response Body
 
-Possible messages include: `URL and URL title were not modified.`, `URL title was modified.`
+Possible messages include: `Tag on this URL modified.`, `Tag was not modified on this URL.`
 
 > ```json
 > {
->     "status": "Success" or "No change",
->     "message": "Tag on this URL modified.", or "Tag was not modified on this URL.",
->     "utubID": 1,
->     "utubName": "New UTub Name",
->     "urlID": 1,
->     "urlTags": [1, 2, 3, 4],      // If modified, contains newly modified tag ID
+>     "status": "Success",
+>     "message": "Tag on this URL modified.", 
+>     "urlTagIDs": [1, 2, 3, 4],      // If modified, contains newly modified tag ID
 >     "tag": {
 >         "tagID": 4,
 >         "tagString": "Hello",
+>     },
+>     "previousTag": {
+>         "tagID": 5,
+>         "tagInUTub": false,
 >     }
+> }
+> ```
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "No change",
+>     "message": "Tag was not modified on this URL.",
 > }
 > ```
 
@@ -1956,7 +1990,7 @@ Possible messages include: `URL and URL title were not modified.`, `URL title wa
 
 ###### 400 HTTP Code Response Body
 
-`urlTitle` field must be included in form.
+`tagString` field must be included in form.
 
 > ```json
 > {

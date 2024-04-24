@@ -28,7 +28,6 @@ def test_update_valid_utub_description_as_creator(
     {
         STD_JSON.STATUS: STD_JSON.SUCCESS,
         UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed description
-        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose description was changed
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
@@ -80,7 +79,6 @@ def test_update_valid_utub_description_as_creator(
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
     assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_NAME] == current_utub_name
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -128,7 +126,6 @@ def test_update_valid_empty_utub_description_as_creator(
     {
         STD_JSON.STATUS: STD_JSON.SUCCESS,
         UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed description
-        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose description was changed
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
@@ -180,7 +177,6 @@ def test_update_valid_empty_utub_description_as_creator(
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
     assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_NAME] == current_utub_name
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -228,7 +224,6 @@ def test_update_only_spaces_utub_description_as_creator(
     {
         STD_JSON.STATUS: STD_JSON.SUCCESS,
         UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed description
-        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose description was changed
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's new description
     }
     """
@@ -280,7 +275,6 @@ def test_update_only_spaces_utub_description_as_creator(
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
     assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == ""
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_NAME] == current_utub_name
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -328,7 +322,6 @@ def test_update_utub_description_with_same_description_as_creator(
     {
         STD_JSON.STATUS: STD_JSON.SUCCESS,
         UTUB_SUCCESS.UTUB_ID: Integer representing the UTub ID for the changed description
-        UTUB_SUCCESS.UTUB_NAME: String representing the name of the UTub whose description was changed
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's previous description
     }
     """
@@ -377,7 +370,6 @@ def test_update_utub_description_with_same_description_as_creator(
     assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
     assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_NAME] == current_utub_name
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():

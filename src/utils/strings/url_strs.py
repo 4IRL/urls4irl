@@ -17,6 +17,7 @@ URL_REMOVED = "URL removed from this UTub."
 URL_TITLE_MODIFIED = "URL title was modified."
 URL_OR_TITLE_MODIFIED = "URL and/or URL title modified."
 URL_MODIFIED = "URL modified."
+TAG_IN_UTUB = "tagInUTub"
 
 
 class URL_GENERAL:
@@ -24,6 +25,7 @@ class URL_GENERAL:
     REDIRECT = REDIRECT
     URL_TAGS = URL_TAGS
     URL_ID = URL_ID
+    TAG_IN_UTUB = TAG_IN_UTUB
 
 
 class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
@@ -41,6 +43,7 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
 # Strings for URL failure
 UNABLE_TO_REMOVE_URL = "Unable to remove this URL."
 UNABLE_TO_ADD_URL = "Unable to add this URL."
+UNABLE_TO_VALIDATE_THIS_URL = "Unable to validate this URL."
 URL_IN_UTUB = "URL already in UTub."
 UNABLE_TO_ADD_URL_FORM = "Unable to add this URL, please check inputs."
 UNABLE_TO_MODIFY_URL_FORM = "Unable to update, please check inputs."
@@ -49,6 +52,7 @@ EMPTY_URL = "URL cannot be empty."
 
 
 class URL_FAILURE(FAILURE_GENERAL):
+    UNABLE_TO_VALIDATE_THIS_URL = UNABLE_TO_VALIDATE_THIS_URL
     UNABLE_TO_ADD_URL = UNABLE_TO_ADD_URL
     UNABLE_TO_REMOVE_URL = UNABLE_TO_REMOVE_URL
     URL_IN_UTUB = URL_IN_UTUB

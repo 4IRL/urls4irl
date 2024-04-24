@@ -53,7 +53,7 @@ def get_single_utub(utub_id: str):
         # User is not member of the UTub they are requesting
         abort(404)
 
-    utub_data_serialized = utub.serialized
+    utub_data_serialized = utub.serialized(current_user.id)
     utub_data_serialized[MODELS.IS_CREATOR] = utub.utub_creator == current_user.id
 
     return jsonify(utub_data_serialized)
@@ -215,7 +215,6 @@ def update_utub_name(utub_id: int):
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     UTUB_SUCCESS.UTUB_ID: current_utub.id,
                     UTUB_SUCCESS.UTUB_NAME: current_utub.name,
-                    UTUB_SUCCESS.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),
             200,
@@ -309,7 +308,6 @@ def update_utub_desc(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     UTUB_SUCCESS.UTUB_ID: current_utub.id,
-                    UTUB_SUCCESS.UTUB_NAME: current_utub.name,
                     UTUB_SUCCESS.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),

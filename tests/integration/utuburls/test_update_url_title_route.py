@@ -34,13 +34,9 @@ def test_update_url_title_utub_creator(
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
             MODEL_STRS.URL_ID: ID of URL that was modified,
-            URL_FORM.URL_STRING: The URL that was newly modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
-            MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
-        URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -57,7 +53,6 @@ def test_update_url_title_utub_creator(
             utub_id=utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -79,8 +74,6 @@ def test_update_url_title_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
-        current_user_id = current_user.id
-
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_TITLE: NEW_TITLE,
@@ -101,13 +94,9 @@ def test_update_url_title_utub_creator(
     json_response = edit_url_string_title_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_TITLE_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == NEW_TITLE
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
-    assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_creator_of.id
-    assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -149,13 +138,9 @@ def test_update_url_title_url_adder(
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
             MODEL_STRS.URL_ID: ID of URL that was modified,
-            URL_FORM.URL_STRING: The URL that was newly modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
-            MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
-        URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -195,8 +180,6 @@ def test_update_url_title_url_adder(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
-        current_user_id = current_user.id
-
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: current_url,
@@ -218,13 +201,9 @@ def test_update_url_title_url_adder(
     json_response = edit_url_string_title_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_TITLE_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == NEW_TITLE
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
-    assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
-    assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -272,13 +251,9 @@ def test_update_url_title_with_same_title_utub_creator(
         URL_SUCCESS.URL: Object representing a Utub_Urls, with the following fields
         {
             MODEL_STRS.URL_ID: ID of URL that was not modified,
-            URL_FORM.URL_STRING: The URL that was not modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
-            MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
-        URL_SUCCESS.UTUB_ID: UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME: Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -294,7 +269,6 @@ def test_update_url_title_with_same_title_utub_creator(
             utub_id=utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -316,8 +290,6 @@ def test_update_url_title_with_same_title_utub_creator(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
-        current_user_id = current_user.id
-
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_TITLE: current_title,
@@ -338,13 +310,9 @@ def test_update_url_title_with_same_title_utub_creator(
     json_response = edit_url_string_title_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == current_title
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
-    assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_creator_of.id
-    assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -386,13 +354,9 @@ def test_update_url_title_with_same_title_url_adder(
         URL_SUCCESS.URL: Object representing a Utub_Urls, with the following fields
         {
             MODEL_STRS.URL_ID: ID of URL that was not modified,
-            URL_FORM.URL_STRING: The URL that was not modified,
             MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
-            MODEL_STRS.ADDED_BY: Id of the user who added this, should be the user modifying it
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
         }
-        URL_SUCCESS.UTUB_ID : UTub ID where this URL exists,
-        URL_SUCCESS.UTUB_NAME : Name of UTub containing this URL
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -431,8 +395,6 @@ def test_update_url_title_with_same_title_url_adder(
         num_of_urls = len(URLS.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
-        current_user_id = current_user.id
-
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: current_url,
@@ -454,13 +416,9 @@ def test_update_url_title_with_same_title_url_adder(
     json_response = edit_url_string_title_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.ADDED_BY]) == current_user_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == current_title
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
-    assert int(json_response[URL_SUCCESS.UTUB_ID]) == utub_member_of.id
-    assert json_response[URL_SUCCESS.UTUB_NAME] == utub_member_of.name
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

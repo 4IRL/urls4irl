@@ -8,6 +8,7 @@ TAG_ADDED_TO_URL = "Tag added to this URL."
 TAG_REMOVED_FROM_URL = "Tag removed from this URL."
 TAG_MODIFIED_ON_URL = "Tag on this URL modified."
 TAG_STILL_IN_UTUB = "tagInUTub"
+PREVIOUS_TAG = "previousTag"
 
 
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
@@ -16,6 +17,7 @@ class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     TAG = TAG
     TAG_STILL_IN_UTUB = TAG_STILL_IN_UTUB
     TAG_MODIFIED_ON_URL = TAG_MODIFIED_ON_URL
+    PREVIOUS_TAG = PREVIOUS_TAG
 
 
 # Strings for tags failure
