@@ -1,0 +1,39 @@
+name: Linting
+
+on: 
+  workflow_call:
+    inputs:
+      branch_ref:
+        required: true
+        type: string
+
+jobs:
+  Lint:
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.2'
+          cache: 'pip'
+
+      - name: Verify Python with flake8 
+        uses: py-actions/flake8@v2
+        with:
+            exclude: ".git,migrations"
+            args: "--extend-ignore E501"
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Verify JavaScript with ESLint
+        run: npx eslint src/static/scripts/** --no-config-lookup

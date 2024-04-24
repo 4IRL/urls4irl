@@ -54,7 +54,7 @@ invalid_user_1 = {
 }
 
 """
-Valid tags used for testing 
+Valid tags used for testing
 """
 valid_tag_1 = {MODEL_STRS.ID: 1, MODEL_STRS.TAG_STRING: "Exciting!"}
 
@@ -71,7 +71,7 @@ valid_tag_ids = [tag[MODEL_STRS.ID] for tag in all_tags]
 all_tag_strings = [tag[MODEL_STRS.TAG_STRING] for tag in all_tags]
 
 """
-Valid URLs used for testing, without tags    
+Valid URLs used for testing, without tags
 """
 valid_url_without_tag_1 = {
     MODEL_STRS.ID: 1,
@@ -107,7 +107,7 @@ valid_url_strings = [
 ]
 
 """
-Valid URLs used for testing, with tags    
+Valid URLs used for testing, with tags
 """
 valid_url_with_tag_1 = {
     MODEL_STRS.URL_ID: 1,
@@ -134,7 +134,7 @@ valid_url_with_tag_3 = {
 }
 
 """
-Valid UTubs for testing, empty    
+Valid UTubs for testing, empty
 """
 valid_empty_utub_1 = {
     MODEL_STRS.ID: 1,

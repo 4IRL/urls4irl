@@ -1,6 +1,8 @@
-from src import create_app
 from os import environ
+
 from dotenv import load_dotenv
+
+from src import create_app
 
 load_dotenv(override=True)
 if environ.get("PRODUCTION") is None:

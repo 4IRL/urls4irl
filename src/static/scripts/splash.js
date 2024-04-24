@@ -126,7 +126,7 @@ function handleImproperFormErrors(errorResponse) {
     }
   });
   $(".form-control").removeClass("is-invalid");
-  for (let key in errorResponse.Errors) {
+  for (let key in errorResponse.errors) {
     switch (key) {
       case "username":
       case "password":
@@ -135,7 +135,7 @@ function handleImproperFormErrors(errorResponse) {
       case "confirmPassword":
       case "newPassword":
       case "confirmNewPassword":
-        let errorMessage = errorResponse.Errors[key][0];
+        let errorMessage = errorResponse.errors[key][0];
         displayFormErrors(key, errorMessage);
         break;
       default:

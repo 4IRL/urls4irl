@@ -1918,7 +1918,6 @@ def test_update_valid_url_with_empty_url_and_valid_title_as_utub_creator(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
-        url_in_utub_string = url_already_in_utub.standalone_url.url_string
         current_title = url_already_in_utub.url_title
 
         num_of_url_utub_associations = len(
@@ -2479,7 +2478,6 @@ def test_update_valid_url_with_missing_url_field_and_valid_title_as_utub_creator
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
-        url_in_utub_string = url_already_in_utub.standalone_url.url_string
         current_title = url_already_in_utub.url_title
 
         num_of_url_utub_associations = len(
@@ -2590,7 +2588,6 @@ def test_update_valid_url_with_valid_url_and_missing_valid_title_as_utub_creator
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
-        url_in_utub_string = url_already_in_utub.standalone_url.url_string
         current_title = url_already_in_utub.url_title
 
         num_of_url_utub_associations = len(
@@ -2690,7 +2687,6 @@ def test_update_valid_url_with_valid_url_and_valid_title_missing_csrf(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
-        url_in_utub_string = url_already_in_utub.standalone_url.url_string
         current_title = url_already_in_utub.url_title
 
         num_of_url_utub_associations = len(

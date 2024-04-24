@@ -4,7 +4,6 @@ from flask_login import current_user
 import pytest
 
 from tests.models_for_test import valid_user_1
-from tests.utils_for_test import get_csrf_token
 from src import db
 from src.models import User, EmailValidation, verify_token
 from src.utils.constants import EMAIL_CONSTANTS
@@ -290,10 +289,9 @@ def test_success_on_send_of_email(app, load_register_page):
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
-    register_response = client.post(
+    client.post(
         url_for(ROUTES.SPLASH.REGISTER), data=valid_user_1, follow_redirects=True
     )
-    new_csrf_token = get_csrf_token(register_response.data)
     send_email_response = client.post(
         url_for(ROUTES.SPLASH.SEND_VALIDATION_EMAIL),
         data={REGISTER_FORM.CSRF_TOKEN: csrf_token},

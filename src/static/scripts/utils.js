@@ -152,15 +152,6 @@ function AJAXCall(type, url, data) {
   }));
 }
 
-// Bind key to function... doesn't work universally, just in modals, as of 12/29
-function bindKeyToFunction(f, keyTarget) {
-  $(document).on("keypress", function (e) {
-    if (e.which == keyTarget) {
-      f();
-    }
-  });
-}
-
 // Bind key to function... doesn't work universally, just in modals, as of 01/03. Optional parameter...may be a better way to define like in MATLAB f(f, ~, keyTarget) when unused
 function bindKeyToFunction(f, input, keyTarget) {
   $(document).on("keypress", function (e) {

@@ -384,7 +384,7 @@ def test_delete_utub_with_invalid_route(login_first_user_with_register):
         assert len(Utub.query.all()) == 0
 
     delete_utub_response = client.delete(
-        f"/utubs/InvalidRoute", data={UTUB_FORM.CSRF_TOKEN: csrf_token}
+        "/utubs/InvalidRoute", data={UTUB_FORM.CSRF_TOKEN: csrf_token}
     )
 
     # Ensure 404 sent back after invalid UTub id is requested
