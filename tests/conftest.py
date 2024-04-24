@@ -1,9 +1,21 @@
 import pytest
+from datetime import timedelta
+from flask import url_for
 from flask_login import FlaskLoginClient, current_user
 
-from urls4irl import create_app, db
-from urls4irl.config import TestingConfig
-from urls4irl.models import User, Utub, Utub_Users, URLS, Utub_Urls, Tags, Url_Tags
+from src import create_app, db
+from src.config import TestingConfig
+from src.models import (
+    User,
+    Utub,
+    Utub_Users,
+    URLS,
+    Utub_Urls,
+    Tags,
+    Url_Tags,
+    EmailValidation,
+    ForgotPassword,
+)
 from tests.utils_for_test import get_csrf_token, drop_database
 from tests.models_for_test import (
     valid_user_1,
@@ -14,7 +26,7 @@ from tests.models_for_test import (
     valid_url_strings,
     all_tags,
 )
-from urls4irl.utils import strings as U4I_STRINGS
+from src.utils import strings as U4I_STRINGS
 
 MODEL_STRS = U4I_STRINGS.MODELS
 USER_STRS = U4I_STRINGS.REGISTER_FORM
@@ -31,6 +43,12 @@ def app():
 @pytest.fixture
 def client(app):
     return app.test_client()
+
+
+@pytest.fixture
+def app_with_server_name(app):
+    app.config["SERVER_NAME"] = "localhost:5000"
+    yield app
 
 
 @pytest.fixture
@@ -70,6 +88,21 @@ def load_login_page(client):
 
 
 @pytest.fixture
+def load_splash_page(client):
+    """
+    Given a Flask client, performs a GET of the splash page using "/"
+
+    Args:
+        client (FlaskClient): A Flask client
+
+    Yields:
+        (FlaskClient): A Flask client that has just performed a GET on "/"
+    """
+    with client:
+        yield client
+
+
+@pytest.fixture
 def register_first_user(app):
     """
     Registers a User model with.
@@ -90,6 +123,45 @@ def register_first_user(app):
             email=valid_user_1[USER_STRS.EMAIL],
             plaintext_password=valid_user_1[USER_STRS.PASSWORD],
         )
+
+        new_email_validation = EmailValidation(
+            confirm_url=new_user.get_email_validation_token()
+        )
+        new_email_validation.is_validated = True
+        new_user.email_confirm = new_email_validation
+
+        db.session.add(new_user)
+        db.session.commit()
+
+    yield valid_user_1, new_user
+
+
+@pytest.fixture
+def register_first_user_without_email_validation(app):
+    """
+    Registers a User model with.
+    See 'models_for_test.py' for model information.
+    The newly registered User's will have ID == 1
+
+    Args:
+        app (Flask): The Flask client for providing an app context
+
+    Yields:
+        (dict): The information used to generate the new User model
+        (User): The newly generated User model
+    """
+    # Add a new user for testing
+    with app.app_context():
+        new_user = User(
+            username=valid_user_1[USER_STRS.USERNAME],
+            email=valid_user_1[USER_STRS.EMAIL],
+            plaintext_password=valid_user_1[USER_STRS.PASSWORD],
+        )
+
+        new_email_validation = EmailValidation(
+            confirm_url=new_user.get_email_validation_token()
+        )
+        new_user.email_confirm = new_email_validation
 
         db.session.add(new_user)
         db.session.commit()
@@ -125,6 +197,12 @@ def register_all_but_first_user(app):
                 plaintext_password=user[USER_STRS.PASSWORD],
             )
 
+            new_email_validation = EmailValidation(
+                confirm_url=new_user.get_email_validation_token()
+            )
+            new_email_validation.is_validated = True
+            new_user.email_confirm = new_email_validation
+
             db.session.add(new_user)
             db.session.commit()
 
@@ -158,11 +236,124 @@ def register_multiple_users(app):
                 plaintext_password=user[USER_STRS.PASSWORD],
             )
 
+            new_email_validation = EmailValidation(
+                confirm_url=new_user.get_email_validation_token()
+            )
+            new_email_validation.is_validated = True
+            new_user.email_confirm = new_email_validation
+
             db.session.add(new_user)
             db.session.commit()
 
         # yield app
     yield all_users
+
+
+@pytest.fixture
+def user_attempts_reset_password(app, register_first_user, load_login_page):
+    """
+    After registering a new user, the user forgets their password
+    and performs the forgot-password sequence, which would send a user an email with
+    a unique token identifying them, that expires after a given set of time.
+    The reset token is also stored in the database in the ForgotPassword object
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        register_first_user (pytest fixture): Registers the user with ID == 1
+        load_login_page (pytest fixture): Brings user to login page and yields test client
+
+    Yields:
+        (Flask): The Flask client for providing an app context
+        (FlaskLoginClient): Flask client
+        (dict): The user data who forgot their password
+        (str): The reset token associated with the user's current reset-password attempt
+    """
+    new_user, _ = register_first_user
+    client, _ = load_login_page
+
+    forgot_password_response = client.get(url_for("users.forgot_password"))
+    csrf_token = get_csrf_token(forgot_password_response.data)
+
+    client.post(
+        url_for("users.forgot_password"),
+        data={
+            USER_STRS.EMAIL: new_user[USER_STRS.EMAIL],
+            USER_STRS.CSRF_TOKEN: csrf_token,
+        },
+    )
+
+    with app.app_context():
+        user_to_reset: User = User.query.filter(
+            User.email == new_user[USER_STRS.EMAIL]
+        ).first()
+        password_reset_obj: ForgotPassword = ForgotPassword.query.filter(
+            ForgotPassword.user_id == user_to_reset.id
+        ).first()
+        reset_token = password_reset_obj.reset_token
+        user_to_reset.password_reset = password_reset_obj
+        db.session.commit()
+
+    yield app, client, new_user, reset_token, csrf_token
+
+
+@pytest.fixture
+def user_attempts_reset_password_one_hour_old(
+    app, register_first_user, load_login_page
+):
+    """
+    After registering a new user, the user forgets their password
+    and performs the forgot-password sequence, which would send a user an email with
+    a unique token identifying them, that expires after a given set of time.
+    The reset token is also stored in the database in the ForgotPassword object.
+    In this scenario, the ForgotPassword object used to store and verify the token,
+    is more than one hour old, the limit for age on these objects. This is separate from the
+    tokens also expiring in one hour.
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        register_first_user (pytest fixture): Registers the user with ID == 1
+        load_login_page (pytest fixture): Brings user to login page and yields test client
+
+    Yields:
+        (Flask): The Flask client for providing an app context
+        (FlaskLoginClient): Flask client
+        (dict): The user data who forgot their password
+        (str): The reset token associated with the user's current reset-password attempt
+    """
+    new_user, _ = register_first_user
+    client, _ = load_login_page
+
+    forgot_password_response = client.get(url_for("users.forgot_password"))
+    csrf_token = get_csrf_token(forgot_password_response.data)
+
+    client.post(
+        url_for("users.forgot_password"),
+        data={
+            USER_STRS.EMAIL: new_user[USER_STRS.EMAIL],
+            USER_STRS.CSRF_TOKEN: csrf_token,
+        },
+    )
+
+    with app.app_context():
+        user_to_reset: User = User.query.filter(
+            User.email == new_user[USER_STRS.EMAIL]
+        ).first()
+        password_reset_obj: ForgotPassword = ForgotPassword.query.filter(
+            ForgotPassword.user_id == user_to_reset.id
+        ).first()
+        password_reset_obj.initial_attempt = (
+            password_reset_obj.initial_attempt - timedelta(minutes=60)
+        )
+
+        # Avoid rate limiting on next reset attempt for testing
+        password_reset_obj.last_attempt = (
+            password_reset_obj.initial_attempt - timedelta(minutes=60)
+        )
+        reset_token = password_reset_obj.reset_token
+        user_to_reset.password_reset = password_reset_obj
+        db.session.commit()
+
+    yield app, client, new_user, reset_token, csrf_token
 
 
 @pytest.fixture
@@ -481,7 +672,7 @@ def add_one_url_to_each_utub_no_tags(app, add_urls_to_database):
             new_utub_url_user_association.user_that_added_url = user
             new_utub_url_user_association.user_id = user.id
 
-            new_utub_url_user_association.url_notes = f"This is {url.url_string}"
+            new_utub_url_user_association.url_title = f"This is {url.url_string}"
 
             db.session.add(new_utub_url_user_association)
 
@@ -566,7 +757,7 @@ def add_two_users_and_all_urls_to_each_utub_no_tags(
             new_utub_url_user_association.user_that_added_url = new_user
             new_utub_url_user_association.user_id = next_member_id
 
-            new_utub_url_user_association.url_notes = f"This is {new_url.url_string}"
+            new_utub_url_user_association.url_title = f"This is {new_url.url_string}"
 
             db.session.add(new_utub_url_user_association)
 
@@ -780,47 +971,9 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
             new_utub_url_user_association.user_that_added_url = user_added
             new_utub_url_user_association.user_id = new_url.id
 
-            new_utub_url_user_association.url_notes = f"This is {new_url.url_string}"
+            new_utub_url_user_association.url_title = f"This is {new_url.url_string}"
 
             db.session.add(new_utub_url_user_association)
-
-        db.session.commit()
-
-
-@pytest.fixture
-def add_one_url_and_all_users_to_each_utub_with_all_tags(
-    app, add_one_url_and_all_users_to_each_utub_no_tags, add_tags_to_database
-):
-    """
-    After each user has made their own UTub, with one URL added by that user to each UTub,
-    now add all other users as members to each UTub.
-
-    Utub with ID of 1, created by User ID of 1, with URL ID of 1, now has members 2 and 3 included
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        add_one_url_to_each_utub_no_tags (pytest fixture): Has each User make their own UTub, and has
-            that user add a URL to their UTub
-    """
-    with app.app_context():
-        current_utubs = Utub.query.all()
-        current_tags = Tags.query.all()
-
-        # Add all missing users to this UTub
-        for utub in current_utubs:
-            current_utub_url = [
-                utub_url.url_in_utub for utub_url in utub.utub_urls
-            ].pop()
-
-            for tag in current_tags:
-                new_tag_url_utub_association = Url_Tags()
-                new_tag_url_utub_association.utub_containing_this_tag = utub
-                new_tag_url_utub_association.tagged_url = current_utub_url
-                new_tag_url_utub_association.tag_item = tag
-                new_tag_url_utub_association.utub_id = utub.id
-                new_tag_url_utub_association.url_id = current_utub_url.id
-                new_tag_url_utub_association.tag_id = tag.id
-                utub.utub_url_tags.append(new_tag_url_utub_association)
 
         db.session.commit()
 
@@ -889,7 +1042,7 @@ def add_all_urls_and_users_to_each_utub_no_tags(
                     new_url_in_utub.url_in_utub = other_url
                     new_url_in_utub.user_id = other_url.id
                     new_url_in_utub.utub = utub
-                    new_url_in_utub.url_notes = f"This is {other_url.url_string}"
+                    new_url_in_utub.url_title = f"This is {other_url.url_string}"
                     db.session.add(new_url_in_utub)
 
         db.session.commit()

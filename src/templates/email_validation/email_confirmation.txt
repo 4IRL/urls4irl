@@ -1,0 +1,6 @@
+Tap the link below to confirm your email address. If you didn't create an account with urls4irl, you can safely delete this email.
+
+{{ email_confirmation_url }}
+
+Cheers,
+Team at URLS4IRL

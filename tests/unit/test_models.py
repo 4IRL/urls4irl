@@ -1,5 +1,5 @@
-from urls4irl.models import User, Utub, URLS, Tags
-from urls4irl.url_validation import check_request_head
+from src.models import User, Utub, URLS, Tags
+from src.utils.url_validation import find_common_url
 
 new_user = {
     "username": "FakeUserName1234",
@@ -29,25 +29,16 @@ def test_user_model():
         username=new_user["username"],
         email=new_user["email"],
         plaintext_password=new_user["password"],
-        email_confirm=True,
     )
 
     assert new_user_object.username == new_user["username"]
     assert new_user_object.password != new_user["password"]
     assert new_user_object.email == new_user["email"]
-    assert new_user_object.email_confirm is True
     assert new_user_object.is_password_correct(new_user["password"]) is True
     assert len(new_user_object.utubs_created) == 0
     assert len(new_user_object.utub_urls) == 0
     assert len(new_user_object.utubs_is_member_of) == 0
-
-    new_user_object = User(
-        username=new_user["username"],
-        email=new_user["email"],
-        plaintext_password=new_user["password"],
-    )
-
-    assert new_user_object.email_confirm is False
+    assert new_user_object.email_confirm is None
 
 
 def test_utub_model():
@@ -77,11 +68,11 @@ def test_url_model():
     THEN ensure all fields are filled out correctly
     """
     new_url_object = URLS(
-        normalized_url=check_request_head(new_url["url_string"]),
+        normalized_url=find_common_url(new_url["url_string"]),
         current_user_id=new_url["creator"],
     )
 
-    assert new_url_object.url_string == check_request_head(new_url["url_string"])
+    assert new_url_object.url_string == find_common_url(new_url["url_string"])
     assert new_url_object.created_by == new_url["creator"]
     assert len(new_url_object.url_tags) == 0
 

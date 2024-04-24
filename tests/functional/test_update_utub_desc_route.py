@@ -1,7 +1,8 @@
+from flask import url_for
 from flask_login import current_user
 
-from urls4irl.models import Utub, Utub_Urls, Utub_Users, Url_Tags
-from urls4irl.utils import strings as U4I_STRINGS
+from src.models import Utub, Utub_Urls, Utub_Users, Url_Tags
+from src.utils import strings as U4I_STRINGS
 
 UTUB_DESC_FORM = U4I_STRINGS.UTUB_DESCRIPTION_FORM
 UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
@@ -65,7 +66,7 @@ def test_update_valid_utub_description_as_creator(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -164,7 +165,7 @@ def test_update_valid_empty_utub_description_as_creator(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -263,7 +264,7 @@ def test_update_only_spaces_utub_description_as_creator(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -359,7 +360,7 @@ def test_update_utub_description_with_same_description_as_creator(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -456,7 +457,7 @@ def test_update_utub_description_as_member(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -564,7 +565,7 @@ def test_update_utub_description_as_creator_of_other_utub(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -654,7 +655,7 @@ def test_update_utub_description_of_invalid_utub(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{invalid_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=invalid_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
@@ -743,11 +744,11 @@ def test_update_utub_description_too_long(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 404
+    assert edit_utub_desc_response.status_code == 400
 
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
@@ -840,11 +841,11 @@ def test_update_utub_description_missing_description_field(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 404
+    assert edit_utub_desc_response.status_code == 400
 
     # Ensure JSON response is correct
     edit_utub_desc_json_response = edit_utub_desc_response.json
@@ -924,7 +925,7 @@ def test_update_utub_description_missing_csrf_token(
     }
 
     edit_utub_desc_response = client.post(
-        f"/utub/edit_description/{current_utub_id}", data=utub_desc_form
+        url_for("utubs.update_utub_desc", utub_id=current_utub_id), data=utub_desc_form
     )
 
     # Ensure valid reponse

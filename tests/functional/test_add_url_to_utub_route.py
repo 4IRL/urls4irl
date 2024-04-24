@@ -1,14 +1,16 @@
+from flask import url_for
 from flask_login import current_user
 
-from urls4irl.models import Utub, URLS, Utub_Urls
+from src.models import Utub, URLS, Utub_Urls
 from tests.models_for_test import valid_url_strings
-from urls4irl.utils import strings as U4I_STRINGS
+from src.utils import strings as U4I_STRINGS
 
 URL_FORM = U4I_STRINGS.URL_FORM
 URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
 STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
 MODEL_STRS = U4I_STRINGS.MODELS
 URL_FAILURE = U4I_STRINGS.URL_FAILURE
+ADD_URL_URL = "urls.add_url"
 
 
 def test_add_valid_url_as_utub_member(
@@ -20,7 +22,8 @@ def test_add_valid_url_as_utub_member(
     WHEN the user tries to add a (previously generated) URL to a UTub they are a part of
         - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
-        is sent by the server, and that a new Url_UTub-User association exists where it didn't before
+        is sent by the server, that a new Url_UTub-User association exists where it didn't before,
+        with the correct URL title
 
     Proper JSON response is as follows:
     {
@@ -28,7 +31,7 @@ def test_add_valid_url_as_utub_member(
         STD_JSON.MESSAGE : URL_SUCCESS.URL_ADDED,
         MODEL_STRS.URL : {
             "url_string": String representing the URL ,
-            "url_ID" : Integer representing the URL ID
+            "url_ID" : Integer representing the URL ID,
         },
         URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
         URL_SUCCESS.UTUB_NAME : String representing the name of the UTub added to,
@@ -60,7 +63,7 @@ def test_add_valid_url_as_utub_member(
         number_of_urls_in_db = len(URLS.query.all())
         url_id_to_add = url_to_add.id
         url_string_to_add = url_to_add.url_string
-        url_description_to_add = f"This is {url_string_to_add}"
+        url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
         utub_name_to_add = current_utub_member_of.name
 
@@ -83,10 +86,12 @@ def test_add_valid_url_as_utub_member(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
-    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+    add_url_response = client.post(
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
 
     assert add_url_response.status_code == 200
 
@@ -114,17 +119,17 @@ def test_add_valid_url_as_utub_member(
         assert len(current_utub_member_of.utub_urls) > 0
         assert url_id_to_add in [url.url_id for url in current_utub_member_of.utub_urls]
 
+        url_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_to_add_to,
+            Utub_Urls.url_id == url_id_to_add,
+            Utub_Urls.user_id == current_user.id,
+        ).all()
+
         # Ensure Url-Utub-User association exists
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_to_add_to,
-                    Utub_Urls.url_id == url_id_to_add,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
-            == 1
-        )
+        assert len(url_in_utub) == 1
+
+        # Ensure title updated appropriately
+        assert url_in_utub[0].url_title == url_title_to_add
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
 
@@ -178,7 +183,7 @@ def test_add_valid_url_as_utub_creator(
         number_of_urls_in_db = len(URLS.query.all())
         url_id_to_add = url_to_add.id
         url_string_to_add = url_to_add.url_string
-        url_description_to_add = f"This is {url_string_to_add}"
+        url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
         utub_name_to_add = current_utub_member_of.name
 
@@ -201,10 +206,11 @@ def test_add_valid_url_as_utub_creator(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
-
-    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+    add_url_response = client.post(
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
 
     assert add_url_response.status_code == 200
 
@@ -232,17 +238,17 @@ def test_add_valid_url_as_utub_creator(
         assert len(current_utub_member_of.utub_urls) > 0
         assert url_id_to_add in [url.url_id for url in current_utub_member_of.utub_urls]
 
+        url_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_to_add_to,
+            Utub_Urls.url_id == url_id_to_add,
+            Utub_Urls.user_id == current_user.id,
+        ).all()
+
         # Ensure Url-Utub-User association exists
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_to_add_to,
-                    Utub_Urls.url_id == url_id_to_add,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
-            == 1
-        )
+        assert len(url_in_utub) == 1
+
+        # Ensure title updated
+        assert url_in_utub[0].url_title == url_title_to_add
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
 
@@ -308,17 +314,19 @@ def test_add_invalid_url_as_utub_member(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: "AAAA",
-        URL_FORM.URL_DESCRIPTION: "This is AAAA",
+        URL_FORM.URL_TITLE: "This is AAAA",
     }
 
-    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+    add_url_response = client.post(
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
 
     assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL
-    assert int(add_url_json_response["Error_code"]) == 2
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure no new URL created
@@ -405,10 +413,12 @@ def test_add_invalid_url_as_utub_creator(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: "AAAA",
-        URL_FORM.URL_DESCRIPTION: "This is AAAA",
+        URL_FORM.URL_TITLE: "This is AAAA",
     }
 
-    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+    add_url_response = client.post(
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
 
     assert add_url_response.status_code == 400
 
@@ -465,7 +475,7 @@ def test_add_valid_url_to_nonexistent_utub(
         # Get a valid URL
         valid_url_to_add = URLS.query.first()
         valid_url_string = valid_url_to_add.url_string
-        valid_url_description = f"This is {valid_url_string}"
+        valid_url_title = f"This is {valid_url_string}"
 
         # Get initial number of UTub-URL associations
         initial_utub_urls = len(Utub_Urls.query.all())
@@ -474,10 +484,12 @@ def test_add_valid_url_to_nonexistent_utub(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: valid_url_string,
-        URL_FORM.URL_DESCRIPTION: valid_url_description,
+        URL_FORM.URL_TITLE: valid_url_title,
     }
 
-    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+    add_url_response = client.post(
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
 
     assert add_url_response.status_code == 404
 
@@ -517,7 +529,7 @@ def test_add_valid_url_to_utub_not_a_member_of(
         # Get a valid URL
         valid_url_to_add = URLS.query.first()
         valid_url_string = valid_url_to_add.url_string
-        valid_url_description = f"This is {valid_url_string}"
+        valid_url_title = f"This is {valid_url_string}"
 
         # Ensure URL not in UTub currently
         assert len(utub_not_member_of.utub_urls) == 0
@@ -537,11 +549,11 @@ def test_add_valid_url_to_utub_not_a_member_of(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: valid_url_string,
-        URL_FORM.URL_DESCRIPTION: valid_url_description,
+        URL_FORM.URL_TITLE: valid_url_title,
     }
 
     add_url_response = client.post(
-        f"/url/add/{id_of_utub_not_member_of}", data=add_url_form
+        url_for(ADD_URL_URL, utub_id=id_of_utub_not_member_of), data=add_url_form
     )
 
     assert add_url_response.status_code == 403
@@ -631,15 +643,18 @@ def test_add_fresh_url_to_utub(
         # Get initial number of UTub-URL associations
         initial_utub_urls = len(Utub_Urls.query.all())
 
+    url_title_to_add = f"This is {valid_url_to_add}"
+
     # Add the URL to the UTub
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: valid_url_to_add,
-        URL_FORM.URL_DESCRIPTION: f"This is {valid_url_to_add}",
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form
+        url_for(ADD_URL_URL, utub_id=id_of_utub_that_is_creator_of),
+        data=add_url_form,
     )
 
     assert add_url_response.status_code == 200
@@ -669,16 +684,16 @@ def test_add_fresh_url_to_utub(
         # Ensure URL now in UTub
         assert len(current_utub_creator_of.utub_urls) == 1
 
+        url_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).all()
+
         # Ensure Url-Utub-User association exists
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
-            == 1
-        )
+        assert len(url_in_utub) == 1
+
+        # Ensure title updated
+        assert url_in_utub[0].url_title == url_title_to_add
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
 
@@ -719,7 +734,7 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         url_that_user_added = url_association_that_user_added.url_in_utub
         url_id = url_that_user_added.id
         url_string_to_add = url_that_user_added.url_string
-        url_description_to_add = url_association_that_user_added.url_notes
+        url_title_to_add = url_association_that_user_added.url_title
 
         number_of_urls_in_utub = len(
             Utub_Urls.query.filter(
@@ -735,11 +750,12 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form
+        url_for(ADD_URL_URL, utub_id=id_of_utub_that_is_creator_of),
+        data=add_url_form,
     )
 
     assert add_url_response.status_code == 400
@@ -808,7 +824,7 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
         url_that_user_did_not_add = url_association_that_user_did_not_add.url_in_utub
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
-        url_description_to_add = url_association_that_user_did_not_add.url_notes
+        url_title_to_add = url_association_that_user_did_not_add.url_title
 
         number_of_urls_in_utub = len(
             Utub_Urls.query.filter(
@@ -824,11 +840,12 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        f"/url/add/{id_of_utub_that_is_creator_of}", data=add_url_form
+        url_for(ADD_URL_URL, utub_id=id_of_utub_that_is_creator_of),
+        data=add_url_form,
     )
 
     assert add_url_response.status_code == 400
@@ -897,7 +914,7 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         url_that_user_did_not_add = url_association_that_user_did_not_add.url_in_utub
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
-        url_description_to_add = url_association_that_user_did_not_add.url_notes
+        url_title_to_add = url_association_that_user_did_not_add.url_title
 
         number_of_urls_in_utub = len(
             Utub_Urls.query.filter(
@@ -913,11 +930,11 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
     add_url_response = client.post(
-        f"/url/add/{id_of_utub_that_is_member_of}", data=add_url_form
+        url_for(ADD_URL_URL, utub_id=id_of_utub_that_is_member_of), data=add_url_form
     )
 
     assert add_url_response.status_code == 400
@@ -993,7 +1010,7 @@ def test_add_url_missing_url(
         # Grab a URL to add
         url_to_add = URLS.query.first()
         url_string_to_add = url_to_add.url_string
-        url_description_to_add = f"This is {url_string_to_add}"
+        url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
 
         # Get initial number of UTub-URL associations
@@ -1003,12 +1020,14 @@ def test_add_url_missing_url(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: "",
-        URL_FORM.URL_DESCRIPTION: url_description_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
     }
 
-    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+    add_url_response = client.post(
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
 
-    assert add_url_response.status_code == 404
+    assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
@@ -1028,13 +1047,13 @@ def test_add_url_missing_url(
         assert len(Utub_Urls.query.all()) == initial_utub_urls
 
 
-def test_add_url_missing_url_description(
+def test_add_url_missing_url_title(
     add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
-    WHEN the user tries to add a URL with an empty 'url_description' field in the form
+    WHEN the user tries to add a URL with an empty 'url_title' field in the form
     THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
         is sent by the server
 
@@ -1044,7 +1063,7 @@ def test_add_url_missing_url_description(
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
         STD_JSON.ERROR_CODE: 4,
         STD_JSON.ERRORS: {
-            URL_FORM.URL_DESCRIPTION: ["This field is required."]
+            URL_FORM.URL_TITLE: ["This field is required."]
         }
     }
     """
@@ -1080,19 +1099,21 @@ def test_add_url_missing_url_description(
     add_url_form = {
         URL_FORM.CSRF_TOKEN: csrf_token,
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: "",
+        URL_FORM.URL_TITLE: "",
     }
 
-    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+    add_url_response = client.post(
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
 
-    assert add_url_response.status_code == 404
+    assert add_url_response.status_code == 400
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
     assert (
-        add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_DESCRIPTION]
+        add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE]
         == URL_FAILURE.FIELD_REQUIRED
     )
 
@@ -1111,7 +1132,7 @@ def test_add_url_missing_csrf_token(
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
-    WHEN the user tries to add a URL with an empty 'url_description' field in the form
+    WHEN the user tries to add a URL with an empty 'url_title' field in the form
         - By POST to "/url/add/<url_id: int>" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
         is sent by the server
@@ -1122,7 +1143,7 @@ def test_add_url_missing_csrf_token(
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
         STD_JSON.ERROR_CODE: 4,
         STD_JSON.ERRORS: {
-            URL_FORM.URL_DESCRIPTION: ["This field is required."]
+            URL_FORM.URL_TITLE: ["This field is required."]
         }
     }
     """
@@ -1157,10 +1178,12 @@ def test_add_url_missing_csrf_token(
     # Add the URL to the UTub
     add_url_form = {
         URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_DESCRIPTION: "",
+        URL_FORM.URL_TITLE: "",
     }
 
-    add_url_response = client.post(f"/url/add/{utub_id_to_add_to}", data=add_url_form)
+    add_url_response = client.post(
+        url_for(ADD_URL_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
 
     # Assert invalid response code
     assert add_url_response.status_code == 400

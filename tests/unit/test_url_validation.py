@@ -1,5 +1,6 @@
-from urls4irl import url_validation as url_valid
 from pytest import raises
+
+from src.utils import url_validation as url_valid
 
 valid_urls = {
     "https://www.google.com/": [
@@ -63,8 +64,9 @@ invalid_urls = (
     "http:\\www.example.com\\andhere.html",
 )
 
-unknown_urls = {
-    "https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862"
+urls_needing_valid_user_agent = {
+    "https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862",
+    "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-(16-inch-amd)/len101t0076#ports_slots",
 }
 
 
@@ -77,7 +79,8 @@ def test_valid_urls():
     for valid_url in valid_urls:
         urls_to_check = valid_urls[valid_url]
         for url in urls_to_check:
-            assert valid_url == url_valid.check_request_head(url)
+            commonized_url = url_valid.find_common_url(url)
+            assert valid_url == commonized_url
 
 
 def test_invalid_urls():
@@ -88,15 +91,15 @@ def test_invalid_urls():
     """
     for invalid_url in invalid_urls:
         with raises(url_valid.InvalidURLError):
-            url_valid.check_request_head(invalid_url)
+            url_valid.find_common_url(invalid_url)
 
 
-def test_unknown_urls():
+def test_urls_requiring_valid_user_agent():
     """
-    GIVEN URLs that seeem to fail unknowingly...
-    WHEN the url validation function checks these invalid URLs
-    THEN ensure the request times out
+    GIVEN URLs that seemed to fail unknowingly, but were due to the request
+        failing due to a User-agent indicating a script
+    WHEN the url validation function checks these URLs
+    THEN ensure that these urls are now validated properly
     """
-    for unknown_url in unknown_urls:
-        with raises(url_valid.InvalidURLError):
-            url_valid.check_request_head(unknown_url)
+    for unknown_url in urls_needing_valid_user_agent:
+        assert unknown_url == url_valid.find_common_url(unknown_url)
