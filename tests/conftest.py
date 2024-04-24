@@ -1,8 +1,9 @@
-from datetime import timedelta
 import os
+from typing import Generator, Tuple
 
-from flask import url_for
-from flask_login import FlaskLoginClient, current_user
+from flask import Flask
+from flask.testing import FlaskClient
+from flask_login import FlaskLoginClient
 import pytest
 import warnings
 
@@ -17,8 +18,8 @@ from src.models import (
     Tags,
     Url_Tags,
     EmailValidation,
-    ForgotPassword,
 )
+from src.utils.strings import model_strs
 from tests.utils_for_test import get_csrf_token, drop_database
 from tests.models_for_test import (
     valid_user_1,
@@ -29,8 +30,6 @@ from tests.models_for_test import (
     valid_url_strings,
     all_tags,
 )
-from src.utils.all_routes import ROUTES
-from src.utils.strings import model_strs, reset_password_strs
 
 TEST_SPLIT = (
     {"urls"},
@@ -74,7 +73,7 @@ def ignore_deprecation_warning():
 
 
 @pytest.fixture
-def app(ignore_deprecation_warning):
+def app(ignore_deprecation_warning) -> Generator[Flask, None, None]:
     config = TestingConfig()
     app_for_test = create_app(config)
     yield app_for_test
@@ -82,18 +81,14 @@ def app(ignore_deprecation_warning):
 
 
 @pytest.fixture
-def client(app):
+def client(app: Flask) -> FlaskClient:
     return app.test_client()
 
 
 @pytest.fixture
-def app_with_server_name(app):
-    app.config["SERVER_NAME"] = "localhost:5000"
-    yield app
-
-
-@pytest.fixture
-def load_register_page(client):
+def load_register_page(
+    client: FlaskClient,
+) -> Generator[Tuple[FlaskClient, str], None, None]:
     """
     Given a Flask client, performs a GET of the register page using "/register"
 
@@ -111,7 +106,9 @@ def load_register_page(client):
 
 
 @pytest.fixture
-def load_login_page(client):
+def load_login_page(
+    client: FlaskClient,
+) -> Generator[Tuple[FlaskClient, str], None, None]:
     """
     Given a Flask client, performs a GET of the login page using "/login"
 
@@ -129,22 +126,9 @@ def load_login_page(client):
 
 
 @pytest.fixture
-def load_splash_page(client):
-    """
-    Given a Flask client, performs a GET of the splash page using "/"
-
-    Args:
-        client (FlaskClient): A Flask client
-
-    Yields:
-        (FlaskClient): A Flask client that has just performed a GET on "/"
-    """
-    with client:
-        yield client
-
-
-@pytest.fixture
-def register_first_user(app):
+def register_first_user(
+    app: Flask,
+) -> Generator[Tuple[dict[str, str | None], User], None, None]:
     """
     Registers a User model with.
     See 'models_for_test.py' for model information.
@@ -178,80 +162,9 @@ def register_first_user(app):
 
 
 @pytest.fixture
-def register_first_user_without_email_validation(app):
-    """
-    Registers a User model with.
-    See 'models_for_test.py' for model information.
-    The newly registered User's will have ID == 1
-
-    Args:
-        app (Flask): The Flask client for providing an app context
-
-    Yields:
-        (dict): The information used to generate the new User model
-        (User): The newly generated User model
-    """
-    # Add a new user for testing
-    with app.app_context():
-        new_user = User(
-            username=valid_user_1[model_strs.USERNAME],
-            email=valid_user_1[model_strs.EMAIL].lower(),
-            plaintext_password=valid_user_1[model_strs.PASSWORD],
-        )
-
-        new_email_validation = EmailValidation(
-            confirm_url=new_user.get_email_validation_token()
-        )
-        new_user.email_confirm = new_email_validation
-
-        db.session.add(new_user)
-        db.session.commit()
-
-    yield valid_user_1, new_user
-
-
-@pytest.fixture
-def register_all_but_first_user(app):
-    """
-    Registers two User models with unique usernames, emails, passwords, and ID's.
-    See 'models_for_test.py' for model information.
-    Assumes the first user is already registered.
-    The newly registered User's will have ID's 2 and 3
-
-    Args:
-        app (Flask): The Flask client for providing an app context
-
-    Yields:
-        (tuple): Contains models of all valid registered users
-        (Flask): The Flask client for providing an app context
-    """
-    # Add multiple users for testing
-    all_users = (
-        valid_user_2,
-        valid_user_3,
-    )
-    with app.app_context():
-        for user in all_users:
-            new_user = User(
-                username=user[model_strs.USERNAME],
-                email=user[model_strs.EMAIL].lower(),
-                plaintext_password=user[model_strs.PASSWORD],
-            )
-
-            new_email_validation = EmailValidation(
-                confirm_url=new_user.get_email_validation_token()
-            )
-            new_email_validation.is_validated = True
-            new_user.email_confirm = new_email_validation
-
-            db.session.add(new_user)
-            db.session.commit()
-
-    yield app, all_users
-
-
-@pytest.fixture
-def register_multiple_users(app):
+def register_multiple_users(
+    app: Flask,
+) -> Generator[Tuple[dict[str, str | None]], None, None]:
     """
     Registers three User models with unique usernames, emails, passwords, and ID's.
     See 'models_for_test.py' for model information.
@@ -291,118 +204,9 @@ def register_multiple_users(app):
 
 
 @pytest.fixture
-def user_attempts_reset_password(app, register_first_user, load_login_page):
-    """
-    After registering a new user, the user forgets their password
-    and performs the forgot-password sequence, which would send a user an email with
-    a unique token identifying them, that expires after a given set of time.
-    The reset token is also stored in the database in the ForgotPassword object
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        register_first_user (pytest fixture): Registers the user with ID == 1
-        load_login_page (pytest fixture): Brings user to login page and yields test client
-
-    Yields:
-        (Flask): The Flask client for providing an app context
-        (FlaskLoginClient): Flask client
-        (dict): The user data who forgot their password
-        (str): The reset token associated with the user's current reset-password attempt
-    """
-    new_user, _ = register_first_user
-    client, _ = load_login_page
-
-    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
-    csrf_token = get_csrf_token(forgot_password_response.data)
-
-    client.post(
-        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[
-                reset_password_strs.FORGOT_PASSWORD.EMAIL
-            ],
-            reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
-    )
-
-    with app.app_context():
-        user_to_reset: User = User.query.filter(
-            User.email == new_user[reset_password_strs.FORGOT_PASSWORD.EMAIL].lower()
-        ).first()
-        password_reset_obj: ForgotPassword = ForgotPassword.query.filter(
-            ForgotPassword.user_id == user_to_reset.id
-        ).first()
-        reset_token = password_reset_obj.reset_token
-        user_to_reset.password_reset = password_reset_obj
-        db.session.commit()
-
-    yield app, client, new_user, reset_token, csrf_token
-
-
-@pytest.fixture
-def user_attempts_reset_password_one_hour_old(
-    app, register_first_user, load_login_page
-):
-    """
-    After registering a new user, the user forgets their password
-    and performs the forgot-password sequence, which would send a user an email with
-    a unique token identifying them, that expires after a given set of time.
-    The reset token is also stored in the database in the ForgotPassword object.
-    In this scenario, the ForgotPassword object used to store and verify the token,
-    is more than one hour old, the limit for age on these objects. This is separate from the
-    tokens also expiring in one hour.
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        register_first_user (pytest fixture): Registers the user with ID == 1
-        load_login_page (pytest fixture): Brings user to login page and yields test client
-
-    Yields:
-        (Flask): The Flask client for providing an app context
-        (FlaskLoginClient): Flask client
-        (dict): The user data who forgot their password
-        (str): The reset token associated with the user's current reset-password attempt
-    """
-    new_user, _ = register_first_user
-    client, _ = load_login_page
-
-    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
-    csrf_token = get_csrf_token(forgot_password_response.data)
-
-    client.post(
-        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[
-                reset_password_strs.FORGOT_PASSWORD.EMAIL
-            ],
-            reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
-    )
-
-    with app.app_context():
-        user_to_reset: User = User.query.filter(
-            User.email == new_user[model_strs.EMAIL].lower()
-        ).first()
-        password_reset_obj: ForgotPassword = ForgotPassword.query.filter(
-            ForgotPassword.user_id == user_to_reset.id
-        ).first()
-        password_reset_obj.initial_attempt = (
-            password_reset_obj.initial_attempt - timedelta(minutes=60)
-        )
-
-        # Avoid rate limiting on next reset attempt for testing
-        password_reset_obj.last_attempt = (
-            password_reset_obj.initial_attempt - timedelta(minutes=60)
-        )
-        reset_token = password_reset_obj.reset_token
-        user_to_reset.password_reset = password_reset_obj
-        db.session.commit()
-
-    yield app, client, new_user, reset_token, csrf_token
-
-
-@pytest.fixture
-def login_first_user_with_register(app, register_first_user):
+def login_first_user_with_register(
+    app: Flask, register_first_user
+) -> Generator[Tuple[FlaskClient, str, User, Flask], None, None]:
     """
     After registering a User with ID == 1,logs them in and routes them to "/home"
     https://flask-login.readthedocs.io/en/latest/#automated-testing
@@ -420,7 +224,7 @@ def login_first_user_with_register(app, register_first_user):
 
     app.test_client_class = FlaskLoginClient
     with app.app_context():
-        user_to_login = User.query.get(1)
+        user_to_login: User = User.query.get(1)
 
     with app.test_client(user=user_to_login) as logged_in_client:
         logged_in_response = logged_in_client.get("/home")
@@ -429,7 +233,9 @@ def login_first_user_with_register(app, register_first_user):
 
 
 @pytest.fixture
-def login_first_user_without_register(app):
+def login_first_user_without_register(
+    app: Flask,
+) -> Generator[Tuple[FlaskClient, str, User, Flask], None, None]:
     """
     Given a user with ID == 1, logs them in, routes them to "/home",
     https://flask-login.readthedocs.io/en/latest/#automated-testing
@@ -446,7 +252,7 @@ def login_first_user_without_register(app):
 
     app.test_client_class = FlaskLoginClient
     with app.app_context():
-        user_to_login = User.query.get(1)
+        user_to_login: User = User.query.get(1)
 
     with app.test_client(user=user_to_login) as logged_in_client:
         logged_in_response = logged_in_client.get("/home")
@@ -455,7 +261,9 @@ def login_first_user_without_register(app):
 
 
 @pytest.fixture
-def login_second_user_without_register(app):
+def login_second_user_without_register(
+    app: Flask,
+) -> Generator[Tuple[FlaskClient, str, User, Flask], None, None]:
     """
     Given a user with ID == 2, logs them in, routes them to "/home",
     https://flask-login.readthedocs.io/en/latest/#automated-testing
@@ -480,7 +288,9 @@ def login_second_user_without_register(app):
 
 
 @pytest.fixture
-def add_single_utub_as_user_without_logging_in(app, register_first_user):
+def add_single_utub_as_user_without_logging_in(
+    app: Flask, register_first_user: Tuple[Tuple[dict[str, str | None]], User]
+):
     """
     Sets up a single UTub in the database, created by the user with ID == 1
     No members are added to this UTub besides the creator
@@ -489,7 +299,7 @@ def add_single_utub_as_user_without_logging_in(app, register_first_user):
         app (Flask): The Flask client providing an app context
         register_first_user (pytest fixture): Registers the user with ID == 1
     """
-    first_user_dict, first_user_object = register_first_user
+    _, first_user_object = register_first_user
     with app.app_context():
         new_utub = Utub(
             name=valid_empty_utub_1[model_strs.NAME],
@@ -504,7 +314,7 @@ def add_single_utub_as_user_without_logging_in(app, register_first_user):
 
 
 @pytest.fixture
-def add_single_user_to_utub_without_logging_in(app, register_multiple_users):
+def add_single_user_to_utub_without_logging_in(app: Flask, register_multiple_users):
     """
     Sets up a single UTub in the database, created by user with ID == 1, and adds
         the user with ID == 2 to the UTub as a member
@@ -535,7 +345,7 @@ def add_single_user_to_utub_without_logging_in(app, register_multiple_users):
 
 
 @pytest.fixture
-def add_multiple_users_to_utub_without_logging_in(app, register_multiple_users):
+def add_multiple_users_to_utub_without_logging_in(app: Flask, register_multiple_users):
     """
     Sets up a single UTub in the database, created by user with ID == 1, and adds
         the other two members to the UTub
@@ -570,42 +380,7 @@ def add_multiple_users_to_utub_without_logging_in(app, register_multiple_users):
 
 
 @pytest.fixture
-def add_single_utub_as_user_after_logging_in(login_first_user_with_register):
-    """
-    After logging in a user with ID == 1, has the user create a UTub and adds the
-        UTub and UTub-User association to the database
-
-    Args:
-        login_first_user_with_register (pytest fixture): Registers the user with ID == 1, logs them in,
-            and routes to them "/home"
-
-    Yields:
-        (FlaskLoginClient): Flask client that logs in a user using flask_login
-        (int): The ID of the added UTub
-        (str): The CSRF token for the current client
-        (Flask): The Flask client for providing an app context
-    """
-    client, csrf_token, valid_user, app = login_first_user_with_register
-
-    with app.app_context():
-        new_utub = Utub(
-            name=valid_empty_utub_1[model_strs.NAME],
-            utub_creator=valid_user.id,
-            utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
-        )
-
-        creator_to_utub = Utub_Users()
-        creator_to_utub.to_user = current_user
-        new_utub.members.append(creator_to_utub)
-        db.session.commit()
-
-        new_utub_id = new_utub.id
-
-    yield client, new_utub_id, csrf_token, app
-
-
-@pytest.fixture
-def every_user_makes_a_unique_utub(app, register_multiple_users):
+def every_user_makes_a_unique_utub(app: Flask, register_multiple_users):
     """
     After registering multiple users with ID's 1, 2, 3, has each user make their own unique UTub
     Each UTub has IDs == 1, 2, 3, corresponding with the creator ID
@@ -631,7 +406,7 @@ def every_user_makes_a_unique_utub(app, register_multiple_users):
 
 
 @pytest.fixture
-def every_user_in_every_utub(app, every_user_makes_a_unique_utub):
+def every_user_in_every_utub(app: Flask, every_user_makes_a_unique_utub):
     """
     After registering multiple users with ID's 1, 2, 3, and ensuring each User has their own UTub,
     then adds all other Users as members to each User's UTubs.
@@ -643,7 +418,7 @@ def every_user_in_every_utub(app, every_user_makes_a_unique_utub):
     """
     with app.app_context():
         # Ensure each UTub has only one member
-        current_utubs = Utub.query.all()
+        current_utubs: list[Utub] = Utub.query.all()
         current_users = User.query.all()
 
         for utub in current_utubs:
@@ -660,7 +435,7 @@ def every_user_in_every_utub(app, every_user_makes_a_unique_utub):
 
 
 @pytest.fixture
-def add_urls_to_database(app, every_user_makes_a_unique_utub):
+def add_urls_to_database(app: Flask, every_user_makes_a_unique_utub):
     """
     After registering multiple users with ID's 1, 2, 3, and ensuring each User has their own UTub,
     now creates three unique URLs.
@@ -680,7 +455,7 @@ def add_urls_to_database(app, every_user_makes_a_unique_utub):
 
 
 @pytest.fixture
-def add_tags_to_database(app, register_multiple_users):
+def add_tags_to_database(app: Flask, register_multiple_users):
     with app.app_context():
         for idx, tag in enumerate(all_tags):
             new_tag = Tags(tag_string=tag[model_strs.TAG_STRING], created_by=idx + 1)
@@ -689,7 +464,7 @@ def add_tags_to_database(app, register_multiple_users):
 
 
 @pytest.fixture
-def add_one_url_to_each_utub_no_tags(app, add_urls_to_database):
+def add_one_url_to_each_utub_no_tags(app: Flask, add_urls_to_database):
     """
     Add a single valid URL to each UTub already generated.
     The ID of the UTub, User, and related URL are all the same.
@@ -701,9 +476,9 @@ def add_one_url_to_each_utub_no_tags(app, add_urls_to_database):
         add_urls_to_database (pytest fixture): Adds all the test URLs to the database
     """
     with app.app_context():
-        all_urls = URLS.query.all()
-        all_utubs = Utub.query.all()
-        all_users = User.query.all()
+        all_urls: list[URLS] = URLS.query.all()
+        all_utubs: list[Utub] = Utub.query.all()
+        all_users: list[User] = User.query.all()
 
         for user, url, utub in zip(all_users, all_urls, all_utubs):
             new_utub_url_user_association = Utub_Urls()
@@ -725,44 +500,8 @@ def add_one_url_to_each_utub_no_tags(app, add_urls_to_database):
 
 
 @pytest.fixture
-def add_one_url_to_each_utub_one_tag(
-    app, add_one_url_to_each_utub_no_tags, add_tags_to_database
-):
-    """
-    Add a single valid tag to each URL in each UTub.
-    The ID of the UTub, User, and related URL, and tag are all the same.
-
-    Utub with ID of 1, created by User ID of 1, with URL ID of 1, with tag ID of 1
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        add_one_url_to_each_utub_no_tags (pytest fixture): Adds one url to each UTub with same ID as creator
-        add_tags_to_database (pytest fixture): Adds all test tags to the database
-    """
-    with app.app_context():
-        all_utubs: list[Utub] = Utub.query.all()
-        tag = Tags.query.first()
-
-        for utub in all_utubs:
-            url_in_utub = utub.utub_urls[0]
-            url_item_in_utub = url_in_utub.standalone_url
-            url_id_in_utub = url_item_in_utub.id
-
-            new_tag_url_utub_association = Url_Tags()
-            new_tag_url_utub_association.utub_containing_this_tag = utub
-            new_tag_url_utub_association.tagged_url = url_item_in_utub
-            new_tag_url_utub_association.tag_item = tag
-            new_tag_url_utub_association.utub_id = utub.id
-            new_tag_url_utub_association.url_id = url_id_in_utub
-            new_tag_url_utub_association.tag_id = tag.id
-            utub.utub_url_tags.append(new_tag_url_utub_association)
-
-        db.session.commit()
-
-
-@pytest.fixture
 def add_two_users_and_all_urls_to_each_utub_no_tags(
-    app, add_one_url_to_each_utub_no_tags
+    app: Flask, add_one_url_to_each_utub_no_tags
 ):
     """
     After each user has made their own UTub, with one URL added by that user to each UTub,
@@ -776,7 +515,7 @@ def add_two_users_and_all_urls_to_each_utub_no_tags(
             that user add a URL to their UTub
     """
     with app.app_context():
-        current_utubs = Utub.query.order_by(Utub.id).all()
+        current_utubs: list[Utub] = Utub.query.order_by(Utub.id).all()
 
         # Add a single missing users to this UTub
         for utub in current_utubs:
@@ -784,14 +523,14 @@ def add_two_users_and_all_urls_to_each_utub_no_tags(
             current_utub_member_id = current_utub_member.id
             next_member_id = (current_utub_member_id + 1) % 4
             next_member_id = 1 if next_member_id == 0 else next_member_id
-            new_user = User.query.filter_by(id=next_member_id).first()
+            new_user: User = User.query.filter_by(id=next_member_id).first()
             new_utub_user_association = Utub_Users()
             new_utub_user_association.to_user = new_user
             utub.members.append(new_utub_user_association)
             db.session.add(new_utub_user_association)
 
             new_utub_url_user_association = Utub_Urls()
-            new_url = URLS.query.filter_by(id=next_member_id).first()
+            new_url: URLS = URLS.query.filter_by(id=next_member_id).first()
 
             new_utub_url_user_association.standalone_url = new_url
             new_utub_url_user_association.url_id = new_url.id
@@ -810,60 +549,8 @@ def add_two_users_and_all_urls_to_each_utub_no_tags(
 
 
 @pytest.fixture
-def add_first_user_to_second_utub_and_add_tags_remove_first_utub(
-    app, add_one_url_to_each_utub_no_tags, add_tags_to_database
-):
-    """
-    After each user has made their own UTub, with one URL added by that user to each UTub,
-    now add first user to second UTub as UTub member, and add tags to all currently added URLs
-
-    Remove the first UTub so first user is no longer creator of a UTub
-
-    Utub with ID of 2, created by User ID of 2, with URL ID of 2, now has member 1
-    All URLs have all tags associated with them
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        add_one_url_to_each_utub_no_tags (pytest fixture): Has each User make their own UTub, and has
-            that user add a URL to their UTub
-        add_tags_to_database (pytest.fixture): Adds all tags to the database for easy adding to URLs
-    """
-    with app.app_context():
-        first_utub = Utub.query.get(1)
-        db.session.delete(first_utub)
-        second_utub = Utub.query.get(2)
-        all_tags = Tags.query.all()
-
-        # Add a single missing users to this UTub
-        new_user = User.query.get(1)
-        new_utub_user_association = Utub_Users()
-        new_utub_user_association.to_user = new_user
-        new_utub_user_association.utub_id = second_utub.id
-        second_utub.members.append(new_utub_user_association)
-        db.session.add(new_utub_user_association)
-
-        urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in second_utub.utub_urls]
-
-        for url_in_utub in urls_in_utub:
-            url_id = url_in_utub.url_id
-            url_in_this_utub = url_in_utub.standalone_url
-
-            for tag in all_tags:
-                new_tag_url_utub_association = Url_Tags()
-                new_tag_url_utub_association.utub_containing_this_tag = second_utub
-                new_tag_url_utub_association.tagged_url = url_in_this_utub
-                new_tag_url_utub_association.tag_item = tag
-                new_tag_url_utub_association.utub_id = second_utub.id
-                new_tag_url_utub_association.url_id = url_id
-                new_tag_url_utub_association.tag_id = tag.id
-                second_utub.utub_url_tags.append(new_tag_url_utub_association)
-
-        db.session.commit()
-
-
-@pytest.fixture
 def add_two_users_and_all_urls_to_each_utub_with_one_tag(
-    app, add_two_users_and_all_urls_to_each_utub_no_tags, add_tags_to_database
+    app: Flask, add_two_users_and_all_urls_to_each_utub_no_tags, add_tags_to_database
 ):
     """
     After each user has made their own UTub, with one URL added by that user to each UTub,
@@ -880,8 +567,8 @@ def add_two_users_and_all_urls_to_each_utub_with_one_tag(
         add_tags_to_database (pytest.fixture): Adds all tags to the database for easy adding to URLs
     """
     with app.app_context():
-        one_tag = Tags.query.first()
-        all_utubs = Utub.query.all()
+        one_tag: Tags = Tags.query.first()
+        all_utubs: list[Utub] = Utub.query.all()
 
         for utub in all_utubs:
             urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in utub.utub_urls]
@@ -904,7 +591,7 @@ def add_two_users_and_all_urls_to_each_utub_with_one_tag(
 
 @pytest.fixture
 def add_two_users_and_all_urls_to_each_utub_with_tags(
-    app, add_two_users_and_all_urls_to_each_utub_no_tags, add_tags_to_database
+    app: Flask, add_two_users_and_all_urls_to_each_utub_no_tags, add_tags_to_database
 ):
     """
     After each user has made their own UTub, with one URL added by that user to each UTub,
@@ -921,8 +608,8 @@ def add_two_users_and_all_urls_to_each_utub_with_tags(
         add_tags_to_database (pytest.fixture): Adds all tags to the database for easy adding to URLs
     """
     with app.app_context():
-        all_tags = Tags.query.all()
-        all_utubs = Utub.query.all()
+        all_tags: list[Tags] = Tags.query.all()
+        all_utubs: list[Utub] = Utub.query.all()
 
         for utub in all_utubs:
             urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in utub.utub_urls]
@@ -946,7 +633,7 @@ def add_two_users_and_all_urls_to_each_utub_with_tags(
 
 @pytest.fixture
 def add_one_url_and_all_users_to_each_utub_no_tags(
-    app, add_one_url_to_each_utub_no_tags
+    app: Flask, add_one_url_to_each_utub_no_tags
 ):
     """
     After each user has made their own UTub, with one URL added by that user to each UTub,
@@ -960,8 +647,8 @@ def add_one_url_and_all_users_to_each_utub_no_tags(
             that user add a URL to their UTub
     """
     with app.app_context():
-        current_utubs = Utub.query.all()
-        current_users = User.query.all()
+        current_utubs: list[Utub] = Utub.query.all()
+        current_users: list[User] = User.query.all()
 
         # Add all missing users to this UTub
         for utub in current_utubs:
@@ -978,92 +665,8 @@ def add_one_url_and_all_users_to_each_utub_no_tags(
 
 
 @pytest.fixture
-def add_two_url_and_all_users_to_each_utub_no_tags(
-    app, add_one_url_and_all_users_to_each_utub_no_tags
-):
-    """
-    After each user has made their own UTub, with one URL added by that user to each UTub,
-    now add all other users as members to each UTub.
-
-    Utub with ID of 1, created by User ID of 1, with URL ID of 1, now has members 2 and 3 included,
-    now had URL ID of 2 also included in it
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        add_one_url_to_each_utub_no_tags (pytest fixture): Has each User make their own UTub, and has
-            that user add a URL to their UTub
-    """
-    with app.app_context():
-        current_utubs = Utub.query.all()
-        current_users = User.query.all()
-
-        # Add all missing users to this UTub
-        for utub in current_utubs:
-            # Get URL in current UTUb
-            current_utub_url = Utub_Urls.query.filter_by(utub_id=utub.id).first()
-            current_utub_id = current_utub_url.url_id
-            new_url = URLS.query.filter_by(id=((current_utub_id % 3) + 1)).first()
-
-            new_utub_url_user_association = Utub_Urls()
-
-            new_utub_url_user_association.standalone_url = new_url
-            new_utub_url_user_association.url_id = new_url.id
-
-            new_utub_url_user_association.utub = utub
-            new_utub_url_user_association.utub_id = utub.id
-
-            user_added = [user for user in current_users if user.id == new_url.id].pop()
-            new_utub_url_user_association.user_that_added_url = user_added
-            new_utub_url_user_association.user_id = new_url.id
-
-            new_utub_url_user_association.url_title = f"This is {new_url.url_string}"
-
-            db.session.add(new_utub_url_user_association)
-
-        db.session.commit()
-
-
-@pytest.fixture
-def add_one_url_and_all_users_to_each_utub_with_all_tags(
-    app, add_one_url_and_all_users_to_each_utub_no_tags, add_tags_to_database
-):
-    """
-    After each user has made their own UTub, with one URL added by that user to each UTub,
-    now add all other users as members to each UTub.
-
-    Utub with ID of 1, created by User ID of 1, with URL ID of 1, now has members 2 and 3 included
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        add_one_url_to_each_utub_no_tags (pytest fixture): Has each User make their own UTub, and has
-            that user add a URL to their UTub
-    """
-    with app.app_context():
-        current_utubs = Utub.query.all()
-        current_tags = Tags.query.all()
-
-        # Add all missing users to this UTub
-        for utub in current_utubs:
-            current_utub_url = [
-                utub_url.standalone_url for utub_url in utub.utub_urls
-            ].pop()
-
-            for tag in current_tags:
-                new_tag_url_utub_association = Url_Tags()
-                new_tag_url_utub_association.utub_containing_this_tag = utub
-                new_tag_url_utub_association.tagged_url = current_utub_url
-                new_tag_url_utub_association.tag_item = tag
-                new_tag_url_utub_association.utub_id = utub.id
-                new_tag_url_utub_association.url_id = current_utub_url.id
-                new_tag_url_utub_association.tag_id = tag.id
-                utub.utub_url_tags.append(new_tag_url_utub_association)
-
-        db.session.commit()
-
-
-@pytest.fixture
 def add_all_urls_and_users_to_each_utub_no_tags(
-    app, add_one_url_and_all_users_to_each_utub_no_tags
+    app: Flask, add_one_url_and_all_users_to_each_utub_no_tags
 ):
     """
     Adds two other URLs to a UTub that contains all 3 test members, but does not have any tags associated with these URLs
@@ -1077,8 +680,8 @@ def add_all_urls_and_users_to_each_utub_no_tags(
             a single URL added by the creator
     """
     with app.app_context():
-        all_utubs = Utub.query.all()
-        all_urls = URLS.query.all()
+        all_utubs: list[Utub] = Utub.query.all()
+        all_urls: list[URLS] = URLS.query.all()
 
         for utub, url in zip(all_utubs, all_urls):
             for other_url in all_urls:
@@ -1095,7 +698,7 @@ def add_all_urls_and_users_to_each_utub_no_tags(
 
 @pytest.fixture
 def add_all_urls_and_users_to_each_utub_with_one_tag(
-    app, add_tags_to_database, add_all_urls_and_users_to_each_utub_no_tags
+    app: Flask, add_tags_to_database, add_all_urls_and_users_to_each_utub_no_tags
 ):
     """
     Adds a tag to each of the three URLs in each of the three UTubs that contain 3 members
@@ -1128,7 +731,7 @@ def add_all_urls_and_users_to_each_utub_with_one_tag(
 
 @pytest.fixture
 def add_all_urls_and_users_to_each_utub_with_all_tags(
-    app, add_all_urls_and_users_to_each_utub_with_one_tag
+    app: Flask, add_all_urls_and_users_to_each_utub_with_one_tag
 ):
     """
     Adds all other tags to each URL in each UTub
@@ -1143,7 +746,7 @@ def add_all_urls_and_users_to_each_utub_with_all_tags(
     """
     with app.app_context():
         all_utubs: list[Utub] = Utub.query.all()
-        all_tags = Tags.query.all()
+        all_tags: list[Tags] = Tags.query.all()
 
         for utub in all_utubs:
             for single_url_in_utub in utub.utub_urls:
@@ -1166,25 +769,4 @@ def add_all_urls_and_users_to_each_utub_with_all_tags(
 
                         db.session.add(new_url_tag)
 
-        db.session.commit()
-
-
-@pytest.fixture
-def add_five_tags_to_db_from_same_user(
-    app, add_one_url_and_all_users_to_each_utub_no_tags
-):
-    """
-    Adds five additional tags to the database without associating them with any URLs. Assumes they are
-    all added by User ID == 1
-
-    Args:
-        app (Flask): The Flask client providing an app context
-        add_one_url_and_all_users_to_each_utub_no_tags (pytest fixture): Adds all users to all UTubs, each UTub containing
-            a single URL added by the creator
-    """
-    five_tags_to_add = ("Hello", "Good", "Bad", "yes", "no")
-    with app.app_context():
-        for tag in five_tags_to_add:
-            new_tag = Tags(tag_string=tag, created_by=1)
-            db.session.add(new_tag)
         db.session.commit()

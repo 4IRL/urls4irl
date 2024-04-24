@@ -5,6 +5,7 @@ from src import db
 from src.models import Utub, Utub_Users
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.model_strs import MODELS
 from src.utils.strings.utub_strs import UTUB_SUCCESS, UTUB_FAILURE
 from src.utils.email_validation import email_validation_required
 
@@ -53,6 +54,7 @@ def get_single_utub(utub_id: str):
         abort(404)
 
     utub_data_serialized = utub.serialized
+    utub_data_serialized[MODELS.IS_CREATOR] = utub.utub_creator == current_user.id
 
     return jsonify(utub_data_serialized)
 

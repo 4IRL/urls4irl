@@ -5,7 +5,7 @@ from src.utils.strings.splash_form_strs import REGISTER_FORM
 Users used for testing logging in correctly
 Models follow what is on a valid registration form
 """
-valid_user_1 = {
+valid_user_1: dict[str, str | None] = {
     MODEL_STRS.ID: 1,
     REGISTER_FORM.CSRF_TOKEN: None,
     REGISTER_FORM.USERNAME: "FakeUserName1234",
@@ -15,7 +15,7 @@ valid_user_1 = {
     REGISTER_FORM.CONFIRM_PASSWORD: "FakePassword1234",
 }
 
-valid_user_2 = {
+valid_user_2: dict[str, str | None] = {
     MODEL_STRS.ID: 2,
     REGISTER_FORM.CSRF_TOKEN: None,
     REGISTER_FORM.USERNAME: "CenturyUser1234",
@@ -25,7 +25,7 @@ valid_user_2 = {
     REGISTER_FORM.CONFIRM_PASSWORD: "CenturyPassword1234",
 }
 
-valid_user_3 = {
+valid_user_3: dict[str, str | None] = {
     MODEL_STRS.ID: 3,
     REGISTER_FORM.CSRF_TOKEN: None,
     REGISTER_FORM.USERNAME: "PersonalEntry1234",
@@ -35,7 +35,7 @@ valid_user_3 = {
     REGISTER_FORM.CONFIRM_PASSWORD: "PersonalPassword1234",
 }
 
-valid_users = (
+valid_users: tuple[dict[str, str | None]] = (
     valid_user_1,
     valid_user_2,
     valid_user_3,

@@ -90,7 +90,7 @@ class Utub_Urls(db.Model):
             if int(tag.utub_id) == int(self.utub_id):
                 url_tags.append(tag.tag_id)
 
-        return url_tags
+        return sorted(url_tags)
 
 
 class Url_Tags(db.Model):
