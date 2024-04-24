@@ -8,19 +8,20 @@ on:
 
 jobs:
     format:
-        name: 'Format'
+        name: 'Code Quality'
         uses: ./.github/workflows/format.yml
         with:
             branch_ref: ${{ github.ref }}
 
     lint:
-        needs: "format"
-        name: 'Lint'
+        needs: 'format'
+        name: 'Code Quality'
         uses: ./.github/workflows/lint.yml
         with:
             branch_ref: ${{ github.ref }}
 
     test:
+        needs: 'lint'
         name: 'Test'
         uses: ./.github/workflows/test.yml
         with:
