@@ -1,4 +1,5 @@
-name: CI
+# Making this the name so badge shows something understandable
+name: CI and Tests
 
 on: 
   push:
