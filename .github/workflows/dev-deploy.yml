@@ -32,5 +32,5 @@ jobs:
 
             - name: End Action
               run: |
-                echo "### Success! Successfully dev branch on development server :sunglasses:" >> $GITHUB_STEP_SUMMARY
+                echo "### Success! Successfully deployed dev branch on development server :sunglasses:" >> $GITHUB_STEP_SUMMARY
 
