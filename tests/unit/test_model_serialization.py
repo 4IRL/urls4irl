@@ -1,4 +1,6 @@
 import json
+
+from flask import Flask
 import pytest
 
 import tests.models_for_test as v_models
@@ -21,7 +23,7 @@ Serializations to test
 """
 
 
-def test_tag_serialization(app, register_multiple_users):
+def test_tag_serialization(app: Flask, register_multiple_users):
     """
     GIVEN a set of valid tags
     WHEN they are generally requested from the frontend, tags data is sent, serialized as JSON
@@ -89,7 +91,9 @@ def test_url_serialization_without_tags():
         assert json.dumps(new_url.serialized_url) == valid_url_for_json
 
 
-def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_database):
+def test_url_serialization_with_tags(
+    app: Flask, add_urls_to_database, add_tags_to_database
+):
     """
     GIVEN a valid set of URLs with tags contained within a UTub
     WHEN frontend requests a UTub's data, or if they wish to remove a URL, the backend sends
@@ -152,11 +156,13 @@ def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_data
         all_urls = URLS.query.all()
 
         for utub, url, verified_url in zip(all_utubs, all_urls, verified_urls):
-            url_with_tags = Utub_Urls.query.filter(
+            url_with_tags: Utub_Urls = Utub_Urls.query.filter(
                 Utub_Urls.url_id == url.id, Utub_Urls.utub_id == utub.id
             ).first()
 
-            assert json.dumps(verified_url) == json.dumps(url_with_tags.serialized)
+            assert json.dumps(verified_url) == json.dumps(
+                url_with_tags.serialized(1, 1)
+            )
 
 
 def test_user_serialization_as_member_of_utub():
@@ -245,7 +251,7 @@ def test_user_utub_data_serialized_on_initial_load():
 
 
 def test_utub_serialized_only_creator_no_urls_no_tags(
-    app, every_user_makes_a_unique_utub
+    app: Flask, every_user_makes_a_unique_utub
 ):
     """
     GIVEN a valid UTub that a user is a creator of, with no urls, no other members, and no no tags
@@ -287,7 +293,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
     }
     """
     with app.app_context():
-        all_utubs = Utub.query.all()
+        all_utubs: list[Utub] = Utub.query.all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_only_creator, all_utubs
@@ -295,11 +301,12 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
                 "%m/%d/%Y %H:%M:%S"
             )
-            assert json.dumps(test_utub) == json.dumps(utub.serialized)
+            utub: Utub = utub
+            assert json.dumps(test_utub) == json.dumps(utub.serialized(1))
 
 
 def test_utub_serialized_creator_and_members_no_urls_no_tags(
-    app, every_user_in_every_utub
+    app: Flask, every_user_in_every_utub
 ):
     """
     GIVEN a valid UTub that a user is a creator of and has members in it, with no urls and no tags
@@ -341,7 +348,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
     }
     """
     with app.app_context():
-        all_utubs = Utub.query.all()
+        all_utubs: list[Utub] = Utub.query.all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members, all_utubs
@@ -351,7 +358,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized = utub.serialized(1)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
@@ -361,7 +368,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
 
 
 def test_utub_serialized_creator_and_members_and_url_no_tags(
-    app, add_one_url_and_all_users_to_each_utub_no_tags
+    app: Flask, add_one_url_and_all_users_to_each_utub_no_tags
 ):
     """
     GIVEN a valid UTub that a user is a creator of and has members in it, with one url in it and no tags
@@ -373,6 +380,7 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
     {
     MODEL_STRS.ID: Integer representing UTub ID,
     MODEL_STRS.NAME: String representing UTub name,
+    MODEL_STRS.IS_CREATOR: Boolean indicating if current user is the creator
     MODEL_STRS.CREATED_BY: Integer representing creator ID,
     MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
     MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
@@ -413,17 +421,23 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized = utub.serialized(1)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
+            # Set boolean for deleting equivalent since not considering a user session for this test
+            for idx, _ in enumerate(test_utub[MODEL_STRS.URLS]):
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE] = (
+                    utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
+                )
+
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
 
 def test_utub_serialized_creator_and_members_and_urls_and_tags(
-    app, add_all_urls_and_users_to_each_utub_with_all_tags
+    app: Flask, add_all_urls_and_users_to_each_utub_with_all_tags
 ):
     """
     GIVEN a valid UTub that a user is a creator of and has members in it, with all urls and 3 tags per url
@@ -475,14 +489,22 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized = utub.serialized(1)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
             # Array of tag IDs must also be sorted
-            for idx in range(len(utub_in_data_serialized["urls"])):
-                utub_in_data_serialized["urls"][idx][MODEL_STRS.URL_TAGS].sort()
+            for idx in range(len(utub_in_data_serialized[MODEL_STRS.URLS])):
+                utub_in_data_serialized[MODEL_STRS.URLS][idx][
+                    MODEL_STRS.URL_TAGS
+                ].sort()
+
+            # Set boolean for deleting equivalent since not considering a user session for this test
+            for idx, _ in enumerate(test_utub[MODEL_STRS.URLS]):
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE] = (
+                    utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
+                )
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)

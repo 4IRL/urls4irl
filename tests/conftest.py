@@ -32,9 +32,9 @@ from tests.models_for_test import (
 )
 
 TEST_SPLIT = (
-    {"urls"},
+    {"urls", "members"},
     {"unit", "utubs"},
-    {"splash", "members", "tags"},
+    {"splash", "tags"},
 )
 
 

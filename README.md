@@ -1,6 +1,6 @@
 # URLS4IRL
 
-[![Tests](https://github.com/4IRL/urls4irl/actions/workflows/CI.yml/badge.svg)](https://github.com/4IRL/urls4irl/actions/workflows/CI.yml)
+[![CI and Tests](https://github.com/4IRL/urls4irl/actions/workflows/CI.yml/badge.svg)](https://github.com/4IRL/urls4irl/actions/workflows/CI.yml)
 
 ## Share URLs With People You Know!
 

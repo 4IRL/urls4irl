@@ -31,7 +31,7 @@ jobs:
     # Splits tests into multiple workers
     strategy:
       matrix:
-        worker: [[1, 'URL Integration Tests'], [2, 'UTub Integration Tests and Unit Tests'], [3,'Splash/Member/Tag Integration Tests']]
+        worker: [[1, 'URL/UTub Member Integration Tests'], [2, 'UTub Integration Tests and Unit Tests'], [3,'Splash/Tag Integration Tests']]
 
     name: ${{ format('{0}', matrix.worker[1]) }}
 
