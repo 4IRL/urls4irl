@@ -1,0 +1,24 @@
+on:
+    pull_request:
+        branches:
+            - dev
+        types:
+            - closed
+
+jobs:
+    DevDeploy:
+        runs-on: ubuntu-latest
+
+        steps:
+            - name: Deploy to devices
+              id: deploy-to-dev
+              run: |
+                  echo "status_code=$(curl -s -o /dev/null -w "%{http_code}" --location 'https://dev.urls4irl.app/restart' --header 'CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_SECRET }}' --header 'CF-Access-Client-Id: ${{ secrets.CF_ACCESS_ID }}')" >> $GITHUB_OUTPUT
+
+            - name: Verify deployed
+              if: steps.deploy-to-dev.outputs.status_code == '500'
+              run: exit 1
+
+            - name: End Action
+              run: echo "Successfully deployed on dev"
+

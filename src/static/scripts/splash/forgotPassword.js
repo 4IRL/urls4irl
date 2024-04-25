@@ -20,11 +20,11 @@ function handleForgotPassword(event) {
   );
 }
 
-function handleForgotPasswordSuccess(response, textStatus, xhr) {
+function handleForgotPasswordSuccess(response, _, xhr) {
   if (xhr.status === 200) {
     $(".form-control").removeClass("is-invalid");
     $(".invalid-feedback").remove();
-    showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
+    showSplashModalAlertBanner(xhr.responseJSON.message, "success");
     disableSendPasswordResetEmailButton();
   }
 }
@@ -35,12 +35,12 @@ function disableSendPasswordResetEmailButton() {
     .prop("type", "button")
     .off("click")
     .prop("disabled", true)
-    .on("click", function (e) {
+    .on("click", function (_) {
       submitButton.prop("disabled", true);
     });
 }
 
-function handleForgotPasswordFailure(xhr, textStatus, error) {
+function handleForgotPasswordFailure(xhr, _, error) {
   if (xhr.status === 401 && xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.responseJSON.errorCode) {
       case 1: {

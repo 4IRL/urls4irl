@@ -2,7 +2,7 @@
 
 $("#submit").click((event) => handleResetPassword(event));
 
-$("#SplashModal").on("hide.bs.modal", function (e) {
+$("#SplashModal").on("hide.bs.modal", function (_) {
   $("#SplashModal").off("hide.bs.modal");
   window.location.replace("/");
 });
@@ -25,13 +25,13 @@ function handleResetPassword(event) {
   });
 }
 
-function handleResetPasswordSuccess(response, textStatus, xhr) {
+function handleResetPasswordSuccess(response, _, xhr) {
   if (xhr.status === 200) {
     // Password changed!
     $(".form-control").removeClass("is-invalid");
     $(".invalid-feedback").remove();
     hideSplashModalAlertBanner();
-    showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
+    showSplashModalAlertBanner(xhr.responseJSON.message, "success");
     handleUserChangedPassword();
   }
 }
@@ -44,13 +44,13 @@ function handleUserChangedPassword() {
     .val("Close")
     .removeClass("btn-success")
     .addClass("btn-warning")
-    .on("click", function (e) {
+    .on("click", function (_) {
       bootstrap.Modal.getOrCreateInstance("#SplashModal").hide();
     });
 }
 
-function handleResetPasswordFailure(xhr, textStatus, error) {
-  if (xhr.status == 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
+function handleResetPasswordFailure(xhr, _, error) {
+  if (xhr.status === 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.responseJSON.errorCode) {
       case 1:
         $(".form-control").removeClass("is-invalid");
@@ -59,7 +59,7 @@ function handleResetPasswordFailure(xhr, textStatus, error) {
         break;
       case 2:
         hideSplashModalAlertBanner();
-        showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
+        showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
         break;
     }
   } else {
