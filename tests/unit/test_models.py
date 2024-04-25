@@ -1,5 +1,9 @@
+import pytest
+
 from src.models import User, Utub, URLS, Tags
 from src.utils.url_validation import find_common_url
+
+pytestmark = pytest.mark.unit
 
 new_user = {
     "username": "FakeUserName1234",
@@ -33,7 +37,7 @@ def test_user_model():
 
     assert new_user_object.username == new_user["username"]
     assert new_user_object.password != new_user["password"]
-    assert new_user_object.email == new_user["email"]
+    assert new_user_object.email == new_user["email"].lower()
     assert new_user_object.is_password_correct(new_user["password"]) is True
     assert len(new_user_object.utubs_created) == 0
     assert len(new_user_object.utub_urls) == 0

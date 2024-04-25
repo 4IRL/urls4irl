@@ -1,3 +1,5 @@
+"use strict";
+
 $(document).ready(function () {
   setToRegisterButton();
   setToLoginButton();
@@ -7,7 +9,7 @@ function setToRegisterButton() {
   $(".to-register")
     .off("click")
     .on("click", function () {
-      registerModalOpener("/register");
+      registerModalOpener();
     });
 }
 
@@ -15,169 +17,39 @@ function setToLoginButton() {
   $(".to-login")
     .off("click")
     .on("click", function () {
-      loginModalOpener("/login");
+      loginModalOpener();
     });
 }
 
-function setForgotPasswordButton() {
-  $(".to-forgot-password")
-    .off("click")
-    .on("click", function () {
-      forgotPasswordModalOpener("/forgot_password");
-    });
-}
+function loginModalOpener() {
+  const modalOpener = $.get(routes.login());
 
-function setCloseModalButton(
-  shouldLogout = false,
-  shouldReplaceWindow = false,
-) {
-  $(".close-modal")
-    .off("click")
-    .on("click", function () {
-      $("#SplashModal").modal("hide");
-      if (shouldLogout) {
-        logoutUser();
-      }
-      if (shouldReplaceWindow) {
-        window.location.replace("/");
-      }
-    });
-}
+  modalOpener.done((data, textStatus, xhr) => {
+    if (xhr.status === 200) {
+      $("#SplashModal .modal-content").html(data);
+      bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
+    }
+  });
 
-function logoutUser() {
-  $.get("/logout");
-}
-
-function resetPasswordModalOpener() {
-  $.get("/confirm_password_reset", function (data) {
-    $("#SplashModal .modal-content").html(data);
-    $("#SplashModal")
-      .modal()
-      .on("hide.bs.modal", function (e) {
-        let previouslyClicked = false;
-        if (!previouslyClicked) {
-          window.location.replace("/");
-          previouslyClicked = true;
-          $("#SplashModal").off("hide.bs.modal");
-        }
-      });
-    setCloseModalButton((shouldReplaceWindow = true));
-
-    $("#submit").click(function (event) {
-      event.preventDefault();
-      let request = $.ajax({
-        url: window.location.pathname,
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
-
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-          // Password changed!
-          hideSplashModalAlertBanner();
-          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
-          handleUserChangedPassword();
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 400 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1:
-              $(".form-control").removeClass("is-invalid");
-              $(".invalid-feedback").remove();
-              showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
-              break;
-            case 2:
-              hideSplashModalAlertBanner();
-              handleImproperFormErrors(xhr.responseJSON);
-              break;
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
+  modalOpener.fail(() => {
+    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+    $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
   });
 }
 
-function handleUserChangedPassword() {
-  const submitButton = $("#submit");
-  submitButton
-    .off("click")
-    .prop("type", "button")
-    .val("Close")
-    .removeClass("btn-success")
-    .addClass("btn-warning")
-    .on("click", function (e) {
-      window.location.replace("/");
-    });
-}
+function registerModalOpener() {
+  const modalOpener = $.get(routes.register());
 
-function emailValidationModalOpener(tokenExpired = "") {
-  $.get("/confirm_email", function (data) {
-    $("#SplashModal .modal-content").html(data);
-    const splashModal = $("#SplashModal");
-    splashModal.modal().on("hide.bs.modal", function (e) {
-      let previouslyClicked = false;
-      if (!previouslyClicked) {
-        logoutUser();
-        previouslyClicked = true;
-        $("#SplashModal").off("hide.bs.modal");
-      }
-    });
-    setCloseModalButton(true);
-    if (tokenExpired !== undefined && tokenExpired.length != 0) {
-      showSplashModalAlertBanner(tokenExpired, "info");
+  modalOpener.done((data, textStatus, xhr) => {
+    if (xhr.status === 200) {
+      $("#SplashModal .modal-content").html(data);
+      bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
     }
-    $("#submit").click(function (event) {
-      event.preventDefault();
-      let request = $.ajax({
-        url: "/send_validation_email",
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
+  });
 
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-          // Email sent!
-          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 429 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1:
-              showSplashModalAlertBanner(xhr.responseJSON.Message, "danger");
-              break;
-            case 2:
-              showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
-              break;
-          }
-        } else if (
-          xhr.status == 400 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          if (
-            xhr.responseJSON.Error_code == 3 ||
-            xhr.responseJSON.Error_code == 4
-          ) {
-            showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
+  modalOpener.fail(() => {
+    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+    $("#SplashErrorModalAlertBanner").text("Unable to load register form...");
   });
 }
 
@@ -197,171 +69,14 @@ function showSplashModalAlertBanner(message, category) {
     .text(message);
 }
 
-function showSplashModal() {
-  const splashModal = $("#SplashModal");
-  // splashModal.addClass("show");
-  splashModal.show();
-}
-
-function verifyValidSplashForm() {
-  if ($("#SplashModalAlertBanner").length !== 1) {
-    window.location.replace("/");
-  }
-}
-
 function disableInputFields() {
   $("input").attr("disabled", true);
-}
-
-function loginModalOpener(url) {
-  $.get(url, function (data, textStatus, xhr) {
-    $("#SplashModal .modal-content").html(data);
-    verifyValidSplashForm();
-    setToRegisterButton();
-    setForgotPasswordButton();
-    $("#submit").click(function (event) {
-      event.preventDefault();
-      let request = $.ajax({
-        url: url,
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
-
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-          $("#SplashModal").modal("hide");
-          window.location.replace(response);
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 401 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1: {
-              // User found but email not yet validated
-              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
-              disableInputFields();
-              break;
-            }
-            case 2: {
-              handleImproperFormErrors(xhr.responseJSON);
-              break;
-            }
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
-  });
-}
-
-function registerModalOpener(url) {
-  $.get(url, function (data) {
-    $("#SplashModal .modal-content").html(data);
-    verifyValidSplashForm();
-    setToLoginButton();
-    const registerButton = $("#submit");
-    registerButton.click(function (event) {
-      registerButton.attr("disabled", "disabled");
-      event.preventDefault();
-      let request = $.ajax({
-        url: url,
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
-
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 201) {
-          emailValidationModalOpener();
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 400 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1: {
-              // User found but email not yet validated
-              handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
-              disableInputFields();
-              break;
-            }
-            case 2: {
-              handleImproperFormErrors(xhr.responseJSON);
-              registerButton.removeAttr("disabled");
-              break;
-            }
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
-  });
-}
-
-function forgotPasswordModalOpener(url) {
-  $.get(url, function (data) {
-    $("#SplashModal .modal-content").html(data);
-    $("#SplashModal").modal();
-    $("#submit").click(function (event) {
-      event.preventDefault();
-      let request = $.ajax({
-        url: url,
-        type: "POST",
-        data: $("#ModalForm").serialize(),
-      });
-
-      request.done(function (response, textStatus, xhr) {
-        if (xhr.status == 200) {
-          $(".form-control").removeClass("is-invalid");
-          $(".invalid-feedback").remove();
-          showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
-          disableSendPasswordResetEmailButton();
-        }
-      });
-
-      request.fail(function (xhr, textStatus, error) {
-        if (
-          xhr.status == 401 &&
-          xhr.responseJSON.hasOwnProperty("Error_code")
-        ) {
-          switch (xhr.responseJSON.Error_code) {
-            case 1: {
-              handleImproperFormErrors(xhr.responseJSON);
-            }
-          }
-        } else {
-          // TODO: Handle other errors here.
-          console.log("You need to handle other errors!");
-        }
-      });
-    });
-  });
-}
-
-function disableSendPasswordResetEmailButton() {
-  const submitButton = $("#submit");
-  submitButton
-    .prop("type", "button")
-    .off("click")
-    .prop("disabled", true)
-    .on("click", function (e) {
-      submitButton.prop("disabled", true);
-    });
 }
 
 function handleUserHasAccountNotEmailValidated(message) {
   $(".form-control").removeClass("is-invalid");
   $(".invalid-feedback").remove();
+  $(".to-forgot-password").remove();
   const alertBanner = $("#SplashModalAlertBanner");
   alertBanner
     .removeClass("alert-banner-splash-modal-hide")
@@ -372,7 +87,8 @@ function handleUserHasAccountNotEmailValidated(message) {
         '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
       )
         .off("click")
-        .on("click", function () {
+        .on("click", () => {
+          $("#SplashModal").off("hide.bs.modal", logoutOnExit);
           emailValidationModalOpener();
         }),
     );
@@ -380,12 +96,26 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".register-to-login-footer").remove();
   $(".modal-footer").remove();
 
-  $(".close-register-login-modal")
-    .off("click")
-    .on("click", function () {
-      $("#SplashModal").modal("hide");
-      logoutUser();
-    });
+  const logoutOnExit = () => {
+    $.get(routes.logout());
+    $("#SplashModal").off("hide.bs.modal", logoutOnExit);
+  };
+  $("#SplashModal").on("hide.bs.modal", logoutOnExit);
+}
+
+function emailValidationModalOpener() {
+  const modalOpener = $.get(routes.confirm_email_after_register());
+
+  modalOpener.done((data, textStatus, xhr) => {
+    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
+  });
+
+  modalOpener.fail(() => {
+    showSplashModalAlertBanner(
+      "Unable to load email validation modal...",
+      "danger",
+    );
+  });
 }
 
 function handleImproperFormErrors(errorResponse) {
@@ -396,20 +126,20 @@ function handleImproperFormErrors(errorResponse) {
     }
   });
   $(".form-control").removeClass("is-invalid");
-  for (let key in errorResponse.Errors) {
+  for (let key in errorResponse.errors) {
     switch (key) {
       case "username":
       case "password":
       case "email":
-      case "confirm_email":
-      case "confirm_password":
-      case "new_password":
-      case "confirm_new_password":
-        let errorMessage = errorResponse.Errors[key][0];
+      case "confirmEmail":
+      case "confirmPassword":
+      case "newPassword":
+      case "confirmNewPassword":
+        let errorMessage = errorResponse.errors[key][0];
         displayFormErrors(key, errorMessage);
         break;
       default:
-        // Error for a field that doens't exist
+        // Error for a field that doesn't exist
         console.log("No op.");
     }
   }

@@ -1,23 +1,67 @@
-from flask import Blueprint, jsonify
+from flask import Blueprint, jsonify, request, render_template, abort
 from flask_login import current_user
 
 from src import db
 from src.models import Utub, Utub_Users
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.model_strs import MODELS
+from src.utils.strings.utub_strs import UTUB_SUCCESS, UTUB_FAILURE
 from src.utils.email_validation import email_validation_required
 
 utubs = Blueprint("utubs", __name__)
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-UTUB_FAILURE = U4I_STRINGS.UTUB_FAILURE
-UTUB_SUCCESS = U4I_STRINGS.UTUB_SUCCESS
+STD_JSON = STD_JSON_RESPONSE
 
 
-@utubs.route("/utub/new", methods=["POST"])
+@utubs.route("/home", methods=["GET"])
 @email_validation_required
-def create_utub():
+def home():
+    """
+    Home page for logged in user. Loads and displays all UTubs, and contained URLs.
+
+    Args:
+        /home : With no args, this returns all UTubIDs for the given user
+        /home?UTubID=[int] = Where the integer value is the associated UTubID
+                                that the user clicked on
+
+    Returns:
+        - All UTubIDs if no args
+        - Requested UTubID if a valid arg
+
+    """
+    if not request.args:
+        # User got here without any arguments in the URL
+        # Therefore, only provide UTub name and UTub ID
+        utub_details = jsonify(current_user.serialized_on_initial_load)
+        return render_template("home.html", utubs_for_this_user=utub_details.json)
+
+    elif "UTubID" in request.args and len(request.args) == 1:
+        return get_single_utub(request.args.get("UTubID"))
+
+    abort(404)
+
+
+def get_single_utub(utub_id: str):
+    """
+    Retrieves data for a single UTub, and returns it in a serialized format
+    """
+    utub: Utub = Utub.query.get_or_404(utub_id)
+
+    if current_user.id not in [member.user_id for member in utub.members]:
+        # User is not member of the UTub they are requesting
+        abort(404)
+
+    utub_data_serialized = utub.serialized(current_user.id)
+    utub_data_serialized[MODELS.IS_CREATOR] = utub.utub_creator == current_user.id
+
+    return jsonify(utub_data_serialized)
+
+
+@utubs.route("/utubs", methods=["POST"])
+@email_validation_required
+def add_utub():
     """
     User wants to create a new utub.
     Assocation Object:
@@ -33,7 +77,7 @@ def create_utub():
             utub_form.description.data if utub_form.description.data is not None else ""
         )
         new_utub = Utub(
-            name=name, utub_creator=current_user.get_id(), utub_description=description
+            name=name, utub_creator=current_user.id, utub_description=description
         )
         creator_to_utub = Utub_Users()
         creator_to_utub.to_user = current_user
@@ -45,10 +89,10 @@ def create_utub():
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    UTUB_SUCCESS.UTUB_ID: int(new_utub.id),
-                    UTUB_SUCCESS.UTUB_NAME: f"{new_utub.name}",
-                    UTUB_SUCCESS.UTUB_DESCRIPTION: f"{description}",
-                    UTUB_SUCCESS.UTUB_CREATOR_ID: int(current_user.get_id()),
+                    UTUB_SUCCESS.UTUB_ID: new_utub.id,
+                    UTUB_SUCCESS.UTUB_NAME: new_utub.name,
+                    UTUB_SUCCESS.UTUB_DESCRIPTION: description,
+                    UTUB_SUCCESS.UTUB_CREATOR_ID: current_user.id,
                 }
             ),
             200,
@@ -80,23 +124,21 @@ def create_utub():
     )
 
 
-@utubs.route("/utub/delete/<int:utub_id>", methods=["POST"])
+@utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])
 @email_validation_required
 def delete_utub(utub_id: int):
     """
     Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
-    URLS and users.
+    URLS, tags, and users.
 
     https://docs.sqlalchemy.org/en/13/orm/cascades.html#delete
 
     Args:
         utub_id (int): The ID of the UTub to be deleted
     """
-    utub_id_to_delete = int(utub_id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
 
-    utub = Utub.query.get_or_404(utub_id_to_delete)
-
-    if int(current_user.get_id()) != int(utub.created_by.id):
+    if current_user.id != utub.created_by.id:
         return (
             jsonify(
                 {
@@ -116,16 +158,16 @@ def delete_utub(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
-                    UTUB_SUCCESS.UTUB_ID: f"{utub.id}",
-                    UTUB_SUCCESS.UTUB_NAME: f"{utub.name}",
-                    UTUB_SUCCESS.UTUB_DESCRIPTION: f"{utub.utub_description}",
+                    UTUB_SUCCESS.UTUB_ID: utub.id,
+                    UTUB_SUCCESS.UTUB_NAME: utub.name,
+                    UTUB_SUCCESS.UTUB_DESCRIPTION: utub.utub_description,
                 }
             ),
             200,
         )
 
 
-@utubs.route("/utub/edit_name/<int:utub_id>", methods=["POST"])
+@utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])
 @email_validation_required
 def update_utub_name(utub_id: int):
     """
@@ -136,15 +178,15 @@ def update_utub_name(utub_id: int):
     Input is required and the new name cannot be empty. Members cannot update UTub names. Creators
     of other UTubs cannot update another UTub's name. The "name" field must be included in the form.
 
-    On POST:
+    On PATCH:
         The new name is saved to the database for that UTub.
 
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub = Utub.query.get_or_404(utub_id)
+    current_utub: Utub = Utub.query.get_or_404(utub_id)
 
-    if int(current_user.get_id()) != current_utub.created_by.id:
+    if current_user.id != current_utub.utub_creator:
         return (
             jsonify(
                 {
@@ -173,7 +215,6 @@ def update_utub_name(utub_id: int):
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     UTUB_SUCCESS.UTUB_ID: current_utub.id,
                     UTUB_SUCCESS.UTUB_NAME: current_utub.name,
-                    UTUB_SUCCESS.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),
             200,
@@ -205,7 +246,7 @@ def update_utub_name(utub_id: int):
     )
 
 
-@utubs.route("/utub/edit_description/<int:utub_id>", methods=["POST"])
+@utubs.route("/utubs/<int:utub_id>/description", methods=["PATCH"])
 @email_validation_required
 def update_utub_desc(utub_id: int):
     """
@@ -223,16 +264,15 @@ def update_utub_desc(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub = Utub.query.get_or_404(utub_id)
+    current_utub: Utub = Utub.query.get_or_404(utub_id)
 
-    if int(current_user.get_id()) != current_utub.created_by.id:
+    if current_user.id != current_utub.utub_creator:
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
                     STD_JSON.ERROR_CODE: 1,
-                    UTUB_FAILURE.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),
             403,
@@ -245,7 +285,7 @@ def update_utub_desc(utub_id: int):
     utub_desc_form = UTubDescriptionForm()
 
     if utub_desc_form.validate_on_submit():
-        new_utub_description = utub_desc_form.utub_description.data
+        new_utub_description = utub_desc_form.description.data
 
         if new_utub_description is None:
             return (
@@ -268,7 +308,6 @@ def update_utub_desc(utub_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     UTUB_SUCCESS.UTUB_ID: current_utub.id,
-                    UTUB_SUCCESS.UTUB_NAME: current_utub.name,
                     UTUB_SUCCESS.UTUB_DESCRIPTION: current_utub.utub_description,
                 }
             ),

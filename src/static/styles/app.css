@@ -1,12 +1,17 @@
 /** Colors and themes **/
 
 :root {
-    --splashGreen: #28a745;
-    --splashLabelGreen: #2ecc71;
+    --splashGreen: rgba(36, 167, 69, 1.0);
+    --darkSplashGreen: rgba(36, 167, 69, 0.75);
+    --splashLabelGreen: rgba(46, 204, 113, 1.0);
+    --darkSplashLabelGreen: rgba(30, 133, 73, 1.0);
     --pageBackgroundColor: #1f2424;
     --borderColor: #343c3d;
-    --deckHeaderGreen: #28a745;
+    --deckHeaderGreen: rgba(36, 167, 69, 1.0);
     --deckSelectionGreen: #60daaa;
+    --offWhiteSplashBackgroundBanner: rgba(248, 248, 248, 0.74);
+    --blueLinkOnHover: rgba(5, 34, 77, 1.0);
+    --darkGrayTextColor: rgba(51, 51, 51, 1.0);
 
     --cardBackgroundColor: #282f2f;
     --UTubDescriptionColor: white;
@@ -524,9 +529,10 @@ span.user:hover .user-remove {
 .email-container {
     text-align: center;
     display: flex;
+    align-items: center;
     justify-content: space-between;
     flex-direction: row;
-    align-items: flex-start;
+    flex-wrap: nowrap;
     width: 100%;
 }
 
@@ -546,7 +552,7 @@ span.user:hover .user-remove {
 }
 
 .jumbotron {
-    background: rgba(248, 248, 248, 0.74);
+    background: var(--offWhiteSplashBackgroundBanner);
     padding: 6rem 2rem;
     display: flex;
     flex-direction: column;
@@ -568,7 +574,6 @@ span.user:hover .user-remove {
     left: 50%;
 }
 
-.navbar-end,
 .navbar-start {
     margin-inline: 20px;
     height: inherit;
@@ -579,15 +584,23 @@ span.user:hover .user-remove {
     align-items: center;
 }
 
-.navbar-end {
-    justify-content: flex-end;
+.navbar-toggler {
+    margin-inline-end: 5px;
 }
 
 .forgot-password-email-label,
 .login-register-label {
     font-weight: 700;
     font-size: 120%;
+}
+
+.forgot-password-email-label {
     color: var(--splashLabelGreen);
+}
+
+.login-register-label {
+    color: var(--darkSplashLabelGreen);
+
 }
 
 .login-register-label {
@@ -602,10 +615,6 @@ span.user:hover .user-remove {
     height: 100%;
 }
 
-.modal-content {
-    width: max-content;
-}
-
 .modal-close {
     width: auto;
 }
@@ -616,7 +625,7 @@ span.user:hover .user-remove {
 
 .validate-email-title {
     flex-grow: 1;
-    color: #28a745;
+    color: var(--splashGreen);
     font-size: 36px;
 }
 
@@ -624,7 +633,6 @@ span.user:hover .user-remove {
 .login-register-form {
     overflow-y: hidden;
     padding-right: 0px;
-    width: 500px;
 }
 
 .login-register-form-group {
@@ -638,8 +646,12 @@ span.user:hover .user-remove {
     border-color: var(--splashGreen);
 }
 
+.modal-footer {
+    justify-content: center !important;
+
+}
+
 .register-login-modal-footer {
-    justify-content: center;
     margin-top: 20px;
 }
 
@@ -648,7 +660,7 @@ span.user:hover .user-remove {
 }
 
 .forgot-password-form-group {
-    margin-bottom: 0;
+    margin-bottom: 10px;
 }
 
 .alert-banner-splash-modal-hide {
@@ -657,6 +669,8 @@ span.user:hover .user-remove {
 
 .alert-banner-splash-modal-display {
     display: inherit;
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
 }
 
 .alert-banner-splash-modal-show {
@@ -664,6 +678,14 @@ span.user:hover .user-remove {
     flex-direction: column;
     align-items: center;
     text-align: center;
+}
+
+.splash-page-links {
+    color: var(--bs-link-hover-color) !important;
+}
+
+.splash-page-links:hover {
+    color: var(--blueLinkOnHover) !important;
 }
 
 /* ID specific */
@@ -710,26 +732,24 @@ span.user:hover .user-remove {
 #ValidateEmailIcon {
     width: 48px;
     height: 48px;
-    background-color: #28a745;
+    background-color: var(--splashGreen);
     color: white;
     font-size: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    margin: 0 auto 10px auto;
     /* Center horizontally */
 }
 
 #ValidateEmailText {
-    color: #333;
+    color: var(--darkGrayTextColor);
     font-size: 18px;
     line-height: 1.6;
-    margin-bottom: 30px;
 }
 
 #EmailAlertBanner {
-    color: #333;
+    color: var(--darkGrayTextColor);
     font-size: 18px;
     line-height: 1.6;
     text-align: center;
@@ -747,4 +767,28 @@ span.user:hover .user-remove {
 #EmailValidationFooter {
     flex-wrap: nowrap;
     justify-content: center;
+}
+
+#CloseErrorModalButton {
+    width: 100%;
+}
+
+#SplashModalErrorContent {
+    width: 100%;
+}
+
+#NavbarNavDropdown {
+    justify-content: flex-end;
+    padding-inline-end: 5px;
+}
+
+@media (max-width: 767px) {
+    #NavbarDropdowns {
+        display: flex;
+        align-items: flex-end;
+        flex-direction: column;
+        gap: 10px;
+        padding-top: 10px;
+        padding-bottom: 10px;
+    }
 }

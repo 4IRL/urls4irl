@@ -4,6 +4,7 @@ Contains database models for URLS4IRL.
 # https://docs.sqlalchemy.org/en/14/orm/backref.html
 """
 
+from __future__ import annotations
 from datetime import datetime
 
 import jwt
@@ -14,8 +15,10 @@ from werkzeug.security import check_password_hash, generate_password_hash
 
 from src import db
 from src.utils.constants import EMAIL_CONSTANTS, USER_CONSTANTS
-from src.utils.strings import MODELS as MODEL_STRS
-from src.utils.strings import EMAILS, CONFIG_ENVS, RESET_PASSWORD
+from src.utils.strings.config_strs import CONFIG_ENVS
+from src.utils.strings.email_validation_strs import EMAILS
+from src.utils.strings.model_strs import MODELS as MODEL_STRS
+from src.utils.strings.reset_password_strs import RESET_PASSWORD
 
 
 """
@@ -29,14 +32,14 @@ https://stackoverflow.com/questions/12593421/sqlalchemy-and-flask-how-to-query-m
 
 class Utub_Users(db.Model):
     __tablename__ = "UtubUsers"
-    utub_id = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("User.id"), primary_key=True)
+    utub_id: int = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
+    user_id: int = db.Column(db.Integer, db.ForeignKey("User.id"), primary_key=True)
 
     to_user = db.relationship("User", back_populates="utubs_is_member_of")
     to_utub = db.relationship("Utub", back_populates="members")
 
     @property
-    def serialized(self):
+    def serialized(self) -> dict:
         return self.to_user.serialized
 
     @property
@@ -56,35 +59,58 @@ class Utub_Urls(db.Model):
 
     __tablename__ = "UtubUrls"
 
-    utub_id = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
-    url_id = db.Column(db.Integer, db.ForeignKey("Urls.id"), primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("User.id"), primary_key=True)
-    url_title = db.Column(db.String(140), default="")
+    utub_id: int = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
+    url_id: int = db.Column(db.Integer, db.ForeignKey("Urls.id"), primary_key=True)
+    user_id: int = db.Column(db.Integer, db.ForeignKey("User.id"), primary_key=True)
+    url_title: str = db.Column(db.String(140), default="")
     added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     user_that_added_url = db.relationship("User", back_populates="utub_urls")
-    url_in_utub = db.relationship("URLS")
+    standalone_url: URLS = db.relationship("URLS")
     utub = db.relationship("Utub", back_populates="utub_urls")
 
-    @property
-    def serialized(self):
+    def serialized(self, current_user_id: int, utub_creator: int) -> dict:
         """Returns serialized object."""
-
-        # Only return tags for the requested UTub
-        url_tags = []
-        for tag in self.url_in_utub.url_tags:
-            if int(tag.utub_id) == int(self.utub_id):
-                url_tags.append(tag.tag_id)
-
-        url_data = self.url_in_utub.serialized_url
+        url_data = self.standalone_url.serialized_url
 
         return {
             MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
             MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
-            MODEL_STRS.URL_TAGS: url_tags,
-            MODEL_STRS.ADDED_BY: self.user_that_added_url.serialized[MODEL_STRS.ID],
+            MODEL_STRS.URL_TAGS: self.associated_tags,
             MODEL_STRS.URL_TITLE: self.url_title,
+            MODEL_STRS.CAN_DELETE: current_user_id == self.user_id
+            or current_user_id == utub_creator,
         }
+
+    @property
+    def serialized_on_string_edit(self) -> dict:
+        url_data = self.standalone_url.serialized_url
+
+        return {
+            MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
+            MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
+            MODEL_STRS.URL_TAGS: self.associated_tags,
+        }
+
+    @property
+    def serialized_on_title_edit(self) -> dict:
+        url_data = self.standalone_url.serialized_url
+
+        return {
+            MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
+            MODEL_STRS.URL_TITLE: self.url_title,
+            MODEL_STRS.URL_TAGS: self.associated_tags,
+        }
+
+    @property
+    def associated_tags(self) -> list[int]:
+        # Only return tags for the requested UTub
+        url_tags = []
+        for tag in self.standalone_url.url_tags:
+            if int(tag.utub_id) == int(self.utub_id):
+                url_tags.append(tag.tag_id)
+
+        return sorted(url_tags)
 
 
 class Url_Tags(db.Model):
@@ -97,17 +123,19 @@ class Url_Tags(db.Model):
 
     __tablename__ = "UrlTags"
 
-    utub_id = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
-    url_id = db.Column(db.Integer, db.ForeignKey("Urls.id"), primary_key=True)
-    tag_id = db.Column(db.Integer, db.ForeignKey("Tags.id"), primary_key=True)
+    utub_id: int = db.Column(db.Integer, db.ForeignKey("Utub.id"), primary_key=True)
+    url_id: int = db.Column(db.Integer, db.ForeignKey("Urls.id"), primary_key=True)
+    tag_id: int = db.Column(db.Integer, db.ForeignKey("Tags.id"), primary_key=True)
     added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
-    tag_item = db.relationship("Tags")
-    tagged_url = db.relationship("URLS", back_populates="url_tags")
-    utub_containing_this_tag = db.relationship("Utub", back_populates="utub_url_tags")
+    tag_item: Tags = db.relationship("Tags")
+    tagged_url: URLS = db.relationship("URLS", back_populates="url_tags")
+    utub_containing_this_tag: Utub = db.relationship(
+        "Utub", back_populates="utub_url_tags"
+    )
 
     @property
-    def serialized(self):
+    def serialized(self) -> dict:
         """Returns serialized object."""
         return {
             MODEL_STRS.TAG: self.tag_item.serialized,
@@ -123,17 +151,17 @@ class User(db.Model, UserMixin):
     # TODO - Verify email cannot be used as password
 
     __tablename__ = "User"
-    id = db.Column(db.Integer, primary_key=True)
-    username = db.Column(
+    id: int = db.Column(db.Integer, primary_key=True)
+    username: str = db.Column(
         db.String(USER_CONSTANTS.MAX_USERNAME_LENGTH), unique=True, nullable=False
     )
-    email = db.Column(db.String(120), unique=True, nullable=False)
-    password = db.Column(db.String(166), nullable=False)
+    email: str = db.Column(db.String(120), unique=True, nullable=False)
+    password: str = db.Column(db.String(166), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     utubs_created = db.relationship("Utub", backref="created_by", lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     utubs_is_member_of = db.relationship("Utub_Users", back_populates="to_user")
-    email_confirm = db.relationship(
+    email_confirm: EmailValidation = db.relationship(
         "EmailValidation", uselist=False, back_populates="user"
     )
     forgot_password = db.relationship(
@@ -155,15 +183,12 @@ class User(db.Model, UserMixin):
             plaintext_password (str): Plaintext password to be hashed
         """
         self.username = username
-        self.email = email
+        self.email: str = email.lower()
         self.password = generate_password_hash(plaintext_password)
         self._email_confirmed = False
 
     def is_password_correct(self, plaintext_password: str) -> bool:
         return check_password_hash(self.password, plaintext_password)
-
-    def is_new_password_same_as_previous(self, plaintext_password: str) -> bool:
-        return self.is_password_correct(plaintext_password)
 
     def is_email_authenticated(self) -> bool:
         return self.email_confirm.is_validated
@@ -172,7 +197,7 @@ class User(db.Model, UserMixin):
         self.password = generate_password_hash(new_plaintext_password)
 
     @property
-    def serialized(self):
+    def serialized(self) -> dict[str, int | str]:
         """Return object in serialized form."""
         return {
             MODEL_STRS.ID: self.id,
@@ -180,7 +205,7 @@ class User(db.Model, UserMixin):
         }
 
     @property
-    def serialized_on_initial_load(self):
+    def serialized_on_initial_load(self) -> list[dict]:
         """Returns object in serialized for, with only the utub id and Utub name the user is a member of."""
         utubs_for_user = []
         for utub in self.utubs_is_member_of:
@@ -193,7 +218,7 @@ class User(db.Model, UserMixin):
 
     def get_email_validation_token(
         self, expires_in=EMAIL_CONSTANTS.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS
-    ):
+    ) -> str:
         return jwt.encode(
             payload={
                 EMAILS.VALIDATE_EMAIL: self.username,
@@ -205,7 +230,7 @@ class User(db.Model, UserMixin):
 
     def get_password_reset_token(
         self, expires_in=USER_CONSTANTS.WAIT_TO_RETRY_FORGOT_PASSWORD_MAX
-    ):
+    ) -> str:
         return jwt.encode(
             payload={
                 RESET_PASSWORD.RESET_PASSWORD_KEY: self.username,
@@ -215,53 +240,53 @@ class User(db.Model, UserMixin):
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],
         )
 
-    @staticmethod
-    def verify_token(token: str, token_key: str) -> tuple[UserMixin, bool]:
-        """
-        Returns a valid user if one found, or None.
-        Boolean indicates whether the token is expired or not.
 
-        Args:
-            token (str): The token to check
-            token_key (str): The key of the token
+def verify_token(token: str, token_key: str) -> tuple[User | None, bool]:
+    """
+    Returns a valid user if one found, or None.
+    Boolean indicates whether the token is expired or not.
 
-        Returns:
-            tuple[UserMixin, bool]: Returns a User and Boolean
-        """
-        try:
-            username_to_validate = jwt.decode(
-                jwt=token,
-                key=current_app.config[CONFIG_ENVS.SECRET_KEY],
-                algorithms=EMAILS.ALGORITHM,
-            )
+    Args:
+        token (str): The token to check
+        token_key (str): The key of the token
 
-        except JWTExceptions.ExpiredSignatureError:
-            return None, True
-
-        except (
-            RuntimeError,
-            TypeError,
-            JWTExceptions.DecodeError,
-        ):
-            return None, False
-
-        return (
-            User.query.filter(
-                User.username == username_to_validate[token_key]
-            ).first_or_404(),
-            False,
+    Returns:
+        tuple[User | None, bool]: Returns a User/None and Boolean
+    """
+    try:
+        username_to_validate = jwt.decode(
+            jwt=token,
+            key=current_app.config[CONFIG_ENVS.SECRET_KEY],
+            algorithms=[EMAILS.ALGORITHM],
         )
+
+    except JWTExceptions.ExpiredSignatureError:
+        return None, True
+
+    except (
+        RuntimeError,
+        TypeError,
+        JWTExceptions.DecodeError,
+    ):
+        return None, False
+
+    return (
+        User.query.filter(
+            User.username == username_to_validate[token_key]
+        ).first_or_404(),
+        False,
+    )
 
 
 class EmailValidation(db.Model):
     """Class represents an Email Validation row - users are required to have their emails confirmed before accessing the site"""
 
     __tablename__ = "EmailValidation"
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("User.id"))
-    confirm_url = db.Column(db.String(2000), nullable=False, default="")
-    is_validated = db.Column(db.Boolean, default=False)
-    attempts = db.Column(db.Integer, nullable=False, default=0)
+    id: int = db.Column(db.Integer, primary_key=True)
+    user_id: int = db.Column(db.Integer, db.ForeignKey("User.id"), unique=True)
+    confirm_url: int = db.Column(db.String(2000), nullable=False, default="")
+    is_validated: bool = db.Column(db.Boolean, default=False)
+    attempts: int = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     last_attempt = db.Column(db.DateTime, nullable=True, default=None)
     validated_at = db.Column(db.DateTime, nullable=True, default=None)
@@ -357,20 +382,20 @@ class Utub(db.Model):
     is shared with. The UTub contains a set of URL's and their associated tags."""
 
     __tablename__ = "Utub"
-    id = db.Column(db.Integer, primary_key=True)
-    name = db.Column(
+    id: int = db.Column(db.Integer, primary_key=True)
+    name: str = db.Column(
         db.String(30), nullable=False
     )  # Note that multiple UTubs can have the same name, maybe verify this per user?
-    utub_creator = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False)
+    utub_creator: int = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    utub_description = db.Column(db.String(500), nullable=True)
+    utub_description: str = db.Column(db.String(500), nullable=True)
     utub_url_tags = db.relationship(
         "Url_Tags", back_populates="utub_containing_this_tag", cascade="all, delete"
     )
-    utub_urls = db.relationship(
+    utub_urls: list[Utub_Urls] = db.relationship(
         "Utub_Urls", back_populates="utub", cascade="all, delete"
     )
-    members = db.relationship(
+    members: list[Utub_Users] = db.relationship(
         "Utub_Users", back_populates="to_utub", cascade="all, delete, delete-orphan"
     )
 
@@ -379,8 +404,7 @@ class Utub(db.Model):
         self.utub_creator = utub_creator
         self.utub_description = utub_description
 
-    @property
-    def serialized(self):
+    def serialized(self, current_user_id: int) -> dict[str, list | int | str]:
         """Return object in serialized form."""
 
         # self.utub_url_tags may contain repeats of tags since same tags can be on multiple URLs
@@ -401,7 +425,10 @@ class Utub(db.Model):
                 self.utub_description if self.utub_description is not None else ""
             ),
             MODEL_STRS.MEMBERS: [member.serialized for member in self.members],
-            MODEL_STRS.URLS: [url_in_utub.serialized for url_in_utub in self.utub_urls],
+            MODEL_STRS.URLS: [
+                url_in_utub.serialized(current_user_id, self.utub_creator)
+                for url_in_utub in self.utub_urls
+            ],
             MODEL_STRS.TAGS: utub_tags,
         }
 
@@ -411,11 +438,11 @@ class URLS(db.Model):
     stored in the server."""
 
     __tablename__ = "Urls"
-    id = db.Column(db.Integer, primary_key=True)
-    url_string = db.Column(
+    id: int = db.Column(db.Integer, primary_key=True)
+    url_string: str = db.Column(
         db.String(2000), nullable=False, unique=True
     )  # Note that multiple UTubs can have the same URL
-    created_by = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False)
+    created_by: int = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     url_tags = db.relationship("Url_Tags", back_populates="tagged_url")
 
@@ -437,11 +464,11 @@ class Tags(db.Model):
     """Class represents a tag, more specifically a tag for a URL. A tag is added by a single user, but can be used as a tag for any URL."""
 
     __tablename__ = "Tags"
-    id = db.Column(db.Integer, primary_key=True)
-    tag_string = db.Column(
+    id: int = db.Column(db.Integer, primary_key=True)
+    tag_string: str = db.Column(
         db.String(30), nullable=False
     )  # Note that multiple URLs can have the same tag
-    created_by = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False)
+    created_by: int = db.Column(db.Integer, db.ForeignKey("User.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     def __init__(self, tag_string: str, created_by: int):

@@ -5,7 +5,9 @@ from requests import Response
 from mailjet_rest import Client
 from mailjet_rest.client import ApiError, TimeoutError
 
-from src.utils.strings import STD_JSON_RESPONSE, EMAILS, CONFIG_ENVS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.email_validation_strs import EMAILS
+from src.utils.strings.config_strs import CONFIG_ENVS
 
 
 # Standard response for JSON messages
@@ -110,12 +112,12 @@ class EmailSender:
         try:
             return self._mailjet_client.send.create(data=message)
 
-        except (ApiError, TimeoutError) as e:
+        except (ApiError, TimeoutError):
             # Can occur if not connected to internet, or on a limited service
             # TODO: Include the error output for logging but just return error here
             return self._mock_response_builder(500)
 
-        except Exception as e:
+        except Exception:
             # TODO: Include the error output for logging but just return error here
             return self._mock_response_builder(500)
 

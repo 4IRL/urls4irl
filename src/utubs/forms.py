@@ -49,13 +49,14 @@ class UTubDescriptionForm(FlaskForm):
         utub_description (Stringfield): Maximum 500 chars? TODO
     """
 
-    utub_description = StringField("UTub Description", validators=[Length(max=500)])
+    # Not required, so as to allow the User to delete the description
+    description = StringField("UTub Description", validators=[Length(max=500)])
 
     submit = SubmitField("Add Description To UTub!")
 
-    def validate_utub_description(self, utub_description):
-        if utub_description.data is None:
+    def validate_description(self, description):
+        if description.data is None:
             return
 
-        if utub_description.data.replace(" ", "") == "":
-            utub_description.data = ""
+        if description.data.replace(" ", "") == "":
+            description.data = ""

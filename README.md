@@ -1,6 +1,6 @@
 # URLS4IRL
 
-[![Tests](https://github.com/4IRL/urls4irl/actions/workflows/u4i_actions.yml/badge.svg)](https://github.com/4IRL/urls4irl/actions/workflows/u4i_actions.yml)
+[![CI and Tests](https://github.com/4IRL/urls4irl/actions/workflows/CI.yml/badge.svg)](https://github.com/4IRL/urls4irl/actions/workflows/CI.yml)
 
 ## Share URLs With People You Know!
 
@@ -90,7 +90,7 @@ Now the migrations folder is setup.
 From this directory, run the following command:
 
 ```
-python -m pytest -sv
+pytest
 ```
 
 This will print out a log as well as whether or not tests passed.
