@@ -3,19 +3,21 @@
         window.location.href = '/';
     };
 </script>
+
 <form id="ModalForm" method="POST" class="login-register-form validate-email-form" action="" novalidate>
     <div class="modal-header">
         <div class="email-container">
             <div id="ValidateEmailIcon">✉️</div>
             <h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>
-            <button type="button" class="btn-close modal-close close-modal" data-bs-dismiss="modal" aria-label="close">
+            <button type="button" class="btn-close close-modal" data-bs-dismiss="modal" aria-label="close">
             </button>
         </div>
     </div>
     <div class="modal-body">
         {{ validate_email_form.hidden_tag() }}
         <p id="ValidateEmailText" class="validate-email-text">Your email address has not been validated. To complete
-            your registration, <strong>please click</strong> the button below to receive a validation email.</p>
+            your registration, <strong>check your inbox</strong> and click on the link we sent in the email. If you have not received
+            the email for some time, click the button below to resend a validation email.</p>
         <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
     </div>
     <div class="modal-footer" id="EmailValidationFooter">
@@ -26,6 +28,5 @@
     </div>
 </form>
 
-<script>
-    setCloseModalButton(true);
-</script>
+<script src="{{ url_for('static', filename='scripts/splash/emailValidation.js') }}"></script>
+

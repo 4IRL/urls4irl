@@ -4,19 +4,18 @@ from flask_login import current_user
 from src import db
 from src.models import Utub, Url_Tags, Tags, Utub_Urls
 from src.tags.forms import UTubNewUrlTagForm
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.model_strs import MODELS
+from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_NO_CHANGE, TAGS_SUCCESS
 from src.utils.email_validation import email_validation_required
 
 tags = Blueprint("tags", __name__)
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-TAGS_FAILURE = U4I_STRINGS.TAGS_FAILURE
-TAGS_NO_CHANGE = U4I_STRINGS.TAGS_NO_CHANGE
-TAGS_SUCCESS = U4I_STRINGS.TAGS_SUCCESS
+STD_JSON = STD_JSON_RESPONSE
 
 
-@tags.route("/tag/add/<int:utub_id>/<int:url_id>", methods=["POST"])
+@tags.route("/utubs/<int:utub_id>/urls/<int:url_id>/tags", methods=["POST"])
 @email_validation_required
 def add_tag(utub_id: int, url_id: int):
     """
@@ -33,9 +32,7 @@ def add_tag(utub_id: int, url_id: int):
     utub = utub_url_association.utub
 
     user_in_utub = [
-        int(member.user_id)
-        for member in utub.members
-        if int(member.user_id) == int(current_user.get_id())
+        member.user_id for member in utub.members if member.user_id == current_user.id
     ]
 
     if not user_in_utub:
@@ -48,7 +45,7 @@ def add_tag(utub_id: int, url_id: int):
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
-            404,
+            403,
         )
 
     url_tag_form = UTubNewUrlTagForm()
@@ -58,10 +55,10 @@ def add_tag(utub_id: int, url_id: int):
 
         # If too many tags, disallow adding tag
         tags_already_on_this_url = [
-            tags for tags in utub.utub_url_tags if int(tags.url_id) == int(url_id)
+            tags for tags in utub.utub_url_tags if tags.url_id == url_id
         ]
 
-        if len(tags_already_on_this_url) > 4:
+        if len(tags_already_on_this_url) >= 5:
             # Cannot have more than 5 tags on a URL
             return (
                 jsonify(
@@ -82,7 +79,7 @@ def add_tag(utub_id: int, url_id: int):
             this_tag_is_already_on_this_url = [
                 tags
                 for tags in tags_already_on_this_url
-                if int(tags.tag_id) == int(tag_already_created.id)
+                if tags.tag_id == tag_already_created.id
             ]
 
             if len(this_tag_is_already_on_this_url) == 1:
@@ -106,7 +103,7 @@ def add_tag(utub_id: int, url_id: int):
 
         else:
             # Create tag, then associate with this UTub and URL
-            new_tag = Tags(tag_string=tag_to_add, created_by=int(current_user.get_id()))
+            new_tag = Tags(tag_string=tag_to_add, created_by=current_user.id)
             db.session.add(new_tag)
             db.session.commit()
             utub_url_tag = Url_Tags(utub_id=utub_id, url_id=url_id, tag_id=new_tag.id)
@@ -116,7 +113,7 @@ def add_tag(utub_id: int, url_id: int):
         db.session.commit()
 
         # Successfully added tag to URL on UTub
-        url_utub_association = Utub_Urls.query.filter(
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id
         ).first_or_404()
 
@@ -125,10 +122,8 @@ def add_tag(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_URL,
-                    TAGS_SUCCESS.TAG: tag_model.serialized,  # Can I just serialize the Tag model here instead?
-                    TAGS_SUCCESS.URL: url_utub_association.serialized,  # Can I just serialize the Url_Utub model here instead?
-                    TAGS_SUCCESS.UTUB_ID: utub.id,
-                    TAGS_SUCCESS.UTUB_NAME: utub.name,
+                    TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
+                    TAGS_SUCCESS.TAG: tag_model.serialized,
                 }
             ),
             200,
@@ -136,13 +131,14 @@ def add_tag(utub_id: int, url_id: int):
 
     # Input form errors
     if url_tag_form.errors is not None:
+        errors = {MODELS.TAG_STRING: url_tag_form.tag_string.errors}
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
                     STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: url_tag_form.errors,
+                    STD_JSON.ERRORS: errors,
                 }
             ),
             400,
@@ -160,13 +156,13 @@ def add_tag(utub_id: int, url_id: int):
     )
 
 
-@tags.route("/tag/remove/<int:utub_id>/<int:url_id>/<int:tag_id>", methods=["POST"])
+@tags.route(
+    "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id>", methods=["DELETE"]
+)
 @email_validation_required
 def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
     User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
-
-    # TODO : Indicate that tag no longer exists in UTub
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted
@@ -175,52 +171,50 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
     """
     utub = Utub.query.get_or_404(utub_id)
 
-    if int(current_user.get_id()) in [user.user_id for user in utub.members]:
-        # User is member of this UTub
-        tag_for_url_in_utub = Url_Tags.query.filter_by(
-            utub_id=utub_id, url_id=url_id, tag_id=tag_id
-        ).first_or_404()
-        url_to_remove_tag_from = tag_for_url_in_utub.tagged_url
-        tag_to_remove = tag_for_url_in_utub.tag_item
-
-        db.session.delete(tag_for_url_in_utub)
-        db.session.commit()
-
-        num_left_in_utub = Url_Tags.query.filter_by(
-            utub_id=utub_id, tag_id=tag_id
-        ).count()
-
-        url_utub_association = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_to_remove_tag_from.id
-        ).first_or_404()
-
+    if current_user.id not in [user.user_id for user in utub.members]:
         return (
             jsonify(
                 {
-                    STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
-                    TAGS_SUCCESS.TAG: tag_to_remove.serialized,
-                    TAGS_SUCCESS.URL: url_utub_association.serialized,
-                    TAGS_SUCCESS.UTUB_ID: utub_id,
-                    TAGS_SUCCESS.UTUB_NAME: utub.name,
-                    TAGS_SUCCESS.COUNT_IN_UTUB: num_left_in_utub,
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS,
                 }
             ),
-            200,
+            403,
         )
+
+    # User is member of this UTub
+    tag_for_url_in_utub = Url_Tags.query.filter_by(
+        utub_id=utub_id, url_id=url_id, tag_id=tag_id
+    ).first_or_404()
+    url_to_remove_tag_from = tag_for_url_in_utub.tagged_url
+    tag_to_remove = tag_for_url_in_utub.tag_item
+
+    db.session.delete(tag_for_url_in_utub)
+    db.session.commit()
+
+    num_left_in_utub: int = Url_Tags.query.filter_by(
+        utub_id=utub_id, tag_id=tag_id
+    ).count()
+
+    url_utub_association = Utub_Urls.query.filter(
+        Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_to_remove_tag_from.id
+    ).first_or_404()
 
     return (
         jsonify(
             {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS,
+                STD_JSON.STATUS: STD_JSON.SUCCESS,
+                STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
+                TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
+                TAGS_SUCCESS.TAG_STILL_IN_UTUB: True if num_left_in_utub > 0 else False,
+                TAGS_SUCCESS.TAG: tag_to_remove.serialized,
             }
         ),
-        403,
+        200,
     )
 
 
-@tags.route("/tag/url/modify/<int:utub_id>/<int:url_id>/<int:tag_id>", methods=["POST"])
+@tags.route("/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id>", methods=["PUT"])
 @email_validation_required
 def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
     """
@@ -231,10 +225,10 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         url_id (int): The ID of the URL containing tag to be modified
         tag_id (int): The ID of the tag to be modified
     """
-    utub = Utub.query.get_or_404(utub_id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
 
     # Verify user is in UTub
-    if int(current_user.get_id()) not in [user.user_id for user in utub.members]:
+    if current_user.id not in [user.user_id for user in utub.members]:
         return (
             jsonify(
                 {
@@ -243,10 +237,10 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),
-            404,
+            403,
         )
 
-    tag_on_url_in_utub = Url_Tags.query.filter_by(
+    tag_on_url_in_utub: Url_Tags = Url_Tags.query.filter_by(
         utub_id=utub_id, url_id=url_id, tag_id=tag_id
     ).first_or_404()
 
@@ -298,20 +292,27 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         tag_on_url_in_utub.tag_id = tag_that_already_exists.id
         tag_on_url_in_utub.tag_item = tag_that_already_exists
 
-        url_utub_association = Utub_Urls.query.filter(
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_id
         ).first_or_404()
 
         db.session.commit()
+
+        previous_tag_count_in_utub: int = Url_Tags.query.filter_by(
+            utub_id=utub_id, tag_id=tag_id
+        ).count()
+
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_MODIFIED_ON_URL,
+                    TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
                     TAGS_SUCCESS.TAG: tag_that_already_exists.serialized,
-                    TAGS_SUCCESS.URL: url_utub_association.serialized,
-                    TAGS_SUCCESS.UTUB_ID: utub_id,
-                    TAGS_SUCCESS.UTUB_NAME: utub.name,
+                    TAGS_SUCCESS.PREVIOUS_TAG: {
+                        MODELS.ID: tag_id,
+                        TAGS_SUCCESS.TAG_IN_UTUB: previous_tag_count_in_utub > 0,
+                    },
                 }
             ),
             200,
@@ -319,13 +320,14 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
 
     # Input form errors
     if url_tag_form.errors is not None:
+        errors = {MODELS.TAG_STRING: url_tag_form.tag_string.errors}
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
                     STD_JSON.ERROR_CODE: 3,
-                    STD_JSON.ERRORS: url_tag_form.errors,
+                    STD_JSON.ERRORS: errors,
                 }
             ),
             400,

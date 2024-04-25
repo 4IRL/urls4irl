@@ -81,16 +81,25 @@
 
     {% block modal_extender %}
     <!-- Modal -->
-    {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+    {% if email_token_is_expired %}
+
+    {% include 'email_validation/email_needs_validation_modal_expired.html' %}
+    {% include 'modals/splashErrorModalBase.html' %}
+
+    {% elif is_resetting_password %}
+
+    {% include 'password_reset/reset_password_modal.html' %}
+
+    {% elif current_user.is_authenticated and current_user.email_confirm.is_validated %}
 
     {% include 'modals/homeModalBase.html' %}
 
     {% else %}
 
     {% include 'modals/splashModalBase.html' %}
+    {% include 'modals/splashErrorModalBase.html' %}
 
     {% endif %}
-    <!-- Modal -->
     {% endblock %}
 
     {% block mainbody %}

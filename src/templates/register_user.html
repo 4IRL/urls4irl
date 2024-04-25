@@ -4,7 +4,7 @@
     };
 </script>
 
-<form id="ModalForm" method="POST" class="login-register-form" action="" novalidate>
+<form id="ModalForm" method="POST" class="login-register-form" action="/register" novalidate>
     <div class="modal-header">
         <h4 class="modal-title">Register</h4>
         <button type="button" class="btn-close close-register-login-modal" data-bs-dismiss="modal" aria-label="close">
@@ -88,7 +88,9 @@
 <div class="d-flex justify-content-center register-to-login-footer">
     <div class="border-top pb-3">
         <small class="text-muted">
-            <a class="to-login" href="javascript:;">Already a user? Login</a>
+            <a class="splash-page-links" id="ToLoginFromRegister" href="javascript:;">Already a user? Login</a>
         </small>
     </div>
 </div>
+
+<script src="{{ url_for('static', filename='scripts/splash/register.js') }}"></script>

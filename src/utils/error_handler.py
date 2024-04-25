@@ -1,5 +1,7 @@
 from flask import render_template, jsonify, make_response
-from src.utils.strings import IDENTIFIERS, STD_JSON_RESPONSE
+
+from src.utils.strings.html_identifiers import IDENTIFIERS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
 
 
 def handle_404_response(e):

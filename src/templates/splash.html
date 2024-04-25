@@ -9,27 +9,14 @@
             <div class="jumbotron jumbotron-fluid">
                 <h1 class="display-4">Welcome to URLS4IRL</h1>
                 <p class="lead login-register-label">A simple, clean way to permanently save and share URLs.</p>
-                <button type="button" class="btn btn-success to-register btn-block splash-button" data-bs-toggle="modal"
-                    data-bs-target="#SplashModal">Register</button>
-                <button type="button" class="btn btn-success to-login btn-block splash-button" data-bs-toggle="modal"
-                    data-bs-target="#SplashModal">Login</button>
+                <button type="button" class="btn btn-success to-register btn-block splash-button">Register</button>
+                <button type="button" class="btn btn-success to-login btn-block splash-button">Login</button>
             </div>
         </div>
     </div>
 </div>
 
 <script src="{{ url_for('static', filename='scripts/splash.js') }}"></script>
-{% if email_validation_modal is defined and email_validation_modal %}
-{% if expired_token is defined and expired_token  %}
-<script>emailValidationModalOpener("{{ expired_token }}")</script>
-{% else %}
-<script>emailValidationModalOpener()</script>
-{% endif %}
-{% endif %}
-
-{% if forgot_password_modal is defined and forgot_password_modal %}
-<script>resetPasswordModalOpener()</script>
-{% endif %}
 
 {% endif %}
 

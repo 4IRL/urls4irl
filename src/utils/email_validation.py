@@ -3,7 +3,8 @@ from flask_login import login_required, current_user
 from functools import wraps
 
 from src.models import EmailValidation
-from src.utils.strings import EMAILS
+from src.utils.all_routes import ROUTES
+from src.utils.strings.email_validation_strs import EMAILS
 
 
 def email_validation_required(func):
@@ -24,7 +25,7 @@ def email_validation_required(func):
             is_email_validated = session[EMAILS.EMAIL_VALIDATED_SESS_KEY]
 
         if not is_email_validated:
-            return redirect(url_for("main.splash"))
+            return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
         return func(*args, **kwargs)
 
     return decorated_view

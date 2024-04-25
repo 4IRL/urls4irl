@@ -1,0 +1,95 @@
+name: Tests
+
+on: 
+  workflow_call:
+    inputs:
+      branch_ref:
+        required: true
+        type: string
+    secrets:
+      MAILJET_API_KEY:
+        required: true
+      MAILJET_SECRET_KEY:
+        required: true
+      BASE_EMAIL:
+        required: true
+
+jobs:
+  Tests:
+    env:
+      FLASK_DEBUG: 'development'
+      PRODUCTION: 'false'
+      SECRET_KEY: 'ABCDEFGH12345678'
+      MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
+      MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
+      BASE_EMAIL: ${{ secrets.BASE_EMAIL }}
+
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    # Splits tests into multiple workers
+    strategy:
+      matrix:
+        worker: [[1, 'URL/UTub Member Integration Tests'], [2, 'UTub Integration Tests and Unit Tests'], [3,'Splash/Tag Integration Tests']]
+
+    name: ${{ format('{0}', matrix.worker[1]) }}
+
+    # Service containers to run with `Run-Tests`
+    services:
+      # Label used to access the service container
+      postgres:
+        # Docker Hub image
+        image: 'postgres'
+        # Map the ports
+        ports:
+          - 5432:5432
+        # Provide the password for postgres
+        env:
+          POSTGRES_DB: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_USER: postgres
+        # Set health checks to wait until postgres has started
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_ref }}
+
+      # 👇 We need to set up the env vars from values taken from the matrix
+      - name: Set up worker env vars
+        run: |
+          echo "GITHUB_WORKER_ID=${{matrix.worker[0]}}" >> $GITHUB_ENV
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.2'
+          cache: 'pip'
+      
+      - name: Setup caching
+        uses: actions/cache@master
+        id: cache
+        with:
+          path: ${{ env.pythonLocation }}/lib/python3.11/site-packages/*
+          key: ${{ runner.os }}-pip-${{ hashFiles('requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+            ${{ runner.os }}-
+      
+      - name: Install Dependencies
+        run: |
+          python3.11 -m pip install --upgrade pip;
+          pip install -r requirements.txt;
+
+      - name: Run tests
+        env:
+          DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
+        run: |
+          python3.11 -m pytest 

@@ -1,0 +1,38 @@
+name: Check Formatting
+
+on: 
+  workflow_call:
+    inputs:
+      branch_ref:
+        required: true
+        type: string
+
+jobs:
+  Format:
+    # Containers must run in Linux based operating systems
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.branch_ref }}
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11.2'
+          cache: 'pip'
+
+      - name: Verify Python with Black
+        uses: psf/black@stable
+        with:
+          options: "--check --verbose"
+
+      - name: Setup node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+
+      - name: Prettier
+        run: npx prettier --check "**/*.js"

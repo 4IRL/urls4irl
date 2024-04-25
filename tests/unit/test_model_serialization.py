@@ -1,12 +1,15 @@
 import json
 
+from flask import Flask
+import pytest
+
 import tests.models_for_test as v_models
 from src.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
 from src import db
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.model_strs import MODELS as MODEL_STRS
+from src.utils.strings.splash_form_strs import REGISTER_FORM
 
-MODEL_STRS = U4I_STRINGS.MODELS
-USER_STRS = U4I_STRINGS.REGISTER_FORM
+pytestmark = pytest.mark.unit
 
 """
 Serializations to test
@@ -20,7 +23,7 @@ Serializations to test
 """
 
 
-def test_tag_serialization(app, register_multiple_users):
+def test_tag_serialization(app: Flask, register_multiple_users):
     """
     GIVEN a set of valid tags
     WHEN they are generally requested from the frontend, tags data is sent, serialized as JSON
@@ -28,8 +31,8 @@ def test_tag_serialization(app, register_multiple_users):
 
     The tag JSON data is output in the following format:
     {
-        "id": Integer representing the ID of the tag,
-        "tag_string": String representing the tag itself
+        MODEL_STRS.ID: Integer representing the ID of the tag,
+        MODEL_STRS.TAG_STRING: String representing the tag itself
     }
     """
     input_tags = (v_models.valid_tag_1, v_models.valid_tag_2, v_models.valid_tag_3)
@@ -64,8 +67,8 @@ def test_url_serialization_without_tags():
     The JSON output for a URL without tags is formatted as follows:
     {
         MODEL_STRS.ID: Integer representing the ID of the URL,
-        "url": String representing the URL itself,
-        "tags": An empty array signifying no tags on this URL. URL data is requested in the context of a UTub so
+        MODEL_STRS.URL_STRING: String representing the URL itself,
+        MODEL_STRS.TAGS: An empty array signifying no tags on this URL. URL data is requested in the context of a UTub so
             the tags contained on this URL will be specific to the UTub
     }
     """
@@ -88,7 +91,9 @@ def test_url_serialization_without_tags():
         assert json.dumps(new_url.serialized_url) == valid_url_for_json
 
 
-def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_database):
+def test_url_serialization_with_tags(
+    app: Flask, add_urls_to_database, add_tags_to_database
+):
     """
     GIVEN a valid set of URLs with tags contained within a UTub
     WHEN frontend requests a UTub's data, or if they wish to remove a URL, the backend sends
@@ -99,7 +104,7 @@ def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_data
     {
         MODEL_STRS.ID: Integer representing the ID of the URL,
         MODEL_STRS.URL: String representing the URL itself,
-        "tags": An array containing all tag IDs relevant to this URL, which will be requested in the context of a UTub.
+        MODEL_STRS.TAGS: An array containing all tag IDs relevant to this URL, which will be requested in the context of a UTub.
             An example would be: [0, 1, 2]
     }
     """
@@ -119,7 +124,7 @@ def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_data
             new_utub_url.utub = utub
             new_utub_url.utub_id = utub.id
             new_utub_url.url_id = url.id
-            new_utub_url.url_in_utub = url
+            new_utub_url.standalone_url = url
             new_utub_url.user_id = utub.id
 
             db.session.add(new_utub_url)
@@ -151,11 +156,13 @@ def test_url_serialization_with_tags(app, add_urls_to_database, add_tags_to_data
         all_urls = URLS.query.all()
 
         for utub, url, verified_url in zip(all_utubs, all_urls, verified_urls):
-            url_with_tags = Utub_Urls.query.filter(
+            url_with_tags: Utub_Urls = Utub_Urls.query.filter(
                 Utub_Urls.url_id == url.id, Utub_Urls.utub_id == utub.id
             ).first()
 
-            assert json.dumps(verified_url) == json.dumps(url_with_tags.serialized)
+            assert json.dumps(verified_url) == json.dumps(
+                url_with_tags.serialized(1, 1)
+            )
 
 
 def test_user_serialization_as_member_of_utub():
@@ -167,7 +174,7 @@ def test_user_serialization_as_member_of_utub():
     The JSON output is formatted as follows:
     {
         MODEL_STRS.ID: Integer representing the ID of the user,
-        "username": String representing the user's username
+        MODEL_STRS.USERNAME: String representing the user's username
     }
     """
     valid_users = []
@@ -176,8 +183,8 @@ def test_user_serialization_as_member_of_utub():
     for idx, inner_user in enumerate(member_users):
         new_user = User(
             username=inner_user[MODEL_STRS.USERNAME],
-            email=inner_user[USER_STRS.EMAIL],
-            plaintext_password=inner_user[USER_STRS.PASSWORD],
+            email=inner_user[REGISTER_FORM.EMAIL],
+            plaintext_password=inner_user[REGISTER_FORM.PASSWORD],
         )
         new_user.id = idx
         valid_users.append(new_user)
@@ -205,7 +212,7 @@ def test_user_utub_data_serialized_on_initial_load():
     [
         {
             MODEL_STRS.ID: Integer value defining the ID of the UTub,
-            "name": String representing the UTub name
+            MODEL_STRS.NAME: String representing the UTub name
         }
     ]
     """
@@ -218,8 +225,8 @@ def test_user_utub_data_serialized_on_initial_load():
     valid_user = v_models.valid_user_1
     new_user = User(
         username=valid_user[MODEL_STRS.USERNAME],
-        email=valid_user[USER_STRS.EMAIL],
-        plaintext_password=valid_user[USER_STRS.PASSWORD],
+        email=valid_user[REGISTER_FORM.EMAIL],
+        plaintext_password=valid_user[REGISTER_FORM.PASSWORD],
     )
 
     valid_utubs = []  # Array used to store the serialized utub data to validate against
@@ -244,7 +251,7 @@ def test_user_utub_data_serialized_on_initial_load():
 
 
 def test_utub_serialized_only_creator_no_urls_no_tags(
-    app, every_user_makes_a_unique_utub
+    app: Flask, every_user_makes_a_unique_utub
 ):
     """
     GIVEN a valid UTub that a user is a creator of, with no urls, no other members, and no no tags
@@ -254,29 +261,29 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
 
     Format of the serialized JSON data is as follows:
     {
-    'id': Integer representing UTub ID,
-    'name': String representing UTub name,
-    'created_by': Integer representing creator ID,
-    'created_at': Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
-    'description': String representing UTub description, "" if empty,
-    'members': Array containing each members information, in the following format:
+    MODEL_STRS.ID: Integer representing UTub ID,
+    MODEL_STRS.NAME: String representing UTub name,
+    MODEL_STRS.CREATED_BY: Integer representing creator ID,
+    MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
+    MODEL_STRS.MEMBERS: Array containing each members information, in the following format:
         [
             {
-                'id': Integer representing the user's ID,
-                'username': String representing the user's username
+                MODEL_STRS.ID: Integer representing the user's ID,
+                MODEL_STRS.USERNAME: String representing the user's username
             }
         ]
-    'urls': Array containing all the URL information for this UTub, in the following format:
+    MODEL_STRS.URLS: Array containing all the URL information for this UTub, in the following format:
         [
             {
-                "url_id": Integer repsenting the URL ID,
-                "url_string": String representing the URL,
-                "url_tags": Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
-                "added_by": Integer ID of user identifying who added this,
-                "notes": String representing a description of this URL in this UTub
+                MODEL_STRS.URL_ID: Integer repsenting the URL ID,
+                MODEL_STRS.URL_STRING: String representing the URL,
+                MODEL_STRS.URL_TAGS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                MODEL_STRS.ADDED_BY: Integer ID of user identifying who added this,
+                MODEL_STRS.URL_TITLE: String representing a description of this URL in this UTub
             }
         ]
-    'tags': Array containing all tag information for tags used in this UTub, in the following format:
+    MODEL_STRS.TAGS: Array containing all tag information for tags used in this UTub, in the following format:
         [
             {
                 MODEL_STRS.ID: Integer representing the tag ID,
@@ -286,7 +293,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
     }
     """
     with app.app_context():
-        all_utubs = Utub.query.all()
+        all_utubs: list[Utub] = Utub.query.all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_only_creator, all_utubs
@@ -294,11 +301,12 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
                 "%m/%d/%Y %H:%M:%S"
             )
-            assert json.dumps(test_utub) == json.dumps(utub.serialized)
+            utub: Utub = utub
+            assert json.dumps(test_utub) == json.dumps(utub.serialized(1))
 
 
 def test_utub_serialized_creator_and_members_no_urls_no_tags(
-    app, every_user_in_every_utub
+    app: Flask, every_user_in_every_utub
 ):
     """
     GIVEN a valid UTub that a user is a creator of and has members in it, with no urls and no tags
@@ -308,29 +316,29 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
 
     Format of the serialized JSON data is as follows:
     {
-    'id': Integer representing UTub ID,
-    'name': String representing UTub name,
-    'created_by': Integer representing creator ID,
-    'created_at': Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
-    'description': String representing UTub description, "" if empty,
-    'members': Array containing each members information, in the following format:
+    MODEL_STRS.ID: Integer representing UTub ID,
+    MODEL_STRS.NAME: String representing UTub name,
+    MODEL_STRS.CREATED_BY: Integer representing creator ID,
+    MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
+    MODEL_STRS.MEMBERS: Array containing each members information, in the following format:
         [
             {
-                'id': Integer representing the user's ID,
-                'username': String representing the user's username
+                MODEL_STRS.ID: Integer representing the user's ID,
+                MODEL_STRS.USERNAME: String representing the user's username
             }
         ]
-    'urls': Array containing all the URL information for this UTub, in the following format:
+    MODEL_STRS.URLS: Array containing all the URL information for this UTub, in the following format:
         [
             {
-                "url_id": Integer repsenting the URL ID,
-                "url_string": String representing the URL,
-                "url_tags": Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
-                "added_by": Integer ID of user identifying who added this,
-                "notes": String representing a description of this URL in this UTub
+                MODEL_STRS.URL_ID: Integer repsenting the URL ID,
+                MODEL_STRS.URL_STRING: String representing the URL,
+                MODEL_STRS.URL_TAGS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                MODEL_STRS.ADDED_BY: Integer ID of user identifying who added this,
+                MODEL_STRS.URL_TITLE: String representing a description of this URL in this UTub
             }
         ]
-    'tags': Array containing all tag information for tags used in this UTub, in the following format:
+    MODEL_STRS.TAGS: Array containing all tag information for tags used in this UTub, in the following format:
         [
             {
                 MODEL_STRS.ID: Integer representing the tag ID,
@@ -340,7 +348,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
     }
     """
     with app.app_context():
-        all_utubs = Utub.query.all()
+        all_utubs: list[Utub] = Utub.query.all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members, all_utubs
@@ -350,7 +358,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized = utub.serialized(1)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
@@ -360,7 +368,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
 
 
 def test_utub_serialized_creator_and_members_and_url_no_tags(
-    app, add_one_url_and_all_users_to_each_utub_no_tags
+    app: Flask, add_one_url_and_all_users_to_each_utub_no_tags
 ):
     """
     GIVEN a valid UTub that a user is a creator of and has members in it, with one url in it and no tags
@@ -370,29 +378,30 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
 
     Format of the serialized JSON data is as follows:
     {
-    'id': Integer representing UTub ID,
-    'name': String representing UTub name,
-    'created_by': Integer representing creator ID,
-    'created_at': Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
-    'description': String representing UTub description, "" if empty,
-    'members': Array containing each members information, in the following format:
+    MODEL_STRS.ID: Integer representing UTub ID,
+    MODEL_STRS.NAME: String representing UTub name,
+    MODEL_STRS.IS_CREATOR: Boolean indicating if current user is the creator
+    MODEL_STRS.CREATED_BY: Integer representing creator ID,
+    MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
+    MODEL_STRS.MEMBERS: Array containing each members information, in the following format:
         [
             {
-                'id': Integer representing the user's ID,
-                'username': String representing the user's username
+                MODEL_STRS.ID: Integer representing the user's ID,
+                MODEL_STRS.USERNAME: String representing the user's username
             }
         ]
-    'urls': Array containing all the URL information for this UTub, in the following format:
+    MODEL_STRS.URLS: Array containing all the URL information for this UTub, in the following format:
         [
             {
-                "url_id": Integer repsenting the URL ID,
-                "url_string": String representing the URL,
-                "url_tags": Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
-                "added_by": Integer ID of user identifying who added this,
-                "notes": String representing a description of this URL in this UTub
+                MODEL_STRS.URL_ID: Integer repsenting the URL ID,
+                MODEL_STRS.URL_STRING: String representing the URL,
+                MODEL_STRS.URL_TAGS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                MODEL_STRS.ADDED_BY: Integer ID of user identifying who added this,
+                MODEL_STRS.URL_TITLE: String representing a description of this URL in this UTub
             }
         ]
-    'tags': Array containing all tag information for tags used in this UTub, in the following format:
+    MODEL_STRS.TAGS: Array containing all tag information for tags used in this UTub, in the following format:
         [
             {
                 MODEL_STRS.ID: Integer representing the tag ID,
@@ -412,17 +421,23 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized = utub.serialized(1)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
+            # Set boolean for deleting equivalent since not considering a user session for this test
+            for idx, _ in enumerate(test_utub[MODEL_STRS.URLS]):
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE] = (
+                    utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
+                )
+
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
 
 def test_utub_serialized_creator_and_members_and_urls_and_tags(
-    app, add_all_urls_and_users_to_each_utub_with_all_tags
+    app: Flask, add_all_urls_and_users_to_each_utub_with_all_tags
 ):
     """
     GIVEN a valid UTub that a user is a creator of and has members in it, with all urls and 3 tags per url
@@ -432,29 +447,29 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
 
     Format of the serialized JSON data is as follows:
     {
-    'id': Integer representing UTub ID,
-    'name': String representing UTub name,
-    'created_by': Integer representing creator ID,
-    'created_at': Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
-    'description': String representing UTub description, "" if empty,
-    'members': Array containing each members information, in the following format:
+    MODEL_STRS.ID: Integer representing UTub ID,
+    MODEL_STRS.NAME: String representing UTub name,
+    MODEL_STRS.CREATED_BY: Integer representing creator ID,
+    MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
+    MODEL_STRS.MEMBERS: Array containing each members information, in the following format:
         [
             {
-                'id': Integer representing the user's ID,
-                'username': String representing the user's username
+                MODEL_STRS.ID: Integer representing the user's ID,
+                MODEL_STRS.USERNAME: String representing the user's username
             }
         ]
-    'urls': Array containing all the URL information for this UTub, in the following format:
+    MODEL_STRS.URLS: Array containing all the URL information for this UTub, in the following format:
         [
             {
-                "url_id": Integer repsenting the URL ID,
-                "url_string": String representing the URL,
-                "url_tags": Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
-                "added_by": Integer ID of user identifying who added this,
-                "notes": String representing a description of this URL in this UTub
+                MODEL_STRS.URL_ID: Integer repsenting the URL ID,
+                MODEL_STRS.URL_STRING: String representing the URL,
+                MODEL_STRS.URL_TAGS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                MODEL_STRS.ADDED_BY: Integer ID of user identifying who added this,
+                MODEL_STRS.URL_TITLE: String representing a description of this URL in this UTub
             }
         ]
-    'tags': Array containing all tag information for tags used in this UTub, in the following format:
+    MODEL_STRS.TAGS: Array containing all tag information for tags used in this UTub, in the following format:
         [
             {
                 MODEL_STRS.ID: Integer representing the tag ID,
@@ -474,14 +489,22 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized
+            utub_in_data_serialized = utub.serialized(1)
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
             # Array of tag IDs must also be sorted
-            for idx in range(len(utub_in_data_serialized["urls"])):
-                utub_in_data_serialized["urls"][idx]["url_tags"].sort()
+            for idx in range(len(utub_in_data_serialized[MODEL_STRS.URLS])):
+                utub_in_data_serialized[MODEL_STRS.URLS][idx][
+                    MODEL_STRS.URL_TAGS
+                ].sort()
+
+            # Set boolean for deleting equivalent since not considering a user session for this test
+            for idx, _ in enumerate(test_utub[MODEL_STRS.URLS]):
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE] = (
+                    utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
+                )
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)

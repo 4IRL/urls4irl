@@ -1,51 +1,50 @@
-from flask import Blueprint, jsonify, request
+from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user
 
 from src import db
 from src.models import Utub, Utub_Urls, URLS, Url_Tags
 from src.urls.forms import (
     NewURLForm,
-    EditURLAndTitleForm,
     EditURLForm,
     EditURLTitleForm,
 )
+from src.urls.utils import build_form_errors
 from src.utils.url_validation import InvalidURLError, find_common_url
-from src.utils import strings as U4I_STRINGS
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.model_strs import MODELS
+from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
 from src.utils.email_validation import email_validation_required
 
 urls = Blueprint("urls", __name__)
 
 # Standard response for JSON messages
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-URL_FAILURE = U4I_STRINGS.URL_FAILURE
-URL_NO_CHANGE = U4I_STRINGS.URL_NO_CHANGE
-URL_SUCCESS = U4I_STRINGS.URL_SUCCESS
+STD_JSON = STD_JSON_RESPONSE
 
 
-@urls.route("/url/remove/<int:utub_id>/<int:url_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>", methods=["DELETE"])
 @email_validation_required
-def delete_url(utub_id: int, url_id: int):
+def remove_url(utub_id: int, url_id: int):
     """
-    User wants to delete a URL from a UTub. Only available to owner of that utub,
+    User wants to remove a URL from a UTub. Only available to owner of that utub,
     or whoever added the URL into that Utub.
 
     Args:
-        utub_id (int): The ID of the UTub that contains the URL to be deleted
-        url_id (int): The ID of the URL to be deleted
+        utub_id (int): The ID of the UTub that contains the URL to be removed
+        url_id (int): The ID of the URL to be removed
     """
-    utub = Utub.query.get_or_404(utub_id)
-    utub_owner_id = int(utub.created_by.id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub_creator_id = utub.utub_creator
 
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
-    url_in_utub = Utub_Urls.query.filter(
+    url_in_utub: Utub_Urls = Utub_Urls.query.filter(
         Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
     ).first_or_404()
 
-    if current_user.id == utub_owner_id or current_user.id == url_in_utub.user_id:
+    if current_user.id == utub_creator_id or current_user.id == url_in_utub.user_id:
         # Store serialized data from URL association with UTub and associated tags
-        serialized_url_in_utub = url_in_utub.serialized
+        associated_tags = url_in_utub.associated_tags
 
-        # Can only delete URLs as the creator of UTub, or as the adder of that URL
+        # Can only remove URLs as the creator of UTub, or as the adder of that URL
         db.session.delete(url_in_utub)
 
         # Remove all tags associated with this URL in this UTub as well
@@ -53,21 +52,37 @@ def delete_url(utub_id: int, url_id: int):
 
         db.session.commit()
 
+        remaining_utub_tags: list[Url_Tags] = Url_Tags.query.filter(
+            Url_Tags.utub_id == utub_id
+        ).all()
+        remaining_utub_tag_ids = set([tag.tag_id for tag in remaining_utub_tags])
+        tags = [
+            {
+                MODELS.ID: tag_id,
+                URL_SUCCESS.TAG_IN_UTUB: tag_id in remaining_utub_tag_ids,
+            }
+            for tag_id in associated_tags
+        ]
+
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
-                    URL_SUCCESS.URL: serialized_url_in_utub,
-                    URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                    URL_SUCCESS.UTUB_NAME: f"{utub.name}",
+                    URL_SUCCESS.UTUB_ID: utub.id,
+                    URL_SUCCESS.URL: {
+                        URL_SUCCESS.URL_STRING: url_in_utub.standalone_url.url_string,
+                        URL_SUCCESS.URL_ID: url_id,
+                        URL_SUCCESS.URL_TITLE: url_in_utub.url_title,
+                    },
+                    MODELS.TAGS: tags,
                 }
             ),
             200,
         )
 
     else:
-        # Can only delete URLs you added, or if you are the creator of this UTub
+        # Can only remove URLs you added, or if you are the creator of this UTub
         return (
             jsonify(
                 {
@@ -79,7 +94,7 @@ def delete_url(utub_id: int, url_id: int):
         )
 
 
-@urls.route("/url/add/<int:utub_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls", methods=["POST"])
 @email_validation_required
 def add_url(utub_id: int):
     """
@@ -88,7 +103,7 @@ def add_url(utub_id: int):
     Args:
         utub_id (int): The Utub to add this URL to
     """
-    utub = Utub.query.get_or_404(utub_id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
 
     if current_user.id not in [member.user_id for member in utub.members]:
         # Not authorized to add URL to this UTub
@@ -109,7 +124,7 @@ def add_url(utub_id: int):
         url_string = utub_new_url_form.url_string.data
 
         try:
-            user_agent = request.headers.get("User-agent")
+            user_agent = request.headers if not current_app.testing else None
             normalized_url = find_common_url(url_string, user_agent)
         except InvalidURLError:
             # URL was unable to be verified as a valid URL
@@ -117,7 +132,7 @@ def add_url(utub_id: int):
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
+                        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL,
                         STD_JSON.ERROR_CODE: 2,
                     }
                 ),
@@ -125,47 +140,21 @@ def add_url(utub_id: int):
             )
 
         # Check if URL already exists
-        already_created_url = URLS.query.filter_by(url_string=normalized_url).first()
+        already_created_url: URLS = URLS.query.filter_by(
+            url_string=normalized_url
+        ).first()
 
         if not already_created_url:
             # If URL does not exist, add it and then associate it with the UTub
             new_url = URLS(
-                normalized_url=normalized_url, current_user_id=current_user.get_id()
+                normalized_url=normalized_url, current_user_id=current_user.id
             )
 
             # Commit new URL to the database
             db.session.add(new_url)
             db.session.commit()
 
-            # Associate URL with given UTub
             url_id = new_url.id
-            url_utub_user_add = Utub_Urls(
-                utub_id=utub_id,
-                url_id=url_id,
-                user_id=current_user.id,
-                url_title=utub_new_url_form.url_title.data,
-            )
-            db.session.add(url_utub_user_add)
-            db.session.commit()
-
-            # Successfully added a URL, and associated it to a UTub
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.SUCCESS,
-                        STD_JSON.MESSAGE: URL_SUCCESS.URL_CREATED_ADDED,
-                        URL_SUCCESS.URL: {
-                            URL_SUCCESS.URL_STRING: f"{normalized_url}",
-                            URL_SUCCESS.URL_ID: f"{url_id}",
-                            URL_SUCCESS.URL_TITLE: f"{utub_new_url_form.url_title.data}",
-                        },
-                        URL_SUCCESS.UTUB_ID: f"{utub_id}",
-                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
-                        URL_SUCCESS.ADDED_BY: f"{current_user.get_id()}",
-                    }
-                ),
-                200,
-            )
 
         else:
             # If URL does already exist, check if associated with UTub
@@ -174,37 +163,7 @@ def add_url(utub_id: int):
                 utub_id=utub_id, url_id=url_id
             ).first()
 
-            if utub_url_if_already_exists is None:
-                # URL exists and is not associated with a UTub, so associate this URL with this UTub
-                new_url_utub_association = Utub_Urls(
-                    utub_id=utub_id,
-                    url_id=already_created_url.id,
-                    user_id=current_user.id,
-                    url_title=utub_new_url_form.url_title.data,
-                )
-                db.session.add(new_url_utub_association)
-                db.session.commit()
-
-                # Succesfully associated the URL with a new UTub
-                return (
-                    jsonify(
-                        {
-                            STD_JSON.STATUS: STD_JSON.SUCCESS,
-                            STD_JSON.MESSAGE: URL_SUCCESS.URL_ADDED,
-                            URL_SUCCESS.URL: {
-                                URL_SUCCESS.URL_STRING: f"{normalized_url}",
-                                URL_SUCCESS.URL_ID: f"{url_id}",
-                                URL_SUCCESS.URL_TITLE: f"{utub_new_url_form.url_title.data}",
-                            },
-                            URL_SUCCESS.UTUB_ID: f"{utub_id}",
-                            URL_SUCCESS.UTUB_NAME: f"{utub.name}",
-                            URL_SUCCESS.ADDED_BY: f"{current_user.get_id()}",
-                        }
-                    ),
-                    200,
-                )
-
-            else:
+            if utub_url_if_already_exists is not None:
                 # URL already exists in UTub
                 return (
                     jsonify(
@@ -217,6 +176,38 @@ def add_url(utub_id: int):
                     400,
                 )
 
+        # Associate URL with given UTub
+        url_utub_user_add = Utub_Urls(
+            utub_id=utub_id,
+            url_id=url_id,
+            user_id=current_user.id,
+            url_title=utub_new_url_form.url_title.data,
+        )
+        db.session.add(url_utub_user_add)
+        db.session.commit()
+
+        # Successfully added a URL, and associated it to a UTub
+        return (
+            jsonify(
+                {
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: (
+                        URL_SUCCESS.URL_CREATED_ADDED
+                        if not already_created_url
+                        else URL_SUCCESS.URL_ADDED
+                    ),
+                    URL_SUCCESS.UTUB_ID: utub_id,
+                    URL_SUCCESS.ADDED_BY: current_user.id,
+                    URL_SUCCESS.URL: {
+                        URL_SUCCESS.URL_STRING: normalized_url,
+                        URL_SUCCESS.URL_ID: url_id,
+                        URL_SUCCESS.URL_TITLE: utub_new_url_form.url_title.data,
+                    },
+                }
+            ),
+            200,
+        )
+
     # Invalid form input
     if utub_new_url_form.errors is not None:
         return (
@@ -225,7 +216,7 @@ def add_url(utub_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
                     STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: utub_new_url_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(utub_new_url_form),
                 }
             ),
             400,
@@ -244,230 +235,7 @@ def add_url(utub_id: int):
     )
 
 
-@urls.route("/urlAndTitle/edit/<int:utub_id>/<int:url_id>", methods=["POST"])
-@email_validation_required
-def edit_url_and_title(utub_id: int, url_id: int):
-    """
-    Edits the URL contained in the UTub.
-    If user makes no edits or produces the same URL, then no edits occur.
-
-    If the user provides a different URL, then remove the old URL from URL-UTUB association table, and
-    add in the new one.
-        If the new URL does not exist in the URLS table, first add it there.
-    """
-
-    utub = Utub.query.get_or_404(utub_id)
-    utub_owner_id = int(utub.created_by.id)
-
-    # Search through all urls in the UTub for the one that matches the prescribed
-    # URL ID and get the user who added it - should be only one
-    url_in_utub: Utub_Urls = Utub_Urls.query.filter(
-        Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
-    ).first_or_404()
-
-    if current_user.id != utub_owner_id and current_user.id != url_in_utub.user_id:
-        # Can only modify URLs you added, or if you are the creator of this UTub
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                    STD_JSON.ERROR_CODE: 1,
-                }
-            ),
-            403,
-        )
-
-    edit_url_form = EditURLAndTitleForm()
-
-    if edit_url_form.validate_on_submit() and edit_url_form.url_title.data is not None:
-        url_to_change_to = edit_url_form.url_string.data.replace(" ", "")
-
-        if url_to_change_to == "":
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: URL_FAILURE.EMPTY_URL,
-                        STD_JSON.ERROR_CODE: 2,
-                    }
-                ),
-                400,
-            )
-
-        url_title_to_change_to = edit_url_form.url_title.data
-        serialized_url_in_utub = url_in_utub.serialized
-
-        if url_to_change_to == url_in_utub.url_in_utub.url_string:
-            # Identical URL
-
-            if url_title_to_change_to == url_in_utub.url_title:
-                # Identical title
-                return jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.NO_CHANGE,
-                        STD_JSON.MESSAGE: URL_NO_CHANGE.URL_AND_TITLE_NOT_MODIFIED,
-                        URL_SUCCESS.URL: serialized_url_in_utub,
-                        URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
-                    }
-                )
-
-            else:
-                # Just change the title
-                url_in_utub.url_title = url_title_to_change_to
-                new_serialized_url = url_in_utub.serialized
-                db.session.commit()
-
-                return jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.SUCCESS,
-                        STD_JSON.MESSAGE: URL_SUCCESS.URL_TITLE_MODIFIED,
-                        URL_SUCCESS.URL: new_serialized_url,
-                        URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
-                    }
-                )
-
-        # Here the user wants to try to change or modify the URL
-        try:
-            normalized_url = find_common_url(url_to_change_to)
-        except InvalidURLError:
-            # URL was unable to be verified as a valid URL
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                        STD_JSON.ERROR_CODE: 3,
-                    }
-                ),
-                400,
-            )
-
-        # Now check if url already in database
-        url_already_in_database = URLS.query.filter_by(
-            url_string=normalized_url
-        ).first()
-
-        if url_already_in_database is None:
-            # Make a new URL since URL is not already in the database
-            new_url = URLS(
-                normalized_url=normalized_url, current_user_id=current_user.id
-            )
-            db.session.add(new_url)
-            db.session.commit()
-
-            url_in_database = new_url
-        else:
-            url_in_database = url_already_in_database
-
-        # Now check if this normalized URL is the same as the original, just in case
-        if url_in_database == url_to_change_to:
-            # Same URL after normalizing
-            if url_title_to_change_to == url_in_utub.url_title:
-                # Identical title
-                return jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.NO_CHANGE,
-                        STD_JSON.MESSAGE: URL_NO_CHANGE.URL_AND_TITLE_NOT_MODIFIED,
-                        URL_SUCCESS.URL: serialized_url_in_utub,
-                        URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
-                    }
-                )
-
-            else:
-                # Just change the title
-                url_in_utub.url_title = url_title_to_change_to
-                new_serialized_url = url_in_utub.serialized
-                db.session.commit()
-
-                return jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.SUCCESS,
-                        STD_JSON.MESSAGE: URL_SUCCESS.URL_TITLE_MODIFIED,
-                        URL_SUCCESS.URL: new_serialized_url,
-                        URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                        URL_SUCCESS.UTUB_NAME: f"{utub.name}",
-                    }
-                )
-
-        # Completely new URL. Now set the URL ID for the old URL to the new URL
-        url_in_utub.url_id = url_in_database.id
-        url_in_utub.url_in_utub = url_in_database
-
-        # Finally check and update the title
-        if url_title_to_change_to != url_in_utub.url_title:
-            url_in_utub.url_title = url_title_to_change_to
-
-        # Find tags associated with URL
-        url_tags = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).all()
-
-        for url_tag in url_tags:
-            url_tag.url_id = url_in_database.id
-
-        new_serialized_url = url_in_utub.serialized
-
-        db.session.commit()
-
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    STD_JSON.MESSAGE: URL_SUCCESS.URL_OR_TITLE_MODIFIED,
-                    URL_SUCCESS.URL: new_serialized_url,
-                    URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                    URL_SUCCESS.UTUB_NAME: f"{utub.name}",
-                }
-            ),
-            200,
-        )
-
-    # Missing URL title field
-    if edit_url_form.url_title.data is None:
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-                    STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: {
-                        URL_FAILURE.URL_TITLE: URL_FAILURE.FIELD_REQUIRED
-                    },
-                }
-            ),
-            400,
-        )
-
-    # Invalid form input
-    if edit_url_form.errors is not None:
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-                    STD_JSON.ERROR_CODE: 5,
-                    STD_JSON.ERRORS: edit_url_form.errors,
-                }
-            ),
-            400,
-        )
-
-    # Something else went wrong
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                STD_JSON.ERROR_CODE: 6,
-            }
-        ),
-        404,
-    )
-
-
-@urls.route("/url/edit/<int:utub_id>/<int:url_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>", methods=["PATCH"])
 @email_validation_required
 def edit_url(utub_id: int, url_id: int):
     """
@@ -480,8 +248,8 @@ def edit_url(utub_id: int, url_id: int):
         url_id (int): The URL ID to be modified
     """
 
-    utub = Utub.query.get_or_404(utub_id)
-    utub_owner_id = int(utub.created_by.id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub_creator_id = utub.utub_creator
 
     # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
@@ -489,7 +257,7 @@ def edit_url(utub_id: int, url_id: int):
         Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
     ).first_or_404()
 
-    if current_user.id != utub_owner_id and current_user.id != url_in_utub.user_id:
+    if current_user.id != utub_creator_id and current_user.id != url_in_utub.user_id:
         # Can only modify URLs you added, or if you are the creator of this UTub
         return (
             jsonify(
@@ -505,7 +273,7 @@ def edit_url(utub_id: int, url_id: int):
     edit_url_form = EditURLForm()
 
     if edit_url_form.validate_on_submit():
-        url_to_change_to = edit_url_form.url_string.data.replace(" ", "")
+        url_to_change_to: str = edit_url_form.url_string.data.replace(" ", "")
 
         if url_to_change_to == "":
             return (
@@ -519,17 +287,15 @@ def edit_url(utub_id: int, url_id: int):
                 400,
             )
 
-        serialized_url_in_utub = url_in_utub.serialized
+        serialized_url_in_utub = url_in_utub.serialized_on_string_edit
 
-        if url_to_change_to == url_in_utub.url_in_utub.url_string:
+        if url_to_change_to == url_in_utub.standalone_url.url_string:
             # Identical URL
             return jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.NO_CHANGE,
                     STD_JSON.MESSAGE: URL_NO_CHANGE.URL_NOT_MODIFIED,
                     URL_SUCCESS.URL: serialized_url_in_utub,
-                    URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                    URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                 }
             )
 
@@ -542,7 +308,7 @@ def edit_url(utub_id: int, url_id: int):
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
+                        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL,
                         STD_JSON.ERROR_CODE: 3,
                     }
                 ),
@@ -550,7 +316,7 @@ def edit_url(utub_id: int, url_id: int):
             )
 
         # Now check if url already in database
-        url_already_in_database = URLS.query.filter_by(
+        url_already_in_database: URLS = URLS.query.filter_by(
             url_string=normalized_url
         ).first()
 
@@ -566,30 +332,32 @@ def edit_url(utub_id: int, url_id: int):
         else:
             url_in_database = url_already_in_database
 
-        # Now check if this normalized URL is the same as the original, just in case
-        if url_in_database == url_to_change_to:
+        # Now check if this normalized URL is the same as the original
+        if url_in_database.url_string == url_in_utub.standalone_url.url_string:
             # Same URL after normalizing
             return jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.NO_CHANGE,
                     STD_JSON.MESSAGE: URL_NO_CHANGE.URL_NOT_MODIFIED,
+                    URL_SUCCESS.UTUB_ID: utub.id,
+                    URL_SUCCESS.UTUB_NAME: utub.name,
                     URL_SUCCESS.URL: serialized_url_in_utub,
-                    URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                    URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                 }
             )
 
         # Completely new URL. Now set the URL ID for the old URL to the new URL
         url_in_utub.url_id = url_in_database.id
-        url_in_utub.url_in_utub = url_in_database
+        url_in_utub.standalone_url = url_in_database
 
         # Find tags associated with URL
-        url_tags = Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).all()
+        url_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+            utub_id=utub_id, url_id=url_id
+        ).all()
 
         for url_tag in url_tags:
             url_tag.url_id = url_in_database.id
 
-        new_serialized_url = url_in_utub.serialized
+        new_serialized_url = url_in_utub.serialized_on_string_edit
 
         db.session.commit()
 
@@ -598,9 +366,9 @@ def edit_url(utub_id: int, url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: URL_SUCCESS.URL_MODIFIED,
+                    URL_SUCCESS.UTUB_ID: utub.id,
+                    URL_SUCCESS.UTUB_NAME: utub.name,
                     URL_SUCCESS.URL: new_serialized_url,
-                    URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                    URL_SUCCESS.UTUB_NAME: f"{utub.name}",
                 }
             ),
             200,
@@ -614,7 +382,7 @@ def edit_url(utub_id: int, url_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
                     STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: edit_url_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(edit_url_form),
                 }
             ),
             400,
@@ -633,7 +401,7 @@ def edit_url(utub_id: int, url_id: int):
     )
 
 
-@urls.route("/urlTitle/edit/<int:utub_id>/<int:url_id>", methods=["POST"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>/title", methods=["PATCH"])
 @email_validation_required
 def edit_url_title(utub_id: int, url_id: int):
     """
@@ -645,8 +413,8 @@ def edit_url_title(utub_id: int, url_id: int):
         utub_id (int): The UTub ID containing the relevant URL title
         url_id (int): The URL ID to have the title be modified
     """
-    utub = Utub.query.get_or_404(utub_id)
-    utub_owner_id = int(utub.created_by.id)
+    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub_creator_id = utub.utub_creator
 
     # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
@@ -654,7 +422,7 @@ def edit_url_title(utub_id: int, url_id: int):
         Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
     ).first_or_404()
 
-    if current_user.id != utub_owner_id and current_user.id != url_in_utub.user_id:
+    if current_user.id != utub_creator_id and current_user.id != url_in_utub.user_id:
         # Can only modify titles for URLs you added, or if you are the creator of this UTub
         return (
             jsonify(
@@ -671,32 +439,24 @@ def edit_url_title(utub_id: int, url_id: int):
 
     if edit_url_title_form.validate_on_submit():
         url_title_to_change_to = edit_url_title_form.url_title.data
-        serialized_url_in_utub = url_in_utub.serialized
+        serialized_url_in_utub = url_in_utub.serialized_on_title_edit
+        title_diff = url_title_to_change_to != url_in_utub.url_title
 
-        if url_title_to_change_to == url_in_utub.url_title:
-            # Identical title
-            return jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.NO_CHANGE,
-                    STD_JSON.MESSAGE: URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED,
-                    URL_SUCCESS.URL: serialized_url_in_utub,
-                    URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                    URL_SUCCESS.UTUB_NAME: f"{utub.name}",
-                }
-            )
-
-        # Change the title
-        url_in_utub.url_title = url_title_to_change_to
-        new_serialized_url = url_in_utub.serialized
-        db.session.commit()
+        if title_diff:
+            # Change the title
+            url_in_utub.url_title = url_title_to_change_to
+            serialized_url_in_utub = url_in_utub.serialized_on_title_edit
+            db.session.commit()
 
         return jsonify(
             {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: URL_SUCCESS.URL_TITLE_MODIFIED,
-                URL_SUCCESS.URL: new_serialized_url,
-                URL_SUCCESS.UTUB_ID: f"{utub.id}",
-                URL_SUCCESS.UTUB_NAME: f"{utub.name}",
+                STD_JSON.STATUS: STD_JSON.SUCCESS if title_diff else STD_JSON.NO_CHANGE,
+                STD_JSON.MESSAGE: (
+                    URL_SUCCESS.URL_TITLE_MODIFIED
+                    if title_diff
+                    else URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
+                ),
+                URL_SUCCESS.URL: serialized_url_in_utub,
             }
         )
 
@@ -724,7 +484,7 @@ def edit_url_title(utub_id: int, url_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
                     STD_JSON.ERROR_CODE: 3,
-                    STD_JSON.ERRORS: edit_url_title_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(edit_url_title_form),
                 }
             ),
             400,

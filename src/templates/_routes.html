@@ -3,7 +3,7 @@
         constructor() {
             if (!Routes.instance) {
                 // UTub routes
-                this.addUtub = "{{url_for('utubs.create_utub')}}";
+                this.addUtub = "{{url_for('utubs.add_utub')}}";
                 this.deleteUtub = (utub_id) => 
                     "{{url_for('utubs.delete_utub', utub_id=-1)}}".replace("-1", utub_id);
                 this.editUtubName = (utub_id) => 
@@ -14,8 +14,8 @@
                 // URL routes
                 this.addUrl = (utub_id) => 
                     "{{url_for('urls.add_url', utub_id=-1)}}".replace("-1", utub_id);
-                this.deleteUrl = (utub_id, url_id) => 
-                    "{{url_for('urls.delete_url', utub_id=-1, url_id=-2)}}"
+                this.removeUrl = (utub_id, url_id) => 
+                    "{{url_for('urls.remove_url', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
                 this.editUrl = (utub_id, url_id) => 
@@ -44,12 +44,22 @@
                         .replace("-3", tag_id)
 
                 // User routes
-                this.addUser = (utub_id) => 
-                    "{{url_for('users.add_user', utub_id=-1)}}".replace("-1", utub_id);
-                this.deleteUser = (utub_id, user_id) => 
-                    "{{url_for('users.delete_user', utub_id=-1, user_id=-4)}}"
+                this.addMember = (utub_id) => 
+                    "{{url_for('members.add_member', utub_id=-1)}}".replace("-1", utub_id);
+                this.removeMember = (utub_id, user_id) => 
+                    "{{url_for('members.remove_member', utub_id=-1, user_id=-4)}}"
                         .replace("-1", utub_id)
                         .replace("-4", user_id);
+
+                // Splash routes
+                this.login = () => "{{url_for('splash.login')}}";
+                this.register = () => "{{url_for('splash.register_user')}}";
+                this.confirm_email_after_register = () => "{{url_for('splash.confirm_email_after_register')}}";
+                this.send_validation_email = () => "{{url_for('splash.send_validation_email')}}";
+                this.forgot_password = () => "{{url_for('splash.forgot_password')}}";
+                
+                // Logout
+                this.logout = () => "{{url_for('users.logout')}}";
 
                 Routes.instance = this;
             }
