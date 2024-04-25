@@ -17,7 +17,7 @@
                 this.addURL = (utub_id) =>
                     "{{url_for('urls.add_url', utub_id=-1)}}".replace("-1", utub_id);
                 this.deleteURL = (utub_id, url_id) =>
-                    "{{url_for('urls.delete_url', utub_id=-1, url_id=-2)}}"
+                    "{{url_for('urls.remove_url', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
                 this.editURL = (utub_id, url_id) =>

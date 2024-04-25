@@ -80,26 +80,9 @@ function getNumOfUTubs() {
   return $("#listUTubs > .UTub").length;
 }
 
-// Function to count number of UTubs current user has access to
-function getNumOfUTubs() {
-  return $("#listUTubs > .UTub").length;
-}
-
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function getActiveUTubID() {
   return $(".UTub.active").attr("utubid");
-}
-
-// Streamline the jQuery selector for the UTub Selector.
-function getUTubSelectorElemFromID(id) {
-  return $("div.UTub[utubid='" + id + "']");
-}
-
-// Streamline the extraction of a UTub array element from its ID
-function getUTubObjFromID(id) {
-  UTubs.forEach(function (UTub) {
-    if (UTub.id === id) return UTub;
-  });
 }
 
 // Streamline the jQuery selector for the UTub Selector.
@@ -122,11 +105,6 @@ function getUTubIDFromName(name) {
     if (UTub.name === name) UTubIDs.push(UTub.id);
   });
   return UTubIDs;
-}
-
-// Streamline the jQuery selector extraction of UTub name.
-function getCurrentUTubName() {
-  return $("div.UTub.active").find(".UTubName").text();
 }
 
 // Streamline the jQuery selector extraction of UTub name.
