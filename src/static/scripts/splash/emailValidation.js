@@ -16,7 +16,7 @@ function handleValidateEmail(event = null) {
   event !== null ? event.preventDefault() : null;
 
   const validateEmailRequest = $.ajax({
-    url: routes.send_validation_email(),
+    url: routes.sendValidationEmail(),
     type: "POST",
     data: $("#ModalForm").serialize(),
   });

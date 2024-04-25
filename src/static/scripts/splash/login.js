@@ -23,7 +23,7 @@ function openRegisterModalFromLogin() {
 }
 
 function openForgotPasswordModal() {
-  const modalOpener = $.get(routes.forgot_password());
+  const modalOpener = $.get(routes.forgotPassword());
 
   modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;

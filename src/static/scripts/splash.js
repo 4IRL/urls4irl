@@ -104,7 +104,7 @@ function handleUserHasAccountNotEmailValidated(message) {
 }
 
 function emailValidationModalOpener() {
-  const modalOpener = $.get(routes.confirm_email_after_register());
+  const modalOpener = $.get(routes.confirmEmailAfterRegister());
 
   modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;

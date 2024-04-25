@@ -7,7 +7,7 @@ function handleForgotPassword(event) {
   $("#submit").attr("disabled", "disabled");
 
   const forgotPasswordRequest = $.ajax({
-    url: routes.forgot_password(),
+    url: routes.forgotPassword(),
     type: "POST",
     data: $("#ModalForm").serialize(),
   });

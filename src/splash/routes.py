@@ -38,6 +38,11 @@ STD_JSON = STD_JSON_RESPONSE
 splash = Blueprint("splash", __name__)
 
 
+@splash.route("/invalid")
+def error_page():
+    abort(404)
+
+
 @splash.route("/", methods=["GET"])
 def splash_page():
     """Splash page for an unlogged in user."""
