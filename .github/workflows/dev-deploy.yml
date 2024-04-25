@@ -9,6 +9,7 @@ on:
 
 jobs:
     DevDeploy:
+        name: Deploy to development server
         runs-on: ubuntu-latest
 
         steps:
