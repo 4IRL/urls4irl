@@ -1,19 +1,9 @@
-/** U4I-related constants **/
-
-const ICON_WIDTH = 30;
-const ICON_HEIGHT = ICON_WIDTH;
-
 /** U4I UI Interactions **/
 
 $(document).ready(function () {
   // Dev tracking of click-triggered objects
   $(document).on("click", function (e) {
     console.log($(e.target)[0]);
-  });
-
-  $("svg").attr({
-    width: ICON_WIDTH,
-    height: ICON_HEIGHT,
   });
 
   // CSRF token initialization for non-modal POST requests
@@ -101,8 +91,9 @@ function hideInputs() {
   $(".createDiv").each(function () {
     hideIfShown($(this));
   });
-  editURLHideInput();
-  editUTubHideInput();
+  // editURLHideInput();
+  // editUTubNameHideInput();
+  // editUTubDescriptionHideInput();
 }
 
 // Hide specified input field. Typically done if user successfully completes, or cancels an action
@@ -120,6 +111,10 @@ function clearInputs() {
 // Clear specified input field. Typically done if user successfully completes, or cancels an action
 function clearInput(handle) {
   $("#" + handle).val("");
+}
+
+function isEmpty(el) {
+  return !$.trim(el.html());
 }
 
 // Where el is the DOM element you'd like to test for visibility
@@ -170,6 +165,68 @@ function unbindEnter() {
   });
 }
 
+// Creates edit button
+function makeEditButton(wh) {
+  const editBtn = document.createElement("i");
+
+  // Edit icon box
+  let htmlString =
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16" width="' +
+    wh +
+    '" height="' +
+    wh +
+    '">' +
+    '<path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>' +
+    "</svg>";
+
+  $(editBtn)
+    .addClass("mx-1 py-2")
+    .attr({
+      style: "color: #545454",
+    })
+    .html(htmlString);
+
+  return editBtn;
+}
+
+// Creates submit button
+function makeSubmitButton(wh) {
+  const submitBtn = document.createElement("i");
+
+  // Submit checkbox
+  let htmlString =
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-check-square-fill" viewBox="0 0 16 16" width="' +
+    wh +
+    '" height="' +
+    wh +
+    '">' +
+    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z"/>' +
+    "</svg>";
+
+  $(submitBtn).addClass("mx-1 green-clickable").html(htmlString);
+
+  return submitBtn;
+}
+
+// Creates cancel button
+function makeCancelButton(wh) {
+  const cancelBtn = document.createElement("i");
+
+  // Cancel x-box
+  htmlString =
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger" viewBox="0 0 16 16" width="' +
+    wh +
+    '" height="' +
+    wh +
+    '">' +
+    '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
+    "</svg>";
+
+  $(cancelBtn).addClass("mx-1").html(htmlString);
+
+  return cancelBtn;
+}
+
 // I'd like a universal function to bind enter key but it doesn't work...01/03/24
 // $(document).on("keyup", function (e) {
 //   if (e.keyCode === 13) {
@@ -177,3 +234,22 @@ function unbindEnter() {
 //     e.target.blur();
 //   }
 // });
+
+function displayState0() {
+  hideInputs();
+  displayState0TagDeck();
+  resetTagDeck();
+  displayState0URLDeck();
+  resetURLDeck();
+  displayState0UTubDescriptionDeck();
+  displayState0UserDeck();
+  resetUserDeck();
+}
+
+function displayState1() {
+  displayState1UTubDeck(null, null);
+  displayState1TagDeck();
+  displayState1URLDeck();
+  displayState1UTubDescriptionDeck();
+  displayState1UserDeck();
+}

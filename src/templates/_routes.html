@@ -3,47 +3,50 @@
         constructor() {
             if (!Routes.instance) {
                 // UTub routes
-                this.addUtub = "{{url_for('utubs.add_utub')}}";
-                this.deleteUtub = (utub_id) => 
+
+                this.addUTub = "{{url_for('utubs.add_utub')}}";
+                this.deleteUTub = (utub_id) => 
                     "{{url_for('utubs.delete_utub', utub_id=-1)}}".replace("-1", utub_id);
-                this.editUtubName = (utub_id) => 
+                this.editUTubName = (utub_id) =>
                     "{{url_for('utubs.update_utub_name', utub_id=-1)}}".replace("-1", utub_id);
-                this.editutubDescription = (utub_id) => 
+                // 04/04/24 DP "update" --> "edit"
+                this.editUTubDescription = (utub_id) =>
                     "{{url_for('utubs.update_utub_desc', utub_id=-1)}}".replace("-1", utub_id);
 
                 // URL routes
-                this.addUrl = (utub_id) => 
+                this.addURL = (utub_id) =>
                     "{{url_for('urls.add_url', utub_id=-1)}}".replace("-1", utub_id);
-                this.removeUrl = (utub_id, url_id) => 
+                this.deleteURL = (utub_id, url_id) =>
                     "{{url_for('urls.remove_url', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
-                this.editUrl = (utub_id, url_id) => 
+                this.editURL = (utub_id, url_id) =>
                     "{{url_for('urls.edit_url', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
-                this.editUrlTitle = (utub_id, url_id) => 
+                this.editURLTitle = (utub_id, url_id) =>
                     "{{url_for('urls.edit_url_title', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
 
                 // Tag routes
-                this.addTag = (utub_id, url_id) => 
+                this.addTag = (utub_id, url_id) =>
                     "{{url_for('tags.add_tag', utub_id=-1, url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id);
-                this.removeTag = (utub_id, url_id, tag_id) => 
+                this.removeTag = (utub_id, url_id, tag_id) =>
                     "{{url_for('tags.remove_tag', utub_id=-1, url_id=-2, tag_id=-3)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id)
                         .replace("-3", tag_id);
-                this.modifyTag = (utub_id, url_id, tag_id) => 
+                // 04/04/24 DP "modify" --> "edit"
+                this.editTag = (utub_id, url_id, tag_id) =>
                     "{{url_for('tags.modify_tag_on_url', utub_id=-1, url_id=-2, tag_id=-3)}}"
                         .replace("-1", utub_id)
                         .replace("-2", url_id)
                         .replace("-3", tag_id)
 
-                // User routes
+                // Member routes
                 this.addMember = (utub_id) => 
                     "{{url_for('members.add_member', utub_id=-1)}}".replace("-1", utub_id);
                 this.removeMember = (utub_id, user_id) => 

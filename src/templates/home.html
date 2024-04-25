@@ -13,32 +13,41 @@
 
     <!-- UTubs -->
     <div id="UTubDeck" class="deck row h-50 p-3">
-        <div class="col-6 col-lg-6">
-            <h2 id="UTubDeckHeader"></h2>
-        </div>
-        <div class="col-6 col-lg-6 d-flex flex-row-reverse">
-            <!-- Delete UTub button -->
-            <i id="deleteUTubBtn" class="mx-1" style="display:none">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger"
-                    viewBox="0 0 16 16">
-                    <path
-                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
-                </svg></i>
+        <div class="row">
+            <!-- Header -->
+            <div class="col-6 col-lg-6">
+                <h2 id="UTubDeckHeader">UTubs</h2>
+            </div>
+            <!-- Icons -->
+            <div class="col-6 col-lg-6 d-flex flex-row-reverse">
+                <!-- Delete UTub button -->
+                <i id="deleteUTubBtn" class="mx-1" style="display:none">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger"
+                        width="30" height="30" viewBox="0 0 16 16">
+                        <path
+                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
+                    </svg></i>
 
-            <!-- Create UTub button -->
-            <i id="createUTubBtn" class="green-clickable mx-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
-                    viewBox="0 0 16 16">
-                    <path
-                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
-                </svg>
-            </i>
+                <!-- Create UTub button -->
+                <i id="createUTubBtn" class="green-clickable mx-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill" width="30" height="30"
+                        viewBox="0 0 16 16">
+                        <path
+                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
+                    </svg>
+                </i>
+            </div>
         </div>
 
-        <div class="deckContent">
-            <form id="listUTubs">
+        <div class="row">
+            <!-- Subheader -->
+            <h5 id="UTubDeckSubheader">Create a UTub</h5>
+        </div>
+
+        <div class="row deckContent">
+            <div id="listUTubs">
                 <!-- UTubs -->
-            </form>
+            </div>
         </div>
     </div>
 
@@ -46,7 +55,7 @@
     <!-- Tags -->
     <div id="TagDeck" class="deck row h-50 p-3">
         <div class="col-9 col-lg-9">
-            <h2 id="TagDeckHeader">No UTub Selected</h2>
+            <h2 id="TagDeckHeader">Tags</h2>
         </div>
         <div class="col-3 col-lg-3 text-right">
             <div class="d-flex justify-content-center flex-row">
@@ -72,11 +81,17 @@
                 </i> -->
             </div>
         </div>
-        <div class="deckContent form-group">
-            <h5 id="noTagsHeader">No tags applied to any URLs in this UTub</h5>
-            <form id="listTags">
+
+        <div class="row">
+            <!-- Subheader -->
+            <h5 id="TagDeckSubheader">
+                </h2>
+        </div>
+
+        <div class="row deckContent">
+            <div id="listTags">
                 <!-- Tags -->
-            </form>
+            </div>
         </div>
     </div>
 </div>
@@ -87,18 +102,19 @@
 
 <div id="centerPanel" class="panel col-md-6">
     <div id="URLDeck" class="deck row h-100 p-3">
+        <!-- Header -->
         <div class="row justify-content-center">
 
             <div class="col-9 col-lg-9" style="display:flex">
-                <!-- UTub name -->
-                <h2 id="URLDeckHeader"></h2>
+                <!-- Header -->
+                <h2 id="URLDeckHeader">URLs</h2>
 
                 <!-- Edit UTub name -->
                 <div class="createDiv" style="display: none">
                     <input type="text" id="editUTubName" class="userInput">
 
                     <!-- Submit edit UTub name -->
-                    <i class="submitEditUTubBtn green-clickable mx-1 py-2">
+                    <i id="submitEditUTubNameBtn" class="green-clickable mx-1 py-2">
                         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                             class="bi bi-check-square-fill" viewBox="0 0 16 16">
                             <path
@@ -108,7 +124,7 @@
                 </div>
 
                 <!-- Edit UTub button -->
-                <i class="editUTubBtn mx-1 py-2" style="display: none; color: #545454">
+                <i id="editUTubNameBtn" class="mx-1 py-2" style="display: none; color: #545454">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
                         class="bi bi-pencil-square" viewBox="0 0 16 16">
                         <path
@@ -119,10 +135,10 @@
                 </i>
             </div>
 
+            <!-- Add URL button -->
             <div class="col-3 col-lg-3 d-flex flex-row-reverse">
-                <!-- Add URL button -->
                 <i id="addURLBtn" class="green-clickable mx-1" style="display: none;">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
+                    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
                         class="bi bi-plus-square-fill" viewBox="0 0 16 16">
                         <path
                             d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
@@ -131,6 +147,12 @@
             </div>
         </div>
 
+        <div class="row">
+            <!-- Subheader -->
+            <h5 id="URLDeckSubheader"></h5>
+        </div>
+
+        <!-- URLs -->
         <div class="row deckContent justify-content-center">
             <div id="listURLs">
                 <!-- Current selected UTub's URLs will be displayed here -->
@@ -148,8 +170,8 @@
 
         <!-- Access all URLs button -->
         <div class="row justify-content-center">
-            <button id="accessAllURLsBtn" class="btn btn-primary " style="display: none; width: 25%">Access All URLs in
-                UTub</button>
+            <button id="accessAllURLsBtn" class="btn btn-primary" style="display: none; width: 25%">Access All URLs
+                in UTub</button>
         </div>
     </div>
 </div>
@@ -168,7 +190,7 @@
 
             <div class="col-3 col-lg-3 d-flex flex-row-reverse">
                 <!-- Edit button -->
-                <i class="editUTubBtn mx-1 py-2" style="display: none; color: #545454">
+                <i id="editUTubDescriptionBtn" class="mx-1 py-2" style="display: none; color: #545454">
                     <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
                         class="bi bi-pencil-square" viewBox="0 0 16 16">
                         <path
@@ -178,7 +200,7 @@
                     </svg>
                 </i>
                 <!-- Submit edit button -->
-                <i class="submitEditUTubBtn green-clickable mx-1 py-2" style="display: none">
+                <i id="submitEditUTubDescriptionBtn" class="green-clickable mx-1 py-2" style="display: none">
                     <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor"
                         class="bi bi-check-square-fill" viewBox="0 0 16 16">
                         <path
@@ -186,6 +208,11 @@
                     </svg>
                 </i>
             </div>
+        </div>
+
+        <div class="row">
+            <!-- Subheader -->
+            <h5 id="UTubDescriptionDeckSubheader">Add a description</h5>
         </div>
 
         <div class="row">
@@ -200,27 +227,35 @@
 
 
     <div id="UsersDeck" class="deck row h-50 p-3">
-        <div class="col-6 col-lg-6">
-            <h2 id="UserDeckHeader">Users</h2>
-        </div>
-        <div class="col-6 col-lg-6 d-flex flex-row-reverse">
-            <!-- Add user button -->
-            <i id="addUserBtn" class="green-clickable mx-1">
-                <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
-                    viewBox="0 0 16 16">
-                    <path
-                        d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
-                </svg>
-            </i>
+
+        <div class="row">
+            <div class="col-6 col-lg-6">
+                <h2 id="UserDeckHeader">Users</h2>
+            </div>
+            <div class="col-6 col-lg-6 d-flex flex-row-reverse">
+                <!-- Add user button -->
+                <i id="addUserBtn" class="green-clickable mx-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
+                        width="30" height="30" viewBox="0 0 16 16">
+                        <path
+                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
+                    </svg>
+                </i>
+            </div>
         </div>
 
-        <div class="deckContent">
-            <h5><u><b>Owner</b></u></h5>
-            <span id="UTubOwner"></span>
+        <div class="row">
+            <!-- Subheader -->
+            <h5 id="UserDeckSubheader">Add a user</h5>
+        </div>
+
+        <div class="row deckContent">
             <h5><u><b>Users</b></u></h5>
-            <form id="listUsers">
+            <div id="listUsers">
                 <!-- Users -->
-            </form>
+            </div>
+            <h5><u><b>Owner</b></u></h5>
+            <div id="UTubOwner"></div>
         </div>
     </div>
 </div>
@@ -230,9 +265,13 @@
 <!-- Home Page JS -->
 <script src="{{ url_for('static', filename='scripts/utils.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/utubs.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/utubs_routes.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/tags.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/tags_routes.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/urls.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/urls_routes.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/users.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/users_routes.js') }}"></script>
 <script src="{{ url_for('static', filename='scripts/dragdropswap.js') }}"></script>
 
 {% endblock %}

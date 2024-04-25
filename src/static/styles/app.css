@@ -163,7 +163,7 @@ svg {
 
 /* Tags */
 
-span.tag {
+span.tagBadge {
     color: var(--splashGreen);
     background: white;
     margin-left: 2px;
@@ -176,7 +176,7 @@ span.tag {
     white-space: nowrap;
 }
 
-span.tag:hover .tag-remove {
+span.tagBadge:hover .tag-remove {
     display: inline-block;
     line-height: 100%;
     height: 100%;
