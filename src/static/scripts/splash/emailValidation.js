@@ -2,7 +2,7 @@
 
 $("#submit").click((event) => handleValidateEmail(event));
 
-$("#SplashModal").on("hide.bs.modal", function (e) {
+$("#SplashModal").on("hide.bs.modal", function (_) {
   $("#SplashModal").off("hide.bs.modal");
   const searchParams = new URLSearchParams(window.location.search);
   if (searchParams.has("token")) {
@@ -30,29 +30,29 @@ function handleValidateEmail(event = null) {
   );
 }
 
-function handleValidateEmailSuccess(response, textStatus, xhr) {
+function handleValidateEmailSuccess(response, _, xhr) {
   if (xhr.status === 200) {
     // Email sent!
-    showSplashModalAlertBanner(xhr.responseJSON.Message, "success");
+    showSplashModalAlertBanner(xhr.responseJSON.message, "success");
   }
 }
 
-function handleValidateEmailFailure(xhr, textStatus, error) {
-  if (xhr.status == 429 && xhr.responseJSON.hasOwnProperty("errorCode")) {
+function handleValidateEmailFailure(xhr, _, error) {
+  if (xhr.status === 429 && xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.responseJSON.errorCode) {
       case 1:
-        showSplashModalAlertBanner(xhr.responseJSON.Message, "danger");
+        showSplashModalAlertBanner(xhr.responseJSON.message, "danger");
         break;
       case 2:
-        showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
+        showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
         break;
     }
   } else if (
-    xhr.status == 400 &&
+    xhr.status === 400 &&
     xhr.responseJSON.hasOwnProperty("errorCode")
   ) {
-    if (xhr.responseJSON.errorCode == 3 || xhr.responseJSON.errorCode == 4) {
-      showSplashModalAlertBanner(xhr.responseJSON.Message, "warning");
+    if (xhr.responseJSON.errorCode === 3 || xhr.responseJSON.errorCode === 4) {
+      showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
     }
   } else {
     // TODO: Handle other errors here.

@@ -24,7 +24,7 @@ function setToLoginButton() {
 function loginModalOpener() {
   const modalOpener = $.get(routes.login());
 
-  modalOpener.done((data, textStatus, xhr) => {
+  modalOpener.done((data, _, xhr) => {
     if (xhr.status === 200) {
       $("#SplashModal .modal-content").html(data);
       bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
@@ -40,7 +40,7 @@ function loginModalOpener() {
 function registerModalOpener() {
   const modalOpener = $.get(routes.register());
 
-  modalOpener.done((data, textStatus, xhr) => {
+  modalOpener.done((data, _, xhr) => {
     if (xhr.status === 200) {
       $("#SplashModal .modal-content").html(data);
       bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
@@ -106,7 +106,7 @@ function handleUserHasAccountNotEmailValidated(message) {
 function emailValidationModalOpener() {
   const modalOpener = $.get(routes.confirm_email_after_register());
 
-  modalOpener.done((data, textStatus, xhr) => {
+  modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
   });
 
@@ -154,7 +154,7 @@ function displayFormErrors(key, errorMessage) {
 
 // Extension to allow removal of a class based on a prefix
 $.fn.removeClassStartingWith = function (filter) {
-  $(this).removeClass(function (index, className) {
+  $(this).removeClass(function (_, className) {
     return (
       className.match(new RegExp("\\S*" + filter + "\\S*", "g")) || []
     ).join(" ");

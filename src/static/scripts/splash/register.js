@@ -10,9 +10,8 @@ $("#submit").click((event) => handleRegister(event));
 
 function loginModalOpenerFromRegister() {
   const modalOpener = $.get(routes.login());
-  const splashModal = $("#SplashModal .modal-content");
 
-  modalOpener.done((data, textStatus, xhr) => {
+  modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
   });
 
@@ -39,13 +38,13 @@ function handleRegister(event) {
   );
 }
 
-function handleRegisterSuccess(response, textStatus, xhr) {
+function handleRegisterSuccess(response, _, xhr) {
   if (xhr.status === 201) {
     $("#SplashModal .modal-content").html(response);
   }
 }
 
-function handleRegisterFailure(xhr, textStatus, error) {
+function handleRegisterFailure(xhr, _, error) {
   if (xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.status) {
       case 400: {
@@ -55,7 +54,7 @@ function handleRegisterFailure(xhr, textStatus, error) {
       }
       case 401: {
         // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated(xhr.responseJSON.Message);
+        handleUserHasAccountNotEmailValidated(xhr.responseJSON.message);
         $("input").attr("disabled", true);
         break;
       }
