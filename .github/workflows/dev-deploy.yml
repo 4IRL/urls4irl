@@ -1,3 +1,5 @@
+name: Deploy to development server
+
 on:
     pull_request:
         branches:
@@ -10,15 +12,25 @@ jobs:
         runs-on: ubuntu-latest
 
         steps:
-            - name: Deploy to devices
+            - name: Deploy to development server
               id: deploy-to-dev
               run: |
-                  echo "status_code=$(curl -s -o /dev/null -w "%{http_code}" --location 'https://dev.urls4irl.app/restart' --header 'CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_SECRET }}' --header 'CF-Access-Client-Id: ${{ secrets.CF_ACCESS_ID }}')" >> $GITHUB_OUTPUT
+                echo "### Deploying to development server... :rocket:" >> $GITHUB_STEP_SUMMARY;
+                echo "status_code=$(curl -s -o /dev/null -w "%{http_code}" --location 'https://dev.urls4irl.app/restart' --header 'CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_SECRET }}' --header 'CF-Access-Client-Id: ${{ secrets.CF_ACCESS_ID }}')" >> $GITHUB_OUTPUT
 
-            - name: Verify deployed
+            - name: Verify not rate limited
               if: steps.deploy-to-dev.outputs.status_code == '500'
-              run: exit 1
+              run: |
+                echo "### Failed: Please wait 20 seconds between deployments :racehorse:" >> $GITHUB_STEP_SUMMARY
+                exit 1;
+
+            - name: Verify not unknown error
+              if: steps.deploy-to-dev.outputs.status_code != '200'
+              run: |
+                echo "### Failed: Error with development server or cloudflare authentication" >> $GITHUB_STEP_SUMMARY
+                exit 2;
 
             - name: End Action
-              run: echo "Successfully deployed on dev"
+              run: |
+                echo "### Success! Successfully dev branch on development server :sunglasses:" >> $GITHUB_STEP_SUMMARY
 
