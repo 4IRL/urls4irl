@@ -715,6 +715,17 @@ The HTML body on a 200 response contains the following JSON.
 <details>
  <summary><code>POST</code> <code><b>/utubs</b></code> <code>(create a new UTub)</code></summary>
 
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utfâˆ’8`.
+
+Required form data:
+> ```
+> name: %NewUTubName%
+> description: %UTubDescription%
+> csrf_token: %csrf_token%
+> ```
+
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
@@ -928,7 +939,7 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utfâˆ
 
 Required form data:
 > ```
-> name: %NewUTubName%
+> description: %NewUTubDescription%
 > csrf_token: %csrf_token%
 > ```
 
