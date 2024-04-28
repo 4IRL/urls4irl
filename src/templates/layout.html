@@ -62,6 +62,12 @@
     <!-- Custom CSS adjustments -->
     <link rel="stylesheet" href="/static/styles/app.css">
 
+    {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+    <link rel="stylesheet" href="/static/styles/home.css">
+    {% else %}
+    <link rel="stylesheet" href="/static/styles/splash.css">
+    {% endif %}
+
     <!-- Favicon -->
     <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-touch-icon.png">
     <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
@@ -71,7 +77,7 @@
     <title>URLS4IRL</title>
 </head>
 
-<body class="vh-100"> 
+<body class="vh-100">
     <!-- Includes jinja2 generated routes globally for use by frontend -->
     {% include '_routes.html' %}
 

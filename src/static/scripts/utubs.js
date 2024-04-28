@@ -200,18 +200,6 @@ function createUTubSelector(UTubName, UTubID, index) {
       e.preventDefault();
       selectUTub(UTubID);
     });
-  $(container)
-    .addClass("UTub draw")
-    .attr({
-      utubid: UTubID,
-      position: index,
-    })
-    // Bind display state change function on click
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      selectUTub(UTubID);
-    });
 
   $(name).addClass("UTubName").text(UTubName);
 
