@@ -77,17 +77,17 @@ $(document).ready(function () {
 
 // Function to count number of UTubs current user has access to
 function getNumOfUTubs() {
-  return $("#listUTubs > .UTub").length;
+  return $("#listUTubs > .UTubSelector").length;
 }
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function getActiveUTubID() {
-  return $(".UTub.active").attr("utubid");
+  return $(".UTubSelector.active").attr("utubid");
 }
 
 // Streamline the jQuery selector for the UTub Selector.
 function getUTubSelectorElemFromID(id) {
-  return $("div.UTub[utubid='" + id + "']");
+  return $(".UTubSelector[utubid='" + id + "']");
 }
 
 // Streamline the extraction of a UTub array element from its ID
@@ -109,7 +109,7 @@ function getUTubIDFromName(name) {
 
 // Streamline the jQuery selector extraction of UTub name.
 function getCurrentUTubName() {
-  return $("div.UTub.active").find(".UTubName").text();
+  return $(".UTubSelector.active").text();
 }
 
 // Streamline the AJAX call to db for updated info
@@ -156,8 +156,8 @@ function selectUTub(selectedUTubID) {
     let UTubName = selectedUTub.name;
     let dictURLs = selectedUTub.urls;
     let dictTags = selectedUTub.tags;
-    let dictUsers = selectedUTub.members;
-    let UTubOwnerID = selectedUTub.created_by;
+    let dictMembers = selectedUTub.members;
+    let UTubOwnerID = selectedUTub.createdByUserID;
     let UTubDescription = selectedUTub.description;
 
     // LH panels
@@ -177,19 +177,19 @@ function selectUTub(selectedUTubID) {
     else displayState1UTubDescriptionDeck();
 
     // Users deck
-    buildUserDeck(dictUsers, UTubOwnerID);
+    buildUserDeck(dictMembers, UTubOwnerID);
   });
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
 function createUTubSelector(UTubName, UTubID, index) {
-  let container = document.createElement("div");
-  let name = document.createElement("b");
-  let label = document.createElement("label");
-  let radio = document.createElement("input");
+  let UTubSelector = document.createElement("div");
+  let UTubSelectorText = document.createElement("b");
 
-  $(container)
-    .addClass("UTub draw")
+  $(UTubSelectorText).addClass("UTubName").text(UTubName);
+
+  $(UTubSelector)
+    .addClass("UTubSelector")
     .attr({
       utubid: UTubID,
       position: index,
@@ -199,21 +199,10 @@ function createUTubSelector(UTubName, UTubID, index) {
       e.stopPropagation();
       e.preventDefault();
       selectUTub(UTubID);
-    });
+    })
+    .append(UTubSelectorText);
 
-  $(name).addClass("UTubName").text(UTubName);
-
-  $(label).attr({ for: "UTub-" + UTubID });
-
-  $(radio).attr({
-    type: "radio",
-    id: "UTub-" + UTubID,
-    value: UTubName,
-  });
-
-  $(container).append(name).append(label).append(radio);
-
-  return container;
+  return UTubSelector;
 }
 
 // Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
@@ -319,9 +308,6 @@ function displayState1UTubDeck(selectedUTubID, UTubOwnerID) {
     showIfHidden($("#editUTubNameBtn"));
     showIfHidden($("#editUTubDescriptionBtn"));
   }
-
-  console.log(getCurrentUserID());
-  console.log(UTubOwnerID);
 
   if (getCurrentUserID() === UTubOwnerID) {
     showIfHidden($("#deleteUTubBtn"));

@@ -17,6 +17,9 @@ function addUTub() {
   // Extract data to submit in POST request
   [postURL, data] = addUTubSetup();
 
+  console.log(postURL);
+  console.log(data);
+
   let request = AJAXCall("post", postURL, data);
 
   // Handle response
@@ -318,7 +321,7 @@ function deleteUTub() {
   // Extract data to submit in POST request
   postURL = deleteUTubSetup();
 
-  let request = AJAXCall("post", postURL, []);
+  let request = AJAXCall("delete", postURL, []);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -353,7 +356,7 @@ function deleteUTubSuccess() {
 
   // Update UTub Deck
   let currentUTubID = getActiveUTubID();
-  let UTubSelector = $("div[utubid=" + currentUTubID + "]");
+  let UTubSelector = $(".UTubSelector[utubid=" + currentUTubID + "]");
   UTubSelector.fadeOut();
   UTubSelector.remove();
 
@@ -362,7 +365,8 @@ function deleteUTubSuccess() {
 
   displayState1UTubDeck(null, null);
 
-  if ($("#listUTubs").find("div.UTub").length == 0) displayState0UTubDeck();
+  if ($("#listUTubs").find(".UTubSelector").length == 0)
+    displayState0UTubDeck();
 }
 
 function deleteUTubFailure(response, textStatus, xhr) {

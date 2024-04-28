@@ -1,9 +1,3 @@
-/** User-related constants **/
-
-// Routes
-const ADD_USER_ROUTE = "/user/add/"; // +<int:utub_id>
-const REMOVE_USER_ROUTE = "/user/remove/"; // +<int:utub_id>/<int:user_id>
-
 /** User UI Interactions **/
 
 $(document).ready(function () {
@@ -31,7 +25,7 @@ $(document).ready(function () {
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
 function getCurrentUserID() {
-  return parseInt($("li.nav-item.user").attr("id"));
+  return parseInt($("li.nav-item.user").attr("userID"));
 }
 
 // Simple function to streamline the jQuery selector extraction of selected UTub creator user ID. And makes it easier in case the ID is encoded in a new location in the future

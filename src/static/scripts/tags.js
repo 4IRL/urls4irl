@@ -1,7 +1,3 @@
-const EDIT_TAG_ROUTE = "/tag/modify/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
-const REMOVE_TAG_ROUTE = "/tag/remove/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
-// Small DP 09/25 consistency to 'modify' -> 'edit'?
-
 /* Tag UI Interactions */
 
 $(document).ready(function () {

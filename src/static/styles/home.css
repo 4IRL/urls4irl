@@ -1,32 +1,3 @@
-/** HTML DOM Elements **/
-
-input[type=radio] {
-    display: none;
-    background: none;
-    border: 0;
-    box-sizing: border-box;
-    box-shadow: inset 0 0 0 2px var(--deckSelectionGreen);
-    color: var(--deckSelectionGreen);
-    font-size: inherit;
-    font-weight: 700;
-    margin: 1em;
-    padding: 1em 2em;
-    text-align: center;
-    text-transform: capitalize;
-    width: 100%;
-    position: relative;
-    vertical-align: middle;
-}
-
-input[type=radio]::before,
-input[type=radio]::after {
-    box-sizing: border-box;
-    content: '';
-    position: absolute;
-    width: 100%;
-    height: 100%;
-}
-
 /** Class specific **/
 
 /* Page display */
@@ -67,6 +38,12 @@ svg {
 
 .green-clickable {
     color: var(--splashGreen);
+}
+
+/* UTubs */
+
+.active {
+    color: #f45e61;
 }
 
 /* Tags */
