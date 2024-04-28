@@ -32,6 +32,7 @@ function addURL() {
 
     if (xhr.status == 404) {
       // Reroute to custom U4I 404 error page
+      window.replace.href = "/invalid";
     } else {
       addURLFailure(response);
     }

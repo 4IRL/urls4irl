@@ -1,0 +1,230 @@
+/** HTML DOM Elements **/
+
+form {
+    display: flex;
+    flex-flow: column;
+    width: 100%;
+    height: 100%;
+    overflow-y: scroll;
+    padding-right: 17px;
+    /* Increase/decrease this value for cross-browser compatibility */
+    box-sizing: content-box;
+    /* So the width will be 100% + 17px */
+}
+
+img {
+    max-width: 50%;
+}
+
+/** Class specific **/
+
+/* Splash */
+
+.bg-img {
+    background: url("splash.jpg");
+    background-size: cover;
+    min-height: 380px;
+    position: relative;
+}
+
+.email-container {
+    text-align: center;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-direction: row;
+    flex-wrap: nowrap;
+    width: 100%;
+}
+
+.container-fluid {
+    padding-right: 0px;
+    padding-left: 0px;
+}
+
+.bg-cover {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    align-content: center;
+    justify-content: center;
+    /* height: 100%; */
+    height: 100vh;
+}
+
+.jumbotron {
+    background: var(--offWhiteSplashBackgroundBanner);
+    padding: 6rem 2rem;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.splash-button {
+    margin-top: 10px;
+    width: 20%;
+    min-width: 250px;
+    max-width: 450px;
+    background-color: var(--splashGreen);
+    border-color: var(--splashGreen);
+}
+
+.splash-page-links {
+    color: var(--bs-link-hover-color) !important;
+}
+
+.splash-page-links:hover {
+    color: var(--blueLinkOnHover) !important;
+}
+
+.center-brand {
+    position: absolute;
+    top: 0.875rem;
+    left: 50%;
+}
+
+/** Modals **/
+
+.modal-footer {
+    justify-content: center !important;
+}
+
+/* Forgot Password */
+
+.forgot-password-form-group {
+    margin-bottom: 10px;
+}
+
+.forgot-password-email-label,
+.login-register-label {
+    font-weight: 700;
+    font-size: 120%;
+}
+
+.forgot-password-email-label {
+    color: var(--splashLabelGreen);
+}
+
+/* Login-Register */
+
+/* Remove the scroll bar from login/register forms */
+.login-register-form {
+    overflow-y: hidden;
+    padding-right: 0px;
+}
+
+.login-register-form-group {
+    box-sizing: border-box;
+}
+
+.login-register-label {
+    color: var(--darkSplashLabelGreen);
+    padding-top: 20px;
+}
+
+.login-register-buttons {
+    display: inline-block;
+    vertical-align: top;
+    background-color: var(--splashGreen);
+    border-color: var(--splashGreen);
+}
+
+.first-in-register-login-form>label {
+    padding-top: 0;
+}
+
+.register-login-modal-footer {
+    margin-top: 20px;
+}
+
+/* Validate Email */
+
+.validate-email-title {
+    flex-grow: 1;
+    color: var(--splashGreen);
+    font-size: 36px;
+}
+
+.validate-email-text {
+    font-family: Arial, sans-serif;
+}
+
+/* Alert Banner */
+
+.alert-banner-splash-modal-hide {
+    display: none;
+}
+
+.alert-banner-splash-modal-display {
+    display: inherit;
+    margin-top: 3px !important;
+    margin-bottom: 3px !important;
+}
+
+.alert-banner-splash-modal-show {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+}
+
+/** ID specific **/
+
+#ModalForm {
+    overflow: hidden;
+}
+
+#CloseErrorModalButton {
+    width: 100%;
+}
+
+#SplashModalErrorContent {
+    width: 100%;
+}
+
+/* Forgot Password */
+
+#ForgotPasswordLink {
+    font-size: 0.75rem;
+    margin-bottom: 0;
+}
+
+#ForgotPasswordText {
+    color: black;
+}
+/* Login-Register */
+
+/* Validate Email */
+
+#ValidateEmailIcon {
+    width: 48px;
+    height: 48px;
+    background-color: var(--splashGreen);
+    color: white;
+    font-size: 28px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    /* Center horizontally */
+}
+
+#ValidateEmailText {
+    color: var(--darkGrayTextColor);
+    font-size: 18px;
+    line-height: 1.6;
+}
+
+#EmailValidationFooter {
+    flex-wrap: nowrap;
+    justify-content: center;
+}
+
+/* Alert Banner */
+
+#EmailAlertBanner {
+    color: var(--darkGrayTextColor);
+    font-size: 18px;
+    line-height: 1.6;
+    text-align: center;
+}
