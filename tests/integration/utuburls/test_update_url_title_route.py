@@ -2,7 +2,10 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.models import Utub, Utub_Urls, Url_Tags, URLS
+from src.models.urls import Urls
+from src.models.url_tags import Url_Tags
+from src.models.utubs import Utubs
+from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
 from src.utils.strings.html_identifiers import IDENTIFIERS
@@ -43,7 +46,7 @@ def test_update_url_title_utub_creator(
 
     NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -71,7 +74,7 @@ def test_update_url_title_utub_creator(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -100,7 +103,7 @@ def test_update_url_title_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -148,7 +151,9 @@ def test_update_url_title_url_adder(
     NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
         # Get UTub this user is only a member of
-        utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        utub_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
 
         # Verify logged in user is not creator of this UTub
         assert utub_member_of.utub_creator != current_user.id
@@ -177,7 +182,7 @@ def test_update_url_title_url_adder(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -207,7 +212,7 @@ def test_update_url_title_url_adder(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -259,7 +264,7 @@ def test_update_url_title_with_same_title_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -287,7 +292,7 @@ def test_update_url_title_with_same_title_utub_creator(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -316,7 +321,7 @@ def test_update_url_title_with_same_title_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -363,7 +368,9 @@ def test_update_url_title_with_same_title_url_adder(
 
     with app.app_context():
         # Get UTub this user is only a member of
-        utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        utub_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
 
         # Verify logged in user is not creator of this UTub
         assert utub_member_of.utub_creator != current_user.id
@@ -392,7 +399,7 @@ def test_update_url_title_with_same_title_url_adder(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -422,7 +429,7 @@ def test_update_url_title_with_same_title_url_adder(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -470,7 +477,9 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
     NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
         # Get UTub this user is only a member of
-        utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        utub_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -495,7 +504,7 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -523,7 +532,7 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
 
     with app.app_context():
         # Assert database is consistent after not modifying URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -576,7 +585,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
 
     NEW_TITLE = ""
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -603,7 +612,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -634,7 +643,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -678,7 +687,7 @@ def test_update_url_title_as_member_of_other_utub(
 
     NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -707,7 +716,7 @@ def test_update_url_title_as_member_of_other_utub(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -734,7 +743,7 @@ def test_update_url_title_as_member_of_other_utub(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -777,7 +786,7 @@ def test_update_url_title_with_missing_title_field_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -804,7 +813,7 @@ def test_update_url_title_with_missing_title_field_utub_creator(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -834,7 +843,7 @@ def test_update_url_title_with_missing_title_field_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -871,7 +880,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -898,7 +907,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {URL_FORM.URL_TITLE: current_title + "AAA"}
@@ -917,7 +926,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -956,7 +965,7 @@ def test_update_url_title_of_nonexistent_url(
 
     NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
         utub_id = utub_creator_of.id
 
         # Verify logged in user is creator of this UTub
@@ -966,7 +975,7 @@ def test_update_url_title_of_nonexistent_url(
         NONEXISTENT_URL_ID = 999
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -990,7 +999,7 @@ def test_update_url_title_of_nonexistent_url(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -1022,7 +1031,7 @@ def test_update_url_title_in_nonexistent_utub(
 
     with app.app_context():
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_title_form = {
@@ -1046,6 +1055,6 @@ def test_update_url_title_in_nonexistent_utub(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())

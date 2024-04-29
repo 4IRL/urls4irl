@@ -2,7 +2,10 @@ from flask import Blueprint, current_app, jsonify, request
 from flask_login import current_user
 
 from src import db
-from src.models import Utub, Utub_Urls, URLS, Url_Tags
+from src.models.urls import Urls
+from src.models.url_tags import Url_Tags
+from src.models.utubs import Utubs
+from src.models.utub_urls import Utub_Urls
 from src.urls.forms import (
     NewURLForm,
     EditURLForm,
@@ -26,13 +29,13 @@ STD_JSON = STD_JSON_RESPONSE
 def remove_url(utub_id: int, url_id: int):
     """
     User wants to remove a URL from a UTub. Only available to owner of that utub,
-    or whoever added the URL into that Utub.
+    or whoever added the URL into that Utubs.
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be removed
         url_id (int): The ID of the URL to be removed
     """
-    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_creator_id = utub.utub_creator
 
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
@@ -101,9 +104,9 @@ def add_url(utub_id: int):
     User wants to add URL to UTub. On success, adds the URL to the UTub.
 
     Args:
-        utub_id (int): The Utub to add this URL to
+        utub_id (int): The Utubs to add this URL to
     """
-    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id not in [member.user_id for member in utub.members]:
         # Not authorized to add URL to this UTub
@@ -140,13 +143,13 @@ def add_url(utub_id: int):
             )
 
         # Check if URL already exists
-        already_created_url: URLS = URLS.query.filter_by(
+        already_created_url: Urls = Urls.query.filter_by(
             url_string=normalized_url
         ).first()
 
         if not already_created_url:
             # If URL does not exist, add it and then associate it with the UTub
-            new_url = URLS(
+            new_url = Urls(
                 normalized_url=normalized_url, current_user_id=current_user.id
             )
 
@@ -248,7 +251,7 @@ def edit_url(utub_id: int, url_id: int):
         url_id (int): The URL ID to be modified
     """
 
-    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_creator_id = utub.utub_creator
 
     # Search through all urls in the UTub for the one that matches the prescribed
@@ -316,13 +319,13 @@ def edit_url(utub_id: int, url_id: int):
             )
 
         # Now check if url already in database
-        url_already_in_database: URLS = URLS.query.filter_by(
+        url_already_in_database: Urls = Urls.query.filter_by(
             url_string=normalized_url
         ).first()
 
         if url_already_in_database is None:
             # Make a new URL since URL is not already in the database
-            new_url = URLS(
+            new_url = Urls(
                 normalized_url=normalized_url, current_user_id=current_user.id
             )
             db.session.add(new_url)
@@ -413,7 +416,7 @@ def edit_url_title(utub_id: int, url_id: int):
         utub_id (int): The UTub ID containing the relevant URL title
         url_id (int): The URL ID to have the title be modified
     """
-    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_creator_id = utub.utub_creator
 
     # Search through all urls in the UTub for the one that matches the prescribed

@@ -2,7 +2,10 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.models import Utub, Utub_Urls, Tags, Url_Tags
+from src.models.tags import Tags
+from src.models.url_tags import Url_Tags
+from src.models.utubs import Utubs
+from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -51,8 +54,8 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
 
     with app.app_context():
         # Find UTub this current user is creator of
-        utub_user_is_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -210,8 +213,8 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
 
     with app.app_context():
         # Find UTub this current user is member of
-        utubs_user_is_not_creator_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utubs_user_is_not_creator_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).all()
 
         i = 0
@@ -380,8 +383,8 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
 
     with app.app_context():
         # Find UTub this current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -544,8 +547,8 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
 
     with app.app_context():
         # Find UTub this current user is member of
-        utubs_user_is_not_creator_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utubs_user_is_not_creator_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).all()
 
         i = 0
@@ -707,8 +710,8 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
 
     with app.app_context():
         # Find UTub this current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -825,8 +828,8 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
 
     with app.app_context():
         # Find UTub this current user is member of
-        utubs_user_is_not_creator_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utubs_user_is_not_creator_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).all()
 
         i = 0
@@ -949,8 +952,8 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
 
     with app.app_context():
         # Find UTub this current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -1076,8 +1079,8 @@ def test_modify_tag_on_another_utub_url(
 
     with app.app_context():
         # Find UTub this current user is member of
-        utubs_user_is_not_creator_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utubs_user_is_not_creator_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).all()
 
         i = 0
@@ -1206,8 +1209,8 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
 
     with app.app_context():
         # Find UTub this current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -1328,8 +1331,8 @@ def test_modify_tag_with_missing_tag_field(
 
     with app.app_context():
         # Find UTub this current user is member of
-        utubs_user_is_not_creator_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utubs_user_is_not_creator_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).all()
 
         i = 0
@@ -1449,8 +1452,8 @@ def test_modify_tag_with_missing_csrf_token(
 
     with app.app_context():
         # Find UTub this current user is member of
-        utubs_user_is_not_creator_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utubs_user_is_not_creator_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).all()
 
         i = 0

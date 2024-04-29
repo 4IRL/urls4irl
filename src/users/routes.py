@@ -7,7 +7,7 @@ from flask import (
 from flask_login import current_user, logout_user
 
 from src import login_manager
-from src.models import User
+from src.models.users import Users
 from src.utils.all_routes import ROUTES
 from src.utils.strings.email_validation_strs import EMAILS
 
@@ -15,8 +15,8 @@ users = Blueprint("users", __name__)
 
 
 @login_manager.user_loader
-def load_user(user_id):
-    return User.query.get(int(user_id))
+def load_user(user_id) -> Users:
+    return Users.query.get(int(user_id))
 
 
 @login_manager.unauthorized_handler

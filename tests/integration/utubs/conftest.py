@@ -5,11 +5,9 @@ import pytest
 from typing import Generator, Tuple
 
 from src import db
-from src.models import (
-    User,
-    Utub,
-    Utub_Users,
-)
+from src.models.users import Users
+from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
 from src.utils.strings import model_strs
 from tests.models_for_test import (
     valid_empty_utub_1,
@@ -18,7 +16,7 @@ from tests.models_for_test import (
 
 @pytest.fixture
 def add_single_utub_as_user_after_logging_in(
-    login_first_user_with_register: Tuple[FlaskClient, str, User, Flask]
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask]
 ) -> Generator[Tuple[FlaskClient, int, str, Flask], None, None]:
     """
     After logging in a user with ID == 1, has the user create a UTub and adds the
@@ -37,13 +35,13 @@ def add_single_utub_as_user_after_logging_in(
     client, csrf_token, valid_user, app = login_first_user_with_register
 
     with app.app_context():
-        new_utub = Utub(
+        new_utub = Utubs(
             name=valid_empty_utub_1[model_strs.NAME],
             utub_creator=valid_user.id,
             utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
         )
 
-        creator_to_utub = Utub_Users()
+        creator_to_utub = Utub_Members()
         creator_to_utub.to_user = current_user
         new_utub.members.append(creator_to_utub)
         db.session.commit()

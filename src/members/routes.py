@@ -5,10 +5,12 @@ from flask import (
 from flask_login import current_user
 
 from src import db
-from src.models import Utub, Utub_Users, User
 from src.members.forms import (
     UTubNewMemberForm,
 )
+from src.models.users import Users
+from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
@@ -24,14 +26,14 @@ STD_JSON = STD_JSON_RESPONSE
 @email_validation_required
 def remove_member(utub_id: int, user_id: int):
     """
-    Remove a user from a Utub. The creator of the Utub can remove anyone but themselves.
+    Remove a user from a Utubs. The creator of the Utubs can remove anyone but themselves.
     Any user can remove themselves from a UTub they did not create.
 
     Args:
         utub_id (int): ID of the UTub to remove the user from
         user_id (int): ID of the User to remove from the UTub
     """
-    current_utub: Utub = Utub.query.get_or_404(utub_id)
+    current_utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if user_id == current_utub.utub_creator:
         # Creator tried to remove themselves, not allowed
@@ -79,8 +81,8 @@ def remove_member(utub_id: int, user_id: int):
             404,
         )
 
-    user_to_remove_in_utub: Utub_Users = Utub_Users.query.filter(
-        Utub_Users.utub_id == utub_id, Utub_Users.user_id == user_id
+    user_to_remove_in_utub: Utub_Members = Utub_Members.query.filter(
+        Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_id
     ).first_or_404()
 
     removed_user_username = user_to_remove_in_utub.to_user.username
@@ -113,7 +115,7 @@ def add_member(utub_id: int):
     Args:
         utub_id (int): The utub to which this user is being added
     """
-    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if utub.utub_creator != current_user.id:
         # User not authorized to add a member to this UTub
@@ -133,7 +135,7 @@ def add_member(utub_id: int):
     if utub_new_user_form.validate_on_submit():
         username = utub_new_user_form.username.data
 
-        new_user: User = User.query.filter_by(username=username).first_or_404()
+        new_user: Users = Users.query.filter_by(username=username).first_or_404()
         already_in_utub = new_user.id in (member.user_id for member in utub.members)
 
         if already_in_utub:
@@ -149,7 +151,7 @@ def add_member(utub_id: int):
                 400,
             )
 
-        new_user_to_utub = Utub_Users()
+        new_user_to_utub = Utub_Members()
         new_user_to_utub.to_user = new_user
         utub.members.append(new_user_to_utub)
         db.session.commit()

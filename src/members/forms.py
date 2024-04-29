@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import Length, InputRequired, ValidationError
-from src.models import User
+from src.models.users import Users
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM
 from src.utils.strings.user_strs import USER_FAILURE
 
@@ -23,7 +23,7 @@ class UTubNewMemberForm(FlaskForm):
 
     def validate_username(self, username):
         """Validates username is unique in the db"""
-        username_exists = User.query.filter_by(username=username.data).first()
+        username_exists = Users.query.filter_by(username=username.data).first()
 
         if not username_exists:
             raise ValidationError(USER_FAILURE.USER_NOT_EXIST)

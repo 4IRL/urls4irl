@@ -5,7 +5,9 @@ import pytest
 
 from tests.models_for_test import valid_user_1
 from src import db
-from src.models import User, EmailValidation, verify_token
+from src.models.email_validations import Email_Validations
+from src.models.users import Users
+from src.models.utils import verify_token
 from src.utils.constants import EMAIL_CONSTANTS
 from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -39,8 +41,8 @@ def test_registered_user_is_not_email_validated(app, load_register_page):
     assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
 
     with app.app_context():
-        registered_user: User = User.query.filter(
-            User.username == valid_user_1[REGISTER_FORM.USERNAME]
+        registered_user: Users = Users.query.filter(
+            Users.username == valid_user_1[REGISTER_FORM.USERNAME]
         ).first_or_404()
         assert not registered_user.email_confirm.is_validated
 
@@ -173,8 +175,8 @@ def test_valid_token_generated_on_user_register(
     new_user, _ = register_first_user_without_email_validation
 
     with app.app_context():
-        registered_user: User = User.query.filter(
-            User.email == new_user[REGISTER_FORM.EMAIL].lower()
+        registered_user: Users = Users.query.filter(
+            Users.email == new_user[REGISTER_FORM.EMAIL].lower()
         ).first()
         user_token = registered_user.email_confirm.confirm_url
         assert verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (
@@ -198,8 +200,8 @@ def test_token_validates_user(app, load_register_page):
     )
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         user_token = user.email_confirm.confirm_url
         assert not user.is_email_authenticated() and not user.email_confirm.is_validated
@@ -218,8 +220,8 @@ def test_token_validates_user(app, load_register_page):
     assert current_user == user
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         assert user.is_email_authenticated() and user.email_confirm.is_validated
         assert user.email_confirm.confirm_url != user_token
@@ -234,8 +236,8 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
     registered_user, _ = register_first_user_without_email_validation
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == registered_user[REGISTER_FORM.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == registered_user[REGISTER_FORM.EMAIL].lower()
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
 
@@ -257,11 +259,11 @@ def test_expired_token_accessed_shows_error_to_user(
     client, _ = load_register_page
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == registered_user[REGISTER_FORM.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == registered_user[REGISTER_FORM.EMAIL].lower()
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
-        email_validation = EmailValidation(confirm_url=quick_expiring_token)
+        email_validation = Email_Validations(confirm_url=quick_expiring_token)
         user.email_confirm = email_validation
         db.session.commit()
 
@@ -366,8 +368,8 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
     )
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         user.email_confirm.attempts = EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
         user.email_confirm.last_attempt = datetime.utcnow()

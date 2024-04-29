@@ -4,7 +4,8 @@ from flask import Flask
 import pytest
 
 from src import db
-from src.models import EmailValidation, User
+from src.models.email_validations import Email_Validations
+from src.models.users import Users
 from src.utils.strings import model_strs
 from tests.models_for_test import valid_user_2, valid_user_3
 
@@ -33,13 +34,13 @@ def register_all_but_first_user(
     )
     with app.app_context():
         for user in all_users:
-            new_user = User(
+            new_user = Users(
                 username=user[model_strs.USERNAME],
                 email=user[model_strs.EMAIL].lower(),
                 plaintext_password=user[model_strs.PASSWORD],
             )
 
-            new_email_validation = EmailValidation(
+            new_email_validation = Email_Validations(
                 confirm_url=new_user.get_email_validation_token()
             )
             new_email_validation.is_validated = True

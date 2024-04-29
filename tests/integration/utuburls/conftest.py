@@ -2,15 +2,13 @@ from flask import Flask
 import pytest
 
 from src import db
-from src.models import (
-    Tags,
-    URLS,
-    User,
-    Utub,
-    Utub_Users,
-    Utub_Urls,
-    Url_Tags,
-)
+from src.models.tags import Tags
+from src.models.urls import Urls
+from src.models.url_tags import Url_Tags
+from src.models.users import Users
+from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
+from src.models.utub_urls import Utub_Urls
 
 
 @pytest.fixture
@@ -33,14 +31,14 @@ def add_first_user_to_second_utub_and_add_tags_remove_first_utub(
         add_tags_to_database (pytest.fixture): Adds all tags to the database for easy adding to URLs
     """
     with app.app_context():
-        first_utub = Utub.query.get(1)
+        first_utub = Utubs.query.get(1)
         db.session.delete(first_utub)
-        second_utub = Utub.query.get(2)
+        second_utub = Utubs.query.get(2)
         all_tags = Tags.query.all()
 
         # Add a single missing users to this UTub
-        new_user = User.query.get(1)
-        new_utub_user_association = Utub_Users()
+        new_user = Users.query.get(1)
+        new_utub_user_association = Utub_Members()
         new_utub_user_association.to_user = new_user
         new_utub_user_association.utub_id = second_utub.id
         second_utub.members.append(new_utub_user_association)
@@ -82,15 +80,15 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
             that user add a URL to their UTub
     """
     with app.app_context():
-        current_utubs = Utub.query.all()
-        current_users = User.query.all()
+        current_utubs = Utubs.query.all()
+        current_users = Users.query.all()
 
         # Add all missing users to this UTub
         for utub in current_utubs:
             # Get URL in current UTUb
             current_utub_url = Utub_Urls.query.filter_by(utub_id=utub.id).first()
             current_utub_id = current_utub_url.url_id
-            new_url = URLS.query.filter_by(id=((current_utub_id % 3) + 1)).first()
+            new_url = Urls.query.filter_by(id=((current_utub_id % 3) + 1)).first()
 
             new_utub_url_user_association = Utub_Urls()
 
@@ -127,7 +125,7 @@ def add_one_url_and_all_users_to_each_utub_with_all_tags(
             that user add a URL to their UTub
     """
     with app.app_context():
-        current_utubs = Utub.query.all()
+        current_utubs = Utubs.query.all()
         current_tags = Tags.query.all()
 
         # Add all missing users to this UTub

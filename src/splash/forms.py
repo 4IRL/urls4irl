@@ -1,7 +1,7 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
-from src.models import User
+from src.models.users import Users
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM, REGISTER_FORM
 from src.utils.strings.user_strs import USER_FAILURE
@@ -50,14 +50,14 @@ class UserRegistrationForm(FlaskForm):
 
     def validate_username(self, username):
         """Validates username is unique in the db"""
-        user: User = User.query.filter_by(username=username.data).first()
+        user: Users = Users.query.filter_by(username=username.data).first()
 
         if user and user.email_confirm.is_validated:
             raise ValidationError(USER_FAILURE.USERNAME_TAKEN)
 
     def validate_email(self, email):
         """Validates username is unique in the db"""
-        user: User = User.query.filter_by(email=email.data.lower()).first()
+        user: Users = Users.query.filter_by(email=email.data.lower()).first()
 
         if user:
             if not user.email_confirm.is_validated:
@@ -85,13 +85,13 @@ class LoginForm(FlaskForm):
     submit = SubmitField(REGISTER_LOGIN_FORM.LOGIN)
 
     def validate_username(self, username):
-        user: User = User.query.filter_by(username=username.data).first()
+        user: Users = Users.query.filter_by(username=username.data).first()
 
         if not user:
             raise ValidationError(USER_FAILURE.USER_NOT_EXIST)
 
     def validate_password(self, password):
-        user: User = User.query.filter_by(username=self.username.data).first()
+        user: Users = Users.query.filter_by(username=self.username.data).first()
         if not user:
             return
 

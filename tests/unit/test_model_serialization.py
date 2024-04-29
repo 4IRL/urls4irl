@@ -4,8 +4,14 @@ from flask import Flask
 import pytest
 
 import tests.models_for_test as v_models
-from src.models import User, Utub, URLS, Tags, Url_Tags, Utub_Users, Utub_Urls
 from src import db
+from src.models.tags import Tags
+from src.models.urls import Urls
+from src.models.url_tags import Url_Tags
+from src.models.users import Users
+from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
+from src.models.utub_urls import Utub_Urls
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 
@@ -80,7 +86,7 @@ def test_url_serialization_without_tags():
     current_user_id = 0
 
     for v_url in valid_urls:
-        new_url = URLS(
+        new_url = Urls(
             normalized_url=v_url[MODEL_STRS.URL], current_user_id=current_user_id
         )
         new_url.id = v_url[MODEL_STRS.ID]
@@ -116,8 +122,8 @@ def test_url_serialization_with_tags(
 
     # UTub - URL associations
     with app.app_context():
-        all_utubs = Utub.query.all()
-        all_urls = URLS.query.all()
+        all_utubs = Utubs.query.all()
+        all_urls = Urls.query.all()
 
         for utub, url in zip(all_utubs, all_urls):
             new_utub_url = Utub_Urls()
@@ -133,8 +139,8 @@ def test_url_serialization_with_tags(
 
     # UTub-URL-Tag associations
     with app.app_context():
-        all_utubs = Utub.query.all()
-        all_urls = URLS.query.all()
+        all_utubs = Utubs.query.all()
+        all_urls = Urls.query.all()
         all_tags = Tags.query.all()
 
         for utub, url in zip(all_utubs, all_urls):
@@ -152,8 +158,8 @@ def test_url_serialization_with_tags(
         db.session.commit()
 
     with app.app_context():
-        all_utubs = Utub.query.all()
-        all_urls = URLS.query.all()
+        all_utubs = Utubs.query.all()
+        all_urls = Urls.query.all()
 
         for utub, url, verified_url in zip(all_utubs, all_urls, verified_urls):
             url_with_tags: Utub_Urls = Utub_Urls.query.filter(
@@ -181,7 +187,7 @@ def test_user_serialization_as_member_of_utub():
     member_users = (v_models.valid_user_1, v_models.valid_user_2, v_models.valid_user_3)
 
     for idx, inner_user in enumerate(member_users):
-        new_user = User(
+        new_user = Users(
             username=inner_user[MODEL_STRS.USERNAME],
             email=inner_user[REGISTER_FORM.EMAIL],
             plaintext_password=inner_user[REGISTER_FORM.PASSWORD],
@@ -223,7 +229,7 @@ def test_user_utub_data_serialized_on_initial_load():
         v_models.valid_empty_utub_3,
     )
     valid_user = v_models.valid_user_1
-    new_user = User(
+    new_user = Users(
         username=valid_user[MODEL_STRS.USERNAME],
         email=valid_user[REGISTER_FORM.EMAIL],
         plaintext_password=valid_user[REGISTER_FORM.PASSWORD],
@@ -232,7 +238,7 @@ def test_user_utub_data_serialized_on_initial_load():
     valid_utubs = []  # Array used to store the serialized utub data to validate against
 
     for empty_utub in empty_utubs:
-        new_utub = Utub(
+        new_utub = Utubs(
             name=empty_utub[MODEL_STRS.NAME],
             utub_creator=valid_user[MODEL_STRS.ID],
             utub_description="",
@@ -241,7 +247,7 @@ def test_user_utub_data_serialized_on_initial_load():
         new_utub.utub_creator = valid_user[MODEL_STRS.ID]
 
         # Add the valid user to the utub
-        new_utub_user = Utub_Users()
+        new_utub_user = Utub_Members()
         new_utub_user.to_user = new_user
         new_utub.members.append(new_utub_user)
 
@@ -273,7 +279,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
                 MODEL_STRS.USERNAME: String representing the user's username
             }
         ]
-    MODEL_STRS.URLS: Array containing all the URL information for this UTub, in the following format:
+    MODEL_STRS.Urls: Array containing all the URL information for this UTub, in the following format:
         [
             {
                 MODEL_STRS.URL_ID: Integer repsenting the URL ID,
@@ -293,7 +299,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
     }
     """
     with app.app_context():
-        all_utubs: list[Utub] = Utub.query.all()
+        all_utubs: list[Utubs] = Utubs.query.all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_only_creator, all_utubs
@@ -301,7 +307,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
                 "%m/%d/%Y %H:%M:%S"
             )
-            utub: Utub = utub
+            utub: Utubs = utub
             assert json.dumps(test_utub) == json.dumps(utub.serialized(1))
 
 
@@ -328,7 +334,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
                 MODEL_STRS.USERNAME: String representing the user's username
             }
         ]
-    MODEL_STRS.URLS: Array containing all the URL information for this UTub, in the following format:
+    MODEL_STRS.Urls: Array containing all the URL information for this UTub, in the following format:
         [
             {
                 MODEL_STRS.URL_ID: Integer repsenting the URL ID,
@@ -348,7 +354,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
     }
     """
     with app.app_context():
-        all_utubs: list[Utub] = Utub.query.all()
+        all_utubs: list[Utubs] = Utubs.query.all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members, all_utubs
@@ -391,7 +397,7 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
                 MODEL_STRS.USERNAME: String representing the user's username
             }
         ]
-    MODEL_STRS.URLS: Array containing all the URL information for this UTub, in the following format:
+    MODEL_STRS.Urls: Array containing all the URL information for this UTub, in the following format:
         [
             {
                 MODEL_STRS.URL_ID: Integer repsenting the URL ID,
@@ -411,7 +417,7 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
     }
     """
     with app.app_context():
-        all_utubs = Utub.query.all()
+        all_utubs = Utubs.query.all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members_and_url, all_utubs
@@ -459,7 +465,7 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                 MODEL_STRS.USERNAME: String representing the user's username
             }
         ]
-    MODEL_STRS.URLS: Array containing all the URL information for this UTub, in the following format:
+    MODEL_STRS.Urls: Array containing all the URL information for this UTub, in the following format:
         [
             {
                 MODEL_STRS.URL_ID: Integer repsenting the URL ID,
@@ -479,7 +485,7 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
     }
     """
     with app.app_context():
-        all_utubs = Utub.query.all()
+        all_utubs = Utubs.query.all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members_and_url_and_tags, all_utubs

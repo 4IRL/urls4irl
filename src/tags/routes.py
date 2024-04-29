@@ -2,7 +2,10 @@ from flask import Blueprint, jsonify
 from flask_login import current_user
 
 from src import db
-from src.models import Utub, Url_Tags, Tags, Utub_Urls
+from src.models.tags import Tags
+from src.models.url_tags import Url_Tags
+from src.models.utubs import Utubs
+from src.models.utub_urls import Utub_Urls
 from src.tags.forms import UTubNewUrlTagForm
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
@@ -169,7 +172,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         url_id (int): The ID of the URL containing tag to be deleted
         tag_id (int): The ID of the tag to be deleted
     """
-    utub = Utub.query.get_or_404(utub_id)
+    utub = Utubs.query.get_or_404(utub_id)
 
     if current_user.id not in [user.user_id for user in utub.members]:
         return (
@@ -225,7 +228,7 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
         url_id (int): The ID of the URL containing tag to be modified
         tag_id (int): The ID of the tag to be modified
     """
-    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     # Verify user is in UTub
     if current_user.id not in [user.user_id for user in utub.members]:

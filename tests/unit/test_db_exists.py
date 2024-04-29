@@ -2,7 +2,13 @@ import pytest
 from sqlalchemy import inspect
 
 from src import db
-from src.models import URLS, Utub, User, Utub_Urls, Utub_Users, Url_Tags
+from src.models.tags import Tags
+from src.models.urls import Urls
+from src.models.url_tags import Url_Tags
+from src.models.users import Users
+from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
+from src.models.utub_urls import Utub_Urls
 
 pytestmark = pytest.mark.unit
 
@@ -17,10 +23,11 @@ def test_db_created_correctly(app):
         engine = db.engine
         inspector = inspect(engine)
 
-        assert inspector.has_table(URLS.__tablename__)
-        assert inspector.has_table(Utub.__tablename__)
-        assert inspector.has_table(User.__tablename__)
+        assert inspector.has_table(Tags.__tablename__)
+        assert inspector.has_table(Urls.__tablename__)
+        assert inspector.has_table(Users.__tablename__)
+        assert inspector.has_table(Utubs.__tablename__)
+        assert inspector.has_table(Utub_Members.__tablename__)
         assert inspector.has_table(Utub_Urls.__tablename__)
-        assert inspector.has_table(Utub_Users.__tablename__)
         assert inspector.has_table(Url_Tags.__tablename__)
         assert inspector.has_table("sessions")
