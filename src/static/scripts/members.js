@@ -1,27 +1,19 @@
-/** User UI Interactions **/
+/** Members UI Interactions **/
 
 $(document).ready(function () {
   /* Bind click functions */
 
-  // Add user to UTub
-  $("#addUserBtn").on("click", function (e) {
+  // Add member to UTub
+  $("#addMemberBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
     hideInputs();
     deselectAllURLs();
-    addUserShowInput();
-    // Bind enter key (keycode 13) to submit user input
-    // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see semi-successful attempt under bindKeyToFunction() in utils.js)
-    unbindEnter();
-    $(document).bind("keypress", function (e) {
-      if (e.which == 13) {
-        addUser();
-      }
-    });
+    addMemberShowInput();
   });
 });
 
-/** User Utility Functions **/
+/** Members Utility Functions **/
 
 // Simple function to streamline the jQuery selector extraction of selected user ID. And makes it easier in case the ID is encoded in a new location in the future
 function getCurrentUserID() {
@@ -29,100 +21,103 @@ function getCurrentUserID() {
 }
 
 // Simple function to streamline the jQuery selector extraction of selected UTub creator user ID. And makes it easier in case the ID is encoded in a new location in the future
-function getCurrentUTubCreatorID() {
-  return $("#UTubOwner").find("span").attr("userid");
+function getCurrentUTubOwnerUserID() {
+  return $("#UTubOwner").find("span").attr("memberid");
 }
 
-// Clear user selection
-function resetNewUserForm() {
-  $("#addUser").val("");
-  hideIfShown($("#addUser").closest(".createDiv"));
+// Clear member selection
+function resetNewMemberForm() {
+  $("#addMember").val("");
+  // hideIfShown($("#addMember").closest(".createDiv"));
 }
 
-// Clear the User Deck
-function resetUserDeck() {
+// Clear the Member Deck
+function resetMemberDeck() {
   $("#UTubOwner").empty();
-  $("#listUsers").empty();
+  $("#listMembers").empty();
 }
 
-/** User Functions **/
+/** Member Functions **/
 
 // Build center panel URL list for selectedUTub
-function buildUserDeck(dictUsers, UTubOwnerID) {
-  resetUserDeck();
-  const parent = $("#listUsers");
-  let numOfUsers = dictUsers.length;
-  let UTubUser;
-  let UTubUserID;
+function buildMemberDeck(dictMembers, UTubOwnerUserID) {
+  resetMemberDeck();
+  const parent = $("#listMembers");
+  let numOfMembers = dictMembers.length;
+  let UTubMember;
+  let UTubMemberUsername;
+  let UTubMemberUserID;
 
-  // Instantiate deck with list of users with access to current UTub
-  for (let i = 0; i < numOfUsers; i++) {
-    UTubUser = dictUsers[i];
-    UTubUsername = UTubUser.username;
-    UTubUserID = UTubUser.id;
+  // Instantiate deck with list of members with access to current UTub
+  for (let i = 0; i < numOfMembers; i++) {
+    UTubMember = dictMembers[i];
+    UTubMemberUsername = UTubMember.username;
+    UTubMemberUserID = UTubMember.id;
 
-    if (UTubUserID == UTubOwnerID) {
-      $("#UTubOwner").append(createOwnerBadge(UTubOwnerID, UTubUsername));
+    if (UTubMemberUserID == UTubOwnerUserID) {
+      $("#UTubOwner").append(
+        createOwnerBadge(UTubOwnerUserID, UTubMemberUsername),
+      );
     } else {
-      parent.append(createUserBadge(UTubUserID, UTubUsername));
+      parent.append(createMemberBadge(UTubMemberUserID, UTubMemberUsername));
     }
   }
 
   // Subheader prompt
-  displayState1UserDeck(numOfUsers);
+  displayState1MemberDeck(numOfMembers);
 
-  // Ability to add users is restricted to UTub owner
-  if (getCurrentUTubCreatorID() == UTubOwnerID) {
-    showIfHidden($("#addUserBtn"));
-    parent.append(createNewUserInputField());
-  } else hideIfShown($("#addUserBtn"));
+  // Ability to add members is restricted to UTub owner
+  if (getCurrentUTubOwnerUserID() == UTubOwnerUserID) {
+    showIfHidden($("#addMemberBtn"));
+    parent.append(createNewMemberInputField());
+  } else hideIfShown($("#addMemberBtn"));
 }
 
-// Creates user list item
-function createOwnerBadge(UTubOwnerID, UTubUsername) {
-  let userSpan = document.createElement("span");
+// Creates member list item
+function createOwnerBadge(UTubOwnerUserID, UTubMemberUsername) {
+  let memberSpan = document.createElement("span");
 
-  $(userSpan)
-    .attr({ userid: UTubOwnerID })
-    .addClass("user")
-    .html("<b>" + UTubUsername + "</b>");
+  $(memberSpan)
+    .attr({ memberid: UTubOwnerUserID })
+    .addClass("member")
+    .html("<b>" + UTubMemberUsername + "</b>");
 
-  return userSpan;
+  return memberSpan;
 }
 
-// Creates user list item
-function createUserBadge(UTubUserID, UTubUsername) {
-  let userListItem = document.createElement("li");
-  let userSpan = document.createElement("span");
+// Creates member list item
+function createMemberBadge(UTubMemberUserID, UTubMemberUsername) {
+  let memberListItem = document.createElement("li");
+  let memberSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
-  $(userSpan)
-    .attr({ userid: UTubUserID })
-    .addClass("user")
-    .html("<b>" + UTubUsername + "</b>");
+  $(memberSpan)
+    .attr({ memberid: UTubMemberUserID })
+    .addClass("member")
+    .html("<b>" + UTubMemberUsername + "</b>");
 
   $(removeButton)
-    .attr({ class: "btn btn-sm btn-outline-link border-0 user-remove" })
+    .attr({ class: "btn btn-sm btn-outline-link border-0 member-remove" })
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      removeUserShowModal(UTubUserID);
+      removeMemberShowModal(UTubMemberUserID);
     });
   removeButton.innerHTML = "&times;";
 
-  $(userSpan).append(removeButton);
-  $(userListItem).append(userSpan);
+  $(memberSpan).append(removeButton);
+  $(memberListItem).append(memberSpan);
 
-  return userListItem;
+  return memberListItem;
 }
 
-// Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
-function createNewUserInputField() {
+// Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the member. Input field recreated here to ensure at the end of list after creation of new UTubs
+function createNewMemberInputField() {
   const wrapper = $(document.createElement("div"));
-  const wrapperInput = $(document.createElement("fieldset")); // This element wraps the new user input
-  const wrapperBtns = $(document.createElement("div"));
+  const wrapperInput = $(document.createElement("div")); // This element wraps the new member input
+  const wrapperBtns = $(document.createElement("div")); // This element wraps the buttons
 
-  const label = document.createElement("label"); // This element labels the new user field
+  const label = document.createElement("label"); // This element labels the new member field
   const input = $(document.createElement("input"));
   const submitBtn = makeSubmitButton(30);
   const cancelBtn = makeCancelButton(30);
@@ -133,35 +128,36 @@ function createNewUserInputField() {
     })
     .addClass("createDiv row");
 
-  $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
-
   $(label)
     .attr({
-      for: "addUser",
+      for: "addMember",
       style: "display:block",
     })
-    .html("<b> Username </b>");
+    .html("<b> Member Username </b>");
 
   $(input)
     .attr({
-      id: "addUser",
+      id: "addMember",
       type: "text",
-      placeholder: "Username",
+      placeholder: "Member Username",
     })
-    .addClass("User userInput");
+    .addClass("Member userInput");
 
-  wrapperInput.append(label).append(input);
+  $(wrapperInput)
+    .addClass("col-9 col-lg-9 mb-md-0")
+    .append(label)
+    .append(input);
 
   $(submitBtn).on("click", function (e) {
     e.stopPropagation();
     e.preventDefault();
-    addUser();
+    addMember();
   });
 
   $(cancelBtn).on("click", function (e) {
     e.stopPropagation();
     e.preventDefault();
-    addUserHideInput();
+    addMemberHideInput();
   });
 
   $(wrapperBtns)
@@ -175,31 +171,33 @@ function createNewUserInputField() {
   return wrapper;
 }
 
-/** User Display State Functions **/
+/** Member Display State Functions **/
 
 // Display state 0: Clean slate, no UTub selected
-function displayState0UserDeck() {
-  resetUserDeck();
+function displayState0MemberDeck() {
+  resetMemberDeck();
+
+  hideIfShown($("#addMemberBtn"));
 
   // Subheader prompt hidden
-  hideIfShown($("#UserDeckSubheader").closest(".row"));
-
-  hideIfShown($("#addUserBtn"));
+  hideIfShown($("#MemberDeckSubheader").closest(".row"));
 }
 
-// Display state 1: Selected UTub has no Users
-function displayState1UserDeck() {
+// Display state 1: Selected UTub has no Members
+function displayState1MemberDeck() {
+  showIfHidden($("#addMemberBtn"));
+
+  let MemberDeckSubheader = $("#MemberDeckSubheader");
+
   // Subheader prompt shown
-  showIfHidden($("#UserDeckSubheader").closest(".row"));
+  showIfHidden(MemberDeckSubheader.closest(".row"));
 
-  showIfHidden($("#addUserBtn"));
+  // Count UTub members
+  let numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
 
-  let numOfUsers = $("#listUsers").find("span.user").length + 1; // plus 1 for owner
-  let UserDeckSubheader = $("#UserDeckSubheader");
-
-  if (numOfUsers === 1) {
-    UserDeckSubheader.text("Add a user");
+  if (numOfMembers === 1) {
+    MemberDeckSubheader.text("Add a member");
   } else {
-    UserDeckSubheader.text(numOfUsers + " active users");
+    MemberDeckSubheader.text(numOfMembers + " active members");
   }
 }

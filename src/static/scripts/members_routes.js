@@ -1,26 +1,26 @@
-/* Add User */
+/* Add Member */
 
-// Shows new User input fields
-function addUserShowInput() {
-  showInput("addUser");
-  highlightInput($("#addUser"));
+// Shows new Member input fields
+function addMemberShowInput() {
+  showInput("addMember");
+  highlightInput($("#addMember"));
 }
 
-// Hides new User input fields
-function addUserHideInput() {
-  hideInput("addUser");
+// Hides new Member input fields
+function addMemberHideInput() {
+  hideInput("addMember");
 }
 
-function addUser() {
+function addMember() {
   // Extract data to submit in POST request
-  [postURL, data] = addUserSetup();
+  [postURL, data] = addMemberSetup();
 
   AJAXCall("post", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
     if (xhr.status == 200) {
-      addUserSuccess(response, data.username);
+      addMemberSuccess(response, data.memberUsername);
     }
   });
 
@@ -28,63 +28,65 @@ function addUser() {
     if (xhr.status == 404) {
       // Reroute to custom U4I 404 error page
     } else {
-      addUserFail(response);
+      addMemberFail(response);
     }
   });
 }
 
-// This function will extract the current selection data needed for POST request (user ID)
-function addUserSetup() {
-  let postURL = routes.addUser(getActiveUTubID());
+// This function will extract the current selection data needed for POST request (member ID)
+function addMemberSetup() {
+  let postURL = routes.addMember(getActiveUTubID());
 
-  let newUsername = $("#addUser").val();
+  let newMemberUsername = $("#addMember").val();
   data = {
-    username: newUsername,
+    username: newMemberUsername,
   };
 
   return [postURL, data];
 }
 
-// Perhaps update a scrollable/searchable list of users?
-function addUserSuccess(response, username) {
-  resetNewUserForm();
+// Perhaps update a scrollable/searchable list of members?
+function addMemberSuccess(response, memberUsername) {
+  resetNewMemberForm();
 
-  // Temporarily remove createDiv to reattach after addition of new User
-  let createUser = $("#addUser").closest(".createDiv").detach();
+  // Remove createDiv. Create and append a new instance after addition of new Member
+  $("#addMember").closest(".createDiv").detach();
 
-  const parent = $("#listUsers");
+  const parent = $("#listMembers");
 
-  // Create and append newly created User badge
-  parent.append(createUserBadge(response.User_ID_added, username));
-  // Reorder createDiv after latest created UTub selector
-  parent.append(createUser);
+  // Create and append newly created Member badge
+  parent.append(
+    createMemberBadge(response.member.id, response.member.username),
+  );
+  // Create and append new member input field
+  parent.append(createNewMemberInputField());
 
-  displayState1UserDeck();
+  displayState1MemberDeck();
 }
 
-function addUserFail(response) {
+function addMemberFail(response) {
   console.log("Basic implementation. Needs revision");
   console.log(response.responseJSON.Error_code);
   console.log(response.responseJSON.Message);
-  // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to user?
+  // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to member?
   // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
 }
 
-/* Remove User */
+/* Remove Member */
 
-// Hide confirmation modal for removal of the selected user
-function removeUserHideModal() {
+// Hide confirmation modal for removal of the selected member
+function removeMemberHideModal() {
   $("#confirmModal").modal("hide");
   unbindEnter();
 }
 
-// Show confirmation modal for removal of the selected user from current UTub
-function removeUserShowModal(userID) {
-  let modalTitle = "Are you sure you want to remove this user from the UTub?";
+// Show confirmation modal for removal of the selected member from current UTub
+function removeMemberShowModal(memberID) {
+  let modalTitle = "Are you sure you want to remove this member from the UTub?";
   let modalBody =
-    "This user will no longer have access to the URLs in this UTub";
-  let buttonTextDismiss = "Keep user";
-  let buttonTextSubmit = "Remove user";
+    "This member will no longer have access to the URLs in this UTub";
+  let buttonTextDismiss = "Keep member";
+  let buttonTextSubmit = "Remove member";
 
   $("#confirmModalTitle").text(modalTitle);
 
@@ -95,7 +97,7 @@ function removeUserShowModal(userID) {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      removeUserHideModal();
+      removeMemberHideModal();
     })
     .text(buttonTextDismiss);
 
@@ -105,7 +107,7 @@ function removeUserShowModal(userID) {
     .text(buttonTextSubmit)
     .on("click", function (e) {
       e.preventDefault();
-      removeUser(userID);
+      removeMember(memberID);
     })
     .text(buttonTextSubmit);
 
@@ -114,17 +116,17 @@ function removeUserShowModal(userID) {
   hideIfShown($("#modalRedirect"));
 }
 
-// Handles post request and response for removing a user from current UTub, after confirmation
-function removeUser(userID) {
+// Handles post request and response for removing a member from current UTub, after confirmation
+function removeMember(memberID) {
   // Extract data to submit in POST request
-  postURL = removeUserSetup(userID);
+  postURL = removeMemberSetup(memberID);
 
-  let request = AJAXCall("post", postURL, []);
+  let request = AJAXCall("delete", postURL, []);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
     if (xhr.status == 200) {
-      removeUserSuccess(userID);
+      removeMemberSuccess(memberID);
     }
   });
 
@@ -132,31 +134,31 @@ function removeUser(userID) {
     if (xhr.status == 404) {
       // Reroute to custom U4I 404 error page
     } else {
-      removeUserFail(response);
+      removeMemberFail(response);
     }
   });
 }
 
-// This function will extract the current selection data needed for POST request (user ID)
-function removeUserSetup(userID) {
-  let postURL = routes.removeUser(getActiveUTubID(), userID);
+// This function will extract the current selection data needed for POST request (member ID)
+function removeMemberSetup(memberID) {
+  let postURL = routes.removeMember(getActiveUTubID(), memberID);
 
   return postURL;
 }
 
-function removeUserSuccess(userID) {
+function removeMemberSuccess(memberID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let userListItem = $("span[userid=" + userID + "]").parent();
-  userListItem.fadeOut();
-  userListItem.remove();
+  let memberListItem = $("span[memberid=" + memberID + "]").parent();
+  memberListItem.fadeOut();
+  memberListItem.remove();
 
-  displayState1UserDeck();
+  displayState1MemberDeck();
 }
 
-function removeUserFail(xhr, textStatus, error) {
-  console.log("Error: Could not remove User");
+function removeMemberFail(xhr, textStatus, error) {
+  console.log("Error: Could not remove Member");
 
   if (xhr.status == 409) {
     console.log(

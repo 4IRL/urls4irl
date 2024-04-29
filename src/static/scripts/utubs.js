@@ -151,8 +151,8 @@ function selectUTub(selectedUTubID) {
     if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
     else displayState1UTubDescriptionDeck();
 
-    // Users deck
-    buildUserDeck(dictMembers, UTubOwnerID);
+    // Members deck
+    buildMemberDeck(dictMembers, UTubOwnerID);
   });
 }
 
