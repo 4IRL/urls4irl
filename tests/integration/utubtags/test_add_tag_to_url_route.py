@@ -3,7 +3,12 @@ from flask_login import current_user
 import pytest
 
 from src import db
-from src.models import Utub, URLS, Utub_Urls, Utub_Users, Tags, Url_Tags
+from src.models.tags import Tags
+from src.models.urls import Urls
+from src.models.url_tags import Url_Tags
+from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
+from src.models.utub_urls import Utub_Urls
 from tests.models_for_test import all_tag_strings
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import TAG_FORM
@@ -46,8 +51,8 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
 
     with app.app_context():
         # Find UTub this current user is creator of
-        utub_user_is_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -161,8 +166,8 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
         assert len(Tags.query.all()) == 0
 
         # Find UTub this current user is member of
-        utub_user_is_member_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_user_is_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
 
@@ -280,8 +285,8 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Find UTub this current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -405,8 +410,8 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Find UTub this current user is creator of
-        utub_user_is_member_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_user_is_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
 
@@ -517,8 +522,8 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Find UTub this current user is creator of
-        utub_user_is_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
         creator_of_utub_id = utub_user_is_creator_of.utub_creator
@@ -656,8 +661,8 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Find UTub this current user is creator of
-        utub_user_is_member_of: Utub = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_user_is_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
         creator_of_utub_id = utub_user_is_member_of.utub_creator
@@ -790,8 +795,8 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
         assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
 
         # Find UTub this current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -801,7 +806,7 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
         ]
 
         # Assert no URLs exist
-        assert len(URLS.query.all()) == 0
+        assert len(Urls.query.all()) == 0
         url_id_to_add_tag_to = 1
 
         # Ensure no URL-Tag associations exist for this UTub
@@ -846,7 +851,7 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Ensure no URLs were added
-        assert len(URLS.query.all()) == 0
+        assert len(Urls.query.all()) == 0
 
         # Ensure no URL-Tag associations exist for this UTub
         assert (
@@ -894,8 +899,8 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
         assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
 
         # Find UTub this current user is member of
-        utub_user_is_member_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_user_is_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
 
@@ -903,7 +908,7 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
         assert current_user in [user.to_user for user in utub_user_is_member_of.members]
 
         # Assert no URLs exist
-        assert len(URLS.query.all()) == 0
+        assert len(Urls.query.all()) == 0
         url_id_to_add_tag_to = 1
 
         # Ensure no URL-Tag associations exist for this UTub
@@ -948,7 +953,7 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Ensure no URLs were added
-        assert len(URLS.query.all()) == 0
+        assert len(Urls.query.all()) == 0
 
         # Ensure no URL-Tag associations exist for this UTub
         assert (
@@ -998,20 +1003,20 @@ def test_add_tag_to_url_in_nonexistent_utub(
 
         # Find UTub that doesn't exist
         utub_id_that_does_not_exist = 0
-        all_utub_ids = [int(utub.id) for utub in Utub.query.all()]
+        all_utub_ids = [int(utub.id) for utub in Utubs.query.all()]
 
         while utub_id_that_does_not_exist in all_utub_ids:
             utub_id_that_does_not_exist += 1
 
         # Ensure UTub does not exist
-        assert Utub.query.get(utub_id_that_does_not_exist) is None
-        num_of_utubs_in_db = len(Utub.query.all())
+        assert Utubs.query.get(utub_id_that_does_not_exist) is None
+        num_of_utubs_in_db = len(Utubs.query.all())
 
         # Assert URLs exist
-        assert len(URLS.query.all()) > 0
-        num_of_urls_in_db = len(URLS.query.all())
+        assert len(Urls.query.all()) > 0
+        num_of_urls_in_db = len(Urls.query.all())
 
-        url_to_add_to = URLS.query.first()
+        url_to_add_to = Urls.query.first()
         url_id_to_add_tag_to = url_to_add_to.id
 
         # Get initial num of Url-Tag associations
@@ -1039,11 +1044,11 @@ def test_add_tag_to_url_in_nonexistent_utub(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Ensure no URLs were added
-        assert len(URLS.query.all()) == num_of_urls_in_db
+        assert len(Urls.query.all()) == num_of_urls_in_db
 
         # Ensure UTub does not exist
-        assert Utub.query.get(utub_id_that_does_not_exist) is None
-        assert len(Utub.query.all()) == num_of_utubs_in_db
+        assert Utubs.query.get(utub_id_that_does_not_exist) is None
+        assert len(Utubs.query.all()) == num_of_utubs_in_db
 
         # Ensure correct count of Url-Tag associations
         assert len(Url_Tags.query.all()) == initial_num_url_tag_associations
@@ -1083,10 +1088,10 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
 
         # Find UTub that current user is not member of
-        utub_user_association_not_member_of = Utub_Users.query.filter(
-            Utub_Users.user_id != current_user.id
+        utub_user_association_not_member_of = Utub_Members.query.filter(
+            Utub_Members.user_id != current_user.id
         ).first()
-        utub_user_not_member_of: Utub = utub_user_association_not_member_of.to_utub
+        utub_user_not_member_of: Utubs = utub_user_association_not_member_of.to_utub
         utub_id_that_user_not_member_of = utub_user_not_member_of.id
         creator_of_utub_id: int = utub_user_not_member_of.utub_creator
 
@@ -1098,8 +1103,8 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         num_of_users_in_utub = len(utub_user_not_member_of.members)
 
         # Assert URLs exist
-        assert len(URLS.query.all()) > 0
-        num_of_urls_in_db = len(URLS.query.all())
+        assert len(Urls.query.all()) > 0
+        num_of_urls_in_db = len(Urls.query.all())
 
         # Find URL in this UTub
         url_association_with_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1153,10 +1158,10 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Ensure no URLs were added
-        assert len(URLS.query.all()) == num_of_urls_in_db
+        assert len(Urls.query.all()) == num_of_urls_in_db
 
         # Get UTub again
-        utub_that_user_not_member_of = Utub.query.get(utub_id_that_user_not_member_of)
+        utub_that_user_not_member_of = Utubs.query.get(utub_id_that_user_not_member_of)
         assert num_of_users_in_utub == len(utub_that_user_not_member_of.members)
 
         # Ensure no tags on this URL still
@@ -1211,8 +1216,8 @@ def test_add_tag_to_url_not_in_utub(
         assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
 
         # Find UTub that current user is creator of
-        utub_user_is_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
@@ -1222,8 +1227,8 @@ def test_add_tag_to_url_not_in_utub(
         ]
 
         # Assert URLs exist
-        assert len(URLS.query.all()) > 0
-        num_of_urls_in_db = len(URLS.query.all())
+        assert len(Urls.query.all()) > 0
+        num_of_urls_in_db = len(Urls.query.all())
 
         # Find URL that isn't in this UTub
         url_association_not_with_this_utub = Utub_Urls.query.filter(
@@ -1283,10 +1288,10 @@ def test_add_tag_to_url_not_in_utub(
         assert len(Tags.query.all()) == len(all_tag_strings)
 
         # Ensure no URLs were added
-        assert len(URLS.query.all()) == num_of_urls_in_db
+        assert len(Urls.query.all()) == num_of_urls_in_db
 
         # Ensure same number of URLs in UTub
-        utub_user_is_creator_of_for_check = Utub.query.get(utub_id_user_is_creator_of)
+        utub_user_is_creator_of_for_check = Utubs.query.get(utub_id_user_is_creator_of)
         assert len(utub_user_is_creator_of_for_check.utub_urls) == num_of_urls_in_utub
 
         # Ensure no association between this URL and this UTub
@@ -1342,8 +1347,8 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
 
     with app.app_context():
         # Get UTub this user is creator of
-        utub_user_is_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
         creator_of_utub_id = utub_user_is_creator_of.utub_creator
@@ -1501,8 +1506,8 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
 
     with app.app_context():
         # Get UTub this user is member of
-        utub_user_is_member_of: Utub = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_user_is_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
         creator_of_utub_id = utub_user_is_member_of.utub_creator
@@ -1666,8 +1671,8 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         assert len(Tags.query.all()) == 0
 
         # Find UTub this current user is creator of
-        utub_user_is_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
         creator_of_utub_id = utub_user_is_creator_of.utub_creator
@@ -1794,8 +1799,8 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         assert len(Tags.query.all()) == 0
 
         # Find UTub this current user is creator of
-        utub_user_is_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
         creator_of_utub_id = utub_user_is_creator_of.utub_creator

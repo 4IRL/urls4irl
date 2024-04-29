@@ -2,7 +2,8 @@ from flask import Blueprint, jsonify, request, render_template, abort
 from flask_login import current_user
 
 from src import db
-from src.models import Utub, Utub_Users
+from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
@@ -47,7 +48,7 @@ def get_single_utub(utub_id: str):
     """
     Retrieves data for a single UTub, and returns it in a serialized format
     """
-    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id not in [member.user_id for member in utub.members]:
         # User is not member of the UTub they are requesting
@@ -76,10 +77,10 @@ def add_utub():
         description = (
             utub_form.description.data if utub_form.description.data is not None else ""
         )
-        new_utub = Utub(
+        new_utub = Utubs(
             name=name, utub_creator=current_user.id, utub_description=description
         )
-        creator_to_utub = Utub_Users()
+        creator_to_utub = Utub_Members()
         creator_to_utub.to_user = current_user
         new_utub.members.append(creator_to_utub)
         db.session.commit()
@@ -136,7 +137,7 @@ def delete_utub(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub to be deleted
     """
-    utub: Utub = Utub.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id != utub.created_by.id:
         return (
@@ -184,7 +185,7 @@ def update_utub_name(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub: Utub = Utub.query.get_or_404(utub_id)
+    current_utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id != current_utub.utub_creator:
         return (
@@ -264,7 +265,7 @@ def update_utub_desc(utub_id: int):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub: Utub = Utub.query.get_or_404(utub_id)
+    current_utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id != current_utub.utub_creator:
         return (

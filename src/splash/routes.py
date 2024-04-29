@@ -11,7 +11,10 @@ from flask import (
 from flask_login import current_user, login_user
 
 from src import db, email_sender
-from src.models import User, EmailValidation, ForgotPassword, verify_token
+from src.models.email_validations import Email_Validations
+from src.models.forgot_passwords import Forgot_Passwords
+from src.models.users import Users
+from src.models.utils import verify_token
 from src.splash.forms import (
     LoginForm,
     UserRegistrationForm,
@@ -68,17 +71,17 @@ def register_user():
         username = register_form.username.data
         email = register_form.email.data
         plain_password = register_form.password.data
-        new_user = User(
+        new_user = Users(
             username=username,
             email=email.lower(),
             plaintext_password=plain_password,
         )
         email_validation_token = new_user.get_email_validation_token()
-        new_email_validation = EmailValidation(confirm_url=email_validation_token)
+        new_email_validation = Email_Validations(confirm_url=email_validation_token)
         new_user.email_confirm = new_email_validation
         db.session.add(new_user)
         db.session.commit()
-        user = User.query.filter_by(username=username).first()
+        user = Users.query.filter_by(username=username).first()
         login_user(user)
         validate_email_form = ValidateEmailForm()
         return (
@@ -116,8 +119,8 @@ def register_user():
                 )
             else:
                 login_user(
-                    User.query.filter(
-                        User.email == register_form.email.data.lower()
+                    Users.query.filter(
+                        Users.email == register_form.email.data.lower()
                     ).first_or_404()
                 )
                 return (
@@ -161,8 +164,8 @@ def login():
 
     if login_form.validate_on_submit():
         username = login_form.username.data
-        user: User = User.query.filter_by(username=username).first()
-        email_confirm: EmailValidation = user.email_confirm
+        user: Users = Users.query.filter_by(username=username).first()
+        email_confirm: Email_Validations = user.email_confirm
         login_user(user)  # Can add Remember Me functionality here
         if not email_confirm.is_validated:
             return (
@@ -213,8 +216,8 @@ def confirm_email_after_register():
 
 @splash.route("/send-validation-email", methods=["POST"])
 def send_validation_email():
-    current_email_validation: EmailValidation = EmailValidation.query.filter(
-        EmailValidation.user_id == current_user.id
+    current_email_validation: Email_Validations = Email_Validations.query.filter(
+        Email_Validations.user_id == current_user.id
     ).first_or_404()
 
     if current_email_validation.is_validated:
@@ -273,11 +276,11 @@ def validate_email_expired():
     if expired_token is None:
         abort(404)
 
-    invalid_email: EmailValidation = EmailValidation.query.filter(
-        EmailValidation.confirm_url == expired_token
+    invalid_email: Email_Validations = Email_Validations.query.filter(
+        Email_Validations.confirm_url == expired_token
     ).first_or_404()
 
-    user_with_expired_token: User = invalid_email.user
+    user_with_expired_token: Users = invalid_email.user
     new_token = user_with_expired_token.get_email_validation_token()
     invalid_email.confirm_url = new_token
     invalid_email.reset_attempts()
@@ -297,7 +300,7 @@ def validate_email_expired():
 
 @splash.route("/validate/<string:token>", methods=["GET"])
 def validate_email(token: str):
-    user_to_validate: User
+    user_to_validate: Users
     expired: bool
     user_to_validate, expired = verify_token(token, EMAILS.VALIDATE_EMAIL)
 
@@ -306,8 +309,8 @@ def validate_email(token: str):
 
     if not user_to_validate:
         # Link is invalid, so remove any users and email validation rows associated with this token
-        invalid_emails = EmailValidation.query.filter(
-            EmailValidation.confirm_url == token
+        invalid_emails = Email_Validations.query.filter(
+            Email_Validations.confirm_url == token
         ).all()
         if invalid_emails is not None:
             for invalid_email in invalid_emails:
@@ -372,15 +375,15 @@ def forgot_password():
 
 @splash.route("/reset-password/<string:token>", methods=["GET", "POST"])
 def reset_password(token: str):
-    reset_password_user: User
+    reset_password_user: Users
     expired: bool
     reset_password_user, expired = verify_token(
         token, RESET_PASSWORD.RESET_PASSWORD_KEY
     )
 
     if expired:
-        reset_password_obj = ForgotPassword.query.filter(
-            ForgotPassword.reset_token == token
+        reset_password_obj = Forgot_Passwords.query.filter(
+            Forgot_Passwords.reset_token == token
         ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()
@@ -392,8 +395,8 @@ def reset_password(token: str):
 
     if not reset_password_user.is_email_authenticated():
         # Remove the object if it exists
-        reset_password_obj = ForgotPassword.query.filter(
-            ForgotPassword.reset_token == token
+        reset_password_obj = Forgot_Passwords.query.filter(
+            Forgot_Passwords.reset_token == token
         ).first_or_404()
         db.session.delete(reset_password_obj)
         db.session.commit()

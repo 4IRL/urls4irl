@@ -2,7 +2,10 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.models import Utub, Utub_Urls, Url_Tags, URLS
+from src.models.urls import Urls
+from src.models.url_tags import Url_Tags
+from src.models.utubs import Utubs
+from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -43,14 +46,14 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
 
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
-        assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
+        assert Urls.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
         url_in_this_utub = Utub_Urls.query.filter_by(utub_id=utub_creator_of.id).first()
@@ -72,7 +75,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -107,7 +110,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls + 1 == len(URLS.query.all())
+        assert num_of_urls + 1 == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -174,14 +177,16 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is only a member of
-        utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        utub_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_member_of.utub_creator != current_user.id
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
-        assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
+        assert Urls.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
         url_in_this_utub = Utub_Urls.query.filter_by(
@@ -205,7 +210,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -239,7 +244,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls + 1 == len(URLS.query.all())
+        assert num_of_urls + 1 == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -302,7 +307,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -343,7 +348,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -379,7 +384,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -481,7 +486,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -516,7 +521,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -580,7 +585,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -609,7 +614,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -638,7 +643,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -722,7 +727,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -756,7 +761,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -803,7 +808,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -830,7 +835,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -857,7 +862,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -935,7 +940,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -962,7 +967,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -1014,7 +1019,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
 
     NEW_URL = ""
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -1041,7 +1046,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -1072,7 +1077,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -1121,14 +1126,16 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is only a member of
-        utub_member_of = Utub.query.filter(Utub.utub_creator != current_user.id).first()
+        utub_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
 
         # Verify logged in user is not creator of this UTub
         assert utub_member_of.utub_creator != current_user.id
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
-        assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
+        assert Urls.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1154,7 +1161,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -1181,7 +1188,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -1253,9 +1260,9 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is not a member of
-        utub_user_not_member_of = Utub.query.get(3)
+        utub_user_not_member_of = Utubs.query.get(3)
 
-        all_utubs = Utub.query.all()
+        all_utubs = Utubs.query.all()
         for utub in all_utubs:
             assert current_user.id != utub.utub_creator
 
@@ -1267,7 +1274,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
-        assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
+        assert Urls.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL not in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1298,7 +1305,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -1325,7 +1332,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -1401,7 +1408,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is not a member of
-        all_utubs = Utub.query.all()
+        all_utubs = Utubs.query.all()
         i = 0
         while (
             current_user.id
@@ -1427,7 +1434,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
-        assert URLS.query.filter_by(url_string=validated_new_fresh_url).first() is None
+        assert Urls.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL not in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1458,7 +1465,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -1485,7 +1492,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -1561,7 +1568,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -1588,7 +1595,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -1618,7 +1625,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
@@ -1659,7 +1666,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
 
     NEW_URL = "yahoo.com"
     with app.app_context():
-        utub_creator_of = Utub.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
@@ -1686,7 +1693,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         ).all()
 
         num_of_url_tag_assocs = len(Url_Tags.query.all())
-        num_of_urls = len(URLS.query.all())
+        num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
     edit_url_string_form = {
@@ -1708,7 +1715,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(URLS.query.all())
+        assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 

@@ -2,11 +2,9 @@ from flask import Flask
 import pytest
 
 from src import db
-from src.models import (
-    Tags,
-    Url_Tags,
-    Utub,
-)
+from src.models.tags import Tags
+from src.models.url_tags import Url_Tags
+from src.models.utubs import Utubs
 
 
 @pytest.fixture
@@ -25,7 +23,7 @@ def add_one_url_to_each_utub_one_tag(
         add_tags_to_database (pytest fixture): Adds all test tags to the database
     """
     with app.app_context():
-        all_utubs: list[Utub] = Utub.query.all()
+        all_utubs: list[Utubs] = Utubs.query.all()
         tag = Tags.query.first()
 
         for utub in all_utubs:

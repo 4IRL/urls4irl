@@ -3,7 +3,8 @@ from flask import jsonify, url_for, Response
 import requests
 
 from src import db, email_sender
-from src.models import ForgotPassword, User
+from src.models.forgot_passwords import Forgot_Passwords
+from src.models.users import Users
 from src.splash.forms import ForgotPasswordForm, ResetPasswordForm, UserRegistrationForm
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
@@ -72,7 +73,7 @@ def _handle_mailjet_failure(email_result: requests.Response, error_code: int = 1
 def _handle_after_forgot_password_form_validated(
     forgot_password_form: ForgotPasswordForm,
 ) -> tuple[Response, int]:
-    user_with_email: User = User.query.filter_by(
+    user_with_email: Users = Users.query.filter_by(
         email=forgot_password_form.email.data.lower()
     ).first()
 
@@ -89,7 +90,7 @@ def _handle_after_forgot_password_form_validated(
             )
 
         # Check if user has already tried to reset their password before
-        prev_forgot_password: ForgotPassword = user_with_email.forgot_password
+        prev_forgot_password: Forgot_Passwords = user_with_email.forgot_password
         forgot_password_obj = _create_or_reset_forgot_password_object_for_user(
             user_with_email, prev_forgot_password
         )
@@ -125,11 +126,11 @@ def _handle_after_forgot_password_form_validated(
 
 
 def _create_or_reset_forgot_password_object_for_user(
-    user: User, forgot_password: ForgotPassword
+    user: Users, forgot_password: Forgot_Passwords
 ):
     if forgot_password is None:
         new_token = user.get_password_reset_token()
-        forgot_password = ForgotPassword(reset_token=new_token)
+        forgot_password = Forgot_Passwords(reset_token=new_token)
         user.forgot_password = forgot_password
         db.session.add(forgot_password)
         db.session.commit()
@@ -148,7 +149,7 @@ def _create_or_reset_forgot_password_object_for_user(
 
 
 def _validate_resetting_password(
-    reset_password_user: User, reset_password_form: ResetPasswordForm
+    reset_password_user: Users, reset_password_form: ResetPasswordForm
 ) -> tuple[Response, int]:
 
     reset_password_user.change_password(reset_password_form.new_password.data)

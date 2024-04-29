@@ -1,6 +1,9 @@
 import pytest
 
-from src.models import User, Utub, URLS, Tags
+from src.models.tags import Tags
+from src.models.urls import Urls
+from src.models.users import Users
+from src.models.utubs import Utubs
 from src.utils.url_validation import find_common_url
 
 pytestmark = pytest.mark.unit
@@ -29,7 +32,7 @@ def test_user_model():
     WHEN a new User model is created
     THEN ensure all fields are filled out correctly
     """
-    new_user_object = User(
+    new_user_object = Users(
         username=new_user["username"],
         email=new_user["email"],
         plaintext_password=new_user["password"],
@@ -51,7 +54,7 @@ def test_utub_model():
     WHEN a new UTub model is created
     THEN ensure all fields are filled out correctly
     """
-    new_utub_object = Utub(
+    new_utub_object = Utubs(
         name=new_utub["name"],
         utub_creator=new_utub["creator"],
         utub_description=new_utub["description"],
@@ -71,7 +74,7 @@ def test_url_model():
     WHEN a new URL model is created
     THEN ensure all fields are filled out correctly
     """
-    new_url_object = URLS(
+    new_url_object = Urls(
         normalized_url=find_common_url(new_url["url_string"]),
         current_user_id=new_url["creator"],
     )

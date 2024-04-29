@@ -3,7 +3,12 @@ from flask_login import current_user
 import pytest
 
 from src import db
-from src.models import Utub, URLS, Utub_Urls, Utub_Users, Tags, Url_Tags
+from src.models.tags import Tags
+from src.models.urls import Urls
+from src.models.url_tags import Url_Tags
+from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
+from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -44,8 +49,8 @@ def test_remove_tag_from_url_as_utub_creator(
 
     with app.app_context():
         # Get a UTub this user is creator of
-        utub_this_user_creator_of = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_this_user_creator_of = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_this_user_creator_of = utub_this_user_creator_of.id
 
@@ -180,8 +185,8 @@ def test_remove_tag_from_url_as_utub_member(
 
     with app.app_context():
         # Get a UTub this user is creator of
-        utub_this_user_member_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_this_user_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_this_user_member_of = utub_this_user_member_of.id
 
@@ -316,8 +321,8 @@ def test_remove_tag_from_url_with_one_tag(
 
     with app.app_context():
         # Get a UTub this user is creator of
-        utub_this_user_member_of = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_this_user_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_this_user_member_of = utub_this_user_member_of.id
 
@@ -456,8 +461,8 @@ def test_remove_last_tag_from_utub(
 
     with app.app_context():
         # Get a UTub this user is creator of
-        utub_this_user_member_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_this_user_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_this_user_member_of = utub_this_user_member_of.id
 
@@ -603,8 +608,8 @@ def test_remove_tag_from_url_with_five_tags(
 
     with app.app_context():
         # Get UTub this user is member of
-        utub_this_user_member_of: Utub = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_this_user_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_this_user_member_of = utub_this_user_member_of.id
 
@@ -746,8 +751,8 @@ def test_remove_nonexistent_tag_from_url_as_utub_creator(
 
     with app.app_context():
         # Get a UTub this user is creator of
-        utub_this_user_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_this_user_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id_this_user_creator_of = utub_this_user_creator_of.id
         creator_of_utub_id = utub_this_user_creator_of.utub_creator
@@ -844,8 +849,8 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
 
     with app.app_context():
         # Get a UTub this user is member of
-        utub_this_user_member_of: Utub = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_this_user_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         utub_id_this_user_member_of = utub_this_user_member_of.id
         creator_of_utub_id = utub_this_user_member_of.utub_creator
@@ -957,8 +962,8 @@ def test_remove_tag_from_url_but_not_member_of_utub(
 
     with app.app_context():
         # Find UTub this user not a member of
-        utub_user_association_not_member_of: Utub_Users = Utub_Users.query.filter(
-            Utub_Users.user_id != current_user.id
+        utub_user_association_not_member_of: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id != current_user.id
         ).first()
         utub_id_not_member_of = utub_user_association_not_member_of.utub_id
         creator_of_utub_id = utub_user_association_not_member_of.to_utub.utub_creator
@@ -1066,7 +1071,7 @@ def test_remove_tag_from_url_from_nonexistent_utub(
     with app.app_context():
         # Find UTub this user not a member of
         nonexistent_utub_id = 0
-        all_utub_ids = [utub.id for utub in Utub.query.all()]
+        all_utub_ids = [utub.id for utub in Utubs.query.all()]
         while nonexistent_utub_id in all_utub_ids:
             nonexistent_utub_id += 1
 
@@ -1193,7 +1198,7 @@ def test_remove_tag_from_nonexistent_url_utub(
     with app.app_context():
         # Find URL that does not exist
         nonexistent_url_id = 0
-        all_url_ids = [utub.id for utub in URLS.query.all()]
+        all_url_ids = [utub.id for utub in Urls.query.all()]
         while nonexistent_url_id in all_url_ids:
             nonexistent_url_id += 1
 

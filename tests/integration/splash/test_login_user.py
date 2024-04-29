@@ -6,7 +6,7 @@ import pytest
 
 from tests.models_for_test import invalid_user_1, valid_user_1
 from tests.utils_for_test import get_csrf_token
-from src.models import User
+from src.models.users import Users
 from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.splash_form_strs import LOGIN_FORM
@@ -44,7 +44,7 @@ def test_login_registered_and_logged_in_user(login_first_user_with_register):
 
     # Ensure user id's match with  database
     with app.app_context():
-        registered_db_user = User.query.filter_by(
+        registered_db_user = Users.query.filter_by(
             username=new_user[LOGIN_FORM.USERNAME]
         ).first()
 

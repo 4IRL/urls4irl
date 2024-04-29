@@ -5,7 +5,11 @@ from flask.testing import FlaskClient
 from flask_login import current_user
 import pytest
 
-from src.models import Tags, URLS, User, Utub, Utub_Urls
+from src.models.tags import Tags
+from src.models.urls import Urls
+from src.models.users import Users
+from src.models.utubs import Utubs
+from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.model_strs import MODELS
 
@@ -26,8 +30,8 @@ def test_get_valid_utub_as_creator(
     client, _, _, app = add_single_utub_as_user_after_logging_in
 
     with app.app_context():
-        utub_user_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         id_of_utub = utub_user_creator_of.id
 
@@ -55,7 +59,7 @@ def test_get_valid_utub_as_creator(
 
 def test_get_valid_utub_as_member(
     add_single_user_to_utub_without_logging_in,
-    login_second_user_without_register: Tuple[FlaskClient, str, User, Flask],
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ):
     """
     GIVEN a member of a newly formed UTub
@@ -64,13 +68,13 @@ def test_get_valid_utub_as_member(
 
     Args:
         add_single_utub_as_user_after_logging_in (Tuple[FlaskClient, int, str, Flask]): Fixture to create a new UTub for current user
-        login_second_user_without_register: Tuple[FlaskClient, str, User, Flask]): Fixture to login in the member instead of UTub creator
+        login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask]): Fixture to login in the member instead of UTub creator
     """
     client, _, _, app = login_second_user_without_register
 
     with app.app_context():
-        utub_user_member_of: Utub = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_user_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         id_of_utub = utub_user_member_of.id
 
@@ -98,7 +102,7 @@ def test_get_valid_utub_as_member(
 
 def test_get_valid_utub_as_not_member(
     every_user_makes_a_unique_utub,
-    login_second_user_without_register: Tuple[FlaskClient, str, User, Flask],
+    login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ):
     """
     GIVEN a user who is not a member a newly formed UTub
@@ -107,13 +111,13 @@ def test_get_valid_utub_as_not_member(
 
     Args:
         every_user_makes_a_unique_utub (None): Fixture to create a new UTub for every user, with no members but the creators
-        login_second_user_without_register: Tuple[FlaskClient, str, User, Flask]): Fixture to login in the member instead of UTub creator
+        login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask]): Fixture to login in the member instead of UTub creator
     """
     client, _, _, app = login_second_user_without_register
 
     with app.app_context():
-        utub_user_member_of: Utub = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_user_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         id_of_utub = utub_user_member_of.id
 
@@ -124,7 +128,7 @@ def test_get_valid_utub_as_not_member(
 
 def test_get_valid_utub_with_members_urls_tags(
     add_all_urls_and_users_to_each_utub_with_all_tags,
-    login_first_user_without_register: Tuple[FlaskClient, str, User, Flask],
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ):
     """
     GIVEN a user who is not a member a newly formed UTub
@@ -134,17 +138,17 @@ def test_get_valid_utub_with_members_urls_tags(
     Args:
         add_all_urls_and_users_to_each_utub_with_all_tags (None): Fixture to create a new UTub for every user, with all users
             added as members, all URLs added, and every URL having every tag associated with it
-        login_first_user_without_register: Tuple[FlaskClient, str, User, Flask]): Fixture to login in the user
+        login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask]): Fixture to login in the user
     """
     client, _, _, app = login_first_user_without_register
 
     with app.app_context():
         all_tags: list[Tags] = Tags.query.all()
-        all_urls: list[URLS] = URLS.query.all()
-        all_users: list[User] = User.query.all()
+        all_urls: list[Urls] = Urls.query.all()
+        all_users: list[Users] = Users.query.all()
 
-        utub_user_is_creator_of: Utub = Utub.query.filter(
-            Utub.utub_creator == current_user.id
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
 
     response = client.get(_build_get_utub_route(utub_user_is_creator_of.id))
@@ -189,17 +193,17 @@ def test_get_valid_utub_with_members_urls_tags(
 
 def test_member_in_utub_cannot_delete_url_member_did_not_add(
     add_one_url_and_all_users_to_each_utub_no_tags,
-    login_first_user_without_register: Tuple[FlaskClient, str, User, Flask],
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ):
     client, _, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_user_is_member_of: Utub = Utub.query.filter(
-            Utub.utub_creator != current_user.id
+        utub_user_is_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
         ).first()
         all_urls_in_utub: list[Utub_Urls] = utub_user_is_member_of.utub_urls
         only_url_in_utub: Utub_Urls = all_urls_in_utub[-1]
-        standalone_url: URLS = only_url_in_utub.standalone_url
+        standalone_url: Urls = only_url_in_utub.standalone_url
 
     response = client.get(_build_get_utub_route(utub_user_is_member_of.id))
     assert response.status_code == 200

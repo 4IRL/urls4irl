@@ -3,7 +3,9 @@ from flask_login import current_user
 import pytest
 
 from src import db
-from src.models import User, ForgotPassword, verify_token
+from src.models.forgot_passwords import Forgot_Passwords
+from src.models.users import Users
+from src.models.utils import verify_token
 from src.utils.all_routes import ROUTES
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -42,8 +44,8 @@ def test_reset_password_token_can_expire(app, register_first_user):
     registered_user, _ = register_first_user
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == registered_user[RESET_PASSWORD.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == registered_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         quick_expiring_token = user.get_password_reset_token(expires_in=0)
 
@@ -61,17 +63,17 @@ def test_expired_token_deletes_object_and_redirects(
     """
     GIVEN a user with an expired reset password token
     WHEN they click on the expired token in their email
-    THEN ensure that the ForgotPassword object is deleted, and they are redirected to the splash page
+    THEN ensure that the Forgot_Passwords object is deleted, and they are redirected to the splash page
     """
     registered_user, _ = register_first_user
     client, _ = load_login_page
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == registered_user[RESET_PASSWORD.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == registered_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         expired_token = user.get_password_reset_token(expires_in=0)
-        password_reset = ForgotPassword(reset_token=expired_token)
+        password_reset = Forgot_Passwords(reset_token=expired_token)
         password_reset.user = user
         db.session.add(password_reset)
         db.session.commit()
@@ -91,8 +93,8 @@ def test_expired_token_deletes_object_and_redirects(
     with app.app_context():
         assert (
             len(
-                ForgotPassword.query.filter(
-                    ForgotPassword.reset_token == expired_token
+                Forgot_Passwords.query.filter(
+                    Forgot_Passwords.reset_token == expired_token
                 ).all()
             )
             == 0
@@ -112,8 +114,8 @@ def test_invalid_reset_password_token(user_attempts_reset_password):
     with app.app_context():
         assert (
             len(
-                ForgotPassword.query.filter(
-                    ForgotPassword.reset_token == invalid_token
+                Forgot_Passwords.query.filter(
+                    Forgot_Passwords.reset_token == invalid_token
                 ).all()
             )
             == 0
@@ -130,20 +132,20 @@ def test_not_email_validated_user_with_password_reset_token_fails(
     app, load_login_page, register_first_user_without_email_validation
 ):
     """
-    GIVEN a non-email-validated user who somehow generates a ForgotPassword object with a reset token
+    GIVEN a non-email-validated user who somehow generates a Forgot_Passwords object with a reset token
     WHEN they perform a GET on the reset password URL with their newly created reset token
-    THEN ensure that the ForgotPassword object gets deleted and the server returns a 404 since they
+    THEN ensure that the Forgot_Passwords object gets deleted and the server returns a 404 since they
         are not email validated
     """
     registered_user, _ = register_first_user_without_email_validation
     client, _ = load_login_page
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == registered_user[RESET_PASSWORD.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == registered_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         reset_token = user.get_password_reset_token()
-        new_password_reset = ForgotPassword(reset_token=reset_token)
+        new_password_reset = Forgot_Passwords(reset_token=reset_token)
         new_password_reset.user = user
         db.session.add(new_password_reset)
         db.session.commit()
@@ -157,8 +159,8 @@ def test_not_email_validated_user_with_password_reset_token_fails(
     with app.app_context():
         assert (
             len(
-                ForgotPassword.query.filter(
-                    ForgotPassword.reset_token == reset_token
+                Forgot_Passwords.query.filter(
+                    Forgot_Passwords.reset_token == reset_token
                 ).all()
             )
             == 0
@@ -167,15 +169,15 @@ def test_not_email_validated_user_with_password_reset_token_fails(
 
 def test_matching_user_reset_token_not_in_database_fails(user_attempts_reset_password):
     """
-    GIVEN a user who has a second token that corresponds to them but is not part of their ForgotPassword object
+    GIVEN a user who has a second token that corresponds to them but is not part of their Forgot_Passwords object
     WHEN they perform a GET on the reset password URL with their secondary token
-    THEN ensure the server responds with a 404 and does not delete their primary ForgotPassword object
+    THEN ensure the server responds with a 404 and does not delete their primary Forgot_Passwords object
     """
     app, client, new_user, correct_token, _ = user_attempts_reset_password
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == new_user[RESET_PASSWORD.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == new_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         invalid_token = user.get_password_reset_token()
 
@@ -188,8 +190,8 @@ def test_matching_user_reset_token_not_in_database_fails(user_attempts_reset_pas
     with app.app_context():
         assert (
             len(
-                ForgotPassword.query.filter(
-                    ForgotPassword.reset_token == correct_token
+                Forgot_Passwords.query.filter(
+                    Forgot_Passwords.reset_token == correct_token
                 ).all()
             )
             == 1
@@ -200,7 +202,7 @@ def test_password_reset_object_expires_after_one_hour(
     user_attempts_reset_password_one_hour_old,
 ):
     """
-    GIVEN a user with a ForgotPassword object of more than 1 hour old
+    GIVEN a user with a Forgot_Passwords object of more than 1 hour old
     WHEN they try to access the token in their email to reset their password
     THEN ensure the client responds with a 404
     """
@@ -277,8 +279,8 @@ def test_password_reset_without_equal_passwords_fails(user_attempts_reset_passwo
     )
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == new_user[RESET_PASSWORD.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == new_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         assert user.is_password_correct(new_user[RESET_PASSWORD.PASSWORD])
 
@@ -290,7 +292,7 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     GIVEN a user trying to reset their password
     WHEN they submit a valid reset password form
     THEN ensure server responds indicating the password is changed, status code of 200, the
-        ForgotPassword object is deleted from the database, and no user is logged in
+        Forgot_Passwords object is deleted from the database, and no user is logged in
 
     JSON response as follows:
     {
@@ -315,16 +317,16 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
     assert reset_response_json[STD_JSON.MESSAGE] == RESET_PASSWORD.PASSWORD_RESET
 
     with app.app_context():
-        user: User = User.query.filter(
-            User.email == new_user[RESET_PASSWORD.EMAIL].lower()
+        user: Users = Users.query.filter(
+            Users.email == new_user[RESET_PASSWORD.EMAIL].lower()
         ).first()
         assert user.is_password_correct(NEW_PASSWORD) and not user.is_password_correct(
             new_user[RESET_PASSWORD.PASSWORD]
         )
         assert (
             len(
-                ForgotPassword.query.filter(
-                    ForgotPassword.reset_token == reset_token
+                Forgot_Passwords.query.filter(
+                    Forgot_Passwords.reset_token == reset_token
                 ).all()
             )
             == 0
