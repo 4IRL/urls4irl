@@ -22,7 +22,7 @@ function getCurrentUserID() {
 
 // Simple function to streamline the jQuery selector extraction of selected UTub creator user ID. And makes it easier in case the ID is encoded in a new location in the future
 function getCurrentUTubOwnerUserID() {
-  return $("#UTubOwner").find("span").attr("memberid");
+  return parseInt($("#UTubOwner").find("span").attr("memberid"));
 }
 
 // Clear member selection

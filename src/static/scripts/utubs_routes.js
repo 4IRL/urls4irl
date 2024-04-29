@@ -1,3 +1,41 @@
+/** UTub UI Interactions **/
+
+$(document).ready(function () {
+  /* Bind click functions */
+
+  // Create new UTub
+  $("#createUTubBtn").on("click", function () {
+    hideInputs();
+    deselectAllURLs();
+    addUTubShowInput();
+  });
+
+  // Delete UTub
+  $("#deleteUTubBtn").on("click", function () {
+    deleteUTubShowModal();
+  });
+
+  // Edit UTub name
+  $("#editUTubNameBtn").on("click", function () {
+    hideInputs();
+    deselectAllURLs();
+    editUTubNameShowInput();
+  });
+
+  $("#submitEditUTubNameBtn").on("click", function () {
+    checkSameNameUTub(0, $("#editUTubName").val());
+  });
+
+  // Edit UTub description
+  $("#editUTubDescriptionBtn").on("click", function () {
+    editUTubDescriptionShowInput();
+  });
+
+  $("#submitEditUTubDescriptionBtn").on("click", function () {
+    editUTubDescription();
+  });
+});
+
 /* Add UTub */
 
 // Shows new UTub input fields
@@ -9,7 +47,6 @@ function addUTubShowInput() {
 // Hides new UTub input fields
 function addUTubHideInput() {
   hideInput("createUTub");
-  unbindEnter(); // unbinding doesn't seem to work...
 }
 
 // Handles post request and response for adding a new UTub
@@ -32,8 +69,6 @@ function addUTub() {
   request.fail(function (response, textStatus, xhr) {
     addUTubFail(response, textStatus, xhr);
   });
-
-  unbindEnter();
 }
 
 // Handles preparation for post request to create a new UTub
@@ -50,7 +85,6 @@ function addUTubSuccess(response) {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
   resetNewUTubForm();
 
-  console.log(response);
   let UTubID = response.utubID;
 
   $("#confirmModal").modal("hide");
@@ -157,17 +191,16 @@ function editUTubNameSetup() {
 
 // Handle edition of UTub's name
 function editUTubNameSuccess(response) {
-  console.log(response);
   let UTubName = response.utubName;
 
-  if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
+  $("#confirmModal").modal("hide");
 
   // UTubDeck display updates
   let editedUTubSelector = $("#listUTubs").find(".active");
   editedUTubSelector.find(".UTubName").text(UTubName);
 
   // Display updates
-  displayState1UTubDeck(getActiveUTubID(), getCurrentUTubCreatorID());
+  displayState1UTubDeck(getActiveUTubID(), getCurrentUTubOwnerUserID());
   displayState1URLDeck();
 }
 
@@ -304,7 +337,6 @@ function editUTubDescriptionFail(response, textStatus, xhr) {
 // Hide confirmation modal for deletion of the current UTub
 function deleteUTubHideModal() {
   $("#confirmModal").modal("hide");
-  unbindEnter();
 }
 
 // Show confirmation modal for deletion of the current UTub
@@ -327,23 +359,18 @@ function deleteUTubShowModal() {
       deleteUTubHideModal();
     })
     .text(buttonTextDismiss);
-  // bindKeyToFunction(deleteUTubHideModal, 27);
 
   $("#modalSubmit")
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
     .off("click")
-    .off("click")
     .on("click", function (e) {
       e.preventDefault();
       deleteUTub();
     });
-  // bindKeyToFunction(deleteUTub, 13);
 
   $("#confirmModal").modal("show");
-
-  hideIfShown($("#modalRedirect"));
 }
 
 // Handles deletion of a current UTub
@@ -367,8 +394,6 @@ function deleteUTub() {
 
     deleteUTubFailure(response, textStatus, xhr);
   });
-
-  unbindEnter();
 }
 
 // Prepares post request inputs to delete the current UTub

@@ -9,43 +9,6 @@ $(document).ready(function () {
     console.log("Something is wrong!");
     console.log(error);
   }
-
-  /* Bind click functions */
-
-  // Create new UTub
-  $("#createUTubBtn").on("click", function () {
-    hideInputs();
-    deselectAllURLs();
-    addUTubShowInput();
-  });
-
-  // Delete UTub
-  $("#deleteUTubBtn").on("click", function () {
-    deleteUTubShowModal();
-
-    // Bind enter key (keycode 13) to modal submit
-    // DP 12/29 bindKeyToFunction() appears to work here. See deleteUTubShowModal();
-  });
-
-  // Edit UTub name
-  $("#editUTubNameBtn").on("click", function () {
-    hideInputs();
-    deselectAllURLs();
-    editUTubNameShowInput();
-  });
-
-  $("#submitEditUTubNameBtn").on("click", function () {
-    checkSameNameUTub(0, $("#editUTubName").val());
-  });
-
-  // Edit UTub description
-  $("#editUTubDescriptionBtn").on("click", function () {
-    editUTubDescriptionShowInput();
-  });
-
-  $("#submitEditUTubDescriptionBtn").on("click", function () {
-    editUTubDescription();
-  });
 });
 
 /** UTub Utility Functions **/
@@ -67,24 +30,41 @@ function getUTubSelectorElemFromID(id) {
 
 // Streamline the extraction of a UTub array element from its ID
 function getUTubObjFromID(id) {
-  UTubs.forEach(function (UTub) {
-    if (UTub.id === id) return UTub;
+  $(".UTubSelector").forEach(function (UTub) {
+    if (UTub.attr("utubid") === id) return UTub;
   });
+
+  return -1;
 }
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function getUTubIDFromName(name) {
-  let UTubIDs = [];
+  const UTubNames = $(".UTubName");
+  let UTub;
 
-  UTubs.forEach(function (UTub) {
-    if (UTub.name === name) UTubIDs.push(UTub.id);
-  });
-  return UTubIDs;
+  console.log(UTubNames.length);
+  for (i = 0; i < UTubNames.length; i++) {
+    UTub = $(UTubNames[i]);
+
+    if (UTub.text() === name) {
+      return parseInt(UTub.closest(".UTubSelector").attr("utubid"));
+    }
+  }
+
+  return -1;
 }
 
 // Streamline the jQuery selector extraction of UTub name.
 function getCurrentUTubName() {
   return $(".UTubSelector.active").text();
+}
+
+// Quickly extracts all UTub names from #listUTubs and returns an array.
+function getAllAccessibleUTubNames() {
+  let UTubNames = [];
+  let UTubSelectorNames = $(".UTubName");
+  UTubSelectorNames.map((i) => UTubNames.push($(UTubSelectorNames[i]).text()));
+  return UTubNames;
 }
 
 // Streamline the AJAX call to db for updated info
@@ -268,7 +248,7 @@ function displayState0UTubDeck() {
 // Display state 2: UTubs list, 1x selected
 // Enter into this state change only if new UTub is selected
 // No actions performed within other decks can affect UTub Deck display
-function displayState1UTubDeck(selectedUTubID, UTubOwnerID) {
+function displayState1UTubDeck(selectedUTubID, UTubOwnerUserID) {
   hideInputs();
 
   // Subheader to tell user how many UTubs are accessible
@@ -284,7 +264,7 @@ function displayState1UTubDeck(selectedUTubID, UTubOwnerID) {
     showIfHidden($("#editUTubDescriptionBtn"));
   }
 
-  if (getCurrentUserID() === UTubOwnerID) {
+  if (getCurrentUserID() === UTubOwnerUserID) {
     showIfHidden($("#deleteUTubBtn"));
   } else hideIfShown($("#deleteUTubBtn"));
 }
@@ -362,42 +342,21 @@ function displayState3UTubDescriptionDeck(UTubDescription) {
 
 // Checks if submitted UTub name exists in db. mode is 0 for editUTub, 1 for addUTub
 function checkSameNameUTub(mode, name) {
-  // Count UTubs with same name
-  let sameNameCounter = 0;
-  try {
-    sameNameCounter = numSameNameUTub(name);
-  } catch (error) {
-    sameNameCounter = 0;
-  }
-
-  // If editUTub, ignore one instance of names
-  if (!mode) sameNameCounter -= 1;
-  // If editUTub, ignore one instance of names
-  if (!mode) sameNameCounter -= 1;
-
-  if (sameNameCounter > 0)
+  if ($(".UTubSelector.active").find(".UTubName").text() == name) {
+    // User submitted editUTubName without making change
+    editUTubName();
+  } else if (getAllAccessibleUTubNames().includes(name)) {
+    // UTub with same name exists. Confirm action with user
     sameNameWarningShowModal(mode, getUTubIDFromName(name));
-  else mode ? addUTub() : editUTubName();
-}
-
-// Counts number of UTubs with the same name
-// DP 10/22 When I add/delete UTubs, I get a response for the single UTub information. But this doesn't give me updated information about the aggregate of the user's UTubs. This check for the same name requires a loop variable. Is it best to recount based on #listUTubs?
-// DP 10/22 When I edit UTubs, I get a response for the single UTub information. But this doesn't give me updated information about the aggregate of the user's UTubs. This check does not catch if user changes two UTubs to a third similar name. Ex. UTub1 --> UTub3, UTub2 --> UTub3, should throw error but does not. Is it best to recount based on #listUTubs?
-// Need to implement: check UTubID AND name to circumvent inadvertent error thrown when no edit has been made
-function numSameNameUTub(name) {
-  let counter = 0;
-
-  for (i = 0; i < UTubs.length; i++) {
-    if (UTubs[i].name === name) counter++;
+  } else {
+    // UTub name is unique. Proceed with requested action
+    mode ? addUTub() : editUTubName();
   }
-
-  return counter;
 }
 
 // Hides modal for UTub same name action confirmation
 function sameNameWarningHideModal() {
   $("#confirmModal").modal("hide");
-  unbindEnter();
 }
 
 // Handles a double check if user inputs a new UTub name similar to one already existing. mode 1 'add', mode 0 'edit'
@@ -421,7 +380,6 @@ function sameNameWarningShowModal(mode, UTubID) {
       sameNameWarningHideModal();
       highlightInput(mode ? $("#createUTub") : $("#editUTubName"));
     });
-  bindKeyToFunction(sameNameWarningHideModal, 27);
 
   showIfHidden($("#modalRedirect"));
   $("#modalRedirect")
@@ -431,9 +389,8 @@ function sameNameWarningShowModal(mode, UTubID) {
     .on("click", function (e) {
       e.preventDefault();
       $("#confirmModal").modal("hide");
-      mode ? addUTubHideInput() : editUTubHideInput();
-      displayState1UTubDeck(UTubID, getCurrentUTubCreatorID());
-      displayState1UTubDeck(UTubID, getCurrentUTubCreatorID());
+      mode ? addUTubHideInput() : editUTubNameHideInput();
+      selectUTub(UTubID);
     });
 
   $("#modalSubmit")
@@ -444,10 +401,8 @@ function sameNameWarningShowModal(mode, UTubID) {
     .on("click", function (e) {
       e.preventDefault();
       mode ? addUTub() : editUTubName();
-      mode ? addUTub() : editUTubName();
+      hideIfShown($("#modalRedirect"));
     });
-  // bindKeyToFunction(removeURL, 13);
-  // 01/03/24 may want to separate sameNameWarningShowModal for add and edit
 
   $("#confirmModal").modal("show");
 }
