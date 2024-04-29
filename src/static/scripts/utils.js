@@ -65,6 +65,8 @@ function showInput(handle) {
   let inputEl = $("#" + handle);
   let inputDiv = inputEl.closest(".createDiv");
   showIfHidden(inputDiv);
+
+  highlightInput(inputEl);
 }
 
 // Highlight the input field. Typically if user requests action that is already displayed

@@ -13,18 +13,14 @@ $(document).ready(function () {
   /* Bind click functions */
 
   // Create new UTub
-  $("#createUTubBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+  $("#createUTubBtn").on("click", function () {
     hideInputs();
     deselectAllURLs();
     addUTubShowInput();
   });
 
   // Delete UTub
-  $("#deleteUTubBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+  $("#deleteUTubBtn").on("click", function () {
     deleteUTubShowModal();
 
     // Bind enter key (keycode 13) to modal submit
@@ -32,43 +28,22 @@ $(document).ready(function () {
   });
 
   // Edit UTub name
-  $("#editUTubNameBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+  $("#editUTubNameBtn").on("click", function () {
     hideInputs();
     deselectAllURLs();
     editUTubNameShowInput();
   });
 
-  $("#submitEditUTubNameBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
-    checkSameNameUTub(0, $("#editUTubName").val());
-    editUTubNameShowInput();
-  });
-
-  $("#submitEditUTubNameBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+  $("#submitEditUTubNameBtn").on("click", function () {
     checkSameNameUTub(0, $("#editUTubName").val());
   });
 
   // Edit UTub description
-  $("#editUTubDescriptionBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+  $("#editUTubDescriptionBtn").on("click", function () {
     editUTubDescriptionShowInput();
   });
 
-  $("#submitEditUTubDescriptionBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
-    editUTubDescriptionShowInput();
-  });
-
-  $("#submitEditUTubDescriptionBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+  $("#submitEditUTubDescriptionBtn").on("click", function () {
     editUTubDescription();
   });
 });
@@ -334,8 +309,9 @@ function displayState1UTubDescriptionDeck() {
   // Subheader prompt shown
   showIfHidden($("#UTubDescriptionDeckSubheader").closest(".row"));
 
-  // Edit UTub Description button shown
+  // Edit UTub Description button shown, submission button hidden
   showIfHidden($("#editUTubDescriptionBtn"));
+  hideIfShown($("#submitEditUTubDescriptionBtn"));
 
   // Update description values
   let p = $("#UTubDescription");
@@ -385,7 +361,6 @@ function displayState3UTubDescriptionDeck(UTubDescription) {
 /** Post data handling **/
 
 // Checks if submitted UTub name exists in db. mode is 0 for editUTub, 1 for addUTub
-// Checks if submitted UTub name exists in db. mode is 0 for editUTub, 1 for addUTub
 function checkSameNameUTub(mode, name) {
   // Count UTubs with same name
   let sameNameCounter = 0;
@@ -400,9 +375,6 @@ function checkSameNameUTub(mode, name) {
   // If editUTub, ignore one instance of names
   if (!mode) sameNameCounter -= 1;
 
-  if (sameNameCounter > 0)
-    sameNameWarningShowModal(mode, getUTubIDFromName(name));
-  else mode ? addUTub() : editUTubName();
   if (sameNameCounter > 0)
     sameNameWarningShowModal(mode, getUTubIDFromName(name));
   else mode ? addUTub() : editUTubName();

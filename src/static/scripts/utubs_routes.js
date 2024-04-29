@@ -50,7 +50,8 @@ function addUTubSuccess(response) {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
   resetNewUTubForm();
 
-  let UTubID = response.UTub_ID;
+  console.log(response);
+  let UTubID = response.utubID;
 
   $("#confirmModal").modal("hide");
 
@@ -61,7 +62,7 @@ function addUTubSuccess(response) {
   let index = Number($(".UTub").last().attr("position"));
   let nextIndex = index + 1;
   let listUTubs = $("#listUTubs");
-  listUTubs.append(createUTubSelector(response.UTub_name, UTubID, nextIndex));
+  listUTubs.append(createUTubSelector(response.utubName, UTubID, nextIndex));
 
   // Create new createDiv after latest created UTub selector
   listUTubs.append(createNewUTubInputField());
@@ -69,6 +70,7 @@ function addUTubSuccess(response) {
   selectUTub(UTubID);
 }
 
+// Handle error response display to user
 function addUTubFail(response, textStatus, xhr) {
   if (xhr.status == 409) {
     console.log(
@@ -120,6 +122,86 @@ function editUTubNameHideInput() {
   showIfHidden($("#addURLBtn"));
 }
 
+// Handles post request and response for editing an existing UTub's name
+function editUTubName() {
+  // Extract data to submit in POST request
+  [postURL, data] = editUTubNameSetup();
+
+  let request = AJAXCall("patch", postURL, data);
+
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    console.log("success");
+
+    if (xhr.status == 200) {
+      editUTubNameSuccess(response);
+    }
+  });
+
+  request.fail(function (response, textStatus, xhr) {
+    console.log("failed");
+
+    editUTubNameFail(response, textStatus, xhr);
+  });
+}
+
+// Handles preparation for post request to edit an existing UTub
+function editUTubNameSetup() {
+  let postURL = routes.editUTubName(getActiveUTubID());
+
+  let editedUTubName = $("#editUTubName").val();
+  data = { name: editedUTubName };
+
+  return [postURL, data];
+}
+
+// Handle edition of UTub's name
+function editUTubNameSuccess(response) {
+  console.log(response);
+  let UTubName = response.utubName;
+
+  if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
+
+  // UTubDeck display updates
+  let editedUTubSelector = $("#listUTubs").find(".active");
+  editedUTubSelector.find(".UTubName").text(UTubName);
+
+  // Display updates
+  displayState1UTubDeck(getActiveUTubID(), getCurrentUTubCreatorID());
+  displayState1URLDeck();
+}
+
+// Handle error response display to user
+function editUTubNameFail(response, textStatus, xhr) {
+  console.log("Error: Could not create UTub");
+  console.log(response);
+
+  if (xhr.status == 409) {
+    console.log(
+      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
+    );
+  } else if (xhr.status == 404) {
+    $(".invalid-feedback").remove();
+    $(".alert").remove();
+    $(".form-control").removeClass("is-invalid");
+    const error = JSON.parse(xhr.responseJSON);
+    for (var key in error) {
+      $('<div class="invalid-feedback"><span>' + error[key] + "</span></div>")
+        .insertAfter("#" + key)
+        .show();
+      $("#" + key).addClass("is-invalid");
+    }
+  }
+  console.log(
+    "Failure. Error code: " +
+      response.responseJSON.Error_code +
+      ". Status: " +
+      response.responseJSON.Message,
+  );
+}
+
+/* Edit UTub Description */
+
 // Shows input fields for editing an exiting UTub's description
 function editUTubDescriptionShowInput() {
   // Show edit fields
@@ -146,35 +228,12 @@ function editUTubDescriptionHideInput() {
   showIfHidden($("#editUTubDescriptionBtn"));
 }
 
-// Handles post request and response for adding a new UTub
-function editUTubName() {
-  // Extract data to submit in POST request
-  [postURL, data] = editUTubNameSetup();
-
-  let request = AJAXCall("post", postURL, data);
-
-  // Handle response
-  request.done(function (response, textStatus, xhr) {
-    console.log("success");
-
-    if (xhr.status == 200) {
-      editUTubNameSuccess(response);
-    }
-  });
-
-  request.fail(function (response, textStatus, xhr) {
-    console.log("failed");
-
-    editUTubFail(response, textStatus, xhr);
-  });
-}
-
-//
+// Handles post request and response for editing an existing UTub's description
 function editUTubDescription() {
   // Extract data to submit in POST request
   [postURL, data] = editUTubDescriptionSetup();
 
-  let request = AJAXCall("post", postURL, data);
+  let request = AJAXCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -188,18 +247,8 @@ function editUTubDescription() {
   request.fail(function (response, textStatus, xhr) {
     console.log("failed");
 
-    editUTubFail(response, textStatus, xhr);
+    editUTubDescriptionFail(response, textStatus, xhr);
   });
-}
-
-// Handles preparation for post request to edit an existing UTub
-function editUTubNameSetup() {
-  let postURL = routes.editUTubName(getActiveUTubID());
-
-  let editedUTubName = $("#editUTubName").val();
-  data = { name: editedUTubName };
-
-  return [postURL, data];
 }
 
 // Handles preparation for post request to edit an existing UTub
@@ -207,41 +256,22 @@ function editUTubDescriptionSetup() {
   let postURL = routes.editUTubDescription(getActiveUTubID());
 
   let editedUTubDescription = $("#editUTubDescription").val();
-  data = { utub_description: editedUTubDescription };
+  data = { description: editedUTubDescription };
 
   return [postURL, data];
 }
 
-//
-function editUTubNameSuccess(response) {
-  let UTubName = response.UTub_name;
-
-  if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
-
-  // UTubDeck display updates
-  let editedUTubLabel = $("#listUTubs").find(".active");
-  editedUTubLabel.find("b").text(UTubName);
-
-  // Display updates
-  displayState1UTubDeck(getActiveUTubID(), getCurrentUTubCreatorID());
-  displayState1URLDeck();
-  // Display updates
-  displayState1UTubDeck(getActiveUTubID(), getCurrentUTubCreatorID());
-  displayState1URLDeck();
-}
-
-//
+// Handle edition of UTub's description
 function editUTubDescriptionSuccess(response) {
-  let UTubDescription = response.UTub_description;
+  let UTubDescription = response.description;
 
   if (!isHidden($("#confirmModal")[0])) $("#confirmModal").modal("hide");
 
   displayState2UTubDescriptionDeck(UTubDescription);
-  displayState2UTubDescriptionDeck(UTubDescription);
 }
 
-//
-function editUTubFail(response, textStatus, xhr) {
+// Handle error response display to user
+function editUTubDescriptionFail(response, textStatus, xhr) {
   console.log("Error: Could not create UTub");
   console.log(response);
 
