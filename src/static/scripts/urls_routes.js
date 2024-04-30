@@ -34,7 +34,7 @@ function addURL() {
       // Reroute to custom U4I 404 error page
       window.replace.href = "/invalid";
     } else {
-      addURLFailure(response);
+      addURLFail(response);
     }
   });
 }
@@ -48,8 +48,8 @@ function addURLSetup() {
   let newURLTitle = $("#newURLTitle").val();
   let newURL = $("#newURLString").val();
   data = {
-    url_string: newURL,
-    url_title: newURLTitle,
+    urlString: newURL,
+    urlTitle: newURLTitle,
   };
 
   return [postURL, data];
@@ -61,9 +61,9 @@ function addURLSuccess(response) {
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
   let URLcol = createURLBlock(
-    response.URL.url_ID,
-    response.URL.url_string,
-    response.URL.url_title,
+    response.URL.urlID,
+    response.URL.urlString,
+    response.URL.urlTitle,
     [],
     [],
   );
@@ -74,11 +74,11 @@ function addURLSuccess(response) {
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
-function addURLFailure(response) {
+function addURLFail(response) {
   console.log(response);
   console.log("Basic implementation. Needs revision");
-  console.log(response.responseJSON.Error_code);
-  console.log(response.responseJSON.Message);
+  console.log(response.responseJSON.errorCode);
+  console.log(response.responseJSON.message);
   // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to user?
   // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
 }
@@ -127,7 +127,7 @@ function editURL() {
   // Extract data to submit in POST request
   [postURL, data] = editURLSetup();
 
-  AJAXCall("post", postURL, data);
+  AJAXCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -151,7 +151,7 @@ function editURLSetup() {
 
   let editedURL = getSelectedURLCard().find(".editURL")[0].value;
 
-  data = { url_string: editedURL };
+  data = { urlString: editedURL };
 
   return [postURL, data];
 }
@@ -159,8 +159,8 @@ function editURLSetup() {
 // Displays changes related to a successful edition of a URL
 function editURLSuccess(response) {
   // Extract response data
-  let editedURLID = response.URL.url_ID;
-  let editedURLString = response.URL.url_string;
+  let editedURLID = response.URL.urlID;
+  let editedURLString = response.URL.urlString;
 
   const selectedCardDiv = getSelectedURLCard();
 
@@ -191,9 +191,9 @@ function editURLFail(response) {
   console.log("Error: Could not edit URL");
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
+      response.responseJSON.errorCode +
       ". Status: " +
-      response.responseJSON.Message,
+      response.responseJSON.message,
   );
 }
 
@@ -241,7 +241,7 @@ function editURLTitle() {
   // Extract data to submit in POST request
   [postURL, data] = editURLTitleSetup();
 
-  AJAXCall("post", postURL, data);
+  AJAXCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -265,7 +265,7 @@ function editURLTitleSetup() {
 
   let editedURLTitle = getSelectedURLCard().find(".editURLTitle")[0].value;
 
-  data = { url_title: editedURLTitle };
+  data = { urlTitle: editedURLTitle };
 
   return [postURL, data];
 }
@@ -273,7 +273,7 @@ function editURLTitleSetup() {
 // Displays changes related to a successful edition of a URL
 function editURLTitleSuccess(response) {
   // Extract response data
-  let editedURLTitle = response.URL.url_title;
+  let editedURLTitle = response.URL.urlTitle;
 
   const selectedCardDiv = getSelectedURLCard();
 
@@ -291,9 +291,9 @@ function editURLTitleFail(response) {
   console.log("Error: Could not edit URL");
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
+      response.responseJSON.errorCode +
       ". Status: " +
-      response.responseJSON.Message,
+      response.responseJSON.message,
   );
 }
 
@@ -302,7 +302,6 @@ function editURLTitleFail(response) {
 // Hide confirmation modal for removal of the selected URL
 function deleteURLHideModal() {
   $("#confirmModal").modal("hide");
-  unbindEnter();
 }
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
@@ -317,21 +316,17 @@ function deleteURLShowModal() {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      removeURLHideModal();
+      deleteURLHideModal();
     })
     .text(buttonTextDismiss);
-  // Esc key cancels operation
-  bindKeyToFunction(removeURLHideModal, 27);
 
   $("#modalSubmit")
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      removeURL();
+      deleteURL();
     })
     .text(buttonTextSubmit);
-  // Enter key sends operation
-  bindKeyToFunction(removeURL, 13);
 
   $("#confirmModal").modal("show");
 
@@ -343,7 +338,7 @@ function deleteURL() {
   // Extract data to submit in POST request
   postURL = deleteURLSetup();
 
-  let request = AJAXCall("post", postURL, []);
+  let request = AJAXCall("delete", postURL, []);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -360,7 +355,7 @@ function deleteURL() {
     if (xhr.status == 404) {
       // Reroute to custom U4I 404 error page
     } else {
-      removeURLFail(response);
+      deleteURLFail(response);
     }
   });
 }
