@@ -12,11 +12,12 @@ from src.urls.forms import (
     EditURLTitleForm,
 )
 from src.urls.utils import build_form_errors
-from src.utils.url_validation import InvalidURLError, find_common_url
+from src.utils.email_validation import email_validation_required
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
-from src.utils.email_validation import email_validation_required
+from src.utils.strings.url_validation_strs import URL_VALIDATION
+from src.utils.url_validation import InvalidURLError, find_common_url
 
 urls = Blueprint("urls", __name__)
 
@@ -127,7 +128,10 @@ def add_url(utub_id: int):
         url_string = utub_new_url_form.url_string.data
 
         try:
-            user_agent = request.headers if not current_app.testing else None
+            headers = request.headers if not current_app.testing else None
+            user_agent = (
+                None if headers is None else headers.get(URL_VALIDATION.USER_AGENT)
+            )
             normalized_url = find_common_url(url_string, user_agent)
         except InvalidURLError:
             # URL was unable to be verified as a valid URL
@@ -304,7 +308,11 @@ def edit_url(utub_id: int, url_id: int):
 
         # Here the user wants to try to change or modify the URL
         try:
-            normalized_url = find_common_url(url_to_change_to)
+            headers = request.headers if not current_app.testing else None
+            user_agent = (
+                None if headers is None else headers.get(URL_VALIDATION.USER_AGENT)
+            )
+            normalized_url = find_common_url(url_to_change_to, user_agent)
         except InvalidURLError:
             # URL was unable to be verified as a valid URL
             return (
