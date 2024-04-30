@@ -342,7 +342,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       }
     });
 
-    let tagSpan = createTagBadgeInURL(tag.id, tag.tag_string);
+    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString);
 
     $(URLTags).append(tagSpan);
   }

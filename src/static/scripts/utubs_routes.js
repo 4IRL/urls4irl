@@ -227,9 +227,9 @@ function editUTubNameFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
+      response.responseJSON.errorCode +
       ". Status: " +
-      response.responseJSON.Message,
+      response.responseJSON.message,
   );
 }
 
@@ -326,9 +326,9 @@ function editUTubDescriptionFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.responseJSON.Error_code +
+      response.responseJSON.errorCode +
       ". Status: " +
-      response.responseJSON.Message,
+      response.responseJSON.message,
   );
 }
 
@@ -392,7 +392,7 @@ function deleteUTub() {
   request.fail(function (response, textStatus, xhr) {
     console.log("failed");
 
-    deleteUTubFailure(response, textStatus, xhr);
+    deleteUTubFail(response, textStatus, xhr);
   });
 }
 
@@ -424,7 +424,7 @@ function deleteUTubSuccess() {
     displayState0UTubDeck();
 }
 
-function deleteUTubFailure(response, textStatus, xhr) {
+function deleteUTubFail(response, textStatus, xhr) {
   console.log("Error: Could not delete UTub");
 
   if (xhr.status == 409) {

@@ -88,7 +88,7 @@ function buildTagDeck(dictTags) {
     // Loop through all tags and provide checkbox input for filtering
     for (let i in dictTags) {
       parent.append(
-        createTagFilterInDeck(dictTags[i].id, dictTags[i].tag_string),
+        createTagFilterInDeck(dictTags[i].id, dictTags[i].tagString),
       );
     }
 
