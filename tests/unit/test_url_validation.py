@@ -119,10 +119,7 @@ def test_random_user_agents():
     valid_agent_used = 0
     for unknown_url in urls_needing_valid_user_agent:
         for user_agent in set(url_valid.USER_AGENTS):
-            header_with_custom_user_agent = url_valid.generate_headers(user_agent)
-            if unknown_url == url_valid.find_common_url(
-                unknown_url, header_with_custom_user_agent
-            ):
+            if unknown_url == url_valid.find_common_url(unknown_url, user_agent):
                 valid_agent_used += 1
                 break
 

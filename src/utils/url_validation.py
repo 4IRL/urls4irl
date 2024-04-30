@@ -24,9 +24,12 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 """
 
 from url_normalize import url_normalize
+from url_normalize.tools import deconstruct_url
 from urllib.parse import unquote
 import random
 import requests
+
+from src.utils.strings.url_validation_strs import URL_VALIDATION as VALIDATION_STRS
 
 USER_AGENTS = (
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
@@ -88,23 +91,25 @@ def generate_random_user_agent() -> str:
     return random.choice(USER_AGENTS)
 
 
-def generate_headers(user_agent: str = None) -> dict[str, str]:
+def generate_headers(url: str, user_agent: str = None) -> dict[str, str]:
     return {
-        "User-Agent": (
+        VALIDATION_STRS.USER_AGENT: (
             generate_random_user_agent() if user_agent is None else user_agent
         ),
-        "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-        "Accept-Encoding": "*",
-        "Accept-Language": "*",
-        "Sec-Fetch-Dest": "document",
-        "Sec-Fetch-Mode": "navigate",
-        "Sec-Fetch-User": "?1",
+        VALIDATION_STRS.ACCEPT: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
+        VALIDATION_STRS.ACCEPT_ENCODING: "*",
+        VALIDATION_STRS.ACCEPT_LANGUAGE: "*",
+        VALIDATION_STRS.SEC_FETCH_DEST: "document",
+        VALIDATION_STRS.SEC_FETCH_MODE: "navigate",
+        VALIDATION_STRS.SEC_FETCH_USER: "?1",
+        VALIDATION_STRS.CONNECTION: "keep-alive",
+        VALIDATION_STRS.HOST: deconstruct_url(url).host,
     }
 
 
-def perform_head_request(url: str, headers: dict[str, str] = None) -> requests.Response:
+def perform_head_request(url: str, user_agent: str = None) -> requests.Response:
+    headers = generate_headers(url, user_agent)
     try:
-        headers = generate_headers() if headers is None else headers
         response = requests.head(
             url,
             timeout=(
@@ -158,7 +163,7 @@ def all_user_agent_sampling(url: str) -> requests.Response:
         try:
             response = requests.get(
                 url,
-                headers=generate_headers(agent),
+                headers=generate_headers(url, user_agent=agent),
                 timeout=(
                     3,
                     6,
@@ -176,7 +181,7 @@ def all_user_agent_sampling(url: str) -> requests.Response:
     raise InvalidURLError
 
 
-def find_common_url(url: str, headers: dict[str, str] = None) -> str:
+def find_common_url(url: str, user_agent: str = None) -> str:
     """
     Status codes: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
 
@@ -197,9 +202,8 @@ def find_common_url(url: str, headers: dict[str, str] = None) -> str:
     Returns:
         str: Either the redirected URL, or the original URL used in the request head method
     """
-
     url = normalize_url(url)
-    response = perform_head_request(url, headers)
+    response = perform_head_request(url, user_agent)
 
     status_code = response.status_code
 
@@ -209,7 +213,7 @@ def find_common_url(url: str, headers: dict[str, str] = None) -> str:
     else:
         # Redirect or creation provides the Location header in http response
         if status_code in range(300, 400) or status_code == 201:
-            location = response.headers.get("Location", None)
+            location = response.headers.get(VALIDATION_STRS.LOCATION, None)
 
         else:
             location = response.url
@@ -242,6 +246,11 @@ def filter_out_common_redirect(url: str) -> str:
 
 if __name__ == "__main__":
     # find_common_url('https://www.homedepot.com/c/ah/how-to-build-a-bookshelf/9ba683603be9fa5395fab904e329862')
-    find_common_url(
-        "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-(16-inch-amd)/len101t0076#ports_slots"
-    )
+    # find_common_url(
+    #    "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-(16-inch-amd)/len101t0076#ports_slots"
+    # )
+
+    print(find_common_url("instagram.com"))
+    print(find_common_url("gmail.com"))
+    print(find_common_url("homedepot.com"))
+    print(find_common_url("calendar.google.com"))
