@@ -90,7 +90,6 @@ function addTagSuccess(response) {
 
   // Extract response data
   let tagID = response.tag.tagID;
-  tagID = response.tag.id;
   let string = response.tag.tagString;
 
   if (!isTagInDeck(tagID)) {
@@ -124,6 +123,7 @@ function removeTag(tagID) {
   // Handle response
   request.done(function (response, textStatus, xhr) {
     if (xhr.status == 200) {
+      console.log("success");
       removeTagSuccess(response);
     }
   });
@@ -157,7 +157,7 @@ function removeTagSuccess(response) {
   $(".selectedURL").find(tagBadgeJQuerySelector).remove();
 
   // Determine whether the removed tag is the last instance in the UTub. Remove, if yes
-  if (isEmpty($(tagBadgeJQuerySelector))) {
+  if (!response.tagInUTub) {
     $(".tagFilter[tagid=" + tagID + "]").remove();
   }
 
