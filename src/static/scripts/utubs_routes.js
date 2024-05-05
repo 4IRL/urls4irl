@@ -54,9 +54,6 @@ function addUTub() {
   // Extract data to submit in POST request
   [postURL, data] = addUTubSetup();
 
-  console.log(postURL);
-  console.log(data);
-
   let request = AJAXCall("post", postURL, data);
 
   // Handle response
@@ -75,7 +72,7 @@ function addUTub() {
 function addUTubSetup() {
   let postURL = routes.addUTub;
   let newUTubName = $("#createUTub").val();
-  data = { name: newUTubName };
+  data = { utubName: newUTubName };
 
   return [postURL, data];
 }
@@ -124,7 +121,7 @@ function addUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
+      response.error.errorCode +
       ". Status: " +
       response.error.Message,
   );
@@ -184,7 +181,7 @@ function editUTubNameSetup() {
   let postURL = routes.editUTubName(getActiveUTubID());
 
   let editedUTubName = $("#editUTubName").val();
-  data = { name: editedUTubName };
+  data = { utubName: editedUTubName };
 
   return [postURL, data];
 }
@@ -450,7 +447,7 @@ function deleteUTubFail(response, textStatus, xhr) {
   }
   console.log(
     "Failure. Error code: " +
-      response.error.Error_code +
+      response.error.errorCode +
       ". Status: " +
       response.error.Message,
   );
