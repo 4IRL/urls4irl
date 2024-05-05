@@ -186,11 +186,11 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         )
 
     # User is member of this UTub
-    tag_for_url_in_utub = Url_Tags.query.filter_by(
+    tag_for_url_in_utub: Url_Tags = Url_Tags.query.filter_by(
         utub_id=utub_id, url_id=url_id, tag_id=tag_id
     ).first_or_404()
     url_to_remove_tag_from = tag_for_url_in_utub.tagged_url
-    tag_to_remove = tag_for_url_in_utub.tag_item
+    tag_to_remove: Tags = tag_for_url_in_utub.tag_item
 
     db.session.delete(tag_for_url_in_utub)
     db.session.commit()
@@ -209,8 +209,8 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
                 STD_JSON.STATUS: STD_JSON.SUCCESS,
                 STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
                 TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
-                TAGS_SUCCESS.TAG_STILL_IN_UTUB: True if num_left_in_utub > 0 else False,
-                TAGS_SUCCESS.TAG: tag_to_remove.serialized,
+                TAGS_SUCCESS.TAG_STILL_IN_UTUB: num_left_in_utub > 0,
+                TAGS_SUCCESS.TAG: tag_to_remove.serialized_on_delete,
             }
         ),
         200,

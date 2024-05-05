@@ -28,6 +28,7 @@ UNABLE_TO_MODIFY_UTUB_DESC = "Unable to modify UTub description."
 UTUB_DESC_TOO_LONG = "UTub description is too long."
 UTUB_DESC_FIELD_TOO_LONG = ["Field cannot be longer than 500 characters."]
 UTUB_NAME_FIELD_INVALID = ["Field must be between 1 and 30 characters long."]
+UTUB_NAME_EMPTY = "Name cannot contain only spaces or be empty."
 
 
 class UTUB_FAILURE(UTUB_GENERAL, FAILURE_GENERAL):
@@ -37,3 +38,4 @@ class UTUB_FAILURE(UTUB_GENERAL, FAILURE_GENERAL):
     UTUB_DESC_TOO_LONG = UTUB_DESC_TOO_LONG
     UTUB_DESC_FIELD_TOO_LONG = UTUB_DESC_FIELD_TOO_LONG
     UTUB_NAME_FIELD_INVALID = UTUB_NAME_FIELD_INVALID
+    UTUB_NAME_EMPTY = UTUB_NAME_EMPTY

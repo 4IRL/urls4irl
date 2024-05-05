@@ -1,5 +1,4 @@
 from src.utils.strings.model_strs import (
-    DESCRIPTION,
     EMAIL,
     NAME,
     PASSWORD,
@@ -9,6 +8,7 @@ from src.utils.strings.model_strs import (
     USERNAME,
     UTUB_DESCRIPTION,
 )
+from src.utils.strings.utub_strs import UTUB_NAME
 
 # Strings for all forms
 CSRF_TOKEN = "csrf_token"
@@ -35,7 +35,8 @@ class ADD_USER_FORM(GENERAL_FORM):
 
 class UTUB_FORM(GENERAL_FORM):
     NAME = NAME
-    DESCRIPTION = DESCRIPTION
+    UTUB_NAME = UTUB_NAME
+    UTUB_DESCRIPTION = UTUB_DESCRIPTION
 
 
 class UTUB_DESCRIPTION_FORM(GENERAL_FORM):
