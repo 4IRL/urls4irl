@@ -100,7 +100,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
 
     # Ensure json response from server is valid
     add_tag_response_json = add_tag_response.json
-    new_tag_id = int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
+    new_tag_id = int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_ID])
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
     assert add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_STRING] == tag_to_add
@@ -219,7 +219,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
 
     # Ensure json response from server is valid
     add_tag_response_json = add_tag_response.json
-    new_tag_id = int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
+    new_tag_id = int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_ID])
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
     assert add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_STRING] == tag_to_add
@@ -346,7 +346,7 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
     assert add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_STRING] == tag_to_add
     assert (
-        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
+        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_ID])
         == tag_id_that_exists
     )
     assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
@@ -468,7 +468,7 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
     assert add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_STRING] == tag_to_add
     assert (
-        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.ID])
+        int(add_tag_response_json[TAGS_SUCCESS.TAG][MODEL_STRS.TAG_ID])
         == tag_id_that_exists
     )
     assert sorted(add_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
