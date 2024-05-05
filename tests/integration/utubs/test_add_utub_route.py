@@ -26,7 +26,7 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
 
     POST request must contain a form with the following fields:
         UTUB_FORM.CSRF_TOKEN: String representing the CSRF token for this session and user (required)
-        UTUB_FORM.NAME: UTub name desired (required)
+        UTUB_FORM.UTUB_NAME: UTub name desired (required)
         UTUB_FORM.DESCRIPTION: UTub description (not required)
 
     On successful POST, the backend responds with a 200 status code and the following JSON:
@@ -47,8 +47,8 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
 
     new_utub_form = {
         UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.NAME: valid_empty_utub_1[UTUB_FORM.NAME],
-        UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
+        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
     new_utub_response = client.post(url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form)
@@ -114,7 +114,7 @@ def test_add_utub_with_same_name(
 
     POST request must contain a form with the following fields:
         UTUB_FORM.CSRF_TOKEN: String representing the CSRF token for this session and user (required)
-        UTUB_FORM.NAME: UTub name desired (required)
+        UTUB_FORM.UTUB_NAME: UTub name desired (required)
         UTUB_FORM.DESCRIPTION: UTub description (not required)
 
     On successful POST, the backend responds with a 200 status code and the following JSON:
@@ -137,8 +137,8 @@ def test_add_utub_with_same_name(
 
     new_utub_form = {
         UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.NAME: current_utub_name,
-        UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
+        UTUB_FORM.UTUB_NAME: current_utub_name,
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
     new_utub_response = client.post(url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form)
@@ -195,8 +195,8 @@ def test_add_utub_with_get_request(login_first_user_with_register):
     client, csrf_token, _, app = login_first_user_with_register
     new_utub_form = {
         UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.NAME: valid_empty_utub_1[UTUB_FORM.NAME],
-        UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
+        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
     new_utub_response = client.get(url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form)
@@ -224,7 +224,7 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
         STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
             [
                 {
-                    UTUB_FORM.NAME: "This field is required" - Indicates the UTub name field is missing
+                    UTUB_FORM.UTUB_NAME: "This field is required" - Indicates the UTub name field is missing
                 }
             ]
     }
@@ -232,7 +232,7 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
     client, csrf_token, _, app = login_first_user_with_register
     new_utub_form = {
         UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.DESCRIPTION: valid_empty_utub_1[UTUB_FAILURE.UTUB_DESCRIPTION],
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_FAILURE.UTUB_DESCRIPTION],
     }
 
     invalid_new_utub_response = client.post(
@@ -247,7 +247,7 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
     assert invalid_new_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert invalid_new_utub_response_json[STD_JSON.ERROR_CODE] == 1
     assert (
-        invalid_new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.NAME]
+        invalid_new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
         == UTUB_FAILURE.FIELD_REQUIRED
     )
     assert (
@@ -267,7 +267,7 @@ def test_add_utub_with_no_csrf_token(login_first_user_with_register):
     THEN ensure it returns with a 400 and page response indicates CSRF token is missing
     """
 
-    client, csrf_token, user, app = login_first_user_with_register
+    client, _, _, _ = login_first_user_with_register
 
     invalid_new_utub_response = client.post(url_for(ROUTES.UTUBS.ADD_UTUB))
 
@@ -293,8 +293,8 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
     for valid_utub in valid_utubs:
         new_utub_form = {
             UTUB_FORM.CSRF_TOKEN: csrf_token,
-            UTUB_FORM.NAME: valid_utub[UTUB_FORM.NAME],
-            UTUB_FORM.DESCRIPTION: valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION],
+            UTUB_FORM.UTUB_NAME: valid_utub[UTUB_FORM.NAME],
+            UTUB_FORM.UTUB_DESCRIPTION: valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION],
         }
 
         new_utub_response = client.post(

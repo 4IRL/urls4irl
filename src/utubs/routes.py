@@ -5,6 +5,7 @@ from src import db
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
+from src.utubs.utils import build_form_errors
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.utub_strs import UTUB_SUCCESS, UTUB_FAILURE
@@ -107,7 +108,7 @@ def add_utub():
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
                     STD_JSON.ERROR_CODE: 1,
-                    STD_JSON.ERRORS: utub_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(utub_form),
                 }
             ),
             400,
@@ -229,7 +230,7 @@ def update_utub_name(utub_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
                     STD_JSON.ERROR_CODE: 2,
-                    STD_JSON.ERRORS: utub_name_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(utub_name_form),
                 }
             ),
             400,
@@ -323,7 +324,7 @@ def update_utub_desc(utub_id: int):
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: UTUB_FAILURE.UTUB_DESC_TOO_LONG,
                     STD_JSON.ERROR_CODE: 3,
-                    STD_JSON.ERRORS: utub_desc_form.errors,
+                    STD_JSON.ERRORS: build_form_errors(utub_desc_form),
                 }
             ),
             400,

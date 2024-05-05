@@ -721,8 +721,8 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utfâˆ
 
 Required form data:
 > ```
-> name: %NewUTubName%
-> description: %UTubDescription%
+> utubName: %NewUTubName%
+> utubDescription: %UTubDescription%
 > csrf_token: %csrf_token%
 > ```
 
@@ -759,7 +759,7 @@ Invalid form data sent with the request.
 >     "message": "Unable to make a UTub with that information.",
 >     "errorCode": 1,
 >     "errors": {
->         "name": ["This field is required."],
+>         "utubName": ["This field is required."],
 >     },
 > }
 > ```
@@ -781,8 +781,8 @@ Invalid form data sent with the request.
 >  https://urls4irl.app/utubs \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'name=UTub Name'
->  --data-urlencode 'description=UTub Description'
+>  --data-urlencode 'utubName=UTub Name'
+>  --data-urlencode 'utubDescription=UTub Description'
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -851,7 +851,7 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utfâˆ
 
 Required form data:
 > ```
-> name: %NewUTubName%
+> utubName: %NewUTubName%
 > csrf_token: %csrf_token%
 > ```
 
@@ -939,7 +939,7 @@ Payload content-type should be `application/x-www-form-urlencoded; charset=utfâˆ
 
 Required form data:
 > ```
-> description: %NewUTubDescription%
+> utubDescription: %NewUTubDescription%
 > csrf_token: %csrf_token%
 > ```
 

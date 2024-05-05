@@ -22,7 +22,7 @@ ADDED_BY = "addedByUserID"
 USERNAME = "username"
 IS_CREATOR = "isCreator"
 CAN_DELETE = "canDelete"
-UTUB_DESCRIPTION = DESCRIPTION
+UTUB_DESCRIPTION = "utubDescription"
 
 
 class MODELS:

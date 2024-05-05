@@ -2,6 +2,9 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, ValidationError
 from wtforms.validators import Length, InputRequired
 
+from src.utils.strings.form_strs import UTUB_FORM, UTUB_DESCRIPTION_FORM
+from src.utils.strings.utub_strs import UTUB_FAILURE
+
 
 class UTubForm(FlaskForm):
     """
@@ -11,14 +14,22 @@ class UTubForm(FlaskForm):
         name (Stringfield): Maximum 30 chars? TODO
     """
 
-    name = StringField("UTub Name", validators=[InputRequired(), Length(min=1, max=30)])
-    description = StringField("UTub Description", validators=[Length(max=500)])
+    name = StringField(
+        name=UTUB_FORM.UTUB_NAME,
+        label="UTub Name",
+        validators=[InputRequired(), Length(min=1, max=30)],
+    )
+    description = StringField(
+        name=UTUB_FORM.UTUB_DESCRIPTION,
+        label="UTub Description",
+        validators=[Length(max=500)],
+    )
 
-    submit = SubmitField("Create UTub!")
+    submit = SubmitField()
 
     def validate_name(self, name):
         if name.data.replace(" ", "") == "":
-            raise ValidationError("Name cannot contain only spaces or be empty.")
+            raise ValidationError(UTUB_FAILURE.UTUB_NAME_EMPTY)
 
 
 class UTubNewNameForm(FlaskForm):
@@ -29,13 +40,17 @@ class UTubNewNameForm(FlaskForm):
         name (Stringfield): Maximum 30 chars? TODO
     """
 
-    name = StringField("UTub Name", validators=[InputRequired(), Length(min=1, max=30)])
+    name = StringField(
+        name=UTUB_FORM.UTUB_NAME,
+        label="UTub Name",
+        validators=[InputRequired(), Length(min=1, max=30)],
+    )
 
-    submit = SubmitField("Edit UTub title!")
+    submit = SubmitField()
 
     def validate_name(self, name):
         if name.data.replace(" ", "") == "":
-            raise ValidationError("Name cannot contain only spaces or be empty.")
+            raise ValidationError(UTUB_FAILURE.UTUB_NAME_EMPTY)
 
 
 class UTubDescriptionForm(FlaskForm):
@@ -50,9 +65,13 @@ class UTubDescriptionForm(FlaskForm):
     """
 
     # Not required, so as to allow the User to delete the description
-    description = StringField("UTub Description", validators=[Length(max=500)])
+    description = StringField(
+        name=UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION,
+        label="UTub Description",
+        validators=[Length(max=500)],
+    )
 
-    submit = SubmitField("Add Description To UTub!")
+    submit = SubmitField()
 
     def validate_description(self, description):
         if description.data is None:
