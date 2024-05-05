@@ -329,8 +329,9 @@ function deleteURLShowModal() {
     .text(buttonTextSubmit);
 
   $("#confirmModal").modal("show");
-
-  hideIfShown($("#modalRedirect"));
+  $("#confirmModal").on("shown.bs.modal", () =>
+    hideIfShown($("#modalRedirect")),
+  );
 }
 
 // Handles post request and response for removing an existing URL from current UTub, after confirmation
