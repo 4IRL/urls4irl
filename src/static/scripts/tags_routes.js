@@ -90,9 +90,10 @@ function addTagSuccess(response) {
 
   // Extract response data
   let tagID = response.tag.tagID;
+  tagID = response.tag.id;
   let string = response.tag.tagString;
 
-  if (!isTagInDeck(tagid)) {
+  if (!isTagInDeck(tagID)) {
     $("#listTags").append(createTagFilterInDeck(tagID, string));
   }
 
@@ -172,6 +173,8 @@ function removeTagSuccess(response) {
 // Displays appropriate prompts and options to user following a failed removal of a URL
 function removeTagFail(response) {
   console.log("Basic implementation. Needs revision");
+  console.log(response);
+  console.log(response.responseJSON);
   console.log(response.responseJSON.errorCode);
   console.log(response.responseJSON.message);
 }
