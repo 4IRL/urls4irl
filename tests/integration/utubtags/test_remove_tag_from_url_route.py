@@ -38,7 +38,7 @@ def test_remove_tag_from_url_as_utub_creator(
         STD_JSON.MESSAGE : "Tag removed from URL",
         TAGS_SUCCESS.TAG : Serialization representing the removed tag object:
             {
-                "id": Integer representing ID of removed tag,
+                MODELS.TAG_ID: Integer representing ID of removed tag,
                 TAG_FORM.TAG_STRING: String representing the tag just removed
             }
         TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
@@ -115,7 +115,8 @@ def test_remove_tag_from_url_as_utub_creator(
         tag_count - 1 > 0
     )
     assert (
-        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        == tag_id_to_remove
     )
     assert (
         remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
@@ -174,7 +175,7 @@ def test_remove_tag_from_url_as_utub_member(
         STD_JSON.MESSAGE : "Tag removed from URL",
         TAGS_SUCCESS.TAG : Serialization representing the removed tag object:
             {
-                "id": Integer representing ID of removed tag,
+                MODELS.TAG_ID: Integer representing ID of removed tag,
                 TAG_FORM.TAG_STRING: String representing the tag just removed
             }
         TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
@@ -251,7 +252,8 @@ def test_remove_tag_from_url_as_utub_member(
         tag_count - 1 > 0
     )
     assert (
-        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        == tag_id_to_remove
     )
     assert (
         remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
@@ -310,7 +312,7 @@ def test_remove_tag_from_url_with_one_tag(
         STD_JSON.MESSAGE : "Tag removed from URL",
         TAGS_SUCCESS.TAG : Serialization representing the removed tag object:
             {
-                "id": Integer representing ID of removed tag,
+                MODELS.TAG_ID: Integer representing ID of removed tag,
                 TAG_FORM.TAG_STRING: String representing the tag just removed
             }
         TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
@@ -388,7 +390,8 @@ def test_remove_tag_from_url_with_one_tag(
         tag_count - 1 > 0
     )
     assert (
-        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        == tag_id_to_remove
     )
     assert (
         remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
@@ -450,7 +453,7 @@ def test_remove_last_tag_from_utub(
         STD_JSON.MESSAGE : "Tag removed from URL",
         TAGS_SUCCESS.TAG : Serialization representing the removed tag object:
             {
-                "id": Integer representing ID of removed tag,
+                MODELS.TAG_ID: Integer representing ID of removed tag,
                 TAG_FORM.TAG_STRING: String representing the tag just removed
             }
         TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
@@ -527,7 +530,8 @@ def test_remove_last_tag_from_utub(
         tag_count - 1 > 0
     )
     assert (
-        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        == tag_id_to_remove
     )
     assert (
         remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
@@ -597,7 +601,7 @@ def test_remove_tag_from_url_with_five_tags(
         STD_JSON.MESSAGE : "Tag removed from URL",
         TAGS_SUCCESS.TAG : Serialization representing the removed tag object:
             {
-                "id": Integer representing ID of removed tag,
+                MODELS.TAG_ID: Integer representing ID of removed tag,
                 TAG_FORM.TAG_STRING: String representing the tag just removed
             }
         TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
@@ -696,7 +700,8 @@ def test_remove_tag_from_url_with_five_tags(
         tag_count - 1 > 0
     )
     assert (
-        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.ID]) == tag_id_to_remove
+        int(remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        == tag_id_to_remove
     )
     assert (
         remove_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]

@@ -23,3 +23,8 @@ class Tags(db.Model):
     def serialized(self):
         """Returns serialized object."""
         return {MODEL_STRS.ID: self.id, MODEL_STRS.TAG_STRING: self.tag_string}
+
+    @property
+    def serialized_on_delete(self):
+        """Returns serialized object."""
+        return {MODEL_STRS.TAG_ID: self.id, MODEL_STRS.TAG_STRING: self.tag_string}

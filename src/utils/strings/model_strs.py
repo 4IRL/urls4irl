@@ -11,6 +11,7 @@ TAG_STRING = "tagString"
 TAGGED_URL = "tagged_url"
 TAG = "tag"
 TAGS = "tags"
+TAG_ID = "tagID"
 URLS = "urls"
 URL = "URL"
 URL_TAGS = "urlTagIDs"
@@ -35,6 +36,7 @@ class MODELS:
     TAGGED_URL = TAGGED_URL
     USERNAME = USERNAME
     TAG = TAG
+    TAG_ID = TAG_ID
     CREATED_AT = CREATED_AT
     CREATED_BY = CREATED_BY
     DESCRIPTION = DESCRIPTION
