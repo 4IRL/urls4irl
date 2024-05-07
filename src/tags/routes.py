@@ -126,7 +126,7 @@ def add_tag(utub_id: int, url_id: int):
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_URL,
                     TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
-                    TAGS_SUCCESS.TAG: tag_model.serialized,
+                    TAGS_SUCCESS.TAG: tag_model.serialized_on_add_delete,
                 }
             ),
             200,
@@ -210,7 +210,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
                 STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
                 TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
                 TAGS_SUCCESS.TAG_STILL_IN_UTUB: num_left_in_utub > 0,
-                TAGS_SUCCESS.TAG: tag_to_remove.serialized_on_delete,
+                TAGS_SUCCESS.TAG: tag_to_remove.serialized_on_add_delete,
             }
         ),
         200,
