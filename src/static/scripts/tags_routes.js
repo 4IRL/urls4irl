@@ -52,7 +52,7 @@ function addTag() {
     if (xhr.status == 404) {
       // Reroute to custom U4I 404 error page
     } else {
-      addTagFailure(response);
+      addTagFail(response);
     }
   });
 }
@@ -65,7 +65,7 @@ function addTagSetup() {
   // Assemble submission data
   let newTag = getSelectedURLCard().find(".addTag").val();
   data = {
-    tag_string: newTag,
+    tagString: newTag,
   };
 
   return [postURL, data];
@@ -89,28 +89,94 @@ function addTagSuccess(response) {
   }
 
   // Extract response data
-  let tagid = response.Tag.id;
-  let string = response.Tag.tag_string;
+  let tagID = response.tag.tagID;
+  let string = response.tag.tagString;
 
-  if (!isTagInDeck(tagid)) {
-    $("#listTags").append(createTagFilterInDeck(tagid, string));
+  if (!isTagInDeck(tagID)) {
+    $("#listTags").append(createTagFilterInDeck(tagID, string));
   }
 
   // Update tags in URL
   let URLTagDeck = selectedURLCard.find(".URLTags");
-  let tagSpan = createTagBadgeInURL(tagid, string);
+  let tagSpan = createTagBadgeInURL(tagID, string);
   URLTagDeck.append(tagSpan);
 
   displayState2TagDeck();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new Tag
-function addTagFailure(response) {
+function addTagFail(response) {
   console.log("Basic implementation. Needs revision");
-  console.log(response.responseJSON.Error_code);
-  console.log(response.responseJSON.Message);
-  // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to user?
-  // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
+  console.log(response.responseJSON.errorCode);
+  console.log(response.responseJSON.message);
+}
+
+/* Remove tag from URL */
+
+// Remove tag from selected URL
+function removeTag(tagID) {
+  // Extract data to submit in POST request
+  postURL = removeTagSetup(tagID);
+
+  let request = AJAXCall("delete", postURL, []);
+
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    if (xhr.status == 200) {
+      console.log("success");
+      removeTagSuccess(response);
+    }
+  });
+
+  request.fail(function (response, textStatus, xhr) {
+    console.log(
+      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
+    );
+    if (xhr.status == 404) {
+      // Reroute to custom U4I 404 error page
+    } else {
+      removeTagFail(response);
+    }
+  });
+}
+
+// Prepares post request inputs for removal of a URL
+function removeTagSetup(tagID) {
+  let postURL = routes.removeTag(getActiveUTubID(), getSelectedURLID(), tagID);
+
+  return postURL;
+}
+
+// Displays changes related to a successful removal of a URL
+function removeTagSuccess(response) {
+  // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
+
+  let tagID = response.tag.tagID;
+  let tagBadgeJQuerySelector = ".tagBadge[tagid=" + tagID + "]";
+
+  $(".selectedURL").find(tagBadgeJQuerySelector).remove();
+
+  // Determine whether the removed tag is the last instance in the UTub. Remove, if yes
+  if (!response.tagInUTub) {
+    $(".tagFilter[tagid=" + tagID + "]").remove();
+  }
+
+  // Remove SelectAll button if no tags
+  if (isEmpty($(".tagFilter"))) {
+    $("#selectAll").remove();
+    displayState1TagDeck();
+  } else {
+    displayState2TagDeck();
+  }
+}
+
+// Displays appropriate prompts and options to user following a failed removal of a URL
+function removeTagFail(response) {
+  console.log("Basic implementation. Needs revision");
+  console.log(response);
+  console.log(response.responseJSON);
+  console.log(response.responseJSON.errorCode);
+  console.log(response.responseJSON.message);
 }
 
 /* Add tag to UTub */
@@ -155,75 +221,6 @@ function addTagFailure(response) {
 //     }
 //   }
 // }
-
-/* Remove tag from URL */
-
-// Remove tag from selected URL
-function removeTag(tagID) {
-  // Extract data to submit in POST request
-  postURL = removeTagSetup(tagID);
-
-  let request = AJAXCall("post", postURL, []);
-
-  // Handle response
-  request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
-      removeTagSuccess(tagID);
-    }
-  });
-
-  request.fail(function (response, textStatus, xhr) {
-    console.log(
-      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-    );
-    if (xhr.status == 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      removeTagFail(response);
-    }
-  });
-}
-
-// Prepares post request inputs for removal of a URL
-function removeTagSetup(tagID) {
-  let postURL = routes.removeTag(getActiveUTubID(), getSelectedURLID(), tagID);
-
-  return postURL;
-}
-
-// Displays changes related to a successful removal of a URL
-function removeTagSuccess(tagID) {
-  // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
-
-  let tagBadgeJQuerySelector = ".tagBadge[tagid=" + tagID + "]";
-
-  $(".selectedURL").find(tagBadgeJQuerySelector).remove();
-
-  // Determine whether the removed tag is the last instance in the UTub. Remove, if yes
-  if (isEmpty($(tagBadgeJQuerySelector))) {
-    $(".tagFilter[tagid=" + tagID + "]").remove();
-  }
-
-  // Remove SelectAll button if no tags
-  if (isEmpty($(".tagFilter"))) {
-    $("#selectAll").remove();
-    displayState1TagDeck();
-  } else {
-    displayState2TagDeck();
-  }
-}
-
-// Displays appropriate prompts and options to user following a failed removal of a URL
-function removeTagFail(xhr, textStatus, error) {
-  console.log("Error: Could not delete URL");
-
-  if (xhr.status == 409) {
-    console.log(
-      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-    );
-    console.log("Error: " + error.Error_code);
-  }
-}
 
 /* Remove tag from all URLs in UTub */
 // Unimplemented on backend

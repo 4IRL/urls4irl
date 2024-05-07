@@ -65,6 +65,8 @@ function showInput(handle) {
   let inputEl = $("#" + handle);
   let inputDiv = inputEl.closest(".createDiv");
   showIfHidden(inputDiv);
+
+  highlightInput(inputEl);
 }
 
 // Highlight the input field. Typically if user requests action that is already displayed
@@ -136,24 +138,6 @@ function AJAXCall(type, url, data) {
   }));
 }
 
-// Bind key to function... doesn't work universally, just in modals, as of 01/03. Optional parameter...may be a better way to define like in MATLAB f(f, ~, keyTarget) when unused
-function bindKeyToFunction(f, input, keyTarget) {
-  $(document).on("keypress", function (e) {
-    if (e.which == keyTarget) {
-      f(input);
-    }
-  });
-}
-
-// Unbind enter key
-function unbindEnter() {
-  $(document).unbind("keypress", function (e) {
-    if (e.which == 13) {
-      return;
-    }
-  });
-}
-
 // Creates edit button
 function makeEditButton(wh) {
   const editBtn = document.createElement("i");
@@ -216,14 +200,6 @@ function makeCancelButton(wh) {
   return cancelBtn;
 }
 
-// I'd like a universal function to bind enter key but it doesn't work...01/03/24
-// $(document).on("keyup", function (e) {
-//   if (e.keyCode === 13) {
-//     e.preventDefault();
-//     e.target.blur();
-//   }
-// });
-
 function displayState0() {
   hideInputs();
   displayState0TagDeck();
@@ -231,8 +207,8 @@ function displayState0() {
   displayState0URLDeck();
   resetURLDeck();
   displayState0UTubDescriptionDeck();
-  displayState0UserDeck();
-  resetUserDeck();
+  displayState0MemberDeck();
+  resetMemberDeck();
 }
 
 function displayState1() {
@@ -240,5 +216,5 @@ function displayState1() {
   displayState1TagDeck();
   displayState1URLDeck();
   displayState1UTubDescriptionDeck();
-  displayState1UserDeck();
+  displayState1MemberDeck();
 }

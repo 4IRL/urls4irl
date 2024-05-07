@@ -10,15 +10,6 @@ $(document).ready(function () {
     hideInputs();
     deselectAllURLs();
     addURLShowInput();
-
-    // Bind enter key (keycode 13) to submit user input
-    // DP 12/29 It'd be nice to have a single utils.js function with inputs of function and keyTarget (see failed attempt under bindKeyToFunction() in utils.js)
-    unbindEnter();
-    $(document).bind("keypress", function (e) {
-      if (e.which == 13) {
-        addURL();
-      }
-    });
   });
 
   // Open all URLs in UTub in separate tabs
@@ -122,11 +113,11 @@ function accessAllWarningShowModal() {
 
 // Opens all URLs in UTub in separate tabs
 function accessAllURLsInUTub() {
-  getUtubInfo(getActiveUTubID()).then(function (selectedUTub) {
+  getUTubInfo(getActiveUTubID()).then(function (selectedUTub) {
     let dictURLs = selectedUTub.urls;
 
     for (i = 0; i < dictURLs.length; i++) {
-      accessLink(dictURLs[i].url_string);
+      accessLink(dictURLs[i].urlString);
     }
   });
 }
@@ -159,10 +150,10 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
     // Instantiate deck with list of URLs stored in current UTub
     for (let i = 0; i < dictURLs.length; i++) {
       let URLcol = createURLBlock(
-        dictURLs[i].url_ID,
-        dictURLs[i].url_string,
-        dictURLs[i].url_title,
-        dictURLs[i].url_tags,
+        dictURLs[i].urlID,
+        dictURLs[i].urlString,
+        dictURLs[i].urlTitle,
+        dictURLs[i].urlTagIDs,
         dictTags,
       );
 
@@ -351,7 +342,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       }
     });
 
-    let tagSpan = createTagBadgeInURL(tag.id, tag.tag_string);
+    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString);
 
     $(URLTags).append(tagSpan);
   }

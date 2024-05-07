@@ -1740,7 +1740,7 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 
 </details>
 <details>
- <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{urlID}/tags/{tagID}</b></code> <code>(remove a tag from a URL from a UTub)</code></summary>
+ <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{urlID}/tags/{tagID}</b></code> <code>(remove a tag from a URL in a UTub)</code></summary>
 
 ##### Parameters
 

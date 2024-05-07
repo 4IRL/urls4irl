@@ -1,7 +1,3 @@
-const EDIT_TAG_ROUTE = "/tag/modify/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
-const REMOVE_TAG_ROUTE = "/tag/remove/"; // +<int:utub_id>/<int:url_id>/<int:tag_id>
-// Small DP 09/25 consistency to 'modify' -> 'edit'?
-
 /* Tag UI Interactions */
 
 $(document).ready(function () {
@@ -92,7 +88,7 @@ function buildTagDeck(dictTags) {
     // Loop through all tags and provide checkbox input for filtering
     for (let i in dictTags) {
       parent.append(
-        createTagFilterInDeck(dictTags[i].id, dictTags[i].tag_string),
+        createTagFilterInDeck(dictTags[i].id, dictTags[i].tagString),
       );
     }
 
