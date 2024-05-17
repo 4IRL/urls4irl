@@ -5,20 +5,16 @@ from dotenv import load_dotenv
 from src import create_app
 
 load_dotenv(override=True)
-if environ.get("PRODUCTION") is None:
-    print("Missing PRODUCTION environment variable.")
-    quit()
 
-is_production_env_var = environ.get("PRODUCTION")
+is_production_env_var = environ.get("PRODUCTION", default="false")
 use_local_js_bundles_var = environ.get("USE_LOCAL_BUNDLES", default="false")
 
 if is_production_env_var.lower() not in ("false", "true"):
-    print("Invalid PRODUCTION environment variable.")
+    print("Invalid/missing PRODUCTION environment variable.")
     quit()
-else:
-    is_production = True if is_production_env_var.lower() == "true" else False
 
-use_local_js_bundles = True if use_local_js_bundles_var.lower() == "true" else False
+is_production: bool = is_production_env_var.lower() == "true"
+use_local_js_bundles: bool = use_local_js_bundles_var.lower() == "true"
 
 app = create_app(production=is_production, use_local_js_bundles=use_local_js_bundles)
 
