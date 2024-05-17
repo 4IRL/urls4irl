@@ -7,7 +7,7 @@
 
 ### Authentication
 
-All HTTP requests to the API must include a session cookie under the header `Cookie`. Containing a cookie that is expired or invalid
+All HTTP requests to the API must include a `session` cookie under the header `Cookie`. Containing a cookie that is expired or invalid
 will redirect the user to the splash page. HTTP requests made over AJAX that use form data require a CSRF token via the `X-Csrftoken` header.
 Otherwise, HTTP requests containing form data should include a field for `csrf_token`, with the token in the value.
 

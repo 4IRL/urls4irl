@@ -199,10 +199,7 @@ def test_add_utub_with_get_request(login_first_user_with_register):
         UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
-    new_utub_response = client.get(url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form)
-
-    # Get method is not allowed
-    assert new_utub_response.status_code == 405
+    client.get(url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form)
 
     # Make sure no UTub in database
     with app.app_context():

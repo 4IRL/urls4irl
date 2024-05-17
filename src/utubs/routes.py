@@ -61,6 +61,17 @@ def get_single_utub(utub_id: str):
     return jsonify(utub_data_serialized)
 
 
+@utubs.route("/utubs", methods=["GET"])
+@email_validation_required
+def get_utubs():
+    """
+    User wants a summary of their UTubs in JSON format.
+    """
+    # TODO: Should serialized summary be utubID and utubName
+    # instead of id and name?
+    return jsonify(current_user.serialized_on_initial_load)
+
+
 @utubs.route("/utubs", methods=["POST"])
 @email_validation_required
 def add_utub():
@@ -70,7 +81,6 @@ def add_utub():
     https://docs.sqlalchemy.org/en/14/orm/basic_relationships.html#many-to-many
 
     """
-
     utub_form = UTubForm()
 
     if utub_form.validate_on_submit():

@@ -1,4 +1,5 @@
 from src import db
+from src.utils.strings.model_strs import MODELS
 
 
 class Utub_Members(db.Model):
@@ -16,4 +17,4 @@ class Utub_Members(db.Model):
     @property
     def serialized_on_initial_load(self):
         """Returns the serialized object on initial load for this member, including UTub name and id."""
-        return {"id": self.to_utub.id, "name": self.to_utub.name}
+        return {MODELS.ID: self.to_utub.id, MODELS.NAME: self.to_utub.name}
