@@ -713,6 +713,43 @@ The HTML body on a 200 response contains the following JSON.
 #### UTubs
 
 <details>
+ <summary><code>GET</code> <code><b>/utubs</b></code> <code>(gets summary of user's UTubs)</code></summary>
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Returns summary of user's UTubs in JSON format. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unknown error occurred. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> [
+>     {
+>         "id": 1,
+>         "name": "utub2"
+>     },
+>     {
+>         "id": 2,
+>         "name": "utub1"
+>     }
+> ]
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls4irl.app/utubs \
+>  -H 'Cookie: YOUR_COOKIE' \
+> ```
+
+</details>
+
+<details>
  <summary><code>POST</code> <code><b>/utubs</b></code> <code>(create a new UTub)</code></summary>
 
 ##### Request Payload
