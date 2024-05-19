@@ -17,7 +17,7 @@
         <ul id="NavbarDropdowns" class="navbar-nav">
             {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
             <li userID="{{current_user.id}}" class="nav-item user">
-                <a class="nav-link" href="javascript:;"> Logged in as {{current_user.username}}</a>
+                <a id="userLoggedIn" class="nav-link" href="javascript:;"> Logged in as {{current_user.username}}</a>
             </li>
             <li class="nav-item">
                 <a class="nav-link" href="{{url_for('users.logout')}}">Logout</a>
