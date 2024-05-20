@@ -6,6 +6,7 @@ class Utub_Members(db.Model):
     __tablename__ = "UtubMembers"
     utub_id: int = db.Column(db.Integer, db.ForeignKey("Utubs.id"), primary_key=True)
     user_id: int = db.Column(db.Integer, db.ForeignKey("Users.id"), primary_key=True)
+    member_role: str = db.Column(db.String(9), nullable=False, default="member")
 
     to_user = db.relationship("Users", back_populates="utubs_is_member_of")
     to_utub = db.relationship("Utubs", back_populates="members")

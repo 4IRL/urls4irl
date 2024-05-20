@@ -11,7 +11,7 @@ class Urls(db.Model):
     __tablename__ = "Urls"
     id: int = db.Column(db.Integer, primary_key=True)
     url_string: str = db.Column(
-        db.String(2000), nullable=False, unique=True
+        db.String(8000), nullable=False, unique=True
     )  # Note that multiple UTubs can have the same URL
     created_by: int = db.Column(db.Integer, db.ForeignKey("Users.id"), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)

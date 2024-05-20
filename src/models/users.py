@@ -29,6 +29,7 @@ class Users(db.Model, UserMixin):
     email: str = db.Column(db.String(120), unique=True, nullable=False)
     password: str = db.Column(db.String(166), nullable=False)
     created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    role: str = db.Column(db.String(5), nullable=False, default="user")
     utubs_created = db.relationship("Utubs", backref="created_by", lazy=True)
     utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
     utubs_is_member_of = db.relationship("Utub_Members", back_populates="to_user")

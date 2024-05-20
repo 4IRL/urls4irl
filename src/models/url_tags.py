@@ -18,9 +18,10 @@ class Url_Tags(db.Model):
 
     __tablename__ = "UrlTags"
 
-    utub_id: int = db.Column(db.Integer, db.ForeignKey("Utubs.id"), primary_key=True)
-    url_id: int = db.Column(db.Integer, db.ForeignKey("Urls.id"), primary_key=True)
-    tag_id: int = db.Column(db.Integer, db.ForeignKey("Tags.id"), primary_key=True)
+    id: int = db.Column(db.Integer, primary_key=True)
+    utub_id: int = db.Column(db.Integer, db.ForeignKey("Utubs.id"), nullable=False)
+    url_id: int = db.Column(db.Integer, db.ForeignKey("Urls.id"), nullable=True)
+    tag_id: int = db.Column(db.Integer, db.ForeignKey("Tags.id"), nullable=False)
     added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
     tag_item: Tags = db.relationship("Tags")
