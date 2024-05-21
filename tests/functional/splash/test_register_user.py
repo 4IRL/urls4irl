@@ -50,9 +50,7 @@ def test_register_new_user(browser):
 
 
 # Attempts to register a new user. Ensures alert is shown to user
-@pytest.mark.skip(
-    reason="This test is excluded to limit number of validation email requests"
-)
+@pytest.mark.skip(reason="This test is excluded to test another in isolation")
 def test_register_existing_user(browser):
     browser.get(const.BASE_URL)
 

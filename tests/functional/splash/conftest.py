@@ -12,12 +12,17 @@ def browser():
     driver.maximize_window()
 
     # Clear db
-    driver.get(const.CLEAR_DB_URL)
-    driver.implicitly_wait(3)
+    # driver.get(const.CLEAR_DB_URL)
+    # driver.implicitly_wait(3)
+
+    # If title contains "*Cloudflare", click button first
+    # Find element containing ".AuthBoxRow--name" containing "Rehan"
+    # Trickle up "closest() in jQuery" to <a>.Button.click()
+    # driver.implicitly_wait(10)
 
     # Load test users
-    driver.get(const.ADD_TEST_USERS_URL)
-    driver.implicitly_wait(10)
+    # driver.get(const.ADD_TEST_USERS_URL)
+    # driver.implicitly_wait(3)
 
     # Load U4I site
     driver.get(const.BASE_URL)
@@ -29,6 +34,7 @@ def browser():
     driver.quit()
 
 
+# This fixture is not yet implemented because I can't figure out how to start each test independently. Currently the implementation of each subsequent test is dependent on the success of its predecessors
 # Logs in newly created user
 # @pytest.fixture
 # def login(browser):
