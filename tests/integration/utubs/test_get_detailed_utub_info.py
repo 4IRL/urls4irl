@@ -126,14 +126,66 @@ def test_get_valid_utub_as_not_member(
     assert response.status_code == 404
 
 
+def test_get_valid_utub_with_members_urls_no_tags(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a user who is a member of a UTub with only one URL and no tags
+    WHEN the user requests the details of that newly formed UTub
+    THEN verify the server responds with a 200 message, and proper JSON response
+
+    Args:
+        add_one_url_and_all_users_to_each_utub_no_tags (None): Fixture to create a new UTub for every user, with all users
+            added as members, all URLs added, and every URL having every tag associated with it
+        login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask]): Fixture to login in the user
+    """
+    client, _, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_user_is_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+        all_urls_in_utub: list[Utub_Urls] = utub_user_is_member_of.utub_urls
+        only_url_in_utub: Utub_Urls = all_urls_in_utub[-1]
+        standalone_url: Urls = only_url_in_utub.standalone_url
+
+    response = client.get(_build_get_utub_route(utub_user_is_member_of.id))
+    assert response.status_code == 200
+
+    response_json = response.json
+
+    assert response_json[MODELS.ID] == utub_user_is_member_of.id
+    assert response_json[MODELS.CREATED_BY] != current_user.id
+    assert response_json[MODELS.DESCRIPTION] == utub_user_is_member_of.utub_description
+    assert response_json[MODELS.NAME] == utub_user_is_member_of.name
+    assert response_json[MODELS.IS_CREATOR] == (
+        current_user.id == utub_user_is_member_of.utub_creator
+    )
+
+    # Clarify that this user did not add the URL to the UTub
+    assert only_url_in_utub.user_id != current_user.id
+
+    for url in all_urls_in_utub:
+        url_dict = {
+            MODELS.CAN_DELETE: current_user.id == url.user_id
+            or current_user.id == utub_user_is_member_of.utub_creator,
+            MODELS.URL_ID: url.url_id,
+            MODELS.URL_STRING: standalone_url.url_string,
+            MODELS.URL_TAGS: [],
+            MODELS.URL_TITLE: url.url_title,
+        }
+        assert url_dict in response_json[MODELS.URLS]
+
+
 def test_get_valid_utub_with_members_urls_tags(
     add_all_urls_and_users_to_each_utub_with_all_tags,
     login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
 ):
     """
-    GIVEN a user who is not a member a newly formed UTub
+    GIVEN a user who is a member of a UTub with members, urls, and tags on URLs
     WHEN the user requests the details of that newly formed UTub
-    THEN verify the server resopnds with a 404 message
+    THEN verify the server resopnds with a 200 message, and proper JSON response
 
     Args:
         add_all_urls_and_users_to_each_utub_with_all_tags (None): Fixture to create a new UTub for every user, with all users
@@ -189,48 +241,6 @@ def test_get_valid_utub_with_members_urls_tags(
     for tag in all_tags:
         tag_dict = {MODELS.ID: tag.id, MODELS.TAG_STRING: tag.tag_string}
         assert tag_dict in response_json[MODELS.TAGS]
-
-
-def test_member_in_utub_cannot_delete_url_member_did_not_add(
-    add_one_url_and_all_users_to_each_utub_no_tags,
-    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
-):
-    client, _, _, app = login_first_user_without_register
-
-    with app.app_context():
-        utub_user_is_member_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator != current_user.id
-        ).first()
-        all_urls_in_utub: list[Utub_Urls] = utub_user_is_member_of.utub_urls
-        only_url_in_utub: Utub_Urls = all_urls_in_utub[-1]
-        standalone_url: Urls = only_url_in_utub.standalone_url
-
-    response = client.get(_build_get_utub_route(utub_user_is_member_of.id))
-    assert response.status_code == 200
-
-    response_json = response.json
-
-    assert response_json[MODELS.ID] == utub_user_is_member_of.id
-    assert response_json[MODELS.CREATED_BY] != current_user.id
-    assert response_json[MODELS.DESCRIPTION] == utub_user_is_member_of.utub_description
-    assert response_json[MODELS.NAME] == utub_user_is_member_of.name
-    assert response_json[MODELS.IS_CREATOR] == (
-        current_user.id == utub_user_is_member_of.utub_creator
-    )
-
-    # Clarify that this user did not add the URL to the UTub
-    assert only_url_in_utub.user_id != current_user.id
-
-    for url in all_urls_in_utub:
-        url_dict = {
-            MODELS.CAN_DELETE: current_user.id == url.user_id
-            or current_user.id == utub_user_is_member_of.utub_creator,
-            MODELS.URL_ID: url.url_id,
-            MODELS.URL_STRING: standalone_url.url_string,
-            MODELS.URL_TAGS: [],
-            MODELS.URL_TITLE: url.url_title,
-        }
-        assert url_dict in response_json[MODELS.URLS]
 
 
 def _build_get_utub_route(utub_id: int) -> str:
