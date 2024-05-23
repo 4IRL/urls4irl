@@ -312,6 +312,33 @@ def add_single_utub_as_user_without_logging_in(
 
 
 @pytest.fixture
+def add_all_utubs_as_user_without_logging_in(
+    app: Flask, register_first_user: Tuple[Tuple[dict[str, str | None]], Users]
+):
+    """
+    Sets up three UTubs in the database, created by the user with ID == 1
+    No members are added to this UTub besides the creator
+
+    Args:
+        app (Flask): The Flask client providing an app context
+        register_first_user (pytest fixture): Registers the user with ID == 1
+    """
+    with app.app_context():
+        user: Users = Users.query.first()
+        for utub_data in all_empty_utubs:
+            new_utub = Utubs(
+                name=utub_data[model_strs.NAME],
+                utub_creator=user.id,
+                utub_description=utub_data[model_strs.UTUB_DESCRIPTION],
+            )
+
+            creator_to_utub = Utub_Members()
+            creator_to_utub.to_user = user
+            new_utub.members.append(creator_to_utub)
+            db.session.commit()
+
+
+@pytest.fixture
 def add_single_user_to_utub_without_logging_in(app: Flask, register_multiple_users):
     """
     Sets up a single UTub in the database, created by user with ID == 1, and adds

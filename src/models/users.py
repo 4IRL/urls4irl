@@ -93,11 +93,19 @@ class Users(db.Model, UserMixin):
     @property
     def serialized_on_initial_load(self) -> list[dict]:
         """Returns object in serialized for, with only the utub id and Utub name the user is a member of."""
-        utubs_for_user = []
-        for utub_member_relationship in self.utubs_is_member_of:
-            utubs_for_user.append(utub_member_relationship.serialized_on_initial_load)
 
-        return utubs_for_user
+        # Sort by last updated
+        sorted_utubs_user_is_in: list[Utub_Members] = sorted(
+            self.utubs_is_member_of,
+            key=lambda utub: utub.to_utub.last_updated,
+            reverse=True,
+        )
+        utub_summaries = [
+            {MODEL_STRS.ID: utub.to_utub.id, MODEL_STRS.NAME: utub.to_utub.name}
+            for utub in sorted_utubs_user_is_in
+        ]
+
+        return utub_summaries
 
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
