@@ -77,7 +77,9 @@ def register_user():
             plaintext_password=plain_password,
         )
         email_validation_token = new_user.get_email_validation_token()
-        new_email_validation = Email_Validations(confirm_url=email_validation_token)
+        new_email_validation = Email_Validations(
+            validation_token=email_validation_token
+        )
         new_user.email_confirm = new_email_validation
         db.session.add(new_user)
         db.session.commit()
@@ -257,11 +259,11 @@ def send_validation_email():
 
     if not email_sender.is_production() and not email_sender.is_testing():
         print(
-            f"Sending this to the user's email:\n{url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=current_email_validation.confirm_url, _external=True)}"
+            f"Sending this to the user's email:\n{url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=current_email_validation.validation_token, _external=True)}"
         )
     url_for_confirmation = url_for(
         ROUTES.SPLASH.VALIDATE_EMAIL,
-        token=current_email_validation.confirm_url,
+        token=current_email_validation.validation_token,
         _external=True,
     )
     email_send_result = email_sender.send_account_email_confirmation(
@@ -277,12 +279,12 @@ def validate_email_expired():
         abort(404)
 
     invalid_email: Email_Validations = Email_Validations.query.filter(
-        Email_Validations.confirm_url == expired_token
+        Email_Validations.validation_token == expired_token
     ).first_or_404()
 
     user_with_expired_token: Users = invalid_email.user
     new_token = user_with_expired_token.get_email_validation_token()
-    invalid_email.confirm_url = new_token
+    invalid_email.validation_token = new_token
     invalid_email.reset_attempts()
     db.session.commit()
     login_user(user_with_expired_token)
@@ -310,7 +312,7 @@ def validate_email(token: str):
     if not user_to_validate:
         # Link is invalid, so remove any users and email validation rows associated with this token
         invalid_emails = Email_Validations.query.filter(
-            Email_Validations.confirm_url == token
+            Email_Validations.validation_token == token
         ).all()
         if invalid_emails is not None:
             for invalid_email in invalid_emails:
@@ -320,11 +322,13 @@ def validate_email(token: str):
             db.session.commit()
         abort(404)
 
-    if not user_to_validate.email_confirm.confirm_url == token:
+    email_validation: Email_Validations = user_to_validate.email_confirm
+
+    if not email_validation.validation_token == token:
         abort(404)
 
-    user_to_validate.email_confirm.validate()
-    user_to_validate.email_confirm.confirm_url = ""
+    email_validation.validate()
+    email_validation.validation_token = ""
     db.session.commit()
     login_user(user_to_validate)
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True

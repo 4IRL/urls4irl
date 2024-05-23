@@ -1,11 +1,13 @@
 from __future__ import annotations
 from datetime import datetime
 
+from sqlalchemy import Column, DateTime, ForeignKey, Integer
+
 from src import db
 from src.models.tags import Tags
 from src.models.urls import Urls
 from src.models.utubs import Utubs
-from src.utils.strings.model_strs import MODELS as MODEL_STRS
+from src.utils.datetime_utils import utc_now
 
 
 class Url_Tags(db.Model):
@@ -18,21 +20,18 @@ class Url_Tags(db.Model):
 
     __tablename__ = "UrlTags"
 
-    utub_id: int = db.Column(db.Integer, db.ForeignKey("Utubs.id"), primary_key=True)
-    url_id: int = db.Column(db.Integer, db.ForeignKey("Urls.id"), primary_key=True)
-    tag_id: int = db.Column(db.Integer, db.ForeignKey("Tags.id"), primary_key=True)
-    added_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    id: int = Column(Integer, primary_key=True)
+    utub_id: int = Column(
+        Integer, ForeignKey("Utubs.id"), nullable=False, name="utubID"
+    )
+    url_id: int = Column(Integer, ForeignKey("Urls.id"), nullable=True, name="urlID")
+    tag_id: int = Column(Integer, ForeignKey("Tags.id"), nullable=False, name="tagID")
+    added_at: datetime = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="addedAt"
+    )
 
     tag_item: Tags = db.relationship("Tags")
     tagged_url: Urls = db.relationship("Urls", back_populates="url_tags")
     utub_containing_this_tag: Utubs = db.relationship(
         "Utubs", back_populates="utub_url_tags"
     )
-
-    @property
-    def serialized(self) -> dict:
-        """Returns serialized object."""
-        return {
-            MODEL_STRS.TAG: self.tag_item.serialized,
-            MODEL_STRS.TAGGED_URL: self.tagged_url.serialized_url,
-        }

@@ -1,8 +1,13 @@
 from datetime import datetime
 
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+
 from src import db
+from src.models.tags import Tags
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
+from src.utils.constants import UTUB_CONSTANTS
+from src.utils.datetime_utils import utc_now
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 
 
@@ -11,13 +16,24 @@ class Utubs(db.Model):
     is shared with. The UTub contains a set of URL's and their associated tags."""
 
     __tablename__ = "Utubs"
-    id: int = db.Column(db.Integer, primary_key=True)
-    name: str = db.Column(
-        db.String(30), nullable=False
+    id: int = Column(Integer, primary_key=True)
+    name: str = Column(
+        String(UTUB_CONSTANTS.MAX_NAME_LENGTH), nullable=False, name="utubName"
     )  # Note that multiple UTubs can have the same name, maybe verify this per user?
-    utub_creator: int = db.Column(db.Integer, db.ForeignKey("Users.id"), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    utub_description: str = db.Column(db.String(500), nullable=True)
+    utub_creator: int = Column(
+        Integer, ForeignKey("Users.id"), nullable=False, name="utubCreator"
+    )
+    created_at: datetime = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
+    )
+    last_updated: datetime = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="lastUpdated"
+    )
+    utub_description: str = Column(
+        String(UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH),
+        nullable=True,
+        name="utubDescription",
+    )
     utub_url_tags = db.relationship(
         "Url_Tags", back_populates="utub_containing_this_tag", cascade="all, delete"
     )
@@ -38,9 +54,14 @@ class Utubs(db.Model):
 
         # self.utub_url_tags may contain repeats of tags since same tags can be on multiple URLs
         # Need to pull only the unique ones
+        from src.models.url_tags import Url_Tags
+
+        utub_url_tags: list[Url_Tags] = self.utub_url_tags
+
         utub_tags = []
-        for tag in self.utub_url_tags:
-            tag_object = tag.tag_item.serialized
+        for utub_url_tag in utub_url_tags:
+            tag_item: Tags = utub_url_tag.tag_item
+            tag_object = tag_item.serialized
 
             if tag_object not in utub_tags:
                 utub_tags.append(tag_object)
@@ -60,3 +81,6 @@ class Utubs(db.Model):
             ],
             MODEL_STRS.TAGS: utub_tags,
         }
+
+    def set_last_updated(self):
+        self.last_updated = utc_now()

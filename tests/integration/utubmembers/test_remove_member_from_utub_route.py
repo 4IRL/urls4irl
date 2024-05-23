@@ -42,20 +42,20 @@ def test_remove_valid_user_from_utub_as_creator(
 
     with app.app_context():
         # Get the only UTub, which contains two members
-        current_utub = Utubs.query.first()
+        current_utub: Utubs = Utubs.query.first()
 
         # Ensure creator is currently logged in
-        assert current_utub.created_by == current_user
+        assert current_utub.utub_creator == current_user.id
 
         # Ensure multiple users in this Utubs
         assert len(current_utub.members) == 2
 
         # Grab the second user from the members
-        second_user_in_utub_association = Utub_Members.query.filter(
+        second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
             Utub_Members.utub_id == current_utub.id,
             Utub_Members.user_id != current_user.id,
         ).first()
-        second_user_in_utub = second_user_in_utub_association.to_user
+        second_user_in_utub: Users = second_user_in_utub_association.to_user
 
         # Ensure second user in this UTub
         assert second_user_in_utub in [user.to_user for user in current_utub.members]
@@ -212,20 +212,22 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
 
     with app.app_context():
         # Get this creator's UTub
-        current_utub = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        current_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         # Ensure creator is currently logged in
-        assert current_utub.created_by == current_user
+        assert current_utub.utub_creator == current_user.id
 
         # Ensure multiple users in this Utubs
         assert len(current_utub.members) > 1
 
         # Grab another user from the members
-        second_user_in_utub_association = Utub_Members.query.filter(
+        second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
             Utub_Members.utub_id == current_utub.id,
             Utub_Members.user_id != current_user.id,
         ).first()
-        second_user_in_utub = second_user_in_utub_association.to_user
+        second_user_in_utub: Users = second_user_in_utub_association.to_user
 
         # Ensure this user has URLs associated with them in UTub
         assert (
@@ -343,10 +345,10 @@ def test_remove_self_from_utub_as_creator(
 
     with app.app_context():
         # Get the only UTub with two members
-        current_utub = Utubs.query.first()
+        current_utub: Utubs = Utubs.query.first()
 
         # Ensure creator is currently logged in and is current user
-        assert current_utub.created_by == current_user
+        assert current_utub.utub_creator == current_user.id
 
         # Ensure multiple users in this Utubs
         assert len(current_utub.members) == 2
@@ -386,7 +388,7 @@ def test_remove_self_from_utub_as_creator(
         assert len(current_utub.members) == current_number_of_users_in_utub
 
         # Ensure logged in user still creator of this UTub
-        assert current_user == current_utub.created_by
+        assert current_user.id == current_utub.utub_creator
 
         # Ensure logged in user still in this UTub
         assert current_user in [user.to_user for user in current_utub.members]
@@ -410,10 +412,10 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
 
     with app.app_context():
         # Get the only UTub with two members
-        current_utub = Utubs.query.first()
+        current_utub: Utubs = Utubs.query.first()
 
         # Ensure creator is not currently logged in user
-        assert current_utub.created_by != current_user
+        assert current_utub.utub_creator != current_user.id
 
         # Ensure multiple users in this Utubs
         assert len(current_utub.members) == 2
@@ -465,17 +467,17 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
 
     with app.app_context():
         # Get the only UTub with two members
-        current_utub = Utubs.query.first()
+        current_utub: Utubs = Utubs.query.first()
 
         # Ensure creator is currently logged in
-        assert current_utub.created_by == current_user
+        assert current_utub.utub_creator == current_user.id
 
         # Ensure multiple users in this Utubs
         assert len(current_utub.members) == 2
         current_number_of_users_in_utub = len(current_utub.members)
 
         # Grab the second user from the members
-        second_user_in_utub_association = Utub_Members.query.filter(
+        second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
             Utub_Members.utub_id == current_utub.id,
             Utub_Members.user_id != current_user.id,
         ).first()
@@ -506,7 +508,7 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
         assert len(current_utub.members) == current_number_of_users_in_utub
 
         # Ensure logged in user is still creator
-        assert current_user == current_utub.created_by
+        assert current_user.id == current_utub.utub_creator
 
         # Ensure second user still in this UTub
         assert second_user_in_utub in [user.to_user for user in current_utub.members]
@@ -589,10 +591,10 @@ def test_remove_invalid_user_from_utub_as_creator(
 
     with app.app_context():
         # Get the only UTub with two members
-        current_utub = Utubs.query.first()
+        current_utub: Utubs = Utubs.query.first()
 
         # Ensure creator is currently logged in
-        assert current_utub.created_by == current_user
+        assert current_utub.utub_creator == current_user.id
 
         # Find a user id that isn't in this UTub
         user_id_not_in_utub = 0
@@ -656,10 +658,10 @@ def test_remove_invalid_user_from_utub_as_member(
 
     with app.app_context():
         # Get the only UTub with two members
-        current_utub = Utubs.query.first()
+        current_utub: Utubs = Utubs.query.first()
 
         # Ensure current user is not creator
-        assert current_user != current_utub.created_by
+        assert current_user.id != current_utub.utub_creator
 
         # Ensure current user is a member of this UTub
         assert current_user in [user.to_user for user in current_utub.members]
@@ -680,7 +682,7 @@ def test_remove_invalid_user_from_utub_as_member(
         # Count all user-utub associations in db
         initial_num_user_utubs = len(Utub_Members.query.all())
 
-    # Remove self from UTub
+    # Remove invalid user from UTub
     remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
@@ -729,10 +731,10 @@ def test_remove_another_member_from_same_utub_as_member(
 
     with app.app_context():
         # Get the only UTub, which contains three members
-        current_utub = Utubs.query.first()
+        current_utub: Utubs = Utubs.query.first()
 
         # Ensure creator is not currently logged in user
-        assert current_utub.created_by != current_user
+        assert current_utub.utub_creator != current_user.id
 
         # Ensure multiple users in this Utubs
         assert len(current_utub.members) == 3
@@ -743,7 +745,7 @@ def test_remove_another_member_from_same_utub_as_member(
 
         # Grab other user in this UTub
         for user in current_utub.members:
-            if user != current_user and user != current_utub.created_by:
+            if user != current_user and user.user_id != current_utub.utub_creator:
                 other_utub_member = user.to_user
 
         # Count all user-utub associations in db
@@ -907,10 +909,10 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
 
     with app.app_context():
         # Get the third user
-        third_user = Users.query.get(3)
+        third_user: Users = Users.query.get(3)
 
         # Have third user make another UTub
-        new_utub_from_third_user = Utubs(
+        new_utub_from_third_user: Utubs = Utubs(
             name="Third User's UTub", utub_creator=third_user.id, utub_description=""
         )
         creator = Utub_Members()
@@ -927,9 +929,9 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
         db.session.commit()
 
         # Ensure current user is not creator of any UTubs
-        all_utubs = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_utubs:
-            assert current_user != utub.created_by
+            assert current_user.id != utub.utub_creator
 
         # Ensure current user is not member of third user's UTub
         assert current_user not in [
@@ -976,3 +978,92 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
 
         # Ensure counts of Utubs-User associations is correct
         assert len(Utub_Members.query.all()) == initial_num_user_utubs
+
+
+def test_remove_valid_user_from_utub_updates_utub_last_updated(
+    add_single_user_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN a logged in user who is creator of a UTub that has another member in it, with no URLs or tags in the UTub
+    WHEN the logged in user tries to remove second user by DELETE to "/utubs/<int:utub_id>/members/<int:user_id>" with valid
+        information and a valid CSRF token
+    THEN ensure the server responds with a 200 HTTP status code, and the UTub's last updated is updated
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get the only UTub, which contains two members
+        current_utub: Utubs = Utubs.query.first()
+        initial_last_updated = current_utub.last_updated
+
+        # Grab the second user from the members
+        second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.utub_id == current_utub.id,
+            Utub_Members.user_id != current_user.id,
+        ).first()
+        second_user_in_utub: Users = second_user_in_utub_association.to_user
+
+    # Remove second user
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=second_user_in_utub.id,
+        ),
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure HTTP response code is correct
+    assert remove_user_response.status_code == 200
+
+    # Ensure database is correctly updated
+    with app.app_context():
+        current_utub = Utubs.query.first()
+        assert (current_utub.last_updated - initial_last_updated).total_seconds() > 0
+
+
+def test_remove_invalid_user_from_utub_does_not_update_utub(
+    add_single_user_to_utub_without_logging_in, login_first_user_without_register
+):
+    """
+    GIVEN a creator of a UTub that is currently logged in
+    WHEN the user requests to remove a nonexistent member from the UTub via a DELETE to "/utubs/<int:utub_id>/members/<int:user_id>"
+    THEN ensure that a 404 status code response is given when the user cannot be found in the UTub, and the proper JSON response is given
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : MEMBER_FAILURE.USER_NOT_IN_UTUB,
+        STD_JSON.ERROR_CODE: 3
+    }
+    """
+
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get the only UTub with two members
+        current_utub: Utubs = Utubs.query.first()
+        current_utub_id = current_utub.id
+        initial_last_updated = current_utub.last_updated
+
+        # Find a user id that isn't in this UTub
+        user_id_not_in_utub = 0
+        while user_id_not_in_utub in [user.user_id for user in current_utub.members]:
+            user_id_not_in_utub += 1
+
+    # Remove invalid user from UTub
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub_id,
+            user_id=user_id_not_in_utub,
+        ),
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure 404 HTTP status code response
+    assert remove_user_response.status_code == 404
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.get(current_utub_id)
+        assert current_utub.last_updated == initial_last_updated

@@ -1,17 +1,28 @@
 from datetime import datetime
+from enum import Enum
 
 import jwt
 from flask_login import UserMixin
 from flask import current_app
+from sqlalchemy import Column, DateTime, Enum as SQLEnum, Integer, String
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src import db
 from src.models.email_validations import Email_Validations
+from src.models.forgot_passwords import Forgot_Passwords
+from src.models.utub_members import Utub_Members
 from src.utils.constants import EMAIL_CONSTANTS, USER_CONSTANTS
+from src.utils.datetime_utils import utc_now
 from src.utils.strings.config_strs import CONFIG_ENVS
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.reset_password_strs import RESET_PASSWORD
+
+
+class User_Role(Enum):
+    ADMIN = "admin"
+    USER = "user"
+    MOD = "mod"
 
 
 class Users(db.Model, UserMixin):
@@ -22,20 +33,23 @@ class Users(db.Model, UserMixin):
     # TODO - Verify email cannot be used as password
 
     __tablename__ = "Users"
-    id: int = db.Column(db.Integer, primary_key=True)
-    username: str = db.Column(
-        db.String(USER_CONSTANTS.MAX_USERNAME_LENGTH), unique=True, nullable=False
+    id: int = Column(Integer, primary_key=True)
+    username: str = Column(
+        String(USER_CONSTANTS.MAX_USERNAME_LENGTH), unique=True, nullable=False
     )
-    email: str = db.Column(db.String(120), unique=True, nullable=False)
-    password: str = db.Column(db.String(166), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    utubs_created = db.relationship("Utubs", backref="created_by", lazy=True)
-    utub_urls = db.relationship("Utub_Urls", back_populates="user_that_added_url")
-    utubs_is_member_of = db.relationship("Utub_Members", back_populates="to_user")
+    email: str = Column(String(120), unique=True, nullable=False)
+    password: str = Column(String(166), nullable=False)
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
+    )
+    role: str = Column(SQLEnum(User_Role), nullable=False, default=User_Role.USER)
+    utubs_is_member_of: list[Utub_Members] = db.relationship(
+        "Utub_Members", back_populates="to_user"
+    )
     email_confirm: Email_Validations = db.relationship(
         "Email_Validations", uselist=False, back_populates="user"
     )
-    forgot_password = db.relationship(
+    forgot_password: Forgot_Passwords = db.relationship(
         "Forgot_Passwords", uselist=False, back_populates="user"
     )
 
@@ -62,7 +76,8 @@ class Users(db.Model, UserMixin):
         return check_password_hash(self.password, plaintext_password)
 
     def is_email_authenticated(self) -> bool:
-        return self.email_confirm.is_validated
+        email_confirm: Email_Validations = self.email_confirm
+        return email_confirm.is_validated
 
     def change_password(self, new_plaintext_password: str):
         self.password = generate_password_hash(new_plaintext_password)
@@ -78,11 +93,19 @@ class Users(db.Model, UserMixin):
     @property
     def serialized_on_initial_load(self) -> list[dict]:
         """Returns object in serialized for, with only the utub id and Utub name the user is a member of."""
-        utubs_for_user = []
-        for utub in self.utubs_is_member_of:
-            utubs_for_user.append(utub.serialized_on_initial_load)
 
-        return utubs_for_user
+        # Sort by last updated
+        sorted_utubs_user_is_in: list[Utub_Members] = sorted(
+            self.utubs_is_member_of,
+            key=lambda utub: utub.to_utub.last_updated,
+            reverse=True,
+        )
+        utub_summaries = [
+            {MODEL_STRS.ID: utub.to_utub.id, MODEL_STRS.NAME: utub.to_utub.name}
+            for utub in sorted_utubs_user_is_in
+        ]
+
+        return utub_summaries
 
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
@@ -93,7 +116,7 @@ class Users(db.Model, UserMixin):
         return jwt.encode(
             payload={
                 EMAILS.VALIDATE_EMAIL: self.username,
-                EMAILS.EXPIRATION: datetime.timestamp(datetime.now()) + expires_in,
+                EMAILS.EXPIRATION: datetime.timestamp(utc_now()) + expires_in,
             },
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],
             algorithm=EMAILS.ALGORITHM,
@@ -105,8 +128,7 @@ class Users(db.Model, UserMixin):
         return jwt.encode(
             payload={
                 RESET_PASSWORD.RESET_PASSWORD_KEY: self.username,
-                RESET_PASSWORD.EXPIRATION: datetime.timestamp(datetime.now())
-                + expires_in,
+                RESET_PASSWORD.EXPIRATION: datetime.timestamp(utc_now()) + expires_in,
             },
             key=current_app.config[CONFIG_ENVS.SECRET_KEY],
         )

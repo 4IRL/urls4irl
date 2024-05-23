@@ -7,6 +7,7 @@ from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
+from src.utils.constants import UTUB_CONSTANTS
 from src.utils.strings.form_strs import UTUB_DESCRIPTION_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
@@ -39,10 +40,9 @@ def test_update_valid_utub_description_as_creator(
     UPDATE_TEXT = "This is my new UTub description. 123456"
     # Grab this creator's UTub
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
-
-        # Ensure this user is the creator
-        assert utub_of_user.created_by == current_user
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         current_utub_description = utub_of_user.utub_description
 
@@ -59,7 +59,7 @@ def test_update_valid_utub_description_as_creator(
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
-        all_initial_utubs = Utubs.query.all()
+        all_initial_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
@@ -90,11 +90,11 @@ def test_update_valid_utub_description_as_creator(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == UPDATE_TEXT
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -137,10 +137,9 @@ def test_update_valid_empty_utub_description_as_creator(
     UPDATE_TEXT = ""
     # Grab this creator's UTub
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
-
-        # Ensure this user is the creator
-        assert utub_of_user.created_by == current_user
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         current_utub_description = utub_of_user.utub_description
 
@@ -157,7 +156,7 @@ def test_update_valid_empty_utub_description_as_creator(
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
-        all_initial_utubs = Utubs.query.all()
+        all_initial_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
@@ -188,11 +187,11 @@ def test_update_valid_empty_utub_description_as_creator(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == UPDATE_TEXT
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -235,10 +234,9 @@ def test_update_only_spaces_utub_description_as_creator(
     UPDATE_TEXT = "   "
     # Grab this creator's UTub
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
-
-        # Ensure this user is the creator
-        assert utub_of_user.created_by == current_user
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         current_utub_description = utub_of_user.utub_description
 
@@ -255,7 +253,7 @@ def test_update_only_spaces_utub_description_as_creator(
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
-        all_initial_utubs = Utubs.query.all()
+        all_initial_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
@@ -286,11 +284,11 @@ def test_update_only_spaces_utub_description_as_creator(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == ""
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -332,10 +330,9 @@ def test_update_utub_description_with_same_description_as_creator(
 
     # Grab this creator's UTub
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
-
-        # Ensure this user is the creator
-        assert utub_of_user.created_by == current_user
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         current_utub_description = utub_of_user.utub_description
         UPDATE_TEXT = current_utub_description
@@ -350,7 +347,7 @@ def test_update_utub_description_with_same_description_as_creator(
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
-        all_initial_utubs = Utubs.query.all()
+        all_initial_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
@@ -381,11 +378,11 @@ def test_update_utub_description_with_same_description_as_creator(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == UPDATE_TEXT
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -424,10 +421,9 @@ def test_update_utub_description_as_member(
     UPDATE_TEXT = "This is my new UTub description. 123456"
     # Grab this member's UTub
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator != current_user.id).first()
-
-        # Ensure this user is not the creator
-        assert utub_of_user.created_by != current_user
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
 
         # Ensure this user is in the UTub
         assert current_user in [user.to_user for user in utub_of_user.members]
@@ -478,12 +474,12 @@ def test_update_utub_description_as_member(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == current_utub_description
         assert final_check_utub_of_user.utub_description != UPDATE_TEXT
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -522,16 +518,15 @@ def test_update_utub_description_as_creator_of_other_utub(
     UPDATE_TEXT = "This is my new UTub description. 123456"
     # Grab this creator's UTub
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator != current_user.id).first()
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
 
         # Ensure this user is the creator of another UTub
         utub_user_is_creator_of = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
         assert utub_user_is_creator_of is not None
-
-        # Ensure this user is not the creator
-        assert utub_of_user.created_by != current_user
 
         # Ensure this user is in the UTub
         assert current_user in [user.to_user for user in utub_of_user.members]
@@ -551,7 +546,7 @@ def test_update_utub_description_as_creator_of_other_utub(
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
-        all_initial_utubs = Utubs.query.all()
+        all_initial_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
@@ -582,12 +577,12 @@ def test_update_utub_description_as_creator_of_other_utub(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == current_utub_description
         assert final_check_utub_of_user.utub_description != UPDATE_TEXT
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -702,15 +697,14 @@ def test_update_utub_description_too_long(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    MAX_UTUB_DESC = 500
+    MAX_UTUB_DESC = UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH
 
     UPDATE_TEXT = "".join(["a" for _ in range(MAX_UTUB_DESC + 1)])
     # Grab this creator's UTub
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
-
-        # Ensure this user is the creator
-        assert utub_of_user.created_by == current_user
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         current_utub_description = utub_of_user.utub_description
 
@@ -727,7 +721,7 @@ def test_update_utub_description_too_long(
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
-        all_initial_utubs = Utubs.query.all()
+        all_initial_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
@@ -767,12 +761,12 @@ def test_update_utub_description_too_long(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == current_utub_description
         assert final_check_utub_of_user.utub_description != UPDATE_TEXT
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -809,10 +803,9 @@ def test_update_utub_description_missing_description_field(
 
     # Grab this creator's UTub
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
-
-        # Ensure this user is the creator
-        assert utub_of_user.created_by == current_user
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         current_utub_description = utub_of_user.utub_description
 
@@ -826,7 +819,7 @@ def test_update_utub_description_missing_description_field(
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
-        all_initial_utubs = Utubs.query.all()
+        all_initial_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
@@ -859,11 +852,11 @@ def test_update_utub_description_missing_description_field(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == current_utub_description
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -894,10 +887,9 @@ def test_update_utub_description_missing_csrf_token(
     # Grab this creator's UTub
     UPDATE_TEXT = "This is my new UTub description. 123456"
     with app.app_context():
-        utub_of_user = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
-
-        # Ensure this user is the creator
-        assert utub_of_user.created_by == current_user
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         current_utub_description = utub_of_user.utub_description
 
@@ -911,7 +903,7 @@ def test_update_utub_description_missing_csrf_token(
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
-        all_initial_utubs = Utubs.query.all()
+        all_initial_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
@@ -935,11 +927,11 @@ def test_update_utub_description_missing_csrf_token(
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
         assert len(Url_Tags.query.all()) == current_num_of_url_tags
 
-        final_check_utub_of_user = Utubs.query.get(current_utub_id)
+        final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
         assert final_check_utub_of_user.utub_description == current_utub_description
 
-        all_final_utubs = Utubs.query.all()
+        all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
         for utub in all_final_utubs:
             final_utub_names_and_descriptions[utub.name] = utub.utub_description
@@ -949,3 +941,87 @@ def test_update_utub_description_missing_csrf_token(
                 final_utub_names_and_descriptions[utub_name]
                 == all_utub_names_and_descriptions[utub_name]
             )
+
+
+def test_update_utub_description_updates_utub_last_updated(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
+    WHEN the creator attempts to modify the UTub description to a new description, via a POST to
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
+            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
+    THEN verify that the UTub's last updated field is updated to show later than originally
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    UPDATE_TEXT = "This is my new UTub description. 123456"
+    # Grab this creator's UTub
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        initial_last_updated = utub_of_user.last_updated
+
+        current_utub_id = utub_of_user.id
+
+    utub_desc_form = {
+        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
+
+    edit_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        data=utub_desc_form,
+    )
+
+    # Ensure valid reponse
+    assert edit_utub_desc_response.status_code == 200
+
+    with app.app_context():
+        updated_utub: Utubs = Utubs.query.filter(Utubs.id == current_utub_id).first()
+
+        assert (updated_utub.last_updated - initial_last_updated).total_seconds() > 0
+
+
+def test_update_utub_desc_same_desc_does_not_update_utub_last_updated(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
+    WHEN the creator attempts to modify the UTub description to the same description, via a POST to
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
+            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
+    THEN verify that the UTub's last updated field is not updated
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    # Grab this creator's UTub
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        initial_last_updated = utub_of_user.last_updated
+
+        current_utub_id = utub_of_user.id
+        current_utub_description = utub_of_user.utub_description
+
+    utub_desc_form = {
+        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: current_utub_description,
+    }
+
+    edit_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        data=utub_desc_form,
+    )
+
+    # Ensure valid reponse
+    assert edit_utub_desc_response.status_code == 200
+
+    with app.app_context():
+        updated_utub: Utubs = Utubs.query.filter(Utubs.id == current_utub_id).first()
+
+        assert updated_utub.last_updated == initial_last_updated

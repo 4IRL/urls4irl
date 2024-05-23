@@ -1,6 +1,8 @@
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
+
+from src.models.email_validations import Email_Validations
 from src.models.users import Users
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM, REGISTER_FORM
@@ -60,7 +62,8 @@ class UserRegistrationForm(FlaskForm):
         user: Users = Users.query.filter_by(email=email.data.lower()).first()
 
         if user:
-            if not user.email_confirm.is_validated:
+            email_confirm: Email_Validations = user.email_confirm
+            if not email_confirm.is_validated:
                 raise ValidationError(USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED)
             raise ValidationError(USER_FAILURE.EMAIL_TAKEN)
 

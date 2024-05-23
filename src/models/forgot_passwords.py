@@ -1,18 +1,27 @@
 from __future__ import annotations
 from datetime import datetime
 
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+
 from src import db
 from src.utils.constants import USER_CONSTANTS
+from src.utils.datetime_utils import utc_now
 
 
 class Forgot_Passwords(db.Model):
     __tablename__ = "ForgotPasswords"
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey("Users.id"))
-    reset_token = db.Column(db.String(2000), nullable=False, default="")
-    attempts = db.Column(db.Integer, nullable=False, default=0)
-    initial_attempt = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    last_attempt = db.Column(db.DateTime, nullable=True, default=None)
+    id: int = Column(Integer, primary_key=True)
+    user_id: int = Column(Integer, ForeignKey("Users.id"), name="userID")
+    reset_token: String = Column(
+        String(2000), nullable=False, default="", name="resetToken"
+    )
+    attempts: int = Column(Integer, nullable=False, default=0)
+    initial_attempt: datetime = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="initialAttempt"
+    )
+    last_attempt: datetime | None = Column(
+        DateTime(timezone=True), nullable=True, default=None, name="lastAttempt"
+    )
 
     user = db.relationship("Users", back_populates="forgot_password")
 
@@ -21,11 +30,11 @@ class Forgot_Passwords(db.Model):
 
     def increment_attempts(self):
         self.attempts += 1
-        self.last_attempt = datetime.utcnow()
+        self.last_attempt = utc_now()
 
     def is_more_than_hour_old(self) -> bool:
         return (
-            datetime.utcnow() - self.initial_attempt
+            utc_now() - self.initial_attempt
         ).seconds >= USER_CONSTANTS.WAIT_TO_RETRY_FORGOT_PASSWORD_MAX
 
     def is_not_rate_limited(self) -> bool:
@@ -38,7 +47,7 @@ class Forgot_Passwords(db.Model):
 
         if (
             self.last_attempt is not None
-            and (datetime.utcnow() - self.last_attempt).seconds
+            and (utc_now() - self.last_attempt).seconds
             < USER_CONSTANTS.WAIT_TO_RETRY_FORGOT_PASSWORD_MIN
         ):
             # Cannot perform more than two requests per minute

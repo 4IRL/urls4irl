@@ -54,7 +54,7 @@ def remove_member(utub_id: int, user_id: int):
     # User can't remove if current user is not creator of UTub and requested user is not same as current user
     current_user_not_in_utub = current_user.id not in current_user_ids_in_utub
     member_trying_to_remove_another_member = (
-        current_user.id != current_utub.created_by.id and user_id != current_user.id
+        current_user.id != current_utub.utub_creator and user_id != current_user.id
     )
 
     if current_user_not_in_utub or member_trying_to_remove_another_member:
@@ -88,6 +88,7 @@ def remove_member(utub_id: int, user_id: int):
     removed_user_username = user_to_remove_in_utub.to_user.username
 
     db.session.delete(user_to_remove_in_utub)
+    current_utub.set_last_updated()
     db.session.commit()
 
     return (
@@ -154,6 +155,7 @@ def add_member(utub_id: int):
         new_user_to_utub = Utub_Members()
         new_user_to_utub.to_user = new_user
         utub.members.append(new_user_to_utub)
+        utub.set_last_updated()
         db.session.commit()
 
         # Successfully added user to UTub

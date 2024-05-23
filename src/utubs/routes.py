@@ -3,7 +3,7 @@ from flask_login import current_user
 
 from src import db
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from src.utubs.utils import build_form_errors
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
@@ -81,7 +81,7 @@ def add_utub():
     https://docs.sqlalchemy.org/en/14/orm/basic_relationships.html#many-to-many
 
     """
-    utub_form = UTubForm()
+    utub_form: UTubForm = UTubForm()
 
     if utub_form.validate_on_submit():
         name = utub_form.name.data
@@ -93,6 +93,7 @@ def add_utub():
         )
         creator_to_utub = Utub_Members()
         creator_to_utub.to_user = current_user
+        creator_to_utub.member_role = Member_Role.CREATOR
         new_utub.members.append(creator_to_utub)
         db.session.commit()
 
@@ -150,7 +151,7 @@ def delete_utub(utub_id: int):
     """
     utub: Utubs = Utubs.query.get_or_404(utub_id)
 
-    if current_user.id != utub.created_by.id:
+    if current_user.id != utub.utub_creator:
         return (
             jsonify(
                 {
@@ -212,13 +213,14 @@ def update_utub_name(utub_id: int):
 
     current_utub_name = current_utub.name
 
-    utub_name_form = UTubNewNameForm()
+    utub_name_form: UTubNewNameForm = UTubNewNameForm()
 
     if utub_name_form.validate_on_submit():
         new_utub_name = utub_name_form.name.data
 
         if new_utub_name != current_utub_name:
             current_utub.name = new_utub_name
+            current_utub.set_last_updated()
             db.session.commit()
 
         return (
@@ -294,7 +296,7 @@ def update_utub_desc(utub_id: int):
         "" if current_utub.utub_description is None else current_utub.utub_description
     )
 
-    utub_desc_form = UTubDescriptionForm()
+    utub_desc_form: UTubDescriptionForm = UTubDescriptionForm()
 
     if utub_desc_form.validate_on_submit():
         new_utub_description = utub_desc_form.description.data
@@ -313,6 +315,7 @@ def update_utub_desc(utub_id: int):
 
         if new_utub_description != current_utub_description:
             current_utub.utub_description = new_utub_description
+            current_utub.set_last_updated()
             db.session.commit()
 
         return (

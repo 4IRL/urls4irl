@@ -1,6 +1,7 @@
 from flask import url_for
 from flask_login import current_user
 import pytest
+from sqlalchemy.engine.row import Row
 
 from src import db
 from src.models.url_tags import Url_Tags
@@ -94,7 +95,7 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
 
     with app.app_context():
         # Get the UTub this user is a creator of
-        utub_user_is_creator_of = Utubs.query.filter(
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_to_delete = utub_user_is_creator_of.id
@@ -190,7 +191,7 @@ def test_delete_existing_utub_with_urls_no_tags(
 
     with app.app_context():
         # Get the UTub this user is a creator of
-        utub_user_is_creator_of = Utubs.query.filter(
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_to_delete = utub_user_is_creator_of.id
@@ -286,7 +287,7 @@ def test_delete_existing_utub_with_urls_and_tags(
 
     with app.app_context():
         # Get the UTub this user is a creator of
-        utub_user_is_creator_of = Utubs.query.filter(
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_to_delete = utub_user_is_creator_of.id
@@ -514,7 +515,7 @@ def test_delete_utub_as_member_only(
 
     with app.app_context():
         # Get the UTubs from the database that this member is not a part of
-        user_not_in_these_utubs = (
+        user_not_in_these_utubs: list[Row] = (
             Utub_Members.query.filter(Utub_Members.user_id != current_user.id)
             .with_entities(Utub_Members.utub_id)
             .all()
@@ -522,6 +523,7 @@ def test_delete_utub_as_member_only(
 
         # Make sure that only 2 utubs-user associations exist, one for each utub/user combo
         assert len(user_not_in_these_utubs) == 2
+        original_count_of_user_not_in_utubs = len(user_not_in_these_utubs)
 
         # Add the current logged in user to the UTub's it is not a part of
         for utub_not_part_of in user_not_in_these_utubs:
@@ -533,7 +535,7 @@ def test_delete_utub_as_member_only(
             db.session.commit()
 
         # Assert current user is in all UTubs
-        all_utubs = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_utubs:
             assert (
                 len(
@@ -571,6 +573,7 @@ def test_delete_utub_as_member_only(
                 .with_entities(Utub_Members.utub_id)
                 .all()
             )
+            assert len(user_not_in_these_utubs) == original_count_of_user_not_in_utubs
 
     with app.app_context():
         # Make sure all 3 test UTubs are still available in the database

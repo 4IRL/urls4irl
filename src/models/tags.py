@@ -1,19 +1,26 @@
 from datetime import datetime
 
+from sqlalchemy import DateTime, Column, ForeignKey, Integer, String
+
 from src import db
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
+from src.utils.datetime_utils import utc_now
 
 
 class Tags(db.Model):
     """Class represents a tag, more specifically a tag for a URL. A tag is added by a single user, but can be used as a tag for any URL."""
 
     __tablename__ = "Tags"
-    id: int = db.Column(db.Integer, primary_key=True)
-    tag_string: str = db.Column(
-        db.String(30), nullable=False
+    id: int = Column(Integer, primary_key=True)
+    tag_string: str = Column(
+        String(30), nullable=False, name="tagString"
     )  # Note that multiple URLs can have the same tag
-    created_by: int = db.Column(db.Integer, db.ForeignKey("Users.id"), nullable=False)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    created_by: int = Column(
+        Integer, ForeignKey("Users.id"), nullable=False, name="createdBy"
+    )
+    created_at: datetime = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
+    )
 
     def __init__(self, tag_string: str, created_by: int):
         self.tag_string = tag_string

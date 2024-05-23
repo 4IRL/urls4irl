@@ -29,14 +29,12 @@ def add_tag(utub_id: int, url_id: int):
         utub_id (int): The utub that this user is being added to
         url_id (int): The URL this user wants to add a tag to
     """
-    utub_url_association = Utub_Urls.query.filter(
+    utub_url_association: Utub_Urls = Utub_Urls.query.filter(
         Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id
     ).first_or_404()
-    utub = utub_url_association.utub
+    utub: Utubs = utub_url_association.utub
 
-    user_in_utub = [
-        member.user_id for member in utub.members if member.user_id == current_user.id
-    ]
+    user_in_utub = current_user.id in [member.user_id for member in utub.members]
 
     if not user_in_utub:
         # How did a user not in this utub get access to add a tag to this URL?
@@ -51,13 +49,13 @@ def add_tag(utub_id: int, url_id: int):
             403,
         )
 
-    url_tag_form = UTubNewUrlTagForm()
+    url_tag_form: UTubNewUrlTagForm = UTubNewUrlTagForm()
 
     if url_tag_form.validate_on_submit():
         tag_to_add = url_tag_form.tag_string.data
 
         # If too many tags, disallow adding tag
-        tags_already_on_this_url = [
+        tags_already_on_this_url: list[Url_Tags] = [
             tags for tags in utub.utub_url_tags if tags.url_id == url_id
         ]
 
@@ -75,18 +73,15 @@ def add_tag(utub_id: int, url_id: int):
             )
 
         # If not a tag already, create it
-        tag_already_created = Tags.query.filter_by(tag_string=tag_to_add).first()
+        tag_already_created: Tags = Tags.query.filter_by(tag_string=tag_to_add).first()
 
         if tag_already_created:
             # Check if tag already on url
-            this_tag_is_already_on_this_url = [
-                tags
-                for tags in tags_already_on_this_url
-                if tags.tag_id == tag_already_created.id
+            this_tag_is_already_on_this_url = tag_already_created.id in [
+                tags.tag_id for tags in tags_already_on_this_url
             ]
 
-            if len(this_tag_is_already_on_this_url) == 1:
-                # Tag is already on this URL
+            if this_tag_is_already_on_this_url:
                 return (
                     jsonify(
                         {
@@ -113,6 +108,7 @@ def add_tag(utub_id: int, url_id: int):
             tag_model = new_tag
 
         db.session.add(utub_url_tag)
+        utub.set_last_updated()
         db.session.commit()
 
         # Successfully added tag to URL on UTub
@@ -172,7 +168,7 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
         url_id (int): The ID of the URL containing tag to be deleted
         tag_id (int): The ID of the tag to be deleted
     """
-    utub = Utubs.query.get_or_404(utub_id)
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id not in [user.user_id for user in utub.members]:
         return (
@@ -189,18 +185,19 @@ def remove_tag(utub_id: int, url_id: int, tag_id: int):
     tag_for_url_in_utub: Url_Tags = Url_Tags.query.filter_by(
         utub_id=utub_id, url_id=url_id, tag_id=tag_id
     ).first_or_404()
-    url_to_remove_tag_from = tag_for_url_in_utub.tagged_url
+    url_id_to_remove_tag = tag_for_url_in_utub.url_id
     tag_to_remove: Tags = tag_for_url_in_utub.tag_item
 
     db.session.delete(tag_for_url_in_utub)
+    utub.set_last_updated()
     db.session.commit()
 
     num_left_in_utub: int = Url_Tags.query.filter_by(
         utub_id=utub_id, tag_id=tag_id
     ).count()
 
-    url_utub_association = Utub_Urls.query.filter(
-        Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_to_remove_tag_from.id
+    url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+        Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_id_to_remove_tag
     ).first_or_404()
 
     return (
@@ -299,6 +296,7 @@ def modify_tag_on_url(utub_id: int, url_id: int, tag_id: int):
             Utub_Urls.utub_id == utub.id, Utub_Urls.url_id == url_id
         ).first_or_404()
 
+        utub.set_last_updated()
         db.session.commit()
 
         previous_tag_count_in_utub: int = Url_Tags.query.filter_by(

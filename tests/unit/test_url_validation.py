@@ -101,12 +101,19 @@ def test_invalid_urls():
 def test_urls_requiring_valid_user_agent():
     """
     GIVEN URLs that seemed to fail unknowingly, but were due to the request
-        failing due to a User-agent indicating a script
+        failing due to a User-agent indicating a script, OR the returns
+        with a different URL even with a 200 status (lenovo)
     WHEN the url validation function checks these URLs
     THEN ensure that these urls are now validated properly
     """
     for unknown_url in urls_needing_valid_user_agent:
-        assert unknown_url == url_valid.find_common_url(unknown_url)
+        validated_url = False
+        for _ in range(3):
+            if unknown_url == url_valid.find_common_url(unknown_url):
+                validated_url = True
+                break
+            sleep(0.1)
+        assert validated_url
 
 
 def test_random_user_agents():

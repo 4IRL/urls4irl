@@ -3,7 +3,6 @@ import json
 from flask import Flask
 import pytest
 
-import tests.models_for_test as v_models
 from src import db
 from src.models.tags import Tags
 from src.models.urls import Urls
@@ -14,6 +13,7 @@ from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
+import tests.models_for_test as v_models
 
 pytestmark = pytest.mark.unit
 
@@ -243,6 +243,7 @@ def test_user_utub_data_serialized_on_initial_load():
             utub_creator=valid_user[MODEL_STRS.ID],
             utub_description="",
         )
+        new_utub.set_last_updated()
         new_utub.id = empty_utub[MODEL_STRS.ID]
         new_utub.utub_creator = valid_user[MODEL_STRS.ID]
 
@@ -253,6 +254,8 @@ def test_user_utub_data_serialized_on_initial_load():
 
         valid_utubs.append({MODEL_STRS.ID: new_utub.id, MODEL_STRS.NAME: new_utub.name})
 
+    # Reverse considering the serialized values will be sorted by most recently updated
+    valid_utubs.reverse()
     assert json.dumps(valid_utubs) == json.dumps(new_user.serialized_on_initial_load)
 
 
