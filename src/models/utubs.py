@@ -18,17 +18,21 @@ class Utubs(db.Model):
     __tablename__ = "Utubs"
     id: int = Column(Integer, primary_key=True)
     name: str = Column(
-        String(UTUB_CONSTANTS.MAX_NAME_LENGTH), nullable=False
+        String(UTUB_CONSTANTS.MAX_NAME_LENGTH), nullable=False, name="utubName"
     )  # Note that multiple UTubs can have the same name, maybe verify this per user?
-    utub_creator: int = Column(Integer, ForeignKey("Users.id"), nullable=False)
+    utub_creator: int = Column(
+        Integer, ForeignKey("Users.id"), nullable=False, name="utubCreator"
+    )
     created_at: datetime = Column(
-        DateTime(timezone=True), nullable=False, default=utc_now
+        DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
     last_updated: datetime = Column(
-        DateTime(timezone=True), nullable=False, default=utc_now
+        DateTime(timezone=True), nullable=False, default=utc_now, name="lastUpdated"
     )
     utub_description: str = Column(
-        String(UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH), nullable=True
+        String(UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH),
+        nullable=True,
+        name="utubDescription",
     )
     utub_url_tags = db.relationship(
         "Url_Tags", back_populates="utub_containing_this_tag", cascade="all, delete"

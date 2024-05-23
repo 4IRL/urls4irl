@@ -12,10 +12,14 @@ class Urls(db.Model):
     __tablename__ = "Urls"
     id: int = Column(Integer, primary_key=True)
     url_string: str = Column(
-        String(8000), nullable=False, unique=True
+        String(8000), nullable=False, unique=True, name="urlString"
     )  # Note that multiple UTubs can have the same URL
-    created_by: int = Column(Integer, ForeignKey("Users.id"), nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
+    created_by: int = Column(
+        Integer, ForeignKey("Users.id"), nullable=False, name="createdBy"
+    )
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
+    )
     url_tags = db.relationship("Url_Tags", back_populates="tagged_url")
 
     def __init__(self, normalized_url: str, current_user_id: int):

@@ -13,11 +13,13 @@ class Tags(db.Model):
     __tablename__ = "Tags"
     id: int = Column(Integer, primary_key=True)
     tag_string: str = Column(
-        String(30), nullable=False
+        String(30), nullable=False, name="tagString"
     )  # Note that multiple URLs can have the same tag
-    created_by: int = Column(Integer, ForeignKey("Users.id"), nullable=False)
+    created_by: int = Column(
+        Integer, ForeignKey("Users.id"), nullable=False, name="createdBy"
+    )
     created_at: datetime = Column(
-        DateTime(timezone=True), nullable=False, default=utc_now
+        DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
 
     def __init__(self, tag_string: str, created_by: int):

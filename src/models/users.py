@@ -1,9 +1,10 @@
 from datetime import datetime
+from enum import Enum
 
 import jwt
 from flask_login import UserMixin
 from flask import current_app
-from sqlalchemy import Column, DateTime, Integer, String
+from sqlalchemy import Column, DateTime, Enum as SQLEnum, Integer, String
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src import db
@@ -16,6 +17,12 @@ from src.utils.strings.config_strs import CONFIG_ENVS
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.reset_password_strs import RESET_PASSWORD
+
+
+class User_Role(Enum):
+    ADMIN = "admin"
+    USER = "user"
+    MOD = "mod"
 
 
 class Users(db.Model, UserMixin):
@@ -32,8 +39,10 @@ class Users(db.Model, UserMixin):
     )
     email: str = Column(String(120), unique=True, nullable=False)
     password: str = Column(String(166), nullable=False)
-    created_at = Column(DateTime(timezone=True), nullable=False, default=utc_now)
-    role: str = Column(String(5), nullable=False, default="user")
+    created_at = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
+    )
+    role: str = Column(SQLEnum(User_Role), nullable=False, default=User_Role.USER)
     utubs_is_member_of: list[Utub_Members] = db.relationship(
         "Utub_Members", back_populates="to_user"
     )

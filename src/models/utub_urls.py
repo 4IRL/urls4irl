@@ -20,12 +20,16 @@ class Utub_Urls(db.Model):
 
     __tablename__ = "UtubUrls"
 
-    utub_id: int = Column(Integer, ForeignKey("Utubs.id"), primary_key=True)
-    url_id: int = Column(Integer, ForeignKey("Urls.id"), primary_key=True)
-    user_id: int = Column(Integer, ForeignKey("Users.id"), primary_key=True)
-    url_title: str = Column(String(140), default="")
+    utub_id: int = Column(
+        Integer, ForeignKey("Utubs.id"), primary_key=True, name="utubID"
+    )
+    url_id: int = Column(Integer, ForeignKey("Urls.id"), primary_key=True, name="urlID")
+    user_id: int = Column(
+        Integer, ForeignKey("Users.id"), primary_key=True, name="userID"
+    )
+    url_title: str = Column(String(140), default="", name="urlTitle")
     added_at: datetime = Column(
-        DateTime(timezone=True), nullable=False, default=utc_now
+        DateTime(timezone=True), nullable=False, default=utc_now, name="addedAt"
     )
 
     standalone_url: Urls = db.relationship("Urls")

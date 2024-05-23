@@ -12,21 +12,23 @@ class Email_Validations(db.Model):
 
     __tablename__ = "EmailValidations"
     id: int = Column(Integer, primary_key=True)
-    user_id: int = Column(Integer, ForeignKey("Users.id"), unique=True)
-    confirm_url: int = Column(String(2000), nullable=False, default="")
-    is_validated: bool = Column(Boolean, default=False)
+    user_id: int = Column(Integer, ForeignKey("Users.id"), unique=True, name="userID")
+    validation_token: int = Column(
+        String(2000), nullable=False, default="", name="validationToken"
+    )
+    is_validated: bool = Column(Boolean, default=False, name="isValidated")
     attempts: int = Column(Integer, nullable=False, default=0)
     created_at: datetime = Column(
-        DateTime(timezone=True), nullable=False, default=utc_now
+        DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
     last_attempt: datetime = Column(
-        DateTime(timezone=True), nullable=True, default=None
+        DateTime(timezone=True), nullable=True, default=None, name="lastAttempt"
     )
 
     user = db.relationship("Users", back_populates="email_confirm")
 
-    def __init__(self, confirm_url: str):
-        self.confirm_url = confirm_url
+    def __init__(self, validation_token: str):
+        self.validation_token = validation_token
 
     def validate(self):
         self.is_validated = True

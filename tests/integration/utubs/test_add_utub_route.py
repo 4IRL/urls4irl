@@ -8,7 +8,7 @@ from tests.models_for_test import (
     valid_empty_utub_3,
 )
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -97,9 +97,10 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         assert len(Utub_Members.query.all()) == 1
 
         # Assert the only Utubs-User association is valid
-        current_utub_user_association: list[Utub_Members] = Utub_Members.query.all()
-        assert current_utub_user_association[0].utub_id == utub_id
-        assert current_utub_user_association[0].user_id == user.id
+        current_utub_user_association: Utub_Members = Utub_Members.query.first()
+        assert current_utub_user_association.utub_id == utub_id
+        assert current_utub_user_association.user_id == user.id
+        assert current_utub_user_association.member_role == Member_Role.CREATOR
 
 
 def test_add_utub_with_same_name(

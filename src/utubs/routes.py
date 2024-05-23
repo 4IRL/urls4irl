@@ -3,7 +3,7 @@ from flask_login import current_user
 
 from src import db
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from src.utubs.utils import build_form_errors
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
@@ -81,7 +81,7 @@ def add_utub():
     https://docs.sqlalchemy.org/en/14/orm/basic_relationships.html#many-to-many
 
     """
-    utub_form = UTubForm()
+    utub_form: UTubForm = UTubForm()
 
     if utub_form.validate_on_submit():
         name = utub_form.name.data
@@ -93,6 +93,7 @@ def add_utub():
         )
         creator_to_utub = Utub_Members()
         creator_to_utub.to_user = current_user
+        creator_to_utub.member_role = Member_Role.CREATOR
         new_utub.members.append(creator_to_utub)
         db.session.commit()
 

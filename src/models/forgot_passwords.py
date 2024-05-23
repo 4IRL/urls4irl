@@ -11,14 +11,16 @@ from src.utils.datetime_utils import utc_now
 class Forgot_Passwords(db.Model):
     __tablename__ = "ForgotPasswords"
     id: int = Column(Integer, primary_key=True)
-    user_id: int = Column(Integer, ForeignKey("Users.id"))
-    reset_token: String = Column(String(2000), nullable=False, default="")
+    user_id: int = Column(Integer, ForeignKey("Users.id"), name="userID")
+    reset_token: String = Column(
+        String(2000), nullable=False, default="", name="resetToken"
+    )
     attempts: int = Column(Integer, nullable=False, default=0)
     initial_attempt: datetime = Column(
-        DateTime(timezone=True), nullable=False, default=utc_now
+        DateTime(timezone=True), nullable=False, default=utc_now, name="initialAttempt"
     )
     last_attempt: datetime | None = Column(
-        DateTime(timezone=True), nullable=True, default=None
+        DateTime(timezone=True), nullable=True, default=None, name="lastAttempt"
     )
 
     user = db.relationship("Users", back_populates="forgot_password")

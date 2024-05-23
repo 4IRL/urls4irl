@@ -21,11 +21,13 @@ class Url_Tags(db.Model):
     __tablename__ = "UrlTags"
 
     id: int = Column(Integer, primary_key=True)
-    utub_id: int = Column(Integer, ForeignKey("Utubs.id"), nullable=False)
-    url_id: int = Column(Integer, ForeignKey("Urls.id"), nullable=True)
-    tag_id: int = Column(Integer, ForeignKey("Tags.id"), nullable=False)
+    utub_id: int = Column(
+        Integer, ForeignKey("Utubs.id"), nullable=False, name="utubID"
+    )
+    url_id: int = Column(Integer, ForeignKey("Urls.id"), nullable=True, name="urlID")
+    tag_id: int = Column(Integer, ForeignKey("Tags.id"), nullable=False, name="tagID")
     added_at: datetime = Column(
-        DateTime(timezone=True), nullable=False, default=utc_now
+        DateTime(timezone=True), nullable=False, default=utc_now, name="addedAt"
     )
 
     tag_item: Tags = db.relationship("Tags")
