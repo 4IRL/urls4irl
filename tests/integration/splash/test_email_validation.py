@@ -178,7 +178,7 @@ def test_valid_token_generated_on_user_register(
         registered_user: Users = Users.query.filter(
             Users.email == new_user[REGISTER_FORM.EMAIL].lower()
         ).first()
-        user_token = registered_user.email_confirm.confirm_url
+        user_token = registered_user.email_confirm.validation_token
         assert verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (
             registered_user,
             False,
@@ -203,7 +203,7 @@ def test_token_validates_user(app, load_register_page):
         user: Users = Users.query.filter(
             Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
-        user_token = user.email_confirm.confirm_url
+        user_token = user.email_confirm.validation_token
         assert not user.is_email_authenticated() and not user.email_confirm.is_validated
 
     response = client.get(
@@ -224,7 +224,7 @@ def test_token_validates_user(app, load_register_page):
             Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         assert user.is_email_authenticated() and user.email_confirm.is_validated
-        assert user.email_confirm.confirm_url != user_token
+        assert user.email_confirm.validation_token != user_token
 
 
 def test_token_can_expire(app, register_first_user_without_email_validation):
@@ -263,7 +263,7 @@ def test_expired_token_accessed_shows_error_to_user(
             Users.email == registered_user[REGISTER_FORM.EMAIL].lower()
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
-        email_validation = Email_Validations(confirm_url=quick_expiring_token)
+        email_validation = Email_Validations(validation_token=quick_expiring_token)
         user.email_confirm = email_validation
         db.session.commit()
 

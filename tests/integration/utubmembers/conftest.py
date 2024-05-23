@@ -41,7 +41,7 @@ def register_all_but_first_user(
             )
 
             new_email_validation = Email_Validations(
-                confirm_url=new_user.get_email_validation_token()
+                validation_token=new_user.get_email_validation_token()
             )
             new_email_validation.is_validated = True
             new_user.email_confirm = new_email_validation
