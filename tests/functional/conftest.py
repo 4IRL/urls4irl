@@ -1,37 +1,66 @@
+# Standard library
+import multiprocessing
+
+# External libraries
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 import pytest
 
-from selenium import webdriver
-
+# Internal libraries
+from src import create_app
+from src.config import TestingConfig
 import tests.functional.constants as const
+
+
+def app():
+    config = TestingConfig()
+    app_for_test = create_app(config)
+    app_for_test.run()
+
+
+@pytest.fixture(scope="session")
+def init_multiprocessing():
+    multiprocessing.set_start_method("spawn")
+
+
+@pytest.fixture(scope="session")
+def run_app(init_multiprocessing):
+    process = multiprocessing.Process(target=app)
+    process.start()
+    yield process
+    process.kill()
+    process.join()
 
 
 # Setup fixture for the webdriver
 @pytest.fixture(scope="session")
-def browser():
-    driver = webdriver.Chrome()
-    driver.maximize_window()
+def browser(run_app):
+    options = Options()
+    options.add_argument("–-headless=new")
+    options.add_argument("–-disable-gpu")
+    driver = webdriver.Chrome(options=options)
+    # driver.maximize_window()
 
     # Clear db
     # driver.get(const.CLEAR_DB_URL)
     # driver.implicitly_wait(3)
 
-    # If title contains "*Cloudflare", click button first
-    # Find element containing ".AuthBoxRow--name" containing "Rehan"
-    # Trickle up "closest() in jQuery" to <a>.Button.click()
-    # driver.implicitly_wait(10)
-
     # Load test users
     # driver.get(const.ADD_TEST_USERS_URL)
     # driver.implicitly_wait(3)
-
-    # Load U4I site
-    driver.get(const.BASE_URL)
 
     # Return the driver object to be used in the test functions
     yield driver
 
     # Teardown: Quit the browser after tests
     driver.quit()
+
+
+@pytest.fixture
+def provide_browser(browser):
+    yield browser
+    # Reset browser here - clear cookies
+    browser.get(const.BASE_URL)
 
 
 # This fixture is not yet implemented because I can't figure out how to start each test independently. Currently the implementation of each subsequent test is dependent on the success of its predecessors

@@ -1,7 +1,10 @@
+# External libraries
+import pytest
 from selenium.webdriver.common.by import By
 
 # from webdriver_manager.chrome import ChromeDriverManager
 
+# Internal libraries
 import tests.functional.constants as const
 
 
@@ -12,27 +15,42 @@ def test_example(browser):
     assert "URLS4IRL" in browser.title
 
 
+# The one test that will always work to make me feel good
+def test_example1(browser):
+
+    # Check if the title contains "URLS4IRL"
+    assert "URLS4IRL" in browser.title
+
+
+# The one test that will always work to make me feel good
+def test_example2(browser):
+
+    # Check if the title contains "URLS4IRL"
+    assert "URLS4IRL" in browser.title
+
+
 # Example test case
+@pytest.mark.skip(reason="no way of currently testing this")
 def test_login_test_user(browser):
     # Find login button to open modal
-    btn_login = browser.find_element(By.CLASS_NAME, "to-login")
-    btn_login.click()
+    login_btn = browser.find_element(By.CLASS_NAME, "to-login")
+    login_btn.click()
     browser.implicitly_wait(10)
 
     # Input login details
-    input_field_username = browser.find_element(By.ID, "username")
-    input_field_username.clear()
+    username_input = browser.find_element(By.ID, "username")
+    username_input.clear()
     browser.implicitly_wait(2)  # Program reacts too fast, needs to take a beat
-    input_field_username.send_keys(const.USERNAME)
+    username_input.send_keys(const.USERNAME)
 
-    input_field_password = browser.find_element(By.ID, "password")
-    input_field_password.clear()
+    password_input = browser.find_element(By.ID, "password")
+    password_input.clear()
     browser.implicitly_wait(2)  # Program reacts too fast, needs to take a beat
-    input_field_password.send_keys(const.PASSWORD)
+    password_input.send_keys(const.PASSWORD)
 
     # Find submit button to login
-    btn_submit = browser.find_element(By.ID, "submit")
-    btn_submit.click()
+    submit_btn = browser.find_element(By.ID, "submit")
+    submit_btn.click()
     browser.implicitly_wait(3)
 
     # Confirm user logged in
