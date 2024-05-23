@@ -68,7 +68,7 @@ def test_remove_url_as_utub_creator_no_tags(
 
         # Get initial number of UTub-URL associations
         initial_utub_urls = len(Utub_Urls.query.all())
-        standalone_url: Urls = url_utub_user_association.standalone_url
+        url_object: Urls = url_utub_user_association.standalone_url
 
     # Remove URL from UTub as UTub creator
     remove_url_response = client.delete(
@@ -94,7 +94,7 @@ def test_remove_url_as_utub_creator_no_tags(
     )
     assert (
         remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_STRING]
-        == standalone_url.url_string
+        == url_object.url_string
     )
     assert (
         remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
@@ -359,17 +359,14 @@ def test_remove_invalid_nonexistant_url_as_utub_creator(
 
     # Find the first UTub this logged in user is a creator of
     with app.app_context():
-        utub_current_user_creator_of = Utubs.query.filter(
+        utub_current_user_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
         id_of_utub_current_user_creator_of = utub_current_user_creator_of.id
 
-        # Ensure this user is the creator
-        assert current_user == utub_current_user_creator_of.created_by
-
-        all_urls = Urls.query.all()
+        all_urls: list[Urls] = Urls.query.all()
         all_url_ids = [url.id for url in all_urls]
-        all_urls_in_utub = Utub_Urls.query.filter(
+        all_urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
             Utub_Urls.utub_id == id_of_utub_current_user_creator_of
         ).all()
         all_urls_ids_in_utub = [url.url_id for url in all_urls_in_utub]
@@ -436,20 +433,14 @@ def test_remove_invalid_nonexistant_url_as_utub_member(
 
     # Find the first UTub this logged in user is a creator of
     with app.app_context():
-        utub_current_user_member_of = Utubs.query.filter(
+        utub_current_user_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
         id_of_utub_current_user_member_of = utub_current_user_member_of.id
 
-        # Ensure this user is not the creator but is in the UTub
-        assert current_user != utub_current_user_member_of.created_by
-        assert current_user in [
-            member.to_user for member in utub_current_user_member_of.members
-        ]
-
-        all_urls = Urls.query.all()
+        all_urls: list[Urls] = Urls.query.all()
         all_url_ids = [url.id for url in all_urls]
-        all_urls_in_utub = Utub_Urls.query.filter(
+        all_urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
             Utub_Urls.utub_id == id_of_utub_current_user_member_of
         ).all()
         all_urls_ids_in_utub = [url.url_id for url in all_urls_in_utub]
@@ -532,11 +523,13 @@ def test_remove_url_as_utub_creator_with_tag(
 
     with app.app_context():
         # Find current user's UTub
-        current_utub = Utubs.query.filter(Utubs.utub_creator == current_user.id).first()
+        current_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
 
         # Find a URL with tags on it in this UTub
-        current_utub_url_tags = current_utub.utub_url_tags
-        current_url_in_utub_with_tags = current_utub_url_tags[0]
+        current_utub_url_tags: list[Url_Tags] = current_utub.utub_url_tags
+        current_url_in_utub_with_tags: Url_Tags = current_utub_url_tags[0]
 
         # Ensure this URL has tags associated with it
         assert (
@@ -554,7 +547,8 @@ def test_remove_url_as_utub_creator_with_tag(
             Utub_Urls.utub_id == current_utub.id,
             Utub_Urls.url_id == current_url_in_utub_with_tags.url_id,
         ).first()
-        url_string_to_remove = url_in_utub.standalone_url.url_string
+        url_object: Urls = url_in_utub.standalone_url
+        url_string_to_remove = url_object.url_string
         associated_tags = url_in_utub.associated_tags
 
         url_id_to_remove = current_url_in_utub_with_tags.url_id
@@ -622,7 +616,7 @@ def test_remove_url_as_utub_creator_with_tag(
         )
 
         # Assert the UTUB-URL-TAG association is deleted
-        tags_in_utub = Url_Tags.query.filter(
+        tags_in_utub: list[Url_Tags] = Url_Tags.query.filter(
             Url_Tags.utub_id == utub_id_to_remove_url_from,
             Url_Tags.url_id == url_id_to_remove,
         ).all()
@@ -693,9 +687,10 @@ def test_remove_url_as_utub_member_with_tags(
 
         utub_id_to_remove_url_from = current_user_utub.id
         url_id_to_remove = current_url_in_utub.url_id
-        url_string_to_remove = current_url_in_utub.standalone_url.url_string
+        url_object: Urls = current_url_in_utub.standalone_url
+        url_string_to_remove = url_object.url_string
         url_title_to_remove = current_url_in_utub.url_title
-        associated_tags = current_url_in_utub.associated_tags
+        associated_tags: list[int] = current_url_in_utub.associated_tags
 
         # Get initial number of UTub-URL associations
         initial_utub_urls = len(Utub_Urls.query.all())
@@ -763,7 +758,7 @@ def test_remove_url_as_utub_member_with_tags(
         )
 
         # Assert the UTUB-URL-TAG association is deleted
-        tags_in_utub_on_url = Url_Tags.query.filter(
+        tags_in_utub_on_url: list[Url_Tags] = Url_Tags.query.filter(
             Url_Tags.utub_id == utub_id_to_remove_url_from,
             Url_Tags.url_id == url_id_to_remove,
         ).all()
@@ -800,12 +795,11 @@ def test_remove_url_from_utub_no_csrf_token(
 
     # Find the first UTub the logged in user is not a creator of
     with app.app_context():
-        utub_current_user_not_part_of = Utubs.query.filter(
+        utub_current_user_not_part_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
 
         # Ensure the currently logged in user is not in this UTub and is not the creator of this UTub
-        assert current_user != utub_current_user_not_part_of.created_by
         assert current_user not in [
             user.to_user for user in utub_current_user_not_part_of.members
         ]
@@ -818,7 +812,7 @@ def test_remove_url_from_utub_no_csrf_token(
         url_to_remove_in_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_current_user_not_part_of.id
         ).first()
-        url_to_remove = url_to_remove_in_utub.standalone_url
+        url_to_remove: Urls = url_to_remove_in_utub.standalone_url
         url_to_remove_id = url_to_remove.id
 
         # Get initial number of UTub-URL associations
@@ -853,3 +847,86 @@ def test_remove_url_from_utub_no_csrf_token(
         assert url_to_remove_id in current_utub_urls_id
 
         assert len(Utub_Urls.query.all()) == initial_utub_urls
+
+
+def test_remove_url_updates_utub_last_updated(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub who has added a valid URL to their UTub, with no tags
+    WHEN the creator wishes to remove the URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN the server responds with a 200 HTTP status code, and the UTub's last updated field is updated
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    # Get UTub of current user
+    with app.app_context():
+        current_user_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        initial_last_updated = current_user_utub.last_updated
+
+        url_utub_user_association: Utub_Urls = current_user_utub.utub_urls[0]
+        url_id_to_remove = url_utub_user_association.url_id
+
+    # Remove URL from UTub as UTub creator
+    remove_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.REMOVE_URL,
+            utub_id=current_user_utub.id,
+            url_id=url_id_to_remove,
+        ),
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure 200 HTTP status code response
+    assert remove_url_response.status_code == 200
+
+    # Ensure proper removal from database
+    with app.app_context():
+        current_user_utub = Utubs.query.get(current_user_utub.id)
+        assert (
+            current_user_utub.last_updated - initial_last_updated
+        ).total_seconds() > 0
+
+
+def test_remove_invalid_url_does_not_update_utub_last_updated(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub
+    WHEN the user wishes to remove a nonexistant URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN the server responds with a 404 HTTP status code, and the UTub's last updated field is not updated
+    """
+
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    # Find the first UTub this logged in user is a creator of
+    with app.app_context():
+        utub_current_user_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        initial_last_updated = utub_current_user_creator_of.last_updated
+        id_of_utub_current_user_creator_of = utub_current_user_creator_of.id
+
+        url_not_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != id_of_utub_current_user_creator_of
+        ).first()
+        id_of_url_to_remove = url_not_in_utub.url_id
+
+    # Attempt to remove nonexistant URL from UTub as creator of UTub
+    remove_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.REMOVE_URL,
+            utub_id=id_of_utub_current_user_creator_of,
+            url_id=id_of_url_to_remove,
+        ),
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure 200 HTTP status code response
+    assert remove_url_response.status_code == 404
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.get(id_of_utub_current_user_creator_of)
+        assert current_utub.last_updated == initial_last_updated

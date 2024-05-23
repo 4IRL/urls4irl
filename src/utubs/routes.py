@@ -150,7 +150,7 @@ def delete_utub(utub_id: int):
     """
     utub: Utubs = Utubs.query.get_or_404(utub_id)
 
-    if current_user.id != utub.created_by.id:
+    if current_user.id != utub.utub_creator:
         return (
             jsonify(
                 {
@@ -212,13 +212,14 @@ def update_utub_name(utub_id: int):
 
     current_utub_name = current_utub.name
 
-    utub_name_form = UTubNewNameForm()
+    utub_name_form: UTubNewNameForm = UTubNewNameForm()
 
     if utub_name_form.validate_on_submit():
         new_utub_name = utub_name_form.name.data
 
         if new_utub_name != current_utub_name:
             current_utub.name = new_utub_name
+            current_utub.set_last_updated()
             db.session.commit()
 
         return (
@@ -294,7 +295,7 @@ def update_utub_desc(utub_id: int):
         "" if current_utub.utub_description is None else current_utub.utub_description
     )
 
-    utub_desc_form = UTubDescriptionForm()
+    utub_desc_form: UTubDescriptionForm = UTubDescriptionForm()
 
     if utub_desc_form.validate_on_submit():
         new_utub_description = utub_desc_form.description.data
@@ -313,6 +314,7 @@ def update_utub_desc(utub_id: int):
 
         if new_utub_description != current_utub_description:
             current_utub.utub_description = new_utub_description
+            current_utub.set_last_updated()
             db.session.commit()
 
         return (

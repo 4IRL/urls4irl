@@ -46,10 +46,9 @@ def test_update_url_title_utub_creator(
 
     NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
@@ -68,7 +67,7 @@ def test_update_url_title_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=current_url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -155,15 +154,12 @@ def test_update_url_title_url_adder(
             Utubs.utub_creator != current_user.id
         ).first()
 
-        # Verify logged in user is not creator of this UTub
-        assert utub_member_of.utub_creator != current_user.id
-
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_member_of.id, user_id=current_user.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url = url_in_this_utub.standalone_url.url_string
+        current_url: str = url_in_this_utub.standalone_url.url_string
         current_url_id = url_in_this_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -176,7 +172,7 @@ def test_update_url_title_url_adder(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=current_url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -264,10 +260,9 @@ def test_update_url_title_with_same_title_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
@@ -286,7 +281,7 @@ def test_update_url_title_with_same_title_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=current_url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -372,9 +367,6 @@ def test_update_url_title_with_same_title_url_adder(
             Utubs.utub_creator != current_user.id
         ).first()
 
-        # Verify logged in user is not creator of this UTub
-        assert utub_member_of.utub_creator != current_user.id
-
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_member_of.id, user_id=current_user.id
@@ -393,7 +385,7 @@ def test_update_url_title_with_same_title_url_adder(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=current_url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -499,7 +491,7 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=current_url_id
         ).all()
 
@@ -585,10 +577,9 @@ def test_update_url_title_with_empty_title_as_utub_creator(
 
     NEW_TITLE = ""
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
@@ -607,7 +598,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=current_url_id
         ).all()
 
@@ -687,10 +678,9 @@ def test_update_url_title_as_member_of_other_utub(
 
     NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Get the URL of another UTub
         url_not_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -711,7 +701,7 @@ def test_update_url_title_as_member_of_other_utub(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_id, url_id=current_url_id
         ).all()
 
@@ -786,10 +776,9 @@ def test_update_url_title_with_missing_title_field_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
@@ -808,7 +797,7 @@ def test_update_url_title_with_missing_title_field_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=current_url_id
         ).all()
 
@@ -877,13 +866,12 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
     Proper HTML response contains the following:
         "<p>The CSRF token is missing.</p>"
     """
-    client, csrf_token_string, _, app = login_first_user_without_register
+    client, _, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
@@ -902,7 +890,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=current_url_id
         ).all()
 
@@ -965,11 +953,10 @@ def test_update_url_title_of_nonexistent_url(
 
     NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
         utub_id = utub_creator_of.id
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
 
         # Get the URL of another UTub
         NONEXISTENT_URL_ID = 999
@@ -1058,3 +1045,99 @@ def test_update_url_title_in_nonexistent_utub(
         assert num_of_urls == len(Urls.query.all())
         assert num_of_url_tag_assocs == len(Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+
+
+def test_update_url_title_updates_utub_last_updated(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 200 HTTP status code, and the UTub's last updated field is updated
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_TITLE = "This is my newest facebook.com!"
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
+        initial_last_updated = utub_creator_of.last_updated
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id
+        ).first()
+        current_url_id = url_in_this_utub.url_id
+
+    edit_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: NEW_TITLE,
+    }
+
+    edit_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.EDIT_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            url_id=current_url_id,
+        ),
+        data=edit_url_string_title_form,
+    )
+
+    assert edit_url_string_title_form.status_code == 200
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.get(utub_creator_of.id)
+        assert (current_utub.last_updated - initial_last_updated).total_seconds() > 0
+
+
+def test_update_url_title_with_same_title_does_not_update_utub_last_updated(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title with the same title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of same title
+    THEN the server sends back a 200 HTTP status code, and the UTub's last updated is not updated
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
+        initial_last_updated = utub_creator_of.last_updated
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id
+        ).first()
+        current_title = url_in_this_utub.url_title
+        current_url_id = url_in_this_utub.url_id
+
+    edit_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: current_title,
+    }
+
+    edit_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.EDIT_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            url_id=current_url_id,
+        ),
+        data=edit_url_string_title_form,
+    )
+
+    assert edit_url_string_title_form.status_code == 200
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.get(utub_creator_of.id)
+        assert current_utub.last_updated == initial_last_updated

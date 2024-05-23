@@ -50,6 +50,7 @@ def remove_url(utub_id: int, url_id: int):
 
         # Can only remove URLs as the creator of UTub, or as the adder of that URL
         db.session.delete(url_in_utub)
+        utub.set_last_updated()
 
         # Remove all tags associated with this URL in this UTub as well
         Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).delete()
@@ -122,7 +123,7 @@ def add_url(utub_id: int):
             403,
         )
 
-    utub_new_url_form = NewURLForm()
+    utub_new_url_form: NewURLForm = NewURLForm()
 
     if utub_new_url_form.validate_on_submit():
         url_string = utub_new_url_form.url_string.data
@@ -191,6 +192,7 @@ def add_url(utub_id: int):
             url_title=utub_new_url_form.url_title.data,
         )
         db.session.add(url_utub_user_add)
+        utub.set_last_updated()
         db.session.commit()
 
         # Successfully added a URL, and associated it to a UTub
@@ -277,7 +279,7 @@ def edit_url(utub_id: int, url_id: int):
             403,
         )
 
-    edit_url_form = EditURLForm()
+    edit_url_form: EditURLForm = EditURLForm()
 
     if edit_url_form.validate_on_submit():
         url_to_change_to: str = edit_url_form.url_string.data.replace(" ", "")
@@ -370,6 +372,7 @@ def edit_url(utub_id: int, url_id: int):
 
         new_serialized_url = url_in_utub.serialized_on_string_edit
 
+        utub.set_last_updated()
         db.session.commit()
 
         return (
@@ -446,7 +449,7 @@ def edit_url_title(utub_id: int, url_id: int):
             403,
         )
 
-    edit_url_title_form = EditURLTitleForm()
+    edit_url_title_form: EditURLTitleForm = EditURLTitleForm()
 
     if edit_url_title_form.validate_on_submit():
         url_title_to_change_to = edit_url_title_form.url_title.data
@@ -457,6 +460,7 @@ def edit_url_title(utub_id: int, url_id: int):
             # Change the title
             url_in_utub.url_title = url_title_to_change_to
             serialized_url_in_utub = url_in_utub.serialized_on_title_edit
+            utub.set_last_updated()
             db.session.commit()
 
         return jsonify(

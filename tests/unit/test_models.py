@@ -43,8 +43,6 @@ def test_user_model(app):
         assert new_user_object.password != new_user["password"]
         assert new_user_object.email == new_user["email"].lower()
         assert new_user_object.is_password_correct(new_user["password"]) is True
-        assert len(new_user_object.utubs_created) == 0
-        assert len(new_user_object.utub_urls) == 0
         assert len(new_user_object.utubs_is_member_of) == 0
         assert new_user_object.email_confirm is None
 

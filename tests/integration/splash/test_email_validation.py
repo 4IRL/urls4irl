@@ -1,4 +1,3 @@
-from datetime import datetime
 from flask import url_for
 from flask_login import current_user
 import pytest
@@ -8,8 +7,9 @@ from src import db
 from src.models.email_validations import Email_Validations
 from src.models.users import Users
 from src.models.utils import verify_token
-from src.utils.constants import EMAIL_CONSTANTS
 from src.utils.all_routes import ROUTES
+from src.utils.constants import EMAIL_CONSTANTS
+from src.utils.datetime_utils import utc_now
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
@@ -372,7 +372,7 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
             Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         user.email_confirm.attempts = EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR + 1
-        user.email_confirm.last_attempt = datetime.utcnow()
+        user.email_confirm.last_attempt = utc_now()
         db.session.commit()
 
     email_response = client.post(

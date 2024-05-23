@@ -46,17 +46,18 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
 
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert Urls.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
-        url_in_this_utub = Utub_Urls.query.filter_by(utub_id=utub_creator_of.id).first()
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id
+        ).first()
         current_title = url_in_this_utub.url_title
 
         num_of_url_utub_associations = len(
@@ -69,7 +70,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_in_this_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -177,19 +178,16 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is only a member of
-        utub_member_of = Utubs.query.filter(
+        utub_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_member_of.utub_creator != current_user.id
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
         assert Urls.query.filter_by(url_string=validated_new_fresh_url).first() is None
 
         # Get the URL in this UTub
-        url_in_this_utub = Utub_Urls.query.filter_by(
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_member_of.id, user_id=current_user.id
         ).first()
         current_title = url_in_this_utub.url_title
@@ -204,7 +202,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -307,13 +305,12 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Grab URL that already exists in database and is not in this UTub
-        url_not_in_utub = Utub_Urls.query.filter(
+        url_not_in_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id != utub_creator_of.id
         ).first()
         assert (
@@ -326,7 +323,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
 
         # Grab URL that already exists in this UTub
-        url_in_utub = Utub_Urls.query.filter_by(
+        url_in_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_in_utub.url_id
@@ -342,7 +339,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_in_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -447,14 +444,14 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        all_utubs_urls = Utub_Urls.query.all()
+        all_utubs_urls: list[Utub_Urls] = Utub_Urls.query.all()
         for utub_urls in all_utubs_urls:
-            utub = utub_urls.utub
+            utub: Utubs = utub_urls.utub
             utub_members = [member.user_id for member in utub.members]
 
-            user_in_utub = current_user.id in utub_members
-            user_added_url = current_user.id == utub_urls.user_id
-            user_not_creator = current_user.id != utub.utub_creator
+            user_in_utub: bool = current_user.id in utub_members
+            user_added_url: bool = current_user.id == utub_urls.user_id
+            user_not_creator: bool = current_user.id != utub.utub_creator
 
             if user_in_utub and user_added_url and user_not_creator:
                 utub_member_of = utub
@@ -464,10 +461,10 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
                 break
 
         # Get a URL that isn't in this UTub
-        url_not_in_utub = Utub_Urls.query.filter(
+        url_not_in_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.user_id != current_user.id, Utub_Urls.utub_id != utub_member_of.id
         ).first()
-        url_string_of_url_not_in_utub = url_not_in_utub.standalone_url.url_string
+        url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
 
         num_of_url_utub_associations = len(
@@ -480,7 +477,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -585,17 +582,19 @@ def test_update_valid_url_with_same_url_as_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
 
         # Grab URL that already exists in this UTub
-        url_already_in_utub = Utub_Urls.query.filter_by(
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
-        url_in_utub_string = url_already_in_utub.standalone_url.url_string
+        url_in_utub_string: str = url_already_in_utub.standalone_url.url_string
         current_title = url_already_in_utub.url_title
 
         num_of_url_utub_associations = len(
@@ -608,7 +607,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -694,14 +693,14 @@ def test_update_valid_url_with_same_url_as_url_adder(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        all_utubs_urls = Utub_Urls.query.all()
+        all_utubs_urls: list[Utub_Urls] = Utub_Urls.query.all()
         for utub_urls in all_utubs_urls:
-            utub = utub_urls.utub
+            utub: Utubs = utub_urls.utub
             utub_members = [member.user_id for member in utub.members]
 
-            user_in_utub = current_user.id in utub_members
-            user_added_url = current_user.id == utub_urls.user_id
-            user_not_creator = current_user.id != utub.utub_creator
+            user_in_utub: bool = current_user.id in utub_members
+            user_added_url: bool = current_user.id == utub_urls.user_id
+            user_not_creator: bool = current_user.id != utub.utub_creator
 
             if user_in_utub and user_added_url and user_not_creator:
                 utub_member_of = utub
@@ -721,7 +720,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
@@ -808,13 +807,15 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Verify logged in user is creator of this UTub
         assert utub_creator_of.utub_creator == current_user.id
 
         # Grab URL that already exists in this UTub
-        url_already_in_utub = Utub_Urls.query.filter_by(
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
@@ -830,7 +831,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
 
@@ -909,14 +910,14 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
 
     INVALID_URL = "AAAAA"
     with app.app_context():
-        all_utubs_urls = Utub_Urls.query.all()
+        all_utubs_urls: list[Utub_Urls] = Utub_Urls.query.all()
         for utub_urls in all_utubs_urls:
-            utub = utub_urls.utub
+            utub: Utubs = utub_urls.utub
             utub_members = [member.user_id for member in utub.members]
 
-            user_in_utub = current_user.id in utub_members
-            user_added_url = current_user.id == utub_urls.user_id
-            user_not_creator = current_user.id != utub.utub_creator
+            user_in_utub: bool = current_user.id in utub_members
+            user_added_url: bool = current_user.id == utub_urls.user_id
+            user_not_creator: bool = current_user.id != utub.utub_creator
 
             if user_in_utub and user_added_url and user_not_creator:
                 utub_member_of = utub
@@ -935,7 +936,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
 
@@ -1019,13 +1020,12 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
 
     NEW_URL = ""
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Grab URL that already exists in this UTub
-        url_already_in_utub = Utub_Urls.query.filter_by(
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
@@ -1041,7 +1041,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
 
@@ -1126,12 +1126,9 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is only a member of
-        utub_member_of = Utubs.query.filter(
+        utub_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
-
-        # Verify logged in user is not creator of this UTub
-        assert utub_member_of.utub_creator != current_user.id
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
@@ -1156,7 +1153,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
 
@@ -1260,9 +1257,9 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is not a member of
-        utub_user_not_member_of = Utubs.query.get(3)
+        utub_user_not_member_of: Utubs = Utubs.query.get(3)
 
-        all_utubs = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_utubs:
             assert current_user.id != utub.utub_creator
 
@@ -1300,7 +1297,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
         )
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_user_not_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
 
@@ -1408,7 +1405,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
     NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is not a member of
-        all_utubs = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.all()
         i = 0
         while (
             current_user.id
@@ -1460,7 +1457,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         )
 
         # Find associated tags with this url
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_user_not_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
 
@@ -1568,13 +1565,12 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Grab URL that already exists in this UTub
-        url_already_in_utub = Utub_Urls.query.filter_by(
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
@@ -1590,7 +1586,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
 
@@ -1666,13 +1662,12 @@ def test_update_valid_url_with_valid_url_missing_csrf(
 
     NEW_URL = "yahoo.com"
     with app.app_context():
-        utub_creator_of = Utubs.query.filter_by(utub_creator=current_user.id).first()
-
-        # Verify logged in user is creator of this UTub
-        assert utub_creator_of.utub_creator == current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
 
         # Grab URL that already exists in this UTub
-        url_already_in_utub = Utub_Urls.query.filter_by(
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter_by(
             utub_id=utub_creator_of.id, user_id=current_user.id
         ).first()
         id_of_url_in_utub = url_already_in_utub.url_id
@@ -1688,7 +1683,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags = Url_Tags.query.filter_by(
+        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
 
@@ -1737,3 +1732,117 @@ def test_update_valid_url_with_valid_url_missing_csrf(
                 utub_id=utub_creator_of.id, url_id=id_of_url_in_utub
             ).all()
         ) == len(associated_tags)
+
+
+def test_update_valid_url_updates_utub_last_updated(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with a URL already in the database, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add
+    THEN verify the server sends back a 200 HTTP status code, and the UTub's last updated is updated
+
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
+        initial_last_updated = utub_creator_of.last_updated
+
+        # Grab URL that already exists in database and is not in this UTub
+        url_not_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != utub_creator_of.id
+        ).first()
+        assert (
+            Utub_Urls.query.filter_by(
+                utub_id=utub_creator_of.id, url_id=url_not_in_utub.url_id
+            ).first()
+            is None
+        )
+        url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
+
+        # Grab URL that already exists in this UTub
+        url_in_utub: Utub_Urls = Utub_Urls.query.filter_by(
+            utub_id=utub_creator_of.id, user_id=current_user.id
+        ).first()
+
+    edit_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
+    }
+
+    edit_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.EDIT_URL,
+            utub_id=utub_creator_of.id,
+            url_id=url_in_utub.url_id,
+        ),
+        data=edit_url_string_form,
+    )
+
+    assert edit_url_string_form.status_code == 200
+
+    with app.app_context():
+        # Assert database is consistent after newly modified URL
+        current_utub: Utubs = Utubs.query.get(utub_creator_of.id)
+        assert (current_utub.last_updated - initial_last_updated).total_seconds() > 0
+
+
+def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
+    add_two_url_and_all_users_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the url adder attempts to modify the URL with an invalid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add
+    THEN the server sends back a 400 HTTP status code, and the UTub last updated field is not modified
+    """
+
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    INVALID_URL = "AAAAA"
+    with app.app_context():
+        all_utubs_urls: list[Utub_Urls] = Utub_Urls.query.all()
+        for utub_urls in all_utubs_urls:
+            utub: Utubs = utub_urls.utub
+            utub_members = [member.user_id for member in utub.members]
+
+            user_in_utub: bool = current_user.id in utub_members
+            user_added_url: bool = current_user.id == utub_urls.user_id
+            user_not_creator: bool = current_user.id != utub.utub_creator
+
+            if user_in_utub and user_added_url and user_not_creator:
+                utub_member_of = utub
+                url_in_this_utub = utub_urls
+                url_id_of_url_in_this_utub = url_in_this_utub.url_id
+                break
+
+        initial_last_updated = utub_member_of.last_updated
+
+    edit_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: INVALID_URL,
+    }
+
+    edit_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.EDIT_URL,
+            utub_id=utub_member_of.id,
+            url_id=url_id_of_url_in_this_utub,
+        ),
+        data=edit_url_string_form,
+    )
+
+    assert edit_url_string_form.status_code == 400
+
+    with app.app_context():
+        current_utub: Utubs = Utubs.query.get(utub_member_of.id)
+        assert current_utub.last_updated == initial_last_updated

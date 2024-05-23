@@ -9,6 +9,7 @@ from src.models.users import Users
 from src.models.utils import verify_token
 from src.utils import constants as U4I_CONSTANTS
 from src.utils.all_routes import ROUTES
+from src.utils.datetime_utils import utc_now
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
@@ -357,7 +358,7 @@ def test_forgot_password_rate_limits_correctly(
         ).all()
         user_id = all_users_with_email[-1].id
 
-    initial_send_time = datetime.utcnow()
+    initial_send_time: datetime = utc_now()
     first_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
         data={
@@ -366,7 +367,7 @@ def test_forgot_password_rate_limits_correctly(
         },
     )
 
-    second_send_time = datetime.utcnow()
+    second_send_time: datetime = utc_now()
     second_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
         data={
@@ -487,7 +488,8 @@ def test_user_requests_reset_after_password_reset_object_older_than_hour(
             FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
     )
-    current_time = datetime.utcnow()
+
+    current_time: datetime = utc_now()
 
     assert forgot_password_response.status_code == 200
     forgot_password_response_json = forgot_password_response.json
@@ -505,8 +507,10 @@ def test_user_requests_reset_after_password_reset_object_older_than_hour(
             Forgot_Passwords.user_id == user.id
         ).first()
         assert new_forgot_password.reset_token != old_reset_token
-        assert (current_time - new_forgot_password.initial_attempt).seconds <= 15
-        assert (current_time - new_forgot_password.last_attempt).seconds <= 15
+        assert (
+            current_time - new_forgot_password.initial_attempt
+        ).total_seconds() <= 15
+        assert (current_time - new_forgot_password.last_attempt).total_seconds() <= 15
         assert new_forgot_password.attempts == 1
 
 
@@ -531,7 +535,7 @@ def test_two_forgot_password_attempts_more_than_minute_apart_increments_attempts
         forgot_password: Forgot_Passwords = Forgot_Passwords.query.filter(
             Forgot_Passwords.reset_token == reset_token
         ).first()
-        forgot_password.last_attempt = datetime.utcnow() - timedelta(
+        forgot_password.last_attempt = utc_now() - timedelta(
             seconds=USER_CONSTANTS.WAIT_TO_RETRY_FORGOT_PASSWORD_MIN + 1
         )
         current_attempts = forgot_password.attempts

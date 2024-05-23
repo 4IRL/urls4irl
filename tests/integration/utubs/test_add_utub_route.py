@@ -71,7 +71,7 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
     # Validate the utub in the database
     utub_id = int(new_utub_response_json[UTUB_SUCCESS.UTUB_ID])
     with app.app_context():
-        utub_from_db = Utubs.query.get_or_404(utub_id)
+        utub_from_db: Utubs = Utubs.query.get(utub_id)
         assert len(Utubs.query.all()) == 1
 
         # Assert database creator is the same one who made it
@@ -97,7 +97,7 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         assert len(Utub_Members.query.all()) == 1
 
         # Assert the only Utubs-User association is valid
-        current_utub_user_association = Utub_Members.query.all()
+        current_utub_user_association: list[Utub_Members] = Utub_Members.query.all()
         assert current_utub_user_association[0].utub_id == utub_id
         assert current_utub_user_association[0].user_id == user.id
 
@@ -130,10 +130,12 @@ def test_add_utub_with_same_name(
 
     # Make sure database is empty of UTubs and associated users
     with app.app_context():
-        current_utub = Utubs.query.filter_by(utub_creator=current_user.id).first()
+        current_utub: Utubs = Utubs.query.filter_by(
+            utub_creator=current_user.id
+        ).first()
         current_utub_name = current_utub.name
 
-        num_of_utubs = Utubs.query.count()
+        num_of_utubs: int = Utubs.query.count()
 
     new_utub_form = {
         UTUB_FORM.CSRF_TOKEN: csrf_token,
@@ -158,11 +160,11 @@ def test_add_utub_with_same_name(
     )
     assert new_utub_response_json[UTUB_SUCCESS.UTUB_CREATOR_ID] == user.id
     assert isinstance(new_utub_response_json[UTUB_SUCCESS.UTUB_ID], int)
+    utub_id = new_utub_response_json[UTUB_SUCCESS.UTUB_ID]
 
     # Validate the utub in the database
-    utub_id = int(new_utub_response_json[UTUB_SUCCESS.UTUB_ID])
     with app.app_context():
-        utub_from_db = Utubs.query.get_or_404(utub_id)
+        utub_from_db: Utubs = Utubs.query.get(utub_id)
         assert Utubs.query.count() == num_of_utubs + 1
 
         # Assert database creator is the same one who made it
@@ -316,7 +318,7 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
         # Validate the utub in the database
         utub_id = int(new_utub_response_json[UTUB_SUCCESS.UTUB_ID])
         with app.app_context():
-            utub_from_db = Utubs.query.get_or_404(utub_id)
+            utub_from_db: Utubs = Utubs.query.get_or_404(utub_id)
 
             # Assert database creator is the same one who made it
             assert utub_from_db.utub_creator == user.id

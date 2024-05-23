@@ -1,4 +1,3 @@
-from datetime import datetime
 from flask import jsonify, url_for, Response
 import requests
 
@@ -6,6 +5,7 @@ from src import db, email_sender
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.splash.forms import ForgotPasswordForm, ResetPasswordForm, UserRegistrationForm
+from src.utils.datetime_utils import utc_now
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
@@ -142,7 +142,7 @@ def _create_or_reset_forgot_password_object_for_user(
         ):
             forgot_password.attempts = 0
             forgot_password.reset_token = user.get_password_reset_token()
-            forgot_password.initial_attempt = datetime.utcnow()
+            forgot_password.initial_attempt = utc_now()
             db.session.commit()
 
     return forgot_password
