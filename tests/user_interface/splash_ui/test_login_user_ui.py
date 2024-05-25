@@ -4,8 +4,8 @@ from selenium.webdriver.common.by import By
 # from webdriver_manager.chrome import ChromeDriverManager
 
 # Internal libraries
-import tests.functional.constants as const
-from tests.functional.utils import click_and_wait, send_keys_to_input_field
+import tests.user_interface.constants as const
+from tests.user_interface.utils import click_and_wait, send_keys_to_input_field
 
 
 # The one test that will always work to make me feel good

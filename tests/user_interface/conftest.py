@@ -1,21 +1,24 @@
 # Standard library
 import multiprocessing
+from typing import Generator
 
 # External libraries
+import pytest
 from selenium import webdriver
+from selenium.webdriver.chrome.webdriver import WebDriver
 
 # from selenium.webdriver.chrome.options import Options
-import pytest
 
 # Internal libraries
 from src import create_app
 from src.config import TestingConfig
-import tests.functional.constants as const
-from tests.functional.utils import ping_server
+import tests.user_interface.constants as const
+from tests.user_interface.utils import ping_server
+from tests.utils_for_test import drop_database
 
 
 # Builds and runs test configuration
-def app():
+def run_app():
     config = TestingConfig()
     app_for_test = create_app(config)
     app_for_test.run()
@@ -29,17 +32,17 @@ def init_multiprocessing():
 
 # Manages set up and tear down of app process
 @pytest.fixture(scope="session")
-def run_app(init_multiprocessing):
-    process = multiprocessing.Process(target=app)
+def parallelize_app(init_multiprocessing):
+    process = multiprocessing.Process(target=run_app)
     process.start()
     yield process
     process.kill()
     process.join()
 
 
-# Setup fixture for the webdriver. Accesses U4I and supplies driver
+# Manages set up and tear down of app process
 @pytest.fixture(scope="session")
-def browser(run_app):
+def build_driver(parallelize_app) -> Generator[WebDriver, None, None]:
     # Uncomment below to hide UI
     # options = Options()
     # options.add_argument("--headless=new")
@@ -49,9 +52,22 @@ def browser(run_app):
     # Uncomment below to see UI
     driver = webdriver.Chrome()
     driver.maximize_window()
+    ping_server(const.BASE_URL)
+
+    yield driver
+
+    # Teardown: Quit the browser after tests
+    driver.quit()
+
+
+# Setup fixture for the webdriver. Accesses U4I and supplies driver
+@pytest.fixture
+def browser(build_driver: WebDriver):
+    driver = build_driver
+
+    driver.delete_all_cookies()
 
     driver.get(const.BASE_URL)
-    ping_server(const.BASE_URL)
 
     # Clear db
     # driver.get(const.CLEAR_DB_URL)
@@ -64,8 +80,7 @@ def browser(run_app):
     # Return the driver object to be used in the test functions
     yield driver
 
-    # Teardown: Quit the browser after tests
-    driver.quit()
+    drop_database(TestingConfig())
 
 
 # This fixture is not yet implemented because I can't figure out how to start each test independently. Currently the implementation of each subsequent test is dependent on the success of its predecessors
