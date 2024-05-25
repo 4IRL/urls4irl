@@ -3,26 +3,31 @@ import multiprocessing
 
 # External libraries
 from selenium import webdriver
-from selenium.webdriver.chrome.options import Options
+
+# from selenium.webdriver.chrome.options import Options
 import pytest
 
 # Internal libraries
 from src import create_app
 from src.config import TestingConfig
 import tests.functional.constants as const
+from tests.functional.utils import ping_server
 
 
+# Builds and runs test configuration
 def app():
     config = TestingConfig()
     app_for_test = create_app(config)
     app_for_test.run()
 
 
+# Creates a process separate from pytest to run the app in parallel
 @pytest.fixture(scope="session")
 def init_multiprocessing():
     multiprocessing.set_start_method("spawn")
 
 
+# Manages set up and tear down of app process
 @pytest.fixture(scope="session")
 def run_app(init_multiprocessing):
     process = multiprocessing.Process(target=app)
@@ -32,14 +37,21 @@ def run_app(init_multiprocessing):
     process.join()
 
 
-# Setup fixture for the webdriver
+# Setup fixture for the webdriver. Accesses U4I and supplies driver
 @pytest.fixture(scope="session")
 def browser(run_app):
-    options = Options()
-    options.add_argument("–-headless=new")
-    options.add_argument("–-disable-gpu")
-    driver = webdriver.Chrome(options=options)
-    # driver.maximize_window()
+    # Uncomment below to hide UI
+    # options = Options()
+    # options.add_argument("--headless=new")
+    # options.add_argument("–-disable-gpu")
+    # driver = webdriver.Chrome(options=options)
+
+    # Uncomment below to see UI
+    driver = webdriver.Chrome()
+    driver.maximize_window()
+
+    driver.get(const.BASE_URL)
+    ping_server(const.BASE_URL)
 
     # Clear db
     # driver.get(const.CLEAR_DB_URL)
@@ -54,13 +66,6 @@ def browser(run_app):
 
     # Teardown: Quit the browser after tests
     driver.quit()
-
-
-@pytest.fixture
-def provide_browser(browser):
-    yield browser
-    # Reset browser here - clear cookies
-    browser.get(const.BASE_URL)
 
 
 # This fixture is not yet implemented because I can't figure out how to start each test independently. Currently the implementation of each subsequent test is dependent on the success of its predecessors
