@@ -35,7 +35,9 @@ class Utubs(db.Model):
         name="utubDescription",
     )
     utub_url_tags = db.relationship(
-        "Url_Tags", back_populates="utub_containing_this_tag", cascade="all, delete"
+        "Utub_Url_Tags",
+        back_populates="utub_containing_this_tag",
+        cascade="all, delete",
     )
     utub_urls: list[Utub_Urls] = db.relationship(
         "Utub_Urls", back_populates="utub", cascade="all, delete"
@@ -54,9 +56,9 @@ class Utubs(db.Model):
 
         # self.utub_url_tags may contain repeats of tags since same tags can be on multiple URLs
         # Need to pull only the unique ones
-        from src.models.url_tags import Url_Tags
+        from src.models.utub_url_tags import Utub_Url_Tags
 
-        utub_url_tags: list[Url_Tags] = self.utub_url_tags
+        utub_url_tags: list[Utub_Url_Tags] = self.utub_url_tags
 
         utub_tags = []
         for utub_url_tag in utub_url_tags:

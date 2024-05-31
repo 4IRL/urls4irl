@@ -20,7 +20,7 @@ class Urls(db.Model):
     created_at = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
-    url_tags = db.relationship("Url_Tags", back_populates="tagged_url")
+    url_tags = db.relationship("Utub_Url_Tags", back_populates="tagged_url")
 
     def __init__(self, normalized_url: str, current_user_id: int):
         self.url_string = normalized_url
@@ -29,9 +29,9 @@ class Urls(db.Model):
     @property
     def serialized_url(self):
         """Includes an array of tag IDs for all ID's on this url"""
-        from src.models.url_tags import Url_Tags
+        from src.models.utub_url_tags import Utub_Url_Tags
 
-        url_tags: list[Url_Tags] = self.url_tags
+        url_tags: list[Utub_Url_Tags] = self.url_tags
         return {
             MODEL_STRS.ID: self.id,
             MODEL_STRS.URL: self.url_string,

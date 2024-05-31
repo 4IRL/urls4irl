@@ -3,7 +3,7 @@ from flask_login import current_user
 
 from src import db
 from src.models.urls import Urls
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.urls.forms import (
@@ -53,12 +53,12 @@ def remove_url(utub_id: int, url_id: int):
         utub.set_last_updated()
 
         # Remove all tags associated with this URL in this UTub as well
-        Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).delete()
+        Utub_Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).delete()
 
         db.session.commit()
 
-        remaining_utub_tags: list[Url_Tags] = Url_Tags.query.filter(
-            Url_Tags.utub_id == utub_id
+        remaining_utub_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id
         ).all()
         remaining_utub_tag_ids = set([tag.tag_id for tag in remaining_utub_tags])
         tags = [
@@ -363,7 +363,7 @@ def edit_url(utub_id: int, url_id: int):
         url_in_utub.standalone_url = url_in_database
 
         # Find tags associated with URL
-        url_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        url_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_id, url_id=url_id
         ).all()
 

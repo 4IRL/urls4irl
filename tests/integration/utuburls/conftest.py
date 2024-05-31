@@ -4,7 +4,7 @@ import pytest
 from src import db
 from src.models.tags import Tags
 from src.models.urls import Urls
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -51,7 +51,7 @@ def add_first_user_to_second_utub_and_add_tags_remove_first_utub(
             url_in_this_utub = url_in_utub.standalone_url
 
             for tag in all_tags:
-                new_tag_url_utub_association = Url_Tags()
+                new_tag_url_utub_association = Utub_Url_Tags()
                 new_tag_url_utub_association.utub_containing_this_tag = second_utub
                 new_tag_url_utub_association.tagged_url = url_in_this_utub
                 new_tag_url_utub_association.tag_item = tag
@@ -135,7 +135,7 @@ def add_one_url_and_all_users_to_each_utub_with_all_tags(
             ].pop()
 
             for tag in current_tags:
-                new_tag_url_utub_association = Url_Tags()
+                new_tag_url_utub_association = Utub_Url_Tags()
                 new_tag_url_utub_association.utub_containing_this_tag = utub
                 new_tag_url_utub_association.tagged_url = current_utub_url
                 new_tag_url_utub_association.tag_item = tag

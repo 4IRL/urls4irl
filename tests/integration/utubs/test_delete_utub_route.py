@@ -4,7 +4,7 @@ import pytest
 from sqlalchemy.engine.row import Row
 
 from src import db
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
@@ -109,7 +109,7 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
         initial_num_of_url_utubs_associations = len(Utub_Urls.query.all())
 
         num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
-        initial_num_of_url_tag_associations = len(Url_Tags.query.all())
+        initial_num_of_url_tag_associations = len(Utub_Url_Tags.query.all())
 
         initial_num_utubs = len(Utubs.query.all())
 
@@ -157,11 +157,16 @@ def test_delete_existing_utub_with_members_but_no_urls_no_tags(
         )
 
         assert (
-            len(Url_Tags.query.all())
+            len(Utub_Url_Tags.query.all())
             == initial_num_of_url_tag_associations - num_of_tags_in_utub
         )
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_to_delete).all()) == 0
+            len(
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_to_delete
+                ).all()
+            )
+            == 0
         )
 
         assert len(Utubs.query.all()) == initial_num_utubs - 1
@@ -205,7 +210,7 @@ def test_delete_existing_utub_with_urls_no_tags(
         initial_num_of_url_utubs_associations = len(Utub_Urls.query.all())
 
         num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
-        initial_num_of_url_tag_associations = len(Url_Tags.query.all())
+        initial_num_of_url_tag_associations = len(Utub_Url_Tags.query.all())
 
         initial_num_utubs = len(Utubs.query.all())
 
@@ -253,11 +258,16 @@ def test_delete_existing_utub_with_urls_no_tags(
         )
 
         assert (
-            len(Url_Tags.query.all())
+            len(Utub_Url_Tags.query.all())
             == initial_num_of_url_tag_associations - num_of_tags_in_utub
         )
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_to_delete).all()) == 0
+            len(
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_to_delete
+                ).all()
+            )
+            == 0
         )
 
         assert len(Utubs.query.all()) == initial_num_utubs - 1
@@ -301,7 +311,7 @@ def test_delete_existing_utub_with_urls_and_tags(
         initial_num_of_url_utubs_associations = len(Utub_Urls.query.all())
 
         num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
-        initial_num_of_url_tag_associations = len(Url_Tags.query.all())
+        initial_num_of_url_tag_associations = len(Utub_Url_Tags.query.all())
 
         initial_num_utubs = len(Utubs.query.all())
 
@@ -349,11 +359,16 @@ def test_delete_existing_utub_with_urls_and_tags(
         )
 
         assert (
-            len(Url_Tags.query.all())
+            len(Utub_Url_Tags.query.all())
             == initial_num_of_url_tag_associations - num_of_tags_in_utub
         )
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_to_delete).all()) == 0
+            len(
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_to_delete
+                ).all()
+            )
+            == 0
         )
 
         assert len(Utubs.query.all()) == initial_num_utubs - 1

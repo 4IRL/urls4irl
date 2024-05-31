@@ -5,7 +5,7 @@ import pytest
 from src import db
 from src.models.tags import Tags
 from src.models.urls import Urls
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
@@ -55,8 +55,8 @@ def test_remove_tag_from_url_as_utub_creator(
         utub_id_this_user_creator_of = utub_this_user_creator_of.id
 
         # Get a URL and tag association within this UTub
-        tag_url_utub_association: Url_Tags = Url_Tags.query.filter(
-            Url_Tags.utub_id == utub_id_this_user_creator_of
+        tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_this_user_creator_of
         ).first()
         tag_id_to_remove = tag_url_utub_association.tag_id
         tag_string_to_remove: str = tag_url_utub_association.tag_item.tag_string
@@ -65,10 +65,10 @@ def test_remove_tag_from_url_as_utub_creator(
         # Ensure the Tag-URL-UTub association does exists any longer
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_creator_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_creator_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
@@ -82,10 +82,10 @@ def test_remove_tag_from_url_as_utub_creator(
         associated_tags = utub_url_association.associated_tags
 
         # Get all Url-Tag associations count
-        initial_url_tag_count = len(Url_Tags.query.all())
+        initial_url_tag_count = len(Utub_Url_Tags.query.all())
 
         # Get tag count for this UTub and tag
-        tag_count = Url_Tags.query.filter_by(
+        tag_count = Utub_Url_Tags.query.filter_by(
             utub_id=utub_id_this_user_creator_of, tag_id=tag_id_to_remove
         ).count()
 
@@ -133,10 +133,10 @@ def test_remove_tag_from_url_as_utub_creator(
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_creator_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_creator_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -152,7 +152,7 @@ def test_remove_tag_from_url_as_utub_creator(
         )
 
         # Ensure proper number of Url-Tag associations in db
-        assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
+        assert len(Utub_Url_Tags.query.all()) == initial_url_tag_count - 1
 
 
 def test_remove_tag_from_url_as_utub_member(
@@ -192,8 +192,8 @@ def test_remove_tag_from_url_as_utub_member(
         utub_id_this_user_member_of = utub_this_user_member_of.id
 
         # Get a URL and tag association within this UTub
-        tag_url_utub_association: Url_Tags = Url_Tags.query.filter(
-            Url_Tags.utub_id == utub_id_this_user_member_of
+        tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_this_user_member_of
         ).first()
         tag_id_to_remove = tag_url_utub_association.tag_id
         tag_string_to_remove: str = tag_url_utub_association.tag_item.tag_string
@@ -202,10 +202,10 @@ def test_remove_tag_from_url_as_utub_member(
         # Ensure the Tag-URL-UTub association does exists any longer
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
@@ -219,10 +219,10 @@ def test_remove_tag_from_url_as_utub_member(
         associated_tags = url_utub_association.associated_tags
 
         # Get all Url-Tag associations count
-        initial_url_tag_count = len(Url_Tags.query.all())
+        initial_url_tag_count = len(Utub_Url_Tags.query.all())
 
         # Get tag count for this UTub and tag
-        tag_count = Url_Tags.query.filter_by(
+        tag_count = Utub_Url_Tags.query.filter_by(
             utub_id=utub_id_this_user_member_of, tag_id=tag_id_to_remove
         ).count()
 
@@ -270,10 +270,10 @@ def test_remove_tag_from_url_as_utub_member(
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -289,7 +289,7 @@ def test_remove_tag_from_url_as_utub_member(
         )
 
         # Ensure proper number of Url-Tag associations in db
-        assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
+        assert len(Utub_Url_Tags.query.all()) == initial_url_tag_count - 1
 
 
 def test_remove_tag_from_url_with_one_tag(
@@ -329,8 +329,8 @@ def test_remove_tag_from_url_with_one_tag(
         utub_id_this_user_member_of = utub_this_user_member_of.id
 
         # Get a URL and tag association within this UTub
-        tag_url_utub_association: Url_Tags = Url_Tags.query.filter(
-            Url_Tags.utub_id == utub_id_this_user_member_of
+        tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_this_user_member_of
         ).first()
         tag_id_to_remove = tag_url_utub_association.tag_id
         tag_string_to_remove = tag_url_utub_association.tag_item.tag_string
@@ -339,10 +339,10 @@ def test_remove_tag_from_url_with_one_tag(
         # Ensure the Tag-URL-UTub association does exist
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
@@ -357,10 +357,10 @@ def test_remove_tag_from_url_with_one_tag(
         associated_tags = url_utub_association.associated_tags
 
         # Get all Url-Tag associations count
-        initial_url_tag_count = len(Url_Tags.query.all())
+        initial_url_tag_count = len(Utub_Url_Tags.query.all())
 
         # Get tag count for this UTub and tag
-        tag_count = Url_Tags.query.filter_by(
+        tag_count = Utub_Url_Tags.query.filter_by(
             utub_id=utub_id_this_user_member_of, tag_id=tag_id_to_remove
         ).count()
 
@@ -408,10 +408,10 @@ def test_remove_tag_from_url_with_one_tag(
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -428,7 +428,7 @@ def test_remove_tag_from_url_with_one_tag(
         )
 
         # Ensure proper number of Url-Tag associations in db
-        assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
+        assert len(Utub_Url_Tags.query.all()) == initial_url_tag_count - 1
 
 
 def test_remove_last_tag_from_utub(
@@ -470,8 +470,8 @@ def test_remove_last_tag_from_utub(
         utub_id_this_user_member_of = utub_this_user_member_of.id
 
         # Get a URL and tag association within this UTub
-        tag_url_utub_association: Url_Tags = Url_Tags.query.filter(
-            Url_Tags.utub_id == utub_id_this_user_member_of
+        tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_this_user_member_of
         ).first()
         tag_id_to_remove = tag_url_utub_association.tag_id
         tag_string_to_remove = tag_url_utub_association.tag_item.tag_string
@@ -480,10 +480,10 @@ def test_remove_last_tag_from_utub(
         # Ensure the Tag-URL-UTub association does exist
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
@@ -497,10 +497,10 @@ def test_remove_last_tag_from_utub(
         associated_tags = url_utub_association.associated_tags
 
         # Get all Url-Tag associations count
-        initial_url_tag_count = len(Url_Tags.query.all())
+        initial_url_tag_count = len(Utub_Url_Tags.query.all())
 
         # Get tag count for this UTub and tag
-        tag_count = Url_Tags.query.filter_by(
+        tag_count = Utub_Url_Tags.query.filter_by(
             utub_id=utub_id_this_user_member_of, tag_id=tag_id_to_remove
         ).count()
 
@@ -548,10 +548,10 @@ def test_remove_last_tag_from_utub(
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -560,8 +560,8 @@ def test_remove_last_tag_from_utub(
         # Ensure no tags remain in the UTub
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of
                 ).all()
             )
             == 0
@@ -578,7 +578,7 @@ def test_remove_last_tag_from_utub(
         )
 
         # Ensure proper number of Url-Tag associations in db
-        assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
+        assert len(Utub_Url_Tags.query.all()) == initial_url_tag_count - 1
 
 
 def test_remove_tag_from_url_with_five_tags(
@@ -631,7 +631,7 @@ def test_remove_tag_from_url_with_five_tags(
         # Add five tags to this URL
         for idx in range(5):
             previously_added_tag_to_add = all_tags[idx]
-            new_url_tag_association = Url_Tags()
+            new_url_tag_association = Utub_Url_Tags()
             new_url_tag_association.tag_id = previously_added_tag_to_add.id
             new_url_tag_association.url_id = url_id_to_remove_tag_from
             new_url_tag_association.utub_id = utub_id_this_user_member_of
@@ -643,18 +643,18 @@ def test_remove_tag_from_url_with_five_tags(
         # Ensure 5 tags on this URL
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
                 ).all()
             )
             == 5
         )
 
         # Get ID of a tag to remove from this URL
-        tag_to_remove: Url_Tags = Url_Tags.query.filter(
-            Url_Tags.utub_id == utub_id_this_user_member_of,
-            Url_Tags.url_id == url_id_to_remove_tag_from,
+        tag_to_remove: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+            Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
         ).first()
         tag_string_to_remove: str = tag_to_remove.tag_item.tag_string
         tag_id_to_remove = tag_to_remove.tag_id
@@ -667,10 +667,10 @@ def test_remove_tag_from_url_with_five_tags(
         associated_tags = url_utub_association.associated_tags
 
         # Get all Url-Tag associations count
-        initial_url_tag_count = len(Url_Tags.query.all())
+        initial_url_tag_count = len(Utub_Url_Tags.query.all())
 
         # Get tag count for this UTub and tag
-        tag_count: int = Url_Tags.query.filter_by(
+        tag_count: int = Utub_Url_Tags.query.filter_by(
             utub_id=utub_id_this_user_member_of, tag_id=tag_id_to_remove
         ).count()
 
@@ -719,9 +719,9 @@ def test_remove_tag_from_url_with_five_tags(
         # Ensure 4 tags on this URL
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
                 ).all()
             )
             == 4
@@ -736,7 +736,7 @@ def test_remove_tag_from_url_with_five_tags(
         )
 
         # Ensure proper number of Url-Tag associations in db
-        assert len(Url_Tags.query.all()) == initial_url_tag_count - 1
+        assert len(Utub_Url_Tags.query.all()) == initial_url_tag_count - 1
 
 
 def test_remove_nonexistent_tag_from_url_as_utub_creator(
@@ -778,10 +778,10 @@ def test_remove_nonexistent_tag_from_url_as_utub_creator(
         # Ensure the Tag-URL-UTub association does not exist
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_creator_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_creator_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -816,10 +816,10 @@ def test_remove_nonexistent_tag_from_url_as_utub_creator(
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_creator_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_creator_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -876,10 +876,10 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
         # Ensure the Tag-URL-UTub association does not exist
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -891,7 +891,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
         )
 
         # Initial number of Url-Tag associations
-        initial_num_tag_url_associations = len(Url_Tags.query.all())
+        initial_num_tag_url_associations = len(Utub_Url_Tags.query.all())
 
     # Remove tag from this URL
     add_tag_form = {
@@ -917,10 +917,10 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == utub_id_this_user_member_of,
-                    Url_Tags.url_id == url_id_to_remove_tag_from,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
+                    Utub_Url_Tags.url_id == url_id_to_remove_tag_from,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -937,7 +937,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
             current_user.id, creator_of_utub_id
         )
 
-        assert len(Url_Tags.query.all()) == initial_num_tag_url_associations
+        assert len(Utub_Url_Tags.query.all()) == initial_num_tag_url_associations
 
 
 def test_remove_tag_from_url_but_not_member_of_utub(
@@ -985,12 +985,16 @@ def test_remove_tag_from_url_but_not_member_of_utub(
 
         # Ensure tag does not exist on URL in UTub
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_not_member_of).all())
+            len(
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_not_member_of
+                ).all()
+            )
             == 0
         )
 
         # Add tag to URL in UTub
-        new_tag_url_association = Url_Tags()
+        new_tag_url_association = Utub_Url_Tags()
         new_tag_url_association.utub_id = utub_id_not_member_of
         new_tag_url_association.url_id = url_id_in_utub
         new_tag_url_association.tag_id = tag_id_to_add
@@ -1000,7 +1004,11 @@ def test_remove_tag_from_url_but_not_member_of_utub(
 
         # Ensure tag exists on URL in UTub
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_not_member_of).all())
+            len(
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_not_member_of
+                ).all()
+            )
             == 1
         )
 
@@ -1043,7 +1051,11 @@ def test_remove_tag_from_url_but_not_member_of_utub(
 
         # Ensure tag exists on URL in UTub
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == utub_id_not_member_of).all())
+            len(
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_id_not_member_of
+                ).all()
+            )
             == 1
         )
 
@@ -1081,7 +1093,7 @@ def test_remove_tag_from_url_from_nonexistent_utub(
             nonexistent_utub_id += 1
 
         # Grab a valid URL and tag association
-        valid_url_tag_association: Url_Tags = Url_Tags.query.first()
+        valid_url_tag_association: Utub_Url_Tags = Utub_Url_Tags.query.first()
 
         tag_id_to_remove = valid_url_tag_association.tag_id
         url_id_to_remove = valid_url_tag_association.url_id
@@ -1093,28 +1105,29 @@ def test_remove_tag_from_url_from_nonexistent_utub(
         # Ensure URL-Tag association exists inside a valid UTub
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == existing_utub_id,
-                    Url_Tags.url_id == url_id_to_remove,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == existing_utub_id,
+                    Utub_Url_Tags.url_id == url_id_to_remove,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
         )
 
         num_of_url_tag_associations = len(
-            Url_Tags.query.filter(
-                Url_Tags.url_id == url_id_to_remove, Url_Tags.tag_id == tag_id_to_remove
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.url_id == url_id_to_remove,
+                Utub_Url_Tags.tag_id == tag_id_to_remove,
             ).all()
         )
 
         # Ensure URL-Tag association does not exist in nonexistent UTub
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == nonexistent_utub_id,
-                    Url_Tags.url_id == url_id_to_remove,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == nonexistent_utub_id,
+                    Utub_Url_Tags.url_id == url_id_to_remove,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
@@ -1129,7 +1142,7 @@ def test_remove_tag_from_url_from_nonexistent_utub(
         )
 
         # Initial number of Url-Tag associations
-        initial_num_tag_url_associations = len(Url_Tags.query.all())
+        initial_num_tag_url_associations = len(Utub_Url_Tags.query.all())
 
     # Remove tag from this URL
     add_tag_form = {
@@ -1152,10 +1165,10 @@ def test_remove_tag_from_url_from_nonexistent_utub(
         # Ensure the valid Tag-URL-UTub association still exists
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == existing_utub_id,
-                    Url_Tags.url_id == url_id_to_remove,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == existing_utub_id,
+                    Utub_Url_Tags.url_id == url_id_to_remove,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
@@ -1176,12 +1189,13 @@ def test_remove_tag_from_url_from_nonexistent_utub(
 
         # Ensure URL tag associations are still same count
         assert num_of_url_tag_associations == len(
-            Url_Tags.query.filter(
-                Url_Tags.url_id == url_id_to_remove, Url_Tags.tag_id == tag_id_to_remove
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.url_id == url_id_to_remove,
+                Utub_Url_Tags.tag_id == tag_id_to_remove,
             ).all()
         )
 
-        assert len(Url_Tags.query.all()) == initial_num_tag_url_associations
+        assert len(Utub_Url_Tags.query.all()) == initial_num_tag_url_associations
 
 
 def test_remove_tag_from_nonexistent_url_utub(
@@ -1208,7 +1222,7 @@ def test_remove_tag_from_nonexistent_url_utub(
             nonexistent_url_id += 1
 
         # Grab a valid URL and tag association
-        valid_url_tag_association: Url_Tags = Url_Tags.query.first()
+        valid_url_tag_association: Utub_Url_Tags = Utub_Url_Tags.query.first()
 
         tag_id_to_remove = valid_url_tag_association.tag_id
         url_id_to_remove = valid_url_tag_association.url_id
@@ -1217,10 +1231,10 @@ def test_remove_tag_from_nonexistent_url_utub(
         # Ensure URL-Tag association exists inside UTub
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == existing_utub_id,
-                    Url_Tags.url_id == url_id_to_remove,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == existing_utub_id,
+                    Utub_Url_Tags.url_id == url_id_to_remove,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
@@ -1229,17 +1243,17 @@ def test_remove_tag_from_nonexistent_url_utub(
         # Ensure nonexistent URL does not have URL-Tag association in valid UTub
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == existing_utub_id,
-                    Url_Tags.url_id == nonexistent_url_id,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == existing_utub_id,
+                    Utub_Url_Tags.url_id == nonexistent_url_id,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
         )
 
         # Initial number of Url-Tag associations
-        initial_num_tag_url_associations = len(Url_Tags.query.all())
+        initial_num_tag_url_associations = len(Utub_Url_Tags.query.all())
 
     # Remove tag from this URL
     add_tag_form = {
@@ -1262,10 +1276,10 @@ def test_remove_tag_from_nonexistent_url_utub(
         # Ensure the valid Tag-URL-UTub association still exists
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == existing_utub_id,
-                    Url_Tags.url_id == url_id_to_remove,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == existing_utub_id,
+                    Utub_Url_Tags.url_id == url_id_to_remove,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
@@ -1277,16 +1291,16 @@ def test_remove_tag_from_nonexistent_url_utub(
         # Ensure nonexistent URL does not have URL-Tag association in valid UTub
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == existing_utub_id,
-                    Url_Tags.url_id == nonexistent_url_id,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == existing_utub_id,
+                    Utub_Url_Tags.url_id == nonexistent_url_id,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 0
         )
 
-        assert len(Url_Tags.query.all()) == initial_num_tag_url_associations
+        assert len(Utub_Url_Tags.query.all()) == initial_num_tag_url_associations
 
 
 def test_remove_tag_with_no_csrf_token(
@@ -1313,7 +1327,7 @@ def test_remove_tag_with_no_csrf_token(
 
     with app.app_context():
         # Grab a valid URL and tag association
-        valid_url_tag_association: Url_Tags = Url_Tags.query.first()
+        valid_url_tag_association: Utub_Url_Tags = Utub_Url_Tags.query.first()
 
         tag_id_to_remove = valid_url_tag_association.tag_id
         url_id_to_remove = valid_url_tag_association.url_id
@@ -1322,17 +1336,17 @@ def test_remove_tag_with_no_csrf_token(
         # Ensure URL-Tag association exists inside UTub
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == existing_utub_id,
-                    Url_Tags.url_id == url_id_to_remove,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == existing_utub_id,
+                    Utub_Url_Tags.url_id == url_id_to_remove,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
         )
 
         # Initial number of Url-Tag associations
-        initial_num_tag_url_associations = len(Url_Tags.query.all())
+        initial_num_tag_url_associations = len(Utub_Url_Tags.query.all())
 
     # Remove tag from this URL
     add_tag_form = {}
@@ -1355,16 +1369,16 @@ def test_remove_tag_with_no_csrf_token(
         # Ensure the valid Tag-URL-UTub association still exists
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == existing_utub_id,
-                    Url_Tags.url_id == url_id_to_remove,
-                    Url_Tags.tag_id == tag_id_to_remove,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == existing_utub_id,
+                    Utub_Url_Tags.url_id == url_id_to_remove,
+                    Utub_Url_Tags.tag_id == tag_id_to_remove,
                 ).all()
             )
             == 1
         )
 
-        assert len(Url_Tags.query.all()) == initial_num_tag_url_associations
+        assert len(Utub_Url_Tags.query.all()) == initial_num_tag_url_associations
 
 
 def test_remove_tag_from_url_updates_utub_last_updated(
@@ -1391,8 +1405,8 @@ def test_remove_tag_from_url_updates_utub_last_updated(
         utub_id_this_user_creator_of = utub_this_user_creator_of.id
 
         # Get a URL and tag association within this UTub
-        tag_url_utub_association: Url_Tags = Url_Tags.query.filter(
-            Url_Tags.utub_id == utub_id_this_user_creator_of
+        tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_this_user_creator_of
         ).first()
         tag_id_to_remove = tag_url_utub_association.tag_id
         url_id_to_remove_tag_from = tag_url_utub_association.url_id

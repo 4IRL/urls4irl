@@ -3,7 +3,7 @@ from flask_login import current_user
 import pytest
 
 from src.models.urls import Urls
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
@@ -70,12 +70,12 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_in_this_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -112,7 +112,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls + 1 == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity no longer exists
@@ -142,7 +142,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_creator_of.id, url_id=new_url_id
             ).all()
         ) == len(associated_tags)
@@ -202,12 +202,12 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -243,7 +243,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls + 1 == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity no longer exists
@@ -273,7 +273,9 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(utub_id=utub_member_of.id, url_id=new_url_id).all()
+            Utub_Url_Tags.query.filter_by(
+                utub_id=utub_member_of.id, url_id=new_url_id
+            ).all()
         ) == len(associated_tags)
 
 
@@ -339,12 +341,12 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_in_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -382,7 +384,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity no longer exists
@@ -411,7 +413,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_creator_of.id, url_id=url_id_of_url_not_in_utub
             ).all()
         ) == len(associated_tags)
@@ -477,12 +479,12 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -519,7 +521,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity no longer exists
@@ -548,7 +550,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_member_of.id, url_id=url_id_of_url_not_in_utub
             ).all()
         ) == len(associated_tags)
@@ -607,12 +609,12 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -643,7 +645,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity exists
@@ -660,7 +662,7 @@ def test_update_valid_url_with_same_url_as_utub_creator(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_creator_of.id, url_id=id_of_url_in_utub
             ).all()
         ) == len(associated_tags)
@@ -720,12 +722,12 @@ def test_update_valid_url_with_same_url_as_url_adder(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -761,7 +763,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity exists
@@ -778,7 +780,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_member_of.id, url_id=url_id_of_url_in_this_utub
             ).all()
         ) == len(associated_tags)
@@ -831,11 +833,11 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -864,7 +866,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity exists
@@ -881,7 +883,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_creator_of.id, url_id=id_of_url_in_utub
             ).all()
         ) == len(associated_tags)
@@ -936,11 +938,11 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -969,7 +971,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity exists
@@ -986,7 +988,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_member_of.id, url_id=url_id_of_url_in_this_utub
             ).all()
         ) == len(associated_tags)
@@ -1041,11 +1043,11 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -1078,7 +1080,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity exists
@@ -1095,7 +1097,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_creator_of.id, url_id=id_of_url_in_utub
             ).all()
         ) == len(associated_tags)
@@ -1153,11 +1155,11 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -1186,7 +1188,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         assert (
@@ -1225,7 +1227,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_member_of.id, url_id=url_in_this_utub.url_id
             ).all()
         ) == len(associated_tags)
@@ -1297,11 +1299,11 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
         )
 
         # Find associated tags with this url
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_user_not_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -1330,7 +1332,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         assert (
@@ -1374,7 +1376,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_user_not_member_of.id, url_id=url_in_this_utub.url_id
             ).all()
         ) == len(associated_tags)
@@ -1457,11 +1459,11 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         )
 
         # Find associated tags with this url
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_user_not_member_of.id, url_id=url_in_this_utub.url_id
         ).all()
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -1490,7 +1492,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         assert (
@@ -1534,7 +1536,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_user_not_member_of.id, url_id=url_in_this_utub.url_id
             ).all()
         ) == len(associated_tags)
@@ -1586,11 +1588,11 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -1622,7 +1624,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity exists
@@ -1639,7 +1641,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_creator_of.id, url_id=id_of_url_in_utub
             ).all()
         ) == len(associated_tags)
@@ -1683,11 +1685,11 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         assert num_of_url_utub_associations == 1
 
         # Find associated tags with this url already in UTub
-        associated_tags: list[Url_Tags] = Url_Tags.query.filter_by(
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
             utub_id=utub_creator_of.id, url_id=url_already_in_utub.url_id
         ).all()
 
-        num_of_url_tag_assocs = len(Url_Tags.query.all())
+        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
         num_of_urls = len(Urls.query.all())
         num_of_url_utubs_assocs = len(Utub_Urls.query.all())
 
@@ -1711,7 +1713,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
     with app.app_context():
         # Assert database is consistent after newly modified URL
         assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Url_Tags.query.all())
+        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
         assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
 
         # Assert previous entity exists
@@ -1728,7 +1730,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
 
         # Check associated tags
         assert len(
-            Url_Tags.query.filter_by(
+            Utub_Url_Tags.query.filter_by(
                 utub_id=utub_creator_of.id, url_id=id_of_url_in_utub
             ).all()
         ) == len(associated_tags)

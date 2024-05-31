@@ -3,7 +3,7 @@ from flask_login import current_user
 import pytest
 
 from src import db
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -247,9 +247,9 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
         # Ensure this user has URLs that have tags associated with them
         assert (
             len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == current_utub.id,
-                    Url_Tags.url_id == example_url_of_user.url_id,
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == current_utub.id,
+                    Utub_Url_Tags.url_id == example_url_of_user.url_id,
                 ).all()
             )
             > 0
@@ -260,7 +260,7 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
         current_num_of_url_tags_in_utub = len(current_utub.utub_url_tags)
 
         all_urls_utub_associations = len(Utub_Urls.query.all())
-        all_urls_tag_associations = len(Url_Tags.query.all())
+        all_urls_tag_associations = len(Utub_Url_Tags.query.all())
 
         # Ensure second user in this UTub
         assert second_user_in_utub in [user.to_user for user in current_utub.members]
@@ -315,12 +315,16 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
 
         # Ensure URL-Tag associations aren't removed
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == current_utub.id).all())
+            len(
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == current_utub.id
+                ).all()
+            )
             == current_num_of_url_tags_in_utub
         )
 
         # Ensure all associations still correct
-        assert len(Url_Tags.query.all()) == all_urls_tag_associations
+        assert len(Utub_Url_Tags.query.all()) == all_urls_tag_associations
         assert len(Utub_Urls.query.all()) == all_urls_utub_associations
 
 

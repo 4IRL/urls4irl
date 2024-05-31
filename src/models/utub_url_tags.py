@@ -10,7 +10,7 @@ from src.models.utubs import Utubs
 from src.utils.datetime_utils import utc_now
 
 
-class Url_Tags(db.Model):
+class Utub_Url_Tags(db.Model):
     """
     Represents the Many-to-Many relationship between tags, UTubs, and URLs.
     This table indicates which URLs in a specified UTub contain a specified tag.
@@ -18,7 +18,7 @@ class Url_Tags(db.Model):
     https://stackoverflow.com/questions/52920701/many-to-many-with-three-tables-relating-with-each-other-sqlalchemy
     """
 
-    __tablename__ = "UrlTags"
+    __tablename__ = "UtubUrlTags"
 
     id: int = Column(Integer, primary_key=True)
     utub_id: int = Column(

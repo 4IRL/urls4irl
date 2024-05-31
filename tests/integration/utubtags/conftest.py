@@ -3,7 +3,7 @@ import pytest
 
 from src import db
 from src.models.tags import Tags
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 
 
@@ -31,7 +31,7 @@ def add_one_url_to_each_utub_one_tag(
             url_item_in_utub = url_in_utub.standalone_url
             url_id_in_utub = url_item_in_utub.id
 
-            new_tag_url_utub_association = Url_Tags()
+            new_tag_url_utub_association = Utub_Url_Tags()
             new_tag_url_utub_association.utub_containing_this_tag = utub
             new_tag_url_utub_association.tagged_url = url_item_in_utub
             new_tag_url_utub_association.tag_item = tag

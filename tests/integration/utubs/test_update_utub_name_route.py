@@ -2,7 +2,7 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
@@ -55,7 +55,7 @@ def test_update_valid_utub_name_as_creator(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -88,7 +88,7 @@ def test_update_valid_utub_name_as_creator(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == NEW_NAME
@@ -151,7 +151,7 @@ def test_update_valid_utub_same_name_as_creator(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -184,7 +184,7 @@ def test_update_valid_utub_same_name_as_creator(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == NEW_NAME
@@ -252,7 +252,7 @@ def test_update_utub_empty_name_as_creator(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -292,7 +292,7 @@ def test_update_utub_empty_name_as_creator(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
@@ -360,7 +360,7 @@ def test_update_utub_name_only_spaces_as_creator(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -399,7 +399,7 @@ def test_update_utub_name_only_spaces_as_creator(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
@@ -466,7 +466,7 @@ def test_update_utub_name_as_member(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -499,7 +499,7 @@ def test_update_utub_name_as_member(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
@@ -566,7 +566,7 @@ def test_update_utub_name_as_creator_of_another_utub(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -599,7 +599,7 @@ def test_update_utub_name_as_creator_of_another_utub(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
@@ -652,7 +652,7 @@ def test_update_name_of_invalid_utub(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -678,7 +678,7 @@ def test_update_name_of_invalid_utub(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
@@ -750,7 +750,7 @@ def test_update_name_of_utub_too_long_name(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -790,7 +790,7 @@ def test_update_name_of_utub_too_long_name(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
@@ -853,7 +853,7 @@ def test_update_name_of_utub_missing_name_field_form(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -892,7 +892,7 @@ def test_update_name_of_utub_missing_name_field_form(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
@@ -949,7 +949,7 @@ def test_update_name_of_utub_missing_csrf_token(
         current_num_of_utubs = len(Utubs.query.all())
         current_num_of_utub_users = len(Utub_Members.query.all())
         current_num_of_utub_urls = len(Utub_Urls.query.all())
-        current_num_of_url_tags = len(Url_Tags.query.all())
+        current_num_of_url_tags = len(Utub_Url_Tags.query.all())
 
         # Get all UTub names and descriptions in a dictionary for checking
         all_utub_names_and_descriptions = dict()
@@ -973,7 +973,7 @@ def test_update_name_of_utub_missing_csrf_token(
         assert len(Utubs.query.all()) == current_num_of_utubs
         assert len(Utub_Members.query.all()) == current_num_of_utub_users
         assert len(Utub_Urls.query.all()) == current_num_of_utub_urls
-        assert len(Url_Tags.query.all()) == current_num_of_url_tags
+        assert len(Utub_Url_Tags.query.all()) == current_num_of_url_tags
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name

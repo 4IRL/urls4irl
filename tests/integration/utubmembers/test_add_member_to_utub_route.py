@@ -3,7 +3,7 @@ from flask_login import current_user
 import pytest
 
 from src import db
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -188,11 +188,13 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
             Utub_Urls.query.filter(Utub_Urls.utub_id == utub_user_created.id).all()
         )
         initial_num_of_url_tags_in_utub = len(
-            Url_Tags.query.filter(Url_Tags.utub_id == utub_user_created.id).all()
+            Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_user_created.id
+            ).all()
         )
 
         all_urls_in_utubs = len(Utub_Urls.query.all())
-        all_url_tags_in_utub = len(Url_Tags.query.all())
+        all_url_tags_in_utub = len(Utub_Url_Tags.query.all())
 
     # Remove this user first
     remove_user_response = client.delete(
@@ -250,13 +252,17 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     with app.app_context():
         # Ensure proper counts of all associations after removing then adding user who owned URLs in the UTub
         assert len(Utub_Urls.query.all()) == all_urls_in_utubs
-        assert len(Url_Tags.query.all()) == all_url_tags_in_utub
+        assert len(Utub_Url_Tags.query.all()) == all_url_tags_in_utub
         assert (
             len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_user_created.id).all())
             == initial_num_of_urls_in_utub
         )
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == utub_user_created.id).all())
+            len(
+                Utub_Url_Tags.query.filter(
+                    Utub_Url_Tags.utub_id == utub_user_created.id
+                ).all()
+            )
             == initial_num_of_url_tags_in_utub
         )
         assert (

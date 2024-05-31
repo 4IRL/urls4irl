@@ -11,7 +11,7 @@ from src import create_app, db
 from src.config import TestingConfig
 from src.models.email_validations import Email_Validations
 from src.models.tags import Tags
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -602,7 +602,7 @@ def add_two_users_and_all_urls_to_each_utub_with_one_tag(
                 url_id = url_in_utub.url_id
                 url_in_this_utub = url_in_utub.standalone_url
 
-                new_tag_url_utub_association = Url_Tags()
+                new_tag_url_utub_association = Utub_Url_Tags()
                 new_tag_url_utub_association.utub_containing_this_tag = utub
                 new_tag_url_utub_association.tagged_url = url_in_this_utub
                 new_tag_url_utub_association.tag_item = one_tag
@@ -644,7 +644,7 @@ def add_two_users_and_all_urls_to_each_utub_with_tags(
                 url_in_this_utub = url_in_utub.standalone_url
 
                 for tag in all_tags:
-                    new_tag_url_utub_association = Url_Tags()
+                    new_tag_url_utub_association = Utub_Url_Tags()
                     new_tag_url_utub_association.utub_containing_this_tag = utub
                     new_tag_url_utub_association.tagged_url = url_in_this_utub
                     new_tag_url_utub_association.tag_item = tag
@@ -742,7 +742,7 @@ def add_all_urls_and_users_to_each_utub_with_one_tag(
         for utub in all_utubs:
             for url in utub.utub_urls:
                 tag_with_url_id = Tags.query.get(url.url_id)
-                new_url_tag = Url_Tags()
+                new_url_tag = Utub_Url_Tags()
                 new_url_tag.url_id = url.url_id
                 new_url_tag.tagged_url = url.standalone_url
                 new_url_tag.utub_containing_this_tag = utub
@@ -777,15 +777,15 @@ def add_all_urls_and_users_to_each_utub_with_all_tags(
             for single_url_in_utub in utub.utub_urls:
                 for tag in all_tags:
                     tags_on_url_in_utub = len(
-                        Url_Tags.query.filter(
-                            Url_Tags.utub_id == utub.id,
-                            Url_Tags.url_id == single_url_in_utub.url_id,
-                            Url_Tags.tag_id == tag.id,
+                        Utub_Url_Tags.query.filter(
+                            Utub_Url_Tags.utub_id == utub.id,
+                            Utub_Url_Tags.url_id == single_url_in_utub.url_id,
+                            Utub_Url_Tags.tag_id == tag.id,
                         ).all()
                     )
 
                     if tags_on_url_in_utub == 0:
-                        new_url_tag = Url_Tags()
+                        new_url_tag = Utub_Url_Tags()
                         new_url_tag.url_id = single_url_in_utub.url_id
                         new_url_tag.tagged_url = single_url_in_utub.standalone_url
                         new_url_tag.utub_containing_this_tag = utub

@@ -6,7 +6,7 @@ import pytest
 from src import db
 from src.models.tags import Tags
 from src.models.urls import Urls
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -145,7 +145,7 @@ def test_url_serialization_with_tags(
 
         for utub, url in zip(all_utubs, all_urls):
             for tag in all_tags:
-                new_url_tag = Url_Tags()
+                new_url_tag = Utub_Url_Tags()
                 new_url_tag.utub_containing_this_tag = utub
                 new_url_tag.utub_id = utub.id
                 new_url_tag.url_id = url.id
