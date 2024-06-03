@@ -85,7 +85,7 @@ def remove_url(utub_id: int, utub_url_id: int):
                     URL_SUCCESS.UTUB_ID: utub.id,
                     URL_SUCCESS.URL: {
                         URL_SUCCESS.URL_STRING: url_string_to_remove,
-                        URL_SUCCESS.URL_ID: utub_url_id,
+                        URL_SUCCESS.UTUB_URL_ID: utub_url_id,
                         URL_SUCCESS.URL_TITLE: url_in_utub.url_title,
                     },
                     MODELS.TAGS: tags,
@@ -217,7 +217,7 @@ def add_url(utub_id: int):
                     URL_SUCCESS.ADDED_BY: current_user.id,
                     URL_SUCCESS.URL: {
                         URL_SUCCESS.URL_STRING: normalized_url,
-                        URL_SUCCESS.URL_ID: url_utub_user_add.id,
+                        URL_SUCCESS.UTUB_URL_ID: url_utub_user_add.id,
                         URL_SUCCESS.URL_TITLE: utub_new_url_form.url_title.data,
                     },
                 }

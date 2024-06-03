@@ -93,7 +93,10 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     json_response = edit_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == url_in_this_utub.id
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
+        == url_in_this_utub.id
+    )
     assert (
         json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
     )
@@ -121,10 +124,10 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         new_url_object: Urls = Urls.query.filter(
             Urls.url_string == validated_new_fresh_url
         ).first()
-        new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         assert (
             Utub_Urls.query.filter(
-                Utub_Urls.id == url_in_this_utub.id,
+                Utub_Urls.id == new_url_id,
                 Utub_Urls.utub_id == utub_creator_of.id,
                 Utub_Urls.url_title == current_title,
                 Utub_Urls.url_id == new_url_object.id,
@@ -213,7 +216,10 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     json_response = edit_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == url_in_this_utub.id
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
+        == url_in_this_utub.id
+    )
     assert (
         json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
     )
@@ -240,7 +246,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         new_url_object: Urls = Urls.query.filter(
             Urls.url_string == validated_new_fresh_url
         ).first()
-        new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
+        new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         assert (
             Utub_Urls.query.filter(
                 Utub_Urls.id == new_url_id,
@@ -337,7 +343,9 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
     json_response = edit_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == id_of_url_in_utub
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == id_of_url_in_utub
+    )
     assert (
         json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING]
         == url_string_of_url_not_in_utub
@@ -454,7 +462,10 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
     json_response = edit_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == url_in_this_utub_id
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
+        == url_in_this_utub_id
+    )
     assert (
         json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING]
         == url_string_of_url_not_in_utub
@@ -569,7 +580,9 @@ def test_update_valid_url_with_same_url_as_utub_creator(
     json_response = edit_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_NOT_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == id_of_url_in_utub
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == id_of_url_in_utub
+    )
     assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == url_in_utub_string
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
 
@@ -667,7 +680,10 @@ def test_update_valid_url_with_same_url_as_url_adder(
     json_response = edit_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_NOT_MODIFIED
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == url_in_this_utub_id
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
+        == url_in_this_utub_id
+    )
     assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == current_url_string
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
 

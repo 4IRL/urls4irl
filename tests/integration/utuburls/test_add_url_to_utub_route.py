@@ -81,7 +81,8 @@ def test_add_valid_url_as_utub_member(
         add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
     )
     assert (
-        int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID]) == url_id_to_add
+        int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.UTUB_URL_ID])
+        == url_id_to_add
     )
 
     with app.app_context():
@@ -127,7 +128,7 @@ def test_add_valid_url_as_utub_creator(
         STD_JSON.MESSAGE : URL_SUCCESS.URL_ADDED,
         MODEL_STRS.URL : {
             URL_FORM.URL_STRING: String representing the URL ,
-            URL_SUCCESS.URL_ID : Integer representing the URL ID
+            URL_SUCCESS.UTUB_URL_ID: Integer representing the URL ID
         },
         URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
         URL_SUCCESS.ADDED_BY : Integer representing the ID of current user who added this URL to this UTub
@@ -173,7 +174,8 @@ def test_add_valid_url_as_utub_creator(
         add_url_json_response[MODEL_STRS.URL][URL_FORM.URL_STRING] == url_string_to_add
     )
     assert (
-        int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID]) == url_id_to_add
+        int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.UTUB_URL_ID])
+        == url_id_to_add
     )
 
     with app.app_context():
@@ -482,7 +484,7 @@ def test_add_fresh_url_to_utub(
         STD_JSON.MESSAGE : "New URL created and added to UTub",
         MODEL_STRS.URL : {
             URL_FORM.URL_STRING: String representing the URL,
-            URL_SUCCESS.URL_ID : Integer representing the URL ID
+            URL_SUCCESS.UTUB_URL_ID : Integer representing the URL ID
         },
         URL_SUCCESS.UTUB_ID : Integer representing the ID of the UTub added to,
         URL_SUCCESS.ADDED_BY : Integer representing the ID of current user who added this URL to this UTub
@@ -531,7 +533,7 @@ def test_add_fresh_url_to_utub(
     )
     assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
 
-    url_id_added = int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_ID])
+    url_id_added = int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.UTUB_URL_ID])
 
     with app.app_context():
         # Ensure new URL exists

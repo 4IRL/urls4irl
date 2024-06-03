@@ -667,14 +667,14 @@ The HTML body on a 200 response contains the following JSON.
 >     ],
 >     "urls": [
 >         {
->             "urlID": 1,
+>             "utubUrlID": 1,
 >             "urlString": "https://urls4irl.app",
 >             "urlTagIDs": [1, 2, 3],
 >             "canDelete": true,           // Can only delete if UTub creator, or adder of URL  
 >             "urlTitle": "Title for URL",
 >         },
 >         {
->             "urlID": 2,
+>             "utubUrlID": 2,
 >             "urlString": "https://www.github.com",
 >             "urlTagIDs": [2, 3],
 >             "canDelete": false,             
@@ -1292,7 +1292,7 @@ Required form data:
 >     "addedByUserID": 1, 
 >     "URL": {
 >         "urlString": "https://urls4irl.app/",
->         "urlID": 1,
+>         "utubUrlID": 1,
 >         "urlTitle": "This is my home page!",
 >     }
 > }
@@ -1370,14 +1370,14 @@ Indicates form errors with adding this URL to this UTub.
 
 </details>
 <details>
- <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{urlID}</b></code> <code>(remove a URL from a UTub)</code></summary>
+ <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}</b></code> <code>(remove a URL from a UTub)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
 > | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
-> | `urlID` |  required  | int ($int64) | The unique ID of the URL to remove from the UTub |
+> | `utubUrlID` |  required  | int ($int64) | The unique ID of the Utub-URL to remove from the UTub |
 
 ##### Responses
 
@@ -1398,7 +1398,7 @@ Indicates form errors with adding this URL to this UTub.
 >     "utubID": 1,
 >     "URL": {
 >         "urlString": "https://urls4irl.app/",
->         "urlID": 1,
+>         "utubUrlID": 1,
 >         "urlTitle": "This is my home page!",
 >     },
 >     "tags": [
@@ -1433,14 +1433,14 @@ Indicates form errors with adding this URL to this UTub.
 
 </details>
 <details>
- <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{urlID}</b></code> <code>(edit the URL string in a UTub)</code></summary>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}</b></code> <code>(edit the URL string in a UTub)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
 > | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
-> | `urlID` |  required  | int ($int64) | The unique ID of the URL to modify |
+> | `utubUrlID` |  required  | int ($int64) | The unique ID of the UTub-URL to modify |
 
 ##### Request Payload
 
@@ -1471,7 +1471,7 @@ Required form data:
 >     "status": "Success" or "No change",
 >     "message": "URL modified." or "URL not modified",
 >     "URL": {
->         "urlID": 1,
+>         "utubUrlID": 1,
 >         "urlString": "https://www.google.com",
 >         "urlTagIDs": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
 >     }
@@ -1551,14 +1551,14 @@ Indicates missing or invalid form data sent in the request.
 </details>
 
 <details>
- <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{urlID}/title</b></code> <code>(edit the title of a URL in a UTub)</code></summary>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/title</b></code> <code>(edit the title of a URL in a UTub)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
 > | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
-> | `urlID` |  required  | int ($int64) | The unique ID of the URL with the title to modify |
+> | `utubUrlID` |  required  | int ($int64) | The unique ID of the UTub-URL with the title to modify |
 
 ##### Request Payload
 
@@ -1589,7 +1589,7 @@ Required form data:
 >     "status": "Success" or "No change",
 >     "message": "URL title was modified." or "URL title not modified",
 >     "URL": {
->         "urlID": 1,
+>         "utubUrlID": 1,
 >         "urlTitle": "This is google.",
 >         "urlTagIDs": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
 >     }
@@ -1664,14 +1664,14 @@ Indicates invalid form data sent in the request.
 #### UTub Tags
 
 <details>
- <summary><code>POST</code> <code><b>/utubs/{UTubID}/urls/{urlID}/tags</b></code> <code>(add a tag to a URL in a UTub)</code></summary>
+ <summary><code>POST</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/tags</b></code> <code>(add a tag to a URL in a UTub)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
 > | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
-> | `urlID` |  required  | int ($int64) | The unique ID of the URL to add the tag to |
+> | `utubUrlID` |  required  | int ($int64) | The unique ID of the UTub-URL to add the tag to |
 
 ##### Request Payload
 
@@ -1777,14 +1777,14 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 
 </details>
 <details>
- <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{urlID}/tags/{tagID}</b></code> <code>(remove a tag from a URL in a UTub)</code></summary>
+ <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/tags/{tagID}</b></code> <code>(remove a tag from a URL in a UTub)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
 > | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
-> | `urlID` |  required  | int ($int64) | The unique ID of the URL with the tag to remove |
+> | `utubUrlID` |  required  | int ($int64) | The unique ID of the UTub-URL with the tag to remove |
 > | `tagID` |  required  | int ($int64) | The unique ID of the tag to remove |
 
 ##### Responses
@@ -1838,7 +1838,7 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
 > | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL with given tag |
-> | `urlID` |  required  | int ($int64) | The unique ID of the URL associated with the tag to modify |
+> | `utubUrlID` |  required  | int ($int64) | The unique ID of the UTub-URL associated with the tag to modify |
 > | `tagID` |  required  | int ($int64) | The unique ID of the tag to modify |
 
 ##### Request Payload

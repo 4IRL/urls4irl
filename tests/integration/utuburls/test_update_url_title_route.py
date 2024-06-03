@@ -88,7 +88,7 @@ def test_update_url_title_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_TITLE_MODIFIED
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == NEW_TITLE
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == current_url_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
 
     with app.app_context():
@@ -181,7 +181,7 @@ def test_update_url_title_url_adder(
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_TITLE_MODIFIED
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == NEW_TITLE
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == current_url_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
 
     with app.app_context():
@@ -273,7 +273,7 @@ def test_update_url_title_with_same_title_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == current_title
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == current_url_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
 
     with app.app_context():
@@ -366,7 +366,7 @@ def test_update_url_title_with_same_title_url_adder(
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == current_title
-    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID]) == current_url_id
+    assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == current_url_id
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
 
     with app.app_context():

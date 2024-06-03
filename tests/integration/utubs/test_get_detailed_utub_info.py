@@ -170,7 +170,7 @@ def test_get_valid_utub_with_members_urls_no_tags(
         url_dict = {
             MODELS.CAN_DELETE: current_user.id == url.user_id
             or current_user.id == utub_user_is_member_of.utub_creator,
-            MODELS.URL_ID: url.id,
+            MODELS.UTUB_URL_ID: url.id,
             MODELS.URL_STRING: standalone_url.url_string,
             MODELS.URL_TAGS: [],
             MODELS.URL_TITLE: url.url_title,
@@ -237,7 +237,7 @@ def test_get_valid_utub_with_members_urls_tags(
         url_dict = {
             MODELS.CAN_DELETE: current_user.id == url.id
             or current_user.id == utub_user_is_creator_of.utub_creator,
-            MODELS.URL_ID: url.id,
+            MODELS.UTUB_URL_ID: url.id,
             MODELS.URL_STRING: url_string,
             MODELS.URL_TAGS: sorted([tag.id for tag in all_tags]),
             MODELS.URL_TITLE: f"This is {url_string}",

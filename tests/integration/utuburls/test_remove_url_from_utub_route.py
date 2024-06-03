@@ -31,7 +31,7 @@ def test_remove_url_as_utub_creator_no_tags(
         URL_SUCCESS.UTUB_ID : Integer representing the UTub ID where the URL was removed from,
         URL_SUCCESS.URL : Serialized information of the URL that was removed, as follows:
         {
-            "urlID": Integer representing ID of the URL,
+            "utubUrlID": Integer representing ID of the URL,
             "urlString": String representing the URL itself,
             "urlTitle": String representing the title associated with the URL,
         }
@@ -73,7 +73,7 @@ def test_remove_url_as_utub_creator_no_tags(
     assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
     assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == current_user_utub.id
     assert (
-        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID]
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.UTUB_URL_ID]
         == url_id_to_remove
     )
     assert (
@@ -117,7 +117,7 @@ def test_remove_url_as_utub_member_no_tags(
         URL_SUCCESS.UTUB_ID : Integer representing the UTub ID where the URL was removed from,
         URL_SUCCESS.URL : Serialized information of the URL that was removed, as follows:
         {
-            "urlID": Integer representing ID of the URL,
+            "utubUrlID": Integer representing ID of the URL,
             "urlString": String representing the URL itself,
             "urlTitle": String representing the title associated with the URL,
         }
@@ -166,7 +166,7 @@ def test_remove_url_as_utub_member_no_tags(
     assert remove_url_response_json[STD_JSON.MESSAGE] == URL_SUCCESS.URL_REMOVED
     assert int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == current_user_utub_id
     assert (
-        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID]
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.UTUB_URL_ID]
         == current_url_in_utub.id
     )
     assert (
@@ -368,7 +368,7 @@ def test_remove_url_as_utub_creator_with_tag(
         URL_SUCCESS.UTUB_ID : Integer representing the UTub ID where the URL was removed from,
         URL_SUCCESS.URL : Serialized information of the URL that was removed, as follows:
         {
-            "urlID": Integer representing ID of the URL,
+            "utubUrlID": Integer representing ID of the URL,
             "urlString": String representing the URL itself,
             "urlTitle": String representing the title associated with the URL,
         }
@@ -429,7 +429,7 @@ def test_remove_url_as_utub_creator_with_tag(
         int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
     )
     assert (
-        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID]
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.UTUB_URL_ID]
         == url_id_to_remove
     )
     assert (
@@ -484,7 +484,7 @@ def test_remove_url_as_utub_member_with_tags(
         URL_SUCCESS.UTUB_ID : Integer representing the UTub ID where the URL was removed from,
         URL_SUCCESS.URL : Serialized information of the URL that was removed, as follows:
         {
-            "urlID": Integer representing ID of the URL,
+            "utubUrlID": Integer representing ID of the URL,
             "urlString": String representing the URL itself,
             "urlTitle": String representing the title associated with the URL,
         }
@@ -548,7 +548,7 @@ def test_remove_url_as_utub_member_with_tags(
         int(remove_url_response_json[URL_SUCCESS.UTUB_ID]) == utub_id_to_remove_url_from
     )
     assert (
-        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_ID]
+        remove_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.UTUB_URL_ID]
         == url_id_to_remove
     )
     assert (

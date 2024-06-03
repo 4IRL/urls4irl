@@ -74,21 +74,27 @@ all_tag_strings = [tag[MODEL_STRS.TAG_STRING] for tag in all_tags]
 Valid URLs used for testing, without tags
 """
 valid_url_without_tag_1 = {
-    MODEL_STRS.ID: 1,
-    MODEL_STRS.URL: "https://www.google.com/",
-    MODEL_STRS.TAGS: [],
+    MODEL_STRS.UTUB_URL_ID: 1,
+    MODEL_STRS.URL_STRING: "https://www.google.com/",
+    MODEL_STRS.URL_TAGS: [],
+    MODEL_STRS.URL_TITLE: "",
+    MODEL_STRS.CAN_DELETE: True,
 }
 
 valid_url_without_tag_2 = {
-    MODEL_STRS.ID: 2,
-    MODEL_STRS.URL: "https://github.com/",
-    MODEL_STRS.TAGS: [],
+    MODEL_STRS.UTUB_URL_ID: 2,
+    MODEL_STRS.URL_STRING: "https://github.com/",
+    MODEL_STRS.URL_TAGS: [],
+    MODEL_STRS.URL_TITLE: "",
+    MODEL_STRS.CAN_DELETE: True,
 }
 
 valid_url_without_tag_3 = {
-    MODEL_STRS.ID: 3,
-    MODEL_STRS.URL: "https://www.microsoft.com/",
-    MODEL_STRS.TAGS: [],
+    MODEL_STRS.UTUB_URL_ID: 3,
+    MODEL_STRS.URL_STRING: "https://www.microsoft.com/",
+    MODEL_STRS.URL_TAGS: [],
+    MODEL_STRS.URL_TITLE: "",
+    MODEL_STRS.CAN_DELETE: True,
 }
 
 all_urls_no_tags = (
@@ -98,7 +104,7 @@ all_urls_no_tags = (
 )
 
 valid_url_strings = [
-    url[MODEL_STRS.URL]
+    url[MODEL_STRS.URL_STRING]
     for url in (
         valid_url_without_tag_1,
         valid_url_without_tag_2,
@@ -110,7 +116,7 @@ valid_url_strings = [
 Valid URLs used for testing, with tags
 """
 valid_url_with_tag_1 = {
-    MODEL_STRS.URL_ID: 1,
+    MODEL_STRS.UTUB_URL_ID: 1,
     MODEL_STRS.URL_STRING: "https://www.google.com/",
     MODEL_STRS.URL_TAGS: valid_tag_ids,
     MODEL_STRS.URL_TITLE: "",
@@ -118,7 +124,7 @@ valid_url_with_tag_1 = {
 }
 
 valid_url_with_tag_2 = {
-    MODEL_STRS.URL_ID: 2,
+    MODEL_STRS.UTUB_URL_ID: 2,
     MODEL_STRS.URL_STRING: "https://github.com/",
     MODEL_STRS.URL_TAGS: valid_tag_ids,
     MODEL_STRS.URL_TITLE: "",
@@ -126,7 +132,7 @@ valid_url_with_tag_2 = {
 }
 
 valid_url_with_tag_3 = {
-    MODEL_STRS.URL_ID: 3,
+    MODEL_STRS.UTUB_URL_ID: 3,
     MODEL_STRS.URL_STRING: "https://www.microsoft.com/",
     MODEL_STRS.URL_TAGS: valid_tag_ids,
     MODEL_STRS.URL_TITLE: "",
@@ -225,10 +231,10 @@ for utub, user, url in zip(all_empty_utubs, valid_users, all_urls_no_tags):
             ],
             MODEL_STRS.URLS: [
                 {
-                    MODEL_STRS.URL_ID: url[MODEL_STRS.ID],
-                    MODEL_STRS.URL_STRING: url[MODEL_STRS.URL],
+                    MODEL_STRS.UTUB_URL_ID: url[MODEL_STRS.UTUB_URL_ID],
+                    MODEL_STRS.URL_STRING: url[MODEL_STRS.URL_STRING],
                     MODEL_STRS.URL_TAGS: [],
-                    MODEL_STRS.URL_TITLE: f"This is {url[MODEL_STRS.URL]}",
+                    MODEL_STRS.URL_TITLE: f"This is {url[MODEL_STRS.URL_STRING]}",
                     MODEL_STRS.CAN_DELETE: False,
                 }
             ],
@@ -256,10 +262,10 @@ for utub in all_empty_utubs:
             ],
             MODEL_STRS.URLS: [
                 {
-                    MODEL_STRS.URL_ID: url[MODEL_STRS.ID],
-                    MODEL_STRS.URL_STRING: url[MODEL_STRS.URL],
+                    MODEL_STRS.UTUB_URL_ID: url[MODEL_STRS.UTUB_URL_ID],
+                    MODEL_STRS.URL_STRING: url[MODEL_STRS.URL_STRING],
                     MODEL_STRS.URL_TAGS: [tag[MODEL_STRS.ID] for tag in all_tags],
-                    MODEL_STRS.URL_TITLE: f"This is {url[MODEL_STRS.URL]}",
+                    MODEL_STRS.URL_TITLE: f"This is {url[MODEL_STRS.URL_STRING]}",
                     MODEL_STRS.CAN_DELETE: True,
                 }
                 for url in all_urls_no_tags

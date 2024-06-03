@@ -87,17 +87,18 @@ def test_url_serialization_without_tags():
 
     for v_url in valid_urls:
         new_url = Urls(
-            normalized_url=v_url[MODEL_STRS.URL], current_user_id=current_user_id
+            normalized_url=v_url[MODEL_STRS.URL_STRING], current_user_id=current_user_id
         )
 
         new_utub_url = Utub_Urls()
         new_utub_url.standalone_url = new_url
-        new_utub_url.id = v_url[MODEL_STRS.ID]
+        new_utub_url.id = v_url[MODEL_STRS.UTUB_URL_ID]
+        new_utub_url.url_title = ""
 
         # Test a URL without any tags
         valid_url_for_json = json.dumps(v_url)
 
-        assert json.dumps(new_utub_url.serialized_url) == valid_url_for_json
+        assert json.dumps(new_utub_url.serialized(1, 1)) == valid_url_for_json
 
 
 def test_url_serialization_with_tags(
@@ -526,7 +527,7 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                     if url.utub_id == test_utub[MODEL_STRS.ID]
                     and url.standalone_url.url_string == test_url[MODEL_STRS.URL_STRING]
                 ][-1]
-                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.URL_ID] = real_url.id
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.UTUB_URL_ID] = real_url.id
 
         for test_utub, utub in zip(mock_utub_data, all_utubs):
             test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
@@ -540,13 +541,13 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                 key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
-            # Array of URLs needs to be sorted by URL ID to match
+            # Array of URLs needs to be sorted by UTUB_URL_ID to match
             test_utub[MODEL_STRS.URLS] = sorted(
                 test_utub[MODEL_STRS.URLS],
-                key=lambda utub_url: utub_url[MODEL_STRS.URL_ID],
+                key=lambda utub_url: utub_url[MODEL_STRS.UTUB_URL_ID],
             )
 
-            # Array of Tags needs to be sorted by URL ID to match
+            # Array of Tags needs to be sorted by ID to match
             utub_in_data_serialized[MODEL_STRS.TAGS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.TAGS],
                 key=lambda utub_tag: utub_tag[MODEL_STRS.ID],

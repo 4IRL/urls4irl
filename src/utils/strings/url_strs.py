@@ -5,6 +5,7 @@ from src.utils.strings.model_strs import (
     URL_STRING,
     URL_TITLE,
     URL_TAGS,
+    UTUB_URL_ID,
 )
 from src.utils.strings.utub_strs import UTUB_GENERAL
 
@@ -38,6 +39,7 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_TITLE_MODIFIED = URL_TITLE_MODIFIED
     URL_OR_TITLE_MODIFIED = URL_OR_TITLE_MODIFIED
     URL_MODIFIED = URL_MODIFIED
+    UTUB_URL_ID = UTUB_URL_ID
 
 
 # Strings for URL failure

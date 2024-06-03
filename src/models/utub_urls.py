@@ -43,7 +43,7 @@ class Utub_Urls(db.Model):
         url_item: Urls = self.standalone_url
 
         return {
-            MODEL_STRS.URL_ID: self.id,
+            MODEL_STRS.UTUB_URL_ID: self.id,
             MODEL_STRS.URL_STRING: url_item.url_string,
             MODEL_STRS.URL_TAGS: self.associated_tags,
             MODEL_STRS.URL_TITLE: self.url_title,
@@ -54,7 +54,7 @@ class Utub_Urls(db.Model):
     @property
     def serialized_on_string_edit(self) -> dict[str, int | str | list[int]]:
         return {
-            MODEL_STRS.URL_ID: self.id,
+            MODEL_STRS.UTUB_URL_ID: self.id,
             MODEL_STRS.URL_STRING: self.standalone_url.url_string,
             MODEL_STRS.URL_TAGS: self.associated_tags,
         }
@@ -62,7 +62,7 @@ class Utub_Urls(db.Model):
     @property
     def serialized_on_title_edit(self) -> dict[str, int | str | list[int]]:
         return {
-            MODEL_STRS.URL_ID: self.id,
+            MODEL_STRS.UTUB_URL_ID: self.id,
             MODEL_STRS.URL_TITLE: self.url_title,
             MODEL_STRS.URL_TAGS: self.associated_tags,
         }
@@ -76,15 +76,3 @@ class Utub_Urls(db.Model):
                 url_tags.append(tag_in_utub.tag_id)
 
         return sorted(url_tags)
-
-    @property
-    def serialized_url(self):
-        """Includes an array of tag IDs for all ID's on this url"""
-        from src.models.utub_url_tags import Utub_Url_Tags
-
-        url_tags: list[Utub_Url_Tags] = self.url_tags
-        return {
-            MODEL_STRS.ID: self.id,
-            MODEL_STRS.URL: self.standalone_url.url_string,
-            MODEL_STRS.TAGS: [tag.tag_item.serialized for tag in url_tags],
-        }
