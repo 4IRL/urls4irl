@@ -46,35 +46,26 @@ def test_update_url_title_utub_creator(
 
     NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
         ).first()
-        current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id
-
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_creator_of.id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
+        current_url_id = url_in_this_utub.id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -85,7 +76,7 @@ def test_update_url_title_utub_creator(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -102,22 +93,18 @@ def test_update_url_title_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
-        new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
-        ).first()
+        new_url_item: Utub_Urls = Utub_Urls.query.get(current_url_id)
         assert new_url_item.url_title == NEW_TITLE
-        assert new_url_item.url_id == current_url_id
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(
-                utub_id=utub_creator_of.id, url_id=current_url_id
-            ).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_url_adder(
@@ -155,31 +142,22 @@ def test_update_url_title_url_adder(
         ).first()
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_member_of.id, user_id=current_user.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.user_id == current_user.id
         ).first()
-        current_title = url_in_this_utub.url_title
         current_url: str = url_in_this_utub.standalone_url.url_string
-        current_url_id = url_in_this_utub.url_id
-
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_member_of.id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
+        current_url_id = url_in_this_utub.id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_member_of.id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_member_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -191,7 +169,7 @@ def test_update_url_title_url_adder(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -208,29 +186,19 @@ def test_update_url_title_url_adder(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
         # Assert entity exists
-        new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
-        assert (
-            len(
-                Utub_Urls.query.filter_by(
-                    utub_id=utub_member_of.id,
-                    url_id=new_url_id,
-                    url_title=NEW_TITLE,
-                ).all()
-            )
-            == 1
-        )
+        utub_url_object: Utub_Urls = Utub_Urls.query.get(current_url_id)
+        assert utub_url_object.url_title == NEW_TITLE
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(
-                utub_id=utub_member_of.id, url_id=new_url_id
-            ).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_member_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_with_same_title_utub_creator(
@@ -262,35 +230,27 @@ def test_update_url_title_with_same_title_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id
-
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_creator_of.id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
+        current_url_id = url_in_this_utub.id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -301,7 +261,7 @@ def test_update_url_title_with_same_title_utub_creator(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -318,22 +278,18 @@ def test_update_url_title_with_same_title_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
-        new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
-        ).first()
+        new_url_item: Utub_Urls = Utub_Urls.query.get(current_url_id)
         assert new_url_item.url_title == current_title
-        assert new_url_item.url_id == current_url_id
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(
-                utub_id=utub_creator_of.id, url_id=current_url_id
-            ).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_with_same_title_url_adder(
@@ -370,31 +326,23 @@ def test_update_url_title_with_same_title_url_adder(
         ).first()
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_member_of.id, user_id=current_user.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.user_id == current_user.id
         ).first()
         current_title = url_in_this_utub.url_title
         current_url = url_in_this_utub.standalone_url.url_string
-        current_url_id = url_in_this_utub.url_id
-
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_member_of.id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
+        current_url_id = url_in_this_utub.id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_member_of.id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_member_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -406,7 +354,7 @@ def test_update_url_title_with_same_title_url_adder(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -423,29 +371,19 @@ def test_update_url_title_with_same_title_url_adder(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
         # Assert entity exists
-        new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.URL_ID])
-        assert (
-            len(
-                Utub_Urls.query.filter_by(
-                    utub_id=utub_member_of.id,
-                    url_id=new_url_id,
-                    url_title=current_title,
-                ).all()
-            )
-            == 1
-        )
+        utub_url_object: Utub_Urls = Utub_Urls.query.get(current_url_id)
+        assert utub_url_object.url_title == current_title
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(
-                utub_id=utub_member_of.id, url_id=new_url_id
-            ).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_member_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_as_utub_member_not_adder_or_creator(
@@ -481,27 +419,18 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.user_id != current_user.id
         ).first()
-        current_title = url_in_this_utub.url_title
         current_url = url_in_this_utub.standalone_url.url_string
-        current_url_id = url_in_this_utub.url_id
-
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_member_of.id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
+        current_url_id = url_in_this_utub.id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_member_of.id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_member_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -513,7 +442,7 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_member_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -528,28 +457,25 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
 
     with app.app_context():
         # Assert database is consistent after not modifying URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
         # Assert entity does not exist
         assert (
-            len(
-                Utub_Urls.query.filter_by(
-                    utub_id=utub_member_of.id,
-                    url_id=current_url_id,
-                    url_title=NEW_TITLE,
-                ).all()
-            )
-            == 0
+            Utub_Urls.query.filter(
+                Utub_Urls.id == current_url_id,
+                Utub_Urls.utub_id == utub_member_of.id,
+                Utub_Urls.url_title == NEW_TITLE,
+            ).first()
+            is None
         )
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(
-                utub_id=utub_member_of.id, url_id=current_url_id
-            ).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_member_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_with_empty_title_as_utub_creator(
@@ -581,34 +507,26 @@ def test_update_url_title_with_empty_title_as_utub_creator(
 
     NEW_TITLE = ""
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id
-
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_creator_of.id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
+        current_url_id = url_in_this_utub.id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -619,7 +537,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -638,22 +556,18 @@ def test_update_url_title_with_empty_title_as_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
-        new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
-        ).first()
-        assert new_url_item.url_title == current_title
-        assert new_url_item.url_id == current_url_id
+        utub_url_object: Utub_Urls = Utub_Urls.query.get(current_url_id)
+        assert utub_url_object.url_title == current_title
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(
-                utub_id=utub_creator_of.id, url_id=current_url_id
-            ).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_as_member_of_other_utub(
@@ -682,8 +596,8 @@ def test_update_url_title_as_member_of_other_utub(
 
     NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
 
         # Get the URL of another UTub
@@ -692,26 +606,18 @@ def test_update_url_title_as_member_of_other_utub(
             Utub_Urls.user_id != current_user.id,
         ).first()
         utub_id = url_not_in_this_utub.utub_id
-        current_url_id = url_not_in_this_utub.url_id
+        current_url_id = url_not_in_this_utub.id
         current_title = url_not_in_this_utub.url_title
 
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
-
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -722,7 +628,7 @@ def test_update_url_title_as_member_of_other_utub(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -737,20 +643,18 @@ def test_update_url_title_as_member_of_other_utub(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
-        new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_id, url_id=current_url_id
-        ).first()
-        assert new_url_item.url_title == current_title
-        assert new_url_item.url_id == current_url_id
+        utub_url_object: Utub_Urls = Utub_Urls.query.get(current_url_id)
+        assert utub_url_object.url_title == current_title
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(utub_id=utub_id, url_id=current_url_id).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_with_missing_title_field_utub_creator(
@@ -780,34 +684,26 @@ def test_update_url_title_with_missing_title_field_utub_creator(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id
-
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_creator_of.id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
+        current_url_id = url_in_this_utub.id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -817,7 +713,7 @@ def test_update_url_title_with_missing_title_field_utub_creator(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -836,22 +732,18 @@ def test_update_url_title_with_missing_title_field_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
-        new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
-        ).first()
-        assert new_url_item.url_title == current_title
-        assert new_url_item.url_id == current_url_id
+        utub_url_object: Utub_Urls = Utub_Urls.query.get(current_url_id)
+        assert utub_url_object.url_title == current_title
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(
-                utub_id=utub_creator_of.id, url_id=current_url_id
-            ).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_with_missing_csrf_field_utub_creator(
@@ -873,34 +765,26 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
     client, _, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id
-
-        num_of_url_utub_associations = len(
-            Utub_Urls.query.filter_by(
-                utub_id=utub_creator_of.id,
-                url_id=current_url_id,
-                url_title=current_title,
-            ).all()
-        )
-        assert num_of_url_utub_associations == 1
+        current_url_id = url_in_this_utub.id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
 
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {URL_FORM.URL_TITLE: current_title + "AAA"}
 
@@ -908,7 +792,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -918,22 +802,18 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
-        new_url_item: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id, url_id=current_url_id
-        ).first()
-        assert new_url_item.url_title == current_title
-        assert new_url_item.url_id == current_url_id
+        utub_url_object: Utub_Urls = Utub_Urls.query.get(current_url_id)
+        assert utub_url_object.url_title == current_title
 
         # Check associated tags
-        assert len(
-            Utub_Url_Tags.query.filter_by(
-                utub_id=utub_creator_of.id, url_id=current_url_id
-            ).all()
-        ) == len(associated_tags)
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == current_url_id,
+        ).count() == len(associated_tags)
 
 
 def test_update_url_title_of_nonexistent_url(
@@ -955,19 +835,17 @@ def test_update_url_title_of_nonexistent_url(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
+    NONEXISTENT_URL_ID = 999
     NEW_TITLE = "This is my newest facebook.com."
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         utub_id = utub_creator_of.id
 
-        # Get the URL of another UTub
-        NONEXISTENT_URL_ID = 999
-
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -978,7 +856,7 @@ def test_update_url_title_of_nonexistent_url(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_id,
-            url_id=NONEXISTENT_URL_ID,
+            utub_url_id=NONEXISTENT_URL_ID,
         ),
         data=edit_url_string_title_form,
     )
@@ -990,9 +868,9 @@ def test_update_url_title_of_nonexistent_url(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
 
 def test_update_url_title_in_nonexistent_utub(
@@ -1021,9 +899,9 @@ def test_update_url_title_in_nonexistent_utub(
     NONEXISTENT_URL_ID = 999
 
     with app.app_context():
-        num_of_url_tag_assocs = len(Utub_Url_Tags.query.all())
-        num_of_urls = len(Urls.query.all())
-        num_of_url_utubs_assocs = len(Utub_Urls.query.all())
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -1034,7 +912,7 @@ def test_update_url_title_in_nonexistent_utub(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=NONEXISTENT_UTUB_ID,
-            url_id=NONEXISTENT_URL_ID,
+            utub_url_id=NONEXISTENT_URL_ID,
         ),
         data=edit_url_string_title_form,
     )
@@ -1046,9 +924,9 @@ def test_update_url_title_in_nonexistent_utub(
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
-        assert num_of_urls == len(Urls.query.all())
-        assert num_of_url_tag_assocs == len(Utub_Url_Tags.query.all())
-        assert num_of_url_utubs_assocs == len(Utub_Urls.query.all())
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
 
 
 def test_update_url_title_updates_utub_last_updated(
@@ -1067,16 +945,16 @@ def test_update_url_title_updates_utub_last_updated(
 
     NEW_TITLE = "This is my newest facebook.com!"
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         initial_last_updated = utub_creator_of.last_updated
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
         ).first()
-        current_url_id = url_in_this_utub.url_id
+        current_url_id = url_in_this_utub.id
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -1087,7 +965,7 @@ def test_update_url_title_updates_utub_last_updated(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )
@@ -1114,17 +992,17 @@ def test_update_url_title_with_same_title_does_not_update_utub_last_updated(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         initial_last_updated = utub_creator_of.last_updated
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_creator_of.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        current_url_id = url_in_this_utub.url_id
+        current_url_id = url_in_this_utub.id
 
     edit_url_string_title_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -1135,7 +1013,7 @@ def test_update_url_title_with_same_title_does_not_update_utub_last_updated(
         url_for(
             ROUTES.URLS.EDIT_URL_TITLE,
             utub_id=utub_creator_of.id,
-            url_id=current_url_id,
+            utub_url_id=current_url_id,
         ),
         data=edit_url_string_title_form,
     )

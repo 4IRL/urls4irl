@@ -61,8 +61,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
         associated_tags = url_utub_association.associated_tags
 
         # Ensure this tag does not exist in the database
@@ -74,7 +73,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         init_num_of_tags_on_urls = len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_utub_association.id,
             ).all()
         )
 
@@ -91,7 +90,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -110,19 +109,17 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
 
     with app.app_context():
         # Ensure a tag exists
-        assert len(Tags.query.all()) == 1
         assert (
             len(Tags.query.filter(Tags.tag_string == tag_to_add).all())
             == init_num_of_tag_in_db + 1
         )
-        assert Tags.query.filter(Tags.tag_string == tag_to_add).first() is not None
 
         # Ensure a Tag-URL association exists in this UTub
         assert (
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                    Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
                 ).all()
             )
             == init_num_of_tags_on_urls + 1
@@ -162,40 +159,19 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure no tags
-        assert len(Tags.query.all()) == 0
-
         # Find UTub this current user is member of
         utub_user_is_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
 
-        # Ensure user is in this UTub
-        assert current_user in [user.to_user for user in utub_user_is_member_of.members]
-
         # Get URL that is in this UTub, not added by this user
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
         associated_tags = url_utub_association.associated_tags
-
-        # Ensure this tag does not exist in the database
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 0
-
-        # Ensure no Tag-URL association exists in this UTub
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
-                ).all()
-            )
-            == 0
-        )
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = len(Utub_Url_Tags.query.all())
@@ -210,7 +186,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_member_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -229,8 +205,6 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
 
     with app.app_context():
         # Ensure a tag exists
-        assert len(Tags.query.all()) == 1
-
         assert Tags.query.filter(Tags.tag_string == tag_to_add).first() is not None
 
         # Ensure a Tag-URL association exists in this UTub
@@ -238,7 +212,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                    Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
                 ).all()
             )
             == 1
@@ -281,9 +255,6 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure tags already in database
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
         # Find UTub this current user is creator of
         utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
@@ -295,25 +266,12 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
         associated_tags = url_utub_association.associated_tags
 
         # Ensure this tag exists in the database
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
         tag_that_exists = Tags.query.filter(Tags.tag_string == tag_to_add).first()
         tag_id_that_exists = tag_that_exists.id
-
-        # Ensure no Tag-URL association exists in this UTub
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
-                ).all()
-            )
-            == 0
-        )
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = len(Utub_Url_Tags.query.all())
@@ -328,7 +286,7 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -349,15 +307,12 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
     )
 
     with app.app_context():
-        # Ensure a tag exists
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
         # Ensure a Tag-URL association exists in this UTub
         assert (
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                    Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
                     Utub_Url_Tags.tag_id == tag_that_exists.id,
                 ).all()
             )
@@ -401,41 +356,22 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure tags already in database
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
         # Find UTub this current user is creator of
         utub_user_is_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
 
-        # Ensure user is in this UTub
-        assert current_user in [user.to_user for user in utub_user_is_member_of.members]
-
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
         associated_tags = url_utub_association.associated_tags
 
         # Ensure this tag exists in the database
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
         tag_that_exists = Tags.query.filter(Tags.tag_string == tag_to_add).first()
         tag_id_that_exists = tag_that_exists.id
-
-        # Ensure no Tag-URL association exists in this UTub
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
-                ).all()
-            )
-            == 0
-        )
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = len(Utub_Url_Tags.query.all())
@@ -450,7 +386,7 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_member_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -471,15 +407,12 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
     )
 
     with app.app_context():
-        # Ensure a tag exists
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
         # Ensure a Tag-URL association exists in this UTub
         assert (
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                    Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
                     Utub_Url_Tags.tag_id == tag_that_exists.id,
                 ).all()
             )
@@ -528,47 +461,24 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = url_utub_association.serialized(
             current_user.id, creator_of_utub_id
-        )
-
-        # Ensure tag is already on this URL and pull that tag object
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
-                ).all()
-            )
-            > 0
         )
 
         num_of_tag_associations_with_url_in_utub = len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
             ).all()
         )
 
-        tag_on_url_in_utub_association = Utub_Url_Tags.query.filter(
+        tag_on_url_in_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
         ).first()
 
-        tag_on_url_in_utub = tag_on_url_in_utub_association.tag_item
-
-        # Ensure tag exists
-        assert (
-            len(
-                Tags.query.filter(
-                    Tags.tag_string == tag_on_url_in_utub.tag_string
-                ).all()
-            )
-            == 1
-        )
-
+        tag_on_url_in_utub: Tags = tag_on_url_in_utub_association.tag_item
         tag_to_add = tag_on_url_in_utub.tag_string
 
         # Get initial num of Url-Tag associations
@@ -584,7 +494,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -605,14 +515,14 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
         assert num_of_tag_associations_with_url_in_utub == len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
             ).all()
         )
 
-        url_utub_tag_association = Utub_Urls.query.filter(
+        url_utub_tag_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
-            Utub_Urls.url_id == url_id_to_add_tag_to,
+            Utub_Urls.id == url_id_to_add_tag_to,
         ).first()
 
         assert (
@@ -647,9 +557,6 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
     client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
-        # Ensure tags already in database
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
         # Find UTub this current user is creator of
         utub_user_is_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
@@ -657,55 +564,29 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         utub_id_user_is_member_of = utub_user_is_member_of.id
         creator_of_utub_id = utub_user_is_member_of.utub_creator
 
-        # Ensure user is in this UTub
-        assert current_user in [user.to_user for user in utub_user_is_member_of.members]
-
         # Get URL that is in this UTub, not added by this user
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = url_utub_association.serialized(
             current_user.id, creator_of_utub_id
-        )
-
-        # Ensure tag is already on this URL and pull that tag object
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
-                ).all()
-            )
-            > 0
         )
 
         num_of_tag_associations_with_url_in_utub = len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
             ).all()
         )
 
-        tag_on_url_in_utub_association = Utub_Url_Tags.query.filter(
+        tag_on_url_in_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
         ).first()
 
-        tag_on_url_in_utub = tag_on_url_in_utub_association.tag_item
-
-        # Ensure tag exists
-        assert (
-            len(
-                Tags.query.filter(
-                    Tags.tag_string == tag_on_url_in_utub.tag_string
-                ).all()
-            )
-            == 1
-        )
-
+        tag_on_url_in_utub: Tags = tag_on_url_in_utub_association.tag_item
         tag_to_add = tag_on_url_in_utub.tag_string
 
         # Get initial num of Url-Tag associations
@@ -721,7 +602,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_member_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -742,14 +623,14 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         assert num_of_tag_associations_with_url_in_utub == len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
             ).all()
         )
 
         # URLs exist in UTub only once
-        url_utub_tag_association = Utub_Urls.query.filter(
+        url_utub_tag_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.id == url_id_to_add_tag_to,
             Utub_Urls.utub_id == utub_id_user_is_member_of,
-            Utub_Urls.url_id == url_id_to_add_tag_to,
         ).first()
 
         assert (
@@ -774,40 +655,22 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
     THEN ensure that the server responds with a 404 HTTP status code, and that no new Tag-URL-UTub association exists,
         that a new Tag does not exist, that a new URL does not exist, and that the association between URL and Tag is serialized properly
     """
+    NONEXISTENT_URL_IN_UTUB_ID = 999
+
     client, csrf_token, _, app = login_first_user_without_register
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure tags already in database
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
-        # Ensure tag exists
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
-
         # Find UTub this current user is creator of
         utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
-        # Assert no URLs exist
-        assert len(Urls.query.all()) == 0
-        url_id_to_add_tag_to = 1
-
-        # Ensure no URL-Tag associations exist for this UTub
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_creator_of
-                ).all()
-            )
-            == 0
-        )
-
         num_of_tag_associations_with_url_in_utub = len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == NONEXISTENT_URL_IN_UTUB_ID,
             ).all()
         )
 
@@ -824,7 +687,7 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
         data=add_tag_form,
     )
@@ -852,7 +715,7 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
         assert num_of_tag_associations_with_url_in_utub == len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == NONEXISTENT_URL_IN_UTUB_ID,
             ).all()
         )
 
@@ -873,43 +736,22 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
     THEN ensure that the server responds with a 404 HTTP status code, and that no new Tag-URL-UTub association exists,
         that a new Tag does not exist, that a new URL does not exist, and that the association between URL and Tag is serialized properly
     """
+    NONEXISTENT_URL_IN_UTUB_ID = 999
+
     client, csrf_token, _, app = login_first_user_without_register
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure tags already in database
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
-        # Ensure tag exists
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
-
         # Find UTub this current user is member of
         utub_user_is_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
         utub_id_user_is_member_of = utub_user_is_member_of.id
 
-        # Ensure user is in this UTub
-        assert current_user in [user.to_user for user in utub_user_is_member_of.members]
-
-        # Assert no URLs exist
-        assert len(Urls.query.all()) == 0
-        url_id_to_add_tag_to = 1
-
-        # Ensure no URL-Tag associations exist for this UTub
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_member_of
-                ).all()
-            )
-            == 0
-        )
-
         num_of_tag_associations_with_url_in_utub = len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == NONEXISTENT_URL_IN_UTUB_ID,
             ).all()
         )
 
@@ -926,7 +768,7 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_member_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
         data=add_tag_form,
     )
@@ -954,7 +796,7 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
         assert num_of_tag_associations_with_url_in_utub == len(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == NONEXISTENT_URL_IN_UTUB_ID,
             ).all()
         )
 
@@ -976,33 +818,13 @@ def test_add_tag_to_url_in_nonexistent_utub(
         that a new Tag does not exist, that a new URL does not exist, that a new UTub does not exist,
         and that the association between URL and Tag is serialized properly
     """
+    NONEXISTENT_UTUB_ID = 999
     client, csrf_token, _, app = login_first_user_without_register
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure tags already in database
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
-        # Ensure tag exists
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
-
-        # Find UTub that doesn't exist
-        utub_id_that_does_not_exist = 0
-        all_utub_ids = [int(utub.id) for utub in Utubs.query.all()]
-
-        while utub_id_that_does_not_exist in all_utub_ids:
-            utub_id_that_does_not_exist += 1
-
-        # Ensure UTub does not exist
-        assert Utubs.query.get(utub_id_that_does_not_exist) is None
         num_of_utubs_in_db = len(Utubs.query.all())
-
-        # Assert URLs exist
-        assert len(Urls.query.all()) > 0
         num_of_urls_in_db = len(Urls.query.all())
-
-        url_to_add_to: Urls = Urls.query.first()
-        url_id_to_add_tag_to = url_to_add_to.id
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = len(Utub_Url_Tags.query.all())
@@ -1016,8 +838,8 @@ def test_add_tag_to_url_in_nonexistent_utub(
     add_tag_response = client.post(
         url_for(
             ROUTES.TAGS.ADD_TAG,
-            utub_id=utub_id_that_does_not_exist,
-            url_id=url_id_to_add_tag_to,
+            utub_id=NONEXISTENT_UTUB_ID,
+            utub_url_id=NONEXISTENT_UTUB_ID,
         ),
         data=add_tag_form,
     )
@@ -1032,7 +854,7 @@ def test_add_tag_to_url_in_nonexistent_utub(
         assert len(Urls.query.all()) == num_of_urls_in_db
 
         # Ensure UTub does not exist
-        assert Utubs.query.get(utub_id_that_does_not_exist) is None
+        assert Utubs.query.get(NONEXISTENT_UTUB_ID) is None
         assert len(Utubs.query.all()) == num_of_utubs_in_db
 
         # Ensure correct count of Url-Tag associations
@@ -1066,12 +888,6 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure tags already in database
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
-        # Ensure tag exists
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
-
         # Find UTub that current user is not member of
         utub_user_association_not_member_of = Utub_Members.query.filter(
             Utub_Members.user_id != current_user.id
@@ -1080,35 +896,17 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         utub_id_that_user_not_member_of = utub_user_not_member_of.id
         creator_of_utub_id: int = utub_user_not_member_of.utub_creator
 
-        # Ensure user not in UTub
-        assert current_user not in [
-            user.to_user for user in utub_user_not_member_of.members
-        ]
-
         num_of_users_in_utub = len(utub_user_not_member_of.members)
 
-        # Assert URLs exist
-        assert len(Urls.query.all()) > 0
         num_of_urls_in_db = len(Urls.query.all())
 
         # Find URL in this UTub
         url_association_with_this_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_that_user_not_member_of
         ).first()
-        url_id_for_url_in_utub: int = url_association_with_this_utub.standalone_url.id
+        url_id_for_url_in_utub: int = url_association_with_this_utub.id
         url_serialization_for_check = url_association_with_this_utub.serialized(
             current_user.id, creator_of_utub_id
-        )
-
-        # Ensure no tags on this URL already
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_that_user_not_member_of,
-                    Utub_Url_Tags.url_id == url_id_for_url_in_utub,
-                ).all()
-            )
-            == 0
         )
 
         # Get initial num of Url-Tag associations
@@ -1124,7 +922,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_that_user_not_member_of,
-            url_id=url_id_for_url_in_utub,
+            utub_url_id=url_id_for_url_in_utub,
         ),
         data=add_tag_form,
     )
@@ -1156,7 +954,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_that_user_not_member_of,
-                    Utub_Url_Tags.url_id == url_id_for_url_in_utub,
+                    Utub_Url_Tags.utub_url_id == url_id_for_url_in_utub,
                 ).all()
             )
             == 0
@@ -1165,8 +963,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         # Ensure URL in UTub serialization is still same
         assert (
             Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_that_user_not_member_of,
-                Utub_Urls.url_id == url_id_for_url_in_utub,
+                Utub_Urls.id == url_id_for_url_in_utub,
             )
             .first()
             .serialized(current_user.id, creator_of_utub_id)
@@ -1196,54 +993,25 @@ def test_add_tag_to_url_not_in_utub(
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure tags already in database
-        assert len(Tags.query.all()) == len(all_tag_strings)
-
-        # Ensure tag exists
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 1
-
         # Find UTub that current user is creator of
         utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
         utub_id_user_is_creator_of = utub_user_is_creator_of.id
 
-        # Assert URLs exist
-        assert len(Urls.query.all()) > 0
         num_of_urls_in_db = len(Urls.query.all())
 
         # Find URL that isn't in this UTub
         url_association_not_with_this_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id != utub_id_user_is_creator_of
         ).first()
-        url_id_for_url_not_in_utub: int = (
+        url_id_for_url_not_in_utub = url_association_not_with_this_utub.id
+        url_object_id_for_url_not_in_utub: int = (
             url_association_not_with_this_utub.standalone_url.id
         )
 
         # Find number of URLs in this UTub
         num_of_urls_in_utub = len(utub_user_is_creator_of.utub_urls)
-
-        # Ensure no association between this URL and this UTub
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_user_is_creator_of,
-                    Utub_Urls.url_id == url_id_for_url_not_in_utub,
-                ).all()
-            )
-            == 0
-        )
-
-        # Ensure no association with Tags, this URL, and this UTub
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_for_url_not_in_utub,
-                ).all()
-            )
-            == 0
-        )
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = len(Utub_Url_Tags.query.all())
@@ -1258,7 +1026,7 @@ def test_add_tag_to_url_not_in_utub(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_for_url_not_in_utub,
+            utub_url_id=url_id_for_url_not_in_utub,
         ),
         data=add_tag_form,
     )
@@ -1281,7 +1049,7 @@ def test_add_tag_to_url_not_in_utub(
             len(
                 Utub_Urls.query.filter(
                     Utub_Urls.utub_id == utub_id_user_is_creator_of,
-                    Utub_Urls.url_id == url_id_for_url_not_in_utub,
+                    Utub_Urls.url_id == url_object_id_for_url_not_in_utub,
                 ).all()
             )
             == 0
@@ -1292,7 +1060,7 @@ def test_add_tag_to_url_not_in_utub(
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_for_url_not_in_utub,
+                    Utub_Url_Tags.utub_url_id == url_id_for_url_not_in_utub,
                 ).all()
             )
             == 0
@@ -1324,6 +1092,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
         STD_JSON.ERROR_CODE : 2
     }
     """
+    MAX_NUM_OF_TAGS = 5
     client, csrf_token, _, app = login_first_user_without_register
     tag_to_add = all_tag_strings[0]
 
@@ -1344,36 +1113,25 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_id_in_this_utub = url_in_this_utub.url_id
+        url_id_in_this_utub = url_in_this_utub.id
 
         # Add five tags to this URL
-        for idx in range(5):
+        for idx in range(MAX_NUM_OF_TAGS):
             previously_added_tag_to_add = all_tags[idx]
             new_url_tag_association = Utub_Url_Tags()
             new_url_tag_association.tag_id = previously_added_tag_to_add.id
-            new_url_tag_association.url_id = url_id_in_this_utub
+            new_url_tag_association.utub_url_id = url_id_in_this_utub
             new_url_tag_association.utub_id = utub_id_user_is_creator_of
 
             db.session.add(new_url_tag_association)
 
         db.session.commit()
 
-        # Ensure 5 tags on this URL
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_in_this_utub,
-                ).all()
-            )
-            == 5
-        )
-
         # Get a new tag to add
-        new_tag_to_add: Tags = Tags.query.filter(Tags.tag_string == tag_to_add).first()
+        new_tag_to_add: Tags = all_tags[-1]
         new_tag_id_to_add = new_tag_to_add.id
 
-        # Get the URL-UTub serialization for checking later
+        # Get the initial URL-UTub serialization
         url_serialization_for_check = (
             Utub_Urls.query.filter(
                 Utub_Urls.utub_id == utub_id_user_is_creator_of,
@@ -1381,18 +1139,6 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
             )
             .first()
             .serialized(current_user.id, creator_of_utub_id)
-        )
-
-        # Ensure this tag isn't on the URL in this UTub already
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_in_this_utub,
-                    Utub_Url_Tags.tag_id == new_tag_id_to_add,
-                ).all()
-            )
-            == 0
         )
 
         # Get initial num of Url-Tag associations
@@ -1408,7 +1154,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_in_this_utub,
+            utub_url_id=url_id_in_this_utub,
         ),
         data=add_tag_form,
     )
@@ -1429,7 +1175,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_in_this_utub,
+                    Utub_Url_Tags.utub_url_id == url_id_in_this_utub,
                     Utub_Url_Tags.tag_id == new_tag_id_to_add,
                 ).all()
             )
@@ -1441,16 +1187,15 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_in_this_utub,
+                    Utub_Url_Tags.utub_url_id == url_id_in_this_utub,
                 ).all()
             )
-            == 5
+            == MAX_NUM_OF_TAGS
         )
 
         assert (
             Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_user_is_creator_of,
-                Utub_Urls.url_id == url_id_in_this_utub,
+                Utub_Urls.id == url_id_in_this_utub,
             )
             .first()
             .serialized(current_user.id, creator_of_utub_id)
@@ -1483,6 +1228,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
         STD_JSON.ERROR_CODE : 2
     }
     """
+    MAX_NUM_OF_TAGS = 5
     client, csrf_token, _, app = login_second_user_without_register
     tag_to_add = all_tag_strings[0]
 
@@ -1503,33 +1249,22 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id != current_user.id,
         ).first()
-        url_id_in_this_utub = url_in_this_utub.url_id
+        url_id_in_this_utub = url_in_this_utub.id
 
         # Add five tags to this URL
-        for idx in range(5):
+        for idx in range(MAX_NUM_OF_TAGS):
             previously_added_tag_to_add = all_tags[idx]
             new_url_tag_association = Utub_Url_Tags()
             new_url_tag_association.tag_id = previously_added_tag_to_add.id
-            new_url_tag_association.url_id = url_id_in_this_utub
+            new_url_tag_association.utub_url_id = url_id_in_this_utub
             new_url_tag_association.utub_id = utub_id_user_is_member_of
 
             db.session.add(new_url_tag_association)
 
         db.session.commit()
 
-        # Ensure 5 tags on this URL
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_in_this_utub,
-                ).all()
-            )
-            == 5
-        )
-
         # Get a new tag to add
-        new_tag_to_add = Tags.query.filter(Tags.tag_string == tag_to_add).first()
+        new_tag_to_add: Tags = all_tags[-1]
         new_tag_id_to_add = new_tag_to_add.id
 
         # Get the URL-UTub serialization for checking later
@@ -1540,18 +1275,6 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
             )
             .first()
             .serialized(current_user.id, creator_of_utub_id)
-        )
-
-        # Ensure this tag isn't on the URL in this UTub already
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_in_this_utub,
-                    Utub_Url_Tags.tag_id == new_tag_id_to_add,
-                ).all()
-            )
-            == 0
         )
 
         # Get initial num of Url-Tag associations
@@ -1567,7 +1290,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_member_of,
-            url_id=url_id_in_this_utub,
+            utub_url_id=url_id_in_this_utub,
         ),
         data=add_tag_form,
     )
@@ -1583,12 +1306,12 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
         # Ensure no new tags exist, accounting for additional
         assert len(Tags.query.all()) == num_of_tags_in_db
 
-        # Ensure this tag isn't on the URL in this UTub already
+        # Ensure this tag isn't on the URL in this UTub
         assert (
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_in_this_utub,
+                    Utub_Url_Tags.utub_url_id == url_id_in_this_utub,
                     Utub_Url_Tags.tag_id == new_tag_id_to_add,
                 ).all()
             )
@@ -1600,16 +1323,15 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                    Utub_Url_Tags.url_id == url_id_in_this_utub,
+                    Utub_Url_Tags.utub_url_id == url_id_in_this_utub,
                 ).all()
             )
-            == 5
+            == MAX_NUM_OF_TAGS
         )
 
         assert (
             Utub_Urls.query.filter(
-                Utub_Urls.utub_id == utub_id_user_is_member_of,
-                Utub_Urls.url_id == url_id_in_this_utub,
+                Utub_Urls.id == url_id_in_this_utub,
             )
             .first()
             .serialized(current_user.id, creator_of_utub_id)
@@ -1649,9 +1371,6 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure no tags
-        assert len(Tags.query.all()) == 0
-
         # Find UTub this current user is creator of
         utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
@@ -1664,24 +1383,9 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = url_utub_association.serialized(
             current_user.id, creator_of_utub_id
-        )
-
-        # Ensure this tag does not exist in the database
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 0
-
-        # Ensure no Tag-URL association exists in this UTub
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
-                ).all()
-            )
-            == 0
         )
 
         # Get initial num of Url-Tag associations
@@ -1696,7 +1400,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -1720,10 +1424,9 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         assert len(Tags.query.all()) == 0
 
         # Ensure same serialization for URL
-        assert url_serialization_for_check == Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub_id_user_is_creator_of,
-            Utub_Urls.user_id == current_user.id,
-        ).first().serialized(current_user.id, creator_of_utub_id)
+        assert url_serialization_for_check == Utub_Urls.query.get(
+            url_id_to_add_tag_to
+        ).serialized(current_user.id, creator_of_utub_id)
 
         # Ensure this tag does not exist in the database
         assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 0
@@ -1733,7 +1436,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                    Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
                 ).all()
             )
             == 0
@@ -1772,9 +1475,6 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
     tag_to_add = all_tag_strings[0]
 
     with app.app_context():
-        # Ensure no tags
-        assert len(Tags.query.all()) == 0
-
         # Find UTub this current user is creator of
         utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
@@ -1787,24 +1487,9 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
         url_serialization_for_check = url_utub_association.serialized(
             current_user.id, creator_of_utub_id
-        )
-
-        # Ensure this tag does not exist in the database
-        assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 0
-
-        # Ensure no Tag-URL association exists in this UTub
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
-                ).all()
-            )
-            == 0
         )
 
         # Get initial num of Url-Tag associations
@@ -1819,7 +1504,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -1833,10 +1518,9 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         assert len(Tags.query.all()) == 0
 
         # Ensure same serialization for URL
-        assert url_serialization_for_check == Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub_id_user_is_creator_of,
-            Utub_Urls.user_id == current_user.id,
-        ).first().serialized(current_user.id, creator_of_utub_id)
+        assert url_serialization_for_check == Utub_Urls.query.get(
+            url_id_to_add_tag_to
+        ).serialized(current_user.id, creator_of_utub_id)
 
         # Ensure this tag does not exist in the database
         assert len(Tags.query.filter(Tags.tag_string == tag_to_add).all()) == 0
@@ -1846,7 +1530,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
             len(
                 Utub_Url_Tags.query.filter(
                     Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                    Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+                    Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
                 ).all()
             )
             == 0
@@ -1886,8 +1570,7 @@ def test_add_fresh_tag_to_url_updates_utub_last_updated(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
 
     # Add tag to this URL
     add_tag_form = {
@@ -1899,7 +1582,7 @@ def test_add_fresh_tag_to_url_updates_utub_last_updated(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -1943,8 +1626,7 @@ def test_add_existing_tag_to_url_updates_utub_last_updated(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
 
     # Add tag to this URL
     add_tag_form = {
@@ -1956,7 +1638,7 @@ def test_add_existing_tag_to_url_updates_utub_last_updated(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )
@@ -1995,25 +1677,14 @@ def test_add_duplicate_tag_to_url_does_not_update_utub_last_updated(
             Utub_Urls.utub_id == utub_id_user_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_add_tag_to = url_utub_association.id
 
-        tag_on_url_in_utub_association = Utub_Url_Tags.query.filter(
+        tag_on_url_in_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
         ).first()
 
-        tag_on_url_in_utub = tag_on_url_in_utub_association.tag_item
-
-        # Ensure tag exists
-        assert (
-            len(
-                Tags.query.filter(
-                    Tags.tag_string == tag_on_url_in_utub.tag_string
-                ).all()
-            )
-            == 1
-        )
+        tag_on_url_in_utub: Tags = tag_on_url_in_utub_association.tag_item
 
         tag_to_add = tag_on_url_in_utub.tag_string
 
@@ -2027,7 +1698,7 @@ def test_add_duplicate_tag_to_url_does_not_update_utub_last_updated(
         url_for(
             ROUTES.TAGS.ADD_TAG,
             utub_id=utub_id_user_is_creator_of,
-            url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_add_tag_to,
         ),
         data=add_tag_form,
     )

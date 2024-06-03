@@ -216,12 +216,6 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
             Utubs.utub_creator == current_user.id
         ).first()
 
-        # Ensure creator is currently logged in
-        assert current_utub.utub_creator == current_user.id
-
-        # Ensure multiple users in this Utubs
-        assert len(current_utub.members) > 1
-
         # Grab another user from the members
         second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
             Utub_Members.utub_id == current_utub.id,
@@ -229,41 +223,12 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
         ).first()
         second_user_in_utub: Users = second_user_in_utub_association.to_user
 
-        # Ensure this user has URLs associated with them in UTub
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub.id,
-                    Utub_Urls.user_id == second_user_in_utub.id,
-                ).all()
-            )
-            > 0
-        )
-        example_url_of_user = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == current_utub.id,
-            Utub_Urls.user_id == second_user_in_utub.id,
-        ).first()
-
-        # Ensure this user has URLs that have tags associated with them
-        assert (
-            len(
-                Utub_Url_Tags.query.filter(
-                    Utub_Url_Tags.utub_id == current_utub.id,
-                    Utub_Url_Tags.url_id == example_url_of_user.url_id,
-                ).all()
-            )
-            > 0
-        )
-
         # Get initial counts of URLs, Tags, and relative associations in the database
         current_num_of_urls_in_utub = len(current_utub.utub_urls)
         current_num_of_url_tags_in_utub = len(current_utub.utub_url_tags)
 
         all_urls_utub_associations = len(Utub_Urls.query.all())
         all_urls_tag_associations = len(Utub_Url_Tags.query.all())
-
-        # Ensure second user in this UTub
-        assert second_user_in_utub in [user.to_user for user in current_utub.members]
 
         # Count all user-utub associations in db
         initial_num_user_utubs = len(Utub_Members.query.all())

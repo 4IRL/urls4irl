@@ -4,6 +4,7 @@ import pytest
 
 from src.models.urls import Urls
 from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
@@ -46,41 +47,17 @@ def test_add_valid_url_as_utub_member(
         current_utub_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
-        assert current_user in [user.to_user for user in current_utub_member_of.members]
-
-        # Ensure no URLs in this UTub
-        assert len(current_utub_member_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub_member_of.id
-                ).all()
-            )
-            == 0
-        )
 
         # Grab a URL to add
         url_to_add: Urls = Urls.query.first()
-        number_of_urls_in_db = len(Urls.query.all())
+        number_of_urls_in_db = Urls.query.count()
         url_id_to_add = url_to_add.id
         url_string_to_add = url_to_add.url_string
         url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
 
-        # Ensure Url-Utubs-User association does not exist
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_to_add_to,
-                    Utub_Urls.url_id == url_id_to_add,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
-            == 0
-        )
-
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -109,7 +86,7 @@ def test_add_valid_url_as_utub_member(
 
     with app.app_context():
         # Ensure no new URL created
-        assert len(Urls.query.all()) == number_of_urls_in_db
+        assert Urls.query.count() == number_of_urls_in_db
 
         # Get the UTub again
         current_utub_member_of: Utubs = Utubs.query.get(utub_id_to_add_to)
@@ -130,7 +107,7 @@ def test_add_valid_url_as_utub_member(
         # Ensure title updated appropriately
         assert url_in_utub[0].url_title == url_title_to_add
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
+        assert Utub_Urls.query.count() == initial_utub_urls + 1
 
 
 def test_add_valid_url_as_utub_creator(
@@ -164,39 +141,16 @@ def test_add_valid_url_as_utub_creator(
             Utubs.utub_creator == current_user.id
         ).first()
 
-        # Ensure no URLs in this UTub
-        assert len(current_utub_member_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub_member_of.id
-                ).all()
-            )
-            == 0
-        )
-
         # Grab a URL to add
         url_to_add: Urls = Urls.query.first()
-        number_of_urls_in_db = len(Urls.query.all())
+        number_of_urls_in_db = Urls.query.count()
         url_id_to_add = url_to_add.id
         url_string_to_add = url_to_add.url_string
         url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
 
-        # Ensure Url-Utubs-User association does not exist
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_to_add_to,
-                    Utub_Urls.url_id == url_id_to_add,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
-            == 0
-        )
-
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -224,7 +178,7 @@ def test_add_valid_url_as_utub_creator(
 
     with app.app_context():
         # Ensure no new URL created
-        assert len(Urls.query.all()) == number_of_urls_in_db
+        assert Urls.query.count() == number_of_urls_in_db
 
         # Get the UTub again
         current_utub_member_of = Utubs.query.get(utub_id_to_add_to)
@@ -245,7 +199,7 @@ def test_add_valid_url_as_utub_creator(
         # Ensure title updated
         assert url_in_utub[0].url_title == url_title_to_add
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
+        assert Utub_Urls.query.count() == initial_utub_urls + 1
 
 
 def test_add_invalid_url_as_utub_member(
@@ -273,37 +227,14 @@ def test_add_invalid_url_as_utub_member(
         current_utub_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
-        assert current_user in [user.to_user for user in current_utub_member_of.members]
-
-        # Ensure no URLs in this UTub
-        assert len(current_utub_member_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub_member_of.id
-                ).all()
-            )
-            == 0
-        )
 
         # Get current number of URLs
-        number_of_urls_in_db = len(Urls.query.all())
+        number_of_urls_in_db = Urls.query.count()
 
         utub_id_to_add_to = current_utub_member_of.id
 
-        # Ensure Url-Utubs-User association does not exist
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_to_add_to,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
-            == 0
-        )
-
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Try to add the URL to the UTub
     add_url_form = {
@@ -328,7 +259,7 @@ def test_add_invalid_url_as_utub_member(
 
     with app.app_context():
         # Ensure no new URL created
-        assert len(Urls.query.all()) == number_of_urls_in_db
+        assert Urls.query.count() == number_of_urls_in_db
 
         # Get the UTub again
         current_utub_member_of = Utubs.query.get(utub_id_to_add_to)
@@ -338,16 +269,14 @@ def test_add_invalid_url_as_utub_member(
 
         # Ensure Url-Utubs-User association does not exist
         assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_to_add_to,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == utub_id_to_add_to,
+                Utub_Urls.user_id == current_user.id,
+            ).count()
             == 0
         )
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_invalid_url_as_utub_creator(
@@ -376,35 +305,13 @@ def test_add_invalid_url_as_utub_creator(
             Utubs.utub_creator == current_user.id
         ).first()
 
-        # Ensure no URLs in this UTub
-        assert len(current_utub_member_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub_member_of.id
-                ).all()
-            )
-            == 0
-        )
-
         # Get current number of URLs
-        number_of_urls_in_db = len(Urls.query.all())
+        number_of_urls_in_db = Urls.query.count()
 
         utub_id_to_add_to = current_utub_member_of.id
 
-        # Ensure Url-Utubs-User association does not exist
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_to_add_to,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
-            == 0
-        )
-
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Try to add the URL to the UTub
     add_url_form = {
@@ -429,7 +336,7 @@ def test_add_invalid_url_as_utub_creator(
 
     with app.app_context():
         # Ensure no new URL created
-        assert len(Urls.query.all()) == number_of_urls_in_db
+        assert Urls.query.count() == number_of_urls_in_db
 
         # Get the UTub again
         current_utub_member_of = Utubs.query.get(utub_id_to_add_to)
@@ -439,16 +346,14 @@ def test_add_invalid_url_as_utub_creator(
 
         # Ensure Url-Utubs-User association does not exist
         assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_id_to_add_to,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == utub_id_to_add_to,
+                Utub_Urls.user_id == current_user.id,
+            ).count()
             == 0
         )
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_valid_url_to_nonexistent_utub(
@@ -461,24 +366,17 @@ def test_add_valid_url_to_nonexistent_utub(
         - By POST to "/utubs/<int:utub_id>/urls" where "url_id" is an integer representing UTub ID
     THEN ensure that the server responds with a 404 HTTP status code
     """
+    NONEXISTENT_UTUB_ID = 999
     client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
-        # Find a UTub this current user is a member of (and not creator of)
-        utub_id_to_add_to = 0
-        utub_to_add_to: Utubs = Utubs.query.get(utub_id_to_add_to)
-        while utub_to_add_to is not None and current_user in [
-            user.to_user for user in utub_to_add_to.members
-        ]:
-            utub_id_to_add_to += 1
-
         # Get a valid URL
         valid_url_to_add: Urls = Urls.query.first()
         valid_url_string = valid_url_to_add.url_string
         valid_url_title = f"This is {valid_url_string}"
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -488,13 +386,13 @@ def test_add_valid_url_to_nonexistent_utub(
     }
 
     add_url_response = client.post(
-        url_for(ROUTES.URLS.ADD_URL, utub_id=utub_id_to_add_to), data=add_url_form
+        url_for(ROUTES.URLS.ADD_URL, utub_id=NONEXISTENT_UTUB_ID), data=add_url_form
     )
 
     assert add_url_response.status_code == 404
 
     with app.app_context():
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_valid_url_to_utub_not_a_member_of(
@@ -519,31 +417,19 @@ def test_add_valid_url_to_utub_not_a_member_of(
 
     with app.app_context():
         # Find a UTub this current user is not a member of
-        utub_not_member_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator != current_user.id
-        ).first()
-        assert current_user not in [user.to_user for user in utub_not_member_of.members]
+        utub_member_of_utub_user_not_member_of: Utub_Members = (
+            Utub_Members.query.filter(Utub_Members.user_id != current_user.id).first()
+        )
 
-        id_of_utub_not_member_of = utub_not_member_of.id
+        id_of_utub_not_member_of = utub_member_of_utub_user_not_member_of.utub_id
 
         # Get a valid URL
         valid_url_to_add: Urls = Urls.query.first()
         valid_url_string = valid_url_to_add.url_string
         valid_url_title = f"This is {valid_url_string}"
 
-        # Ensure URL not in UTub currently
-        assert len(utub_not_member_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == id_of_utub_not_member_of
-                ).all()
-            )
-            == 0
-        )
-
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -570,15 +456,13 @@ def test_add_valid_url_to_utub_not_a_member_of(
         # Ensure URL not in UTub currently
         assert len(utub_not_member_of.utub_urls) == 0
         assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == id_of_utub_not_member_of
-                ).all()
-            )
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == id_of_utub_not_member_of
+            ).count()
             == 0
         )
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_fresh_url_to_utub(
@@ -615,32 +499,13 @@ def test_add_fresh_url_to_utub(
         id_of_utub_that_is_creator_of = utub_creator_of.id
 
         # Ensure URL not in UTub currently
-        assert len(utub_creator_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of
-                ).all()
-            )
-            == 0
-        )
-
-        # Ensure no URLs
-        assert len(Urls.query.all()) == 0
-
-        # Ensure no Url-Utubs-User association exists
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                    Utub_Urls.user_id == current_user.id,
-                ).all()
-            )
-            == 0
-        )
+        initial_num_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of
+        ).count()
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
+        initial_urls = Urls.query.count()
 
     url_title_to_add = f"This is {valid_url_to_add}"
 
@@ -670,28 +535,28 @@ def test_add_fresh_url_to_utub(
 
     with app.app_context():
         # Ensure new URL exists
-        assert len(Urls.query.all()) == 1
-        assert len(Urls.query.filter(Urls.url_string == valid_url_to_add).all()) == 1
+        assert Urls.query.count() == initial_urls + 1
+        assert Urls.query.filter(Urls.url_string == valid_url_to_add).count() == 1
         assert Urls.query.get(url_id_added).url_string == valid_url_to_add
 
-        # Get the UTub again
-        current_utub_creator_of: Utubs = Utubs.query.get(id_of_utub_that_is_creator_of)
-
         # Ensure URL now in UTub
-        assert len(current_utub_creator_of.utub_urls) == 1
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+                Utub_Urls.url_id == url_id_added,
+            ).count()
+            == initial_num_of_urls_in_utub + 1
+        )
 
         urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
             Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
             Utub_Urls.user_id == current_user.id,
         ).all()
 
-        # Ensure Url-Utubs-User association exists
-        assert len(urls_in_utub) == 1
-
         # Ensure title updated
         assert urls_in_utub[0].url_title == url_title_to_add
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls + 1
+        assert Utub_Urls.query.count() == initial_utub_urls + 1
 
 
 def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
@@ -732,15 +597,13 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         url_string_to_add = url_that_user_added.url_string
         url_title_to_add = url_association_that_user_added.url_title
 
-        number_of_urls_in_utub = len(
-            Utub_Urls.query.filter(
-                Utub_Urls.utub_id == id_of_utub_that_is_creator_of
-            ).all()
-        )
-        number_of_urls_in_db = len(Urls.query.all())
+        number_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of
+        ).count()
+        number_of_urls_in_db = Urls.query.count()
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -768,20 +631,18 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
 
         # Ensure Url-UTub-UAser association still contains only the one associatisn
         assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                    Utub_Urls.user_id == current_user.id,
-                    Utub_Urls.url_id == url_id,
-                ).all()
-            )
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+                Utub_Urls.user_id == current_user.id,
+                Utub_Urls.url_id == url_id,
+            ).count()
             == 1
         )
 
         # Ensure same number of URLs as before
-        assert len(Urls.query.all()) == number_of_urls_in_db
+        assert Urls.query.count() == number_of_urls_in_db
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
@@ -824,15 +685,14 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
         url_string_to_add = url_that_user_did_not_add.url_string
         url_title_to_add = url_association_that_user_did_not_add.url_title
 
-        number_of_urls_in_utub = len(
-            Utub_Urls.query.filter(
-                Utub_Urls.utub_id == id_of_utub_that_is_creator_of
-            ).all()
-        )
-        number_of_urls_in_db = len(Urls.query.all())
+        number_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of
+        ).count()
+
+        number_of_urls_in_db = Urls.query.count()
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -860,19 +720,17 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
 
         # Ensure Url-UTub-UAser association still contains only the one associatisn
         assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
-                    Utub_Urls.url_id == url_id,
-                ).all()
-            )
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == id_of_utub_that_is_creator_of,
+                Utub_Urls.url_id == url_id,
+            ).count()
             == 1
         )
 
         # Ensure same number of URLs as before
-        assert len(Urls.query.all()) == number_of_urls_in_db
+        assert Urls.query.count() == number_of_urls_in_db
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
@@ -902,9 +760,6 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         ).first()
         id_of_utub_that_is_member_of = utub_member_of.id
 
-        # Ensure user is member of this UTub
-        assert current_user in [user.to_user for user in utub_member_of.members]
-
         # Find the first URL in this UTub that this user added
         url_association_that_user_did_not_add: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == id_of_utub_that_is_member_of,
@@ -918,15 +773,14 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         url_string_to_add = url_that_user_did_not_add.url_string
         url_title_to_add = url_association_that_user_did_not_add.url_title
 
-        number_of_urls_in_utub = len(
-            Utub_Urls.query.filter(
-                Utub_Urls.utub_id == id_of_utub_that_is_member_of
-            ).all()
-        )
-        number_of_urls_in_db = len(Urls.query.all())
+        number_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_member_of
+        ).count()
+
+        number_of_urls_in_db = Urls.query.count()
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -954,19 +808,17 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
 
         # Ensure Url-UTub-UAser association still contains only the one associatisn
         assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == id_of_utub_that_is_member_of,
-                    Utub_Urls.url_id == url_id,
-                ).all()
-            )
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == id_of_utub_that_is_member_of,
+                Utub_Urls.url_id == url_id,
+            ).count()
             == 1
         )
 
         # Ensure same number of URLs as before
-        assert len(Urls.query.all()) == number_of_urls_in_db
+        assert Urls.query.count() == number_of_urls_in_db
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_url_missing_url(
@@ -997,18 +849,11 @@ def test_add_url_missing_url(
         current_utub_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
-        assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
-        assert len(current_utub_member_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub_member_of.id
-                ).all()
-            )
-            == 0
-        )
+        num_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == current_utub_member_of.id
+        ).count()
 
         # Grab a URL to add
         url_to_add: Urls = Urls.query.first()
@@ -1017,7 +862,7 @@ def test_add_url_missing_url(
         utub_id_to_add_to = current_utub_member_of.id
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -1043,11 +888,11 @@ def test_add_url_missing_url(
 
     with app.app_context():
         assert (
-            len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all())
-            == 0
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).count()
+            == num_of_urls_in_utub
         )
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_url_missing_url_title(
@@ -1077,18 +922,11 @@ def test_add_url_missing_url_title(
         current_utub_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
-        assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
-        assert len(current_utub_member_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub_member_of.id
-                ).all()
-            )
-            == 0
-        )
+        initial_num_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == current_utub_member_of.id
+        ).count()
 
         # Grab a URL to add
         url_to_add: Urls = Urls.query.first()
@@ -1096,7 +934,7 @@ def test_add_url_missing_url_title(
         utub_id_to_add_to = current_utub_member_of.id
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -1122,11 +960,11 @@ def test_add_url_missing_url_title(
 
     with app.app_context():
         assert (
-            len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all())
-            == 0
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).count()
+            == initial_num_of_urls_in_utub
         )
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_url_missing_csrf_token(
@@ -1157,18 +995,11 @@ def test_add_url_missing_csrf_token(
         current_utub_member_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator != current_user.id
         ).first()
-        assert current_user in [user.to_user for user in current_utub_member_of.members]
 
         # Ensure no URLs in this UTub
-        assert len(current_utub_member_of.utub_urls) == 0
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub_member_of.id
-                ).all()
-            )
-            == 0
-        )
+        initial_num_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == current_utub_member_of.id
+        ).count()
 
         # Grab a URL to add
         url_to_add: Urls = Urls.query.first()
@@ -1176,7 +1007,7 @@ def test_add_url_missing_csrf_token(
         utub_id_to_add_to = current_utub_member_of.id
 
         # Get initial number of UTub-URL associations
-        initial_utub_urls = len(Utub_Urls.query.all())
+        initial_utub_urls = Utub_Urls.query.count()
 
     # Add the URL to the UTub
     add_url_form = {
@@ -1194,11 +1025,11 @@ def test_add_url_missing_csrf_token(
 
     with app.app_context():
         assert (
-            len(Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).all())
-            == 0
+            Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_add_to).count()
+            == initial_num_of_urls_in_utub
         )
 
-        assert len(Utub_Urls.query.all()) == initial_utub_urls
+        assert Utub_Urls.query.count() == initial_utub_urls
 
 
 def test_add_valid_url_updates_utub_last_updated(

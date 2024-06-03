@@ -265,5 +265,6 @@ for utub in all_empty_utubs:
                 for url in all_urls_no_tags
             ],
             MODEL_STRS.TAGS: [tag for tag in all_tags],
+            MODEL_STRS.IS_CREATOR: True,
         }
     )

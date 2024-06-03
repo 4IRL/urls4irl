@@ -5,8 +5,8 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer
 
 from src import db
 from src.models.tags import Tags
-from src.models.urls import Urls
 from src.models.utubs import Utubs
+from src.models.utub_urls import Utub_Urls
 from src.utils.datetime_utils import utc_now
 
 
@@ -24,14 +24,16 @@ class Utub_Url_Tags(db.Model):
     utub_id: int = Column(
         Integer, ForeignKey("Utubs.id"), nullable=False, name="utubID"
     )
-    url_id: int = Column(Integer, ForeignKey("Urls.id"), nullable=True, name="urlID")
+    utub_url_id: int = Column(
+        Integer, ForeignKey("UtubUrls.id"), nullable=True, name="utubUrlID"
+    )
     tag_id: int = Column(Integer, ForeignKey("Tags.id"), nullable=False, name="tagID")
     added_at: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="addedAt"
     )
 
     tag_item: Tags = db.relationship("Tags")
-    tagged_url: Urls = db.relationship("Urls", back_populates="url_tags")
+    tagged_url: Utub_Urls = db.relationship("Utub_Urls", back_populates="url_tags")
     utub_containing_this_tag: Utubs = db.relationship(
         "Utubs", back_populates="utub_url_tags"
     )

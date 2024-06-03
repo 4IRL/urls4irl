@@ -20,31 +20,31 @@ class Utub_Urls(db.Model):
 
     __tablename__ = "UtubUrls"
 
-    utub_id: int = Column(
-        Integer, ForeignKey("Utubs.id"), primary_key=True, name="utubID"
-    )
-    url_id: int = Column(Integer, ForeignKey("Urls.id"), primary_key=True, name="urlID")
-    user_id: int = Column(
-        Integer, ForeignKey("Users.id"), primary_key=True, name="userID"
-    )
+    id: int = Column(Integer, primary_key=True)
+    utub_id: int = Column(Integer, ForeignKey("Utubs.id"), name="utubID")
+    url_id: int = Column(Integer, ForeignKey("Urls.id"), name="urlID")
+    user_id: int = Column(Integer, ForeignKey("Users.id"), name="userID")
     url_title: str = Column(String(140), default="", name="urlTitle")
     added_at: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="addedAt"
     )
+    last_accessed: datetime = Column(
+        DateTime(timezone=True), nullable=False, default=utc_now, name="lastAccessed"
+    )
 
     standalone_url: Urls = db.relationship("Urls")
     utub = db.relationship("Utubs", back_populates="utub_urls")
+    url_tags = db.relationship("Utub_Url_Tags", back_populates="tagged_url")
 
     def serialized(
         self, current_user_id: int, utub_creator: int
     ) -> dict[str, int | str | list[int] | bool]:
         """Returns serialized object."""
         url_item: Urls = self.standalone_url
-        url_data = url_item.serialized_url
 
         return {
-            MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
-            MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
+            MODEL_STRS.URL_ID: self.id,
+            MODEL_STRS.URL_STRING: url_item.url_string,
             MODEL_STRS.URL_TAGS: self.associated_tags,
             MODEL_STRS.URL_TITLE: self.url_title,
             MODEL_STRS.CAN_DELETE: current_user_id == self.user_id
@@ -53,22 +53,16 @@ class Utub_Urls(db.Model):
 
     @property
     def serialized_on_string_edit(self) -> dict[str, int | str | list[int]]:
-        url_item: Urls = self.standalone_url
-        url_data = url_item.serialized_url
-
         return {
-            MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
-            MODEL_STRS.URL_STRING: url_data[MODEL_STRS.URL],
+            MODEL_STRS.URL_ID: self.id,
+            MODEL_STRS.URL_STRING: self.standalone_url.url_string,
             MODEL_STRS.URL_TAGS: self.associated_tags,
         }
 
     @property
     def serialized_on_title_edit(self) -> dict[str, int | str | list[int]]:
-        url_item: Urls = self.standalone_url
-        url_data = url_item.serialized_url
-
         return {
-            MODEL_STRS.URL_ID: url_data[MODEL_STRS.ID],
+            MODEL_STRS.URL_ID: self.id,
             MODEL_STRS.URL_TITLE: self.url_title,
             MODEL_STRS.URL_TAGS: self.associated_tags,
         }
@@ -76,10 +70,21 @@ class Utub_Urls(db.Model):
     @property
     def associated_tags(self) -> list[int]:
         # Only return tags for the requested UTub
-        url_item: Urls = self.standalone_url
         url_tags = []
-        for tag_in_utub in url_item.url_tags:
+        for tag_in_utub in self.url_tags:
             if int(tag_in_utub.utub_id) == int(self.utub_id):
                 url_tags.append(tag_in_utub.tag_id)
 
         return sorted(url_tags)
+
+    @property
+    def serialized_url(self):
+        """Includes an array of tag IDs for all ID's on this url"""
+        from src.models.utub_url_tags import Utub_Url_Tags
+
+        url_tags: list[Utub_Url_Tags] = self.url_tags
+        return {
+            MODEL_STRS.ID: self.id,
+            MODEL_STRS.URL: self.standalone_url.url_string,
+            MODEL_STRS.TAGS: [tag.tag_item.serialized for tag in url_tags],
+        }

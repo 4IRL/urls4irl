@@ -47,16 +47,15 @@ def add_first_user_to_second_utub_and_add_tags_remove_first_utub(
         urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in second_utub.utub_urls]
 
         for url_in_utub in urls_in_utub:
-            url_id = url_in_utub.url_id
-            url_in_this_utub = url_in_utub.standalone_url
+            url_id = url_in_utub.id
 
             for tag in all_tags:
                 new_tag_url_utub_association = Utub_Url_Tags()
                 new_tag_url_utub_association.utub_containing_this_tag = second_utub
-                new_tag_url_utub_association.tagged_url = url_in_this_utub
+                new_tag_url_utub_association.tagged_url = url_in_utub
                 new_tag_url_utub_association.tag_item = tag
                 new_tag_url_utub_association.utub_id = second_utub.id
-                new_tag_url_utub_association.url_id = url_id
+                new_tag_url_utub_association.utub_url_id = url_id
                 new_tag_url_utub_association.tag_id = tag.id
                 second_utub.utub_url_tags.append(new_tag_url_utub_association)
 
@@ -81,14 +80,15 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
     """
     with app.app_context():
         current_utubs = Utubs.query.all()
-        current_users = Users.query.all()
 
         # Add all missing users to this UTub
         for utub in current_utubs:
             # Get URL in current UTUb
-            current_utub_url = Utub_Urls.query.filter_by(utub_id=utub.id).first()
+            current_utub_url: Utub_Urls = Utub_Urls.query.filter(
+                Utub_Urls.utub_id == utub.id
+            ).first()
             current_utub_id = current_utub_url.url_id
-            new_url = Urls.query.filter_by(id=((current_utub_id % 3) + 1)).first()
+            new_url: Urls = Urls.query.filter_by(id=((current_utub_id % 3) + 1)).first()
 
             new_utub_url_user_association = Utub_Urls()
 
@@ -98,8 +98,6 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
             new_utub_url_user_association.utub = utub
             new_utub_url_user_association.utub_id = utub.id
 
-            user_added = [user for user in current_users if user.id == new_url.id].pop()
-            new_utub_url_user_association.user_that_added_url = user_added
             new_utub_url_user_association.user_id = new_url.id
 
             new_utub_url_user_association.url_title = f"This is {new_url.url_string}"
@@ -128,11 +126,9 @@ def add_one_url_and_all_users_to_each_utub_with_all_tags(
         current_utubs = Utubs.query.all()
         current_tags = Tags.query.all()
 
-        # Add all missing users to this UTub
+        # Add all missing tags to this UTub
         for utub in current_utubs:
-            current_utub_url = [
-                utub_url.standalone_url for utub_url in utub.utub_urls
-            ].pop()
+            current_utub_url = [utub_url for utub_url in utub.utub_urls].pop()
 
             for tag in current_tags:
                 new_tag_url_utub_association = Utub_Url_Tags()
@@ -140,7 +136,7 @@ def add_one_url_and_all_users_to_each_utub_with_all_tags(
                 new_tag_url_utub_association.tagged_url = current_utub_url
                 new_tag_url_utub_association.tag_item = tag
                 new_tag_url_utub_association.utub_id = utub.id
-                new_tag_url_utub_association.url_id = current_utub_url.id
+                new_tag_url_utub_association.utub_url_id = current_utub_url.id
                 new_tag_url_utub_association.tag_id = tag.id
                 utub.utub_url_tags.append(new_tag_url_utub_association)
 

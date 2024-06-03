@@ -156,32 +156,20 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
 
     with app.app_context():
         # Get this user's UTub they created
-        utub_user_created = Utubs.query.filter(
+        utub_user_created: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
-
-        # Ensure other users in this UTub
-        assert len(utub_user_created.members) > 1
 
         initial_num_of_users_in_utub = len(utub_user_created.members)
 
         # Grab a sample user
-        other_user_in_utub_with_urls: Utub_Members = Utub_Members.query.filter(
-            Utub_Members.user_id != current_user.id
-        ).first()
+        other_user_in_utub_with_urls: Utub_Members = [
+            member
+            for member in utub_user_created.members
+            if member.user_id != current_user.id
+        ][-1]
         other_user_id_in_utub_with_urls = other_user_in_utub_with_urls.user_id
         other_user_username = other_user_in_utub_with_urls.to_user.username
-
-        # Ensure this other user has URLs in the UTub
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == utub_user_created.id,
-                    Utub_Urls.user_id == other_user_id_in_utub_with_urls,
-                ).all()
-            )
-            > 0
-        )
 
         # Get number of URLs and tags in this UTub initially
         initial_num_of_urls_in_utub = len(

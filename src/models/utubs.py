@@ -82,6 +82,7 @@ class Utubs(db.Model):
                 for url_in_utub in self.utub_urls
             ],
             MODEL_STRS.TAGS: utub_tags,
+            MODEL_STRS.IS_CREATOR: self.utub_creator == current_user_id,
         }
 
     def set_last_updated(self):

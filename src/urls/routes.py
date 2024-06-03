@@ -1,4 +1,4 @@
-from flask import Blueprint, current_app, jsonify, request
+from flask import abort, Blueprint, current_app, jsonify, request
 from flask_login import current_user
 
 from src import db
@@ -25,40 +25,48 @@ urls = Blueprint("urls", __name__)
 STD_JSON = STD_JSON_RESPONSE
 
 
-@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>", methods=["DELETE"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["DELETE"])
 @email_validation_required
-def remove_url(utub_id: int, url_id: int):
+def remove_url(utub_id: int, utub_url_id: int):
     """
     User wants to remove a URL from a UTub. Only available to owner of that utub,
     or whoever added the URL into that Utubs.
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be removed
-        url_id (int): The ID of the URL to be removed
+        utub_url_id (int): The ID of the UtubUrl to be removed
     """
     utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_creator_id = utub.utub_creator
 
     # Search through all urls in the UTub for the one that matches the prescribed URL ID and get the user who added it - should be only one
-    url_in_utub: Utub_Urls = Utub_Urls.query.filter(
-        Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
-    ).first_or_404()
+    url_in_utub: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
+    if url_in_utub.utub_id != utub_id:
+        abort(404)
 
-    if current_user.id == utub_creator_id or current_user.id == url_in_utub.user_id:
+    user_in_utub = current_user.id in [member.user_id for member in utub.members]
+    user_url_adder_or_utub_creator = (
+        current_user.id == utub_creator_id or current_user.id == url_in_utub.user_id
+    )
+
+    if user_in_utub and user_url_adder_or_utub_creator:
         # Store serialized data from URL association with UTub and associated tags
         associated_tags = url_in_utub.associated_tags
+        url_string_to_remove = url_in_utub.standalone_url.url_string
+
+        # Remove all tags associated with this URL in this UTub
+        Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_url_id == utub_url_id
+        ).delete()
 
         # Can only remove URLs as the creator of UTub, or as the adder of that URL
         db.session.delete(url_in_utub)
         utub.set_last_updated()
 
-        # Remove all tags associated with this URL in this UTub as well
-        Utub_Url_Tags.query.filter_by(utub_id=utub_id, url_id=url_id).delete()
-
         db.session.commit()
 
         remaining_utub_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id
+            Utub_Url_Tags.utub_id == utub_id,
         ).all()
         remaining_utub_tag_ids = set([tag.tag_id for tag in remaining_utub_tags])
         tags = [
@@ -76,8 +84,8 @@ def remove_url(utub_id: int, url_id: int):
                     STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
                     URL_SUCCESS.UTUB_ID: utub.id,
                     URL_SUCCESS.URL: {
-                        URL_SUCCESS.URL_STRING: url_in_utub.standalone_url.url_string,
-                        URL_SUCCESS.URL_ID: url_id,
+                        URL_SUCCESS.URL_STRING: url_string_to_remove,
+                        URL_SUCCESS.URL_ID: utub_url_id,
                         URL_SUCCESS.URL_TITLE: url_in_utub.url_title,
                     },
                     MODELS.TAGS: tags,
@@ -209,7 +217,7 @@ def add_url(utub_id: int):
                     URL_SUCCESS.ADDED_BY: current_user.id,
                     URL_SUCCESS.URL: {
                         URL_SUCCESS.URL_STRING: normalized_url,
-                        URL_SUCCESS.URL_ID: url_id,
+                        URL_SUCCESS.URL_ID: url_utub_user_add.id,
                         URL_SUCCESS.URL_TITLE: utub_new_url_form.url_title.data,
                     },
                 }
@@ -244,9 +252,9 @@ def add_url(utub_id: int):
     )
 
 
-@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>", methods=["PATCH"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["PATCH"])
 @email_validation_required
-def edit_url(utub_id: int, url_id: int):
+def edit_url(utub_id: int, utub_url_id: int):
     """
     Allows a user to edit a URL without editing the title.
     Only the user who added the URL, or who created the UTub containing
@@ -254,7 +262,7 @@ def edit_url(utub_id: int, url_id: int):
 
     Args:
         utub_id (int): The UTub ID containing the relevant URL
-        url_id (int): The URL ID to be modified
+        utub_url_id (int): The URL ID to be modified
     """
 
     utub: Utubs = Utubs.query.get_or_404(utub_id)
@@ -262,11 +270,16 @@ def edit_url(utub_id: int, url_id: int):
 
     # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
-    url_in_utub: Utub_Urls = Utub_Urls.query.filter(
-        Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
-    ).first_or_404()
+    url_in_utub: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+    if url_in_utub.utub_id != utub_id:
+        abort(404)
 
-    if current_user.id != utub_creator_id and current_user.id != url_in_utub.user_id:
+    user_in_utub = current_user.id in [member.user_id for member in utub.members]
+    user_added_url_or_is_utub_creator = (
+        current_user.id == utub_creator_id or current_user.id == url_in_utub.user_id
+    )
+
+    if not user_in_utub or not user_added_url_or_is_utub_creator:
         # Can only modify URLs you added, or if you are the creator of this UTub
         return (
             jsonify(
@@ -362,14 +375,6 @@ def edit_url(utub_id: int, url_id: int):
         url_in_utub.url_id = url_in_database.id
         url_in_utub.standalone_url = url_in_database
 
-        # Find tags associated with URL
-        url_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_id, url_id=url_id
-        ).all()
-
-        for url_tag in url_tags:
-            url_tag.url_id = url_in_database.id
-
         new_serialized_url = url_in_utub.serialized_on_string_edit
 
         utub.set_last_updated()
@@ -415,9 +420,9 @@ def edit_url(utub_id: int, url_id: int):
     )
 
 
-@urls.route("/utubs/<int:utub_id>/urls/<int:url_id>/title", methods=["PATCH"])
+@urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/title", methods=["PATCH"])
 @email_validation_required
-def edit_url_title(utub_id: int, url_id: int):
+def edit_url_title(utub_id: int, utub_url_id: int):
     """
     Allows a user to edit a URL title without editing the url.
     Only the user who added the URL, or who created the UTub containing
@@ -425,18 +430,23 @@ def edit_url_title(utub_id: int, url_id: int):
 
     Args:
         utub_id (int): The UTub ID containing the relevant URL title
-        url_id (int): The URL ID to have the title be modified
+        utub_url_id (int): The URL ID to have the title be modified
     """
     utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_creator_id = utub.utub_creator
 
     # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
-    url_in_utub: Utub_Urls = Utub_Urls.query.filter(
-        Utub_Urls.url_id == url_id, Utub_Urls.utub_id == utub_id
-    ).first_or_404()
+    url_in_utub: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
+    if url_in_utub.utub_id != utub_id:
+        abort(404)
 
-    if current_user.id != utub_creator_id and current_user.id != url_in_utub.user_id:
+    user_in_utub = current_user.id in [member.user_id for member in utub.members]
+    user_added_url_or_is_utub_creator = (
+        current_user.id == utub_creator_id or current_user.id == url_in_utub.user_id
+    )
+
+    if not user_in_utub or not user_added_url_or_is_utub_creator:
         # Can only modify titles for URLs you added, or if you are the creator of this UTub
         return (
             jsonify(
