@@ -14,7 +14,7 @@ from src.models.tags import Tags
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.models.urls import Urls
 from src.utils.strings import model_strs
@@ -357,6 +357,7 @@ def add_single_user_to_utub_without_logging_in(app: Flask, register_multiple_use
         )
         creator_to_utub = Utub_Members()
         creator_to_utub.to_user = creator
+        creator_to_utub.member_role = Member_Role.CREATOR
         new_utub.members.append(creator_to_utub)
 
         # Grab and add second user
@@ -388,6 +389,7 @@ def add_multiple_users_to_utub_without_logging_in(app: Flask, register_multiple_
         )
         creator_to_utub = Utub_Members()
         creator_to_utub.to_user = creator
+        creator_to_utub.member_role = Member_Role.CREATOR
         new_utub.members.append(creator_to_utub)
 
         # Other users that aren't creators have ID's of 2 and 3 from fixture
@@ -425,6 +427,7 @@ def every_user_makes_a_unique_utub(app: Flask, register_multiple_users):
             )
 
             creator_to_utub = Utub_Members()
+            creator_to_utub.member_role = Member_Role.CREATOR
             creator_to_utub.to_user = other_user
             new_utub.members.append(creator_to_utub)
             db.session.commit()
@@ -772,13 +775,11 @@ def add_all_urls_and_users_to_each_utub_with_all_tags(
         for utub in all_utubs:
             for single_url_in_utub in utub.utub_urls:
                 for tag in all_tags:
-                    tags_on_url_in_utub = len(
-                        Utub_Url_Tags.query.filter(
-                            Utub_Url_Tags.utub_id == utub.id,
-                            Utub_Url_Tags.utub_url_id == single_url_in_utub.id,
-                            Utub_Url_Tags.tag_id == tag.id,
-                        ).all()
-                    )
+                    tags_on_url_in_utub = Utub_Url_Tags.query.filter(
+                        Utub_Url_Tags.utub_id == utub.id,
+                        Utub_Url_Tags.utub_url_id == single_url_in_utub.id,
+                        Utub_Url_Tags.tag_id == tag.id,
+                    ).count()
 
                     if tags_on_url_in_utub == 0:
                         new_url_tag = Utub_Url_Tags()

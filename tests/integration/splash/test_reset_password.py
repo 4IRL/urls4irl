@@ -92,12 +92,10 @@ def test_expired_token_deletes_object_and_redirects(
 
     with app.app_context():
         assert (
-            len(
-                Forgot_Passwords.query.filter(
-                    Forgot_Passwords.reset_token == expired_token
-                ).all()
-            )
-            == 0
+            Forgot_Passwords.query.filter(
+                Forgot_Passwords.reset_token == expired_token
+            ).first()
+            is None
         )
 
 
@@ -113,12 +111,10 @@ def test_invalid_reset_password_token(user_attempts_reset_password):
     # Verify invalid token is invalid
     with app.app_context():
         assert (
-            len(
-                Forgot_Passwords.query.filter(
-                    Forgot_Passwords.reset_token == invalid_token
-                ).all()
-            )
-            == 0
+            Forgot_Passwords.query.filter(
+                Forgot_Passwords.reset_token == invalid_token
+            ).first()
+            is None
         )
 
     reset_response = client.get(
@@ -158,12 +154,10 @@ def test_not_email_validated_user_with_password_reset_token_fails(
 
     with app.app_context():
         assert (
-            len(
-                Forgot_Passwords.query.filter(
-                    Forgot_Passwords.reset_token == reset_token
-                ).all()
-            )
-            == 0
+            Forgot_Passwords.query.filter(
+                Forgot_Passwords.reset_token == reset_token
+            ).first()
+            is None
         )
 
 
@@ -189,11 +183,9 @@ def test_matching_user_reset_token_not_in_database_fails(user_attempts_reset_pas
 
     with app.app_context():
         assert (
-            len(
-                Forgot_Passwords.query.filter(
-                    Forgot_Passwords.reset_token == correct_token
-                ).all()
-            )
+            Forgot_Passwords.query.filter(
+                Forgot_Passwords.reset_token == correct_token
+            ).count()
             == 1
         )
 
@@ -324,12 +316,10 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
             new_user[RESET_PASSWORD.PASSWORD]
         )
         assert (
-            len(
-                Forgot_Passwords.query.filter(
-                    Forgot_Passwords.reset_token == reset_token
-                ).all()
-            )
-            == 0
+            Forgot_Passwords.query.filter(
+                Forgot_Passwords.reset_token == reset_token
+            ).first()
+            is None
         )
 
     # Ensure no one is logged in
