@@ -82,7 +82,6 @@ def test_url_model(app):
 
         assert new_url_object.url_string == find_common_url(new_url["url_string"])
         assert new_url_object.created_by == new_url["creator"]
-        assert len(new_url_object.url_tags) == 0
 
 
 def test_tag_model(app):

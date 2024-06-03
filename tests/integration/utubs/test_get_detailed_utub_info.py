@@ -170,7 +170,7 @@ def test_get_valid_utub_with_members_urls_no_tags(
         url_dict = {
             MODELS.CAN_DELETE: current_user.id == url.user_id
             or current_user.id == utub_user_is_member_of.utub_creator,
-            MODELS.URL_ID: url.url_id,
+            MODELS.UTUB_URL_ID: url.id,
             MODELS.URL_STRING: standalone_url.url_string,
             MODELS.URL_TAGS: [],
             MODELS.URL_TITLE: url.url_title,
@@ -202,6 +202,9 @@ def test_get_valid_utub_with_members_urls_tags(
         utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
+        all_urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_is_creator_of.id
+        ).all()
 
     response = client.get(_build_get_utub_route(utub_user_is_creator_of.id))
     assert response.status_code == 200
@@ -227,14 +230,17 @@ def test_get_valid_utub_with_members_urls_tags(
         }
         assert user_dict in response_json[MODELS.MEMBERS]
 
-    for url in all_urls:
+    for url in all_urls_in_utub:
+        url_string = [
+            url_object for url_object in all_urls if url_object.id == url.url_id
+        ][-1].url_string
         url_dict = {
             MODELS.CAN_DELETE: current_user.id == url.id
             or current_user.id == utub_user_is_creator_of.utub_creator,
-            MODELS.URL_ID: url.id,
-            MODELS.URL_STRING: url.url_string,
+            MODELS.UTUB_URL_ID: url.id,
+            MODELS.URL_STRING: url_string,
             MODELS.URL_TAGS: sorted([tag.id for tag in all_tags]),
-            MODELS.URL_TITLE: f"This is {url.url_string}",
+            MODELS.URL_TITLE: f"This is {url_string}",
         }
         assert url_dict in response_json[MODELS.URLS]
 

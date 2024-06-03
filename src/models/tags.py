@@ -13,7 +13,7 @@ class Tags(db.Model):
     __tablename__ = "Tags"
     id: int = Column(Integer, primary_key=True)
     tag_string: str = Column(
-        String(30), nullable=False, name="tagString"
+        String(30), nullable=False, name="tagString", unique=True
     )  # Note that multiple URLs can have the same tag
     created_by: int = Column(
         Integer, ForeignKey("Users.id"), nullable=False, name="createdBy"

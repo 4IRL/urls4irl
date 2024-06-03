@@ -175,7 +175,7 @@ def test_forgot_password_with_email_not_in_database(app, load_login_page):
     nonregistered_user = valid_user_1
 
     with app.app_context():
-        num_of_forgot_password_objs = len(Forgot_Passwords.query.all())
+        num_of_forgot_password_objs = Forgot_Passwords.query.count()
 
     response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
@@ -192,7 +192,7 @@ def test_forgot_password_with_email_not_in_database(app, load_login_page):
     assert response_json[STD_JSON.MESSAGE] == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
 
     with app.app_context():
-        assert num_of_forgot_password_objs == len(Forgot_Passwords.query.all())
+        assert num_of_forgot_password_objs == Forgot_Passwords.query.count()
 
 
 def test_forgot_password_with_validated_email(
@@ -215,7 +215,7 @@ def test_forgot_password_with_validated_email(
     client, csrf_token = load_login_page
 
     with app.app_context():
-        num_forgot_passwords = len(Forgot_Passwords.query.all())
+        num_forgot_passwords = Forgot_Passwords.query.count()
         users: list[Users] = Users.query.filter(
             Users.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()
@@ -263,7 +263,7 @@ def test_forgot_password_with_validated_email_uppercase(
     client, csrf_token = load_login_page
 
     with app.app_context():
-        num_forgot_passwords = len(Forgot_Passwords.query.all())
+        num_forgot_passwords = Forgot_Passwords.query.count()
         all_users_with_email: list[Users] = Users.query.filter(
             Users.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()
@@ -313,7 +313,7 @@ def test_forgot_password_with_non_validated_email(
     client, csrf_token = load_login_page
 
     with app.app_context():
-        num_forgot_passwords = len(Forgot_Passwords.query.all())
+        num_forgot_passwords = Forgot_Passwords.query.count()
 
     response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
@@ -330,7 +330,7 @@ def test_forgot_password_with_non_validated_email(
     assert response_json[STD_JSON.MESSAGE] == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
 
     with app.app_context():
-        assert len(Forgot_Passwords.query.all()) == num_forgot_passwords
+        assert Forgot_Passwords.query.count() == num_forgot_passwords
 
 
 def test_forgot_password_rate_limits_correctly(
@@ -352,7 +352,7 @@ def test_forgot_password_rate_limits_correctly(
     client, csrf_token = load_login_page
 
     with app.app_context():
-        num_forgot_passwords = len(Forgot_Passwords.query.all())
+        num_forgot_passwords = Forgot_Passwords.query.count()
         all_users_with_email: list[Users] = Users.query.filter(
             Users.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()
@@ -419,7 +419,7 @@ def test_forgot_password_generates_token_correctly(
     client, csrf_token = load_login_page
 
     with app.app_context():
-        num_forgot_passwords = len(Forgot_Passwords.query.all())
+        num_forgot_passwords = Forgot_Passwords.query.count()
         all_users_with_email: list[Users] = Users.query.filter(
             Users.email == new_user[FORGOT_PASSWORD.EMAIL].lower()
         ).all()

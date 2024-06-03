@@ -11,10 +11,10 @@ from src import create_app, db
 from src.config import TestingConfig
 from src.models.email_validations import Email_Validations
 from src.models.tags import Tags
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.models.urls import Urls
 from src.utils.strings import model_strs
@@ -357,6 +357,7 @@ def add_single_user_to_utub_without_logging_in(app: Flask, register_multiple_use
         )
         creator_to_utub = Utub_Members()
         creator_to_utub.to_user = creator
+        creator_to_utub.member_role = Member_Role.CREATOR
         new_utub.members.append(creator_to_utub)
 
         # Grab and add second user
@@ -388,6 +389,7 @@ def add_multiple_users_to_utub_without_logging_in(app: Flask, register_multiple_
         )
         creator_to_utub = Utub_Members()
         creator_to_utub.to_user = creator
+        creator_to_utub.member_role = Member_Role.CREATOR
         new_utub.members.append(creator_to_utub)
 
         # Other users that aren't creators have ID's of 2 and 3 from fixture
@@ -425,6 +427,7 @@ def every_user_makes_a_unique_utub(app: Flask, register_multiple_users):
             )
 
             creator_to_utub = Utub_Members()
+            creator_to_utub.member_role = Member_Role.CREATOR
             creator_to_utub.to_user = other_user
             new_utub.members.append(creator_to_utub)
             db.session.commit()
@@ -514,7 +517,6 @@ def add_one_url_to_each_utub_no_tags(app: Flask, add_urls_to_database):
             new_utub_url_user_association.utub = utub
             new_utub_url_user_association.utub_id = utub.id
 
-            new_utub_url_user_association.user_that_added_url = user
             new_utub_url_user_association.user_id = user.id
 
             new_utub_url_user_association.url_title = f"This is {url.url_string}"
@@ -548,14 +550,14 @@ def add_two_users_and_all_urls_to_each_utub_no_tags(
             current_utub_member_id = current_utub_member.id
             next_member_id = (current_utub_member_id + 1) % 4
             next_member_id = 1 if next_member_id == 0 else next_member_id
-            new_user: Users = Users.query.filter_by(id=next_member_id).first()
+            new_user: Users = Users.query.get(next_member_id)
             new_utub_user_association = Utub_Members()
             new_utub_user_association.to_user = new_user
             utub.members.append(new_utub_user_association)
             db.session.add(new_utub_user_association)
 
             new_utub_url_user_association = Utub_Urls()
-            new_url: Urls = Urls.query.filter_by(id=next_member_id).first()
+            new_url: Urls = Urls.query.get(next_member_id)
 
             new_utub_url_user_association.standalone_url = new_url
             new_utub_url_user_association.url_id = new_url.id
@@ -563,7 +565,6 @@ def add_two_users_and_all_urls_to_each_utub_no_tags(
             new_utub_url_user_association.utub = utub
             new_utub_url_user_association.utub_id = utub.id
 
-            new_utub_url_user_association.user_that_added_url = new_user
             new_utub_url_user_association.user_id = next_member_id
 
             new_utub_url_user_association.url_title = f"This is {new_url.url_string}"
@@ -599,15 +600,14 @@ def add_two_users_and_all_urls_to_each_utub_with_one_tag(
             urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in utub.utub_urls]
 
             for url_in_utub in urls_in_utub:
-                url_id = url_in_utub.url_id
-                url_in_this_utub = url_in_utub.standalone_url
+                url_id = url_in_utub.id
 
-                new_tag_url_utub_association = Url_Tags()
+                new_tag_url_utub_association = Utub_Url_Tags()
                 new_tag_url_utub_association.utub_containing_this_tag = utub
-                new_tag_url_utub_association.tagged_url = url_in_this_utub
+                new_tag_url_utub_association.tagged_url = url_in_utub
                 new_tag_url_utub_association.tag_item = one_tag
                 new_tag_url_utub_association.utub_id = utub.id
-                new_tag_url_utub_association.url_id = url_id
+                new_tag_url_utub_association.utub_url_id = url_id
                 new_tag_url_utub_association.tag_id = one_tag.id
                 utub.utub_url_tags.append(new_tag_url_utub_association)
 
@@ -640,16 +640,15 @@ def add_two_users_and_all_urls_to_each_utub_with_tags(
             urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in utub.utub_urls]
 
             for url_in_utub in urls_in_utub:
-                url_id = url_in_utub.url_id
-                url_in_this_utub = url_in_utub.standalone_url
+                url_id = url_in_utub.id
 
                 for tag in all_tags:
-                    new_tag_url_utub_association = Url_Tags()
+                    new_tag_url_utub_association = Utub_Url_Tags()
                     new_tag_url_utub_association.utub_containing_this_tag = utub
-                    new_tag_url_utub_association.tagged_url = url_in_this_utub
+                    new_tag_url_utub_association.tagged_url = url_in_utub
                     new_tag_url_utub_association.tag_item = tag
                     new_tag_url_utub_association.utub_id = utub.id
-                    new_tag_url_utub_association.url_id = url_id
+                    new_tag_url_utub_association.utub_url_id = url_id
                     new_tag_url_utub_association.tag_id = tag.id
                     utub.utub_url_tags.append(new_tag_url_utub_association)
 
@@ -717,8 +716,7 @@ def add_all_urls_and_users_to_each_utub_no_tags(
                     new_url_in_utub.utub = utub
                     new_url_in_utub.url_title = f"This is {other_url.url_string}"
                     db.session.add(new_url_in_utub)
-
-        db.session.commit()
+                    db.session.commit()
 
 
 @pytest.fixture
@@ -741,13 +739,14 @@ def add_all_urls_and_users_to_each_utub_with_one_tag(
 
         for utub in all_utubs:
             for url in utub.utub_urls:
+                url_id = url.id
                 tag_with_url_id = Tags.query.get(url.url_id)
-                new_url_tag = Url_Tags()
-                new_url_tag.url_id = url.url_id
-                new_url_tag.tagged_url = url.standalone_url
+                new_url_tag = Utub_Url_Tags()
+                new_url_tag.utub_url_id = url_id
+                new_url_tag.tagged_url = url
                 new_url_tag.utub_containing_this_tag = utub
-                new_url_tag.tag_id = url.url_id
-                new_url_tag.tag_with_url_id = tag_with_url_id
+                new_url_tag.tag_id = url_id
+                new_url_tag.tag_item = tag_with_url_id
 
                 db.session.add(new_url_tag)
 
@@ -776,21 +775,19 @@ def add_all_urls_and_users_to_each_utub_with_all_tags(
         for utub in all_utubs:
             for single_url_in_utub in utub.utub_urls:
                 for tag in all_tags:
-                    tags_on_url_in_utub = len(
-                        Url_Tags.query.filter(
-                            Url_Tags.utub_id == utub.id,
-                            Url_Tags.url_id == single_url_in_utub.url_id,
-                            Url_Tags.tag_id == tag.id,
-                        ).all()
-                    )
+                    tags_on_url_in_utub = Utub_Url_Tags.query.filter(
+                        Utub_Url_Tags.utub_id == utub.id,
+                        Utub_Url_Tags.utub_url_id == single_url_in_utub.id,
+                        Utub_Url_Tags.tag_id == tag.id,
+                    ).count()
 
                     if tags_on_url_in_utub == 0:
-                        new_url_tag = Url_Tags()
-                        new_url_tag.url_id = single_url_in_utub.url_id
-                        new_url_tag.tagged_url = single_url_in_utub.standalone_url
+                        new_url_tag = Utub_Url_Tags()
+                        new_url_tag.utub_url_id = single_url_in_utub.id
+                        new_url_tag.tagged_url = single_url_in_utub
                         new_url_tag.utub_containing_this_tag = utub
                         new_url_tag.tag_id = tag.id
-                        new_url_tag.tag_with_url_id = tag
+                        new_url_tag.tag_item = tag
 
                         db.session.add(new_url_tag)
 

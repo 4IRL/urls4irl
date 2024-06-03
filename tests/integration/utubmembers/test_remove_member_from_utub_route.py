@@ -3,10 +3,10 @@ from flask_login import current_user
 import pytest
 
 from src import db
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import GENERAL_FORM
@@ -44,12 +44,6 @@ def test_remove_valid_user_from_utub_as_creator(
         # Get the only UTub, which contains two members
         current_utub: Utubs = Utubs.query.first()
 
-        # Ensure creator is currently logged in
-        assert current_utub.utub_creator == current_user.id
-
-        # Ensure multiple users in this Utubs
-        assert len(current_utub.members) == 2
-
         # Grab the second user from the members
         second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
             Utub_Members.utub_id == current_utub.id,
@@ -57,11 +51,13 @@ def test_remove_valid_user_from_utub_as_creator(
         ).first()
         second_user_in_utub: Users = second_user_in_utub_association.to_user
 
-        # Ensure second user in this UTub
-        assert second_user_in_utub in [user.to_user for user in current_utub.members]
-
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
+
+        # Count all user-utub associations in utub
+        initial_num_users_in_utub = Utub_Members.query.filter(
+            Utub_Members.utub_id == current_utub.id
+        ).count()
 
     # Remove second user
     remove_user_response = client.delete(
@@ -93,7 +89,7 @@ def test_remove_valid_user_from_utub_as_creator(
     # Ensure database is correctly updated
     with app.app_context():
         current_utub = Utubs.query.first()
-        assert len(current_utub.members) == 1
+        assert len(current_utub.members) == initial_num_users_in_utub - 1
 
         # Ensure second user not in this UTub
         assert second_user_in_utub not in [
@@ -101,7 +97,7 @@ def test_remove_valid_user_from_utub_as_creator(
         ]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs - 1
+        assert Utub_Members.query.count() == initial_num_user_utubs - 1
 
 
 def test_remove_self_from_utub_as_member(
@@ -132,19 +128,13 @@ def test_remove_self_from_utub_as_member(
         # Get the only UTub with two members
         current_utub: Utubs = Utubs.query.first()
 
-        # Ensure creator is not currently logged in user
-        assert current_utub.utub_creator != current_user.id
-
-        # Ensure multiple users in this Utubs
-        assert len(current_utub.members) == 2
-
-        # Ensure second user in this UTub
-        assert current_user in [user.to_user for user in current_utub.members]
-
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
+        initial_num_users_in_utub = Utub_Members.query.filter(
+            Utub_Members.utub_id == current_utub.id
+        ).count()
 
-        current_user_id = int(current_user.id)
+        current_user_id = current_user.id
         current_user_username = current_user.username
 
     # Remove self from UTub
@@ -177,13 +167,13 @@ def test_remove_self_from_utub_as_member(
     # Ensure database is correctly updated
     with app.app_context():
         current_utub = Utubs.query.first()
-        assert len(current_utub.members) == 1
+        assert len(current_utub.members) == initial_num_users_in_utub - 1
 
         # Ensure logged in user not in this UTub
         assert current_user not in [user.to_user for user in current_utub.members]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs - 1
+        assert Utub_Members.query.count() == initial_num_user_utubs - 1
 
 
 def test_remove_valid_user_with_urls_from_utub_as_creator(
@@ -216,12 +206,6 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
             Utubs.utub_creator == current_user.id
         ).first()
 
-        # Ensure creator is currently logged in
-        assert current_utub.utub_creator == current_user.id
-
-        # Ensure multiple users in this Utubs
-        assert len(current_utub.members) > 1
-
         # Grab another user from the members
         second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
             Utub_Members.utub_id == current_utub.id,
@@ -229,44 +213,15 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
         ).first()
         second_user_in_utub: Users = second_user_in_utub_association.to_user
 
-        # Ensure this user has URLs associated with them in UTub
-        assert (
-            len(
-                Utub_Urls.query.filter(
-                    Utub_Urls.utub_id == current_utub.id,
-                    Utub_Urls.user_id == second_user_in_utub.id,
-                ).all()
-            )
-            > 0
-        )
-        example_url_of_user = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == current_utub.id,
-            Utub_Urls.user_id == second_user_in_utub.id,
-        ).first()
-
-        # Ensure this user has URLs that have tags associated with them
-        assert (
-            len(
-                Url_Tags.query.filter(
-                    Url_Tags.utub_id == current_utub.id,
-                    Url_Tags.url_id == example_url_of_user.url_id,
-                ).all()
-            )
-            > 0
-        )
-
         # Get initial counts of URLs, Tags, and relative associations in the database
         current_num_of_urls_in_utub = len(current_utub.utub_urls)
         current_num_of_url_tags_in_utub = len(current_utub.utub_url_tags)
 
-        all_urls_utub_associations = len(Utub_Urls.query.all())
-        all_urls_tag_associations = len(Url_Tags.query.all())
-
-        # Ensure second user in this UTub
-        assert second_user_in_utub in [user.to_user for user in current_utub.members]
+        all_urls_utub_associations = Utub_Urls.query.count()
+        all_urls_tag_associations = Utub_Url_Tags.query.count()
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Remove second user
     remove_user_response = client.delete(
@@ -305,23 +260,23 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
         ]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs - 1
+        assert Utub_Members.query.count() == initial_num_user_utubs - 1
 
         # Ensure URL-UTub associations aren't removed
         assert (
-            len(Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub.id).all())
+            Utub_Urls.query.filter(Utub_Urls.utub_id == current_utub.id).count()
             == current_num_of_urls_in_utub
         )
 
         # Ensure URL-Tag associations aren't removed
         assert (
-            len(Url_Tags.query.filter(Url_Tags.utub_id == current_utub.id).all())
+            Utub_Url_Tags.query.filter(Utub_Url_Tags.utub_id == current_utub.id).count()
             == current_num_of_url_tags_in_utub
         )
 
         # Ensure all associations still correct
-        assert len(Url_Tags.query.all()) == all_urls_tag_associations
-        assert len(Utub_Urls.query.all()) == all_urls_utub_associations
+        assert Utub_Url_Tags.query.count() == all_urls_tag_associations
+        assert Utub_Urls.query.count() == all_urls_utub_associations
 
 
 def test_remove_self_from_utub_as_creator(
@@ -347,19 +302,10 @@ def test_remove_self_from_utub_as_creator(
         # Get the only UTub with two members
         current_utub: Utubs = Utubs.query.first()
 
-        # Ensure creator is currently logged in and is current user
-        assert current_utub.utub_creator == current_user.id
-
-        # Ensure multiple users in this Utubs
-        assert len(current_utub.members) == 2
-
         current_number_of_users_in_utub = len(current_utub.members)
 
-        # Ensure current user also in this UTub
-        assert current_user in [user.to_user for user in current_utub.members]
-
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Remove self from UTub
     remove_user_response = client.delete(
@@ -394,7 +340,7 @@ def test_remove_self_from_utub_as_creator(
         assert current_user in [user.to_user for user in current_utub.members]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_remove_self_from_utub_no_csrf_token_as_member(
@@ -414,18 +360,11 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
         # Get the only UTub with two members
         current_utub: Utubs = Utubs.query.first()
 
-        # Ensure creator is not currently logged in user
-        assert current_utub.utub_creator != current_user.id
-
         # Ensure multiple users in this Utubs
-        assert len(current_utub.members) == 2
         current_number_of_users_in_utub = len(current_utub.members)
 
-        # Ensure second user in this UTub
-        assert current_user in [user.to_user for user in current_utub.members]
-
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Remove self from UTub
     remove_user_response = client.delete(
@@ -449,7 +388,7 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
         assert current_user in [user.to_user for user in current_utub.members]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
@@ -469,11 +408,7 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
         # Get the only UTub with two members
         current_utub: Utubs = Utubs.query.first()
 
-        # Ensure creator is currently logged in
-        assert current_utub.utub_creator == current_user.id
-
         # Ensure multiple users in this Utubs
-        assert len(current_utub.members) == 2
         current_number_of_users_in_utub = len(current_utub.members)
 
         # Grab the second user from the members
@@ -483,11 +418,8 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
         ).first()
         second_user_in_utub = second_user_in_utub_association.to_user
 
-        # Ensure second user in this UTub
-        assert second_user_in_utub in [user.to_user for user in current_utub.members]
-
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Remove second user
     remove_user_response = client.delete(
@@ -514,7 +446,7 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
         assert second_user_in_utub in [user.to_user for user in current_utub.members]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
@@ -525,29 +457,19 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
     WHEN the user requests to remove themselves from the UTub via a DELETE to "/utubs/<int:utub_id>/members/<int:user_id>"
     THEN ensure that a 404 status code response is given when the UTub cannot be found in the database
     """
+    NONEXISTENT_UTUB_ID = 999
 
     client, csrf_token_string, _, app = login_second_user_without_register
 
     with app.app_context():
-        # Get the only UTub with two members
-        all_current_utubs = Utubs.query.all()
-
-        invalid_utub_id = 0
-
-        while invalid_utub_id in [utub.id for utub in all_current_utubs]:
-            invalid_utub_id += 1
-
-        # Ensure given UTub does not exist
-        assert invalid_utub_id not in [utub.id for utub in all_current_utubs]
-
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Remove self from UTub
     remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
-            utub_id=invalid_utub_id,
+            utub_id=NONEXISTENT_UTUB_ID,
             user_id=current_user.id,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
@@ -559,7 +481,9 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
     # Ensure 404 response is given no matter what USER ID
     for num in range(10):
         remove_user_response = client.delete(
-            url_for(ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=invalid_utub_id, user_id=num),
+            url_for(
+                ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=NONEXISTENT_UTUB_ID, user_id=num
+            ),
             data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
         )
 
@@ -568,7 +492,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
 
     with app.app_context():
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_remove_invalid_user_from_utub_as_creator(
@@ -586,38 +510,26 @@ def test_remove_invalid_user_from_utub_as_creator(
         STD_JSON.ERROR_CODE: 3
     }
     """
+    NONEXISTENT_USER_ID = 999
 
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
-        current_utub: Utubs = Utubs.query.first()
-
-        # Ensure creator is currently logged in
-        assert current_utub.utub_creator == current_user.id
-
-        # Find a user id that isn't in this UTub
-        user_id_not_in_utub = 0
-        while user_id_not_in_utub in [user.user_id for user in current_utub.members]:
-            user_id_not_in_utub += 1
-
-        # Ensure multiple users in this Utubs
-        assert len(current_utub.members) == 2
-
-        # Ensure invalid user is not in this UTub
-        assert user_id_not_in_utub not in [
-            user.user_id for user in current_utub.members
-        ]
+        current_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_member_count = len(current_utub.members)
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Remove self from UTub
     remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
             utub_id=current_utub.id,
-            user_id=user_id_not_in_utub,
+            user_id=NONEXISTENT_USER_ID,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -635,7 +547,13 @@ def test_remove_invalid_user_from_utub_as_creator(
 
     with app.app_context():
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
+        assert (
+            current_utub_member_count
+            == Utub_Members.query.filter(
+                Utub_Members.utub_id == current_utub.id
+            ).count()
+        )
 
 
 def test_remove_invalid_user_from_utub_as_member(
@@ -653,41 +571,26 @@ def test_remove_invalid_user_from_utub_as_member(
         STD_JSON.ERROR_CODE: 2
     }
     """
-
+    NONEXISTENT_USER_ID = 999
     client, csrf_token_string, _, app = login_second_user_without_register
 
     with app.app_context():
         # Get the only UTub with two members
-        current_utub: Utubs = Utubs.query.first()
-
-        # Ensure current user is not creator
-        assert current_user.id != current_utub.utub_creator
-
-        # Ensure current user is a member of this UTub
-        assert current_user in [user.to_user for user in current_utub.members]
-
-        # Find a user id that isn't in this UTub
-        user_id_not_in_utub = 0
-        while user_id_not_in_utub in [user.user_id for user in current_utub.members]:
-            user_id_not_in_utub += 1
-
-        # Ensure multiple users in this Utubs
-        assert len(current_utub.members) == 2
-
-        # Ensure invalid user is not in this UTub
-        assert user_id_not_in_utub not in [
-            user.user_id for user in current_utub.members
-        ]
+        current_utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.member_role != Member_Role.CREATOR
+        ).first()
+        current_utub: Utubs = current_utub_member.to_utub
+        current_utub_member_count = len(current_utub.members)
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Remove invalid user from UTub
     remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
             utub_id=current_utub.id,
-            user_id=user_id_not_in_utub,
+            user_id=NONEXISTENT_USER_ID,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -706,7 +609,13 @@ def test_remove_invalid_user_from_utub_as_member(
 
     with app.app_context():
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
+        assert (
+            current_utub_member_count
+            == Utub_Members.query.filter(
+                Utub_Members.utub_id == current_utub.id
+            ).count()
+        )
 
 
 def test_remove_another_member_from_same_utub_as_member(
@@ -731,32 +640,29 @@ def test_remove_another_member_from_same_utub_as_member(
 
     with app.app_context():
         # Get the only UTub, which contains three members
-        current_utub: Utubs = Utubs.query.first()
-
-        # Ensure creator is not currently logged in user
-        assert current_utub.utub_creator != current_user.id
+        current_utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.member_role == Member_Role.MEMBER
+        ).first()
+        current_utub: Utubs = current_utub_member.to_utub
 
         # Ensure multiple users in this Utubs
-        assert len(current_utub.members) == 3
         current_number_of_users_in_utub = len(current_utub.members)
 
-        # Ensure second user in this UTub
-        assert current_user in [user.to_user for user in current_utub.members]
-
         # Grab other user in this UTub
-        for user in current_utub.members:
-            if user != current_user and user.user_id != current_utub.utub_creator:
-                other_utub_member = user.to_user
+        other_utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.member_role == Member_Role.MEMBER,
+            Utub_Members.user_id != current_user.id,
+        ).first()
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Attempt to remove other user from UTub as a member
     remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
             utub_id=current_utub.id,
-            user_id=other_utub_member.id,
+            user_id=other_utub_member.user_id,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -776,17 +682,19 @@ def test_remove_another_member_from_same_utub_as_member(
     # Ensure database is correctly updated
     with app.app_context():
         # Grab the UTub again
-        current_utub = Utubs.query.first()
+        current_utub = Utubs.query.get(current_utub.id)
         assert len(current_utub.members) == current_number_of_users_in_utub
 
         # Ensure logged in user in this UTub
         assert current_user in [user.to_user for user in current_utub.members]
 
         # Ensure the bystander member is still in the UTub
-        assert other_utub_member in [user.to_user for user in current_utub.members]
+        assert other_utub_member.user_id in [
+            user.user_id for user in current_utub.members
+        ]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_remove_member_from_another_utub_as_creator_of_another_utub(
@@ -817,39 +725,29 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
-        second_user_utub = Utubs.query.get(2)
-
-        # Assert second utub only has the second user in it
-        assert len(second_user_utub.members) == 1
+        second_user_utub_id = 2
+        second_user_utub = Utubs.query.get(second_user_utub_id)
 
         # Get the third user
-        third_user = Users.query.get(3)
-
-        # Assert third user not in second user's UTub
-        assert third_user not in [user.to_user for user in second_user_utub.members]
+        third_user_id = 3
+        third_user = Users.query.get(third_user_id)
 
         # Add third user to second user's UTub
         utub_user_association = Utub_Members()
         utub_user_association.to_user = third_user
+        utub_user_association.utub_id = second_user_utub_id
         second_user_utub.members.append(utub_user_association)
         db.session.commit()
 
-        # Now assert the third user in the second User's UTub
-        assert len(second_user_utub.members) == 2
-        assert third_user in [user.to_user for user in second_user_utub.members]
-
-        # Ensure logged in user is not in the second user's UTub
-        assert current_user not in [user.to_user for user in second_user_utub.members]
-
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Try to remove the third user from second user's UTub as the first user
     remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
-            utub_id=second_user_utub.id,
-            user_id=third_user.id,
+            utub_id=second_user_utub_id,
+            user_id=third_user_id,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -868,13 +766,13 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
 
     # Ensure database still shows user 3 is member of utub 2
     with app.app_context():
-        second_user_utub = Utubs.query.get(2)
-        third_user = Users.query.get(3)
+        second_user_utub: Utubs = Utubs.query.get(second_user_utub_id)
+        third_user: Users = Users.query.get(third_user_id)
 
         assert third_user in [user.to_user for user in second_user_utub.members]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
 
 
 def test_remove_member_from_another_utub_as_member_of_another_utub(
@@ -909,17 +807,20 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
 
     with app.app_context():
         # Get the third user
-        third_user: Users = Users.query.get(3)
+        third_user_id = 3
+        third_user: Users = Users.query.get(third_user_id)
 
         # Have third user make another UTub
         new_utub_from_third_user: Utubs = Utubs(
-            name="Third User's UTub", utub_creator=third_user.id, utub_description=""
+            name="Third User's UTub", utub_creator=third_user_id, utub_description=""
         )
         creator = Utub_Members()
         creator.to_user = third_user
+        creator.member_role = Member_Role.CREATOR
         new_utub_from_third_user.members.append(creator)
 
-        first_user = Users.query.get(1)
+        first_user_id = 1
+        first_user = Users.query.get(first_user_id)
 
         new_utub_user = Utub_Members()
         new_utub_user.to_user = first_user
@@ -928,31 +829,20 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
         db.session.add(new_utub_from_third_user)
         db.session.commit()
 
-        # Ensure current user is not creator of any UTubs
-        all_utubs: list[Utubs] = Utubs.query.all()
-        for utub in all_utubs:
-            assert current_user.id != utub.utub_creator
-
-        # Ensure current user is not member of third user's UTub
-        assert current_user not in [
-            user.to_user for user in new_utub_from_third_user.members
-        ]
-
         # Ensure current user is a member of a UTub
-        all_utub_users = Utub_Members.query.filter(
-            Utub_Members.user_id == current_user.id
-        ).all()
-        assert len(all_utub_users) > 0
+        current_utub_member_count = Utub_Members.query.filter(
+            Utub_Members.utub_id == new_utub_from_third_user.id
+        ).count()
 
         # Count all user-utub associations in db
-        initial_num_user_utubs = len(Utub_Members.query.all())
+        initial_num_user_utubs = Utub_Members.query.count()
 
     # Try to remove the first user from second user's UTub as the first user
     remove_user_response = client.delete(
         url_for(
             ROUTES.MEMBERS.REMOVE_MEMBER,
             utub_id=new_utub_from_third_user.id,
-            user_id=first_user.id,
+            user_id=first_user_id,
         ),
         data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
     )
@@ -971,13 +861,19 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
 
     # Ensure database still shows user 1 is member of utub 2
     with app.app_context():
-        third_user_utub = Utubs.query.get(2)
-        first_user = Users.query.get(1)
+        third_user_utub: Utubs = Utubs.query.get(2)
+        first_user: Users = Users.query.get(1)
 
         assert first_user in [user.to_user for user in third_user_utub.members]
 
         # Ensure counts of Utubs-User associations is correct
-        assert len(Utub_Members.query.all()) == initial_num_user_utubs
+        assert Utub_Members.query.count() == initial_num_user_utubs
+        assert (
+            current_utub_member_count
+            == Utub_Members.query.filter(
+                Utub_Members.utub_id == new_utub_from_third_user.id
+            ).count()
+        )
 
 
 def test_remove_valid_user_from_utub_updates_utub_last_updated(

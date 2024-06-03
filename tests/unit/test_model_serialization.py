@@ -6,7 +6,7 @@ import pytest
 from src import db
 from src.models.tags import Tags
 from src.models.urls import Urls
-from src.models.url_tags import Url_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -87,14 +87,18 @@ def test_url_serialization_without_tags():
 
     for v_url in valid_urls:
         new_url = Urls(
-            normalized_url=v_url[MODEL_STRS.URL], current_user_id=current_user_id
+            normalized_url=v_url[MODEL_STRS.URL_STRING], current_user_id=current_user_id
         )
-        new_url.id = v_url[MODEL_STRS.ID]
+
+        new_utub_url = Utub_Urls()
+        new_utub_url.standalone_url = new_url
+        new_utub_url.id = v_url[MODEL_STRS.UTUB_URL_ID]
+        new_utub_url.url_title = ""
 
         # Test a URL without any tags
         valid_url_for_json = json.dumps(v_url)
 
-        assert json.dumps(new_url.serialized_url) == valid_url_for_json
+        assert json.dumps(new_utub_url.serialized(1, 1)) == valid_url_for_json
 
 
 def test_url_serialization_with_tags(
@@ -129,7 +133,7 @@ def test_url_serialization_with_tags(
             new_utub_url = Utub_Urls()
             new_utub_url.utub = utub
             new_utub_url.utub_id = utub.id
-            new_utub_url.url_id = url.id
+            new_utub_url.id = url.id
             new_utub_url.standalone_url = url
             new_utub_url.user_id = utub.id
 
@@ -140,15 +144,15 @@ def test_url_serialization_with_tags(
     # UTub-URL-Tag associations
     with app.app_context():
         all_utubs = Utubs.query.all()
-        all_urls = Urls.query.all()
+        all_urls = Utub_Urls.query.all()
         all_tags = Tags.query.all()
 
         for utub, url in zip(all_utubs, all_urls):
             for tag in all_tags:
-                new_url_tag = Url_Tags()
+                new_url_tag = Utub_Url_Tags()
                 new_url_tag.utub_containing_this_tag = utub
                 new_url_tag.utub_id = utub.id
-                new_url_tag.url_id = url.id
+                new_url_tag.utub_url_id = url.id
                 new_url_tag.tagged_url = url
                 new_url_tag.tag_item = tag
                 new_url_tag.tag_id = tag.id
@@ -163,7 +167,7 @@ def test_url_serialization_with_tags(
 
         for utub, url, verified_url in zip(all_utubs, all_urls, verified_urls):
             url_with_tags: Utub_Urls = Utub_Urls.query.filter(
-                Utub_Urls.url_id == url.id, Utub_Urls.utub_id == utub.id
+                Utub_Urls.id == url.id, Utub_Urls.utub_id == utub.id
             ).first()
 
             assert json.dumps(verified_url) == json.dumps(
@@ -311,6 +315,9 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
                 "%m/%d/%Y %H:%M:%S"
             )
             utub: Utubs = utub
+
+            # Match creator elements
+            test_utub[MODEL_STRS.IS_CREATOR] = utub.serialized(1)[MODEL_STRS.IS_CREATOR]
             assert json.dumps(test_utub) == json.dumps(utub.serialized(1))
 
 
@@ -372,6 +379,11 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
             )
+
+            # Match creator elements
+            test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
+                MODEL_STRS.IS_CREATOR
+            ]
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
@@ -442,6 +454,17 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
                     utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
                 )
 
+            # Set boolean for deleting equivalent since not considering a user session for this test
+            for idx in range(len(test_utub[MODEL_STRS.URLS])):
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE] = (
+                    utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
+                )
+
+            # Match creator elements
+            test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
+                MODEL_STRS.IS_CREATOR
+            ]
+
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
 
@@ -488,11 +511,25 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
     }
     """
     with app.app_context():
-        all_utubs = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.all()
+        mock_utub_data = (
+            v_models.valid_utub_serializations_with_members_and_url_and_tags
+        )
 
-        for test_utub, utub in zip(
-            v_models.valid_utub_serializations_with_members_and_url_and_tags, all_utubs
-        ):
+        # Force UtubUrl ID's to match since they're given by database
+        all_utub_urls: list[Utub_Urls] = Utub_Urls.query.all()
+        for test_utub, utub in zip(mock_utub_data, all_utubs):
+            for idx in range(len(test_utub[MODEL_STRS.URLS])):
+                test_url = test_utub[MODEL_STRS.URLS][idx]
+                real_url = [
+                    url
+                    for url in all_utub_urls
+                    if url.utub_id == test_utub[MODEL_STRS.ID]
+                    and url.standalone_url.url_string == test_url[MODEL_STRS.URL_STRING]
+                ][-1]
+                test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.UTUB_URL_ID] = real_url.id
+
+        for test_utub, utub in zip(mock_utub_data, all_utubs):
             test_utub[MODEL_STRS.CREATED_AT] = utub.created_at.strftime(
                 "%m/%d/%Y %H:%M:%S"
             )
@@ -504,16 +541,34 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                 key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
-            # Array of tag IDs must also be sorted
+            # Array of URLs needs to be sorted by UTUB_URL_ID to match
+            test_utub[MODEL_STRS.URLS] = sorted(
+                test_utub[MODEL_STRS.URLS],
+                key=lambda utub_url: utub_url[MODEL_STRS.UTUB_URL_ID],
+            )
+
+            # Array of Tags needs to be sorted by ID to match
+            utub_in_data_serialized[MODEL_STRS.TAGS] = sorted(
+                utub_in_data_serialized[MODEL_STRS.TAGS],
+                key=lambda utub_tag: utub_tag[MODEL_STRS.ID],
+            )
+
+            # Array of tag IDs in URLs must also be sorted
             for idx in range(len(utub_in_data_serialized[MODEL_STRS.URLS])):
                 utub_in_data_serialized[MODEL_STRS.URLS][idx][
                     MODEL_STRS.URL_TAGS
                 ].sort()
 
             # Set boolean for deleting equivalent since not considering a user session for this test
-            for idx, _ in enumerate(test_utub[MODEL_STRS.URLS]):
+            for idx in range(len(test_utub[MODEL_STRS.URLS])):
                 test_utub[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE] = (
                     utub_in_data_serialized[MODEL_STRS.URLS][idx][MODEL_STRS.CAN_DELETE]
                 )
+
+            # Set deletion for UTub based on equality
+            utub_in_data_serialized[MODEL_STRS.IS_CREATOR] = (
+                utub_in_data_serialized[MODEL_STRS.CREATED_BY]
+                == test_utub[MODEL_STRS.CREATED_BY]
+            )
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)

@@ -2,7 +2,6 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 
 from src import db
 from src.utils.datetime_utils import utc_now
-from src.utils.strings.model_strs import MODELS as MODEL_STRS
 
 
 class Urls(db.Model):
@@ -20,20 +19,7 @@ class Urls(db.Model):
     created_at = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
-    url_tags = db.relationship("Url_Tags", back_populates="tagged_url")
 
     def __init__(self, normalized_url: str, current_user_id: int):
         self.url_string = normalized_url
         self.created_by = int(current_user_id)
-
-    @property
-    def serialized_url(self):
-        """Includes an array of tag IDs for all ID's on this url"""
-        from src.models.url_tags import Url_Tags
-
-        url_tags: list[Url_Tags] = self.url_tags
-        return {
-            MODEL_STRS.ID: self.id,
-            MODEL_STRS.URL: self.url_string,
-            MODEL_STRS.TAGS: [tag.tag_item.serialized for tag in url_tags],
-        }
