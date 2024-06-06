@@ -5,10 +5,11 @@ from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_session import Session
-from flask_sqlalchemy import SQLAlchemy
 from flask_wtf.csrf import CSRFProtect
 
-from src.config import Config
+from src.db import db
+from src.config import Config, ConfigProd
+from src.mocks.mock_options import register_mocks_db_cli
 from src.utils.email_sender import EmailSender
 from src.utils.error_handler import (
     handle_404_response,
@@ -17,7 +18,6 @@ from src.utils.error_handler import (
 
 sess = Session()
 
-db = SQLAlchemy()
 migrate = Migrate(db=db, render_as_batch=True)
 
 csrf = CSRFProtect()
@@ -34,6 +34,7 @@ def create_app(
     production: bool = False,
     use_local_js_bundles: bool = False,
 ):
+    config_class = ConfigProd if production else config_class
     config_class.must_use_local_js_bundles() if use_local_js_bundles else None
     testing = config_class.TESTING
     app = Flask(__name__)
@@ -75,6 +76,7 @@ def create_app(
     app.register_blueprint(members)
     app.register_blueprint(urls)
     app.register_blueprint(tags)
+    register_mocks_db_cli(app)
 
     app.register_error_handler(404, handle_404_response)
 
