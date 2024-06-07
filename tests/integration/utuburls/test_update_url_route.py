@@ -53,7 +53,10 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
 
         # Verify URL to modify to is not already in database
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
-        assert Urls.query.filter_by(url_string=validated_new_fresh_url).first() is None
+        assert (
+            Urls.query.filter(Urls.url_string == validated_new_fresh_url).first()
+            is None
+        )
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -180,15 +183,16 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
 
         # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter_by(
-            utub_id=utub_member_of.id, user_id=current_user.id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.user_id == current_user.id
         ).first()
         current_title = url_in_this_utub.url_title
         current_url_id = url_in_this_utub.url_id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_member_of.id, utub_url_id=url_in_this_utub.id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_member_of.id,
+            Utub_Url_Tags.utub_url_id == url_in_this_utub.id,
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
@@ -433,8 +437,9 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
 
         # Find associated tags with this url
-        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_id, utub_url_id=url_in_this_utub.id
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id,
+            Utub_Url_Tags.utub_url_id == url_in_this_utub.id,
         ).all()
         associated_tag_ids = [tag.tag_id for tag in associated_tags]
 
@@ -797,8 +802,9 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         )
 
         # Check associated tags
-        assert Utub_Url_Tags.query.filter_by(
-            utub_id=utub_creator_of.id, utub_url_id=id_of_url_in_utub
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == id_of_url_in_utub,
         ).count() == len(associated_tags)
 
 

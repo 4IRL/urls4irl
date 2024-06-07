@@ -515,13 +515,7 @@ def test_delete_utub_as_member_only(
         # Assert current user is in all UTubs
         all_utubs: list[Utubs] = Utubs.query.all()
         for utub in all_utubs:
-            assert (
-                Utub_Members.query.filter(
-                    Utub_Members.user_id == current_user.id,
-                    Utub_Members.utub_id == utub.id,
-                ).count()
-                == 1
-            )
+            assert Utub_Members.query.get((utub.id, current_user.id)) is not None
 
         initial_num_utubs = Utubs.query.count()
 

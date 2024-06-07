@@ -3,9 +3,10 @@ from flask_login import current_user
 
 from src import db
 from src.models.tags import Tags
-from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.tags.forms import UTubNewUrlTagForm
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
@@ -34,8 +35,7 @@ def add_tag(utub_id: int, utub_url_id: int):
         abort(404)
 
     utub: Utubs = utub_url_association.utub
-
-    user_in_utub = current_user.id in [member.user_id for member in utub.members]
+    user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
 
     if not user_in_utub:
         # How did a user not in this utub get access to add a tag to this URL?
@@ -79,7 +79,9 @@ def add_tag(utub_id: int, utub_url_id: int):
             )
 
         # If not a tag already, create it
-        tag_already_created: Tags = Tags.query.filter_by(tag_string=tag_to_add).first()
+        tag_already_created: Tags = Tags.query.filter(
+            Tags.tag_string == tag_to_add
+        ).first()
 
         if tag_already_created:
             # Check if tag already on url
@@ -173,8 +175,9 @@ def remove_tag(utub_id: int, utub_url_id: int, tag_id: int):
         tag_id (int): The ID of the tag to be deleted
     """
     utub: Utubs = Utubs.query.get_or_404(utub_id)
+    user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
 
-    if current_user.id not in [user.user_id for user in utub.members]:
+    if not user_in_utub:
         return (
             jsonify(
                 {
@@ -186,8 +189,10 @@ def remove_tag(utub_id: int, utub_url_id: int, tag_id: int):
         )
 
     # User is member of this UTub
-    tag_for_url_in_utub: Utub_Url_Tags = Utub_Url_Tags.query.filter_by(
-        utub_id=utub_id, utub_url_id=utub_url_id, tag_id=tag_id
+    tag_for_url_in_utub: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+        Utub_Url_Tags.utub_id == utub_id,
+        Utub_Url_Tags.utub_url_id == utub_url_id,
+        Utub_Url_Tags.tag_id == tag_id,
     ).first_or_404()
     url_id_to_remove_tag = tag_for_url_in_utub.utub_url_id
     tag_to_remove: Tags = tag_for_url_in_utub.tag_item
@@ -196,8 +201,8 @@ def remove_tag(utub_id: int, utub_url_id: int, tag_id: int):
     utub.set_last_updated()
     db.session.commit()
 
-    num_left_in_utub: int = Utub_Url_Tags.query.filter_by(
-        utub_id=utub_id, tag_id=tag_id
+    num_left_in_utub: int = Utub_Url_Tags.query.filter(
+        Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.tag_id == tag_id
     ).count()
 
     url_utub_association: Utub_Urls = Utub_Urls.query.get_or_404(url_id_to_remove_tag)
@@ -244,8 +249,10 @@ def modify_tag_on_url(utub_id: int, utub_url_id: int, tag_id: int):
             403,
         )
 
-    tag_on_url_in_utub: Utub_Url_Tags = Utub_Url_Tags.query.filter_by(
-        utub_id=utub_id, utub_url_id=utub_url_id, tag_id=tag_id
+    tag_on_url_in_utub: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+        Utub_Url_Tags.utub_id == utub_id,
+        Utub_Url_Tags.utub_url_id == utub_url_id,
+        Utub_Url_Tags.tag_id == tag_id,
     ).first_or_404()
 
     url_tag_form = UTubNewUrlTagForm()
@@ -265,7 +272,7 @@ def modify_tag_on_url(utub_id: int, utub_url_id: int, tag_id: int):
                 200,
             )
 
-        tag_that_already_exists = Tags.query.filter_by(tag_string=new_tag).first()
+        tag_that_already_exists = Tags.query.filter(Tags.tag_string == new_tag).first()
 
         # Check if tag already in database
         if tag_that_already_exists is None:
@@ -278,10 +285,10 @@ def modify_tag_on_url(utub_id: int, utub_url_id: int, tag_id: int):
 
         else:
             # Check if tag already on URL
-            tag_on_url = Utub_Url_Tags.query.filter_by(
-                utub_id=utub_id,
-                utub_url_id=utub_url_id,
-                tag_id=tag_that_already_exists.id,
+            tag_on_url = Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id,
+                Utub_Url_Tags.utub_url_id == utub_url_id,
+                Utub_Url_Tags.tag_id == tag_that_already_exists.id,
             ).first()
             if tag_on_url is not None:
                 return (
@@ -302,8 +309,8 @@ def modify_tag_on_url(utub_id: int, utub_url_id: int, tag_id: int):
         utub.set_last_updated()
         db.session.commit()
 
-        previous_tag_count_in_utub: int = Utub_Url_Tags.query.filter_by(
-            utub_id=utub_id, tag_id=tag_id
+        previous_tag_count_in_utub: int = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.tag_id == tag_id
         ).count()
 
         return (

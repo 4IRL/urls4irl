@@ -131,8 +131,8 @@ def test_add_utub_with_same_name(
 
     # Make sure database is empty of UTubs and associated users
     with app.app_context():
-        current_utub: Utubs = Utubs.query.filter_by(
-            utub_creator=current_user.id
+        current_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
         ).first()
         current_utub_name = current_utub.name
 

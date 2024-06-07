@@ -48,12 +48,13 @@ def get_single_utub(utub_id: str):
     """
     Retrieves data for a single UTub, and returns it in a serialized format
     """
-    utub: Utubs = Utubs.query.get_or_404(utub_id)
+    user_in_utub: Utub_Members = Utub_Members.query.get((utub_id, current_user.id))
 
-    if current_user.id not in [member.user_id for member in utub.members]:
+    if user_in_utub is None:
         # User is not member of the UTub they are requesting
         abort(404)
 
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_data_serialized = utub.serialized(current_user.id)
     return jsonify(utub_data_serialized)
 
@@ -88,10 +89,14 @@ def add_utub():
         new_utub = Utubs(
             name=name, utub_creator=current_user.id, utub_description=description
         )
+        db.session.add(new_utub)
+        db.session.commit()
+
         creator_to_utub = Utub_Members()
-        creator_to_utub.to_user = current_user
+        creator_to_utub.user_id = current_user.id
+        creator_to_utub.utub_id = new_utub.id
         creator_to_utub.member_role = Member_Role.CREATOR
-        new_utub.members.append(creator_to_utub)
+        db.session.add(creator_to_utub)
         db.session.commit()
 
         # Add time made?

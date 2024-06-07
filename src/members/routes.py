@@ -10,7 +10,7 @@ from src.members.forms import (
 )
 from src.models.users import Users
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
@@ -48,16 +48,25 @@ def remove_member(utub_id: int, user_id: int):
             400,
         )
 
-    current_user_ids_in_utub = [member.user_id for member in current_utub.members]
-
     # User can't remove if current user is not in this current UTub's members
     # User can't remove if current user is not creator of UTub and requested user is not same as current user
-    current_user_not_in_utub = current_user.id not in current_user_ids_in_utub
-    member_trying_to_remove_another_member = (
-        current_user.id != current_utub.utub_creator and user_id != current_user.id
+    current_utub_member: Utub_Members = Utub_Members.query.get(
+        (utub_id, current_user.id)
+    )
+    current_utub_member_not_in_utub = current_utub_member is None
+    current_utub_member_not_creator_and_removing_another_member = (
+        current_utub_member is not None
+        and (
+            current_user.id != user_id
+            and current_utub_member.member_role == Member_Role.MEMBER
+        )
     )
 
-    if current_user_not_in_utub or member_trying_to_remove_another_member:
+    if (
+        current_utub_member_not_in_utub
+        or current_utub_member_not_creator_and_removing_another_member
+    ):
+        # if current_user_not_in_utub or member_trying_to_remove_another_member:
         return (
             jsonify(
                 {
@@ -69,7 +78,9 @@ def remove_member(utub_id: int, user_id: int):
             403,
         )
 
-    if user_id not in current_user_ids_in_utub:
+    user_to_remove_in_utub: Utub_Members = Utub_Members.query.get((utub_id, user_id))
+
+    if user_to_remove_in_utub is None:
         return (
             jsonify(
                 {
@@ -80,10 +91,6 @@ def remove_member(utub_id: int, user_id: int):
             ),
             404,
         )
-
-    user_to_remove_in_utub: Utub_Members = Utub_Members.query.filter(
-        Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_id
-    ).first_or_404()
 
     removed_user_username = user_to_remove_in_utub.to_user.username
 
@@ -136,8 +143,8 @@ def add_member(utub_id: int):
     if utub_new_user_form.validate_on_submit():
         username = utub_new_user_form.username.data
 
-        new_user: Users = Users.query.filter_by(username=username).first_or_404()
-        already_in_utub = new_user.id in (member.user_id for member in utub.members)
+        new_user: Users = Users.query.filter(Users.username == username).first_or_404()
+        already_in_utub = Utub_Members.query.get((utub_id, new_user.id)) is not None
 
         if already_in_utub:
             # User already exists in UTub
@@ -153,8 +160,9 @@ def add_member(utub_id: int):
             )
 
         new_user_to_utub = Utub_Members()
-        new_user_to_utub.to_user = new_user
-        utub.members.append(new_user_to_utub)
+        new_user_to_utub.utub_id = utub_id
+        new_user_to_utub.user_id = new_user.id
+        db.session.add(new_user_to_utub)
         utub.set_last_updated()
         db.session.commit()
 

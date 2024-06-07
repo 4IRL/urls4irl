@@ -23,7 +23,7 @@ class UTubNewMemberForm(FlaskForm):
 
     def validate_username(self, username):
         """Validates username is unique in the db"""
-        username_exists = Users.query.filter_by(username=username.data).first()
+        username_exists = Users.query.filter(Users.username == username.data).first()
 
         if not username_exists:
             raise ValidationError(USER_FAILURE.USER_NOT_EXIST)

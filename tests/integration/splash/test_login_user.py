@@ -44,8 +44,8 @@ def test_login_registered_and_logged_in_user(login_first_user_with_register):
 
     # Ensure user id's match with  database
     with app.app_context():
-        registered_db_user = Users.query.filter_by(
-            username=new_user[LOGIN_FORM.USERNAME]
+        registered_db_user = Users.query.filter(
+            Users.username == new_user[LOGIN_FORM.USERNAME]
         ).first()
 
     assert registered_db_user.id == int(current_user.get_id())

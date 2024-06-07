@@ -52,14 +52,14 @@ class UserRegistrationForm(FlaskForm):
 
     def validate_username(self, username):
         """Validates username is unique in the db"""
-        user: Users = Users.query.filter_by(username=username.data).first()
+        user: Users = Users.query.filter(Users.username == username.data).first()
 
         if user and user.email_confirm.is_validated:
             raise ValidationError(USER_FAILURE.USERNAME_TAKEN)
 
     def validate_email(self, email):
         """Validates username is unique in the db"""
-        user: Users = Users.query.filter_by(email=email.data.lower()).first()
+        user: Users = Users.query.filter(Users.email == email.data.lower()).first()
 
         if user:
             email_confirm: Email_Validations = user.email_confirm
@@ -88,13 +88,13 @@ class LoginForm(FlaskForm):
     submit = SubmitField(REGISTER_LOGIN_FORM.LOGIN)
 
     def validate_username(self, username):
-        user: Users = Users.query.filter_by(username=username.data).first()
+        user: Users = Users.query.filter(Users.username == username.data).first()
 
         if not user:
             raise ValidationError(USER_FAILURE.USER_NOT_EXIST)
 
     def validate_password(self, password):
-        user: Users = Users.query.filter_by(username=self.username.data).first()
+        user: Users = Users.query.filter(Users.username == self.username.data).first()
         if not user:
             return
 

@@ -83,7 +83,7 @@ def register_user():
         new_user.email_confirm = new_email_validation
         db.session.add(new_user)
         db.session.commit()
-        user = Users.query.filter_by(username=username).first()
+        user = Users.query.filter(Users.username == username).first()
         login_user(user)
         validate_email_form = ValidateEmailForm()
         return (
@@ -166,7 +166,7 @@ def login():
 
     if login_form.validate_on_submit():
         username = login_form.username.data
-        user: Users = Users.query.filter_by(username=username).first()
+        user: Users = Users.query.filter(Users.username == username).first()
         email_confirm: Email_Validations = user.email_confirm
         login_user(user)  # Can add Remember Me functionality here
         if not email_confirm.is_validated:
