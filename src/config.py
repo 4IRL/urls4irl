@@ -24,7 +24,9 @@ class Config:
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_DATABASE_URI = environ.get(CONFIG_ENVS.DATABASE_URL_DEV)
     SQLALCHEMY_BINDS = {
-        "dev": environ.get(CONFIG_ENVS.DATABASE_URL_DEV),
+        "dev": environ.get(
+            CONFIG_ENVS.DATABASE_URL_DEV, default="sqlite://"
+        ),  # When testing, give dev an in-memory database
         "test": environ.get(CONFIG_ENVS.DATABASE_URL_TEST),
     }
 
