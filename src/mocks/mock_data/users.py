@@ -6,7 +6,12 @@ from src.models.users import Users
 
 
 def generate_mock_users(db: SQLAlchemy):
+    """
+    Generates mock Users, adds them to database if not already added.
 
+    Args:
+        db (SQLAlchemy): Database engine and connection for committing mock data
+    """
     for i in range(TEST_USER_COUNT):
         username = f"{USERNAME_BASE}{i + 1}"
         email = f"{username}{EMAIL_SUFFIX}"
@@ -25,6 +30,7 @@ def generate_mock_users(db: SQLAlchemy):
                 validation_token=new_user.get_email_validation_token()
             )
             new_email_validation.is_validated = True
+            new_email_validation.user = new_user
 
             db.session.add(new_email_validation)
 

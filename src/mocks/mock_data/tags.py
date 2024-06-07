@@ -8,6 +8,13 @@ from src.models.utub_urls import Utub_Urls
 
 
 def generate_mock_tags(db: SQLAlchemy):
+    """
+    Generates mock tags, adds them to database if not already added,
+    and then adds those to each URL in each UTub.
+
+    Args:
+        db (SQLAlchemy): Database engine and connection for committing mock data
+    """
     for idx, tag in enumerate(MOCK_TAGS):
         all_tags: list[Tags] = Tags.query.all()
         all_tag_strings = [tag.tag_string for tag in all_tags]

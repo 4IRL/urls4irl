@@ -6,6 +6,12 @@ from src.models.utub_members import Member_Role, Utub_Members
 
 
 def generate_mock_utubmembers(db: SQLAlchemy):
+    """
+    Adds each User to each UTub, if not already added.
+
+    Args:
+        db (SQLAlchemy): Database engine and connection for committing mock data
+    """
     all_utubs: list[Utubs] = Utubs.query.all()
     all_users: list[Users] = Users.query.all()
     for utub in all_utubs:
