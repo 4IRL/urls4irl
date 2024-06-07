@@ -88,7 +88,7 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
                 Utub_Urls.utub_id == utub.id
             ).first()
             current_utub_id = current_utub_url.url_id
-            new_url: Urls = Urls.query.filter_by(id=((current_utub_id % 3) + 1)).first()
+            new_url: Urls = Urls.query.get(((current_utub_id % 3) + 1))
 
             new_utub_url_user_association = Utub_Urls()
 

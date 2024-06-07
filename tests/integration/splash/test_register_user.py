@@ -28,8 +28,8 @@ def test_register_new_user(app, load_register_page):
 
     # Ensure no user with this data exists in database
     with app.app_context():
-        new_db_user: Users = Users.query.filter_by(
-            username=new_user[REGISTER_FORM.USERNAME]
+        new_db_user: Users = Users.query.filter(
+            Users.username == new_user[REGISTER_FORM.USERNAME]
         ).first()
 
     assert new_db_user is None
@@ -52,8 +52,8 @@ def test_register_new_user(app, load_register_page):
 
     # Ensure user exists in database
     with app.app_context():
-        new_db_user: Users = Users.query.filter_by(
-            username=new_user[REGISTER_FORM.USERNAME]
+        new_db_user: Users = Users.query.filter(
+            Users.username == new_user[REGISTER_FORM.USERNAME]
         ).first()
 
     # Ensure user model after loading from database is logged in
@@ -99,8 +99,8 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
 
     # Ensure user already exists
     with app.app_context():
-        new_db_user = Users.query.filter_by(
-            username=already_registered_user_data[REGISTER_FORM.USERNAME]
+        new_db_user = Users.query.filter(
+            Users.username == already_registered_user_data[REGISTER_FORM.USERNAME]
         ).first()
 
     assert new_db_user is not None
@@ -172,8 +172,8 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
 
         # Ensure user already exists
         with app.app_context():
-            new_db_user = Users.query.filter_by(
-                username=already_registered_user_data[REGISTER_FORM.USERNAME]
+            new_db_user = Users.query.filter(
+                Users.username == already_registered_user_data[REGISTER_FORM.USERNAME]
             ).first()
 
         assert new_db_user is not None
@@ -294,8 +294,8 @@ def test_register_user_missing_csrf(app, load_register_page):
 
     # Ensure no user with this data exists in database
     with app.app_context():
-        new_db_user = Users.query.filter_by(
-            username=valid_user_1[REGISTER_FORM.USERNAME]
+        new_db_user = Users.query.filter(
+            Users.username == valid_user_1[REGISTER_FORM.USERNAME]
         ).first()
 
     assert new_db_user is None
@@ -324,8 +324,8 @@ def test_register_user_missing_csrf(app, load_register_page):
 
     # Ensure no user with this data exists in database
     with app.app_context():
-        new_db_user = Users.query.filter_by(
-            username=valid_user_1[REGISTER_FORM.USERNAME]
+        new_db_user = Users.query.filter(
+            Users.username == valid_user_1[REGISTER_FORM.USERNAME]
         ).first()
 
     assert new_db_user is None

@@ -1,6 +1,6 @@
 from enum import Enum
 
-from sqlalchemy import Column, Enum as SQLEnum, ForeignKey, Integer
+from sqlalchemy import Column, Enum as SQLEnum, ForeignKey, Integer, UniqueConstraint
 
 from src import db
 from src.utils.strings.model_strs import MODELS
@@ -29,6 +29,8 @@ class Utub_Members(db.Model):
 
     to_user = db.relationship("Users", back_populates="utubs_is_member_of")
     to_utub = db.relationship("Utubs", back_populates="members")
+
+    UniqueConstraint(utub_id, user_id, name="unique_member")
 
     @property
     def serialized(self) -> dict:

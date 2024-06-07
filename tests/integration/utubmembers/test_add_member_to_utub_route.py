@@ -72,7 +72,7 @@ def test_add_valid_users_to_utub_as_creator(
         }
 
         with app.app_context():
-            new_user = Users.query.filter(Users.username == other_user).first()
+            new_user: Users = Users.query.filter(Users.username == other_user).first()
 
         added_user_response = client.post(
             url_for(ROUTES.MEMBERS.ADD_MEMBER, utub_id=utub_id_of_current_user),
@@ -109,11 +109,17 @@ def test_add_valid_users_to_utub_as_creator(
                 ).count()
                 == current_number_of_users_in_utub
             )
-            current_utub: Utubs = Utubs.query.get(utub_id_of_current_user)
-            assert new_user in [user.to_user for user in current_utub.members]
-            assert other_user in [
-                user.to_user.username for user in current_utub.members
-            ]
+            assert (
+                Utub_Members.query.get((utub_id_of_current_user, new_user.id))
+                is not None
+            )
+            other_user_obj: Users = Users.query.filter(
+                Users.username == other_user
+            ).first()
+            assert (
+                Utub_Members.query.get((utub_id_of_current_user, other_user_obj.id))
+                is not None
+            )
 
             # Ensure correct count of Utub-User associations
             assert Utub_Members.query.count() == initial_num_user_utubs
@@ -191,10 +197,9 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     # Ensure removed from UTub
     with app.app_context():
         assert (
-            Utub_Members.query.filter(
-                Utub_Members.utub_id == utub_user_created.id,
-                Utub_Members.user_id == other_user_id_in_utub_with_urls,
-            ).first()
+            Utub_Members.query.get(
+                (utub_user_created.id, other_user_id_in_utub_with_urls)
+            )
             is None
         )
 
@@ -315,10 +320,7 @@ def test_add_valid_users_to_utub_as_member(
     assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 1
 
     with app.app_context():
-        assert (
-            Utub_Members.query.filter(Utub_Members.user_id == missing_user_id).first()
-            is None
-        )
+        assert Utub_Members.query.get((only_utub.id, missing_user_id)) is None
 
         # Ensure correct count of Utub-User associations
         assert Utub_Members.query.count() == initial_num_user_utubs
@@ -559,13 +561,7 @@ def test_add_user_to_another_users_utub(
 
     # Confirm third user not in second user's UTub
     with app.app_context():
-        assert (
-            Utub_Members.query.filter(
-                Utub_Members.user_id == test_user_to_add.id,
-                Utub_Members.utub_id == another_utub.id,
-            ).first()
-            is None
-        )
+        assert Utub_Members.query.get((another_utub.id, test_user_to_add.id)) is None
 
         # Ensure correct count of Utub-User associations
         assert Utub_Members.query.count() == initial_num_user_utubs

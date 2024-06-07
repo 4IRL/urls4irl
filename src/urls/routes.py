@@ -3,8 +3,9 @@ from flask_login import current_user
 
 from src import db
 from src.models.urls import Urls
-from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
+from src.models.utub_members import Utub_Members
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
 from src.urls.forms import (
     NewURLForm,
@@ -44,7 +45,7 @@ def remove_url(utub_id: int, utub_url_id: int):
     if url_in_utub.utub_id != utub_id:
         abort(404)
 
-    user_in_utub = current_user.id in [member.user_id for member in utub.members]
+    user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
     user_url_adder_or_utub_creator = (
         current_user.id == utub_creator_id or current_user.id == url_in_utub.user_id
     )
@@ -117,8 +118,9 @@ def add_url(utub_id: int):
         utub_id (int): The Utubs to add this URL to
     """
     utub: Utubs = Utubs.query.get_or_404(utub_id)
+    user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
 
-    if current_user.id not in [member.user_id for member in utub.members]:
+    if not user_in_utub:
         # Not authorized to add URL to this UTub
         return (
             jsonify(
@@ -156,8 +158,8 @@ def add_url(utub_id: int):
             )
 
         # Check if URL already exists
-        already_created_url: Urls = Urls.query.filter_by(
-            url_string=normalized_url
+        already_created_url: Urls = Urls.query.filter(
+            Urls.url_string == normalized_url
         ).first()
 
         if not already_created_url:
@@ -175,8 +177,8 @@ def add_url(utub_id: int):
         else:
             # If URL does already exist, check if associated with UTub
             url_id = already_created_url.id
-            utub_url_if_already_exists = Utub_Urls.query.filter_by(
-                utub_id=utub_id, url_id=url_id
+            utub_url_if_already_exists = Utub_Urls.query.filter(
+                Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id
             ).first()
 
             if utub_url_if_already_exists is not None:
@@ -274,7 +276,7 @@ def edit_url(utub_id: int, utub_url_id: int):
     if url_in_utub.utub_id != utub_id:
         abort(404)
 
-    user_in_utub = current_user.id in [member.user_id for member in utub.members]
+    user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
     user_added_url_or_is_utub_creator = (
         current_user.id == utub_creator_id or current_user.id == url_in_utub.user_id
     )
@@ -342,8 +344,8 @@ def edit_url(utub_id: int, utub_url_id: int):
             )
 
         # Now check if url already in database
-        url_already_in_database: Urls = Urls.query.filter_by(
-            url_string=normalized_url
+        url_already_in_database: Urls = Urls.query.filter(
+            Urls.url_string == normalized_url
         ).first()
 
         if url_already_in_database is None:
@@ -441,7 +443,7 @@ def edit_url_title(utub_id: int, utub_url_id: int):
     if url_in_utub.utub_id != utub_id:
         abort(404)
 
-    user_in_utub = current_user.id in [member.user_id for member in utub.members]
+    user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
     user_added_url_or_is_utub_creator = (
         current_user.id == utub_creator_id or current_user.id == url_in_utub.user_id
     )

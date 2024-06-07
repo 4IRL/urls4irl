@@ -73,8 +73,8 @@ def _handle_mailjet_failure(email_result: requests.Response, error_code: int = 1
 def _handle_after_forgot_password_form_validated(
     forgot_password_form: ForgotPasswordForm,
 ) -> tuple[Response, int]:
-    user_with_email: Users = Users.query.filter_by(
-        email=forgot_password_form.email.data.lower()
+    user_with_email: Users = Users.query.filter(
+        Users.email == forgot_password_form.email.data.lower()
     ).first()
 
     if user_with_email is not None:
