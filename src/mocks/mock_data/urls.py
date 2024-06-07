@@ -8,6 +8,13 @@ from src.models.utub_urls import Utub_Urls
 
 
 def generate_mock_urls(db: SQLAlchemy):
+    """
+    Generates mock URLs, adds them to database if not already added,
+    and then adds those to each UTub.
+
+    Args:
+        db (SQLAlchemy): Database engine and connection for committing mock data
+    """
     all_utubs: list[Utubs] = Utubs.query.all()
 
     for utub in all_utubs:

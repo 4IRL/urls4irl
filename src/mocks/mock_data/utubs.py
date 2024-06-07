@@ -7,6 +7,14 @@ from src.models.utub_members import Member_Role, Utub_Members
 
 
 def generate_mock_utubs(db: SQLAlchemy, no_dupes: bool):
+    """
+    Generates UTubs and adds them to the database. Multiple UTubs can have the same name,
+    so the option is given whether or not to create UTubs if one is found with the same name.
+
+    Args:
+        db (SQLAlchemy): Database engine and connection for committing mock data
+        no_dupes (bool): True if wanting to avoid creating duplicate UTubs, else will create UTubs with duplicate names
+    """
     for i in range(TEST_USER_COUNT):
         creator_id = i + 1
         utub_name = f"{UTUB_NAME_BASE}{creator_id}"
