@@ -7,7 +7,7 @@ from flask_login import FlaskLoginClient
 import pytest
 import warnings
 
-from src import create_app, db
+from src import create_app, db, sess
 from src.config import TestingConfig
 from src.models.email_validations import Email_Validations
 from src.models.tags import Tags
@@ -18,7 +18,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.models.urls import Urls
 from src.utils.strings import model_strs
-from tests.utils_for_test import get_csrf_token, drop_database
+from tests.utils_for_test import clear_database, get_csrf_token
 from tests.models_for_test import (
     valid_user_1,
     valid_user_2,
@@ -31,8 +31,9 @@ from tests.models_for_test import (
 
 TEST_SPLIT = (
     {"urls", "members"},
-    {"unit", "utubs"},
-    {"splash", "tags"},
+    {"cli", "tags"},
+    {"splash", "utubs"},
+    {"unit"},
 )
 
 
@@ -63,19 +64,27 @@ warnings.filterwarnings(
 )  # , message="'flask.Markup' is deprecated and will be removed in Flask 2.4. Import 'markupsafe.Markup' instead.")
 
 
-@pytest.fixture
+@pytest.fixture(scope="session")
 def ignore_deprecation_warning():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
     yield
     warnings.resetwarnings()
 
 
-@pytest.fixture
-def app(ignore_deprecation_warning) -> Generator[Flask, None, None]:
+@pytest.fixture(scope="session")
+def build_app(
+    ignore_deprecation_warning,
+) -> Generator[Tuple[Flask, TestingConfig], None, None]:
     config = TestingConfig()
     app_for_test = create_app(config)
-    yield app_for_test
-    drop_database(config)
+    yield app_for_test, config
+
+
+@pytest.fixture
+def app(build_app) -> Generator[Flask, None, None]:
+    app, testing_config = build_app
+    yield app
+    clear_database(testing_config, app, sess)
 
 
 @pytest.fixture
