@@ -7,8 +7,8 @@ from selenium.webdriver.common.by import By
 
 # from webdriver_manager.chrome import ChromeDriverManager
 
-import tests.user_interface.constants as const
-from tests.user_interface.utils import (
+import tests.functional.constants as const
+from tests.functional.utils import (
     click_and_wait,
     find_element_by_css_selector,
     send_keys_to_input_field,

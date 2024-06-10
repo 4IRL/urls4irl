@@ -1,6 +1,6 @@
 # Standard library
-import multiprocessing
 from typing import Generator
+import multiprocessing
 
 # External libraries
 import pytest
@@ -8,20 +8,28 @@ from selenium import webdriver
 from selenium.webdriver.chrome.webdriver import WebDriver
 
 # from selenium.webdriver.chrome.options import Options
+from sqlalchemy import create_engine
 
 # Internal libraries
-from src import create_app
 from src.config import TestingConfig
-import tests.user_interface.constants as const
-from tests.user_interface.utils import ping_server
-from tests.utils_for_test import drop_database
+import tests.functional.constants as const
+from tests.functional.utils import ping_server, run_app, clear_db
 
 
-# Builds and runs test configuration
-def run_app():
+@pytest.fixture(scope="session")
+def provide_config() -> TestingConfig:
+
     config = TestingConfig()
-    app_for_test = create_app(config)
-    app_for_test.run()
+
+    return config
+
+
+@pytest.fixture(scope="session")
+def provide_engine(provide_config: TestingConfig):
+    config = provide_config
+    engine = create_engine(config.SQLALCHEMY_DATABASE_URI)
+
+    yield engine
 
 
 # Creates a process separate from pytest to run the app in parallel
@@ -32,8 +40,10 @@ def init_multiprocessing():
 
 # Manages set up and tear down of app process
 @pytest.fixture(scope="session")
-def parallelize_app(init_multiprocessing):
-    process = multiprocessing.Process(target=run_app)
+def parallelize_app(init_multiprocessing, provide_config):
+    config = provide_config
+    process = multiprocessing.Process(target=run_app, args=(config,))
+
     process.start()
     yield process
     process.kill()
@@ -62,7 +72,7 @@ def build_driver(parallelize_app) -> Generator[WebDriver, None, None]:
 
 # Setup fixture for the webdriver. Accesses U4I and supplies driver
 @pytest.fixture
-def browser(build_driver: WebDriver):
+def browser(build_driver: WebDriver, provide_config: TestingConfig):
     driver = build_driver
 
     driver.delete_all_cookies()
@@ -80,7 +90,7 @@ def browser(build_driver: WebDriver):
     # Return the driver object to be used in the test functions
     yield driver
 
-    drop_database(TestingConfig())
+    clear_db(provide_config)
 
 
 # This fixture is not yet implemented because I can't figure out how to start each test independently. Currently the implementation of each subsequent test is dependent on the success of its predecessors

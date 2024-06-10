@@ -1,11 +1,37 @@
 # Standard library
+# from os import environ, path
 import requests
 from time import sleep
 
 # External libraries
 from selenium.webdriver.common.by import By
+from sqlalchemy import create_engine, MetaData
 
 # Internal libraries
+from src import create_app
+from src.config import TestingConfig
+from tests.utils_for_test import drop_database
+
+
+def run_app(config: TestingConfig):
+    """
+    Runs app
+    """
+    drop_database(config)
+    app_for_test = create_app(config)
+    app_for_test.run()
+
+
+def clear_db(config: TestingConfig):
+    """
+    Clears rows of db, in preparation for next test
+    """
+    engine = create_engine(config.SQLALCHEMY_DATABASE_URI)
+    engine.connect()
+    meta = MetaData(engine)
+    meta.reflect()
+    meta.drop_all()
+    meta.create_all()
 
 
 def ping_server(url: str, timeout: float = 0.5) -> bool:
