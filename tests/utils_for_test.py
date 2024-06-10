@@ -1,17 +1,10 @@
 # Standard library
 import re
 
-<<<<<<< HEAD
 from flask import Flask
 from flask_session import Session
 import sqlalchemy
 
-=======
-# External libraries
-import sqlalchemy
-
-# Internal libraries
->>>>>>> 639bfa5... Test updates
 from src.config import TestingConfig
 
 

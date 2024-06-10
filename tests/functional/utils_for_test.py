@@ -10,14 +10,13 @@ from sqlalchemy import create_engine, MetaData
 # Internal libraries
 from src import create_app
 from src.config import TestingConfig
-from tests.utils_for_test import drop_database
 
 
-def run_app(config: TestingConfig):
+def run_app():
     """
     Runs app
     """
-    drop_database(config)
+    config = TestingConfig()
     app_for_test = create_app(config)
     app_for_test.run()
 
