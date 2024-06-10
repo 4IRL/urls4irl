@@ -13,7 +13,7 @@ from sqlalchemy import create_engine
 # Internal libraries
 from src.config import TestingConfig
 import tests.functional.constants as const
-from tests.functional.utils import ping_server, run_app, clear_db
+from tests.functional.utils_for_test import ping_server, run_app, clear_db
 
 
 @pytest.fixture(scope="session")

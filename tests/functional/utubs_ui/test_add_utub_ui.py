@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 
 # Internal libraries
 import constants as const
-from tests.functional.utils import (
+from tests.functional.utils_for_test import (
     click_and_wait,
     find_element_by_css_selector,
     send_keys_to_input_field,

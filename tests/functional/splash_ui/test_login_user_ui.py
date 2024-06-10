@@ -5,7 +5,7 @@ from selenium.webdriver.common.by import By
 
 # Internal libraries
 import tests.functional.constants as const
-from tests.functional.utils import click_and_wait, send_keys_to_input_field
+from tests.functional.utils_for_test import click_and_wait, send_keys_to_input_field
 
 
 def test_example(browser):
