@@ -150,7 +150,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
     // Instantiate deck with list of URLs stored in current UTub
     for (let i = 0; i < dictURLs.length; i++) {
       let URLcol = createURLBlock(
-        dictURLs[i].urlID,
+        dictURLs[i].utubUrlID,
         dictURLs[i].urlString,
         dictURLs[i].urlTitle,
         dictURLs[i].urlTagIDs,
