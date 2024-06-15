@@ -94,15 +94,19 @@ def browser(build_driver: WebDriver, runner: Tuple[Flask, FlaskCliRunner]):
 
     driver.get(UI_TEST_STRINGS.BASE_URL)
 
+    # Return the driver object to be used in the test functions
+    yield driver
+
+
+def clear_db(runner: Tuple[Flask, FlaskCliRunner]):
     # Clear db
     _, cli_runner = runner
     cli_runner.invoke(args=["managedb", "clear", "test"])
-
-    # Return the driver object to be used in the test functions
-    yield driver
+    print("db cleared ")
 
 
 @pytest.fixture
 def add_test_users(runner):
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "users"])
+    print("users added")
