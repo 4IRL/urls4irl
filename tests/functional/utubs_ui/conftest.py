@@ -2,34 +2,29 @@
 import pytest
 
 # Internal libraries
-from src.mocks.mock_constants import USERNAME_BASE, EMAIL_SUFFIX
-from tests.functional.utils_for_test import click_and_wait, send_keys_to_input_field
+from tests.functional.utils_for_test import login_user
 
 
 @pytest.fixture
-def add_test_utubs(runner):
+# def login_test_user(browser, add_test_users, debug_strings):
+def login_test_user(browser, add_test_users):
     """
-    Adds test users and sample UTubs
+    Provides test with predetermined users
     """
-    _, cli_runner = runner
-    cli_runner.invoke(args=["addmock", "utubs"])
+    login_user(browser)
+
+    # if debug_strings:
+    #     print("Logged in as " + username)
+
+    yield browser
 
 
 @pytest.fixture
-def login_test_user(add_test_users, browser):
-    username = USERNAME_BASE + "1"
+def create_test_utubs(browser, add_test_utubs):
+    """
+    Provides test with predetermined users and utubs
+    """
 
-    # Find login button to open modal
-    click_and_wait(browser, ".to-login")
-
-    # Input login details
-    send_keys_to_input_field(browser, "#username", username)
-
-    send_keys_to_input_field(browser, "#password", username + EMAIL_SUFFIX)
-
-    # Find submit button to login
-    click_and_wait(browser, "#submit")
-
-    print("Logged in as " + username)
+    login_user(browser)
 
     yield browser

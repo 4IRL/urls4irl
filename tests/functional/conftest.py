@@ -14,7 +14,7 @@ from selenium.webdriver.chrome.options import Options
 # Internal libraries
 from src.config import TestingConfig
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.functional.utils_for_test import ping_server, run_app
+from tests.functional.utils_for_test import clear_db, ping_server, run_app
 
 
 @pytest.fixture(scope="session")
@@ -47,15 +47,39 @@ def parallelize_app(init_multiprocessing):
     process.join()
 
 
+# CLI commands
+
+
 def pytest_addoption(parser):
+    """
+    Option 1:
+    Adds CLI option for headless operation.
+    Default runs tests headless; option to observe UI interactions when debugging by assigning False.
+
+    Option 2:
+    Adds CLI option for display of debug strings.
+    Default keeps all strings hidden from CLI.
+    """
+
+    # Option 1: Headless
     parser.addoption(
         "--headless", action="store", default="true", help="my option: true or false"
     )
+
+    # Option 2: Debug strings
+    # parser.addoption(
+    #     "--debug_strings", action="store", default="false", help="my option: true or false"
+    # )
 
 
 @pytest.fixture(scope="session")
 def headless(request):
     return request.config.getoption("--headless")
+
+
+# @pytest.fixture(scope="session")
+# def debug_strings(request):
+#     return request.config.getoption("--debug_strings")
 
 
 @pytest.fixture(scope="session")
@@ -94,12 +118,30 @@ def browser(build_driver: WebDriver, runner: Tuple[Flask, FlaskCliRunner]):
 
     driver.get(UI_TEST_STRINGS.BASE_URL)
 
+    clear_db(runner)
+
     # Return the driver object to be used in the test functions
     yield driver
 
 
 @pytest.fixture
+# def add_test_users(runner, debug_strings):
 def add_test_users(runner):
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "users"])
     print("users added")
+    # if debug_strings:
+    #     print("users added")
+
+
+@pytest.fixture
+# def add_test_utubs(runner, debug_strings):
+def add_test_utubs(runner):
+    """
+    Adds test users and sample UTubs
+    """
+    _, cli_runner = runner
+    cli_runner.invoke(args=["addmock", "utubs"])
+    print("utubs added")
+    # if debug_strings:
+    #     print("utubs added")

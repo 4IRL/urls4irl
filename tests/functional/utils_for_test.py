@@ -8,10 +8,13 @@ from typing import Tuple
 from flask import Flask
 from flask.testing import FlaskCliRunner
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Internal libraries
 from src import create_app
 from src.config import TestingConfig
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 
 
 def run_app():
@@ -27,7 +30,7 @@ def clear_db(runner: Tuple[Flask, FlaskCliRunner]):
     # Clear db
     _, cli_runner = runner
     cli_runner.invoke(args=["managedb", "clear", "test"])
-    print("db cleared ")
+    print("db cleared")
 
 
 def ping_server(url: str, timeout: float = 0.5) -> bool:
@@ -49,24 +52,61 @@ def ping_server(url: str, timeout: float = 0.5) -> bool:
 
 
 # Streamline function for awaiting UI load after interaction
-def click_and_wait(browser, css_selector: str, time: float = 2):
-    button = find_element_by_css_selector(browser, css_selector)
-    button.click()
-    browser.implicitly_wait(time)
+def wait_then_get_element(
+    browser, css_selector: str, click: bool = False, time: float = 10
+):
+    """
+    Streamlines waiting for UI load after interaction.
+    Returns element by default; clicks if `click` bool = True
+    """
+    element = WebDriverWait(browser, time).until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, css_selector))
+    )
+    if click:
+        element.click()
+    else:
+        return element
 
 
 # Streamline function for inputting test values into input fields on site
-def send_keys_to_input_field(browser, css_selector: str, input_text: str):
-    input_field = find_element_by_css_selector(browser, css_selector)
+def clear_then_send_keys(element, input_text: str):
+    """
+    Sends keys for specified input into supplied input element field.
+    """
+    input_field = element
     input_field.clear()
     input_field.send_keys(input_text)
 
 
-# Streamlines Selenium's driver.find_element() by css selector
-def find_element_by_css_selector(browser, css_selector: str):
-    if css_selector[0] == "#":
-        return browser.find_element(By.ID, css_selector[1:])
-    elif css_selector[0] == ".":
-        return browser.find_element(By.CLASS_NAME, css_selector[1:])
-    else:
-        return False
+def login_user(
+    browser,
+    username: str = UI_TEST_STRINGS.TEST_USER_1,
+    password: str = UI_TEST_STRINGS.TEST_PASSWORD_1,
+):
+
+    # Find and click login button to open modal
+    wait_then_get_element(browser, ".to-login", True)
+
+    # Input login details
+    login_input_field = wait_then_get_element(browser, "#username")
+    clear_then_send_keys(login_input_field, username)
+
+    password_input_field = wait_then_get_element(browser, "#password")
+    clear_then_send_keys(password_input_field, password)
+
+    # Find submit button to login
+    wait_then_get_element(browser, "#submit", True)
+
+
+# Adds new UTub
+def add_utub(browser, utub_name: str):
+
+    # Click createUTub button to show input
+    wait_then_get_element(browser, "#createUTubBtn", True)
+
+    # Types new UTub name
+    create_utub_input = wait_then_get_element(browser, "#createUTub")
+    clear_then_send_keys(create_utub_input, utub_name)
+
+    # Submits new UTub
+    wait_then_get_element(browser, "#submitCreateUTub", True, 2)
