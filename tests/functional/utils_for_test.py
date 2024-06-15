@@ -18,7 +18,7 @@ def run_app():
     """
     config = TestingConfig()
     app_for_test = create_app(config)
-    app_for_test.run()
+    app_for_test.run(debug=False)
 
 
 def clear_db(config: TestingConfig):

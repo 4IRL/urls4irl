@@ -45,5 +45,6 @@ class ConfigProd(Config):
 
 
 class TestingConfig(Config):
-    TESTING = True
+    FLASK_DEBUG = False
     SQLALCHEMY_DATABASE_URI = environ.get(CONFIG_ENVS.DATABASE_URL_TEST)
+    TESTING = True
