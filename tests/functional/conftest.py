@@ -98,13 +98,6 @@ def browser(build_driver: WebDriver, runner: Tuple[Flask, FlaskCliRunner]):
     yield driver
 
 
-def clear_db(runner: Tuple[Flask, FlaskCliRunner]):
-    # Clear db
-    _, cli_runner = runner
-    cli_runner.invoke(args=["managedb", "clear", "test"])
-    print("db cleared ")
-
-
 @pytest.fixture
 def add_test_users(runner):
     _, cli_runner = runner

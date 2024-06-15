@@ -2,10 +2,12 @@
 # from os import environ, path
 import requests
 from time import sleep
+from typing import Tuple
 
 # External libraries
+from flask import Flask
+from flask.testing import FlaskCliRunner
 from selenium.webdriver.common.by import By
-from sqlalchemy import create_engine, MetaData
 
 # Internal libraries
 from src import create_app
@@ -21,16 +23,11 @@ def run_app():
     app_for_test.run(debug=False)
 
 
-def clear_db(config: TestingConfig):
-    """
-    Clears rows of db, in preparation for next test
-    """
-    engine = create_engine(config.SQLALCHEMY_DATABASE_URI)
-    engine.connect()
-    meta = MetaData(engine)
-    meta.reflect()
-    meta.drop_all()
-    meta.create_all()
+def clear_db(runner: Tuple[Flask, FlaskCliRunner]):
+    # Clear db
+    _, cli_runner = runner
+    cli_runner.invoke(args=["managedb", "clear", "test"])
+    print("db cleared ")
 
 
 def ping_server(url: str, timeout: float = 0.5) -> bool:
