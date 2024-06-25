@@ -1,33 +1,32 @@
 # External libraries
-from threading import Thread
 import pytest
 
 # Internal libraries
 from src.mocks.mock_constants import UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.utils_for_test import add_utub, wait_then_get_element
+from locators import MainPageLocators as MPL
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_add_utub(login_test_user):
+def test_delete_last_utub(create_test_utub):
     """
-    GIVEN a user trying to add a new UTub
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    GIVEN a user has one UTub
+    WHEN they delete the UTub
+    THEN ensure the main page shows appropriate prompts to create a new UTub
     """
 
-    browser = login_test_user
+    browser = create_test_utub
 
-    selector_UTub = add_utub(browser, UTUB_NAME_BASE + "1")
+    add_utub(browser, UTUB_NAME_BASE + "1")
 
-    # print("sleeping")
-    Thread.sleep(10)
-    # print("awake!")
+    # Extract confirming result
+    selector_UTub1 = wait_then_get_element(browser, MPL.SELECTED_UTUB_SELECTOR)
 
     # Assert new UTub selector was created with input UTub Name
-    assert selector_UTub.text == UTUB_NAME_BASE + "1"
+    assert selector_UTub1.text == UTUB_NAME_BASE + "1"
     # Assert new UTub is now active and displayed to user
-    assert "active" in selector_UTub.get_attribute("class")
+    assert "active" in selector_UTub1.get_attribute("class")
 
 
 @pytest.mark.skip(

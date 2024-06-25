@@ -7,12 +7,9 @@ from selenium.webdriver.common.by import By
 
 # from webdriver_manager.chrome import ChromeDriverManager
 
-import tests.functional.constants as const
-from tests.functional.utils_for_test import (
-    click_and_wait,
-    find_element_by_css_selector,
-    send_keys_to_input_field,
-)
+# Internal libraries
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.functional.utils_for_test import wait_then_get_element, clear_then_send_keys
 
 
 @pytest.fixture
@@ -26,21 +23,21 @@ def populate_register_form(browser):
     """
 
     # Identify and load register modal
-    click_and_wait(browser, ".to-register", 5)
+    wait_then_get_element(browser, ".to-register", True, 5)
 
     # Input register user details
-    send_keys_to_input_field(browser, "#username", const.USERNAME_REGISTER)
+    clear_then_send_keys(browser, "#username", UI_TEST_STRINGS.TEST_USER_1)
 
-    send_keys_to_input_field(browser, "#email", const.EMAIL_REGISTER)
+    clear_then_send_keys(browser, "#email", UI_TEST_STRINGS.TEST_PASSWORD_1)
 
-    send_keys_to_input_field(browser, "#confirmEmail", const.EMAIL_REGISTER)
+    clear_then_send_keys(browser, "#confirmEmail", UI_TEST_STRINGS.TEST_PASSWORD_1)
 
-    send_keys_to_input_field(browser, "#password", const.PASSWORD_REGISTER)
+    clear_then_send_keys(browser, "#password", UI_TEST_STRINGS.TEST_PASSWORD_1)
 
-    send_keys_to_input_field(browser, "#confirmPassword", const.PASSWORD_REGISTER)
+    clear_then_send_keys(browser, "#confirmPassword", UI_TEST_STRINGS.TEST_PASSWORD_1)
 
     # Attempt to register
-    click_and_wait(browser, "#submit")
+    wait_then_get_element(browser, "#submit", True, 5)
 
     return browser
 
@@ -53,7 +50,7 @@ def test_register_new_user(populate_register_form):
     """
     browser = populate_register_form
 
-    modal_title = find_element_by_css_selector(browser, ".validate-email-title")
+    modal_title = wait_then_get_element(browser, ".validate-email-title")
     register_success_text = "Validate Your Email!"
 
     assert modal_title.text == register_success_text

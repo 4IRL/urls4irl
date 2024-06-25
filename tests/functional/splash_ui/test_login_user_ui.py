@@ -1,11 +1,10 @@
 # External libraries
-from selenium.webdriver.common.by import By
-
 # from webdriver_manager.chrome import ChromeDriverManager
 
 # Internal libraries
-from src.mocks.mock_constants import USERNAME_BASE, EMAIL_SUFFIX
-from tests.functional.utils_for_test import click_and_wait, send_keys_to_input_field
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.functional.utils_for_test import login_user
+from tests.functional.locators import MainPageLocators as MPL
 
 
 def test_example(browser):
@@ -16,27 +15,16 @@ def test_example(browser):
     assert "URLS4IRL" in browser.title
 
 
-def test_login_test_user(add_test_users, browser):
-    username = USERNAME_BASE + "1"
-
-    # Find login button to open modal
-    click_and_wait(browser, ".to-login")
-
-    # Input login details
-    send_keys_to_input_field(browser, "#username", username)
-
-    send_keys_to_input_field(browser, "#password", username + EMAIL_SUFFIX)
-
-    # Find submit button to login
-    click_and_wait(browser, "#submit")
+def test_login_test_user(browser, add_test_users):
+    login_user(browser)
 
     # Confirm user logged in
     # Logout button visible
-    btn_logout = browser.find_element(By.ID, "Logout")
+    btn_logout = browser.find_element(MPL.LOGOUT_BUTTON)
     assert btn_logout.text == "Logout"
 
     # Correct user logged in
-    user_logged_in = browser.find_element(By.ID, "userLoggedIn")
-    userLoggedInText = "Logged in as " + username
+    user_logged_in = browser.find_element(MPL.USERNAME_LOGGED_IN_OUTPUT)
+    userLoggedInText = "Logged in as " + UI_TEST_STRINGS.TEST_USER_1
 
     assert user_logged_in.text == userLoggedInText

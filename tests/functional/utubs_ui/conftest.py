@@ -20,6 +20,17 @@ def login_test_user(browser, add_test_users):
 
 
 @pytest.fixture
+def create_test_utub(browser, add_test_utub):
+    """
+    Provides test with predetermined users and utubs
+    """
+
+    login_user(browser)
+
+    yield browser
+
+
+@pytest.fixture
 def create_test_utubs(browser, add_test_utubs):
     """
     Provides test with predetermined users and utubs

@@ -88,15 +88,17 @@ def build_driver(parallelize_app, headless) -> Generator[WebDriver, None, None]:
     Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
     """
 
-    # Uncomment below to hide UI
-    if headless == "false":
-        driver = webdriver.Chrome()
-    else:
-        options = Options()
-        options.add_argument("--headless")
-        driver = webdriver.Chrome(options=options)
+    options = Options()
 
-    # Uncomment below to see UI
+    if headless == "false":
+        # Disable Chrome browser pop-up notifications
+        # prefs = {"profile.default_content_setting_values.notifications" : 2}
+        # options.add_experimental_option("prefs",prefs)
+        options.add_argument("--disable-notifications")
+    else:
+        options.add_argument("--headless")
+
+    driver = webdriver.Chrome(options=options)
 
     driver.maximize_window()
     ping_server(UI_TEST_STRINGS.BASE_URL)
@@ -125,13 +127,25 @@ def browser(build_driver: WebDriver, runner: Tuple[Flask, FlaskCliRunner]):
 
 
 @pytest.fixture
-# def add_test_users(runner, debug_strings):
 def add_test_users(runner):
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "users"])
     print("users added")
     # if debug_strings:
     #     print("users added")
+
+
+@pytest.fixture
+# def add_test_utubs(runner, debug_strings):
+def add_test_utub(runner):
+    """
+    Adds test users and a single sample UTub
+    """
+    _, cli_runner = runner
+    cli_runner.invoke(args=["addmock", "utub"])
+    print("utubs added")
+    # if debug_strings:
+    #     print("one utub added")
 
 
 @pytest.fixture
