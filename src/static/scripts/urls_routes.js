@@ -22,7 +22,7 @@ function addURL() {
   request.done(function (response, textStatus, xhr) {
     console.log("success");
 
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       addURLSuccess(response);
     }
   });
@@ -30,7 +30,7 @@ function addURL() {
   request.fail(function (response, textStatus, xhr) {
     console.log("failed");
 
-    if (xhr.status == 404) {
+    if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
       window.replace.href = "/invalid";
     } else {
@@ -131,13 +131,13 @@ function editURL() {
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       editURLSuccess(response);
     }
   });
 
   request.fail(function (response, textStatus, xhr) {
-    if (xhr.status == 404) {
+    if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
       editURLFail(response);
@@ -245,13 +245,13 @@ function editURLTitle() {
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       editURLTitleSuccess(response);
     }
   });
 
   request.fail(function (response, textStatus, xhr) {
-    if (xhr.status == 404) {
+    if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
       editURLTitleFail(response);
@@ -345,7 +345,7 @@ function deleteURL() {
   request.done(function (response, textStatus, xhr) {
     console.log("success");
 
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       deleteURLSuccess();
     }
   });
@@ -353,7 +353,7 @@ function deleteURL() {
   request.fail(function (response, textStatus, xhr) {
     console.log("failed");
 
-    if (xhr.status == 404) {
+    if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
       deleteURLFail(response);
@@ -384,7 +384,7 @@ function deleteURLSuccess() {
 function deleteURLFail(xhr, textStatus, error) {
   console.log("Error: Could not delete URL");
 
-  if (xhr.status == 409) {
+  if (xhr.status === 409) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );

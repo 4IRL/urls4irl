@@ -41,7 +41,7 @@ function addTag() {
   request.done(function (response, textStatus, xhr) {
     console.log("success");
 
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       addTagSuccess(response);
     }
   });
@@ -49,7 +49,7 @@ function addTag() {
   request.fail(function (response, textStatus, xhr) {
     console.log("failed");
 
-    if (xhr.status == 404) {
+    if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
       addTagFail(response);
@@ -122,7 +122,7 @@ function removeTag(tagID) {
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       console.log("success");
       removeTagSuccess(response);
     }
@@ -132,7 +132,7 @@ function removeTag(tagID) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );
-    if (xhr.status == 404) {
+    if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
       removeTagFail(response);

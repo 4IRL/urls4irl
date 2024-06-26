@@ -135,6 +135,9 @@ function resetURLDeck() {
   $("#UPRRow").empty();
   $("#URLFocusRow").empty();
   $("#LWRRow").empty();
+  $("#editUTubNameBtn").hide();
+  $("#addURLBtn").hide();
+  $("#accessAllURLsBtn").hide();
 }
 
 /** URL Functions **/

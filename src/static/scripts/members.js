@@ -40,7 +40,7 @@ function resetMemberDeck() {
 /** Member Functions **/
 
 // Build center panel URL list for selectedUTub
-function buildMemberDeck(dictMembers, UTubOwnerUserID) {
+function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
   resetMemberDeck();
   const parent = $("#listMembers");
   let numOfMembers = dictMembers.length;
@@ -54,12 +54,18 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID) {
     UTubMemberUsername = UTubMember.username;
     UTubMemberUserID = UTubMember.id;
 
-    if (UTubMemberUserID == UTubOwnerUserID) {
+    if (UTubMemberUserID === UTubOwnerUserID) {
       $("#UTubOwner").append(
         createOwnerBadge(UTubOwnerUserID, UTubMemberUsername),
       );
     } else {
-      parent.append(createMemberBadge(UTubMemberUserID, UTubMemberUsername));
+      parent.append(
+        createMemberBadge(
+          UTubMemberUserID,
+          UTubMemberUsername,
+          isCurrentUserOwner,
+        ),
+      );
     }
   }
 
@@ -67,10 +73,14 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID) {
   displayState1MemberDeck(numOfMembers);
 
   // Ability to add members is restricted to UTub owner
-  if (getCurrentUTubOwnerUserID() == UTubOwnerUserID) {
+  if (isCurrentUserOwner) {
+    hideIfShown($("#leaveUTubBtn"));
     showIfHidden($("#addMemberBtn"));
     parent.append(createNewMemberInputField());
-  } else hideIfShown($("#addMemberBtn"));
+  } else {
+    hideIfShown($("#addMemberBtn"));
+    showIfHidden($("#leaveUTubBtn"));
+  }
 }
 
 // Creates member list item
@@ -86,7 +96,11 @@ function createOwnerBadge(UTubOwnerUserID, UTubMemberUsername) {
 }
 
 // Creates member list item
-function createMemberBadge(UTubMemberUserID, UTubMemberUsername) {
+function createMemberBadge(
+  UTubMemberUserID,
+  UTubMemberUsername,
+  isCurrentUserOwner,
+) {
   let memberSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
@@ -95,16 +109,30 @@ function createMemberBadge(UTubMemberUserID, UTubMemberUsername) {
     .addClass("member")
     .html("<b>" + UTubMemberUsername + "</b>");
 
-  $(removeButton)
-    .attr({ class: "btn btn-sm btn-outline-link border-0 member-remove" })
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      removeMemberShowModal(UTubMemberUserID);
-    });
-  removeButton.innerHTML = "&times;";
+  if (isCurrentUserOwner) {
+    $(removeButton)
+      .attr({ class: "btn btn-sm btn-outline-link border-0 member-remove" })
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        removeMemberShowModal(UTubMemberUserID, isCurrentUserOwner);
+      });
+    removeButton.innerHTML = "&times;";
 
-  $(memberSpan).append(removeButton);
+    $(memberSpan).append(removeButton);
+  } else {
+    // Leave UTub if member
+    $("#leaveUTubBtn")
+      .off("click")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        hideInputs();
+        deselectAllURLs();
+        removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+        console.log("Trying to leave UTub");
+      });
+  }
 
   return memberSpan;
 }

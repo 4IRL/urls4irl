@@ -144,7 +144,7 @@ function makeEditButton(wh) {
 
   // Edit icon box
   let htmlString =
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-pencil-square" viewBox="0 0 16 16" width="' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-pencil-square editIcon" viewBox="0 0 16 16" width="' +
     wh +
     '" height="' +
     wh +
