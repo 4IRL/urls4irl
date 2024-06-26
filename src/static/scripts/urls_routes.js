@@ -61,14 +61,16 @@ function addURLSuccess(response) {
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
   let URLcol = createURLBlock(
-    response.URL.urlID,
+    response.URL.utubUrlID,
     response.URL.urlString,
     response.URL.urlTitle,
     [],
     [],
+    true,
   );
 
-  $("#URLFocusRow").append(URLcol);
+  $("#UPRRow").prepend(URLcol);
+  moveURLsToUpperRowOnSuccessfulAddURL();
 
   displayState1URLDeck();
 }
@@ -307,10 +309,12 @@ function deleteURLHideModal() {
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function deleteURLShowModal() {
   let modalTitle = "Are you sure you want to delete this URL from the UTub?";
+  let modalText = "You can always add it back again!";
   let buttonTextDismiss = "Just kidding";
   let buttonTextSubmit = "Delete URL";
 
   $("#confirmModalTitle").text(modalTitle);
+  $("#confirmModalBody").text(modalText);
 
   $("#modalDismiss")
     .off("click")
@@ -329,9 +333,8 @@ function deleteURLShowModal() {
     .text(buttonTextSubmit);
 
   $("#confirmModal").modal("show");
-  $("#confirmModal").on("shown.bs.modal", () =>
-    hideIfShown($("#modalRedirect")),
-  );
+  $("#modalRedirect").hide();
+  hideIfShown($("#modalRedirect"));
 }
 
 // Handles post request and response for removing an existing URL from current UTub, after confirmation

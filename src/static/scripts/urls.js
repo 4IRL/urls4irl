@@ -5,9 +5,10 @@ $(document).ready(function () {
 
   // Add new URL to current UTub
   $("#addURLBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+    e.stopPropagation();
+    e.preventDefault();
     hideInputs();
+    if (getSelectedURLCard().length === 0) moveURLsToLowerRowOnAddURLShown();
     deselectAllURLs();
     addURLShowInput();
   });
@@ -34,7 +35,7 @@ function getNumOfURLs() {
 
 // function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
 function getSelectedURLID() {
-  return $(".selectedURL").attr("urlid");
+  return parseInt($(".selectedURL").attr("urlid"));
 }
 
 // Simple function to streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
@@ -84,9 +85,11 @@ function accessAllWarningShowModal() {
     "Are you sure you want to open all " +
     getNumOfURLs() +
     " URLs in this UTub?";
+  let modalText = "Performance issues may occur.";
   let modalDismiss = "Cancel";
 
   $("#confirmModalTitle").text(modalTitle);
+  $("#confirmModalBody").text(modalText);
 
   $("#modalDismiss")
     .on("click", function (e) {
@@ -107,7 +110,7 @@ function accessAllWarningShowModal() {
     .text("Open all URLs");
 
   $("#confirmModal").modal("show");
-
+  $("#modalRedirect").hide();
   hideIfShown($("#modalRedirect"));
 }
 
@@ -665,7 +668,6 @@ function deselectURL(deselectedCardCol) {
 // Deselects all URLs in preparation for creation URL
 function deselectAllURLs() {
   let cardCols = $(".cardCol");
-  const focusRow = $("#URLFocusRow");
   const lowerRow = $("#LWRRow");
   const selectedURL = getSelectedURLCard().parent();
 
@@ -790,6 +792,35 @@ function filterURL(tagID) {
       deselectURL(cardCol);
       cardCol.hide();
     }
+  }
+}
+
+// Moves all upper row URLs to lower row on adding a new URL
+function moveURLsToLowerRowOnAddURLShown() {
+  const upperRowChildren = $("#UPRRow").children();
+  const upperRowChildrenLength = upperRowChildren.length;
+
+  if (upperRowChildrenLength === 0) return;
+
+  const lowerRow = $("#LWRRow");
+
+  for (let i = 0; i < upperRowChildrenLength; i++) {
+    let urlCard = upperRowChildren[upperRowChildrenLength - 1 - i];
+    lowerRow.prepend(urlCard);
+  }
+}
+
+function moveURLsToUpperRowOnSuccessfulAddURL() {
+  const lowerRowChildren = $("#LWRRow").children();
+  const lowerRowChildrenLength = lowerRowChildren.length;
+
+  if (lowerRowChildrenLength === 0) return;
+
+  const upperRow = $("#UPRRow");
+
+  for (let i = 0; i < lowerRowChildrenLength; i++) {
+    let urlCard = lowerRowChildren[i];
+    upperRow.append(urlCard);
   }
 }
 
