@@ -5,9 +5,10 @@ $(document).ready(function () {
 
   // Add new URL to current UTub
   $("#addURLBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+    e.stopPropagation();
+    e.preventDefault();
     hideInputs();
+    if (getSelectedURLCard().length === 0) moveURLsToLowerRowOnAddURLShown();
     deselectAllURLs();
     addURLShowInput();
   });
@@ -34,7 +35,7 @@ function getNumOfURLs() {
 
 // function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
 function getSelectedURLID() {
-  return $(".selectedURL").attr("urlid");
+  return parseInt($(".selectedURL").attr("urlid"));
 }
 
 // Simple function to streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
@@ -84,9 +85,11 @@ function accessAllWarningShowModal() {
     "Are you sure you want to open all " +
     getNumOfURLs() +
     " URLs in this UTub?";
+  let modalText = "Performance issues may occur.";
   let modalDismiss = "Cancel";
 
   $("#confirmModalTitle").text(modalTitle);
+  $("#confirmModalBody").text(modalText);
 
   $("#modalDismiss")
     .on("click", function (e) {
@@ -107,7 +110,7 @@ function accessAllWarningShowModal() {
     .text("Open all URLs");
 
   $("#confirmModal").modal("show");
-
+  $("#modalRedirect").hide();
   hideIfShown($("#modalRedirect"));
 }
 
@@ -158,6 +161,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
         dictURLs[i].urlTitle,
         dictURLs[i].urlTagIDs,
         dictTags,
+        dictURLs[i].canDelete,
       );
 
       parent.append(URLcol);
@@ -171,7 +175,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
 }
 
 // Create a URL block to add to current UTub/URLDeck
-function createURLBlock(URLID, string, title, tagArray, dictTags) {
+function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
   const col = document.createElement("div");
   const card = document.createElement("div");
   // const cardImg = document.createElement('img');
@@ -224,117 +228,119 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
 
   $(URLTitle).addClass("card-title").text(title);
 
-  $(editURLTitleBtn)
-    .addClass("editURLTitleBtn")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      editURLTitleShowInput();
-    })
-    .attr({ style: "display: none" });
-
-  $(editURLTitleWrap)
-    .addClass("createDiv form-group")
-    .attr({ style: "display: none" });
-
-  $(editURLTitleLabel)
-    .attr({
-      for: "editURLTitle-" + URLID,
-      style: "display:block",
-    })
-    .html("<b> URL Title </b>");
-
-  $(editURLTitleInput)
-    .addClass("card-title userInput editURLTitle")
-    .attr({
-      id: "editURLTitle-" + URLID,
-      type: "text",
-      size: "40",
-      value: title,
-      placeholder: "Edit URL Title",
-    });
-
-  $(submitEditURLTitleBtn)
-    .addClass("submitEditURLTitleBtn")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      editURLTitle();
-    });
-
-  $(cancelEditURLTitleBtn)
-    .addClass("cancelEditURLTitleBtn")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      editURLTitleHideInput();
-    });
-
   $(URLWrap).addClass("URL").attr({ style: "display:flex" });
 
   $(URL).addClass("card-text").text(string);
 
-  $(editURLBtn)
-    .addClass("editURLBtn")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      editURLShowInput();
-    })
-    .attr({ style: "display: none" });
+  if (canModify) {
+    $(editURLTitleBtn)
+      .addClass("editURLTitleBtn")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        editURLTitleShowInput();
+      })
+      .attr({ style: "display: none" });
 
-  $(editURLWrap)
-    .addClass("createDiv form-group")
-    .attr({ style: "display: none" });
+    $(editURLTitleWrap)
+      .addClass("createDiv form-group")
+      .attr({ style: "display: none" });
 
-  $(editURLLabel)
-    .attr({
-      for: "editURL-" + URLID,
-      style: "display:block",
-    })
-    .html("<b> URL </b>");
+    $(editURLTitleLabel)
+      .attr({
+        for: "editURLTitle-" + URLID,
+        style: "display:block",
+      })
+      .html("<b> URL Title </b>");
 
-  $(editURLInput)
-    .addClass("card-text userInput editURL")
-    .attr({
-      id: "editURL-" + URLID,
-      type: "text",
-      size: "40",
-      value: string,
-      placeholder: "Edit URL",
-    });
-
-  $(submitEditURLBtn)
-    .addClass("submitEditURLBtn")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      editURL();
-      $(document).bind("keypress", function (e) {
-        if (e.which == 13) {
-          editURL();
-        }
+    $(editURLTitleInput)
+      .addClass("card-title userInput editURLTitle")
+      .attr({
+        id: "editURLTitle-" + URLID,
+        type: "text",
+        size: "40",
+        value: title,
+        placeholder: "Edit URL Title",
       });
-    });
 
-  $(cancelEditURLBtn)
-    .addClass("cancelEditURLBtn")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      editURLHideInput();
-      $(document).bind("keypress", function (e) {
-        if (e.which == 27) {
-          hideInputs();
-        }
+    $(submitEditURLTitleBtn)
+      .addClass("submitEditURLTitleBtn")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        editURLTitle();
       });
-    });
+
+    $(cancelEditURLTitleBtn)
+      .addClass("cancelEditURLTitleBtn")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        editURLTitleHideInput();
+      });
+
+    $(editURLBtn)
+      .addClass("editURLBtn")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        editURLShowInput();
+      })
+      .attr({ style: "display: none" });
+
+    $(editURLWrap)
+      .addClass("createDiv form-group")
+      .attr({ style: "display: none" });
+
+    $(editURLLabel)
+      .attr({
+        for: "editURL-" + URLID,
+        style: "display:block",
+      })
+      .html("<b> URL </b>");
+
+    $(editURLInput)
+      .addClass("card-text userInput editURL")
+      .attr({
+        id: "editURL-" + URLID,
+        type: "text",
+        size: "40",
+        value: string,
+        placeholder: "Edit URL",
+      });
+
+    $(submitEditURLBtn)
+      .addClass("submitEditURLBtn")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        editURL();
+        $(document).bind("keypress", function (e) {
+          if (e.which == 13) {
+            editURL();
+          }
+        });
+      });
+
+    $(cancelEditURLBtn)
+      .addClass("cancelEditURLBtn")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        editURLHideInput();
+        $(document).bind("keypress", function (e) {
+          if (e.which == 27) {
+            hideInputs();
+          }
+        });
+      });
+  }
 
   $(URLInfo).addClass("card-body URLInfo");
 
   $(URLTags).addClass("card-body URLTags").attr({ style: "display: none" });
 
-  // Add tag bades
+  // Add tag badges
   for (let j in tagArray) {
     // Find applicable tags in dictionary to apply to URL card
     let tag = dictTags.find(function (e) {
@@ -375,43 +381,56 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
       addTagShowInput();
     });
 
-  $(delURLBtn)
-    .addClass("card-link btn btn-danger delURLBtn")
-    .attr({ type: "button" })
-    .text("Delete")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      deleteURLShowModal();
-    });
+  if (canModify) {
+    $(delURLBtn)
+      .addClass("card-link btn btn-danger delURLBtn")
+      .attr({ type: "button" })
+      .text("Delete")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        deleteURLShowModal();
+      });
+  }
 
   // Assemble url list items
   $(col).append(card);
 
   $(card).append(URLInfo);
 
-  $(URLTitleWrap).append(URLTitle).append(editURLTitleBtn);
-  $(editURLTitleWrap)
-    .append(editURLTitleLabel)
-    .append(editURLTitleInput)
-    .append(submitEditURLTitleBtn)
-    .append(cancelEditURLTitleBtn);
-  $(URLWrap).append(URL).append(editURLBtn);
-  $(editURLWrap)
-    .append(editURLLabel)
-    .append(editURLInput)
-    .append(submitEditURLBtn)
-    .append(cancelEditURLBtn);
-  $(URLInfo)
-    .append(URLTitleWrap)
-    .append(editURLTitleWrap)
-    .append(URLWrap)
-    .append(editURLWrap);
+  if (canModify) {
+    $(URLTitleWrap).append(URLTitle).append(editURLTitleBtn);
+    $(editURLTitleWrap)
+      .append(editURLTitleLabel)
+      .append(editURLTitleInput)
+      .append(submitEditURLTitleBtn)
+      .append(cancelEditURLTitleBtn);
+    $(URLWrap).append(URL).append(editURLBtn);
+    $(editURLWrap)
+      .append(editURLLabel)
+      .append(editURLInput)
+      .append(submitEditURLBtn)
+      .append(cancelEditURLBtn);
+    $(URLInfo)
+      .append(URLTitleWrap)
+      .append(editURLTitleWrap)
+      .append(URLWrap)
+      .append(editURLWrap);
 
-  $(card).append(URLTags);
+    $(card).append(URLTags);
 
-  $(card).append(URLOptions);
-  $(URLOptions).append(accessURLBtn).append(addTagBtn).append(delURLBtn);
+    $(card).append(URLOptions);
+    $(URLOptions).append(accessURLBtn).append(addTagBtn).append(delURLBtn);
+  } else {
+    $(URLTitleWrap).append(URLTitle);
+    $(URLWrap).append(URL);
+    $(URLInfo).append(URLTitleWrap).append(URLWrap);
+
+    $(card).append(URLTags);
+
+    $(card).append(URLOptions);
+    $(URLOptions).append(accessURLBtn);
+  }
   // $(URLOptions).append(submitEditBtn);
   // $(URLOptions).append(cancelEditBtn);
 
@@ -649,7 +668,6 @@ function deselectURL(deselectedCardCol) {
 // Deselects all URLs in preparation for creation URL
 function deselectAllURLs() {
   let cardCols = $(".cardCol");
-  const focusRow = $("#URLFocusRow");
   const lowerRow = $("#LWRRow");
   const selectedURL = getSelectedURLCard().parent();
 
@@ -774,6 +792,35 @@ function filterURL(tagID) {
       deselectURL(cardCol);
       cardCol.hide();
     }
+  }
+}
+
+// Moves all upper row URLs to lower row on adding a new URL
+function moveURLsToLowerRowOnAddURLShown() {
+  const upperRowChildren = $("#UPRRow").children();
+  const upperRowChildrenLength = upperRowChildren.length;
+
+  if (upperRowChildrenLength === 0) return;
+
+  const lowerRow = $("#LWRRow");
+
+  for (let i = 0; i < upperRowChildrenLength; i++) {
+    let urlCard = upperRowChildren[upperRowChildrenLength - 1 - i];
+    lowerRow.prepend(urlCard);
+  }
+}
+
+function moveURLsToUpperRowOnSuccessfulAddURL() {
+  const lowerRowChildren = $("#LWRRow").children();
+  const lowerRowChildrenLength = lowerRowChildren.length;
+
+  if (lowerRowChildrenLength === 0) return;
+
+  const upperRow = $("#UPRRow");
+
+  for (let i = 0; i < lowerRowChildrenLength; i++) {
+    let urlCard = lowerRowChildren[i];
+    upperRow.append(urlCard);
   }
 }
 

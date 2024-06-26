@@ -309,6 +309,10 @@ span.member:hover .member-remove {
     margin-top: 3px;
 }
 
+#MembersHeader {
+    margin-top: 0.75rem;
+}
+
 /* Media size for responsiveness 
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 
  * */
