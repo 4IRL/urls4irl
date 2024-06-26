@@ -58,7 +58,7 @@ function addUTub() {
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       addUTubSuccess(response);
     }
   });
@@ -103,11 +103,11 @@ function addUTubSuccess(response) {
 
 // Handle error response display to user
 function addUTubFail(response, textStatus, xhr) {
-  if (xhr.status == 409) {
+  if (xhr.status === 409) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );
-  } else if (xhr.status == 404) {
+  } else if (xhr.status === 404) {
     $(".invalid-feedback").remove();
     $(".alert").remove();
     $(".form-control").removeClass("is-invalid");
@@ -164,7 +164,7 @@ function editUTubName() {
   request.done(function (response, textStatus, xhr) {
     console.log("success");
 
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       editUTubNameSuccess(response);
     }
   });
@@ -206,11 +206,11 @@ function editUTubNameFail(response, textStatus, xhr) {
   console.log("Error: Could not create UTub");
   console.log(response);
 
-  if (xhr.status == 409) {
+  if (xhr.status === 409) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );
-  } else if (xhr.status == 404) {
+  } else if (xhr.status === 404) {
     $(".invalid-feedback").remove();
     $(".alert").remove();
     $(".form-control").removeClass("is-invalid");
@@ -269,7 +269,7 @@ function editUTubDescription() {
   request.done(function (response, textStatus, xhr) {
     console.log("success");
 
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       editUTubDescriptionSuccess(response);
     }
   });
@@ -305,11 +305,11 @@ function editUTubDescriptionFail(response, textStatus, xhr) {
   console.log("Error: Could not create UTub");
   console.log(response);
 
-  if (xhr.status == 409) {
+  if (xhr.status === 409) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );
-  } else if (xhr.status == 404) {
+  } else if (xhr.status === 404) {
     $(".invalid-feedback").remove();
     $(".alert").remove();
     $(".form-control").removeClass("is-invalid");
@@ -339,8 +339,7 @@ function deleteUTubHideModal() {
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal() {
   let modalTitle = "Are you sure you want to delete this UTub?";
-  let modalBody =
-    "This action will remove all URLs in UTub and is irreverisible!";
+  let modalBody = "This action is irreverisible!";
   let buttonTextDismiss = "Nevermind...";
   let buttonTextSubmit = "Delete this sucka!";
 
@@ -349,7 +348,7 @@ function deleteUTubShowModal() {
   $("#confirmModalBody").text(modalBody);
 
   $("#modalDismiss")
-    .addClass("btn btn-default")
+    .addClass("btn btn-secondary")
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
@@ -368,6 +367,7 @@ function deleteUTubShowModal() {
     });
 
   $("#confirmModal").modal("show");
+  $("#modalRedirect").hide();
 }
 
 // Handles deletion of a current UTub
@@ -381,7 +381,7 @@ function deleteUTub() {
   request.done(function (response, textStatus, xhr) {
     console.log("success");
 
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       deleteUTubSuccess();
     }
   });
@@ -417,14 +417,14 @@ function deleteUTubSuccess() {
 
   displayState1UTubDeck(null, null);
 
-  if ($("#listUTubs").find(".UTubSelector").length == 0)
+  if ($("#listUTubs").find(".UTubSelector").length === 0)
     displayState0UTubDeck();
 }
 
 function deleteUTubFail(response, textStatus, xhr) {
   console.log("Error: Could not delete UTub");
 
-  if (xhr.status == 409) {
+  if (xhr.status === 409) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );
@@ -433,7 +433,7 @@ function deleteUTubFail(response, textStatus, xhr) {
 
     // let flashElem = flashMessageBanner(flashMessage, flashCategory);
     // flashElem.insertBefore('#modal-body').show();
-  } else if (xhr.status == 404) {
+  } else if (xhr.status === 404) {
     $(".invalid-feedback").remove();
     $(".alert").remove();
     $(".form-control").removeClass("is-invalid");

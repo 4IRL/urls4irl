@@ -31,19 +31,94 @@
 
 /* Buttons */
 
-svg {
-    width: 30;
-    height: 30;
-}
-
 .green-clickable {
     color: var(--splashGreen);
 }
 
+.green-clickable:hover {
+    cursor: pointer;
+    color: var(--darkSplashGreen);
+}
+
+.trash-fill {
+    background: var(--removeIconColor);
+    border-radius: 4px;
+}
+
+.trash-fill:hover {
+    cursor: pointer;
+    background: var(--removeIconColorHover);
+}
+
+.cancelButton {
+    color: var(--removeIconColor);
+}
+
+.cancelButton:hover{
+    cursor: pointer;
+    color: var(--removeIconColorHover);
+}
+
+.icon-holder {
+    justify-content: flex-end;
+}
+
+/* Utility */
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.flex-row-reverse {
+    display: flex;
+    flex-direction: row-reverse;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+.titleElement {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    flex-direction: row;
+}
+
+.content {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.flex-start {
+    align-items: flex-start;
+}
+
+.wrap {
+    flex-wrap: wrap;
+}
+
+.align-center {
+    align-items: center;
+}
+
 /* UTubs */
 
-.active {
+.active,
+.active:hover .UTubName {
     color: #f45e61;
+}
+
+.UTubName:hover {
+    cursor: pointer;
+    color: var(--deckSelectionGreenHover)
+}
+
+.editIcon:hover {
+    cursor: pointer;
+    color: white;
 }
 
 /* Tags */
@@ -80,6 +155,42 @@ span.tagBadge:hover .tag-remove {
     box-shadow: none;
 }
 
+#selectAll,
+.tagFilter {
+    display: inline-block;
+    padding: 3px 3px;
+    margin-top: 5px;
+    border-radius: 25px;
+    cursor: pointer;
+    transition: background-color 0.3s, border-color 0.3s;
+}
+
+#selectAll,
+.tagFilter {
+    border: 2px solid var(--tagBorderColor);
+    background-color: var(--tagBackgroundColorSelected);
+    cursor: pointer;
+}
+
+#selectAll:hover,
+.tagFilter:hover {
+    border-color: #aaa;
+}
+
+#selectAll.selected,
+.tagFilter.selected {
+    background-color: var(--tagBackgroundColor);
+    border: 2px solid var(--tagBorderColor);
+    border-radius: 25px;
+    color: white;
+}
+
+#selectAll.selected:hover,
+.tagFilter.selected:hover {
+    background-color: var(--tagBackgroundColorHover);
+    border-color: var(--tagBorderColor);
+}
+
 /* URLs */
 
 .card {
@@ -88,11 +199,16 @@ span.tagBadge:hover .tag-remove {
     margin: 2px;
     border: 2px solid var(--borderColor);
     border-radius: 20px;
+}
+
+.card:hover {
     cursor: pointer;
+    background-color: var(--cardBackgroundColorHover);
 }
 
 .card-title {
     color: #1abc9c;
+    margin-bottom: 2px;
 }
 
 .card-text {
@@ -105,7 +221,10 @@ span.tagBadge:hover .tag-remove {
 
 .selectedURL {
     border: 5px solid rgb(13, 255, 0);
-    transition: 250ms;
+}
+
+.selectedURL:hover {
+    cursor: auto;
 }
 
 .URLString {
@@ -117,22 +236,18 @@ span.tagBadge:hover .tag-remove {
 
 .col-lg-10 {
     flex-grow: 1;
-    transition: all 250ms ease;
 }
 
 .col-lg-4 {
     flex-shrink: 1;
-    transition: all 250ms ease;
 }
 
 .col-xl-10 {
     flex-grow: 1;
-    transition: all 250ms ease;
 }
 
 .col-xl-3 {
     flex-shrink: 1;
-    transition: all 250ms ease;
 }
 
 /* Members */
@@ -140,7 +255,6 @@ span.tagBadge:hover .tag-remove {
 span.member {
     color: var(--spanRemoveColor);
     background: white;
-    margin-left: 2px;
     margin-right: 2px;
     padding-left: 6px;
     padding-right: 6px;
@@ -148,6 +262,7 @@ span.member {
     padding-bottom: 1px;
     border-radius: 16px;
     white-space: nowrap;
+    display: inline-block;
 }
 
 span.member:hover .member-remove {
@@ -173,4 +288,43 @@ span.member:hover .member-remove {
 
 #centerPanel {
     padding-bottom: 5px;
+}
+
+#listMembers {
+    gap: 3px;
+}
+
+#MemberDeckHeader,
+#TagDeckHeader,
+#UTubDeckHeader,
+#UTubDescriptionDeckHeader,
+#URLDeckHeader {
+    margin-bottom: 0px;
+}
+
+#MemberDeckSubheader,
+#TagDeckSubheader,
+#UTubDeckSubheader,
+#URLDeckSubheader {
+    margin-top: 3px;
+}
+
+/* Media size for responsiveness 
+ * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 
+ * */
+
+@media (max-width: 991.98px) {
+    .titleElement {
+        align-items: flex-start;
+        flex-direction: column;
+    }
+
+    .icon-holder {
+        justify-content: flex-start;
+    }
+
+    #addMemberBtn,
+    #createUTubBtn {
+        margin-inline: 0px !important;
+    }
 }

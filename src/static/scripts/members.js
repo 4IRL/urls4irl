@@ -40,7 +40,7 @@ function resetMemberDeck() {
 /** Member Functions **/
 
 // Build center panel URL list for selectedUTub
-function buildMemberDeck(dictMembers, UTubOwnerUserID) {
+function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
   resetMemberDeck();
   const parent = $("#listMembers");
   let numOfMembers = dictMembers.length;
@@ -54,12 +54,18 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID) {
     UTubMemberUsername = UTubMember.username;
     UTubMemberUserID = UTubMember.id;
 
-    if (UTubMemberUserID == UTubOwnerUserID) {
+    if (UTubMemberUserID === UTubOwnerUserID) {
       $("#UTubOwner").append(
         createOwnerBadge(UTubOwnerUserID, UTubMemberUsername),
       );
     } else {
-      parent.append(createMemberBadge(UTubMemberUserID, UTubMemberUsername));
+      parent.append(
+        createMemberBadge(
+          UTubMemberUserID,
+          UTubMemberUsername,
+          isCurrentUserOwner,
+        ),
+      );
     }
   }
 
@@ -67,10 +73,14 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID) {
   displayState1MemberDeck(numOfMembers);
 
   // Ability to add members is restricted to UTub owner
-  if (getCurrentUTubOwnerUserID() == UTubOwnerUserID) {
+  if (isCurrentUserOwner) {
+    hideIfShown($("#leaveUTubBtn"));
     showIfHidden($("#addMemberBtn"));
     parent.append(createNewMemberInputField());
-  } else hideIfShown($("#addMemberBtn"));
+  } else {
+    hideIfShown($("#addMemberBtn"));
+    showIfHidden($("#leaveUTubBtn"));
+  }
 }
 
 // Creates member list item
@@ -86,8 +96,11 @@ function createOwnerBadge(UTubOwnerUserID, UTubMemberUsername) {
 }
 
 // Creates member list item
-function createMemberBadge(UTubMemberUserID, UTubMemberUsername) {
-  let memberListItem = document.createElement("li");
+function createMemberBadge(
+  UTubMemberUserID,
+  UTubMemberUsername,
+  isCurrentUserOwner,
+) {
   let memberSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
@@ -96,19 +109,32 @@ function createMemberBadge(UTubMemberUserID, UTubMemberUsername) {
     .addClass("member")
     .html("<b>" + UTubMemberUsername + "</b>");
 
-  $(removeButton)
-    .attr({ class: "btn btn-sm btn-outline-link border-0 member-remove" })
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      removeMemberShowModal(UTubMemberUserID);
-    });
-  removeButton.innerHTML = "&times;";
+  if (isCurrentUserOwner) {
+    $(removeButton)
+      .attr({ class: "btn btn-sm btn-outline-link border-0 member-remove" })
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        removeMemberShowModal(UTubMemberUserID, isCurrentUserOwner);
+      });
+    removeButton.innerHTML = "&times;";
 
-  $(memberSpan).append(removeButton);
-  $(memberListItem).append(memberSpan);
+    $(memberSpan).append(removeButton);
+  } else {
+    // Leave UTub if member
+    $("#leaveUTubBtn")
+      .off("click")
+      .on("click", function (e) {
+        e.stopPropagation();
+        e.preventDefault();
+        hideInputs();
+        deselectAllURLs();
+        removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+        console.log("Trying to leave UTub");
+      });
+  }
 
-  return memberListItem;
+  return memberSpan;
 }
 
 // Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the member. Input field recreated here to ensure at the end of list after creation of new UTubs
@@ -180,7 +206,7 @@ function displayState0MemberDeck() {
   hideIfShown($("#addMemberBtn"));
 
   // Subheader prompt hidden
-  hideIfShown($("#MemberDeckSubheader").closest(".row"));
+  hideIfShown($("#MemberDeckSubheader").closest(".titleElement"));
 }
 
 // Display state 1: Selected UTub has no Members
@@ -190,7 +216,7 @@ function displayState1MemberDeck() {
   let MemberDeckSubheader = $("#MemberDeckSubheader");
 
   // Subheader prompt shown
-  showIfHidden(MemberDeckSubheader.closest(".row"));
+  showIfHidden(MemberDeckSubheader.closest(".titleElement"));
 
   // Count UTub members
   let numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
@@ -198,6 +224,6 @@ function displayState1MemberDeck() {
   if (numOfMembers === 1) {
     MemberDeckSubheader.text("Add a member");
   } else {
-    MemberDeckSubheader.text(numOfMembers + " active members");
+    MemberDeckSubheader.text(numOfMembers + " members");
   }
 }

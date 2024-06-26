@@ -12,39 +12,38 @@
 <div id="leftPanel" class="panel col-md-3">
 
     <!-- UTubs -->
-    <div id="UTubDeck" class="deck row h-50 p-3">
-        <div class="row">
+    <div id="UTubDeck" class="deck h-50 p-3 flex-column">
+        <div class="titleElement">
             <!-- Header -->
             <div class="col-6 col-lg-6">
                 <h2 id="UTubDeckHeader">UTubs</h2>
             </div>
             <!-- Icons -->
-            <div class="col-6 col-lg-6 d-flex flex-row-reverse">
-                <!-- Delete UTub button -->
-                <i id="deleteUTubBtn" class="mx-1" style="display:none">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill text-danger"
-                        width="30" height="30" viewBox="0 0 16 16">
-                        <path
-                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708" />
-                    </svg></i>
-
+            <div class="col-6 col-lg-6 col-md-12 d-flex flex-row icon-holder">
                 <!-- Create UTub button -->
-                <i id="createUTubBtn" class="green-clickable mx-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill" width="30" height="30"
+                <i id="createUTubBtn" class="mx-1">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill green-clickable" width="30" height="30"
                         viewBox="0 0 16 16">
                         <path
                             d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
                     </svg>
                 </i>
+
+                <!-- Delete UTub button -->
+                <i id="deleteUTubBtn" class="ms-1" style="display:none">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="30" viewBox="0 -960 960 960" width="30" fill="black" class="bi trash-fill text-danger"> <!-- fill="#e8eaed"> -->
+                        <path d="m376-300 104-104 104 104 56-56-104-104 104-104-56-56-104 104-104-104-56 56 104 104-104 104 56 56Zm-96 180q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520Zm-400 0v520-520Z"/>
+                    </svg>
+                </i>
             </div>
         </div>
 
-        <div class="row">
+        <div class="titleElement">
             <!-- Subheader -->
             <h5 id="UTubDeckSubheader">Create a UTub</h5>
         </div>
 
-        <div class="row deckContent">
+        <div class="flex-column content">
             <div id="listUTubs">
                 <!-- UTubs -->
             </div>
@@ -53,11 +52,11 @@
 
 
     <!-- Tags -->
-    <div id="TagDeck" class="deck row h-50 p-3">
-        <div class="col-9 col-lg-9">
+    <div id="TagDeck" class="deck h-50 p-3 flex-column">
+        <div class="titleElement">
             <h2 id="TagDeckHeader">Tags</h2>
         </div>
-        <div class="col-3 col-lg-3 text-right">
+        <div class="titleElement">
             <div class="d-flex justify-content-center flex-row">
                 <!-- Creating disassociated tags is not yet implemented as of 12/21/2023. Not considered MVP functionality. -->
                 <!-- Create Tag button -->
@@ -82,14 +81,14 @@
             </div>
         </div>
 
-        <div class="row">
+        <div class="titleElement">
             <!-- Subheader -->
             <h5 id="TagDeckSubheader">
                 </h2>
         </div>
 
-        <div class="row deckContent">
-            <div id="listTags">
+        <div class="flex-column content">
+            <div class="flex-column flex-start" id="listTags">
                 <!-- Tags -->
             </div>
         </div>
@@ -101,16 +100,16 @@
 <!-- Center Panel -->
 
 <div id="centerPanel" class="panel col-md-6">
-    <div id="URLDeck" class="deck row h-100 p-3">
+    <div id="URLDeck" class="deck h-100 p-3 flex-column">
         <!-- Header -->
-        <div class="row justify-content-center">
+        <div class="titleElement">
 
-            <div class="col-9 col-lg-9" style="display:flex">
+            <div class="col-9 col-lg-9 flex-row align-center">
                 <!-- Header -->
                 <h2 id="URLDeckHeader">URLs</h2>
 
                 <!-- Edit UTub name -->
-                <div class="createDiv" style="display: none">
+                <div class="createDiv flex-row" style="display: none">
                     <input type="text" id="editUTubName" class="userInput">
 
                     <!-- Submit edit UTub name -->
@@ -124,9 +123,9 @@
                 </div>
 
                 <!-- Edit UTub button -->
-                <i id="editUTubNameBtn" class="mx-1 py-2" style="display: none; color: #545454">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
-                        class="bi bi-pencil-square" viewBox="0 0 16 16">
+                <i id="editUTubNameBtn" class="mx-1" style="display: none; color: #545454">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="currentColor"
+                        class="bi bi-pencil-square editIcon" viewBox="0 0 16 16">
                         <path
                             d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
                         <path fill-rule="evenodd"
@@ -136,8 +135,8 @@
             </div>
 
             <!-- Add URL button -->
-            <div class="col-3 col-lg-3 d-flex flex-row-reverse">
-                <i id="addURLBtn" class="green-clickable mx-1" style="display: none;">
+            <div class="col-3 col-lg-3 d-flex flex-row icon-holder">
+                <i id="addURLBtn" class="green-clickable" style="display: none;">
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
                         class="bi bi-plus-square-fill" viewBox="0 0 16 16">
                         <path
@@ -147,52 +146,50 @@
             </div>
         </div>
 
-        <div class="row">
+        <div class="titleElement">
             <!-- Subheader -->
             <h5 id="URLDeckSubheader"></h5>
         </div>
 
         <!-- URLs -->
-        <div class="row deckContent justify-content-center">
+        <div class="flex-column content">
             <div id="listURLs">
                 <!-- Current selected UTub's URLs will be displayed here -->
-                <div id="UPRRow" class="row list-content justify-content-center board-list">
+                <div id="UPRRow" class="flex-row wrap justify-content-center">
                     <!-- URLs above selected URL will be displayed here -->
                 </div>
-                <div id="URLFocusRow" class="row list-content justify-content-center board-list">
+                <div id="URLFocusRow" class="flex-row wrap">
                     <!-- Selected URL will be highlighted here -->
                 </div>
-                <div id="LWRRow" class="row list-content justify-content-center board-list">
+                <div id="LWRRow" class="flex-row wrap justify-content-center">
                     <!-- URLs below selected URL will be displayed here -->
                 </div>
             </div>
         </div>
 
         <!-- Access all URLs button -->
-        <div class="row justify-content-center">
-            <button id="accessAllURLsBtn" class="btn btn-primary" style="display: none; width: 25%">Access All URLs
+        <div class="titleElement flex-column" style="padding-top: 10px">
+            <button id="accessAllURLsBtn" class="btn btn-primary" style="display: none;">Access All URLs
                 in UTub</button>
         </div>
     </div>
 </div>
 
-<!-- Center Panel -->
-
 <!-- Right Panel -->
 
 <div id="rightPanel" class="panel col-md-3">
 
-    <div id="UTubDescriptionDeck" class="deck row h-50 p-3">
-        <div class="row">
+    <div id="UTubDescriptionDeck" class="deck h-25 p-3 flex-column">
+        <div class="titleElement">
             <div class="col-9 col-lg-9" style="display:flex">
                 <h2 id="UTubDescriptionDeckHeader">UTub Description</h2>
             </div>
 
-            <div class="col-3 col-lg-3 d-flex flex-row-reverse">
+            <div class="col-3 col-lg-3 d-flex flex-row icon-holder">
                 <!-- Edit button -->
-                <i id="editUTubDescriptionBtn" class="mx-1 py-2" style="display: none; color: #545454">
+                <i id="editUTubDescriptionBtn" class="ms-1" style="display: none; color: #545454">
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
-                        class="bi bi-pencil-square" viewBox="0 0 16 16">
+                        class="bi bi-pencil-square editIcon" viewBox="0 0 16 16">
                         <path
                             d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
                         <path fill-rule="evenodd"
@@ -210,12 +207,12 @@
             </div>
         </div>
 
-        <div class="row">
+        <div class="titleElement">
             <!-- Subheader -->
             <h5 id="UTubDescriptionDeckSubheader">Add a description</h5>
         </div>
 
-        <div class="row">
+        <div class="flex-column content">
             <!-- UTub Descriptiion -->
             <p id="UTubDescription" style="display: inline-block"></p>
             <div class="createDiv" style="display: none">
@@ -226,36 +223,44 @@
     </div>
 
 
-    <div id="MembersDeck" class="deck row h-50 p-3">
+    <div id="MembersDeck" class="deck h-75 p-3 flex-column">
 
-        <div class="row">
+        <div class="titleElement">
             <div class="col-6 col-lg-6">
                 <h2 id="MemberDeckHeader">Members</h2>
             </div>
-            <div class="col-6 col-lg-6 d-flex flex-row-reverse">
+            <div class="col-6 col-lg-6 d-flex flex-row icon-holder">
                 <!-- Add user button -->
-                <i id="addMemberBtn" class="green-clickable mx-1">
+                <i id="addMemberBtn" class="green-clickable ms-1">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
                         width="30" height="30" viewBox="0 0 16 16">
                         <path
                             d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
                     </svg>
                 </i>
+                <!-- Leave UTub button -->
+                <i id="leaveUTubBtn" class="ms-1" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="white" class="trash-fill" 
+                        height="30px" width="30px" viewBox="0 -960 960 960">
+                        <path 
+                            d="M200-120q-33 0-56.5-23.5T120-200v-120q0-17 11.5-28.5T160-360q17 0 28.5 11.5T200-320v120h560v-560H200v120q0 17-11.5 28.5T160-600q-17 0-28.5-11.5T120-640v-120q0-33 23.5-56.5T200-840h560q33 0 56.5 23.5T840-760v560q0 33-23.5 56.5T760-120H200Zm266-320H160q-17 0-28.5-11.5T120-480q0-17 11.5-28.5T160-520h306l-74-74q-12-12-11.5-28t11.5-28q12-12 28.5-12.5T449-651l143 143q6 6 8.5 13t2.5 15q0 8-2.5 15t-8.5 13L449-309q-12 12-28.5 11.5T392-310q-11-12-11.5-28t11.5-28l74-74Z"/>
+                    </svg>
+                </i>
             </div>
         </div>
 
-        <div class="row">
+        <div class="titleElement">
             <!-- Subheader -->
             <h5 id="MemberDeckSubheader">Add a member</h5>
         </div>
 
-        <div class="row deckContent">
-            <h5><u><b>Members</b></u></h5>
-            <div id="listMembers">
-                <!-- Members -->
-            </div>
+        <div class="flex-column content">
             <h5><u><b>Owner</b></u></h5>
             <div id="UTubOwner"></div>
+            <h5><u><b>Members</b></u></h5>
+            <div class="flex-column flex-start" id="listMembers">
+                <!-- Members -->
+            </div>
         </div>
     </div>
 </div>

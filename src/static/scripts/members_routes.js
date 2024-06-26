@@ -19,13 +19,13 @@ function addMember() {
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
+    if (xhr.status === 200) {
       addMemberSuccess(response, data.memberUsername);
     }
   });
 
   request.fail(function (response, textStatus, xhr) {
-    if (xhr.status == 404) {
+    if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
       addMemberFail(response);
@@ -81,19 +81,22 @@ function removeMemberHideModal() {
 }
 
 // Show confirmation modal for removal of the selected member from current UTub
-function removeMemberShowModal(memberID) {
-  let modalTitle = "Are you sure you want to remove this member from the UTub?";
-  let modalBody =
-    "This member will no longer have access to the URLs in this UTub";
-  let buttonTextDismiss = "Keep member";
-  let buttonTextSubmit = "Remove member";
+function removeMemberShowModal(memberID, isCreator) {
+  let modalTitle = isCreator
+    ? "Are you sure you want to remove this member from the UTub?"
+    : "Are you sure you want to leave this UTub?";
+  let modalBody = isCreator
+    ? "This member will no longer have access to the URLs in this UTub"
+    : "You will no longer have access to the URLs in this UTub";
+  let buttonTextDismiss = isCreator ? "Keep member" : "Stay in UTub";
+  let buttonTextSubmit = isCreator ? "Remove member" : "Leave UTub";
 
   $("#confirmModalTitle").text(modalTitle);
 
   $("#confirmModalBody").text(modalBody);
 
   $("#modalDismiss")
-    .addClass("btn btn-default")
+    .addClass("btn btn-secondary")
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
@@ -107,17 +110,16 @@ function removeMemberShowModal(memberID) {
     .text(buttonTextSubmit)
     .on("click", function (e) {
       e.preventDefault();
-      removeMember(memberID);
+      removeMember(memberID, isCreator);
     })
     .text(buttonTextSubmit);
 
   $("#confirmModal").modal("show");
-
-  hideIfShown($("#modalRedirect"));
+  $("#modalRedirect").hide();
 }
 
 // Handles post request and response for removing a member from current UTub, after confirmation
-function removeMember(memberID) {
+function removeMember(memberID, isCreator) {
   // Extract data to submit in POST request
   postURL = removeMemberSetup(memberID);
 
@@ -125,13 +127,23 @@ function removeMember(memberID) {
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
-    if (xhr.status == 200) {
-      removeMemberSuccess(memberID);
+    if (xhr.status === 200) {
+      if (isCreator) {
+        removeMemberSuccess(memberID);
+      } else {
+        $("#leaveUTubBtn").hide();
+        $("#confirmModal").modal("hide");
+        displayState0();
+        displayState1UTubDeck(null, null);
+
+        if ($("#listUTubs").find(".UTubSelector").length === 0)
+          displayState0UTubDeck();
+      }
     }
   });
 
   request.fail(function (response, textStatus, xhr) {
-    if (xhr.status == 404) {
+    if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
       removeMemberFail(response);
@@ -150,7 +162,7 @@ function removeMemberSuccess(memberID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let memberListItem = $("span[memberid=" + memberID + "]").parent();
+  let memberListItem = $("span[memberid=" + memberID + "]");
   memberListItem.fadeOut();
   memberListItem.remove();
 
@@ -160,7 +172,7 @@ function removeMemberSuccess(memberID) {
 function removeMemberFail(xhr, textStatus, error) {
   console.log("Error: Could not remove Member");
 
-  if (xhr.status == 409) {
+  if (xhr.status === 409) {
     console.log(
       "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
     );
@@ -169,7 +181,7 @@ function removeMemberFail(xhr, textStatus, error) {
 
     // let flashElem = flashMessageBanner(flashMessage, flashCategory);
     // flashElem.insertBefore('#modal-body').show();
-  } else if (xhr.status == 404) {
+  } else if (xhr.status === 404) {
     $(".invalid-feedback").remove();
     $(".alert").remove();
     $(".form-control").removeClass("is-invalid");

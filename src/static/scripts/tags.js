@@ -101,7 +101,7 @@ function createSelectAllTagFilterInDeck() {
   const container = document.createElement("div");
   const label = document.createElement("label");
 
-  $(container).addClass("selected").attr({
+  $(container).addClass("selected col-11").attr({
     id: "selectAll",
     tagid: "all",
     onclick: "filterAllTags(); filterAllTaggedURLs()",
@@ -123,7 +123,7 @@ function createTagFilterInDeck(tagID, string) {
   const label = document.createElement("label");
 
   $(container)
-    .addClass("tagFilter selected")
+    .addClass("tagFilter selected col-11")
     .attr({
       tagid: tagID,
       onclick: "filterTag(" + tagID + "); filterURL(" + tagID + ")",
@@ -146,9 +146,13 @@ function filterAllTags() {
 
   let tagFilterList = $(".tagFilter");
   // Toggle all filter tags to match "Select All" checked status
-  selectedBool
-    ? tagFilterList.addClass("selected")
-    : tagFilterList.removeClass("selected");
+  if (selectedBool) {
+    tagFilterList.addClass("selected");
+    selAll.html("Select All");
+  } else {
+    tagFilterList.removeClass("selected");
+    selAll.html("Deselect All");
+  }
 
   displayState2TagDeck();
 }
@@ -159,14 +163,20 @@ function filterTag(tagID) {
   filteredTag.toggleClass("selected");
 
   let tagFilters = $(".tagFilter");
-  let selAllBool = 1;
+  let selAllBool = true;
 
   for (let j = 0; j < tagFilters.length; j++) {
-    if (!$(tagFilters[j]).hasClass("selected")) selAllBool = 0;
+    if (!$(tagFilters[j]).hasClass("selected")) selAllBool = false;
   }
 
   let selAll = $("#selectAll");
-  selAllBool ? selAll.addClass("selected") : selAll.removeClass("selected");
+  if (selAllBool) {
+    selAll.addClass("selected");
+    selAll.html("Select All");
+  } else {
+    selAll.removeClass("selected");
+    selAll.html("Deselect All");
+  }
 
   displayState2TagDeck();
 }
@@ -176,14 +186,14 @@ function filterTag(tagID) {
 // Display state 0: Clean slate, no UTub selected
 function displayState0TagDeck() {
   // Subheader prompt hidden
-  hideIfShown($("#TagDeckSubheader").closest(".row"));
+  hideIfShown($("#TagDeckSubheader").closest(".titleElement"));
 }
 
 // Display state 1: Selected UTub has URLs, no Tags
 function displayState1TagDeck() {
   // Subheader prompt shown
   let TagDeckSubheader = $("#TagDeckSubheader");
-  showIfHidden(TagDeckSubheader.closest(".row"));
+  showIfHidden(TagDeckSubheader.closest(".titleElement"));
   TagDeckSubheader.text("Add a tag to a URL");
 
   let selectAll = $("#selectAll");
@@ -197,12 +207,12 @@ function displayState1TagDeck() {
 function displayState2TagDeck() {
   let numOfTags = getNumOfTags();
   let TagDeckSubheader = $("#TagDeckSubheader");
-  showIfHidden(TagDeckSubheader.closest(".row"));
+  showIfHidden(TagDeckSubheader.closest(".titleElement"));
   TagDeckSubheader.text(
     numOfTags -
       getActiveTagIDs().length +
       " of " +
       numOfTags +
-      " filters applied",
+      " tag filters applied",
   );
 }

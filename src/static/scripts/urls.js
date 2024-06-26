@@ -135,6 +135,9 @@ function resetURLDeck() {
   $("#UPRRow").empty();
   $("#URLFocusRow").empty();
   $("#LWRRow").empty();
+  $("#editUTubNameBtn").hide();
+  $("#addURLBtn").hide();
+  $("#accessAllURLsBtn").hide();
 }
 
 /** URL Functions **/
@@ -196,7 +199,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   const delURLBtn = document.createElement("button");
 
   $(col)
-    .addClass("cardCol mb-3 col-md-10 col-lg-4 col-xl-3")
+    .addClass("cardCol mb-3 col-md-12 col-sm-12 col-lg-12 col-xl-6")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -217,9 +220,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags) {
   // })
   // .addClass("card-img-top")
 
-  $(URLTitleWrap).addClass("URLTitle").attr({
-    style: "display:flex",
-  });
+  $(URLTitleWrap).addClass("URLTitle flex-row titleElement");
 
   $(URLTitle).addClass("card-title").text(title);
 
@@ -648,6 +649,14 @@ function deselectURL(deselectedCardCol) {
 // Deselects all URLs in preparation for creation URL
 function deselectAllURLs() {
   let cardCols = $(".cardCol");
+  const focusRow = $("#URLFocusRow");
+  const lowerRow = $("#LWRRow");
+  const selectedURL = getSelectedURLCard().parent();
+
+  if (selectedURL.length !== 0) {
+    selectedURL.detach();
+    lowerRow.prepend(selectedURL);
+  }
 
   for (let i = 0; i < cardCols.length; i++) {
     let cardCol = $(cardCols[i]);

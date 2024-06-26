@@ -8,15 +8,25 @@
     --pageBackgroundColor: #1f2424;
     --borderColor: #343c3d;
     --deckHeaderGreen: rgba(36, 167, 69, 1.0);
-    --deckSelectionGreen: #60daaa;
+    --deckSelectionGreen: rgba(96, 218, 170, 1.0);
+    --deckSelectionGreenHover: rgba(67, 152, 118, 1.0);
     --offWhiteSplashBackgroundBanner: rgba(248, 248, 248, 0.74);
     --blueLinkOnHover: rgba(5, 34, 77, 1.0);
     --darkGrayTextColor: rgba(51, 51, 51, 1.0);
 
-    --cardBackgroundColor: #282f2f;
+    --cardBackgroundColor: rgba(40, 47, 47, 1.0);
+    --cardBackgroundColorHover: rgba(40, 47, 47, 0.8);
     --UTubDescriptionColor: white;
 
     --spanRemoveColor: rgb(254, 115, 1);
+    --removeIconColor: rgba(220, 53, 69, 1.0);
+    --removeIconColorHover: rgba(154, 37, 48, 1.0);
+
+    --tagBackgroundColor: var(--cardBackgroundColor);
+    --tagBorderColor: var(--cardBackgroundColorHover);
+    --tagBackgroundColorHover: rgba(126, 130, 130, 0.5);
+    --tagBackgroundColorSelected: rgba(126, 130, 130, 1.0);
+    --tagSelectedTextColor: rgba(14, 66, 27, 1.0);
 }
 
 /** HTML DOM Elements **/
