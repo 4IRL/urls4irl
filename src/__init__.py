@@ -29,14 +29,10 @@ cors_sess = CORS()
 email_sender = EmailSender()
 
 
-def create_app(
-    config_class: Config = Config,
-    production: bool = False,
-    use_local_js_bundles: bool = False,
-):
-    config_class = ConfigProd if production else config_class
-    config_class.must_use_local_js_bundles() if use_local_js_bundles else None
+def create_app(config_class: Config = Config):
     testing = config_class.TESTING
+    production = config_class.PRODUCTION
+    config_class = ConfigProd if production else config_class
     app = Flask(__name__)
     app.config.from_object(config_class)
 
