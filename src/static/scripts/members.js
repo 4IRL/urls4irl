@@ -87,7 +87,6 @@ function createOwnerBadge(UTubOwnerUserID, UTubMemberUsername) {
 
 // Creates member list item
 function createMemberBadge(UTubMemberUserID, UTubMemberUsername) {
-  let memberListItem = document.createElement("li");
   let memberSpan = document.createElement("span");
   let removeButton = document.createElement("a");
 
@@ -106,9 +105,8 @@ function createMemberBadge(UTubMemberUserID, UTubMemberUsername) {
   removeButton.innerHTML = "&times;";
 
   $(memberSpan).append(removeButton);
-  $(memberListItem).append(memberSpan);
 
-  return memberListItem;
+  return memberSpan;
 }
 
 // Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the member. Input field recreated here to ensure at the end of list after creation of new UTubs
@@ -180,7 +178,7 @@ function displayState0MemberDeck() {
   hideIfShown($("#addMemberBtn"));
 
   // Subheader prompt hidden
-  hideIfShown($("#MemberDeckSubheader").closest(".row"));
+  hideIfShown($("#MemberDeckSubheader").closest(".titleElement"));
 }
 
 // Display state 1: Selected UTub has no Members
@@ -190,7 +188,7 @@ function displayState1MemberDeck() {
   let MemberDeckSubheader = $("#MemberDeckSubheader");
 
   // Subheader prompt shown
-  showIfHidden(MemberDeckSubheader.closest(".row"));
+  showIfHidden(MemberDeckSubheader.closest(".titleElement"));
 
   // Count UTub members
   let numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
@@ -198,6 +196,6 @@ function displayState1MemberDeck() {
   if (numOfMembers === 1) {
     MemberDeckSubheader.text("Add a member");
   } else {
-    MemberDeckSubheader.text(numOfMembers + " active members");
+    MemberDeckSubheader.text(numOfMembers + " members");
   }
 }

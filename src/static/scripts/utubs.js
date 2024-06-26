@@ -170,7 +170,7 @@ function createNewUTubInputField() {
   const submitBtn = makeSubmitButton(30);
   const cancelBtn = makeCancelButton(30);
 
-  $(wrapper).addClass("createDiv row").attr({ style: "display: none" });
+  $(wrapper).addClass("createDiv flex-row").attr({ style: "display: none" });
 
   $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
 
@@ -180,9 +180,7 @@ function createNewUTubInputField() {
     placeholder: "New UTub name",
   });
 
-  $(wrapperBtns).addClass(
-    "col-3 mb-md-0 text-right d-flex justify-content-center flex-row",
-  );
+  $(wrapperBtns).addClass("col-3 mb-md-0 flex-row-reverse");
 
   $(submitBtn)
     .addClass("mx-1 green-clickable submitCreateUTub")
@@ -197,12 +195,12 @@ function createNewUTubInputField() {
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      hideIfShown(wrapper);
+      hideIfShown($(wrapper));
     });
 
   $(wrapperInput).append(input);
 
-  $(wrapperBtns).append(submitBtn).append(cancelBtn);
+  $(wrapperBtns).append(cancelBtn).append(submitBtn);
 
   $(wrapper).append(wrapperInput).append(wrapperBtns);
 
@@ -252,7 +250,7 @@ function displayState1UTubDeck(selectedUTubID, UTubOwnerUserID) {
   hideInputs();
 
   // Subheader to tell user how many UTubs are accessible
-  $("#UTubDeckSubheader").text(getNumOfUTubs() + " Accessible UTubs");
+  $("#UTubDeckSubheader").text(getNumOfUTubs() + " UTubs");
 
   // UTub selected
 
@@ -274,7 +272,7 @@ function displayState1UTubDeck(selectedUTubID, UTubOwnerUserID) {
 // Display state 0: Clean slate, no UTub selected
 function displayState0UTubDescriptionDeck() {
   // Subheader prompt hidden
-  hideIfShown($("#UTubDescriptionDeckSubheader").closest(".row"));
+  hideIfShown($("#UTubDescriptionDeckSubheader").closest(".titleElement"));
 
   // Edit UTub Description button hidden
   hideIfShown($("#editUTubDescriptionBtn"));
@@ -287,7 +285,7 @@ function displayState0UTubDescriptionDeck() {
 // Display state 1: UTub selected, no description
 function displayState1UTubDescriptionDeck() {
   // Subheader prompt shown
-  showIfHidden($("#UTubDescriptionDeckSubheader").closest(".row"));
+  showIfHidden($("#UTubDescriptionDeckSubheader").closest(".titleElement"));
 
   // Edit UTub Description button shown, submission button hidden
   showIfHidden($("#editUTubDescriptionBtn"));
@@ -306,7 +304,7 @@ function displayState1UTubDescriptionDeck() {
 function displayState2UTubDescriptionDeck(UTubDescription) {
   if (UTubDescription) {
     // Subheader prompt hidden
-    hideIfShown($("#UTubDescriptionDeckSubheader").closest(".row"));
+    hideIfShown($("#UTubDescriptionDeckSubheader").closest(".titleElement"));
 
     // Edit UTub Description button shown, submission button hidden
     editUTubDescriptionHideInput();
@@ -326,7 +324,7 @@ function displayState2UTubDescriptionDeck(UTubDescription) {
 // Display state 3: UTub selected, edit active
 function displayState3UTubDescriptionDeck(UTubDescription) {
   // Subheader prompt hidden
-  hideIfShown($("#UTubDescriptionDeckSubheader").closest(".row"));
+  hideIfShown($("#UTubDescriptionDeckSubheader").closest(".titleElement"));
 
   // Submission button shown, edit UTub Description button hidden
   hideIfShown($("#editUTubDescriptionBtn"));

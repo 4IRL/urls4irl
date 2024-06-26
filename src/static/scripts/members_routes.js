@@ -150,7 +150,7 @@ function removeMemberSuccess(memberID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let memberListItem = $("span[memberid=" + memberID + "]").parent();
+  let memberListItem = $("span[memberid=" + memberID + "]");
   memberListItem.fadeOut();
   memberListItem.remove();
 

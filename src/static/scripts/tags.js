@@ -176,14 +176,14 @@ function filterTag(tagID) {
 // Display state 0: Clean slate, no UTub selected
 function displayState0TagDeck() {
   // Subheader prompt hidden
-  hideIfShown($("#TagDeckSubheader").closest(".row"));
+  hideIfShown($("#TagDeckSubheader").closest(".titleElement"));
 }
 
 // Display state 1: Selected UTub has URLs, no Tags
 function displayState1TagDeck() {
   // Subheader prompt shown
   let TagDeckSubheader = $("#TagDeckSubheader");
-  showIfHidden(TagDeckSubheader.closest(".row"));
+  showIfHidden(TagDeckSubheader.closest(".titleElement"));
   TagDeckSubheader.text("Add a tag to a URL");
 
   let selectAll = $("#selectAll");
@@ -197,12 +197,12 @@ function displayState1TagDeck() {
 function displayState2TagDeck() {
   let numOfTags = getNumOfTags();
   let TagDeckSubheader = $("#TagDeckSubheader");
-  showIfHidden(TagDeckSubheader.closest(".row"));
+  showIfHidden(TagDeckSubheader.closest(".titleElement"));
   TagDeckSubheader.text(
     numOfTags -
       getActiveTagIDs().length +
       " of " +
       numOfTags +
-      " filters applied",
+      " tag filters applied",
   );
 }
