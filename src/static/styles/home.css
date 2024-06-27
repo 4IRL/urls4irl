@@ -215,6 +215,10 @@ span.tagBadge:hover .tag-remove {
     color: #8c9b9d;
 }
 
+.url-string {
+    margin-bottom: 0px;
+}
+
 .selected {
     border: 5px solid rgb(13, 255, 0);
 }

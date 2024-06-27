@@ -182,20 +182,20 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
   const URLInfo = document.createElement("div"); // This element holds the URL title and string
   const URLTitleWrap = document.createElement("div"); // This element wraps the URL title and edit button
   const URLTitle = document.createElement("h5"); // This element displays the user-created title of the URL
-  const editURLTitleBtn = makeEditButton(24);
+  const editURLTitleBtn = makeEditButton(20);
   const editURLTitleWrap = document.createElement("div"); // This element wraps the edit field for URL title
   const editURLTitleLabel = document.createElement("label"); // This element labels the edit field for URL title
   const editURLTitleInput = document.createElement("input"); // This element is instantiated with the URL title
-  const submitEditURLTitleBtn = makeSubmitButton(24); // Submit changes after 'edit' operations
-  const cancelEditURLTitleBtn = makeCancelButton(24); // Cancel changes after 'edit' operations, populate with pre-edit values
+  const submitEditURLTitleBtn = makeSubmitButton(20); // Submit changes after 'edit' operations
+  const cancelEditURLTitleBtn = makeCancelButton(20); // Cancel changes after 'edit' operations, populate with pre-edit values
   const URLWrap = document.createElement("div"); // This element wraps the URL title and edit button
   const URL = document.createElement("p"); // This element displays the user's URL
-  const editURLBtn = makeEditButton(24);
+  const editURLBtn = makeEditButton(15);
   const editURLWrap = document.createElement("div"); // This element wraps the edit field for URL string
   const editURLLabel = document.createElement("label"); // This element labels the edit field for URL string
   const editURLInput = document.createElement("input"); // This element is instantiated with the URL
-  const submitEditURLBtn = makeSubmitButton(24); // Submit changes after 'edit' operations
-  const cancelEditURLBtn = makeCancelButton(24); // Cancel changes after 'edit' operations, populate with pre-edit values
+  const submitEditURLBtn = makeSubmitButton(15); // Submit changes after 'edit' operations
+  const cancelEditURLBtn = makeCancelButton(15); // Cancel changes after 'edit' operations, populate with pre-edit values
   const URLTags = document.createElement("div");
   const URLOptions = document.createElement("div");
   const accessURLBtn = document.createElement("button");
@@ -203,7 +203,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
   const delURLBtn = document.createElement("button");
 
   $(col)
-    .addClass("cardCol mb-3 col-md-12 col-sm-12 col-lg-12 col-xl-6")
+    .addClass("cardCol mb-3 col-md-12 col-sm-12 col-lg-12 col-xl-12 col-xxl-6")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -230,7 +230,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
 
   $(URLWrap).addClass("URL").attr({ style: "display:flex" });
 
-  $(URL).addClass("card-text").text(string);
+  $(URL).addClass("card-text url-string").text(string);
 
   if (canModify) {
     $(editURLTitleBtn)
@@ -637,8 +637,10 @@ function createNewTagInputField() {
 function selectURL(selectedCardCol) {
   const card = selectedCardCol.find(".card");
 
-  selectedCardCol.addClass("col-lg-10 col-xl-10");
-  selectedCardCol.removeClass("col-lg-4 col-xl-3");
+  selectedCardCol.addClass("col-12");
+  selectedCardCol.removeClass(
+    "col-md-12 col-sm-12 col-lg-12 col-xl-12 col-xxl-6",
+  );
 
   card.addClass("selectedURL");
   // card.attr("draggable", "");
@@ -653,8 +655,10 @@ function selectURL(selectedCardCol) {
 function deselectURL(deselectedCardCol) {
   const card = deselectedCardCol.find(".card");
 
-  deselectedCardCol.addClass("col-lg-4 col-xl-3");
-  deselectedCardCol.removeClass("col-lg-10 col-xl-10");
+  deselectedCardCol.addClass(
+    "col-md-12 col-sm-12 col-lg-12 col-xl-12 col-xxl-6",
+  );
+  deselectedCardCol.removeClass("col-12");
 
   card.removeClass("selectedURL");
   // card.attr("draggable");

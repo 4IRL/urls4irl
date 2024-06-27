@@ -204,6 +204,7 @@ function displayState0MemberDeck() {
   resetMemberDeck();
 
   hideIfShown($("#addMemberBtn"));
+  hideIfShown($("#leaveUTubBtn"));
 
   // Subheader prompt hidden
   hideIfShown($("#MemberDeckSubheader").closest(".titleElement"));
