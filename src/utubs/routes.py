@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, request, render_template, abort
+from flask import Blueprint, jsonify, redirect, request, render_template, abort, url_for
 from flask_login import current_user
 
 from src import db
@@ -6,7 +6,9 @@ from src.models.utubs import Utubs
 from src.models.utub_members import Member_Role, Utub_Members
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from src.utubs.utils import build_form_errors
+from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
+from src.utils.strings.url_validation_strs import URL_VALIDATION
 from src.utils.strings.utub_strs import UTUB_SUCCESS, UTUB_FAILURE
 from src.utils.email_validation import email_validation_required
 
@@ -48,6 +50,12 @@ def get_single_utub(utub_id: str):
     """
     Retrieves data for a single UTub, and returns it in a serialized format
     """
+    if (
+        request.headers.get(URL_VALIDATION.X_REQUESTED_WITH, None)
+        != URL_VALIDATION.XMLHTTPREQUEST
+    ):
+        # Ensures JSON not viewed in browser, happens if user does a refresh with URL /home?UTubID=X, which would otherwise return JSON normally
+        return redirect(url_for(ROUTES.UTUBS.HOME))
     user_in_utub: Utub_Members = Utub_Members.query.get((utub_id, current_user.id))
 
     if user_in_utub is None:
