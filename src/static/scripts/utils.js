@@ -153,7 +153,7 @@ function makeEditButton(wh) {
     "</svg>";
 
   $(editBtn)
-    .addClass("mx-1")
+    .addClass("mx-1 flex-row align-center")
     .attr({
       style: "color: #545454",
     })

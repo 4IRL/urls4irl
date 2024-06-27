@@ -101,7 +101,7 @@ function createSelectAllTagFilterInDeck() {
   const container = document.createElement("div");
   const label = document.createElement("label");
 
-  $(container).addClass("selected col-11").attr({
+  $(container).addClass("selected col-12").attr({
     id: "selectAll",
     tagid: "all",
     onclick: "filterAllTags(); filterAllTaggedURLs()",
@@ -123,7 +123,7 @@ function createTagFilterInDeck(tagID, string) {
   const label = document.createElement("label");
 
   $(container)
-    .addClass("tagFilter selected col-11")
+    .addClass("tagFilter selected col-12")
     .attr({
       tagid: tagID,
       onclick: "filterTag(" + tagID + "); filterURL(" + tagID + ")",
