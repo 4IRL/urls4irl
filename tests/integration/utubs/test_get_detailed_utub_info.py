@@ -12,6 +12,7 @@ from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.model_strs import MODELS
+from src.utils.strings.url_validation_strs import URL_VALIDATION
 
 pytestmark = pytest.mark.utubs
 
@@ -35,7 +36,10 @@ def test_get_valid_utub_as_creator(
         ).first()
         id_of_utub = utub_user_creator_of.id
 
-    response = client.get(_build_get_utub_route(id_of_utub))
+    response = client.get(
+        _build_get_utub_route(id_of_utub),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
 
     assert response.status_code == 200
     response_json = response.json
@@ -78,7 +82,10 @@ def test_get_valid_utub_as_member(
         ).first()
         id_of_utub = utub_user_member_of.id
 
-    response = client.get(_build_get_utub_route(id_of_utub))
+    response = client.get(
+        _build_get_utub_route(id_of_utub),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
 
     assert response.status_code == 200
     response_json = response.json
@@ -121,7 +128,10 @@ def test_get_valid_utub_as_not_member(
         ).first()
         id_of_utub = utub_user_member_of.id
 
-    response = client.get(_build_get_utub_route(id_of_utub))
+    response = client.get(
+        _build_get_utub_route(id_of_utub),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
 
     assert response.status_code == 404
 
@@ -150,7 +160,11 @@ def test_get_valid_utub_with_members_urls_no_tags(
         only_url_in_utub: Utub_Urls = all_urls_in_utub[-1]
         standalone_url: Urls = only_url_in_utub.standalone_url
 
-    response = client.get(_build_get_utub_route(utub_user_is_member_of.id))
+    response = client.get(
+        _build_get_utub_route(utub_user_is_member_of.id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
     assert response.status_code == 200
 
     response_json = response.json
@@ -206,7 +220,11 @@ def test_get_valid_utub_with_members_urls_tags(
             Utub_Urls.utub_id == utub_user_is_creator_of.id
         ).all()
 
-    response = client.get(_build_get_utub_route(utub_user_is_creator_of.id))
+    response = client.get(
+        _build_get_utub_route(utub_user_is_creator_of.id),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
     assert response.status_code == 200
 
     response_json = response.json
