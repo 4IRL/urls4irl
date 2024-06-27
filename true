@@ -1,0 +1,888 @@
+versions pytest-7.2.0, python-3.11.2.final.0
+cwd=C:\Users\rehan\Documents\WebDesign\urls4irl
+args=('tests\\functional\\utubs_ui\\test_add_utub_ui.py', '--headless=false', '--debug=true')
+
+  pytest_cmdline_main [hook]
+      config: <_pytest.config.Config object at 0x0000021F31796ED0>
+    pytest_plugin_registered [hook]
+        plugin: <Session urls4irl exitstatus='<UNSET>' testsfailed=0 testscollected=0>
+        manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+    finish pytest_plugin_registered --> [] [hook]
+    pytest_configure [hook]
+        config: <_pytest.config.Config object at 0x0000021F31796ED0>
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x0000021F366C1B10>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x0000021F366C1FD0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+    early skip of rewriting module: faulthandler [assertion]
+      pytest_plugin_registered [hook]
+          plugin: <class '_pytest.legacypath.LegacyTmpdirPlugin'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+    early skip of rewriting module: pdb [assertion]
+    early skip of rewriting module: cmd [assertion]
+    early skip of rewriting module: code [assertion]
+    early skip of rewriting module: codeop [assertion]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.config.Config object at 0x0000021F31796ED0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.mark' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\mark\\__init__.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.main' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\main.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.runner' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\runner.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.fixtures' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\fixtures.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.helpconfig' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\helpconfig.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.python' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\python.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.terminal' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\terminal.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.debugging' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\debugging.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.unittest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\unittest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.capture' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\capture.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.skipping' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\skipping.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.legacypath' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\legacypath.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.tmpdir' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\tmpdir.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.monkeypatch' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\monkeypatch.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.recwarn' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\recwarn.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.pastebin' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\pastebin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.nose' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\nose.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.assertion' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\assertion\\__init__.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.junitxml' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\junitxml.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.doctest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\doctest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.cacheprovider' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\cacheprovider.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.freeze_support' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\freeze_support.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.setuponly' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\setuponly.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.setupplan' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\setupplan.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.stepwise' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\stepwise.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.warnings' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\warnings.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.logging' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\logging.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.reports' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\reports.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.python_path' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\python_path.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.unraisableexception' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\unraisableexception.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.threadexception' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\threadexception.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.faulthandler' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\faulthandler.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <CaptureManager _method='no' _global_capturing=<MultiCapture out=None err=None in_=None _state='suspended' _in_suspended=False> _capture_fixture=None>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'tests.conftest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\tests\\conftest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'conftest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\tests\\functional\\conftest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'conftest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\tests\\functional\\utubs_ui\\conftest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x0000021F366C1B10>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x0000021F366C1FD0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <class '_pytest.legacypath.LegacyTmpdirPlugin'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.terminal.TerminalReporter object at 0x0000021F36265A10>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.logging.LoggingPlugin object at 0x0000021F3670DAD0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+    finish pytest_configure --> [] [hook]
+    pytest_sessionstart [hook]
+        session: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.config.Config object at 0x0000021F31796ED0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.mark' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\mark\\__init__.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.main' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\main.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.runner' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\runner.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.fixtures' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\fixtures.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.helpconfig' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\helpconfig.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.python' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\python.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.terminal' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\terminal.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.debugging' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\debugging.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.unittest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\unittest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.capture' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\capture.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.skipping' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\skipping.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.legacypath' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\legacypath.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.tmpdir' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\tmpdir.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.monkeypatch' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\monkeypatch.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.recwarn' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\recwarn.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.pastebin' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\pastebin.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.nose' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\nose.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.assertion' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\assertion\\__init__.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.junitxml' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\junitxml.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.doctest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\doctest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.cacheprovider' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\cacheprovider.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.freeze_support' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\freeze_support.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.setuponly' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\setuponly.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.setupplan' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\setupplan.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.stepwise' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\stepwise.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.warnings' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\warnings.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.logging' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\logging.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.reports' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\reports.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.python_path' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\python_path.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.unraisableexception' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\unraisableexception.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.threadexception' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\threadexception.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module '_pytest.faulthandler' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\faulthandler.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <CaptureManager _method='no' _global_capturing=<MultiCapture out=None err=None in_=None _state='suspended' _in_suspended=False> _capture_fixture=None>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'tests.conftest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\tests\\conftest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'conftest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\tests\\functional\\conftest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <module 'conftest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\tests\\functional\\utubs_ui\\conftest.py'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.LFPlugin object at 0x0000021F366C1B10>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.cacheprovider.NFPlugin object at 0x0000021F366C1FD0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <class '_pytest.legacypath.LegacyTmpdirPlugin'>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.terminal.TerminalReporter object at 0x0000021F36265A10>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.logging.LoggingPlugin object at 0x0000021F3670DAD0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_plugin_registered [hook]
+          plugin: <_pytest.fixtures.FixtureManager object at 0x0000021F3670C1D0>
+          manager: <_pytest.config.PytestPluginManager object at 0x0000021F31009490>
+      finish pytest_plugin_registered --> [] [hook]
+      pytest_report_header [hook]
+          config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          start_path: C:\Users\rehan\Documents\WebDesign\urls4irl
+          startdir: C:\Users\rehan\Documents\WebDesign\urls4irl
+      finish pytest_report_header --> [['rootdir: C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl, configfile: pytest.ini'], 'cachedir: .pytest_cache', ['using: pytest-7.2.0']] [hook]
+    finish pytest_sessionstart --> [] [hook]
+    pytest_collection [hook]
+        session: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+    perform_collect <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0> ['tests\\functional\\utubs_ui\\test_add_utub_ui.py'] [collection]
+        pytest_collectstart [hook]
+            collector: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+        finish pytest_collectstart --> [] [hook]
+        pytest_make_collect_report [hook]
+            collector: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+        processing argument (WindowsPath('C:/Users/rehan/Documents/WebDesign/urls4irl/tests/functional/utubs_ui/test_add_utub_ui.py'), []) [collection]
+            pytest_ignore_collect [hook]
+                config: <_pytest.config.Config object at 0x0000021F31796ED0>
+                collection_path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\__init__.py
+                path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\__init__.py
+            finish pytest_ignore_collect --> None [hook]
+            pytest_collect_file [hook]
+                parent: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+                file_path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\__init__.py
+                path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\__init__.py
+              pytest_pycollect_makemodule [hook]
+                  parent: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+                  module_path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\__init__.py
+                  path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\__init__.py
+              finish pytest_pycollect_makemodule --> <Package tests> [hook]
+            finish pytest_collect_file --> [<Package tests>] [hook]
+            pytest_collect_file [hook]
+                parent: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+                file_path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\functional\utubs_ui\test_add_utub_ui.py
+                path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\functional\utubs_ui\test_add_utub_ui.py
+              pytest_pycollect_makemodule [hook]
+                  parent: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+                  module_path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\functional\utubs_ui\test_add_utub_ui.py
+                  path: C:\Users\rehan\Documents\WebDesign\urls4irl\tests\functional\utubs_ui\test_add_utub_ui.py
+              finish pytest_pycollect_makemodule --> <Module tests/functional/utubs_ui/test_add_utub_ui.py> [hook]
+            finish pytest_collect_file --> [<Module tests/functional/utubs_ui/test_add_utub_ui.py>] [hook]
+          matchnodes [<Module tests/functional/utubs_ui/test_add_utub_ui.py>] [] [collection]
+            matchnodes finished ->  1 nodes [collection]
+        finish pytest_make_collect_report --> <CollectReport '' lenresult=1 outcome='passed'> [hook]
+        pytest_collectreport [hook]
+            report: <CollectReport '' lenresult=1 outcome='passed'>
+        finish pytest_collectreport --> [] [hook]
+    genitems <Module tests/functional/utubs_ui/test_add_utub_ui.py> [collection]
+      pytest_collectstart [hook]
+          collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+      finish pytest_collectstart --> [] [hook]
+      pytest_make_collect_report [hook]
+          collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+      find_module called for: test_add_utub_ui [assertion]
+      matched test file (was specified on cmdline): 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\tests\\functional\\utubs_ui\\test_add_utub_ui.py' [assertion]
+      found cached rewritten pyc for C:\Users\rehan\Documents\WebDesign\urls4irl\tests\functional\utubs_ui\test_add_utub_ui.py [assertion]
+      early skip of rewriting module: locators [assertion]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: @py_builtins
+            obj: <module 'builtins' (built-in)>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: @pytest_ar
+            obj: <module '_pytest.assertion.rewrite' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\_pytest\\assertion\\rewrite.py'>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: pytest
+            obj: <module 'pytest' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\pytest\\__init__.py'>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: WebDriverWait
+            obj: <class 'selenium.webdriver.support.wait.WebDriverWait'>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: EC
+            obj: <module 'selenium.webdriver.support.expected_conditions' from 'C:\\Users\\rehan\\Documents\\WebDesign\\urls4irl\\venv\\Lib\\site-packages\\selenium\\webdriver\\support\\expected_conditions.py'>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: UTUB_NAME_BASE
+            obj: MockUTub_
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: UI_TEST_STRINGS
+            obj: <class 'src.utils.strings.ui_testing_strs.UI_TEST_STRINGS'>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: add_utub
+            obj: <function add_utub at 0x0000021F364C1B20>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: wait_then_get_element
+            obj: <function wait_then_get_element at 0x0000021F364C19E0>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: MPL
+            obj: <class 'locators.MainPageLocators'>
+        finish pytest_pycollect_makeitem --> None [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: test_add_utub
+            obj: <function test_add_utub at 0x0000021F3670AB60>
+          pytest_generate_tests [hook]
+              metafunc: <_pytest.python.Metafunc object at 0x0000021F364D8210>
+          finish pytest_generate_tests --> [] [hook]
+        finish pytest_pycollect_makeitem --> [<Function test_add_utub>] [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: test_add_utub_name_length_exceeded
+            obj: <function test_add_utub_name_length_exceeded at 0x0000021F3670AD40>
+          pytest_generate_tests [hook]
+              metafunc: <_pytest.python.Metafunc object at 0x0000021F36722710>
+          finish pytest_generate_tests --> [] [hook]
+        finish pytest_pycollect_makeitem --> [<Function test_add_utub_name_length_exceeded>] [hook]
+        pytest_pycollect_makeitem [hook]
+            collector: <Module tests/functional/utubs_ui/test_add_utub_ui.py>
+            name: test_add_utub_name_similar
+            obj: <function test_add_utub_name_similar at 0x0000021F3670ADE0>
+          pytest_generate_tests [hook]
+              metafunc: <_pytest.python.Metafunc object at 0x0000021F367229D0>
+          finish pytest_generate_tests --> [] [hook]
+        finish pytest_pycollect_makeitem --> [<Function test_add_utub_name_similar>] [hook]
+      finish pytest_make_collect_report --> <CollectReport 'tests/functional/utubs_ui/test_add_utub_ui.py' lenresult=3 outcome='passed'> [hook]
+    genitems <Function test_add_utub> [collection]
+      pytest_itemcollected [hook]
+          item: <Function test_add_utub>
+      finish pytest_itemcollected --> [] [hook]
+    genitems <Function test_add_utub_name_length_exceeded> [collection]
+      pytest_itemcollected [hook]
+          item: <Function test_add_utub_name_length_exceeded>
+      finish pytest_itemcollected --> [] [hook]
+    genitems <Function test_add_utub_name_similar> [collection]
+      pytest_itemcollected [hook]
+          item: <Function test_add_utub_name_similar>
+      finish pytest_itemcollected --> [] [hook]
+      pytest_collectreport [hook]
+          report: <CollectReport 'tests/functional/utubs_ui/test_add_utub_ui.py' lenresult=3 outcome='passed'>
+      finish pytest_collectreport --> [] [hook]
+      pytest_collection_modifyitems [hook]
+          session: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+          config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          items: [<Function test_add_utub>, <Function test_add_utub_name_length_exceeded>, <Function test_add_utub_name_similar>]
+      finish pytest_collection_modifyitems --> [] [hook]
+      pytest_collection_finish [hook]
+          session: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=0>
+        pytest_report_collectionfinish [hook]
+            config: <_pytest.config.Config object at 0x0000021F31796ED0>
+            items: [<Function test_add_utub>, <Function test_add_utub_name_length_exceeded>, <Function test_add_utub_name_similar>]
+            start_path: C:\Users\rehan\Documents\WebDesign\urls4irl
+            startdir: C:\Users\rehan\Documents\WebDesign\urls4irl
+        finish pytest_report_collectionfinish --> [] [hook]
+      finish pytest_collection_finish --> [] [hook]
+    finish pytest_collection --> None [hook]
+    pytest_runtestloop [hook]
+        session: <Session urls4irl exitstatus=<ExitCode.OK: 0> testsfailed=0 testscollected=3>
+      pytest_runtest_protocol [hook]
+          item: <Function test_add_utub>
+          nextitem: <Function test_add_utub_name_length_exceeded>
+        pytest_runtest_logstart [hook]
+            nodeid: tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub
+            location: ('tests\\functional\\utubs_ui\\test_add_utub_ui.py', 13, 'test_add_utub')
+        finish pytest_runtest_logstart --> [] [hook]
+        pytest_runtest_setup [hook]
+            item: <Function test_add_utub>
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='init_multiprocessing' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'init_multiprocessing' for <Function test_add_utub>>
+          finish pytest_fixture_setup --> None [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='parallelize_app' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'parallelize_app' for <Function test_add_utub>>
+          early skip of rewriting module: multiprocessing.popen_spawn_win32 [assertion]
+          early skip of rewriting module: multiprocessing.spawn [assertion]
+          early skip of rewriting module: multiprocessing.util [assertion]
+          finish pytest_fixture_setup --> <Process name='Process-1' pid=9852 parent=3180 started> [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='headless' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'headless' for <Function test_add_utub>>
+          finish pytest_fixture_setup --> false [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='build_driver' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'build_driver' for <Function test_add_utub>>
+          early skip of rewriting module: netrc [assertion]
+          finish pytest_fixture_setup --> <selenium.webdriver.chrome.webdriver.WebDriver (session="805141b01b395bc0f1ca6c36d423d726")> [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='ignore_deprecation_warning' scope='session' baseid='tests'>
+              request: <SubRequest 'ignore_deprecation_warning' for <Function test_add_utub>>
+          finish pytest_fixture_setup --> None [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='build_app' scope='session' baseid='tests'>
+              request: <SubRequest 'build_app' for <Function test_add_utub>>
+          early skip of rewriting module: flask_sqlalchemy.cli [assertion]
+          early skip of rewriting module: psycopg2 [assertion]
+          early skip of rewriting module: psycopg2._psycopg [assertion]
+          early skip of rewriting module: psycopg2.errors [assertion]
+          early skip of rewriting module: psycopg2.extensions [assertion]
+          early skip of rewriting module: psycopg2._json [assertion]
+          early skip of rewriting module: psycopg2._range [assertion]
+          early skip of rewriting module: psycopg2.extras [assertion]
+          early skip of rewriting module: psycopg2._ipaddress [assertion]
+          early skip of rewriting module: src.splash [assertion]
+          early skip of rewriting module: src.splash.routes [assertion]
+          early skip of rewriting module: src.models.utils [assertion]
+          early skip of rewriting module: src.splash.forms [assertion]
+          early skip of rewriting module: src.utils.all_routes [assertion]
+          early skip of rewriting module: src.splash.utils [assertion]
+          early skip of rewriting module: src.utubs [assertion]
+          early skip of rewriting module: src.utubs.routes [assertion]
+          early skip of rewriting module: src.utubs.forms [assertion]
+          early skip of rewriting module: src.utubs.utils [assertion]
+          early skip of rewriting module: src.utils.email_validation [assertion]
+          early skip of rewriting module: src.users [assertion]
+          early skip of rewriting module: src.users.routes [assertion]
+          early skip of rewriting module: src.members [assertion]
+          early skip of rewriting module: src.members.routes [assertion]
+          early skip of rewriting module: src.members.forms [assertion]
+          early skip of rewriting module: src.urls [assertion]
+          early skip of rewriting module: src.urls.routes [assertion]
+          early skip of rewriting module: src.urls.forms [assertion]
+          early skip of rewriting module: src.urls.utils [assertion]
+          early skip of rewriting module: src.utils.strings.url_validation_strs [assertion]
+          early skip of rewriting module: src.utils.url_validation [assertion]
+          early skip of rewriting module: url_normalize [assertion]
+          early skip of rewriting module: url_normalize.url_normalize [assertion]
+          early skip of rewriting module: url_normalize.tools [assertion]
+          early skip of rewriting module: six.moves [assertion]
+          early skip of rewriting module: six.moves.urllib [assertion]
+          early skip of rewriting module: six.moves.urllib.parse [assertion]
+          early skip of rewriting module: src.tags [assertion]
+          early skip of rewriting module: src.tags.routes [assertion]
+          early skip of rewriting module: src.tags.forms [assertion]
+          early skip of rewriting module: src.utils.strings.tag_strs [assertion]
+          finish pytest_fixture_setup --> (<Flask 'src'>, <src.config.TestingConfig object at 0x0000021F3673F2D0>) [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='app' scope='function' baseid='tests'>
+              request: <SubRequest 'app' for <Function test_add_utub>>
+          finish pytest_fixture_setup --> <Flask 'src'> [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='runner' scope='function' baseid='tests'>
+              request: <SubRequest 'runner' for <Function test_add_utub>>
+          finish pytest_fixture_setup --> (<Flask 'src'>, <flask.testing.FlaskCliRunner object at 0x0000021F36B7AC90>) [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='browser' scope='function' baseid='tests/functional'>
+              request: <SubRequest 'browser' for <Function test_add_utub>>
+          finish pytest_fixture_setup --> <selenium.webdriver.chrome.webdriver.WebDriver (session="805141b01b395bc0f1ca6c36d423d726")> [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='add_test_users' scope='function' baseid='tests/functional'>
+              request: <SubRequest 'add_test_users' for <Function test_add_utub>>
+          finish pytest_fixture_setup --> None [hook]
+          pytest_fixture_setup [hook]
+              fixturedef: <FixtureDef argname='login_test_user' scope='function' baseid='tests/functional/utubs_ui'>
+              request: <SubRequest 'login_test_user' for <Function test_add_utub>>
+          finish pytest_fixture_setup --> <selenium.webdriver.chrome.webdriver.WebDriver (session="805141b01b395bc0f1ca6c36d423d726")> [hook]
+        finish pytest_runtest_setup --> [] [hook]
+        pytest_runtest_makereport [hook]
+            item: <Function test_add_utub>
+            call: <CallInfo when='setup' result: []>
+        finish pytest_runtest_makereport --> <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='setup' outcome='passed'> [hook]
+        pytest_runtest_logreport [hook]
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='setup' outcome='passed'>
+          pytest_report_teststatus [hook]
+              report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='setup' outcome='passed'>
+              config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          finish pytest_report_teststatus --> ('', '', '') [hook]
+        finish pytest_runtest_logreport --> [] [hook]
+        pytest_runtest_call [hook]
+            item: <Function test_add_utub>
+          pytest_pyfunc_call [hook]
+              pyfuncitem: <Function test_add_utub>
+        pytest_runtest_makereport [hook]
+            item: <Function test_add_utub>
+            call: <CallInfo when='call' excinfo=<ExceptionInfo TimeoutException() tblen=27>>
+        finish pytest_runtest_makereport --> <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='call' outcome='failed'> [hook]
+        pytest_runtest_logreport [hook]
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='call' outcome='failed'>
+          pytest_report_teststatus [hook]
+              report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='call' outcome='failed'>
+              config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          finish pytest_report_teststatus --> ('failed', 'F', 'FAILED') [hook]
+        finish pytest_runtest_logreport --> [] [hook]
+        pytest_exception_interact [hook]
+            node: <Function test_add_utub>
+            call: <CallInfo when='call' excinfo=<ExceptionInfo TimeoutException() tblen=3>>
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='call' outcome='failed'>
+        finish pytest_exception_interact --> [] [hook]
+        pytest_runtest_teardown [hook]
+            item: <Function test_add_utub>
+            nextitem: <Function test_add_utub_name_length_exceeded>
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='login_test_user' scope='function' baseid='tests/functional/utubs_ui'>
+              request: <SubRequest 'login_test_user' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='login_test_user' scope='function' baseid='tests/functional/utubs_ui'>
+              request: <SubRequest 'login_test_user' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='add_test_users' scope='function' baseid='tests/functional'>
+              request: <SubRequest 'add_test_users' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='login_test_user' scope='function' baseid='tests/functional/utubs_ui'>
+              request: <SubRequest 'login_test_user' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='browser' scope='function' baseid='tests/functional'>
+              request: <SubRequest 'browser' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='add_test_users' scope='function' baseid='tests/functional'>
+              request: <SubRequest 'add_test_users' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='browser' scope='function' baseid='tests/functional'>
+              request: <SubRequest 'browser' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='runner' scope='function' baseid='tests'>
+              request: <SubRequest 'runner' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='runner' scope='function' baseid='tests'>
+              request: <SubRequest 'runner' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='app' scope='function' baseid='tests'>
+              request: <SubRequest 'app' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+        finish pytest_runtest_teardown --> [] [hook]
+        pytest_runtest_makereport [hook]
+            item: <Function test_add_utub>
+            call: <CallInfo when='teardown' result: []>
+        finish pytest_runtest_makereport --> <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='teardown' outcome='passed'> [hook]
+        pytest_runtest_logreport [hook]
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='teardown' outcome='passed'>
+          pytest_report_teststatus [hook]
+              report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='teardown' outcome='passed'>
+              config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          finish pytest_report_teststatus --> ('', '', '') [hook]
+        finish pytest_runtest_logreport --> [] [hook]
+        pytest_runtest_logfinish [hook]
+            nodeid: tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub
+            location: ('tests\\functional\\utubs_ui\\test_add_utub_ui.py', 13, 'test_add_utub')
+        finish pytest_runtest_logfinish --> [] [hook]
+      finish pytest_runtest_protocol --> True [hook]
+      pytest_runtest_protocol [hook]
+          item: <Function test_add_utub_name_length_exceeded>
+          nextitem: <Function test_add_utub_name_similar>
+        pytest_runtest_logstart [hook]
+            nodeid: tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_length_exceeded
+            location: ('tests\\functional\\utubs_ui\\test_add_utub_ui.py', 30, 'test_add_utub_name_length_exceeded')
+        finish pytest_runtest_logstart --> [] [hook]
+        pytest_runtest_setup [hook]
+            item: <Function test_add_utub_name_length_exceeded>
+        pytest_runtest_makereport [hook]
+            item: <Function test_add_utub_name_length_exceeded>
+            call: <CallInfo when='setup' excinfo=<ExceptionInfo This test tests functionality that is not yet captured on the frontend tblen=12>>
+        finish pytest_runtest_makereport --> <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_length_exceeded' when='setup' outcome='skipped'> [hook]
+        pytest_runtest_logreport [hook]
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_length_exceeded' when='setup' outcome='skipped'>
+          pytest_report_teststatus [hook]
+              report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_length_exceeded' when='setup' outcome='skipped'>
+              config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          finish pytest_report_teststatus --> ('skipped', 's', 'SKIPPED') [hook]
+        finish pytest_runtest_logreport --> [] [hook]
+        pytest_runtest_teardown [hook]
+            item: <Function test_add_utub_name_length_exceeded>
+            nextitem: <Function test_add_utub_name_similar>
+        finish pytest_runtest_teardown --> [] [hook]
+        pytest_runtest_makereport [hook]
+            item: <Function test_add_utub_name_length_exceeded>
+            call: <CallInfo when='teardown' result: []>
+        finish pytest_runtest_makereport --> <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_length_exceeded' when='teardown' outcome='passed'> [hook]
+        pytest_runtest_logreport [hook]
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_length_exceeded' when='teardown' outcome='passed'>
+          pytest_report_teststatus [hook]
+              report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_length_exceeded' when='teardown' outcome='passed'>
+              config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          finish pytest_report_teststatus --> ('', '', '') [hook]
+        finish pytest_runtest_logreport --> [] [hook]
+        pytest_runtest_logfinish [hook]
+            nodeid: tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_length_exceeded
+            location: ('tests\\functional\\utubs_ui\\test_add_utub_ui.py', 30, 'test_add_utub_name_length_exceeded')
+        finish pytest_runtest_logfinish --> [] [hook]
+      finish pytest_runtest_protocol --> True [hook]
+      pytest_runtest_protocol [hook]
+          item: <Function test_add_utub_name_similar>
+          nextitem: None
+        pytest_runtest_logstart [hook]
+            nodeid: tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_similar
+            location: ('tests\\functional\\utubs_ui\\test_add_utub_ui.py', 48, 'test_add_utub_name_similar')
+        finish pytest_runtest_logstart --> [] [hook]
+        pytest_runtest_setup [hook]
+            item: <Function test_add_utub_name_similar>
+        pytest_runtest_makereport [hook]
+            item: <Function test_add_utub_name_similar>
+            call: <CallInfo when='setup' excinfo=<ExceptionInfo This test is not yet implemented tblen=12>>
+        finish pytest_runtest_makereport --> <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_similar' when='setup' outcome='skipped'> [hook]
+        pytest_runtest_logreport [hook]
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_similar' when='setup' outcome='skipped'>
+          pytest_report_teststatus [hook]
+              report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_similar' when='setup' outcome='skipped'>
+              config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          finish pytest_report_teststatus --> ('skipped', 's', 'SKIPPED') [hook]
+        finish pytest_runtest_logreport --> [] [hook]
+        pytest_runtest_teardown [hook]
+            item: <Function test_add_utub_name_similar>
+            nextitem: None
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='app' scope='function' baseid='tests'>
+              request: <SubRequest 'app' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='build_app' scope='session' baseid='tests'>
+              request: <SubRequest 'build_app' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='build_app' scope='session' baseid='tests'>
+              request: <SubRequest 'build_app' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='ignore_deprecation_warning' scope='session' baseid='tests'>
+              request: <SubRequest 'ignore_deprecation_warning' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='browser' scope='function' baseid='tests/functional'>
+              request: <SubRequest 'browser' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='build_driver' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'build_driver' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='build_driver' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'build_driver' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='headless' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'headless' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='build_driver' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'build_driver' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='parallelize_app' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'parallelize_app' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='parallelize_app' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'parallelize_app' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+          pytest_fixture_post_finalizer [hook]
+              fixturedef: <FixtureDef argname='init_multiprocessing' scope='session' baseid='tests/functional'>
+              request: <SubRequest 'init_multiprocessing' for <Function test_add_utub>>
+          finish pytest_fixture_post_finalizer --> [] [hook]
+        finish pytest_runtest_teardown --> [] [hook]
+        pytest_runtest_makereport [hook]
+            item: <Function test_add_utub_name_similar>
+            call: <CallInfo when='teardown' result: []>
+        finish pytest_runtest_makereport --> <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_similar' when='teardown' outcome='passed'> [hook]
+        pytest_runtest_logreport [hook]
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_similar' when='teardown' outcome='passed'>
+          pytest_report_teststatus [hook]
+              report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_similar' when='teardown' outcome='passed'>
+              config: <_pytest.config.Config object at 0x0000021F31796ED0>
+          finish pytest_report_teststatus --> ('', '', '') [hook]
+        finish pytest_runtest_logreport --> [] [hook]
+        pytest_runtest_logfinish [hook]
+            nodeid: tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub_name_similar
+            location: ('tests\\functional\\utubs_ui\\test_add_utub_ui.py', 48, 'test_add_utub_name_similar')
+        finish pytest_runtest_logfinish --> [] [hook]
+      finish pytest_runtest_protocol --> True [hook]
+    finish pytest_runtestloop --> True [hook]
+    pytest_sessionfinish [hook]
+        session: <Session urls4irl exitstatus=<ExitCode.TESTS_FAILED: 1> testsfailed=1 testscollected=3>
+        exitstatus: 1
+      pytest_terminal_summary [hook]
+          terminalreporter: <_pytest.terminal.TerminalReporter object at 0x0000021F36265A10>
+          exitstatus: 1
+          config: <_pytest.config.Config object at 0x0000021F31796ED0>
+      early skip of rewriting module: pygments.formatters.terminal [assertion]
+      early skip of rewriting module: pygments.console [assertion]
+        pytest_report_teststatus [hook]
+            report: <TestReport 'tests/functional/utubs_ui/test_add_utub_ui.py::test_add_utub' when='call' outcome='failed'>
+            config: <_pytest.config.Config object at 0x0000021F31796ED0>
+        finish pytest_report_teststatus --> ('failed', 'F', 'FAILED') [hook]
+      finish pytest_terminal_summary --> [] [hook]
+    finish pytest_sessionfinish --> [] [hook]
+    pytest_unconfigure [hook]
+        config: <_pytest.config.Config object at 0x0000021F31796ED0>
+    finish pytest_unconfigure --> [] [hook]

@@ -2,7 +2,7 @@ import os
 from typing import Generator, Tuple
 
 from flask import Flask
-from flask.testing import FlaskClient
+from flask.testing import FlaskCliRunner, FlaskClient
 from flask_login import FlaskLoginClient
 import pytest
 import warnings
@@ -85,6 +85,12 @@ def app(build_app) -> Generator[Flask, None, None]:
     app, testing_config = build_app
     yield app
     clear_database(testing_config, app, sess)
+
+
+@pytest.fixture
+def runner(app) -> Generator[Tuple[Flask, FlaskCliRunner], None, None]:
+    flask_app: Flask = app
+    yield flask_app, flask_app.test_cli_runner()
 
 
 @pytest.fixture

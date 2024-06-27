@@ -41,7 +41,7 @@ requests==2.31.0
 rich==13.7.0
 six==1.16.0
 SQLAlchemy==1.4.31
-typing_extensions==4.7.1
+typing_extensions==4.9.0
 url-normalize==1.4.3
 urllib3==1.26.18
 Werkzeug==2.3.6

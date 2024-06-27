@@ -217,7 +217,10 @@ function createNewUTubInputField() {
   $(wrapperBtns).addClass("col-3 mb-md-0 flex-row-reverse");
 
   $(submitBtn)
-    .addClass("mx-1 green-clickable submitCreateUTub")
+    .addClass("mx-1 green-clickable")
+    .attr({
+      id: "submitCreateUTub",
+    })
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -225,7 +228,10 @@ function createNewUTubInputField() {
     });
 
   $(cancelBtn)
-    .addClass("mx-1 cancelCreateUTub")
+    .addClass("mx-1")
+    .attr({
+      id: "cancelCreateUTub",
+    })
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
