@@ -11,6 +11,17 @@ $(document).ready(function () {
   }
 });
 
+window.addEventListener("popstate", function (e) {
+  if (e.state && e.state.hasOwnProperty("UTub")) {
+    // State will contain property UTub if URL contains query parameter UTubID
+    buildSelectedUTub(e.state.UTub);
+  } else {
+    // If does not contain query parameter, user is at /home - then update UTub titles/IDs
+    displayState0();
+    getAllUTubs().then((utubData) => buildUTubDeck(utubData));
+  }
+});
+
 /** UTub Utility Functions **/
 
 // Function to count number of UTubs current user has access to
@@ -72,6 +83,10 @@ function getUTubInfo(selectedUTubID) {
   return $.getJSON("/home?UTubID=" + selectedUTubID);
 }
 
+function getAllUTubs() {
+  return $.getJSON("/utubs");
+}
+
 // Clear new UTub Form
 function resetNewUTubForm() {
   $("#createUTub").val("");
@@ -104,37 +119,55 @@ function buildUTubDeck(UTubs) {
   parent.append(createNewUTubInputField());
 }
 
+function buildSelectedUTub(selectedUTub) {
+  // Parse incoming data, pass them into subsequent functions as required
+  let UTubName = selectedUTub.name;
+  let dictURLs = selectedUTub.urls;
+  let dictTags = selectedUTub.tags;
+  let dictMembers = selectedUTub.members;
+  let UTubOwnerID = selectedUTub.createdByUserID;
+  let UTubDescription = selectedUTub.description;
+  const isCurrentUserOwner = selectedUTub.isCreator;
+
+  const isUTubHistoryNull = window.history.state === null;
+
+  if (
+    isUTubHistoryNull ||
+    JSON.stringify(window.history.state.UTub) !== JSON.stringify(selectedUTub)
+  ) {
+    // Push UTub state to browser history if no history, or if previous UTub history is different
+    window.history.pushState(
+      { UTub: selectedUTub },
+      "UTub History",
+      "/home?UTubID=" + selectedUTub.id,
+    );
+  }
+
+  // LH panels
+  // UTub deck
+  displayState1UTubDeck(selectedUTub.id, UTubOwnerID);
+
+  // Tag deck
+  buildTagDeck(dictTags);
+
+  // Center panel
+  // URL deck
+  buildURLDeck(UTubName, dictURLs, dictTags);
+
+  // RH panels
+  // UTub Description deck
+  if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
+  else displayState1UTubDescriptionDeck();
+
+  // Members deck
+  buildMemberDeck(dictMembers, UTubOwnerID, isCurrentUserOwner);
+}
+
 // Handles progagating changes across page related to a UTub selection
 function selectUTub(selectedUTubID) {
-  getUTubInfo(selectedUTubID).then(function (selectedUTub) {
-    // Parse incoming data, pass them into subsequent functions as required
-    let UTubName = selectedUTub.name;
-    let dictURLs = selectedUTub.urls;
-    let dictTags = selectedUTub.tags;
-    let dictMembers = selectedUTub.members;
-    let UTubOwnerID = selectedUTub.createdByUserID;
-    let UTubDescription = selectedUTub.description;
-    const isCurrentUserOwner = selectedUTub.isCreator;
-
-    // LH panels
-    // UTub deck
-    displayState1UTubDeck(selectedUTubID, UTubOwnerID);
-
-    // Tag deck
-    buildTagDeck(dictTags);
-
-    // Center panel
-    // URL deck
-    buildURLDeck(UTubName, dictURLs, dictTags);
-
-    // RH panels
-    // UTub Description deck
-    if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
-    else displayState1UTubDescriptionDeck();
-
-    // Members deck
-    buildMemberDeck(dictMembers, UTubOwnerID, isCurrentUserOwner);
-  });
+  getUTubInfo(selectedUTubID).then((selectedUTub) =>
+    buildSelectedUTub(selectedUTub),
+  );
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
