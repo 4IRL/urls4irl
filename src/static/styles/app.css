@@ -27,6 +27,8 @@
     --tagBackgroundColorHover: rgba(126, 130, 130, 0.5);
     --tagBackgroundColorSelected: rgba(126, 130, 130, 1.0);
     --tagSelectedTextColor: rgba(14, 66, 27, 1.0);
+
+    --contentTopBorder: rgba(126, 130, 130, 0.25);
 }
 
 /** HTML DOM Elements **/
@@ -104,13 +106,6 @@ a {
 
 /* Main Page */
 
-#pageContent {
-    margin: 0;
-    margin-bottom: -15px;
-    height: 100vh;
-    padding-top: 50px;
-    padding-bottom: 5px;
-}
 
 #NavbarNavDropdown {
     justify-content: flex-end;

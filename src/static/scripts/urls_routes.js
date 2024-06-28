@@ -3,12 +3,16 @@
 // Displays new URL input prompt
 function addURLHideInput() {
   hideInput("addURL");
+  newURLInputRemoveEventListeners();
+  if (!getNumOfURLs()) $("#NoURLsSubheader").show();
 }
 
 // Displays new URL input prompt
 function addURLShowInput() {
   showInput("addURL");
   highlightInput($("#newURLTitle"));
+  newURLInputAddEventListeners();
+  if (!getNumOfURLs()) $("#NoURLsSubheader").hide();
 }
 
 // Handles addition of new URL after user submission

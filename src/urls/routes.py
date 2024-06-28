@@ -144,13 +144,14 @@ def add_url(utub_id: int):
                 None if headers is None else headers.get(URL_VALIDATION.USER_AGENT)
             )
             normalized_url = find_common_url(url_string, user_agent)
-        except InvalidURLError:
+        except InvalidURLError as e:
             # URL was unable to be verified as a valid URL
             return (
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL,
+                        STD_JSON.DETAILS: str(e),
                         STD_JSON.ERROR_CODE: 2,
                     }
                 ),
@@ -330,13 +331,14 @@ def edit_url(utub_id: int, utub_url_id: int):
                 None if headers is None else headers.get(URL_VALIDATION.USER_AGENT)
             )
             normalized_url = find_common_url(url_to_change_to, user_agent)
-        except InvalidURLError:
+        except InvalidURLError as e:
             # URL was unable to be verified as a valid URL
             return (
                 jsonify(
                     {
                         STD_JSON.STATUS: STD_JSON.FAILURE,
                         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL,
+                        STD_JSON.DETAILS: str(e),
                         STD_JSON.ERROR_CODE: 3,
                     }
                 ),

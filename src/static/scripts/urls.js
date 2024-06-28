@@ -135,8 +135,15 @@ function resetNewURLForm() {
 // Clear the URL Deck
 function resetURLDeck() {
   // Empty URL Deck
-  $("#UPRRow").empty();
-  $("#URLFocusRow").empty();
+  // Detach NO URLs text and reattach after emptying
+
+  const noURLsText = $("#NoURLsSubheader").remove();
+  $("#UPRRow").empty().append(noURLsText);
+
+  const createURLBlock = $("#addURL").parent().remove();
+  $("#URLFocusRow").empty().append(createURLBlock);
+  newURLInputRemoveEventListeners();
+
   $("#LWRRow").empty();
   $("#editUTubNameBtn").hide();
   $("#addURLBtn").hide();
@@ -167,10 +174,6 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
       parent.append(URLcol);
     }
   }
-
-  // New URL create block
-  $("#URLFocusRow").append(createNewURLInputField());
-
   displayState1URLDeck(UTubName);
 }
 
@@ -438,95 +441,12 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
 }
 
 // New URL card and input text fields. Initially hidden, shown when create URL is requested. Input field recreated here to ensure at the end of list after creation of new URL
-function createNewURLInputField() {
-  const col = document.createElement("div");
-  const card = document.createElement("div");
-  // const cardImg = document.createElement('img');
-  const URLInfo = document.createElement("div"); // This element holds the URL title and string inputs
-  const newWrap = document.createElement("fieldset"); // This element wraps the edit field for URL title AND URL string
-  const newWrap1 = document.createElement("div"); // This element wraps the edit field for URL title
-  const newURLTitleLabel = document.createElement("label"); // This element labels the input field for URL title
-  const newURLTitle = document.createElement("input"); // This element is a blank input to accept a new URL title
-  const newWrap2 = document.createElement("div"); // This element wraps the edit field for URL string
-  const newURLStringLabel = document.createElement("label"); // This element labels the input field for URL string
-  const newURLString = document.createElement("input"); // This element is instantiated with the URL, or is blank for the creation block
-  const URLTags = document.createElement("div");
-  const URLOptions = document.createElement("div");
-  const addURLBtn = document.createElement("button");
-  const delURLBtn = document.createElement("button");
-
-  $(col).addClass("createDiv cardCol mb-3 col-md-10 col-lg-10 col-xl-10").attr({
-    style: "display: none",
-    // onblur: "hideInput(event)",
-  });
-
-  $(card).addClass("card selected").attr({
-    urlid: 0,
-    id: "addURL",
-    // draggable: "true",
-    ondrop: "dropIt(event)",
-    ondragover: "allowDrop(event)",
-    ondragstart: "dragStart(event)",
-  });
-
-  // $(cardImg).attr({
-  //     'class': 'card-img-top',
-  //     'src': '...',
-  //     'alt': '"Card image cap'
-  // })
-
-  $(URLInfo).addClass("card-body URLInfo");
-
-  $(newWrap).addClass("form-group");
-
-  $(newURLTitleLabel)
-    .attr({
-      for: "newURLTitle",
-      style: "display:block",
-    })
-    .html("<b> URL Title </b>");
-
-  $(newURLTitle).addClass("card-title userInput").attr({
-    id: "newURLTitle",
-    placeholder: "New URL Title",
-    type: "text",
-    size: "50",
-  });
-
-  $(newWrap1).append(newURLTitleLabel).append(newURLTitle);
-
-  $(newURLStringLabel)
-    .attr({
-      for: "newURLString",
-      style: "display:block",
-    })
-    .html("<b> URL </b>");
-
-  $(newURLString).addClass("card-text userInput").attr({
-    id: "newURLString",
-    placeholder: "New URL",
-    type: "text",
-    size: "50",
-  });
-
-  $(newWrap2).append(newURLStringLabel).append(newURLString);
-
-  $(newWrap).append(newWrap1).append(newWrap2);
-
-  $(URLTags).addClass("card-body URLTags");
-
-  // Add tag input
-  $(URLTags).append(createNewTagInputField());
-
-  // Buttons
-  $(URLOptions).addClass("card-body URLOptions");
+function newURLInputAddEventListeners() {
+  const addURLBtn = $("#SubmitNewURLBtn");
+  const delURLBtn = $("#CancelAddURLBtn");
 
   $(addURLBtn)
-    .addClass("card-link btn btn-success")
-    .attr({
-      type: "button",
-    })
-    .text("Add URL")
+    .off("click")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
@@ -534,30 +454,17 @@ function createNewURLInputField() {
     });
 
   $(delURLBtn)
-    .addClass("card-link btn btn-danger")
-    .attr({
-      type: "button",
-    })
-    .text("Cancel")
+    .off("click")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
       addURLHideInput();
     });
+}
 
-  // Assemble url list items
-  $(col).append(card);
-  $(card).append(URLInfo);
-
-  $(URLInfo).append(newWrap);
-
-  $(card).append(URLTags);
-
-  $(card).append(URLOptions);
-  $(URLOptions).append(addURLBtn);
-  $(URLOptions).append(delURLBtn);
-
-  return col;
+function newURLInputRemoveEventListeners() {
+  $("#SubmitNewURLBtn").off("click");
+  $("#CancelAddURLBtn").off("click");
 }
 
 // Handle URL deck display changes related to creating a new tag
@@ -854,13 +761,15 @@ function displayState1URLDeck() {
   let URLDeckSubheader = $("#URLDeckSubheader");
   showIfHidden(URLDeckSubheader.closest(".row"));
   if (numOfURLs) {
+    $("#NoURLsSubheader").hide();
     let stringURLPlurality = numOfURLs === 1 ? " URL" : " URLs";
     let string = numOfURLs + stringURLPlurality + " stored";
     URLDeckSubheader.text(string);
     // URLDeckSubheader.text(numOfURLs + numOfURLs === 1 ? " URL" : " URLs" + " stored");
     showIfHidden($("#accessAllURLsBtn"));
   } else {
-    URLDeckSubheader.text("Add a URL");
+    URLDeckSubheader.text("");
+    $("#NoURLsSubheader").show();
     hideIfShown($("#accessAllURLsBtn"));
   }
 }
