@@ -1306,6 +1306,7 @@ Indicates the URL could not be validated.
 > {
 >     "status": "Failure",
 >     "message": "Unable to validate this URL.",
+>     "details": "Message describing the connection error.",
 >     "errorCode": 2,
 > }
 > ```
@@ -1498,6 +1499,7 @@ Unable to validate the given URL.
 > {
 >     "status": "Failure",
 >     "message": "Unable to validate this URL.",
+>     "details": "Message describing the connection error.",
 >     "errorCode": 3,
 > }
 > ```

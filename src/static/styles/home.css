@@ -2,17 +2,26 @@
 
 /* Page display */
 
+div#pageContent {
+    display: flex;
+    flex-direction: row;
+    height: 100vh;
+    width: 100%;
+    max-width: 100%;
+    padding-top: 50px;
+    padding-bottom: 5px;
+}
+
 .panel {
     height: 100%;
-    padding-bottom: 10px;
-    overflow-y: hidden;
+    display: flex;
+    flex-direction: column;
+    padding-inline: 5px;
 }
 
 .deck {
     width: 100%;
     margin-top: 5px;
-    margin-left: auto;
-    margin-right: auto;
     background: var(--backgroundColor);
     border: 2px solid var(--borderColor);
     border-top: 4px solid var(--borderColor);
@@ -20,6 +29,9 @@
     border-radius: 30px;
     color: var(--deckSelectionGreen);
     overflow: hidden;
+    padding-inline: 15px;
+    padding-top: 5px;
+    padding-bottom: 8px;
 }
 
 .deckContent {
@@ -90,6 +102,7 @@
     flex: 1 1 auto;
     overflow-y: auto;
     scrollbar-width: thin;
+    border-top: 2px solid var(--contentTopBorder);
 }
 
 .flex-start {
@@ -209,6 +222,10 @@ span.tagBadge:hover .tag-remove {
 .card-title {
     color: #1abc9c;
     margin-bottom: 2px;
+    overflow: hidden;
+    width: 100%;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 .card-text {
@@ -217,6 +234,10 @@ span.tagBadge:hover .tag-remove {
 
 .url-string {
     margin-bottom: 0px;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    width: 100%;
+    overflow: hidden;
 }
 
 .selected {
@@ -231,6 +252,12 @@ span.tagBadge:hover .tag-remove {
     cursor: auto;
 }
 
+.selectedURL .card-title,
+.selectedURL .url-string {
+    white-space: normal;
+    text-overflow: unset;
+}
+/home/giovannigp/Videos/U4I_URLWrapping.webm/home/giovannigp/Videos/U4I_URLWrapping.webm
 .URLString {
     width: 200px;
     white-space: nowrap;
@@ -290,10 +317,6 @@ span.member:hover .member-remove {
 
 /** ID specific **/
 
-#centerPanel {
-    padding-bottom: 5px;
-}
-
 #listMembers {
     gap: 3px;
 }
@@ -317,6 +340,11 @@ span.member:hover .member-remove {
     margin-top: 0.75rem;
 }
 
+#NoURLsSubheader {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+
 /* Media size for responsiveness 
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 
  * */
@@ -335,4 +363,15 @@ span.member:hover .member-remove {
     #createUTubBtn {
         margin-inline: 0px !important;
     }
+}
+
+@media (max-width: 575.98px) {
+    .cardCol {
+        width: 100%;
+    }
+
+    div#pageContent {
+        flex-direction: column;
+    }
+
 }

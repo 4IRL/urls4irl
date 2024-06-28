@@ -1,6 +1,7 @@
 ERRORS = "errors"
 STATUS = "status"
 MESSAGE = "message"
+DETAILS = "details"
 ERROR_CODE = "errorCode"
 FAILURE = "Failure"
 SUCCESS = "Success"
@@ -17,6 +18,7 @@ class STD_JSON_RESPONSE:
     SUCCESS = SUCCESS
     NO_CHANGE = NO_CHANGE
     TOO_MANY_REQUESTS = TOO_MANY_REQUESTS
+    DETAILS = DETAILS
 
 
 # Strings for general failure, included in JSON message

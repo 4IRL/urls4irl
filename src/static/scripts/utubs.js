@@ -342,23 +342,12 @@ function displayState1UTubDescriptionDeck() {
 
 // Display state 2: UTub selected, description exists
 function displayState2UTubDescriptionDeck(UTubDescription) {
+  const UTubDescriptionHolder = $("#URLDeckSubheader");
   if (UTubDescription) {
-    // Subheader prompt hidden
-    hideIfShown($("#UTubDescriptionDeckSubheader").closest(".titleElement"));
-
-    // Edit UTub Description button shown, submission button hidden
-    editUTubDescriptionHideInput();
-
-    // Update description values
-    let p = $("#UTubDescription");
-    showIfHidden(p);
-    p.text(UTubDescription);
-
-    let editUTubDescription = $("#editUTubDescription");
-    hideIfShown(editUTubDescription.closest(".createDiv"));
-    editUTubDescription.val(UTubDescription);
+    showIfHidden(UTubDescriptionHolder);
+    UTubDescriptionHolder.text(UTubDescription);
   } // User edited description to empty string
-  else displayState1UTubDescriptionDeck();
+  else hideIfShown(UTubDescriptionHolder);
 }
 
 // Display state 3: UTub selected, edit active

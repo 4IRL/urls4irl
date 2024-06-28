@@ -123,11 +123,14 @@ def perform_head_request(url: str, user_agent: str = None) -> requests.Response:
         # Try a get request instead
         return perform_get_request(url, headers)
 
-    except requests.exceptions.ConnectionError:
-        raise InvalidURLError
+    except requests.exceptions.SSLError as e:
+        raise InvalidURLError("SSLError with the given URL. " + str(e))
 
-    except requests.exceptions.MissingSchema:
-        raise InvalidURLError
+    except requests.exceptions.ConnectionError as e:
+        raise InvalidURLError("Unable to connect to the given URL. " + str(e))
+
+    except requests.exceptions.MissingSchema as e:
+        raise InvalidURLError("Invalid schema for this URL. " + str(e))
 
     else:
         return response
@@ -148,11 +151,11 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
         # Try all user agents
         return all_user_agent_sampling(url)
 
-    except requests.exceptions.ConnectionError:
-        raise InvalidURLError
+    except requests.exceptions.ConnectionError as e:
+        raise InvalidURLError("Unable to connect to the given URL. " + str(e))
 
-    except requests.exceptions.MissingSchema:
-        raise InvalidURLError
+    except requests.exceptions.MissingSchema as e:
+        raise InvalidURLError("Invalid schema for this URL. " + str(e))
 
     else:
         return response
@@ -171,14 +174,14 @@ def all_user_agent_sampling(url: str) -> requests.Response:
             )
         except requests.exceptions.ReadTimeout:
             continue
-        except requests.exceptions.ConnectionError:
-            raise InvalidURLError
-        except requests.exceptions.MissingSchema:
-            raise InvalidURLError
+        except requests.exceptions.ConnectionError as e:
+            raise InvalidURLError("Unable to connect to the given URL. " + str(e))
+        except requests.exceptions.MissingSchema as e:
+            raise InvalidURLError("Invalid schema for this URL. " + str(e))
         else:
             return response
 
-    raise InvalidURLError
+    raise InvalidURLError("Unable to connect to this URL.")
 
 
 def find_common_url(url: str, user_agent: str = None) -> str:
@@ -208,7 +211,9 @@ def find_common_url(url: str, user_agent: str = None) -> str:
     status_code = response.status_code
 
     if status_code >= 400:
-        raise InvalidURLError
+        raise InvalidURLError(
+            "Unauthorized or could not find the given resource as the URL"
+        )
 
     else:
         # Redirect or creation provides the Location header in http response
@@ -250,7 +255,12 @@ if __name__ == "__main__":
     #    "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-(16-inch-amd)/len101t0076#ports_slots"
     # )
 
-    print(find_common_url("instagram.com"))
-    print(find_common_url("gmail.com"))
-    print(find_common_url("homedepot.com"))
-    print(find_common_url("calendar.google.com"))
+    # print(find_common_url("instagram.com"))
+    # print(find_common_url("gmail.com"))
+    # print(find_common_url("homedepot.com"))
+    # print(find_common_url("calendar.google.com"))
+    print(
+        find_common_url(
+            "http://www.reallylong.link/rll/ZldZwDdT1kJDA0NtSvwCrjn8wcJmVsIHbTMzyjBsrQzOE55ygZZA068aHZ5chd/qqS2VxBLbePfKRXMvBmRdlKEFnj3CVgEuk0E2JfPPfWgVe0NDQQDG1wguqUkIOB1auj3lOFqUWTt1P_3aGX_2z7oX5rsWb2S42tm_idnfGcr25YAkGOK/a/o8zTU/_VoF2X8JMt2Tje4qT1uRjlKRit8Dy6NlKv2kL7Kh1MO1V4iSDjKEpba1Fp83_0WS_du1NR9aA9cGfwqpX7VC7wKbWsJXd6rXIKPrrjdo4JRAc0eb2j7aTcIEoRKQ2FjxEjNFERRUJPMCJcu4hukR_dD_UYieLSJMepvZ91SxSulEWiJ3D7JIWacusNmWAPUfDvnpUhmzUxnYlIKXu1Pu9oB3zG87uHMp84_IzLAiFNy6W1k_gsFoY35OGqO6kpY3NgHE3g_D4do_LtHE5bZ3/NPKJFLSaRZ/eJxxC7te6DIXHxpQHBsL/mVpPSo_NNKNj25cGXXvvcr6ovX1KFGizgpLmNar4n/2HTS9_2jJKdE1VseUcWv2fIWdl9Ia85epBCjrAKcNXY5/rggb7F1SduNpC5jioeHNL6b5Er0Z6tsHcuU_DMGPwDHVVRexxKxbeWDDHFumXPuLJZwQFMuUbQFGp_uR2URXh7vgZCMfIhryM9P7vytqWnRkhJ7qirQhNBNWb5ZVQS4w7f/vXtPCYDDf/Z2XzViSFntCwaeAKsO9C23Z488wX9mPqhuLYonLXd2tVnIbv_kac_2ac/bXQWIhEj_0Ta3gkSLuoMTr3GWJ8Npd_9zXl/0EgrCipVNf0KvIy4MgI0PU/awzsUOQrRz3zDH3Kl_msd6PRLxR1L0NhPw0lrGumCN0Y6QY/5flT6qunxzgkIS2ek2GXwNEn5J9AyaOS5J74F80Cc84ou2uF8KxE0H9cXCWugSUkMXK0nTl3QgVsxhghfOkaXbbM1tIbaw21nxXukNxU6KaA5T_Ee2qbWUjzemqpVXA786eat65dVdqltL7DfqXumg3Gmkrh473eQ3RhkOXqftd1_hPIO68DFdLUfSgmzVgOXanb6RHdu42YF0_8zLxyXRIU/7505mh9qXxj3ybRMeRhsGkFlnaKQVo9zaVR2J/IleVC1wGQI_joHm0uLRNNU_e5V5FXk4Q6RsiKPU9JRY2kXVBMq1sXGkfvTW6HPoC9FuC9emIL/19QivQrC7BVsc5eEptBBScDzAPUgCI6Y6i76aPQrehPN6OZBAXNr0nmhTIprLakKxVYKgoMeLDo7dywasJ4P9YUGCnI8UCeNPgj3lQuL/npPzIKdEDb64X8dRt25YXN6S_JHBYVyqj5GXWu7b_FnxObeol7ARhf7nnpp_1ZGxRCpa4fRop3UAMv00hRt65nl6d7FdOoEkocAhFD55W_NrxakSgADVFsRo_nGVb308viIgyi2OAYb3S64GLQXai6wKaggsOVpWGSLlYTVNGRpPHXAFEOXwgHoLluCiNabmozUZO9hSlUyO0XXogTsyDs_3GNLLwTtdPwcOB0ojyriZTRKi3G6In5FgfGjVHSRC2STQcAH7MTfnLm2FhB2DKmPHZAdOmMfPOX8DLdMkJAfZTxvAbi3MUEs4we4Hp9Q_MikqgSM5_qQG66aqxR_jSyGQzaFs/uyKlvz82f4f0HPJBlLE4shmIfVGjRDquFtFL5k5U8d_45tlp/H2HtCfadgsyke0gVLM3cesQsgVhMmluywURRU6xyt6d0aFNSaG6O5QIratXXJKOO3plYJfEhqVtvSrgClarRhIs9IR8PQJ3Z8LIgOhNDSjJI6q0wBCL1wN9_mHSlKBFfieKXgtuiLiy4oSvRZqsjqSSUj4wV95ErhWdtfHt2YUb26wFIX7vLI4Nn/x/Jv0NJwuTwHzQy8O2SUZX8lsi7IiGelI3wkTGCFAxSRa3UkGe5kqtrZc3N3I"
+        )
+    )

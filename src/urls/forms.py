@@ -2,6 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import Length, InputRequired
 
+from src.utils.constants import URL_CONSTANTS
 from src.utils.strings.model_strs import MODELS
 
 
@@ -16,12 +17,15 @@ class NewURLForm(FlaskForm):
 
     url_string = StringField(
         "URL",
-        validators=[InputRequired(), Length(min=1, max=2000)],
+        validators=[InputRequired(), Length(min=1, max=URL_CONSTANTS.MAX_URL_LENGTH)],
         name=MODELS.URL_STRING,
     )
     url_title = StringField(
         "URL Title",
-        validators=[InputRequired(), Length(min=1, max=100)],
+        validators=[
+            InputRequired(),
+            Length(min=1, max=URL_CONSTANTS.MAX_URL_TITLE_LENGTH),
+        ],
         name=MODELS.URL_TITLE,
     )
 
@@ -38,7 +42,7 @@ class EditURLForm(FlaskForm):
 
     url_string = StringField(
         "URL",
-        validators=[InputRequired(), Length(min=1, max=2000)],
+        validators=[InputRequired(), Length(min=1, max=URL_CONSTANTS.MAX_URL_LENGTH)],
         name=MODELS.URL_STRING,
     )
 
@@ -55,7 +59,7 @@ class EditURLTitleForm(FlaskForm):
 
     url_title = StringField(
         "URL Title",
-        validators=[InputRequired(), Length(max=140)],
+        validators=[InputRequired(), Length(max=URL_CONSTANTS.MAX_URL_TITLE_LENGTH)],
         name=MODELS.URL_TITLE,
     )
 
