@@ -16,14 +16,18 @@ $(document).ready(function () {
   });
 
   // Edit UTub name
-  $("#editUTubNameBtn").on("click", function () {
+  $("#editUTubNameBtn").on("click", function (e) {
     hideInputs();
     deselectAllURLs();
     editUTubNameShowInput();
+    // Prevent this event from bubbling up to the window to allow event listener creation
+    e.stopPropagation();
   });
 
-  $("#submitEditUTubNameBtn").on("click", function () {
-    checkSameNameUTub(0, $("#editUTubName").val());
+  $("#submitEditUTubNameBtn").on("click", function (e) {
+    // Prevent event from bubbling up to window which would exit the input box
+    e.stopPropagation();
+    checkSameNameUTub(false, $("#editUTubName").val());
   });
 
   // Edit UTub description
@@ -137,8 +141,10 @@ function editUTubNameShowInput() {
   // Hide current name and edit button
   hideIfShown($("#URLDeckHeader"));
   hideIfShown($("#editUTubNameBtn"));
-  hideIfShown($("#editUTubNameBtn"));
   hideIfShown($("#addURLBtn"));
+
+  // Setup event listeners on window and escape key to escape the input box
+  setEventListenersToEscapeEditUTubName();
 }
 
 // Hides input fields for editing an exiting UTub's name
@@ -149,8 +155,10 @@ function editUTubNameHideInput() {
   // Show values and edit button
   showIfHidden($("#URLDeckHeader"));
   showIfHidden($("#editUTubNameBtn"));
-  showIfHidden($("#editUTubNameBtn"));
   showIfHidden($("#addURLBtn"));
+  $(window).off("click");
+  $(document).unbind("keyup.27");
+  $("#editUTubName").off("click");
 }
 
 // Handles post request and response for editing an existing UTub's name

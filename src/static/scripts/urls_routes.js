@@ -100,12 +100,39 @@ function editURLShowInput() {
 
   // Show input field
   showIfHidden(editURLInput.closest(".createDiv"));
+  showIfHidden(editURLInput.next(".editURLBtnWrap"));
 
   // Hide published value
   hideIfShown(URL);
 
+  // Disable URL Buttons
+  disable(selectedCardDiv.find(".accessURLBtn"));
+  disable(selectedCardDiv.find(".addTagBtn"));
+  disable(selectedCardDiv.find(".delURLBtn"));
+
+  // Edit URL Button text to show a return string
+  const editURLBtn = selectedCardDiv.find(".editURLBtn");
+  editURLBtn.text("Exit Editing");
+  editURLBtn.removeClass("btn-light").addClass("btn-warning");
+
+  // Make the button close editing now if clicked
+  editURLBtn.off("click").on("click", function (e) {
+    e.stopPropagation();
+    editURLHideInput();
+  });
+
   // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
   unbindSelectURLBehavior();
+
+  // Allow escape key to close editing
+  $(document)
+    .unbind("keyup.27")
+    .bind("keyup.27", function (e) {
+      if (e.which === 27) {
+        e.stopPropagation();
+        editURLHideInput();
+      }
+    });
 }
 
 // Hides edit URL inputs
@@ -124,8 +151,28 @@ function editURLHideInput() {
   // Show published value
   showIfHidden(URL);
 
-  // Rebind select behavior
+  // Enable URL Buttons
+  enable(selectedCardDiv.find(".accessURLBtn"));
+  enable(selectedCardDiv.find(".addTagBtn"));
+  enable(selectedCardDiv.find(".delURLBtn"));
+
+  // Edit URL Button text to show a return string
+  const editURLBtn = selectedCardDiv.find(".editURLBtn");
+  editURLBtn.text("Edit URL");
+  editURLBtn.removeClass("btn-warning").addClass("btn-light");
+  editURLBtn.off("click").on("click", function (e) {
+    e.stopPropagation();
+    editURLShowInput();
+  });
+
+  // Rebind click selection behavior to unselect URL
   rebindSelectBehavior(getSelectedURLID());
+
+  // Unbind escape key from hiding edit
+  $(document).unbind("keyup.27");
+
+  // Rebind escape key to hiding selected URL
+  bindEscapeToUnselectURL(getSelectedURLID());
 }
 
 // Handles edition of an existing URL

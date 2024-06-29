@@ -204,7 +204,19 @@ span.tagBadge:hover .tag-remove {
     border-color: var(--tagBorderColor);
 }
 
+.URLTags {
+    gap: 2rem;
+}
+
 /* URLs */
+
+.URLOptions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: no-wrap;
+    justify-content: flex-start;
+    align-items: baseline;
+}
 
 .card {
     background-color: var(--cardBackgroundColor);
@@ -223,7 +235,6 @@ span.tagBadge:hover .tag-remove {
     color: #1abc9c;
     margin-bottom: 2px;
     overflow: hidden;
-    width: 100%;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
@@ -236,7 +247,6 @@ span.tagBadge:hover .tag-remove {
     margin-bottom: 0px;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 100%;
     overflow: hidden;
 }
 
@@ -257,7 +267,7 @@ span.tagBadge:hover .tag-remove {
     white-space: normal;
     text-overflow: unset;
 }
-/home/giovannigp/Videos/U4I_URLWrapping.webm/home/giovannigp/Videos/U4I_URLWrapping.webm
+
 .URLString {
     width: 200px;
     white-space: nowrap;
@@ -279,6 +289,15 @@ span.tagBadge:hover .tag-remove {
 
 .col-xl-3 {
     flex-shrink: 1;
+}
+
+.editURL {
+    width: 75%;
+}
+
+.editURLBtnWrap {
+    padding-inline:10px;
+    gap: 10px;
 }
 
 /* Members */
@@ -344,6 +363,10 @@ span.member:hover .member-remove {
     color: rgba(255, 255, 255, 0.75);
 }
 
+#editUTubNameBtn {
+    color: rgba(84, 84, 84, 1.0);
+}
+
 
 /* Media size for responsiveness 
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 
@@ -372,6 +395,10 @@ span.member:hover .member-remove {
 
     div#pageContent {
         flex-direction: column;
+    }
+
+    #accessAllURLsBtn {
+        width: 100% !important;
     }
 
 }
