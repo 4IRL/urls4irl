@@ -16,6 +16,7 @@ $(document).ready(function () {
   });
 
   // Edit UTub name
+  const editUTubNameBtn = $("#editUTubNameBtn");
   $("#editUTubNameBtn").on("click", function (e) {
     hideInputs();
     deselectAllURLs();
@@ -143,8 +144,14 @@ function editUTubNameShowInput() {
   hideIfShown($("#editUTubNameBtn"));
   hideIfShown($("#addURLBtn"));
 
+  // Handle hiding the button on mobile when hover events stay after touch
+  $("#editUTubNameBtn").removeClass("visibleBtn");
+
   // Setup event listeners on window and escape key to escape the input box
   setEventListenersToEscapeEditUTubName();
+
+  // Prevent URL keyboard selection while editing name
+  unbindURLKeyboardEventListenersWhenEditsOccurring();
 }
 
 // Hides input fields for editing an exiting UTub's name
@@ -157,8 +164,14 @@ function editUTubNameHideInput() {
   showIfHidden($("#editUTubNameBtn"));
   showIfHidden($("#addURLBtn"));
   $(window).off("click");
-  $(document).unbind("keyup.27");
+  $(document).unbind("keyup.escapeKeyUTubName");
   $("#editUTubName").off("click");
+
+  // Handle giving mobile devices ability to see button again
+  $("#editUTubNameBtn").addClass("visibleBtn");
+
+  // Allow URL selection with keyboard again
+  bindURLKeyboardEventListenersWhenEditsNotOccurring();
 }
 
 // Handles post request and response for editing an existing UTub's name

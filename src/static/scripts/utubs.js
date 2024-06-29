@@ -101,8 +101,6 @@ function resetUTubDeck() {
 
 // Create event listeners to escape from editing UTub name
 function setEventListenersToEscapeEditUTubName() {
-  console.log("Setting up event listeners for edit UTub name!");
-
   // Allow user to still click in the text box
   $("#editUTubName").on("click", function (e) {
     e.stopPropagation();
@@ -111,26 +109,23 @@ function setEventListenersToEscapeEditUTubName() {
   // Bind clicking outside the window
   $(window)
     .off("click")
-    .on("click", function () {
+    .on("click", function (e) {
       // Hide UTub name edit fields
-      console.log("Hiding the inputs");
       editUTubNameHideInput();
     });
 
   // Bind escape key
-  $(document).bind("keyup.27", function (e) {
+  $(document).bind("keyup.escapeKeyUTubName", function (e) {
     if (e.which === 27) {
       hideInputs();
-      console.log("Hiding the inputs");
       editUTubNameHideInput();
     }
   });
 }
 
 function removeEventListenersToEscapeEditUTubName() {
-  console.log("Removing event listeners for edit UTub name!");
   $(window).off("click");
-  $(document).unbind("keyup.27");
+  $(document).unbind("keyup.escapeKeyUTubName");
   $("#editUTubName").off("click");
 }
 
@@ -200,8 +195,8 @@ function buildSelectedUTub(selectedUTub) {
 
   // Only allow owner to edit UTub name
   isCurrentUserOwner
-    ? showIfHidden($("#editUTubNameBtn"))
-    : hideIfShown($("#editUTubNameBtn"));
+    ? $("#editUTubNameBtn").removeClass("hiddenBtn").addClass("visibleBtn")
+    : $("#editUTubNameBtn").addClass("hiddenBtn").removeClass("visibleBtn");
 }
 
 // Handles progagating changes across page related to a UTub selection

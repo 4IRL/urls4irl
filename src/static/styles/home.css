@@ -117,6 +117,7 @@ div#pageContent {
     align-items: center;
 }
 
+
 /* UTubs */
 
 .active,
@@ -313,6 +314,19 @@ span.tagBadge:hover .tag-remove {
 .editURLBtnWrap {
     padding-inline:10px;
     gap: 10px;
+}
+
+#UTubNameEditWrap > .visibleBtn {
+    display: none !important;
+
+}
+
+#UTubNameEditWrap:hover > .visibleBtn {
+    display: flex !important;
+}
+
+.hiddenBtn#editUTubNameBtn {
+    display: none !important;
 }
 
 /* Members */
