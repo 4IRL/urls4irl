@@ -49,8 +49,10 @@ function bindEscapeToExitAddNewTag(inputWrapper) {
   $(document)
     .unbind("keyup.27")
     .bind("keyup.27", function (e) {
-      e.stopPropagation();
-      cancelAddTagHideInput(inputWrapper);
+      if (e.which === 27) {
+        e.stopPropagation();
+        cancelAddTagHideInput(inputWrapper);
+      }
     });
 }
 
