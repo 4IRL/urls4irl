@@ -240,7 +240,7 @@ span.tagBadge:hover .tag-remove {
 }
 
 .card-text {
-    color: #8c9b9d;
+    color: var(--cardURLTextColor);
 }
 
 .url-string {
@@ -262,10 +262,23 @@ span.tagBadge:hover .tag-remove {
     cursor: auto;
 }
 
+.URL .url-string {
+    text-decoration: none;
+}
+
+.URL .url-string:hover {
+    color: var(--cardURLTextColor);
+}
+
 .selectedURL .card-title,
 .selectedURL .url-string {
     white-space: normal;
     text-overflow: unset;
+}
+
+.selectedURL .url-string:hover {
+    text-decoration: underline;
+    cursor: pointer;
 }
 
 .URLString {
@@ -274,6 +287,7 @@ span.tagBadge:hover .tag-remove {
     overflow: hidden;
     text-overflow: ellipsis
 }
+
 
 .col-lg-10 {
     flex-grow: 1;
@@ -293,6 +307,7 @@ span.tagBadge:hover .tag-remove {
 
 .editURL {
     width: 75%;
+    color: var(--darkGrayTextColor);
 }
 
 .editURLBtnWrap {

@@ -23,15 +23,17 @@ $(document).ready(function () {
   $("form").on("submit", function () {
     return false;
   });
+});
 
-  // Keyboard navigation between selected UTubs or URLs
-  $(document).on("keyup", function (e) {
-    const keycode = e.keyCode ? e.keyCode : e.which;
-    const prev = keycode === 37 || keycode === 38; // UP and LEFT keys
-    const next = keycode === 39 || keycode === 40; // DOWN and RIGHT keys
-
-    if ($("#URLFocusRow").length > 0) {
-      // Some URL is selected, switch URLs
+// Keyboard navigation between selected UTubs or URLs
+function bindURLKeyboardEventListenersWhenEditsNotOccurring() {
+  $(document)
+    .off("keyup.switchutubs")
+    .on("keyup.switchutubs", function (e) {
+      e.stopPropagation();
+      const keycode = e.keyCode ? e.keyCode : e.which;
+      const prev = keycode === 37 || keycode === 38; // UP and LEFT keys
+      const next = keycode === 39 || keycode === 40; // DOWN and RIGHT keys
 
       const UPRCards = $("#UPRRow").children(".cardCol");
       const LWRCards = $("#LWRRow").children(".cardCol");
@@ -66,11 +68,18 @@ $(document).ready(function () {
         toggleSelectedURL(urlID);
         bindEscapeToUnselectURL(urlID);
       }
-    } else {
-      // No URL selected, switch UTubs
-    }
-  });
-});
+
+      //REHCH Goal: No URL selected, switch UTubs
+    });
+}
+
+function unbindURLKeyboardEventListenersWhenEditsOccurring() {
+  $(document).off("keyup.switchutubs");
+}
+
+function unbindEscapeKey() {
+  $(document).unbind("keyup.27");
+}
 
 // General Functions
 

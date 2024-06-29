@@ -6,14 +6,33 @@
 function addTagShowInput() {
   // Prevent deselection of URL while modifying its values
   unbindSelectURLBehavior();
+  unbindEscapeKey();
+  unbindURLKeyboardEventListenersWhenEditsOccurring();
 
   let URLCard = getSelectedURLCard();
 
   // Show temporary div element containing input
   let inputEl = URLCard.find(".addTag");
   inputEl.addClass("activeInput");
-  showIfHidden(inputEl.closest(".createDiv"));
+
+  const inputWrapper = inputEl.closest(".createDiv");
+  showIfHidden(inputWrapper);
   highlightInput(inputEl);
+  bindEscapeToExitAddNewTag(inputWrapper);
+
+  // Disable the other buttons in the URL
+  disable(URLCard.find(".accessURLBtn"));
+  disable(URLCard.find(".editURLBtn"));
+  disable(URLCard.find(".delURLBtn"));
+
+  // Modify add tag button
+  const addTagBtn = URLCard.find(".addTagBtn");
+  addTagBtn.removeClass("btn-info").addClass("btn-warning");
+  addTagBtn.text("Return");
+  addTagBtn.off("click").on("click", function (e) {
+    e.stopPropagation();
+    cancelAddTagHideInput(inputWrapper);
+  });
 
   // 02/29/24 Ideally this input would be a dropdown select input that allowed typing. As user types, selection menu filters on each keypress. User can either choose a suggested existing option, or enter a new custom tag
   // Redefine UI interaction with showInputBtn
@@ -28,6 +47,30 @@ function addTagShowInput() {
   //   <option value="opel">Opel</option>
   //   <option value="audi">Audi</option>
   // </select>
+}
+
+function cancelAddTagHideInput(inputWrapper) {
+  let URLCard = getSelectedURLCard();
+  bindEscapeToUnselectURL(getSelectedURLID());
+
+  // Enable the buttons again
+  enable(URLCard.find(".accessURLBtn"));
+  enable(URLCard.find(".editURLBtn"));
+  enable(URLCard.find(".delURLBtn"));
+
+  // Modify add tag button
+  const addTagBtn = URLCard.find(".addTagBtn");
+  addTagBtn.removeClass("btn-warning").addClass("btn-info");
+  addTagBtn.text("Add Tag");
+
+  addTagBtn.off("click").on("click", function (e) {
+    e.stopPropagation();
+    addTagShowInput();
+  });
+
+  hideIfShown(inputWrapper);
+  rebindSelectBehavior();
+  bindURLKeyboardEventListenersWhenEditsNotOccurring();
 }
 
 // Handles addition of new Tag to URL after user submission
@@ -74,7 +117,7 @@ function addTagSetup() {
 // Displays changes related to a successful addition of a new Tag
 function addTagSuccess(response) {
   // Rebind selection behavior of current URL
-  rebindSelectBehavior(getSelectedURLID());
+  rebindSelectBehavior();
 
   let selectedURLCard = getSelectedURLCard();
 

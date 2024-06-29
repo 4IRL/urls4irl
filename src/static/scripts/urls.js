@@ -49,15 +49,14 @@ function unbindSelectURLBehavior() {
 }
 
 // Rebinds selection click behavior after URL-modifying post requests are complete
-function rebindSelectBehavior(URLID) {
+function rebindSelectBehavior() {
+  const urlID = getSelectedURLID();
   $(getSelectedURLCard())
     .closest(".cardCol")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      console.log("Trying to click on..");
-      toggleSelectedURL(URLID);
-      bindEscapeToUnselectURL(URLID);
+    .off("click")
+    .on("click", function () {
+      toggleSelectedURL(urlID);
+      bindEscapeToUnselectURL(urlID);
     });
 }
 
@@ -66,14 +65,10 @@ function bindEscapeToUnselectURL(urlID) {
     .unbind("keyup.27")
     .bind("keyup.27", function (e) {
       if (e.which === 27) {
-        console.log("Trying to access URL: " + urlID);
         toggleSelectedURL(urlID);
+        unbindEscapeKey();
       }
     });
-}
-
-function unbindEscapeKey() {
-  $(document).unbind("keyup.27");
 }
 
 // Opens new tab
@@ -201,7 +196,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
   const submitEditURLTitleBtn = canModify ? makeSubmitButton(20) : null; // Submit changes after 'edit' operations
   const cancelEditURLTitleBtn = canModify ? makeCancelButton(20) : null; // Cancel changes after 'edit' operations, populate with pre-edit values
   const URLWrap = document.createElement("div"); // This element wraps the URL title and edit button
-  const URL = document.createElement("p"); // This element displays the user's URL
+  const URL = document.createElement("a"); // This element displays the user's URL
   const editURLWrap = canModify ? document.createElement("div") : null; // This element wraps the edit field for URL string
   const editURLInput = canModify ? document.createElement("input") : null; // This element is instantiated with the URL
   const submitEditURLBtn = canModify ? makeSubmitButton(25) : null; // Submit changes after 'edit' operations
@@ -217,7 +212,6 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
   $(col)
     .addClass("cardCol mb-3 col-md-12 col-sm-12 col-lg-12 col-xl-12 col-xxl-6")
     .on("click", function (e) {
-      e.preventDefault();
       toggleSelectedURL(URLID);
       bindEscapeToUnselectURL(URLID);
     });
@@ -518,9 +512,7 @@ function createNewTagInputField() {
     .attr({
       style: "display: none",
     })
-    .addClass("createDiv row");
-
-  $(wrapperInput).addClass("col-3 col-lg-3 mb-md-0");
+    .addClass("createDiv flex-row");
 
   $(input)
     .attr({
@@ -528,8 +520,6 @@ function createNewTagInputField() {
       placeholder: "Attribute Tag to URL",
     })
     .addClass("tag userInput addTag");
-
-  $(wrapperBtns).addClass("col-3 col-lg-3 mb-md-0 text-right d-flex flex-row");
 
   $(submitBtn)
     .addClass("mx-1 green-clickable submitAddTag")
@@ -543,8 +533,8 @@ function createNewTagInputField() {
     .addClass("mx-1 cancelAddTag")
     .on("click", function (e) {
       e.stopPropagation();
-      e.preventDefault();
-      hideIfShown(wrapper);
+      cancelAddTagHideInput($(wrapper));
+      //hideIfShown(wrapper);
     });
 
   $(wrapperInput).append(input);
@@ -572,6 +562,14 @@ function selectURL(selectedCardCol) {
   showIfHidden(selectedCardCol.find(".URLOptions"));
   showIfHidden(selectedCardCol.find(".editURLTitleBtn"));
   showIfHidden(selectedCardCol.find(".editURLBtn"));
+
+  // Add clickability to the URL itself
+  const urlString = card.find(".url-string");
+
+  urlString.off("click").on("click", function (e) {
+    e.stopPropagation();
+    accessLink(urlString.text());
+  });
 }
 
 // Display updates related to deselection of a URL
@@ -591,8 +589,8 @@ function deselectURL(deselectedCardCol) {
   hideIfShown(deselectedCardCol.find(".editURLTitleBtn"));
   hideIfShown(deselectedCardCol.find(".editURLBtn"));
 
-  // Unbind escape key from showing URL
-  unbindEscapeKey();
+  // Remove clickability from the URL
+  card.find(".url-string").off("click");
 }
 
 // Deselects all URLs in preparation for creation URL
@@ -658,6 +656,10 @@ function toggleSelectedURL(selectedURLID) {
       // All subsequent cardCols should be added below the focusRow
       activeRow = $("#LWRRow");
     }
+  }
+
+  if (!isNaN(getSelectedURLID())) {
+    bindURLKeyboardEventListenersWhenEditsNotOccurring();
   }
 }
 

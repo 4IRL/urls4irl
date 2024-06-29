@@ -94,6 +94,7 @@ function addURLFail(response) {
 // Shows edit URL inputs
 function editURLShowInput() {
   // Show edit submission and cancel button, hide edit button
+  unbindURLKeyboardEventListenersWhenEditsOccurring();
   const selectedCardDiv = getSelectedURLCard();
   const editURLInput = selectedCardDiv.find(".editURL");
   const URL = selectedCardDiv.find(".URL");
@@ -101,6 +102,7 @@ function editURLShowInput() {
   // Show input field
   showIfHidden(editURLInput.closest(".createDiv"));
   showIfHidden(editURLInput.next(".editURLBtnWrap"));
+  editURLInput.focus();
 
   // Hide published value
   hideIfShown(URL);
@@ -166,13 +168,14 @@ function editURLHideInput() {
   });
 
   // Rebind click selection behavior to unselect URL
-  rebindSelectBehavior(getSelectedURLID());
+  rebindSelectBehavior();
 
   // Unbind escape key from hiding edit
   $(document).unbind("keyup.27");
 
   // Rebind escape key to hiding selected URL
   bindEscapeToUnselectURL(getSelectedURLID());
+  bindURLKeyboardEventListenersWhenEditsNotOccurring();
 }
 
 // Handles edition of an existing URL
@@ -221,7 +224,7 @@ function editURLSuccess(response) {
   selectedCardDiv.attr("urlid", editedURLID);
 
   // If edit URL action, rebind the ability to select/deselect URL by clicking it
-  rebindSelectBehavior(getSelectedURLID());
+  rebindSelectBehavior();
 
   // Update URL body with latest published data
   selectedCardDiv.find(".card-text").text(editedURLString);
@@ -286,7 +289,7 @@ function editURLTitleHideInput() {
   showIfHidden(URLTitle);
 
   // Rebind select behavior
-  rebindSelectBehavior(getSelectedURLID());
+  rebindSelectBehavior();
 }
 
 // Handles edition of an existing URL
@@ -331,7 +334,7 @@ function editURLTitleSuccess(response) {
   const selectedCardDiv = getSelectedURLCard();
 
   // If edit URL action, rebind the ability to select/deselect URL by clicking it
-  rebindSelectBehavior(getSelectedURLID());
+  rebindSelectBehavior();
 
   // Update URL body with latest published data
   selectedCardDiv.find(".card-title").text(editedURLTitle);
