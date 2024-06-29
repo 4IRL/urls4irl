@@ -29,6 +29,8 @@
     --tagSelectedTextColor: rgba(14, 66, 27, 1.0);
 
     --contentTopBorder: rgba(126, 130, 130, 0.25);
+
+    --cardURLTextColor: rgba(140, 155, 157, 1.0);
 }
 
 /** HTML DOM Elements **/

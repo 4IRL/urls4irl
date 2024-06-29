@@ -44,6 +44,18 @@ function currentTagDeckIDs() {
   return tagIDList;
 }
 
+// Bind escape key to exit adding of a tag
+function bindEscapeToExitAddNewTag(inputWrapper) {
+  $(document)
+    .unbind("keyup.27")
+    .bind("keyup.27", function (e) {
+      if (e.which === 27) {
+        e.stopPropagation();
+        cancelAddTagHideInput(inputWrapper);
+      }
+    });
+}
+
 // 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
 // Function to evaluate whether newly added tag already exists in Tag Deck
 function isTagInDeck(tagid) {

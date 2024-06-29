@@ -94,18 +94,47 @@ function addURLFail(response) {
 // Shows edit URL inputs
 function editURLShowInput() {
   // Show edit submission and cancel button, hide edit button
+  unbindURLKeyboardEventListenersWhenEditsOccurring();
   const selectedCardDiv = getSelectedURLCard();
   const editURLInput = selectedCardDiv.find(".editURL");
   const URL = selectedCardDiv.find(".URL");
 
   // Show input field
   showIfHidden(editURLInput.closest(".createDiv"));
+  showIfHidden(editURLInput.next(".editURLBtnWrap"));
+  editURLInput.focus();
 
   // Hide published value
   hideIfShown(URL);
 
+  // Disable URL Buttons
+  disable(selectedCardDiv.find(".accessURLBtn"));
+  disable(selectedCardDiv.find(".addTagBtn"));
+  disable(selectedCardDiv.find(".delURLBtn"));
+
+  // Edit URL Button text to show a return string
+  const editURLBtn = selectedCardDiv.find(".editURLBtn");
+  editURLBtn.text("Exit Editing");
+  editURLBtn.removeClass("btn-light").addClass("btn-warning");
+
+  // Make the button close editing now if clicked
+  editURLBtn.off("click").on("click", function (e) {
+    e.stopPropagation();
+    editURLHideInput();
+  });
+
   // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
   unbindSelectURLBehavior();
+
+  // Allow escape key to close editing
+  $(document)
+    .unbind("keyup.27")
+    .bind("keyup.27", function (e) {
+      if (e.which === 27) {
+        e.stopPropagation();
+        editURLHideInput();
+      }
+    });
 }
 
 // Hides edit URL inputs
@@ -124,8 +153,29 @@ function editURLHideInput() {
   // Show published value
   showIfHidden(URL);
 
-  // Rebind select behavior
-  rebindSelectBehavior(getSelectedURLID());
+  // Enable URL Buttons
+  enable(selectedCardDiv.find(".accessURLBtn"));
+  enable(selectedCardDiv.find(".addTagBtn"));
+  enable(selectedCardDiv.find(".delURLBtn"));
+
+  // Edit URL Button text to show a return string
+  const editURLBtn = selectedCardDiv.find(".editURLBtn");
+  editURLBtn.text("Edit URL");
+  editURLBtn.removeClass("btn-warning").addClass("btn-light");
+  editURLBtn.off("click").on("click", function (e) {
+    e.stopPropagation();
+    editURLShowInput();
+  });
+
+  // Rebind click selection behavior to unselect URL
+  rebindSelectBehavior();
+
+  // Unbind escape key from hiding edit
+  $(document).unbind("keyup.27");
+
+  // Rebind escape key to hiding selected URL
+  bindEscapeToUnselectURL(getSelectedURLID());
+  bindURLKeyboardEventListenersWhenEditsNotOccurring();
 }
 
 // Handles edition of an existing URL
@@ -174,7 +224,7 @@ function editURLSuccess(response) {
   selectedCardDiv.attr("urlid", editedURLID);
 
   // If edit URL action, rebind the ability to select/deselect URL by clicking it
-  rebindSelectBehavior(getSelectedURLID());
+  rebindSelectBehavior();
 
   // Update URL body with latest published data
   selectedCardDiv.find(".card-text").text(editedURLString);
@@ -239,7 +289,7 @@ function editURLTitleHideInput() {
   showIfHidden(URLTitle);
 
   // Rebind select behavior
-  rebindSelectBehavior(getSelectedURLID());
+  rebindSelectBehavior();
 }
 
 // Handles edition of an existing URL
@@ -284,7 +334,7 @@ function editURLTitleSuccess(response) {
   const selectedCardDiv = getSelectedURLCard();
 
   // If edit URL action, rebind the ability to select/deselect URL by clicking it
-  rebindSelectBehavior(getSelectedURLID());
+  rebindSelectBehavior();
 
   // Update URL body with latest published data
   selectedCardDiv.find(".card-title").text(editedURLTitle);

@@ -23,40 +23,63 @@ $(document).ready(function () {
   $("form").on("submit", function () {
     return false;
   });
-
-  // Bind esc key (keycode 27) to hide any visible user input createDivs
-  $(document).bind("keyup", function (e) {
-    if (e.which == 27) {
-      hideInputs();
-    }
-  });
-
-  // Keyboard navigation between selected UTubs or URLs
-  $(document).on("keyup", function (e) {
-    let keycode = e.keyCode ? e.keyCode : e.which;
-    let prev = keycode == 37 || keycode == 38; // UP and LEFT keys
-    let next = keycode == 39 || keycode == 40; // DOWN and RIGHT keys
-
-    if ($("#URLFocusRow").length > 0) {
-      // Some URL is selected, switch URLs
-
-      let UPRcards = $("#UPRRow").children(".cardCol").length;
-      let LWRcards = $("#LWRRow").children(".cardCol").length;
-
-      if (prev && UPRcards > 0) {
-        // User wants to highlight previous URL
-        let cardCol = $($("#UPRRow").children(".cardCol")[UPRcards - 1]);
-        toggleSelectedURL($(cardCol[0].children).attr("urlid"));
-      } else if (next && LWRcards > 0) {
-        // User wants to highlight next URL
-        let cardCol = $($("#LWRRow").children(".cardCol")[0]);
-        toggleSelectedURL($(cardCol[0].children).attr("urlid"));
-      }
-    } else {
-      // No URL selected, switch UTubs
-    }
-  });
 });
+
+// Keyboard navigation between selected UTubs or URLs
+function bindURLKeyboardEventListenersWhenEditsNotOccurring() {
+  $(document)
+    .off("keyup.switchutubs")
+    .on("keyup.switchutubs", function (e) {
+      e.stopPropagation();
+      const keycode = e.keyCode ? e.keyCode : e.which;
+      const prev = keycode === 37 || keycode === 38; // UP and LEFT keys
+      const next = keycode === 39 || keycode === 40; // DOWN and RIGHT keys
+
+      const UPRCards = $("#UPRRow").children(".cardCol");
+      const LWRCards = $("#LWRRow").children(".cardCol");
+
+      const UPRcardsCount = UPRCards.length;
+      const LWRcardsCount = LWRCards.length;
+
+      if (prev) {
+        let urlID;
+        if (UPRcardsCount > 0) {
+          // User wants to highlight previous URL
+          const cardCol = $($(UPRCards)[UPRcardsCount - 1]);
+          urlID = $(cardCol[0].children).attr("urlid");
+        } else {
+          // Highlight last card in lower row
+          const cardCol = $($(LWRCards)[LWRcardsCount - 1]);
+          urlID = $(cardCol[0].children).attr("urlid");
+        }
+        toggleSelectedURL(urlID);
+        bindEscapeToUnselectURL(urlID);
+      } else if (next) {
+        let urlID;
+        if (LWRcardsCount === 0) {
+          // User hit the last URL and should cycle back
+          const cardCol = $($(UPRCards)[0]);
+          urlID = $(cardCol[0].children).attr("urlid");
+        } else {
+          // User has another URL in the LWRRow to select
+          const cardCol = $($(LWRCards)[0]);
+          urlID = $($(cardCol)[0].children).attr("urlid");
+        }
+        toggleSelectedURL(urlID);
+        bindEscapeToUnselectURL(urlID);
+      }
+
+      //REHCH Goal: No URL selected, switch UTubs
+    });
+}
+
+function unbindURLKeyboardEventListenersWhenEditsOccurring() {
+  $(document).off("keyup.switchutubs");
+}
+
+function unbindEscapeKey() {
+  $(document).unbind("keyup.27");
+}
 
 // General Functions
 
@@ -198,6 +221,16 @@ function makeCancelButton(wh) {
   $(cancelBtn).addClass("mx-1").html(htmlString);
 
   return cancelBtn;
+}
+
+// Disables buttons
+function disable(jqueryObj) {
+  $(jqueryObj).prop("disabled", true);
+}
+
+// Enables buttons
+function enable(jqueryObj) {
+  $(jqueryObj).prop("disabled", false);
 }
 
 function displayState0() {

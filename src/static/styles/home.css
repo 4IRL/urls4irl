@@ -117,6 +117,7 @@ div#pageContent {
     align-items: center;
 }
 
+
 /* UTubs */
 
 .active,
@@ -204,7 +205,19 @@ span.tagBadge:hover .tag-remove {
     border-color: var(--tagBorderColor);
 }
 
+.URLTags {
+    gap: 2rem;
+}
+
 /* URLs */
+
+.URLOptions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: no-wrap;
+    justify-content: flex-start;
+    align-items: baseline;
+}
 
 .card {
     background-color: var(--cardBackgroundColor);
@@ -223,20 +236,18 @@ span.tagBadge:hover .tag-remove {
     color: #1abc9c;
     margin-bottom: 2px;
     overflow: hidden;
-    width: 100%;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
 
 .card-text {
-    color: #8c9b9d;
+    color: var(--cardURLTextColor);
 }
 
 .url-string {
     margin-bottom: 0px;
     text-overflow: ellipsis;
     white-space: nowrap;
-    width: 100%;
     overflow: hidden;
 }
 
@@ -252,18 +263,32 @@ span.tagBadge:hover .tag-remove {
     cursor: auto;
 }
 
+.URL .url-string {
+    text-decoration: none;
+}
+
+.URL .url-string:hover {
+    color: var(--cardURLTextColor);
+}
+
 .selectedURL .card-title,
 .selectedURL .url-string {
     white-space: normal;
     text-overflow: unset;
 }
-/home/giovannigp/Videos/U4I_URLWrapping.webm/home/giovannigp/Videos/U4I_URLWrapping.webm
+
+.selectedURL .url-string:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
 .URLString {
     width: 200px;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis
 }
+
 
 .col-lg-10 {
     flex-grow: 1;
@@ -279,6 +304,29 @@ span.tagBadge:hover .tag-remove {
 
 .col-xl-3 {
     flex-shrink: 1;
+}
+
+.editURL {
+    width: 75%;
+    color: var(--darkGrayTextColor);
+}
+
+.editURLBtnWrap {
+    padding-inline:10px;
+    gap: 10px;
+}
+
+#UTubNameEditWrap > .visibleBtn {
+    display: none !important;
+
+}
+
+#UTubNameEditWrap:hover > .visibleBtn {
+    display: flex !important;
+}
+
+.hiddenBtn#editUTubNameBtn {
+    display: none !important;
 }
 
 /* Members */
@@ -344,6 +392,10 @@ span.member:hover .member-remove {
     color: rgba(255, 255, 255, 0.75);
 }
 
+#editUTubNameBtn {
+    color: rgba(84, 84, 84, 1.0);
+}
+
 
 /* Media size for responsiveness 
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 
@@ -372,6 +424,10 @@ span.member:hover .member-remove {
 
     div#pageContent {
         flex-direction: column;
+    }
+
+    #accessAllURLsBtn {
+        width: 100% !important;
     }
 
 }

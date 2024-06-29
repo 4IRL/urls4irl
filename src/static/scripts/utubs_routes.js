@@ -16,14 +16,19 @@ $(document).ready(function () {
   });
 
   // Edit UTub name
-  $("#editUTubNameBtn").on("click", function () {
+  const editUTubNameBtn = $("#editUTubNameBtn");
+  $("#editUTubNameBtn").on("click", function (e) {
     hideInputs();
     deselectAllURLs();
     editUTubNameShowInput();
+    // Prevent this event from bubbling up to the window to allow event listener creation
+    e.stopPropagation();
   });
 
-  $("#submitEditUTubNameBtn").on("click", function () {
-    checkSameNameUTub(0, $("#editUTubName").val());
+  $("#submitEditUTubNameBtn").on("click", function (e) {
+    // Prevent event from bubbling up to window which would exit the input box
+    e.stopPropagation();
+    checkSameNameUTub(false, $("#editUTubName").val());
   });
 
   // Edit UTub description
@@ -137,8 +142,16 @@ function editUTubNameShowInput() {
   // Hide current name and edit button
   hideIfShown($("#URLDeckHeader"));
   hideIfShown($("#editUTubNameBtn"));
-  hideIfShown($("#editUTubNameBtn"));
   hideIfShown($("#addURLBtn"));
+
+  // Handle hiding the button on mobile when hover events stay after touch
+  $("#editUTubNameBtn").removeClass("visibleBtn");
+
+  // Setup event listeners on window and escape key to escape the input box
+  setEventListenersToEscapeEditUTubName();
+
+  // Prevent URL keyboard selection while editing name
+  unbindURLKeyboardEventListenersWhenEditsOccurring();
 }
 
 // Hides input fields for editing an exiting UTub's name
@@ -149,8 +162,16 @@ function editUTubNameHideInput() {
   // Show values and edit button
   showIfHidden($("#URLDeckHeader"));
   showIfHidden($("#editUTubNameBtn"));
-  showIfHidden($("#editUTubNameBtn"));
   showIfHidden($("#addURLBtn"));
+  $(window).off("click");
+  $(document).unbind("keyup.escapeKeyUTubName");
+  $("#editUTubName").off("click");
+
+  // Handle giving mobile devices ability to see button again
+  $("#editUTubNameBtn").addClass("visibleBtn");
+
+  // Allow URL selection with keyboard again
+  bindURLKeyboardEventListenersWhenEditsNotOccurring();
 }
 
 // Handles post request and response for editing an existing UTub's name
