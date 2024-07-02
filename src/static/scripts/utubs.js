@@ -18,6 +18,7 @@ window.addEventListener("popstate", function (e) {
   } else {
     // If does not contain query parameter, user is at /home - then update UTub titles/IDs
     displayState0();
+    console.log("Display state 0");
     getAllUTubs().then((utubData) => buildUTubDeck(utubData));
   }
 });
@@ -88,10 +89,29 @@ function getAllUTubs() {
   return $.getJSON("/utubs");
 }
 
-// Clear new UTub Form
-function resetNewUTubForm() {
-  $("#createUTub").val("");
-  hideIfShown($("#createUTub").closest(".createDiv"));
+// Set event listeners for add and delete UTubs
+function setAddDeleteUTubEventListeners() {
+  // Create new UTub
+  $("#createUTubBtn")
+    .off("click")
+    .on("click", function () {
+      hideInputs();
+      deselectAllURLs();
+      addUTubShowInput();
+    });
+
+  // Delete UTub
+  $("#deleteUTubBtn")
+    .off("click")
+    .on("click", function () {
+      deleteUTubShowModal();
+    });
+}
+
+// Remove event listeners for add and delete UTubs
+function removeAddDeleteUTubEventListeners() {
+  $("#createUTubBtn").off("click");
+  $("#deleteUTubBtn").off("click");
 }
 
 // Clear the UTub Deck
@@ -102,7 +122,7 @@ function resetUTubDeck() {
 // Create event listeners to escape from editing UTub name
 function setEventListenersToEscapeEditUTubName() {
   // Allow user to still click in the text box
-  $("#editUTubName").on("click", function (e) {
+  $(".edit#utubName").on("click", function (e) {
     e.stopPropagation();
   });
 
@@ -116,9 +136,23 @@ function setEventListenersToEscapeEditUTubName() {
 
   // Bind escape key
   $(document).bind("keyup.escapeKeyUTubName", function (e) {
-    if (e.which === 27) {
-      hideInputs();
-      editUTubNameHideInput();
+    switch (e.which) {
+      case 13:
+        // Handle enter key pressed
+        // Skip if edit is identical
+        if ($("#URLDeckHeader").text() === $(".edit#utubName").val()) {
+          editUTubNameHideInput();
+          return;
+        }
+        checkSameNameUTub(false, $(".edit#utubName").val());
+        break;
+      case 27:
+        // Handle escape key pressed
+        hideInputs();
+        editUTubNameHideInput();
+        break;
+      default:
+      /* no-op */
     }
   });
 }
@@ -126,7 +160,58 @@ function setEventListenersToEscapeEditUTubName() {
 function removeEventListenersToEscapeEditUTubName() {
   $(window).off("click");
   $(document).unbind("keyup.escapeKeyUTubName");
-  $("#editUTubName").off("click");
+  $(".edit#utubName").off("click");
+}
+
+// Create event listeners to escape from editing UTub name
+function setEventListenersToEscapeEditUTubDescription() {
+  // Allow user to still click in the text box
+  $(".edit#utubDescription").on("click", function (e) {
+    e.stopPropagation();
+  });
+
+  // Bind clicking outside the window
+  $(window)
+    .off("click")
+    .on("click", function (e) {
+      // Hide UTub description edit fields
+      editUTubDescriptionHideInput();
+    });
+
+  // Bind escape key
+  $(document).bind("keyup.escapeKeyUTubDescription", function (e) {
+    switch (e.which) {
+      case 13:
+        // Handle enter key pressed
+        editUTubDescription();
+        break;
+      case 27:
+        // Handle escape key pressed
+        hideInputs();
+        editUTubDescriptionHideInput();
+        break;
+      default:
+      /* no-op */
+    }
+  });
+}
+
+function removeEventListenersToEscapeEditUTubDescription() {
+  $(window).off("click");
+  $(document).unbind("keyup.escapeKeyUTubDescription");
+  $(".edit#utubDescription").off("click");
+}
+
+function allowUserToAddDescriptionIfEmptyOnTitleEdit() {
+  const clickToAddDesc = $("#URLDeckSubheaderAddDescription");
+  showIfHidden(clickToAddDesc);
+  clickToAddDesc.off("click").on("click", function (e) {
+    e.stopPropagation();
+    hideIfShown(clickToAddDesc);
+    editUTubNameHideInput();
+    editUTubDescriptionShowInput();
+    clickToAddDesc.off("click");
+  });
 }
 
 /** UTub Functions **/
@@ -146,8 +231,6 @@ function buildUTubDeck(UTubs) {
     displayState1UTubDeck(null, null);
     displayState0URLDeck();
   } else displayState0UTubDeck();
-
-  parent.append(createNewUTubInputField());
 }
 
 function buildSelectedUTub(selectedUTub) {
@@ -187,16 +270,31 @@ function buildSelectedUTub(selectedUTub) {
   buildURLDeck(UTubName, dictURLs, dictTags);
 
   // UTub Description
-  if (UTubDescription) displayState2UTubDescriptionDeck(UTubDescription);
-  else displayState1UTubDescriptionDeck();
+  const utubDescriptionHeader = $("#URLDeckSubheader");
+  if (UTubDescription) {
+    utubDescriptionHeader.text(UTubDescription);
+  } else {
+    utubDescriptionHeader.text(null);
+  }
 
   // Members deck
   buildMemberDeck(dictMembers, UTubOwnerID, isCurrentUserOwner);
 
-  // Only allow owner to edit UTub name
-  isCurrentUserOwner
-    ? $("#editUTubNameBtn").removeClass("hiddenBtn").addClass("visibleBtn")
-    : $("#editUTubNameBtn").addClass("hiddenBtn").removeClass("visibleBtn");
+  // Only allow owner to edit UTub name and description
+  if (isCurrentUserOwner) {
+    $("#editUTubNameBtn").removeClass("hiddenBtn").addClass("visibleBtn");
+    $("#editUTubDescriptionBtn")
+      .removeClass("hiddenBtn")
+      .addClass("visibleBtn");
+
+    // Setup description edit field to match the current header
+    $(".edit#utubDescription").val($("#URLDeckSubheader").text());
+  } else {
+    $("#editUTubNameBtn").addClass("hiddenBtn").removeClass("visibleBtn");
+    $("#editUTubDescriptionBtn")
+      .addClass("hiddenBtn")
+      .removeClass("visibleBtn");
+  }
 }
 
 // Handles progagating changes across page related to a UTub selection
@@ -230,57 +328,28 @@ function createUTubSelector(UTubName, UTubID, index) {
   return UTubSelector;
 }
 
-// Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the user. Input field recreated here to ensure at the end of list after creation of new UTubs
-function createNewUTubInputField() {
-  const wrapper = document.createElement("div");
-  const wrapperInput = document.createElement("div");
-  const wrapperBtns = document.createElement("div");
-
-  const input = document.createElement("input");
-  const submitBtn = makeSubmitButton(30);
-  const cancelBtn = makeCancelButton(30);
-
-  $(wrapper).addClass("createDiv flex-row").attr({ style: "display: none" });
-
-  $(wrapperInput).addClass("col-9 col-lg-9 mb-md-0");
-
-  $(input).addClass("userInput").attr({
-    type: "text",
-    id: "createUTub",
-    placeholder: "New UTub name",
-  });
-
-  $(wrapperBtns).addClass("col-3 mb-md-0 flex-row-reverse");
-
-  $(submitBtn)
-    .addClass("mx-1 green-clickable")
-    .attr({
-      id: "submitCreateUTub",
-    })
+// Attaches appropriate event listeners to the add UTub and cancel add UTub buttons
+function createNewUTubEventListeners() {
+  $("#submitCreateUTub")
+    .off("click")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      checkSameNameUTub(true, $("#createUTub").val());
+      checkSameNameUTub(true, $(".add#utubName").val());
     });
 
-  $(cancelBtn)
-    .addClass("mx-1")
-    .attr({
-      id: "cancelCreateUTub",
-    })
+  $("#cancelCreateUTub")
+    .off("click")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      hideIfShown($(wrapper));
+      addUTubHideInput();
     });
+}
 
-  $(wrapperInput).append(input);
-
-  $(wrapperBtns).append(cancelBtn).append(submitBtn);
-
-  $(wrapper).append(wrapperInput).append(wrapperBtns);
-
-  return wrapper;
+function removeNewUTubEventListeners() {
+  $("#submitCreateUTub").off("click");
+  $("#cancelCreateUTub").off("click");
 }
 
 function unbindUTubSelectionBehavior(selectedUTubID) {
@@ -337,70 +406,12 @@ function displayState1UTubDeck(selectedUTubID, UTubOwnerUserID) {
   bindUTubSelectionBehavior();
   if (selectedUTubID) {
     unbindUTubSelectionBehavior(selectedUTubID);
-    showIfHidden($("#editUTubDescriptionBtn"));
+    //showIfHidden($("#editUTubDescriptionBtn"));
   }
 
   if (getCurrentUserID() === UTubOwnerUserID) {
     showIfHidden($("#deleteUTubBtn"));
   } else hideIfShown($("#deleteUTubBtn"));
-}
-
-/** UTub Description Display State Functions **/
-
-// Display state 0: Clean slate, no UTub selected
-function displayState0UTubDescriptionDeck() {
-  // Subheader prompt hidden
-  hideIfShown($("#UTubDescriptionDeckSubheader").closest(".titleElement"));
-
-  // Edit UTub Description button hidden
-  hideIfShown($("#editUTubDescriptionBtn"));
-
-  // Clear description values
-  $("#UTubDescription").text("");
-  $("#editUTubDescription").val("");
-}
-
-// Display state 1: UTub selected, no description
-function displayState1UTubDescriptionDeck() {
-  // Subheader prompt shown
-  showIfHidden($("#UTubDescriptionDeckSubheader").closest(".titleElement"));
-
-  // Edit UTub Description button shown, submission button hidden
-  showIfHidden($("#editUTubDescriptionBtn"));
-  hideIfShown($("#submitEditUTubDescriptionBtn"));
-
-  // Update description values
-  let p = $("#UTubDescription");
-  hideIfShown(p);
-  p.text("");
-  let editUTubDescription = $("#editUTubDescription");
-  hideIfShown(editUTubDescription.closest(".createDiv"));
-  editUTubDescription.val("");
-}
-
-// Display state 2: UTub selected, description exists
-function displayState2UTubDescriptionDeck(UTubDescription) {
-  const UTubDescriptionHolder = $("#URLDeckSubheader");
-  if (UTubDescription) {
-    showIfHidden(UTubDescriptionHolder);
-    UTubDescriptionHolder.text(UTubDescription);
-  } // User edited description to empty string
-  else hideIfShown(UTubDescriptionHolder);
-}
-
-// Display state 3: UTub selected, edit active
-function displayState3UTubDescriptionDeck(UTubDescription) {
-  // Subheader prompt hidden
-  hideIfShown($("#UTubDescriptionDeckSubheader").closest(".titleElement"));
-
-  // Submission button shown, edit UTub Description button hidden
-  hideIfShown($("#editUTubDescriptionBtn"));
-  showIfHidden($("#submitEditUTubDescriptionBtn"));
-
-  // Update description values
-  let editUTubDescription = $("#editUTubDescription");
-  hideIfShown(editUTubDescription.closest(".createDiv"));
-  editUTubDescription.val(UTubDescription);
 }
 
 /** Post data handling **/
@@ -409,10 +420,9 @@ function displayState3UTubDescriptionDeck(UTubDescription) {
 function checkSameNameUTub(isAddingUTub, name) {
   if (getAllAccessibleUTubNames().includes(name)) {
     // UTub with same name exists. Confirm action with user
-    const duplicateUTubIDFromName = getUTubIDFromName(name);
     isAddingUTub
-      ? sameUTubNameOnNewUTubWarningShowModal(duplicateUTubIDFromName)
-      : sameUTubNameOnEditUtubNameWarningShowModal(duplicateUTubIDFromName);
+      ? sameUTubNameOnNewUTubWarningShowModal()
+      : sameUTubNameOnEditUtubNameWarningShowModal();
   } else {
     // UTub name is unique. Proceed with requested action
     isAddingUTub ? addUTub() : editUTubName();
@@ -425,11 +435,10 @@ function sameNameWarningHideModal() {
 }
 
 // Handles a double check if user inputs a new UTub name similar to one already existing. mode true 'add', mode false 'edit'
-function sameUTubNameOnNewUTubWarningShowModal(UTubID) {
+function sameUTubNameOnNewUTubWarningShowModal() {
   const modalTitle = "Create a new UTub with this name?";
-  const modalBody = "A UTub in your repository has an identical name.";
+  const modalBody = "You're already in a UTub with an identical name.";
   const buttonTextDismiss = "Go Back to Editing";
-  const buttonTextRedirect = "Go to UTub";
   const buttonTextSubmit = "Create";
 
   $("#confirmModalTitle").text(modalTitle);
@@ -444,20 +453,11 @@ function sameUTubNameOnNewUTubWarningShowModal(UTubID) {
       e.preventDefault();
       e.stopPropagation();
       sameNameWarningHideModal();
-      highlightInput($("#createUTub"));
+      highlightInput($(".add#utubName"));
     });
 
-  showIfHidden($("#modalRedirect"));
-  $("#modalRedirect")
-    .addClass("btn btn-primary")
-    .text(buttonTextRedirect)
-    .off("click")
-    .on("click", function (e) {
-      e.preventDefault();
-      $("#confirmModal").modal("hide");
-      addUTubHideInput();
-      selectUTub(UTubID);
-    });
+  hideIfShown($("#modalRedirect"));
+  $("#modalRedirect").hide();
 
   $("#modalSubmit")
     .removeClass()
@@ -467,18 +467,21 @@ function sameUTubNameOnNewUTubWarningShowModal(UTubID) {
     .on("click", function (e) {
       e.preventDefault();
       addUTub();
-      hideIfShown($("#modalRedirect"));
-      $("#modalRedirect").hide();
+      $(".add#utubName").val(null);
+      $(".add#utubDescription").val(null);
     });
 
   $("#confirmModal").modal("show");
+  $("#confirmModal").on("hidden.bs.modal", function (e) {
+    // Refocus on the name's input box
+    highlightInput($(".add#utubName"));
+  });
 }
 
-function sameUTubNameOnEditUtubNameWarningShowModal(UTubID) {
+function sameUTubNameOnEditUtubNameWarningShowModal() {
   const modalTitle = "Edit this UTub name?";
-  const modalBody = "A UTub in your repository has an identical name.";
+  const modalBody = "You're already in a UTub with an identical name.";
   const buttonTextDismiss = "Go Back to Editing";
-  const buttonTextRedirect = "Go to UTub";
   const buttonTextSubmit = "Edit Name";
 
   removeEventListenersToEscapeEditUTubName();
@@ -495,21 +498,12 @@ function sameUTubNameOnEditUtubNameWarningShowModal(UTubID) {
       e.preventDefault();
       e.stopPropagation();
       sameNameWarningHideModal();
-      highlightInput($("#editUTubName"));
+      highlightInput($(".edit#utubName"));
       setEventListenersToEscapeEditUTubName();
     });
 
-  showIfHidden($("#modalRedirect"));
-  $("#modalRedirect")
-    .addClass("btn btn-primary")
-    .text(buttonTextRedirect)
-    .off("click")
-    .on("click", function (e) {
-      e.preventDefault();
-      $("#confirmModal").modal("hide");
-      editUTubNameHideInput();
-      selectUTub(UTubID);
-    });
+  hideIfShown($("#modalRedirect"));
+  $("#modalRedirect").hide();
 
   $("#modalSubmit")
     .removeClass()
@@ -519,8 +513,6 @@ function sameUTubNameOnEditUtubNameWarningShowModal(UTubID) {
     .on("click", function (e) {
       e.preventDefault();
       editUTubName();
-      hideIfShown($("#modalRedirect"));
-      $("#modalRedirect").hide();
     });
 
   $("#confirmModal").modal("show");

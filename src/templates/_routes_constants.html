@@ -74,4 +74,21 @@
         }
     }
     const routes = new Routes;
+
+    class Constants {
+        constructor() {
+            if (!Constants.instance) {
+
+                // UTub constants
+                this.UTUBS_MAX_NAME_LENGTH = {{CONSTANTS.UTUBS.MAX_NAME_LENGTH}};
+                this.UTUBS_MIN_NAME_LENGTH = {{CONSTANTS.UTUBS.MIN_NAME_LENGTH}};
+                this.UTUBS_MAX_DESCRIPTION_LENGTH = {{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}}
+
+                Constants.instance = this;
+            }
+
+            return Constants.instance;
+        }
+    }
+    const CONSTANTS = new Constants;
 </script>

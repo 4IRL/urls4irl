@@ -27,7 +27,7 @@ from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from src.utils.strings.user_strs import USER_FAILURE
 from src.utils.all_routes import ROUTES
-from src.utils.constants import EMAIL_CONSTANTS
+from src.utils.constants import CONSTANTS, EMAIL_CONSTANTS
 from src.splash.utils import (
     _handle_after_forgot_password_form_validated,
     _handle_email_sending_result,
@@ -39,6 +39,11 @@ from src.splash.utils import (
 STD_JSON = STD_JSON_RESPONSE
 
 splash = Blueprint("splash", __name__)
+
+
+@splash.context_processor
+def provide_constants():
+    return dict(CONSTANTS=CONSTANTS())
 
 
 @splash.route("/invalid")

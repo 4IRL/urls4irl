@@ -2,6 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, ValidationError
 from wtforms.validators import Length, InputRequired
 
+from src.utils.constants import UTUB_CONSTANTS
 from src.utils.strings.form_strs import UTUB_FORM, UTUB_DESCRIPTION_FORM
 from src.utils.strings.utub_strs import UTUB_FAILURE
 
@@ -17,12 +18,17 @@ class UTubForm(FlaskForm):
     name = StringField(
         name=UTUB_FORM.UTUB_NAME,
         label="UTub Name",
-        validators=[InputRequired(), Length(min=1, max=30)],
+        validators=[
+            InputRequired(),
+            Length(
+                min=UTUB_CONSTANTS.MIN_NAME_LENGTH, max=UTUB_CONSTANTS.MAX_NAME_LENGTH
+            ),
+        ],
     )
     description = StringField(
         name=UTUB_FORM.UTUB_DESCRIPTION,
         label="UTub Description",
-        validators=[Length(max=500)],
+        validators=[Length(max=UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH)],
     )
 
     submit = SubmitField()
@@ -43,7 +49,12 @@ class UTubNewNameForm(FlaskForm):
     name = StringField(
         name=UTUB_FORM.UTUB_NAME,
         label="UTub Name",
-        validators=[InputRequired(), Length(min=1, max=30)],
+        validators=[
+            InputRequired(),
+            Length(
+                min=UTUB_CONSTANTS.MIN_NAME_LENGTH, max=UTUB_CONSTANTS.MAX_NAME_LENGTH
+            ),
+        ],
     )
 
     submit = SubmitField()
@@ -68,7 +79,7 @@ class UTubDescriptionForm(FlaskForm):
     description = StringField(
         name=UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION,
         label="UTub Description",
-        validators=[Length(max=500)],
+        validators=[Length(max=UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH)],
     )
 
     submit = SubmitField()

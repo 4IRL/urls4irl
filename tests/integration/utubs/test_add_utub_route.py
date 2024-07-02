@@ -1,3 +1,6 @@
+from unittest.mock import patch
+import time
+
 from flask import url_for
 from flask_login import current_user
 import pytest
@@ -10,6 +13,7 @@ from tests.models_for_test import (
 from src.models.utubs import Utubs
 from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.all_routes import ROUTES
+from src.utils.constants import CONFIG_CONSTANTS
 from src.utils.strings.form_strs import UTUB_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
@@ -273,6 +277,40 @@ def test_add_utub_with_no_csrf_token(login_first_user_with_register):
     # Assert invalid response code
     assert invalid_new_utub_response.status_code == 400
     assert b"<p>The CSRF token is missing.</p>" in invalid_new_utub_response.data
+
+
+def test_csrf_expiration(app, login_first_user_with_register):
+    """
+    GIVEN a valid user on the home page
+    WHEN they make a POST request using an expired CSRF token
+    THEN ensure the response indicates the token is expired
+    """
+    current_time = int(time.time())
+    client, csrf_token, _, _ = login_first_user_with_register
+    new_utub_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token,
+        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
+    }
+
+    valid_utub_response_with_csrf = client.post(
+        url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form
+    )
+    assert valid_utub_response_with_csrf.status_code == 200
+
+    # Mock the `time.time` method response to return a value indicating an expired token
+    with patch(
+        "time.time",
+        return_value=current_time + CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS + 1,
+    ):
+        invalid_utub_response_with_csrf = client.post(
+            url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form
+        )
+        assert invalid_utub_response_with_csrf.status_code == 400
+        assert (
+            b"<p>The CSRF token has expired.</p>"
+            in invalid_utub_response_with_csrf.data
+        )
 
 
 def test_add_multiple_valid_utubs(login_first_user_with_register):

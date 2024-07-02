@@ -10,6 +10,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     {% block scripts_for_login %}
     {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+    <meta http-equiv="refresh" content="{{ CONSTANTS.CONFIG.CSRF_EXPIRATION_SECONDS }}">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     {% endif %}
     {% endblock %}
@@ -78,8 +79,8 @@
 </head>
 
 <body class="vh-100">
-    <!-- Includes jinja2 generated routes globally for use by frontend -->
-    {% include '_routes.html' %}
+    <!-- Includes jinja2 generated routes globally and all backend constants for use by frontend -->
+    {% include '_routes_constants.html' %}
 
     <!-- Navigation Bar -->
     {% include 'components/navbar.html' %}

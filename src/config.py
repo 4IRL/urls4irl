@@ -2,6 +2,7 @@ from os import environ, path
 
 from dotenv import load_dotenv
 
+from src.utils.constants import CONFIG_CONSTANTS
 from src.utils.strings.config_strs import CONFIG_ENVS
 
 # Must store .env file in base folder of project
@@ -26,6 +27,9 @@ class Config:
     SECRET_KEY = environ.get(CONFIG_ENVS.SECRET_KEY)
     SESSION_PERMANENT = "False"
     SESSION_TYPE = "sqlalchemy"
+    WTF_CSRF_TIME_LIMIT = (
+        CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS
+    )  # Six hours until CSRF expiration
     BASE_EMAIL = environ.get(CONFIG_ENVS.BASE_EMAIL)
     MAILJET_API_KEY = environ.get(CONFIG_ENVS.MAILJET_API_KEY)
     MAILJET_SECRET_KEY = environ.get(CONFIG_ENVS.MAILJET_SECRET_KEY)

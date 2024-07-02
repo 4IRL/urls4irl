@@ -2,13 +2,13 @@
 
 // Shows new Member input fields
 function addMemberShowInput() {
-  showInput("addMember");
+  showInput("#addMember");
   highlightInput($("#addMember"));
 }
 
 // Hides new Member input fields
 function addMemberHideInput() {
-  hideInput("addMember");
+  hideInput("#addMember");
 }
 
 function addMember() {

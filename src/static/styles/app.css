@@ -5,7 +5,8 @@
     --darkSplashGreen: rgba(36, 167, 69, 0.75);
     --splashLabelGreen: rgba(46, 204, 113, 1.0);
     --darkSplashLabelGreen: rgba(30, 133, 73, 1.0);
-    --pageBackgroundColor: #1f2424;
+    --pageBackgroundColor: rgba(31, 36, 36, 0.81);
+    --panelBackgroundColor: rgba(31, 36, 36, 1.0);
     --borderColor: #343c3d;
     --deckHeaderGreen: rgba(36, 167, 69, 1.0);
     --deckSelectionGreen: rgba(96, 218, 170, 1.0);
