@@ -12,14 +12,14 @@
 <div id="leftPanel" class="panel col-md-3">
 
     <!-- UTubs -->
-    <div id="UTubDeck" class="deck h-25 flex-column">
-        <div class="titleElement">
+    <div id="UTubDeck" class="deck flex-column">
+        <div class="titleElement pad-in-15p justify-space-between">
             <!-- Header -->
-            <div class="col-6 col-lg-6">
+            <div class="">
                 <h2 id="UTubDeckHeader">UTubs</h2>
             </div>
             <!-- Icons -->
-            <div class="col-6 col-lg-6 col-md-12 d-flex flex-row icon-holder">
+            <div class="flex-row icon-holder">
                 <!-- Create UTub button -->
                 <i id="createUTubBtn" class="mx-1">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill green-clickable" width="30" height="30"
@@ -38,21 +38,54 @@
             </div>
         </div>
 
-        <div class="titleElement">
+        <div class="titleElement pad-in-15p">
             <!-- Subheader -->
             <h5 id="UTubDeckSubheader">Create a UTub</h5>
         </div>
 
         <div class="flex-column content">
-            <div id="listUTubs">
+            <div id="createUTubWrap" class="input-text-holder flex-column createDiv pad-in-15p" style="display: none;">
+                <div class="text-input-container">
+                    <div class="text-input-inner-container">
+                        <input class="text-input add" type="text" id="utubName" name="utubName" minlength={{CONSTANTS.UTUBS.MIN_NAME_LENGTH}} maxlength={{CONSTANTS.UTUBS.MAX_NAME_LENGTH}} required>
+                        <label class="text-input-label" for="utubName">UTub Name</label>
+                    </div>
+                    <span class="text-input-error-message add" id="utubName-error">This field is required.</span>
+                </div>
+                <div class="text-input-container">
+                    <div class="text-input-inner-container">
+                        <input class="text-input add" type="text" id="utubDescription" name="utubDescription" maxlength={{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}}>
+                        <label class="text-input-label" for="utubDescription">UTub Description</label>
+                    </div>
+                    <span class="text-input-error-message add" id="utubDescription-error">This field is required.</span>
+                </div>
+                <div class="flex-row justify-center" style="gap: 8px; flex: 1 1 auto; align-items: flex-end;">
+                    <!-- Checkbox to accept UTub creation -->
+                    <i class="green-clickable-wide half-width flex-column align-center justify-center border-radius-5px" id="submitCreateUTub">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="30px" height="30px">
+                            <!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
+                            <path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/>
+                        </svg>
+                    </i>
+                    <!-- X to cancel UTub creation -->
+                    <i class="cancelButton-wide half-width flex-column align-center justify-center border-radius-5px" id="cancelCreateUTub">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="30px" height="30px">
+                            <!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
+                            <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/>
+                        </svg>
+                    </i>
+                </div>
+
+            </div>
+            <div class="pad-in-15p" id="listUTubs">
                 <!-- UTubs -->
             </div>
         </div>
     </div>
 
-    <div id="MembersDeck" class="deck h-25 flex-column">
+    <div id="MembersDeck" class="deck flex-column">
 
-        <div class="titleElement sidePanelTitle">
+        <div class="titleElement sidePanelTitle pad-in-15p">
             <div class="col-6 col-lg-6">
                 <h2 id="MemberDeckHeader">Members</h2>
             </div>
@@ -76,12 +109,12 @@
             </div>
         </div>
 
-        <div class="titleElement">
+        <div class="titleElement pad-in-15p">
             <!-- Subheader -->
             <h5 id="MemberDeckSubheader">Add a member</h5>
         </div>
 
-        <div class="flex-column content">
+        <div class="flex-column content pad-in-15p">
             <h5><u><b>Owner</b></u></h5>
             <div id="UTubOwner"></div>
             <h5 id="MembersHeader"><u><b>Members</b></u></h5>
@@ -92,11 +125,11 @@
     </div>
 
     <!-- Tags -->
-    <div id="TagDeck" class="deck h-50 flex-column">
-        <div class="titleElement">
+    <div id="TagDeck" class="deck flex-column">
+        <div class="titleElement pad-in-15p">
             <h2 id="TagDeckHeader">Tags</h2>
         </div>
-        <div class="titleElement">
+        <div class="titleElement pad-in-15p">
             <div class="d-flex justify-content-center flex-row">
                 <!-- Creating disassociated tags is not yet implemented as of 12/21/2023. Not considered MVP functionality. -->
                 <!-- Create Tag button -->
@@ -121,13 +154,13 @@
             </div>
         </div>
 
-        <div class="titleElement">
+        <div class="titleElement pad-in-15p">
             <!-- Subheader -->
             <h5 id="TagDeckSubheader">
                 </h2>
         </div>
 
-        <div class="flex-column content">
+        <div class="flex-column content pad-in-15p">
             <div class="flex-column flex-start" id="listTags">
                 <!-- Tags -->
             </div>
@@ -142,14 +175,14 @@
 <div id="centerPanel" class="panel col-sm-9">
     <div id="URLDeck" class="deck h-100 flex-column" style="align-items: stretch;">
         <!-- Header -->
-        <div class="titleElement">
+        <div class="titleElement pad-in-15p justify-space-between">
 
-            <div class="col-9 col-lg-9 flex-row align-center">
+            <div class="flex-row align-center sixtyfive-width">
                 <!-- Header -->
                 <div class="flex-row align-center" id="UTubNameEditWrap">
                     <h2 id="URLDeckHeader">URLs</h2>
                     <!-- Edit UTub name button -->
-                    <i id="editUTubNameBtn" class="mx-1">
+                    <i id="editUTubNameBtn" class="mx-1" style="display: none;">
                         <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="currentColor"
                             class="bi bi-pencil-square editIcon" viewBox="0 0 16 16">
                             <path
@@ -161,8 +194,14 @@
                 </div>
 
                 <!-- Edit UTub name -->
-                <div class="createDiv flex-row" style="display: none">
-                    <input type="text" id="editUTubName" class="userInput">
+                <div class="createDiv flex-row full-width pad-top-5p" style="display: none;">
+                    <div class="text-input-container full-width">
+                        <div class="text-input-inner-container">
+                            <input class="text-input edit" type="text" id="utubName" name="utubName" minlength={{CONSTANTS.UTUBS.MIN_NAME_LENGTH}} maxlength={{CONSTANTS.UTUBS.MAX_NAME_LENGTH}} required>
+                            <label class="text-input-label" for="utubName">UTub Name</label>
+                        </div>
+                        <span class="text-input-error-message edit" id="utubName-error">This field is required.</span>
+                    </div>
 
                     <!-- Submit edit UTub name -->
                     <i id="submitEditUTubNameBtn" class="green-clickable mx-1 py-2">
@@ -172,19 +211,15 @@
                                 d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z" />
                         </svg>
                     </i>
-                </div>
 
-                <!-- Edit UTub button
-                <i id="editUTubNameBtn" class="mx-1">
-                    <svg xmlns="http://www.w3.org/2000/svg" width="25" height="25" fill="currentColor"
-                        class="bi bi-pencil-square editIcon" viewBox="0 0 16 16">
-                        <path
-                            d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
-                        <path fill-rule="evenodd"
-                            d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
-                    </svg>
-                </i>
-                -->
+                    <!-- Cancel edit UTub name -->
+                    <i class="mx-1 py-2" id="cancelEditUTubNameBtn">
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill cancelButton" viewBox="0 0 16 16" width="30" height="30">
+                            <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708">
+                            </path>
+                        </svg>
+                    </i>
+                </div>
             </div>
 
             <!-- Add URL button -->
@@ -199,18 +234,58 @@
             </div>
         </div>
 
-        <div class="titleElement">
+        <div class="titleElement pad-in-15p">
             <!-- Subheader -->
-            <h5 id="URLDeckSubheader"></h5>
+            <div class="flex-row align-center" id="UTubDescriptionEditWrap">
+                <h5 id="URLDeckSubheader">Select a UTub</h5>
+                <!-- Edit UTub description button -->
+                <i id="editUTubDescriptionBtn" class="mx-1" style="display: none;">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor"
+                        class="bi bi-pencil-square editIcon" viewBox="0 0 16 16">
+                        <path
+                            d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
+                        <path fill-rule="evenodd"
+                            d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
+                    </svg>
+                </i>
+            </div>
+            <p id="URLDeckSubheaderAddDescription" style="display: none;">Add a description?</p>
+            <!-- Edit UTub Description -->
+            <div class="createDiv flex-row full-width" style="display: none;">
+                <div class="text-input-container sixtyfive-width">
+                    <div class="text-input-inner-container">
+                        <input class="text-input edit" type="text" id="utubDescription" name="utubDescription" maxlength={{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}} required>
+                        <label class="text-input-label" for="utubDescription">UTub Description</label>
+                    </div>
+                    <span class="text-input-error-message edit" id="utubDescription-error">This field is required.</span>
+                </div>
+
+                <!-- Submit edit UTub name -->
+                <i id="submitEditUTubDescriptionBtn" class="green-clickable mx-1 py-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
+                        class="bi bi-check-square-fill" viewBox="0 0 16 16">
+                        <path
+                            d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z" />
+                    </svg>
+                </i>
+
+                <!-- Cancel edit UTub name -->
+                <i class="mx-1 py-2" id="cancelEditUTubDescriptionBtn">
+                    <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill cancelButton" viewBox="0 0 16 16" width="30" height="30">
+                        <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708">
+                        </path>
+                    </svg>
+                </i>
+            </div>
         </div>
 
         <!-- URLs -->
-        <div class="flex-column content">
+        <div class="flex-column content pad-in-15p">
             <div id="listURLs">
                 <!-- Current selected UTub's URLs will be displayed here -->
                 <div id="UPRRow" class="flex-row wrap">
                     <!-- URLs above selected URL will be displayed here -->
-                    <p id="NoURLsSubheader" style="display: none;">No URLs here - add one!</p>
+                    <p id="NoURLsSubheader" style="display: none; padding-top: 1rem;">No URLs here - add one!</p>
                 </div>
                 <div id="URLFocusRow" class="flex-row wrap">
                     <!-- Selected URL will be highlighted here -->
@@ -268,7 +343,7 @@
         </div>
 
         <!-- Access all URLs button -->
-        <div class="flex-column align-center" style="padding-top: 10px; width: 100%;">
+        <div class="flex-column align-center pad-in-15p" style="padding-top: 10px; width: 100%;">
             <button id="accessAllURLsBtn" class="btn btn-primary" style="display: none; width: 50%;">Access All URLs
                 in UTub</button>
         </div>

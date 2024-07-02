@@ -2,14 +2,14 @@
 
 // Displays new URL input prompt
 function addURLHideInput() {
-  hideInput("addURL");
+  hideInput("#addURL");
   newURLInputRemoveEventListeners();
   if (!getNumOfURLs()) $("#NoURLsSubheader").show();
 }
 
 // Displays new URL input prompt
 function addURLShowInput() {
-  showInput("addURL");
+  showInput("#addURL");
   highlightInput($("#newURLTitle"));
   newURLInputAddEventListeners();
   if (!getNumOfURLs()) $("#NoURLsSubheader").hide();
@@ -270,6 +270,11 @@ function editURLTitleShowInput() {
 
   // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
   unbindSelectURLBehavior();
+  unbindURLKeyboardEventListenersWhenEditsOccurring();
+  unbindEscapeKey();
+  bindEscapeToExitURLTitleEditing();
+
+  $(editURLTitleInput).focus();
 }
 
 // Hides edit URL Title inputs
@@ -288,8 +293,15 @@ function editURLTitleHideInput() {
   // Show published value
   showIfHidden(URLTitle);
 
-  // Rebind select behavior
+  // Rebind click selection behavior to unselect URL
   rebindSelectBehavior();
+
+  // Unbind escape key from hiding edit
+  $(document).unbind("keyup.escapeUrlTitleEditing");
+
+  // Rebind escape key to hiding selected URL
+  bindEscapeToUnselectURL(getSelectedURLID());
+  bindURLKeyboardEventListenersWhenEditsNotOccurring();
 }
 
 // Handles edition of an existing URL

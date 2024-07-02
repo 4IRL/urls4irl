@@ -35,10 +35,12 @@ class Users(db.Model, UserMixin):
     __tablename__ = "Users"
     id: int = Column(Integer, primary_key=True)
     username: str = Column(
-        String(USER_CONSTANTS.MAX_USERNAME_LENGTH), unique=True, nullable=False
+        String(USER_CONSTANTS.MAX_USERNAME_LENGTH_ACTUAL), unique=True, nullable=False
     )
-    email: str = Column(String(120), unique=True, nullable=False)
-    password: str = Column(String(166), nullable=False)
+    email: str = Column(
+        String(USER_CONSTANTS.MAX_EMAIL_LENGTH), unique=True, nullable=False
+    )
+    password: str = Column(String(USER_CONSTANTS.MAX_PASSWORD_LENGTH), nullable=False)
     created_at = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )

@@ -2,7 +2,7 @@
 
 /* Page display */
 
-div#pageContent {
+#pageContent {
     display: flex;
     flex-direction: row;
     height: 100vh;
@@ -10,6 +10,7 @@ div#pageContent {
     max-width: 100%;
     padding-top: 50px;
     padding-bottom: 5px;
+    background-color: var(--pageBackgroundColor);
 }
 
 .panel {
@@ -22,14 +23,12 @@ div#pageContent {
 .deck {
     width: 100%;
     margin-top: 5px;
-    background: var(--backgroundColor);
+    background: var(--panelBackgroundColor);
     border: 2px solid var(--borderColor);
-    border-top: 4px solid var(--borderColor);
-    border-bottom: 4px solid var(--borderColor);
-    border-radius: 30px;
+    border-radius: 15px;
     color: var(--deckSelectionGreen);
     overflow: hidden;
-    padding-inline: 15px;
+    /**padding-inline: 15px;**/
     padding-top: 5px;
     padding-bottom: 8px;
 }
@@ -41,10 +40,22 @@ div#pageContent {
     overflow: hidden;
 }
 
-/* Buttons */
+.deck#MembersDeck,
+.deck#TagDeck {
+    height: 33%;
+}
 
+.deck#UTubDeck {
+    height: 34%;
+}
+
+/* Buttons */
 .green-clickable {
     color: var(--splashGreen);
+}
+
+.green-clickable-wide {
+    background: var(--splashGreen); 
 }
 
 .green-clickable:hover {
@@ -52,11 +63,17 @@ div#pageContent {
     color: var(--darkSplashGreen);
 }
 
+.green-clickable-wide:hover {
+    cursor: pointer;
+    background: var(--darkSplashGreen);
+}
+
 .trash-fill {
     background: var(--removeIconColor);
     border-radius: 4px;
 }
 
+.cancelButton-wide:hover,
 .trash-fill:hover {
     cursor: pointer;
     background: var(--removeIconColorHover);
@@ -66,7 +83,16 @@ div#pageContent {
     color: var(--removeIconColor);
 }
 
-.cancelButton:hover{
+.cancelButton-wide {
+    background: var(--removeIconColor);
+}
+
+.green-clickable-wide > svg,
+.cancelButton-wide > svg {
+    fill: var(--panelBackgroundColor);
+}
+
+.cancelButton:hover {
     cursor: pointer;
     color: var(--removeIconColorHover);
 }
@@ -117,6 +143,46 @@ div#pageContent {
     align-items: center;
 }
 
+.justify-center {
+    justify-content: center;
+}
+
+.justify-space-between {
+    justify-content: space-between;
+}
+
+.pad-in-15p {
+    padding-inline: 15px;
+}
+
+.pad-top-5p {
+    padding-top: 5px;
+}
+
+.half-width {
+    width: 50%;
+}
+
+.sixtyfive-width {
+    width: 65%;
+}
+
+.full-width {
+    width: 100%;
+}
+
+.border-radius-5px {
+    border-radius: 10px;
+}
+
+.visible {
+    display: block !important;
+}
+
+.invalid-field {
+    border-color: red !important;
+}
+
 
 /* UTubs */
 
@@ -137,7 +203,7 @@ div#pageContent {
 
 /* Tags */
 
-span.tagBadge {
+.tagBadge {
     color: var(--splashGreen);
     background: white;
     margin-left: 2px;
@@ -150,7 +216,7 @@ span.tagBadge {
     white-space: nowrap;
 }
 
-span.tagBadge:hover .tag-remove {
+.tagBadge:hover .tag-remove {
     display: inline-block;
     line-height: 100%;
     height: 100%;
@@ -311,27 +377,27 @@ span.tagBadge:hover .tag-remove {
     color: var(--darkGrayTextColor);
 }
 
+.URLTitleInnerWrap > .visibleBtn {
+    display: none !important;
+}
+
+.URLTitleInnerWrap:hover > .visibleBtn {
+    display: flex !important;
+}
+
 .editURLBtnWrap {
     padding-inline:10px;
     gap: 10px;
 }
 
-#UTubNameEditWrap > .visibleBtn {
-    display: none !important;
-
-}
-
-#UTubNameEditWrap:hover > .visibleBtn {
-    display: flex !important;
-}
-
+.hiddenBtn#editUTubDescriptionBtn, 
 .hiddenBtn#editUTubNameBtn {
     display: none !important;
 }
 
 /* Members */
 
-span.member {
+.member {
     color: var(--spanRemoveColor);
     background: white;
     margin-right: 2px;
@@ -344,7 +410,7 @@ span.member {
     display: inline-block;
 }
 
-span.member:hover .member-remove {
+.member:hover .member-remove {
     display: inline-block;
     line-height: 100%;
     height: 100%;
@@ -363,7 +429,76 @@ span.member:hover .member-remove {
     box-shadow: none;
 }
 
+/** Custom Text Input Box **/
+.text-input-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.text-input-inner-container {
+    position: relative;
+}
+
+.text-input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--borderColor);
+    border-radius: 4px;
+    font-size: 16px;
+    outline: none;
+    transition: 0.3s ease;
+    background: var(--pageBackgroundColor);
+    color: whitesmoke;
+}
+
+.text-input[type="text"]:hover {
+    border-color: var(--deckSelectionGreenHover);
+}
+
+.text-input[type="text"]:focus {
+    border-color: var(--deckSelectionGreen);
+}
+
+.text-input-label {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    background: white;
+    padding: 0 5px;
+    color: #666;
+    font-size: 16px;
+    transition: 0.3s ease;
+    pointer-events: none;
+    background: var(--panelBackgroundColor);
+}
+
+.text-input:focus + .text-input-label {
+    top: 0px;
+    left: 10px;
+    color: var(--deckSelectionGreenHover);
+    font-size: 14px;
+}
+
+.text-input-error-message {
+    display: none;
+    color: red;
+    font-size: 14px;
+    margin-top: 5px;
+}
+
+/*
+.text-input-inner-container:has(> input.text-input:invalid) + span.text-input-error-message {
+    display: inline-block;
+}
+*/
+
 /** ID specific **/
+
+#UTubDescriptionEditWrap ~ .createDiv {
+    padding-top: 1rem;
+    padding-bottom: 1rem;
+}
 
 #listMembers {
     gap: 3px;
@@ -392,8 +527,41 @@ span.member:hover .member-remove {
     color: rgba(255, 255, 255, 0.75);
 }
 
+#editUTubDescriptionBtn,
 #editUTubNameBtn {
     color: rgba(84, 84, 84, 1.0);
+}
+
+#UTubDescriptionEditWrap > .visibleBtn,
+#UTubNameEditWrap > .visibleBtn {
+    display: none !important;
+
+}
+
+#UTubDescriptionEditWrap:hover > .visibleBtn,
+#UTubNameEditWrap:hover > .visibleBtn {
+    display: flex !important;
+}
+
+#createUTubWrap {
+    height: 100%;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+#URLDeckSubheaderAddDescription {
+    margin-top: 5px;
+    margin-bottom: 5px;
+    color: var(--cardURLTextColor);
+}
+
+#URLDeckSubheaderAddDescription:hover {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+#URLDeckSubheader {
+    word-break: break-all;
 }
 
 
@@ -401,7 +569,7 @@ span.member:hover .member-remove {
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 
  * */
 
-@media (max-width: 991.98px) {
+@media (max-width: 767.98px) {
     .titleElement {
         align-items: flex-start;
         flex-direction: column;
@@ -422,7 +590,7 @@ span.member:hover .member-remove {
         width: 100%;
     }
 
-    div#pageContent {
+    #pageContent {
         flex-direction: column;
     }
 

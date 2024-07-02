@@ -7,6 +7,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from src.utubs.utils import build_form_errors
 from src.utils.all_routes import ROUTES
+from src.utils.constants import CONSTANTS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.url_validation_strs import URL_VALIDATION
 from src.utils.strings.utub_strs import UTUB_SUCCESS, UTUB_FAILURE
@@ -16,6 +17,11 @@ utubs = Blueprint("utubs", __name__)
 
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
+
+
+@utubs.context_processor
+def provide_constants():
+    return dict(CONSTANTS=CONSTANTS())
 
 
 @utubs.route("/home", methods=["GET"])

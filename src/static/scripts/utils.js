@@ -23,13 +23,23 @@ $(document).ready(function () {
   $("form").on("submit", function () {
     return false;
   });
+
+  // Provide responsiveness to the custom text input boxes
+  const textInputs = $(".text-input");
+  let textInput;
+  for (let i = 0; i < textInputs.length; i++) {
+    textInput = $(textInputs[i]);
+    textInput.on("focus", handleFocus);
+    textInput.on("blur", handleBlur);
+  }
 });
 
 // Keyboard navigation between selected UTubs or URLs
 function bindURLKeyboardEventListenersWhenEditsNotOccurring() {
   $(document)
-    .off("keyup.switchutubs")
-    .on("keyup.switchutubs", function (e) {
+    .off("keyup.switchurls")
+    .on("keyup.switchurls", function (e) {
+      if (isNaN(getSelectedURLID())) return;
       e.stopPropagation();
       const keycode = e.keyCode ? e.keyCode : e.which;
       const prev = keycode === 37 || keycode === 38; // UP and LEFT keys
@@ -74,7 +84,7 @@ function bindURLKeyboardEventListenersWhenEditsNotOccurring() {
 }
 
 function unbindURLKeyboardEventListenersWhenEditsOccurring() {
-  $(document).off("keyup.switchutubs");
+  $(document).off("keyup.switchurls");
 }
 
 function unbindEscapeKey() {
@@ -85,7 +95,7 @@ function unbindEscapeKey() {
 
 // Request user text input by showing the appropriate text input element and await valid input
 function showInput(handle) {
-  let inputEl = $("#" + handle);
+  let inputEl = $(handle);
   let inputDiv = inputEl.closest(".createDiv");
   showIfHidden(inputDiv);
 
@@ -112,7 +122,7 @@ function hideInputs() {
 
 // Hide specified input field. Typically done if user successfully completes, or cancels an action
 function hideInput(handle) {
-  let inputEl = $("#" + handle);
+  let inputEl = $(handle);
   let inputDiv = inputEl.closest(".createDiv");
   hideIfShown(inputDiv);
 }
@@ -233,13 +243,75 @@ function enable(jqueryObj) {
   $(jqueryObj).prop("disabled", false);
 }
 
+// Fancy text box creation
+function makeTextInput(textInputID) {
+  const inputContainer = document.createElement("div");
+  const inputInputBox = document.createElement("input");
+  const inputLabel = document.createElement("label");
+  const inputErrorMessage = document.createElement("span");
+
+  $(inputInputBox)
+    .addClass("text-input")
+    .attr({
+      type: "text",
+      id: textInputID,
+      name: textInputID,
+    })
+    .prop("required", true);
+
+  $(inputLabel)
+    .addClass("text-input-label")
+    .attr({
+      for: textInputID,
+    })
+    .text(textInputID);
+
+  $(inputErrorMessage)
+    .addClass("text-input-error-message")
+    .attr({
+      id: textInputID + "-error",
+    })
+    .text("Error check");
+
+  $(inputContainer)
+    .addClass("text-input-container")
+    .append(inputInputBox)
+    .append(inputLabel)
+    .append(inputErrorMessage);
+
+  $(inputInputBox).on("focus", handleFocus).on("blur", handleBlur);
+  $(".text-input").forEach((textInput) => {
+    textInput.on("focus", handleFocus);
+    textInput.on("blur", handleBlur);
+  });
+
+  return inputContainer;
+}
+
+// Handle focus for the text input box
+function handleFocus(event) {
+  const label = event.target.nextElementSibling;
+  label.style.top = "0px";
+  label.style.left = "10px";
+  label.style.fontSize = "14px";
+}
+
+// Handle blur for the text input box
+function handleBlur(event) {
+  if (event.target.value === "") {
+    const label = event.target.nextElementSibling;
+    label.style.top = "50%";
+    label.style.left = "10px";
+    label.style.fontSize = "16px";
+  }
+}
+
 function displayState0() {
   hideInputs();
   displayState0TagDeck();
   resetTagDeck();
   displayState0URLDeck();
   resetURLDeck();
-  displayState0UTubDescriptionDeck();
   displayState0MemberDeck();
   resetMemberDeck();
 }
@@ -248,6 +320,5 @@ function displayState1() {
   displayState1UTubDeck(null, null);
   displayState1TagDeck();
   displayState1URLDeck();
-  displayState1UTubDescriptionDeck();
   displayState1MemberDeck();
 }
