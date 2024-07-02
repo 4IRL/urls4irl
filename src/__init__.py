@@ -1,5 +1,4 @@
 from flask import Flask
-from flask_cors import CORS
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
@@ -24,8 +23,6 @@ csrf = CSRFProtect()
 
 login_manager = LoginManager()
 
-cors_sess = CORS()
-
 email_sender = EmailSender()
 
 
@@ -41,8 +38,6 @@ def create_app(config_class: Config = Config):
 
     csrf.init_app(app)
     login_manager.init_app(app)
-
-    cors_sess.init_app(app)
 
     limiter = Limiter(
         key_func=get_remote_address,
