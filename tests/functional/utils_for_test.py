@@ -1,6 +1,7 @@
 # Standard library
 # from os import environ, path
 import requests
+import socket
 from time import sleep
 from typing import Tuple
 
@@ -19,13 +20,13 @@ from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
 
 
-def run_app():
+def run_app(port: int):
     """
     Runs app
     """
     config = TestingConfig()
     app_for_test = create_app(config)
-    app_for_test.run(debug=False)
+    app_for_test.run(debug=False, port=port)
 
 
 def clear_db(runner: Tuple[Flask, FlaskCliRunner]):
@@ -35,7 +36,18 @@ def clear_db(runner: Tuple[Flask, FlaskCliRunner]):
     print("db cleared")
 
 
-def ping_server(url: str, timeout: float = 0.5) -> bool:
+def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
+    for port in range(start_port, end_port + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError("No available port found in the specified range.")
+
+
+def ping_server(url: str, timeout: float = 2) -> bool:
     total_time = 0
     max_time = 10
     is_server_ready = False

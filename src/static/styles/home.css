@@ -40,7 +40,7 @@
     overflow: hidden;
 }
 
-.deck#MembersDeck,
+.deck#MemberDeck,
 .deck#TagDeck {
     height: 33%;
 }
@@ -186,6 +186,10 @@
 
 .pointerable {
     cursor: pointer;
+}
+
+.btn-text-on-hvr:hover {
+    color: white;
 }
 
 /* UTubs */

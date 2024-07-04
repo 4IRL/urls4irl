@@ -10,7 +10,7 @@ function addURLHideInput() {
 // Displays new URL input prompt
 function addURLShowInput() {
   showInput("#addURL");
-  highlightInput($("#newURLTitle"));
+  highlightInput($(".add#urlTitle"));
   newURLInputAddEventListeners();
   if (!getNumOfURLs()) $("#NoURLsSubheader").hide();
 }
@@ -49,8 +49,8 @@ function addURLSetup() {
   let postURL = routes.addURL(getActiveUTubID());
 
   // Assemble submission data
-  let newURLTitle = $("#newURLTitle").val();
-  let newURL = $("#newURLString").val();
+  let newURLTitle = $(".add#urlTitle").val();
+  let newURL = $(".add#urlString").val();
   data = {
     urlString: newURL,
     urlTitle: newURLTitle,
