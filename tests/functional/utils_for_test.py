@@ -65,47 +65,42 @@ def ping_server(url: str, timeout: float = 2) -> bool:
     return is_server_ready
 
 
-# Streamline function for awaiting UI load after interaction with a css selector
-def wait_then_get_unique_element(
-    browser, css_selector: str, click: bool = False, time: float = 10
-):
+def wait_then_get_element(browser, css_selector: str, time: float = 10):
     """
     Streamlines waiting for UI load after interaction.
-    Returns element by default; clicks if `click` bool = True
+    Returns element
     """
 
     element = WebDriverWait(browser, time).until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, css_selector))
+        EC.presence_of_element_located(
+            (
+                By.CSS_SELECTOR,
+                css_selector,
+            )
+        )
     )
 
-    if click:
-        element.click()
-    else:
-        return element
+    return element
 
 
-# Streamline function for awaiting UI load after interaction with a commonly used location stored in MPL
-def wait_then_get_element(browser, locator: MPL, click: bool = False, time: float = 10):
+def wait_then_click_element(browser, css_selector: str, time: float = 10):
     """
     Streamlines waiting for UI load after interaction.
-    Returns element by default; clicks if `click` bool = True
+    Clicks element
     """
-    # print(f"selector: {locator}")
+
     element = WebDriverWait(browser, time).until(
-        EC.presence_of_element_located(locator)
+        EC.element_to_be_clickable(
+            (
+                By.CSS_SELECTOR,
+                css_selector,
+            )
+        )
     )
-    # print(f"Element Text: {element.text}")
-    # print(f"Element ID: {element.get_attribute('id')}")
-    # print(f"Element class: {element.get_attribute('class')}")
 
-    if click:
-        element.click()
-        # print("Click!")
-    else:
-        return element
+    element.click()
 
 
-# Streamline function for inputting test values into input fields on site
 def clear_then_send_keys(element, input_text: str):
     """
     Sends keys for specified input into supplied input element field.
@@ -123,7 +118,7 @@ def login_user(
 ):
 
     # Find and click login button to open modal
-    wait_then_get_element(browser, SPL.LOGIN_OPTION_BUTTON, True)
+    wait_then_get_element(browser, SPL.LOGIN_OPTION_BUTTON).click()
 
     # Input login details
     login_input_field = wait_then_get_element(browser, SPL.USERNAME_INPUT)
@@ -133,25 +128,25 @@ def login_user(
     clear_then_send_keys(password_input_field, password)
 
     # Find submit button to login
-    wait_then_get_element(browser, SPL.LOGIN_BUTTON, True)
+    wait_then_get_element(browser, SPL.LOGIN_BUTTON).click()
 
 
-# Once logged in, this function adds new UTub
 def add_utub(browser, utub_name: str):
+    """
+    Once logged in, this function adds new UTub, awaits its creation, then selects to make active
+    """
 
     # Click createUTub button to show input
-    wait_then_get_element(browser, MPL.CREATE_UTUB_BUTTON, True)
+    wait_then_get_element(browser, MPL.CREATE_UTUB_BUTTON, 2).click()
 
     # Types new UTub name
     create_utub_input = wait_then_get_element(browser, MPL.CREATE_UTUB_INPUT)
     clear_then_send_keys(create_utub_input, utub_name)
 
     # Submits new UTub
-    wait_then_get_element(browser, MPL.SUBMIT_UTUB_INPUT, True, 2)
+    wait_then_get_element(browser, MPL.SUBMIT_UTUB_INPUT).click()
 
-    selector_UTub = WebDriverWait(browser, 2).until(
-        EC.element_to_be_clickable(MPL.SELECTED_UTUB_SELECTOR)
-    )
+    selector_UTub = wait_then_click_element(browser, MPL.SELECTED_UTUB_SELECTOR)
 
     return selector_UTub
 

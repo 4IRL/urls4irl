@@ -20,7 +20,7 @@ def test_login_test_user(browser, add_test_users):
 
     # Confirm user logged in
     # Logout button visible
-    btn_logout = browser.find_element(MPL.LOGOUT_BUTTON)
+    btn_logout = browser.wait_then_get_element(MPL.LOGOUT_BUTTON)
     assert btn_logout.text == "Logout"
 
     # Correct user logged in

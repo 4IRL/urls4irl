@@ -1,6 +1,5 @@
 # External libraries
-from threading import Thread
-import pytest
+import time
 
 # Internal libraries
 from src.mocks.mock_constants import UTUB_NAME_BASE
@@ -20,9 +19,7 @@ def test_add_utub(login_test_user):
 
     selector_UTub = add_utub(browser, UTUB_NAME_BASE + "1")
 
-    # print("sleeping")
-    Thread.sleep(10)
-    # print("awake!")
+    time.sleep(10)
 
     # Assert new UTub selector was created with input UTub Name
     assert selector_UTub.text == UTUB_NAME_BASE + "1"
@@ -30,9 +27,9 @@ def test_add_utub(login_test_user):
     assert "active" in selector_UTub.get_attribute("class")
 
 
-@pytest.mark.skip(
-    reason="This test tests functionality that is not yet captured on the frontend"
-)
+# @pytest.mark.skip(
+#     reason="This test tests functionality that is not yet captured on the frontend"
+# )
 def test_add_utub_name_length_exceeded(login_test_user):
     """
     GIVEN a user trying to add a new UTub
@@ -44,13 +41,13 @@ def test_add_utub_name_length_exceeded(login_test_user):
 
     add_utub(browser, UI_TEST_STRINGS.MAX_CHAR_LIM_UTUB_NAME)
 
-    warning_modal_body = wait_then_get_element(browser, "#confirmModalBody", False, 100)
+    warning_modal_body = wait_then_get_element(browser, "#confirmModalBody")
 
     # Assert new UTub is now active and displayed to user
     assert warning_modal_body.text == "Try shortening your UTub name"
 
 
-@pytest.mark.skip(reason="This test is not yet implemented")
+# @pytest.mark.skip(reason="This test is not yet implemented")
 def test_add_utub_name_similar(create_test_utubs):
     """
     GIVEN a user trying to add a new UTub
@@ -70,9 +67,7 @@ def test_add_utub_name_similar(create_test_utubs):
     add_utub(browser, utub_name)
 
     # Extract modal body element
-    confirmation_modal_body = wait_then_get_element(
-        browser, "#confirmModalBody", False, 100
-    )
+    confirmation_modal_body = wait_then_get_element(browser, "#confirmModalBody")
 
     # Assert modal prompts user to consider duplicate UTub naming
     assert (
