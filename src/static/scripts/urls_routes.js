@@ -92,17 +92,17 @@ function addURLFail(response) {
 /* Edit URL */
 
 // Shows edit URL inputs
-function editURLShowInput() {
+function updateURLShowInput() {
   // Show edit submission and cancel button, hide edit button
-  unbindURLKeyboardEventListenersWhenEditsOccurring();
+  unbindURLKeyboardEventListenersWhenUpdatesOccurring();
   const selectedCardDiv = getSelectedURLCard();
-  const editURLInput = selectedCardDiv.find(".editURL");
+  const updateURLInput = selectedCardDiv.find(".updateURL");
   const URL = selectedCardDiv.find(".URL");
 
   // Show input field
-  showIfHidden(editURLInput.closest(".createDiv"));
-  showIfHidden(editURLInput.next(".editURLBtnWrap"));
-  editURLInput.focus();
+  showIfHidden(updateURLInput.closest(".createDiv"));
+  showIfHidden(updateURLInput.next(".updateURLBtnWrap"));
+  updateURLInput.focus();
 
   // Hide published value
   hideIfShown(URL);
@@ -113,14 +113,14 @@ function editURLShowInput() {
   disable(selectedCardDiv.find(".delURLBtn"));
 
   // Edit URL Button text to show a return string
-  const editURLBtn = selectedCardDiv.find(".editURLBtn");
-  editURLBtn.text("Exit Editing");
-  editURLBtn.removeClass("btn-light").addClass("btn-warning");
+  const updateURLBtn = selectedCardDiv.find(".updateURLBtn");
+  updateURLBtn.text("Exit Updating");
+  updateURLBtn.removeClass("btn-light").addClass("btn-warning");
 
   // Make the button close editing now if clicked
-  editURLBtn.off("click").on("click", function (e) {
+  updateURLBtn.off("click").on("click", function (e) {
     e.stopPropagation();
-    editURLHideInput();
+    updateURLHideInput();
   });
 
   // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
@@ -132,23 +132,23 @@ function editURLShowInput() {
     .bind("keyup.27", function (e) {
       if (e.which === 27) {
         e.stopPropagation();
-        editURLHideInput();
+        updateURLHideInput();
       }
     });
 }
 
 // Hides edit URL inputs
-function editURLHideInput() {
+function updateURLHideInput() {
   // Show edit button, hide other buttons
   const selectedCardDiv = getSelectedURLCard();
-  const editURLInput = selectedCardDiv.find(".editURL");
+  const updateURLInput = selectedCardDiv.find(".updateURL");
   const URL = selectedCardDiv.find(".URL");
 
   // Updating input field placeholders
-  editURLInput.text(URL.find("card-text").text());
+  updateURLInput.text(URL.find("card-text").text());
 
   // Hide input field
-  hideIfShown(editURLInput.closest(".createDiv"));
+  hideIfShown(updateURLInput.closest(".createDiv"));
 
   // Show published value
   showIfHidden(URL);
@@ -159,12 +159,12 @@ function editURLHideInput() {
   enable(selectedCardDiv.find(".delURLBtn"));
 
   // Edit URL Button text to show a return string
-  const editURLBtn = selectedCardDiv.find(".editURLBtn");
-  editURLBtn.text("Edit URL");
-  editURLBtn.removeClass("btn-warning").addClass("btn-light");
-  editURLBtn.off("click").on("click", function (e) {
+  const updateURLBtn = selectedCardDiv.find(".updateURLBtn");
+  updateURLBtn.text("Edit URL");
+  updateURLBtn.removeClass("btn-warning").addClass("btn-light");
+  updateURLBtn.off("click").on("click", function (e) {
     e.stopPropagation();
-    editURLShowInput();
+    updateURLShowInput();
   });
 
   // Rebind click selection behavior to unselect URL
@@ -175,20 +175,20 @@ function editURLHideInput() {
 
   // Rebind escape key to hiding selected URL
   bindEscapeToUnselectURL(getSelectedURLID());
-  bindURLKeyboardEventListenersWhenEditsNotOccurring();
+  bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
 }
 
 // Handles edition of an existing URL
-function editURL() {
+function updateURL() {
   // Extract data to submit in POST request
-  [postURL, data] = editURLSetup();
+  [postURL, data] = updateURLSetup();
 
   AJAXCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
     if (xhr.status === 200) {
-      editURLSuccess(response);
+      updateURLSuccess(response);
     }
   });
 
@@ -196,16 +196,16 @@ function editURL() {
     if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
-      editURLFail(response);
+      updateURLFail(response);
     }
   });
 }
 
 // Prepares post request inputs for edition of a URL
-function editURLSetup() {
-  let postURL = routes.editURL(getActiveUTubID(), getSelectedURLID());
+function updateURLSetup() {
+  let postURL = routes.updateURL(getActiveUTubID(), getSelectedURLID());
 
-  let editedURL = getSelectedURLCard().find(".editURL")[0].value;
+  let editedURL = getSelectedURLCard().find(".updateURL")[0].value;
 
   data = { urlString: editedURL };
 
@@ -213,7 +213,7 @@ function editURLSetup() {
 }
 
 // Displays changes related to a successful edition of a URL
-function editURLSuccess(response) {
+function updateURLSuccess(response) {
   // Extract response data
   let editedURLID = response.URL.urlID;
   let editedURLString = response.URL.urlString;
@@ -239,11 +239,11 @@ function editURLSuccess(response) {
       accessLink(editedURLString);
     });
 
-  editURLHideInput();
+  updateURLHideInput();
 }
 
 // Displays appropriate prompts and options to user following a failed edition of a URL
-function editURLFail(response) {
+function updateURLFail(response) {
   console.log("Error: Could not edit URL");
   console.log(
     "Failure. Error code: " +
@@ -256,39 +256,39 @@ function editURLFail(response) {
 /* Edit URL Title */
 
 // Shows edit URL Title inputs
-function editURLTitleShowInput() {
+function updateURLTitleShowInput() {
   // Show edit submission and cancel button, hide edit button
   const selectedCardDiv = getSelectedURLCard();
-  const editURLTitleInput = selectedCardDiv.find(".editURLTitle");
+  const updateURLTitleInput = selectedCardDiv.find(".updateURLTitle");
   const URLTitle = selectedCardDiv.find(".URLTitle");
 
   // Show input field
-  showIfHidden(editURLTitleInput.closest(".createDiv"));
+  showIfHidden(updateURLTitleInput.closest(".createDiv"));
 
   // Hide published value
   hideIfShown(URLTitle);
 
   // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
   unbindSelectURLBehavior();
-  unbindURLKeyboardEventListenersWhenEditsOccurring();
+  unbindURLKeyboardEventListenersWhenUpdatesOccurring();
   unbindEscapeKey();
-  bindEscapeToExitURLTitleEditing();
+  bindEscapeToExitURLTitleUpdating();
 
-  $(editURLTitleInput).focus();
+  $(updateURLTitleInput).focus();
 }
 
 // Hides edit URL Title inputs
-function editURLTitleHideInput() {
+function updateURLTitleHideInput() {
   // Show edit button, hide other buttons
   const selectedCardDiv = getSelectedURLCard();
-  const editURLTitleInput = selectedCardDiv.find(".editURLTitle");
+  const updateURLTitleInput = selectedCardDiv.find(".updateURLTitle");
   const URLTitle = selectedCardDiv.find(".URLTitle");
 
   // Updating input field placeholders
-  editURLTitleInput.text(URLTitle.find("card-title").text());
+  updateURLTitleInput.text(URLTitle.find("card-title").text());
 
   // Hide input field
-  hideIfShown(editURLTitleInput.closest(".createDiv"));
+  hideIfShown(updateURLTitleInput.closest(".createDiv"));
 
   // Show published value
   showIfHidden(URLTitle);
@@ -297,24 +297,24 @@ function editURLTitleHideInput() {
   rebindSelectBehavior();
 
   // Unbind escape key from hiding edit
-  $(document).unbind("keyup.escapeUrlTitleEditing");
+  $(document).unbind("keyup.escapeUrlTitleUpdating");
 
   // Rebind escape key to hiding selected URL
   bindEscapeToUnselectURL(getSelectedURLID());
-  bindURLKeyboardEventListenersWhenEditsNotOccurring();
+  bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
 }
 
 // Handles edition of an existing URL
-function editURLTitle() {
+function updateURLTitle() {
   // Extract data to submit in POST request
-  [postURL, data] = editURLTitleSetup();
+  [postURL, data] = updateURLTitleSetup();
 
   AJAXCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
     if (xhr.status === 200) {
-      editURLTitleSuccess(response);
+      updateURLTitleSuccess(response);
     }
   });
 
@@ -322,16 +322,16 @@ function editURLTitle() {
     if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
-      editURLTitleFail(response);
+      updateURLTitleFail(response);
     }
   });
 }
 
 // Prepares post request inputs for edition of a URL
-function editURLTitleSetup() {
-  let postURL = routes.editURLTitle(getActiveUTubID(), getSelectedURLID());
+function updateURLTitleSetup() {
+  let postURL = routes.updateURLTitle(getActiveUTubID(), getSelectedURLID());
 
-  let editedURLTitle = getSelectedURLCard().find(".editURLTitle")[0].value;
+  let editedURLTitle = getSelectedURLCard().find(".updateURLTitle")[0].value;
 
   data = { urlTitle: editedURLTitle };
 
@@ -339,7 +339,7 @@ function editURLTitleSetup() {
 }
 
 // Displays changes related to a successful edition of a URL
-function editURLTitleSuccess(response) {
+function updateURLTitleSuccess(response) {
   // Extract response data
   let editedURLTitle = response.URL.urlTitle;
 
@@ -351,11 +351,11 @@ function editURLTitleSuccess(response) {
   // Update URL body with latest published data
   selectedCardDiv.find(".card-title").text(editedURLTitle);
 
-  editURLTitleHideInput();
+  updateURLTitleHideInput();
 }
 
 // Displays appropriate prompts and options to user following a failed edition of a URL
-function editURLTitleFail(response) {
+function updateURLTitleFail(response) {
   console.log("Error: Could not edit URL");
   console.log(
     "Failure. Error code: " +

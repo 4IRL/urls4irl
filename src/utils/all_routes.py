@@ -34,8 +34,8 @@ class URL_ROUTES:
     REMOVE_URL = _URLS + "remove_url"
     CREATE_URL = _URLS + "create_url"
     EDIT_URL_AND_TITLE = _URLS + "edit_url_and_title"
-    EDIT_URL = _URLS + "edit_url"
-    EDIT_URL_TITLE = _URLS + "edit_url_title"
+    UPDATE_URL = _URLS + "update_url"
+    UPDATE_URL_TITLE = _URLS + "update_url_title"
 
 
 class USER_ROUTES:

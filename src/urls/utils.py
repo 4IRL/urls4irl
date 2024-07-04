@@ -1,13 +1,13 @@
 from src.urls.forms import (
-    EditURLForm,
-    EditURLTitleForm,
+    UpdateURLForm,
+    UpdateURLTitleForm,
     NewURLForm,
 )
 from src.utils.strings.model_strs import MODELS
 
 
 def build_form_errors(
-    form: EditURLForm | EditURLTitleForm | NewURLForm,
+    form: UpdateURLForm | UpdateURLTitleForm | NewURLForm,
 ) -> dict[str, list[str]]:
     errors = {}
     if isinstance(form, NewURLForm):
@@ -15,7 +15,7 @@ def build_form_errors(
             errors[MODELS.URL_STRING] = form.url_string.errors
         if form.url_title.errors:
             errors[MODELS.URL_TITLE] = form.url_title.errors
-    elif isinstance(form, EditURLForm):
+    elif isinstance(form, UpdateURLForm):
         if form.url_string.errors:
             errors[MODELS.URL_STRING] = form.url_string.errors
     else:

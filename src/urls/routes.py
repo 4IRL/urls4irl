@@ -9,8 +9,8 @@ from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
 from src.urls.forms import (
     NewURLForm,
-    EditURLForm,
-    EditURLTitleForm,
+    UpdateURLForm,
+    UpdateURLTitleForm,
 )
 from src.urls.utils import build_form_errors
 from src.utils.email_validation import email_validation_required
@@ -257,7 +257,7 @@ def create_url(utub_id: int):
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["PATCH"])
 @email_validation_required
-def edit_url(utub_id: int, utub_url_id: int):
+def update_url(utub_id: int, utub_url_id: int):
     """
     Allows a user to edit a URL without editing the title.
     Only the user who added the URL, or who created the UTub containing
@@ -295,10 +295,10 @@ def edit_url(utub_id: int, utub_url_id: int):
             403,
         )
 
-    edit_url_form: EditURLForm = EditURLForm()
+    update_url_form: UpdateURLForm = UpdateURLForm()
 
-    if edit_url_form.validate_on_submit():
-        url_to_change_to: str = edit_url_form.url_string.data.replace(" ", "")
+    if update_url_form.validate_on_submit():
+        url_to_change_to: str = update_url_form.url_string.data.replace(" ", "")
 
         if url_to_change_to == "":
             return (
@@ -398,14 +398,14 @@ def edit_url(utub_id: int, utub_url_id: int):
         )
 
     # Invalid form input
-    if edit_url_form.errors is not None:
+    if update_url_form.errors is not None:
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
                     STD_JSON.ERROR_CODE: 4,
-                    STD_JSON.ERRORS: build_form_errors(edit_url_form),
+                    STD_JSON.ERRORS: build_form_errors(update_url_form),
                 }
             ),
             400,
@@ -426,7 +426,7 @@ def edit_url(utub_id: int, utub_url_id: int):
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/title", methods=["PATCH"])
 @email_validation_required
-def edit_url_title(utub_id: int, utub_url_id: int):
+def update_url_title(utub_id: int, utub_url_id: int):
     """
     Allows a user to edit a URL title without editing the url.
     Only the user who added the URL, or who created the UTub containing
@@ -463,10 +463,10 @@ def edit_url_title(utub_id: int, utub_url_id: int):
             403,
         )
 
-    edit_url_title_form: EditURLTitleForm = EditURLTitleForm()
+    update_url_title_form: UpdateURLTitleForm = UpdateURLTitleForm()
 
-    if edit_url_title_form.validate_on_submit():
-        url_title_to_change_to = edit_url_title_form.url_title.data
+    if update_url_title_form.validate_on_submit():
+        url_title_to_change_to = update_url_title_form.url_title.data
         serialized_url_in_utub = url_in_utub.serialized_on_title_edit
         title_diff = url_title_to_change_to != url_in_utub.url_title
 
@@ -490,7 +490,7 @@ def edit_url_title(utub_id: int, utub_url_id: int):
         )
 
     # Missing URL title field
-    if edit_url_title_form.url_title.data is None:
+    if update_url_title_form.url_title.data is None:
         return (
             jsonify(
                 {
@@ -506,14 +506,14 @@ def edit_url_title(utub_id: int, utub_url_id: int):
         )
 
     # Invalid form input
-    if edit_url_title_form.errors is not None:
+    if update_url_title_form.errors is not None:
         return (
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
                     STD_JSON.ERROR_CODE: 3,
-                    STD_JSON.ERRORS: build_form_errors(edit_url_title_form),
+                    STD_JSON.ERRORS: build_form_errors(update_url_title_form),
                 }
             ),
             400,

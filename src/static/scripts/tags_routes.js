@@ -7,7 +7,7 @@ function addTagShowInput() {
   // Prevent deselection of URL while modifying its values
   unbindSelectURLBehavior();
   unbindEscapeKey();
-  unbindURLKeyboardEventListenersWhenEditsOccurring();
+  unbindURLKeyboardEventListenersWhenUpdatesOccurring();
 
   let URLCard = getSelectedURLCard();
 
@@ -18,11 +18,11 @@ function addTagShowInput() {
   const inputWrapper = inputEl.closest(".createDiv");
   showIfHidden(inputWrapper);
   highlightInput(inputEl);
-  bindEscapeToExitAddNewTag(inputWrapper);
+  bindEscapeToExitCreateNewTag(inputWrapper);
 
   // Disable the other buttons in the URL
   disable(URLCard.find(".accessURLBtn"));
-  disable(URLCard.find(".editURLBtn"));
+  disable(URLCard.find(".updateURLBtn"));
   disable(URLCard.find(".delURLBtn"));
 
   // Modify add tag button
@@ -55,7 +55,7 @@ function cancelAddTagHideInput(inputWrapper) {
 
   // Enable the buttons again
   enable(URLCard.find(".accessURLBtn"));
-  enable(URLCard.find(".editURLBtn"));
+  enable(URLCard.find(".updateURLBtn"));
   enable(URLCard.find(".delURLBtn"));
 
   // Modify add tag button
@@ -70,7 +70,7 @@ function cancelAddTagHideInput(inputWrapper) {
 
   hideIfShown(inputWrapper);
   rebindSelectBehavior();
-  bindURLKeyboardEventListenersWhenEditsNotOccurring();
+  bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
 }
 
 // Handles addition of new Tag to URL after user submission

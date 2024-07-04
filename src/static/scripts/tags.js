@@ -45,7 +45,7 @@ function currentTagDeckIDs() {
 }
 
 // Bind escape key to exit adding of a tag
-function bindEscapeToExitAddNewTag(inputWrapper) {
+function bindEscapeToExitCreateNewTag(inputWrapper) {
   $(document)
     .unbind("keyup.27")
     .bind("keyup.27", function (e) {

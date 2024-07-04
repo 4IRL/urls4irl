@@ -76,24 +76,24 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 200
+    assert update_url_string_form.status_code == 200
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
     assert (
@@ -200,24 +200,24 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_member_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 200
+    assert update_url_string_form.status_code == 200
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
     assert (
@@ -327,24 +327,24 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 200
+    assert update_url_string_form.status_code == 200
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
     assert (
@@ -447,24 +447,24 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 200
+    assert update_url_string_form.status_code == 200
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
     assert (
@@ -565,24 +565,24 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_in_utub_string,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 200
+    assert update_url_string_form.status_code == 200
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_NOT_MODIFIED
     assert (
@@ -665,24 +665,24 @@ def test_update_valid_url_with_same_url_as_url_adder(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: current_url_string,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=url_in_this_utub_id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 200
+    assert update_url_string_form.status_code == 200
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.NO_CHANGE
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_NOT_MODIFIED
     assert (
@@ -762,24 +762,24 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: "AAAAA",
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 400
+    assert update_url_string_form.status_code == 400
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
     assert int(json_response[STD_JSON.ERROR_CODE]) == 3
@@ -852,24 +852,24 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: INVALID_URL,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=url_in_this_utub_id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 400
+    assert update_url_string_form.status_code == 400
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
     assert int(json_response[STD_JSON.ERROR_CODE]) == 3
@@ -949,24 +949,24 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: NEW_URL,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 400
+    assert update_url_string_form.status_code == 400
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 4
@@ -1053,24 +1053,24 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_member_of.id,
             utub_url_id=url_in_this_utub_id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 403
+    assert update_url_string_form.status_code == 403
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL
     assert int(json_response[STD_JSON.ERROR_CODE]) == 1
@@ -1158,24 +1158,24 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_user_not_member_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 403
+    assert update_url_string_form.status_code == 403
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL
     assert int(json_response[STD_JSON.ERROR_CODE]) == 1
@@ -1270,24 +1270,24 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: validated_new_fresh_url,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_user_not_member_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 403
+    assert update_url_string_form.status_code == 403
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL
     assert int(json_response[STD_JSON.ERROR_CODE]) == 1
@@ -1376,23 +1376,23 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_already_in_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 400
+    assert update_url_string_form.status_code == 400
 
     # Assert JSON response from server is valid
-    json_response = edit_url_string_form.json
+    json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == 4
@@ -1465,22 +1465,22 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.URL_STRING: NEW_URL,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_already_in_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
     # Ensure valid reponse
-    assert edit_url_string_form.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in edit_url_string_form.data
+    assert update_url_string_form.status_code == 400
+    assert b"<p>The CSRF token is missing.</p>" in update_url_string_form.data
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1539,21 +1539,21 @@ def test_update_valid_url_updates_utub_last_updated(
             Utub_Urls.user_id == current_user.id,
         ).first()
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 200
+    assert update_url_string_form.status_code == 200
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1588,21 +1588,21 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
 
         initial_last_updated = utub_member_of.last_updated
 
-    edit_url_string_form = {
+    update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: INVALID_URL,
     }
 
-    edit_url_string_form = client.patch(
+    update_url_string_form = client.patch(
         url_for(
-            ROUTES.URLS.EDIT_URL,
+            ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=edit_url_string_form,
+        data=update_url_string_form,
     )
 
-    assert edit_url_string_form.status_code == 400
+    assert update_url_string_form.status_code == 400
 
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(utub_id)
