@@ -93,8 +93,8 @@ function getAllUTubs() {
 function setAddDeleteUTubEventListeners() {
   // Create new UTub
   $("#createUTubBtn")
-    .off("click")
-    .on("click", function () {
+    .off("click.addDeleteUTub")
+    .on("click.addDeleteUTub", function () {
       hideInputs();
       deselectAllURLs();
       addUTubShowInput();
@@ -102,16 +102,15 @@ function setAddDeleteUTubEventListeners() {
 
   // Delete UTub
   $("#deleteUTubBtn")
-    .off("click")
-    .on("click", function () {
+    .off("click.addDeleteUTub")
+    .on("click.addDeleteUTub", function () {
       deleteUTubShowModal();
     });
 }
 
 // Remove event listeners for add and delete UTubs
 function removeAddDeleteUTubEventListeners() {
-  $("#createUTubBtn").off("click");
-  $("#deleteUTubBtn").off("click");
+  $(document).off(".addDeleteUTub");
 }
 
 // Clear the UTub Deck
@@ -122,20 +121,22 @@ function resetUTubDeck() {
 // Create event listeners to escape from editing UTub name
 function setEventListenersToEscapeEditUTubName() {
   // Allow user to still click in the text box
-  $(".edit#utubName").on("click", function (e) {
-    e.stopPropagation();
-  });
+  $(".edit#utubName")
+    .off("click.editUTubname")
+    .on("click.editUTubname", function (e) {
+      e.stopPropagation();
+    });
 
   // Bind clicking outside the window
   $(window)
-    .off("click")
-    .on("click", function (e) {
+    .off("click.editUTubname")
+    .on("click.editUTubname", function () {
       // Hide UTub name edit fields
       editUTubNameHideInput();
     });
 
-  // Bind escape key
-  $(document).bind("keyup.escapeKeyUTubName", function (e) {
+  // Bind escape and enter key
+  $(document).bind("keyup.editUTubname", function (e) {
     switch (e.which) {
       case 13:
         // Handle enter key pressed
@@ -158,28 +159,27 @@ function setEventListenersToEscapeEditUTubName() {
 }
 
 function removeEventListenersToEscapeEditUTubName() {
-  $(window).off("click");
-  $(document).unbind("keyup.escapeKeyUTubName");
-  $(".edit#utubName").off("click");
+  $(window).off(".editUTubname");
+  $(document).off(".editUTubname");
 }
 
 // Create event listeners to escape from editing UTub name
 function setEventListenersToEscapeEditUTubDescription() {
   // Allow user to still click in the text box
-  $(".edit#utubDescription").on("click", function (e) {
+  $(".edit#utubDescription").on("click.editUTubdescription", function (e) {
     e.stopPropagation();
   });
 
   // Bind clicking outside the window
   $(window)
-    .off("click")
-    .on("click", function (e) {
+    .off("click.editUTubdescription")
+    .on("click.editUTubdescription", function (e) {
       // Hide UTub description edit fields
       editUTubDescriptionHideInput();
     });
 
   // Bind escape key
-  $(document).bind("keyup.escapeKeyUTubDescription", function (e) {
+  $(document).bind("keyup.editUTubdescription", function (e) {
     switch (e.which) {
       case 13:
         // Handle enter key pressed
@@ -197,21 +197,23 @@ function setEventListenersToEscapeEditUTubDescription() {
 }
 
 function removeEventListenersToEscapeEditUTubDescription() {
-  $(window).off("click");
-  $(document).unbind("keyup.escapeKeyUTubDescription");
-  $(".edit#utubDescription").off("click");
+  $(window).off("click.editUTubdescription");
+  $(document).off("keyup.editUTubdescription");
+  $(".edit#utubDescription").off("click.editUTubdescription");
 }
 
 function allowUserToAddDescriptionIfEmptyOnTitleEdit() {
   const clickToAddDesc = $("#URLDeckSubheaderAddDescription");
   showIfHidden(clickToAddDesc);
-  clickToAddDesc.off("click").on("click", function (e) {
-    e.stopPropagation();
-    hideIfShown(clickToAddDesc);
-    editUTubNameHideInput();
-    editUTubDescriptionShowInput();
-    clickToAddDesc.off("click");
-  });
+  clickToAddDesc
+    .off("click.addUTubdescription")
+    .on("click.addUTubdescription", function (e) {
+      e.stopPropagation();
+      hideIfShown(clickToAddDesc);
+      editUTubNameHideInput();
+      editUTubDescriptionShowInput();
+      clickToAddDesc.off("click.addUTubdescription");
+    });
 }
 
 /** UTub Functions **/
@@ -318,7 +320,7 @@ function createUTubSelector(UTubName, UTubID, index) {
       position: index,
     })
     // Bind display state change function on click
-    .on("click", function (e) {
+    .on("click.selectUTub", function (e) {
       e.stopPropagation();
       e.preventDefault();
       selectUTub(UTubID);
@@ -331,25 +333,41 @@ function createUTubSelector(UTubName, UTubID, index) {
 // Attaches appropriate event listeners to the add UTub and cancel add UTub buttons
 function createNewUTubEventListeners() {
   $("#submitCreateUTub")
-    .off("click")
-    .on("click", function (e) {
+    .off("click.addUTub")
+    .on("click.addUTub", function (e) {
       e.stopPropagation();
       e.preventDefault();
       checkSameNameUTub(true, $(".add#utubName").val());
     });
 
   $("#cancelCreateUTub")
-    .off("click")
-    .on("click", function (e) {
+    .off("click.addUTub")
+    .on("click.addUTub", function (e) {
       e.stopPropagation();
       e.preventDefault();
       addUTubHideInput();
     });
+
+  $(document)
+    .off("keyup.addUTub")
+    .on("keyup.addUTub", function (e) {
+      switch (e.which) {
+        case 13:
+          // Handle enter key pressed
+          checkSameNameUTub(true, $(".add#utubName").val());
+          break;
+        case 27:
+          // Handle escape key pressed
+          addUTubHideInput();
+          break;
+        default:
+        /* no-op */
+      }
+    });
 }
 
 function removeNewUTubEventListeners() {
-  $("#submitCreateUTub").off("click");
-  $("#cancelCreateUTub").off("click");
+  $(document).off(".addUTub");
 }
 
 function unbindUTubSelectionBehavior(selectedUTubID) {
@@ -357,7 +375,7 @@ function unbindUTubSelectionBehavior(selectedUTubID) {
   let selectedUTubSelector = getUTubSelectorElemFromID(selectedUTubID);
   selectedUTubSelector.addClass("active");
   // Unbind selection function
-  selectedUTubSelector.off("click");
+  selectedUTubSelector.off("click.selectUTub");
 }
 
 function bindUTubSelectionBehavior() {
@@ -367,7 +385,7 @@ function bindUTubSelectionBehavior() {
     // Change UTub
     departureUTubSelector.removeClass("active");
     // Rebind selection function
-    $(departureUTubSelector).on("click", function (e) {
+    $(departureUTubSelector).on("click.selectUTub", function (e) {
       e.stopPropagation();
       e.preventDefault();
       selectUTub(departureUTubSelector.attr("utubid"));

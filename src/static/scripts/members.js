@@ -4,9 +4,7 @@ $(document).ready(function () {
   /* Bind click functions */
 
   // Add member to UTub
-  $("#addMemberBtn").on("click", function (e) {
-    // e.stopPropagation();
-    // e.preventDefault();
+  $("#addMemberBtn").on("click.addMember", function () {
     hideInputs();
     deselectAllURLs();
     addMemberShowInput();
@@ -27,8 +25,7 @@ function getCurrentUTubOwnerUserID() {
 
 // Clear member selection
 function resetNewMemberForm() {
-  $("#addMember").val("");
-  // hideIfShown($("#addMember").closest(".createDiv"));
+  $(".add#username").val(null);
 }
 
 // Clear the Member Deck
@@ -43,7 +40,7 @@ function resetMemberDeck() {
 function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
   resetMemberDeck();
   const parent = $("#listMembers");
-  let numOfMembers = dictMembers.length;
+  const numOfMembers = dictMembers.length;
   let UTubMember;
   let UTubMemberUsername;
   let UTubMemberUserID;
@@ -76,7 +73,6 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
   if (isCurrentUserOwner) {
     hideIfShown($("#leaveUTubBtn"));
     showIfHidden($("#addMemberBtn"));
-    parent.append(createNewMemberInputField());
   } else {
     hideIfShown($("#addMemberBtn"));
     showIfHidden($("#leaveUTubBtn"));
@@ -85,11 +81,11 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
 
 // Creates member list item
 function createOwnerBadge(UTubOwnerUserID, UTubMemberUsername) {
-  let memberSpan = document.createElement("span");
+  const memberSpan = document.createElement("span");
 
   $(memberSpan)
     .attr({ memberid: UTubOwnerUserID })
-    .addClass("member")
+    .addClass("member full-width flex-row")
     .html("<b>" + UTubMemberUsername + "</b>");
 
   return memberSpan;
@@ -101,100 +97,61 @@ function createMemberBadge(
   UTubMemberUsername,
   isCurrentUserOwner,
 ) {
-  let memberSpan = document.createElement("span");
-  let removeButton = document.createElement("a");
+  const memberSpan = $(document.createElement("span"));
 
   $(memberSpan)
     .attr({ memberid: UTubMemberUserID })
-    .addClass("member")
+    .addClass("member full-width flex-row justify-space-between align-center")
     .html("<b>" + UTubMemberUsername + "</b>");
 
   if (isCurrentUserOwner) {
-    $(removeButton)
-      .attr({ class: "btn btn-sm btn-outline-link border-0 member-remove" })
-      .on("click", function (e) {
-        e.stopPropagation();
-        e.preventDefault();
-        removeMemberShowModal(UTubMemberUserID, isCurrentUserOwner);
-      });
-    removeButton.innerHTML = "&times;";
-
-    $(memberSpan).append(removeButton);
+    const removeIcon = createMemberRemoveIcon();
+    removeIcon.off("click.removeMember").on("click.removeMember", function (e) {
+      e.stopPropagation();
+      removeMemberShowModal(UTubMemberUserID, isCurrentUserOwner);
+    });
+    $(memberSpan).append(removeIcon);
   } else {
     // Leave UTub if member
     $("#leaveUTubBtn")
-      .off("click")
-      .on("click", function (e) {
+      .off("click.removeMember")
+      .on("click.removeMember", function (e) {
         e.stopPropagation();
-        e.preventDefault();
         hideInputs();
         deselectAllURLs();
         removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
-        console.log("Trying to leave UTub");
       });
   }
 
   return memberSpan;
 }
 
-// Creates a typically hidden input text field. When creation of a new UTub is requested, it is shown to the member. Input field recreated here to ensure at the end of list after creation of new UTubs
-function createNewMemberInputField() {
-  const wrapper = $(document.createElement("div"));
-  const wrapperInput = $(document.createElement("div")); // This element wraps the new member input
-  const wrapperBtns = $(document.createElement("div")); // This element wraps the buttons
+// Dynamically generates the remove member icon when needed
+function createMemberRemoveIcon() {
+  const WIDTH_HEIGHT_PX = "24px";
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const removeMemberOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
+  const removeMemberInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
+  const path =
+    "M1 14s-1 0-1-1 1-4 6-4 6 3 6 4-1 1-1 1zm5-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m6.146-2.854a.5.5 0 0 1 .708 0L14 6.293l1.146-1.147a.5.5 0 0 1 .708.708L14.707 7l1.147 1.146a.5.5 0 0 1-.708.708L14 7.707l-1.146 1.147a.5.5 0 0 1-.708-.708L13.293 7l-1.147-1.146a.5.5 0 0 1 0-.708";
 
-  const label = document.createElement("label"); // This element labels the new member field
-  const input = $(document.createElement("input"));
-  const submitBtn = makeSubmitButton(30);
-  const cancelBtn = makeCancelButton(30);
-
-  $(wrapper)
-    .attr({
-      style: "display: none",
-    })
-    .addClass("createDiv row");
-
-  $(label)
-    .attr({
-      for: "addMember",
-      style: "display:block",
-    })
-    .html("<b> Member Username </b>");
-
-  $(input)
-    .attr({
-      id: "addMember",
-      type: "text",
-      placeholder: "Member Username",
-    })
-    .addClass("Member userInput");
-
-  $(wrapperInput)
-    .addClass("col-9 col-lg-9 mb-md-0")
-    .append(label)
-    .append(input);
-
-  $(submitBtn).on("click", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
-    addMember();
+  removeMemberInnerIconPath.attr({
+    "fill-rule": "evenodd",
+    d: path,
   });
 
-  $(cancelBtn).on("click", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
-    addMemberHideInput();
-  });
+  removeMemberOuterIconSvg
+    .attr({
+      xmlns: SVG_NS,
+      width: WIDTH_HEIGHT_PX,
+      height: WIDTH_HEIGHT_PX,
+      fill: "currentColor",
+      class: "bi bi-person-x-fill member-remove pointerable",
+      viewBox: "0 0 16 16",
+    })
+    .append(removeMemberInnerIconPath);
 
-  $(wrapperBtns)
-    .addClass("col-3 mb-md-0 py-4 d-flex flex-row")
-    .append(submitBtn)
-    .append(cancelBtn);
-
-  wrapper.append(wrapperInput);
-  wrapper.append(wrapperBtns);
-
-  return wrapper;
+  return removeMemberOuterIconSvg;
 }
 
 /** Member Display State Functions **/

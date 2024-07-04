@@ -75,7 +75,6 @@
                         </svg>
                     </i>
                 </div>
-
             </div>
             <div class="pad-in-15p" id="listUTubs">
                 <!-- UTubs -->
@@ -114,12 +113,39 @@
             <h5 id="MemberDeckSubheader">Add a member</h5>
         </div>
 
-        <div class="flex-column content pad-in-15p">
-            <h5><u><b>Owner</b></u></h5>
-            <div id="UTubOwner"></div>
-            <h5 id="MembersHeader"><u><b>Members</b></u></h5>
-            <div class="flex-column flex-start" id="listMembers">
-                <!-- Members -->
+        <div class="flex-column content">
+            <div id="addMemberWrap" class="input-text-holder flex-column createDiv pad-in-15p" style="display: none;">
+                <div class="text-input-container">
+                    <div class="text-input-inner-container">
+                        <input class="text-input add" type="text" id="username" name="username" minlength={{CONSTANTS.USERS.MIN_USERNAME_LENGTH}} maxlength={{CONSTANTS.USERS.MAX_USERNAME_LENGTH}} required>
+                        <label class="text-input-label" for="username">Username</label>
+                    </div>
+                    <span class="text-input-error-message add" id="username-error">This field is required.</span>
+                </div>
+                <div class="flex-row justify-center" style="gap: 8px; flex: 1 1 auto; align-items: flex-end;">
+                    <!-- Checkbox to add member -->
+                    <i class="green-clickable-wide half-width flex-column align-center justify-center border-radius-5px" id="submitAddMember">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="30px" height="30px">
+                            <!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
+                            <path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/>
+                        </svg>
+                    </i>
+                    <!-- X to cancel adding member -->
+                    <i class="cancelButton-wide half-width flex-column align-center justify-center border-radius-5px" id="cancelAddMember">
+                        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="30px" height="30px">
+                            <!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
+                            <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/>
+                        </svg>
+                    </i>
+                </div>
+            </div>
+            <div id="displayMemberWrap" class="flex-column pad-in-15p">
+                <h5><u><b>Owner</b></u></h5>
+                <div id="UTubOwner"></div>
+                <h5 id="MembersHeader"><u><b>Members</b></u></h5>
+                <div class="flex-column flex-start" id="listMembers">
+                    <!-- Members -->
+                </div>
             </div>
         </div>
     </div>
@@ -236,7 +262,7 @@
 
         <div class="titleElement pad-in-15p">
             <!-- Subheader -->
-            <div class="flex-row align-center" id="UTubDescriptionEditWrap">
+            <div class="flex-row align-center" id="UTubDescriptionSubheaderWrap">
                 <h5 id="URLDeckSubheader">Select a UTub</h5>
                 <!-- Edit UTub description button -->
                 <i id="editUTubDescriptionBtn" class="mx-1" style="display: none;">
@@ -251,7 +277,7 @@
             </div>
             <p id="URLDeckSubheaderAddDescription" style="display: none;">Add a description?</p>
             <!-- Edit UTub Description -->
-            <div class="createDiv flex-row full-width" style="display: none;">
+            <div class="createDiv flex-row full-width" id="UTubDescriptionEditWrap" style="display: none;">
                 <div class="text-input-container sixtyfive-width">
                     <div class="text-input-inner-container">
                         <input class="text-input edit" type="text" id="utubDescription" name="utubDescription" maxlength={{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}} required>
@@ -260,7 +286,7 @@
                     <span class="text-input-error-message edit" id="utubDescription-error">This field is required.</span>
                 </div>
 
-                <!-- Submit edit UTub name -->
+                <!-- Submit edit UTub description -->
                 <i id="submitEditUTubDescriptionBtn" class="green-clickable mx-1 py-2">
                     <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
                         class="bi bi-check-square-fill" viewBox="0 0 16 16">
@@ -269,7 +295,7 @@
                     </svg>
                 </i>
 
-                <!-- Cancel edit UTub name -->
+                <!-- Cancel edit UTub description -->
                 <i class="mx-1 py-2" id="cancelEditUTubDescriptionBtn">
                     <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill cancelButton" viewBox="0 0 16 16" width="30" height="30">
                         <path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708">

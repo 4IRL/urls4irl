@@ -6,7 +6,7 @@ $(document).ready(function () {
 
   // Edit UTub name
   $("#editUTubNameBtn").on("click", function (e) {
-    //hideInputs();
+    hideInputs();
     deselectAllURLs();
     editUTubDescriptionHideInput();
     editUTubNameShowInput();
@@ -27,7 +27,7 @@ $(document).ready(function () {
 
   // Edit UTub description
   $("#editUTubDescriptionBtn").on("click", function (e) {
-    //hideInputs();
+    hideInputs();
     deselectAllURLs();
     editUTubNameHideInput();
     editUTubDescriptionShowInput();
@@ -163,6 +163,7 @@ function resetUTubFailErrors() {
 // Shows input fields for editing an exiting UTub's name
 function editUTubNameShowInput() {
   // Show edit fields
+  $(".edit#utubName").text(getCurrentUTubName());
   showInput(".edit#utubName");
 
   // Hide current name and edit button
@@ -238,9 +239,9 @@ function editUTubName() {
 
 // Handles preparation for post request to edit an existing UTub
 function editUTubNameSetup() {
-  let postURL = routes.editUTubName(getActiveUTubID());
+  const postURL = routes.editUTubName(getActiveUTubID());
 
-  let editedUTubName = $(".edit#utubName").val();
+  const editedUTubName = $(".edit#utubName").val();
   data = { utubName: editedUTubName };
 
   return [postURL, data];
@@ -248,12 +249,12 @@ function editUTubNameSetup() {
 
 // Handle edition of UTub's name
 function editUTubNameSuccess(response) {
-  let UTubName = response.utubName;
+  const UTubName = response.utubName;
 
   $("#confirmModal").modal("hide");
 
   // UTubDeck display updates
-  let editedUTubSelector = $("#listUTubs").find(".active");
+  const editedUTubSelector = $("#listUTubs").find(".active");
   editedUTubSelector.find(".UTubName").text(UTubName);
 
   // Display updates
@@ -284,6 +285,7 @@ function editUTubNameFailShowErrors(errors) {
       case "utubName":
         let errorMessage = errors[key][0];
         displayEditUTubNameFailErrors(key, errorMessage);
+        return;
     }
   }
 }

@@ -27,7 +27,10 @@ class UserRegistrationForm(FlaskForm):
         REGISTER_LOGIN_FORM.USERNAME_TEXT,
         validators=[
             InputRequired(),
-            Length(min=4, max=USER_CONSTANTS.MAX_USERNAME_LENGTH),
+            Length(
+                min=USER_CONSTANTS.MIN_USERNAME_LENGTH,
+                max=USER_CONSTANTS.MAX_USERNAME_LENGTH,
+            ),
         ],
     )
     email = StringField(

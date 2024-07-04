@@ -112,9 +112,24 @@ function highlightInput(inputEl) {
 
 // Hides any active input fields
 function hideInputs() {
+  // Show UTub creation instead of UTub form
+  if (!isHidden($("#createUTubWrap"))) addUTubHideInput();
+  // Show UTub name instead of edit UTub name form
+  if (isHidden($("#URLDeckHeader"))) editUTubNameHideInput();
+  // Show UTub description instead of edit UTub description form
+  if (
+    isHidden($("#URLDeckSubheader")) &&
+    $("#URLDeckSubheader").text().length !== 0
+  )
+    editUTubDescriptionHideInput();
+  // Show members instead of add member form
+  if (isHidden($("#displayMemberWrap"))) addMemberHideInput();
+
+  /*
   $(".createDiv").each(function () {
     hideIfShown($(this));
   });
+  */
   // editURLHideInput();
   // editUTubNameHideInput();
   // editUTubDescriptionHideInput();
@@ -143,7 +158,7 @@ function isEmpty(el) {
 
 // Where el is the DOM element you'd like to test for visibility
 function isHidden(el) {
-  return el.offsetParent === null;
+  return el.offsetParent === null || $(el).get(0).offsetParent === null;
 }
 
 // Checks jqueryObj display status, and shows it if hidden
