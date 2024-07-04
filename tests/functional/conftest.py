@@ -1,6 +1,7 @@
 # Standard library
 from typing import Generator, Tuple
 import multiprocessing
+import time
 
 # External libraries
 from flask import Flask
@@ -14,7 +15,12 @@ from selenium.webdriver.chrome.options import Options
 # Internal libraries
 from src.config import TestingConfig
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.functional.utils_for_test import clear_db, ping_server, run_app
+from tests.functional.utils_for_test import (
+    clear_db,
+    find_open_port,
+    ping_server,
+    run_app,
+)
 
 
 @pytest.fixture(scope="session")
@@ -34,14 +40,23 @@ def init_multiprocessing():
 
 
 @pytest.fixture(scope="session")
-def parallelize_app(init_multiprocessing):
+def provide_port() -> int:
+    open_port = find_open_port()
+    print(f"Found an open port: {open_port}")
+    time.sleep(2)
+    return open_port
+
+
+@pytest.fixture(scope="session")
+def parallelize_app(provide_port, init_multiprocessing):
     """
     Starts a parallel process, runs Flask app
     """
-
-    process = multiprocessing.Process(target=run_app)
+    open_port = provide_port
+    process = multiprocessing.Process(target=run_app, args=(open_port,))
 
     process.start()
+    time.sleep(5)
     yield process
     process.kill()
     process.join()
@@ -83,11 +98,13 @@ def headless(request):
 
 
 @pytest.fixture(scope="session")
-def build_driver(parallelize_app, headless) -> Generator[WebDriver, None, None]:
+def build_driver(
+    provide_port: int, parallelize_app, headless
+) -> Generator[WebDriver, None, None]:
     """
     Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
     """
-
+    open_port = provide_port
     options = Options()
 
     if headless == "false":
@@ -101,7 +118,7 @@ def build_driver(parallelize_app, headless) -> Generator[WebDriver, None, None]:
     driver = webdriver.Chrome(options=options)
 
     driver.maximize_window()
-    ping_server(UI_TEST_STRINGS.BASE_URL)
+    ping_server(UI_TEST_STRINGS.BASE_URL + str(open_port))
 
     yield driver
 
@@ -110,15 +127,18 @@ def build_driver(parallelize_app, headless) -> Generator[WebDriver, None, None]:
 
 
 @pytest.fixture
-def browser(build_driver: WebDriver, runner: Tuple[Flask, FlaskCliRunner]):
+def browser(
+    provide_port: int, build_driver: WebDriver, runner: Tuple[Flask, FlaskCliRunner]
+):
     """
     This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
     """
+    open_port = provide_port
     driver = build_driver
 
     driver.delete_all_cookies()
 
-    driver.get(UI_TEST_STRINGS.BASE_URL)
+    driver.get(UI_TEST_STRINGS.BASE_URL + str(open_port))
 
     clear_db(runner)
 

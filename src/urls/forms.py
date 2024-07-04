@@ -17,14 +17,20 @@ class NewURLForm(FlaskForm):
 
     url_string = StringField(
         "URL",
-        validators=[InputRequired(), Length(min=1, max=URL_CONSTANTS.MAX_URL_LENGTH)],
+        validators=[
+            InputRequired(),
+            Length(min=URL_CONSTANTS.MIN_URL_LENGTH, max=URL_CONSTANTS.MAX_URL_LENGTH),
+        ],
         name=MODELS.URL_STRING,
     )
     url_title = StringField(
         "URL Title",
         validators=[
             InputRequired(),
-            Length(min=1, max=URL_CONSTANTS.MAX_URL_TITLE_LENGTH),
+            Length(
+                min=URL_CONSTANTS.MIN_URL_TITLE_LENGTH,
+                max=URL_CONSTANTS.MAX_URL_TITLE_LENGTH,
+            ),
         ],
         name=MODELS.URL_TITLE,
     )
@@ -42,7 +48,10 @@ class EditURLForm(FlaskForm):
 
     url_string = StringField(
         "URL",
-        validators=[InputRequired(), Length(min=1, max=URL_CONSTANTS.MAX_URL_LENGTH)],
+        validators=[
+            InputRequired(),
+            Length(min=URL_CONSTANTS.MIN_URL_LENGTH, max=URL_CONSTANTS.MAX_URL_LENGTH),
+        ],
         name=MODELS.URL_STRING,
     )
 
