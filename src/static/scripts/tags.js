@@ -27,7 +27,7 @@ function getActiveTagIDs() {
     let tagFilter = tagFilterList[i];
     // if ($(tagFilter).hasClass("selected")) activeTagIDList.push($(tagFilter).tagid)
     // if ($(tagFilter).hasClass("selected")) [activeTagIDList, $(tagFilter).tagid]
-    if ($(tagFilter).hasClass("selected"))
+    if ($(tagFilter).hasClass("unselected"))
       activeTagIDList.push($(tagFilter).attr("tagid"));
     // if ($(tagFilter).hasClass("selected")) [activeTagIDList, $(tagFilter).attr('tagid')]
   }
@@ -111,20 +111,17 @@ function buildTagDeck(dictTags) {
 // Creates Select All tag filter for addition to Tag deck
 function createSelectAllTagFilterInDeck() {
   const container = document.createElement("div");
-  const label = document.createElement("label");
+  const span = document.createElement("span");
 
-  $(container).addClass("selected col-12").attr({
+  $(container).addClass("pointerable unselected col-12").attr({
     id: "selectAll",
     tagid: "all",
     onclick: "filterAllTags(); filterAllTaggedURLs()",
   });
 
-  $(label).attr({
-    for: "selectAll",
-  });
-  label.innerHTML = "Select All";
+  $(span).text("Select All");
 
-  $(container).append(label);
+  $(container).append(span);
 
   return container;
 }
@@ -132,19 +129,18 @@ function createSelectAllTagFilterInDeck() {
 // Creates tag filter for addition to Tag deck
 function createTagFilterInDeck(tagID, string) {
   const container = document.createElement("div");
-  const label = document.createElement("label");
+  const span = document.createElement("span");
 
   $(container)
-    .addClass("tagFilter selected col-12")
+    .addClass("tagFilter pointerable unselected col-12")
     .attr({
       tagid: tagID,
       onclick: "filterTag(" + tagID + "); filterURL(" + tagID + ")",
     });
 
-  $(label).attr({ for: "Tag-" + tagID });
-  label.innerHTML += string;
+  $(span).text(string);
 
-  $(container).append(label);
+  $(container).append(span);
 
   return container;
 }
@@ -152,17 +148,17 @@ function createTagFilterInDeck(tagID, string) {
 // Update Tag Deck display in response to selectAll selection
 function filterAllTags() {
   let selAll = $("#selectAll");
-  selAll.toggleClass("selected");
+  selAll.toggleClass("unselected");
 
-  let selectedBool = selAll.hasClass("selected");
+  let selectedBool = selAll.hasClass("unselected");
 
   let tagFilterList = $(".tagFilter");
   // Toggle all filter tags to match "Select All" checked status
   if (selectedBool) {
-    tagFilterList.addClass("selected");
+    tagFilterList.addClass("unselected");
     selAll.html("Select All");
   } else {
-    tagFilterList.removeClass("selected");
+    tagFilterList.removeClass("unselected");
     selAll.html("Deselect All");
   }
 
@@ -172,21 +168,21 @@ function filterAllTags() {
 // Update Tag Deck display in response to tag filter selection
 function filterTag(tagID) {
   let filteredTag = $(".tagFilter[tagid=" + tagID + "]");
-  filteredTag.toggleClass("selected");
+  filteredTag.toggleClass("unselected");
 
   let tagFilters = $(".tagFilter");
   let selAllBool = true;
 
   for (let j = 0; j < tagFilters.length; j++) {
-    if (!$(tagFilters[j]).hasClass("selected")) selAllBool = false;
+    if (!$(tagFilters[j]).hasClass("unselected")) selAllBool = false;
   }
 
   let selAll = $("#selectAll");
   if (selAllBool) {
-    selAll.addClass("selected");
+    selAll.addClass("unselected");
     selAll.html("Select All");
   } else {
-    selAll.removeClass("selected");
+    selAll.removeClass("unselected");
     selAll.html("Deselect All");
   }
 

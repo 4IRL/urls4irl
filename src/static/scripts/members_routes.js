@@ -2,13 +2,21 @@
 
 // Shows new Member input fields
 function addMemberShowInput() {
-  showInput("#addMember");
-  highlightInput($("#addMember"));
+  showIfHidden($("#addMemberWrap").show());
+  hideIfShown($("#displayMemberWrap"));
+  hideIfShown($("#addMemberBtn"));
+  highlightInput($(".add#username"));
+  setupAddMemberEventListeners();
 }
 
 // Hides new Member input fields
 function addMemberHideInput() {
-  hideInput("#addMember");
+  hideIfShown($("#addMemberWrap"));
+  showIfHidden($("#displayMemberWrap"));
+  showIfHidden($("#addMemberBtn"));
+  removeAddMemberEventListeners();
+  resetAddMemberFailErrors();
+  resetNewMemberForm();
 }
 
 function addMember() {
@@ -20,24 +28,79 @@ function addMember() {
   // Handle response
   request.done(function (response, textStatus, xhr) {
     if (xhr.status === 200) {
-      addMemberSuccess(response, data.memberUsername);
+      addMemberSuccess(response);
     }
   });
 
-  request.fail(function (response, textStatus, xhr) {
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      addMemberFail(response);
+  request.fail(function (xhr, _, textStatus) {
+    addMemberFail(xhr);
+  });
+}
+
+function setupAddMemberEventListeners() {
+  // Prevent clicking in input box from closing the form
+  $(".add#username")
+    .off("click.addMember")
+    .on("click.addMember", function (e) {
+      e.stopPropagation();
+    });
+
+  // Allow submission button to not close form in case of error
+  $("#submitAddMember")
+    .off("click.addMember")
+    .on("click.addMember", function (e) {
+      e.stopPropagation();
+      addMember();
+    });
+
+  // Allow closing add member form by clicking anywhere else
+  $(window)
+    .off("click.addMember")
+    .on("click.addMember", function (e) {
+      const target = $(e.target);
+      // Allow the cancel button to close the form
+      if (
+        target.parents("#cancelAddMember").length ||
+        target.is("#cancelAddMember")
+      ) {
+        addMemberHideInput();
+        return;
+      }
+
+      // Prevent initial opening form click or add member form area click from closing form
+      const isInitialAddMemberBtn = target.parents("#addMemberBtn").length;
+      const isInAddMemberFormArea = target.parents("#addMemberWrap").length;
+      if (isInitialAddMemberBtn || isInAddMemberFormArea) return;
+      addMemberHideInput();
+    });
+
+  // Allow closing by pressing escape key
+  $(document).bind("keyup.addMember", function (e) {
+    switch (e.which) {
+      case 13:
+        // Handle enter key pressed
+        addMember();
+        break;
+      case 27:
+        // Handle escape  key pressed
+        addMemberHideInput();
+        break;
+      default:
+      /* no-op */
     }
   });
 }
 
+function removeAddMemberEventListeners() {
+  $(document).off(".addMember");
+  $(window).off(".addMember");
+}
+
 // This function will extract the current selection data needed for POST request (member ID)
 function addMemberSetup() {
-  let postURL = routes.addMember(getActiveUTubID());
+  const postURL = routes.addMember(getActiveUTubID());
 
-  let newMemberUsername = $("#addMember").val();
+  const newMemberUsername = $(".add#username").val();
   data = {
     username: newMemberUsername,
   };
@@ -46,30 +109,66 @@ function addMemberSetup() {
 }
 
 // Perhaps update a scrollable/searchable list of members?
-function addMemberSuccess(response, memberUsername) {
+function addMemberSuccess(response) {
   resetNewMemberForm();
 
-  // Remove createDiv. Create and append a new instance after addition of new Member
-  $("#addMember").closest(".createDiv").detach();
-
-  const parent = $("#listMembers");
-
-  // Create and append newly created Member badge
-  parent.append(
-    createMemberBadge(response.member.id, response.member.username),
+  // Create and append newly created Member badge - only creators can add members
+  $("#listMembers").append(
+    createMemberBadge(response.member.id, response.member.username, true),
   );
-  // Create and append new member input field
-  parent.append(createNewMemberInputField());
 
+  addMemberHideInput();
   displayState1MemberDeck();
 }
 
-function addMemberFail(response) {
-  console.log("Basic implementation. Needs revision");
-  console.log(response.responseJSON.errorCode);
-  console.log(response.responseJSON.message);
+function addMemberFail(xhr) {
+  switch (xhr.status) {
+    case 400:
+      const responseJSON = xhr.responseJSON;
+      const hasErrors = responseJSON.hasOwnProperty("errors");
+      const hasMessage = responseJSON.hasOwnProperty("message");
+      if (hasErrors) {
+        // Show form errors
+        addMemberFailShowErrors(responseJSON.errors);
+        break;
+      } else if (hasMessage) {
+        // Show message
+        displayAddMemberFailErrors("username", responseJSON.message);
+        break;
+      }
+    case 403:
+    case 404:
+    default:
+      window.location.assign(routes.errorPage);
+  }
   // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to member?
   // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
+}
+
+function addMemberFailShowErrors(errors) {
+  for (let key in errors) {
+    switch (key) {
+      case "username":
+        let errorMessage = errors[key][0];
+        displayAddMemberFailErrors(key, errorMessage);
+        return;
+    }
+  }
+}
+
+function displayAddMemberFailErrors(key, errorMessage) {
+  $(".add#" + key + "-error")
+    .addClass("visible")
+    .text(errorMessage);
+  $("input.add#" + key).addClass("invalid-field");
+}
+
+function resetAddMemberFailErrors() {
+  const addMemberFields = ["username"];
+  addMemberFields.forEach((fieldName) => {
+    $(".add#" + fieldName + "-error").removeClass("visible");
+    $("input.add#" + fieldName).removeClass("invalid-field");
+  });
 }
 
 /* Remove Member */
@@ -77,19 +176,18 @@ function addMemberFail(response) {
 // Hide confirmation modal for removal of the selected member
 function removeMemberHideModal() {
   $("#confirmModal").modal("hide");
-  unbindEnter();
 }
 
 // Show confirmation modal for removal of the selected member from current UTub
 function removeMemberShowModal(memberID, isCreator) {
-  let modalTitle = isCreator
+  const modalTitle = isCreator
     ? "Are you sure you want to remove this member from the UTub?"
     : "Are you sure you want to leave this UTub?";
-  let modalBody = isCreator
-    ? "This member will no longer have access to the URLs in this UTub"
-    : "You will no longer have access to the URLs in this UTub";
-  let buttonTextDismiss = isCreator ? "Keep member" : "Stay in UTub";
-  let buttonTextSubmit = isCreator ? "Remove member" : "Leave UTub";
+  const modalBody = isCreator
+    ? "This member will no longer have access to the URLs in this UTub."
+    : "You will no longer have access to the URLs in this UTub.";
+  const buttonTextDismiss = isCreator ? "Keep member" : "Stay in UTub";
+  const buttonTextSubmit = isCreator ? "Remove member" : "Leave UTub";
 
   $("#confirmModalTitle").text(modalTitle);
 
@@ -108,6 +206,7 @@ function removeMemberShowModal(memberID, isCreator) {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
+    .off("click")
     .on("click", function (e) {
       e.preventDefault();
       removeMember(memberID, isCreator);
@@ -126,28 +225,24 @@ function removeMember(memberID, isCreator) {
   let request = AJAXCall("delete", postURL, []);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
+  request.done(function (_, textStatus, xhr) {
     if (xhr.status === 200) {
       if (isCreator) {
         removeMemberSuccess(memberID);
-      } else {
-        $("#leaveUTubBtn").hide();
-        $("#confirmModal").modal("hide");
-        displayState0();
-        displayState1UTubDeck(null, null);
-
-        if ($("#listUTubs").find(".UTubSelector").length === 0)
-          displayState0UTubDeck();
+        return;
       }
+      $("#leaveUTubBtn").hide();
+      $("#confirmModal").modal("hide");
+      displayState0();
+      displayState1UTubDeck(null, null);
+
+      if ($("#listUTubs").find(".UTubSelector").length === 0)
+        displayState0UTubDeck();
     }
   });
 
-  request.fail(function (response, textStatus, xhr) {
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      removeMemberFail(response);
-    }
+  request.fail(function (xhr, _, textStatus) {
+    removeMemberFail(xhr);
   });
 }
 
@@ -162,39 +257,20 @@ function removeMemberSuccess(memberID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
-  let memberListItem = $("span[memberid=" + memberID + "]");
-  memberListItem.fadeOut();
-  memberListItem.remove();
+  const memberListItem = $("span[memberid=" + memberID + "]");
+  memberListItem.fadeOut("slow", function () {
+    memberListItem.remove();
+  });
 
   displayState1MemberDeck();
 }
 
-function removeMemberFail(xhr, textStatus, error) {
-  console.log("Error: Could not remove Member");
-
-  if (xhr.status === 409) {
-    console.log(
-      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-    );
-    // const flashMessage = xhr.responseJSON.error;
-    // const flashCategory = xhr.responseJSON.category;
-
-    // let flashElem = flashMessageBanner(flashMessage, flashCategory);
-    // flashElem.insertBefore('#modal-body').show();
-  } else if (xhr.status === 404) {
-    $(".invalid-feedback").remove();
-    $(".alert").remove();
-    $(".form-control").removeClass("is-invalid");
-    const error = JSON.parse(xhr.responseJSON);
-    for (var key in error) {
-      $('<div class="invalid-feedback"><span>' + error[key] + "</span></div>")
-        .insertAfter("#" + key)
-        .show();
-      $("#" + key).addClass("is-invalid");
-    }
+function removeMemberFail(xhr) {
+  switch (xhr.status) {
+    case 400:
+    case 403:
+    case 404:
+    default:
+      window.location.assign(routes.errorPage);
   }
-  console.log(
-    "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-  );
-  console.log("Error: " + error.Error_code);
 }

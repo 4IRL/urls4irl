@@ -102,6 +102,7 @@
 }
 
 /* Utility */
+
 .flex-row {
     display: flex;
     flex-direction: row;
@@ -183,12 +184,15 @@
     border-color: red !important;
 }
 
+.pointerable {
+    cursor: pointer;
+}
 
 /* UTubs */
 
 .active,
 .active:hover .UTubName {
-    color: #f45e61;
+    color: var(--selectedUTubColor);
 }
 
 .UTubName:hover {
@@ -237,11 +241,10 @@
 
 #selectAll,
 .tagFilter {
-    display: inline-block;
+    display: flex;
     padding: 3px 3px;
     margin-top: 5px;
     border-radius: 25px;
-    cursor: pointer;
     transition: background-color 0.3s, border-color 0.3s;
 }
 
@@ -249,7 +252,6 @@
 .tagFilter {
     border: 2px solid var(--tagBorderColor);
     background-color: var(--tagBackgroundColorSelected);
-    cursor: pointer;
 }
 
 #selectAll:hover,
@@ -257,16 +259,16 @@
     border-color: #aaa;
 }
 
-#selectAll.selected,
-.tagFilter.selected {
+#selectAll.unselected,
+.tagFilter.unselected {
     background-color: var(--tagBackgroundColor);
     border: 2px solid var(--tagBorderColor);
     border-radius: 25px;
     color: white;
 }
 
-#selectAll.selected:hover,
-.tagFilter.selected:hover {
+#selectAll.unselected:hover,
+.tagFilter.unselected:hover {
     background-color: var(--tagBackgroundColorHover);
     border-color: var(--tagBorderColor);
 }
@@ -398,30 +400,26 @@
 /* Members */
 
 .member {
-    color: var(--spanRemoveColor);
-    background: white;
-    margin-right: 2px;
-    padding-left: 6px;
-    padding-right: 6px;
-    padding-top: 1px;
-    padding-bottom: 1px;
-    border-radius: 16px;
-    white-space: nowrap;
-    display: inline-block;
+    color: var(--panelBackgroundColor);
+    border-color: #aaa;
+    padding: 3px 3px;
+    border-radius: 25px;
+    border: 2px solid #aaa;
+    background-color: var(--tagBackgroundColorSelected);
 }
 
-.member:hover .member-remove {
-    display: inline-block;
-    line-height: 100%;
-    height: 100%;
-    font-size: 100%;
+.member:hover > .member-remove {
+    display: flex;
 }
 
 .member-remove {
-    padding: 0rem;
-    vertical-align: unset;
-    padding-left: 5px;
     display: none;
+    color: var(--removeMemberColor);
+    transition: color 0.2s;
+}
+
+.member-remove:hover {
+    color: red;
 }
 
 .member-remove:focus {
@@ -430,6 +428,7 @@
 }
 
 /** Custom Text Input Box **/
+
 .text-input-container {
     display: flex;
     flex-direction: column;
@@ -495,7 +494,7 @@
 
 /** ID specific **/
 
-#UTubDescriptionEditWrap ~ .createDiv {
+#UTubDescriptionSubheaderWrap ~ .createDiv {
     padding-top: 1rem;
     padding-bottom: 1rem;
 }
@@ -532,17 +531,18 @@
     color: rgba(84, 84, 84, 1.0);
 }
 
-#UTubDescriptionEditWrap > .visibleBtn,
+#UTubDescriptionSubheaderWrap > .visibleBtn,
 #UTubNameEditWrap > .visibleBtn {
     display: none !important;
 
 }
 
-#UTubDescriptionEditWrap:hover > .visibleBtn,
+#UTubDescriptionSubheaderWrap:hover > .visibleBtn,
 #UTubNameEditWrap:hover > .visibleBtn {
     display: flex !important;
 }
 
+#addMemberWrap,
 #createUTubWrap {
     height: 100%;
     gap: 20px;

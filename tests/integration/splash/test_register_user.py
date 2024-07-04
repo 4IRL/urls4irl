@@ -232,7 +232,7 @@ def test_register_modal_is_shown(app_with_server_name, client):
             in response.data
         )
         assert (
-            b'<input class="form-control login-register-form-group" id="username" maxlength="20" minlength="4" name="username" required type="text" value="">'
+            b'<input class="form-control login-register-form-group" id="username" maxlength="20" minlength="3" name="username" required type="text" value="">'
             in response.data
         )
         assert (
