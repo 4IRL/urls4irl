@@ -66,19 +66,19 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
         associated_tags = url_utub_association.associated_tags
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
 
@@ -89,7 +89,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
+    update_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
         TAG_FORM.TAG_STRING: NEW_TAG,
     }
@@ -98,10 +98,10 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_creator_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 200
@@ -140,7 +140,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         )
 
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.id == url_id_to_add_tag_to,
+            Utub_Urls.id == url_id_to_update_tag_on,
         ).first()
 
         assert sorted(url_utub_association.associated_tags) == sorted(
@@ -151,7 +151,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -226,19 +226,19 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
         associated_tags = url_utub_association.associated_tags
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
 
@@ -249,7 +249,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
+    update_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
         TAG_FORM.TAG_STRING: NEW_TAG,
     }
@@ -258,10 +258,10 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_member_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 200
@@ -299,7 +299,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
             associated_tags
         )
 
-        url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_add_tag_to)
+        url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_update_tag_on)
 
         assert sorted(url_utub_association.associated_tags) == sorted(
             modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
@@ -309,7 +309,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -377,19 +377,19 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
         associated_tags = url_utub_association.associated_tags
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
 
@@ -406,7 +406,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
+    update_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
         TAG_FORM.TAG_STRING: new_tag_string,
     }
@@ -415,10 +415,10 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_creator_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 200
@@ -445,7 +445,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         # Ensure no new tag exists
         assert Tags.query.count() == num_tags
 
-        url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_add_tag_to)
+        url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_update_tag_on)
         assert sorted(url_utub_association.associated_tags) == sorted(
             modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
         )
@@ -454,7 +454,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -526,19 +526,19 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
             Utub_Urls.utub_id == utub_id_user_is_member_of,
             Utub_Urls.user_id == current_user.id,
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
         associated_tags = url_utub_association.associated_tags
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
 
@@ -554,7 +554,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
+    update_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
         TAG_FORM.TAG_STRING: tag_from_database.tag_string,
     }
@@ -563,10 +563,10 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_member_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 200
@@ -594,7 +594,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         # Ensure a new tag does not exist
         assert Tags.query.count() == num_tags
 
-        url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_add_tag_to)
+        url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_update_tag_on)
         assert sorted(url_utub_association.associated_tags) == sorted(
             modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
         )
@@ -603,7 +603,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -661,18 +661,18 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         tag_string_on_url: str = tag_on_url.tag_item.tag_string
         curr_tag_id_on_url = tag_on_url.tag_id
@@ -684,7 +684,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
+    update_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
         TAG_FORM.TAG_STRING: tag_string_on_url,
     }
@@ -693,10 +693,10 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_creator_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 200
@@ -714,7 +714,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -726,7 +726,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
                 Utub_Url_Tags.tag_id == curr_tag_id_on_url,
             ).count()
             == 1
@@ -776,18 +776,18 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
         curr_tag_string = tag_on_url.tag_item.tag_string
@@ -799,7 +799,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
+    update_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
         TAG_FORM.TAG_STRING: curr_tag_string,
     }
@@ -808,10 +808,10 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_member_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 200
@@ -829,7 +829,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -841,7 +841,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
                 Utub_Url_Tags.tag_id == curr_tag_id_on_url,
             ).count()
             == 1
@@ -884,25 +884,25 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
 
         # Get tag to change to on this URL
         tag_to_change_to_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             Utub_Url_Tags.tag_id != curr_tag_id_on_url,
         ).first()
 
@@ -915,7 +915,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
+    update_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
         TAG_FORM.TAG_STRING: tag_to_change_to_string,
     }
@@ -924,10 +924,10 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_creator_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 400
@@ -946,7 +946,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -958,7 +958,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
                 Utub_Url_Tags.tag_id == curr_tag_id_on_url,
             ).count()
             == 1
@@ -1003,18 +1003,18 @@ def test_modify_tag_on_another_utub_url(
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_not_member_of
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_not_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_not_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
         curr_tag_string: str = tag_on_url.tag_item.tag_string
@@ -1026,7 +1026,7 @@ def test_modify_tag_on_another_utub_url(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
+    update_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
         TAG_FORM.TAG_STRING: curr_tag_string,
     }
@@ -1035,10 +1035,10 @@ def test_modify_tag_on_another_utub_url(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_not_member_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 403
@@ -1060,7 +1060,7 @@ def test_modify_tag_on_another_utub_url(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_not_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -1072,7 +1072,7 @@ def test_modify_tag_on_another_utub_url(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_not_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
                 Utub_Url_Tags.tag_id == curr_tag_id_on_url,
             ).count()
             == 1
@@ -1119,7 +1119,7 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
+    update_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
     modify_tag_response = client.put(
         url_for(
@@ -1128,7 +1128,7 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
             utub_url_id=NONEXISTENT_URL_ID,
             tag_id=1,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
     assert modify_tag_response.status_code == 404
 
@@ -1168,7 +1168,7 @@ def test_modify_tag_on_url_in_nonexistent_utub(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
+    update_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
 
     modify_tag_response = client.put(
         url_for(
@@ -1177,7 +1177,7 @@ def test_modify_tag_on_url_in_nonexistent_utub(
             utub_url_id=NONEXISTENT_URL_ID,
             tag_id=1,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
     assert modify_tag_response.status_code == 404
 
@@ -1231,18 +1231,18 @@ def test_modify_tag_with_missing_tag_field(
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_id_user_is_member_of
         ).first()
-        url_id_to_add_tag_to = url_utub_association.id
+        url_id_to_update_tag_on = url_utub_association.id
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
 
@@ -1253,16 +1253,16 @@ def test_modify_tag_with_missing_tag_field(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token}
+    update_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token}
 
     modify_tag_response = client.put(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_member_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     assert modify_tag_response.status_code == 400
@@ -1288,7 +1288,7 @@ def test_modify_tag_with_missing_tag_field(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -1300,7 +1300,7 @@ def test_modify_tag_with_missing_tag_field(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
                 Utub_Url_Tags.tag_id == curr_tag_id_on_url,
             ).count()
             == 1
@@ -1339,18 +1339,18 @@ def test_modify_tag_with_missing_csrf_token(
             Utub_Urls.utub_id == utub_id_user_is_member_of
         ).first()
         url_in_this_utub: Urls = url_utub_association.standalone_url
-        url_id_to_add_tag_to = url_in_this_utub.id
+        url_id_to_update_tag_on = url_in_this_utub.id
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).count()
 
         # Get a tag on this URL
         tag_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
         ).first()
         curr_tag_id_on_url = tag_on_url.tag_id
         tag_string_of_tag: str = tag_on_url.tag_item.tag_string
@@ -1362,16 +1362,16 @@ def test_modify_tag_with_missing_csrf_token(
         num_tags = Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {TAG_FORM.TAG_STRING: tag_string_of_tag}
+    update_tag_form = {TAG_FORM.TAG_STRING: tag_string_of_tag}
 
     modify_tag_response = client.put(
         url_for(
             ROUTES.TAGS.MODIFY_TAG,
             utub_id=utub_id_user_is_member_of,
-            utub_url_id=url_id_to_add_tag_to,
+            utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
         ),
-        data=add_tag_form,
+        data=update_tag_form,
     )
 
     # Ensure valid reponse
@@ -1386,7 +1386,7 @@ def test_modify_tag_with_missing_csrf_token(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
             ).count()
             == num_of_tags_on_url
         )
@@ -1398,7 +1398,7 @@ def test_modify_tag_with_missing_csrf_token(
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
-                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+                Utub_Url_Tags.utub_url_id == url_id_to_update_tag_on,
                 Utub_Url_Tags.tag_id == curr_tag_id_on_url,
             ).count()
             == 1

@@ -46,7 +46,7 @@ function addURL() {
 // Prepares post request inputs for addition of a new URL
 function addURLSetup() {
   // Assemble post request route
-  let postURL = routes.addURL(getActiveUTubID());
+  let postURL = routes.createURL(getActiveUTubID());
 
   // Assemble submission data
   let newURLTitle = $(".#urlTitleCreate").val();

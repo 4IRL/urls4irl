@@ -98,7 +98,7 @@ function removeAddMemberEventListeners() {
 
 // This function will extract the current selection data needed for POST request (member ID)
 function addMemberSetup() {
-  const postURL = routes.addMember(getActiveUTubID());
+  const postURL = routes.createMember(getActiveUTubID());
 
   const newMemberUsername = $("#usernameCreate").val();
   data = {

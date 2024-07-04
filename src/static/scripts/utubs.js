@@ -121,7 +121,7 @@ function resetUTubDeck() {
 // Create event listeners to escape from editing UTub name
 function setEventListenersToEscapeEditUTubName() {
   // Allow user to still click in the text box
-  $(".edit#utubName")
+  $("#utubNameUpdate")
     .off("click.editUTubname")
     .on("click.editUTubname", function (e) {
       e.stopPropagation();
@@ -141,11 +141,11 @@ function setEventListenersToEscapeEditUTubName() {
       case 13:
         // Handle enter key pressed
         // Skip if edit is identical
-        if ($("#URLDeckHeader").text() === $(".edit#utubName").val()) {
+        if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
           editUTubNameHideInput();
           return;
         }
-        checkSameNameUTub(false, $(".edit#utubName").val());
+        checkSameNameUTub(false, $("#utubNameUpdate").val());
         break;
       case 27:
         // Handle escape key pressed
@@ -166,7 +166,7 @@ function removeEventListenersToEscapeEditUTubName() {
 // Create event listeners to escape from editing UTub name
 function setEventListenersToEscapeEditUTubDescription() {
   // Allow user to still click in the text box
-  $(".edit#utubDescription").on("click.editUTubdescription", function (e) {
+  $("#utubDescriptionUpdate").on("click.editUTubdescription", function (e) {
     e.stopPropagation();
   });
 
@@ -197,9 +197,8 @@ function setEventListenersToEscapeEditUTubDescription() {
 }
 
 function removeEventListenersToEscapeEditUTubDescription() {
-  $(window).off("click.editUTubdescription");
-  $(document).off("keyup.editUTubdescription");
-  $(".edit#utubDescription").off("click.editUTubdescription");
+  $(window).off(".editUTubdescription");
+  $(document).off(".editUTubdescription");
 }
 
 function allowUserToAddDescriptionIfEmptyOnTitleEdit() {
@@ -290,7 +289,7 @@ function buildSelectedUTub(selectedUTub) {
       .addClass("visibleBtn");
 
     // Setup description edit field to match the current header
-    $(".edit#utubDescription").val($("#URLDeckSubheader").text());
+    $("#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
   } else {
     $("#editUTubNameBtn").addClass("hiddenBtn").removeClass("visibleBtn");
     $("#editUTubDescriptionBtn")
@@ -516,7 +515,7 @@ function sameUTubNameOnEditUtubNameWarningShowModal() {
       e.preventDefault();
       e.stopPropagation();
       sameNameWarningHideModal();
-      highlightInput($(".edit#utubName"));
+      highlightInput($("#utubNameUpdate"));
       setEventListenersToEscapeEditUTubName();
     });
 

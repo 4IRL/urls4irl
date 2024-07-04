@@ -6,7 +6,7 @@ Contains all routes for easy insertion into `url_for` flask function
 class MEMBER_ROUTES:
     _MEMBERS = "members."
     REMOVE_MEMBER = _MEMBERS + "remove_member"
-    ADD_MEMBER = _MEMBERS + "add_member"
+    CREATE_MEMBER = _MEMBERS + "create_member"
 
 
 class SPLASH_ROUTES:
@@ -24,7 +24,7 @@ class SPLASH_ROUTES:
 
 class TAG_ROUTES:
     _TAGS = "tags."
-    ADD_TAG = _TAGS + "add_tag"
+    CREATE_TAG = _TAGS + "create_tag"
     REMOVE_TAG = _TAGS + "remove_tag"
     MODIFY_TAG = _TAGS + "modify_tag_on_url"
 
@@ -32,7 +32,7 @@ class TAG_ROUTES:
 class URL_ROUTES:
     _URLS = "urls."
     REMOVE_URL = _URLS + "remove_url"
-    ADD_URL = _URLS + "add_url"
+    CREATE_URL = _URLS + "create_url"
     EDIT_URL_AND_TITLE = _URLS + "edit_url_and_title"
     EDIT_URL = _URLS + "edit_url"
     EDIT_URL_TITLE = _URLS + "edit_url_title"
@@ -47,7 +47,7 @@ class UTUB_ROUTES:
     _UTUBS = "utubs."
     HOME = _UTUBS + "home"
     GET_UTUBS = _UTUBS + "get_utubs"
-    ADD_UTUB = _UTUBS + "add_utub"
+    CREATE_UTUB = _UTUBS + "create_utub"
     DELETE_UTUB = _UTUBS + "delete_utub"
     UPDATE_UTUB_NAME = _UTUBS + "update_utub_name"
     UPDATE_UTUB_DESC = _UTUBS + "update_utub_desc"

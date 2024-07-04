@@ -103,7 +103,7 @@ function addTag() {
 // Prepares post request inputs for addition of a new Tag to URL
 function addTagSetup() {
   // Assemble post request route
-  let postURL = routes.addTag(getActiveUTubID(), getSelectedURLID());
+  let postURL = routes.createTag(getActiveUTubID(), getSelectedURLID());
 
   // Assemble submission data
   let newTag = getSelectedURLCard().find(".addTag").val();

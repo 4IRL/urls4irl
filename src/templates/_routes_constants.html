@@ -4,7 +4,7 @@
             if (!Routes.instance) {
                 // UTub routes
 
-                this.addUTub = "{{url_for('utubs.add_utub')}}";
+                this.createUTub = "{{url_for('utubs.create_utub')}}";
                 this.deleteUTub = (utub_id) => 
                     "{{url_for('utubs.delete_utub', utub_id=-1)}}".replace("-1", utub_id);
                 this.editUTubName = (utub_id) =>
@@ -14,8 +14,8 @@
                     "{{url_for('utubs.update_utub_desc', utub_id=-1)}}".replace("-1", utub_id);
 
                 // URL routes
-                this.addURL = (utub_id) =>
-                    "{{url_for('urls.add_url', utub_id=-1)}}".replace("-1", utub_id);
+                this.createURL = (utub_id) =>
+                    "{{url_for('urls.create_url', utub_id=-1)}}".replace("-1", utub_id);
                 this.deleteURL = (utub_id, utub_url_id) =>
                     "{{url_for('urls.remove_url', utub_id=-1, utub_url_id=-2)}}"
                         .replace("-1", utub_id)
@@ -30,8 +30,8 @@
                         .replace("-2", utub_url_id);
 
                 // Tag routes
-                this.addTag = (utub_id, utub_url_id) =>
-                    "{{url_for('tags.add_tag', utub_id=-1, utub_url_id=-2)}}"
+                this.createTag = (utub_id, utub_url_id) =>
+                    "{{url_for('tags.create_tag', utub_id=-1, utub_url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", utub_url_id);
                 this.removeTag = (utub_id, utub_url_id, tag_id) =>
@@ -47,8 +47,8 @@
                         .replace("-3", tag_id)
 
                 // Member routes
-                this.addMember = (utub_id) => 
-                    "{{url_for('members.add_member', utub_id=-1)}}".replace("-1", utub_id);
+                this.createMember = (utub_id) => 
+                    "{{url_for('members.create_member', utub_id=-1)}}".replace("-1", utub_id);
                 this.removeMember = (utub_id, user_id) => 
                     "{{url_for('members.remove_member', utub_id=-1, user_id=-4)}}"
                         .replace("-1", utub_id)

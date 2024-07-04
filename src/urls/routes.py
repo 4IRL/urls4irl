@@ -110,7 +110,7 @@ def remove_url(utub_id: int, utub_url_id: int):
 
 @urls.route("/utubs/<int:utub_id>/urls", methods=["POST"])
 @email_validation_required
-def add_url(utub_id: int):
+def create_url(utub_id: int):
     """
     User wants to add URL to UTub. On success, adds the URL to the UTub.
 

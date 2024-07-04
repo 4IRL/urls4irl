@@ -784,7 +784,7 @@ function displayState0URLDeck() {
 function displayState1URLDeck(UTubName) {
   let numOfURLs = getNumOfURLs();
   $("#URLDeckHeader").text(UTubName);
-  $(".edit#utubName").val(UTubName);
+  $("#utubNameUpdate").val(UTubName);
 
   editUTubNameHideInput();
 }

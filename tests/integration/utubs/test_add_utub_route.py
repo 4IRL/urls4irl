@@ -55,7 +55,9 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
-    new_utub_response = client.post(url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form)
+    new_utub_response = client.post(
+        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+    )
 
     assert new_utub_response.status_code == 200
 
@@ -148,7 +150,9 @@ def test_add_utub_with_same_name(
         UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
-    new_utub_response = client.post(url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form)
+    new_utub_response = client.post(
+        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+    )
 
     assert new_utub_response.status_code == 200
 
@@ -205,7 +209,7 @@ def test_add_utub_with_get_request(login_first_user_with_register):
         UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
-    client.get(url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form)
+    client.get(url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form)
 
     # Make sure no UTub in database
     with app.app_context():
@@ -239,7 +243,7 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
     }
 
     invalid_new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
     )
 
     # Assert invalid response code
@@ -272,7 +276,7 @@ def test_add_utub_with_no_csrf_token(login_first_user_with_register):
 
     client, _, _, _ = login_first_user_with_register
 
-    invalid_new_utub_response = client.post(url_for(ROUTES.UTUBS.ADD_UTUB))
+    invalid_new_utub_response = client.post(url_for(ROUTES.UTUBS.CREATE_UTUB))
 
     # Assert invalid response code
     assert invalid_new_utub_response.status_code == 400
@@ -294,7 +298,7 @@ def test_csrf_expiration(app, login_first_user_with_register):
     }
 
     valid_utub_response_with_csrf = client.post(
-        url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
     )
     assert valid_utub_response_with_csrf.status_code == 200
 
@@ -304,7 +308,7 @@ def test_csrf_expiration(app, login_first_user_with_register):
         return_value=current_time + CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS + 1,
     ):
         invalid_utub_response_with_csrf = client.post(
-            url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form
+            url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
         )
         assert invalid_utub_response_with_csrf.status_code == 400
         assert (
@@ -335,7 +339,7 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
         }
 
         new_utub_response = client.post(
-            url_for(ROUTES.UTUBS.ADD_UTUB), data=new_utub_form
+            url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
         )
 
         assert new_utub_response.status_code == 200
