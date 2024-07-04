@@ -311,7 +311,7 @@ function resetUpdateUTubNameFailErrors() {
 // Shows input fields for editing an exiting UTub's description
 function updateUTubDescriptionShowInput() {
   // Show edit fields
-  $(".#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
+  $("#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
   showInput("#utubDescriptionUpdate");
   showIfHidden($("#utubDescriptionSubmitBtnUpdate"));
 
