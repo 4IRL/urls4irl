@@ -84,7 +84,7 @@ def test_get_register_screen_not_logged_in(app_with_server_name, client):
         assert response.status_code == 200
 
         assert (
-            b'<input class="form-control login-register-form-group" id="username" maxlength="20" minlength="4" name="username" required type="text" value="">'
+            b'<input class="form-control login-register-form-group" id="username" maxlength="20" minlength="3" name="username" required type="text" value="">'
             in response.data
         )
         assert (
