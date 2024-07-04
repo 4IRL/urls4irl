@@ -132,7 +132,7 @@ function setEventListenersToEscapeUpdateUTubName() {
     .off("click.updateUTubname")
     .on("click.updateUTubname", function () {
       // Hide UTub name edit fields
-      UpdateUTubNameHideInput();
+      updateUTubNameHideInput();
     });
 
   // Bind escape and enter key
@@ -142,7 +142,7 @@ function setEventListenersToEscapeUpdateUTubName() {
         // Handle enter key pressed
         // Skip if edit is identical
         if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
-          UpdateUTubNameHideInput();
+          updateUTubNameHideInput();
           return;
         }
         checkSameNameUTub(false, $("#utubNameUpdate").val());
@@ -150,7 +150,7 @@ function setEventListenersToEscapeUpdateUTubName() {
       case 27:
         // Handle escape key pressed
         hideInputs();
-        UpdateUTubNameHideInput();
+        updateUTubNameHideInput();
         break;
       default:
       /* no-op */
@@ -209,7 +209,7 @@ function allowUserToAddDescriptionIfEmptyOnTitleUpdate() {
     .on("click.createUTubdescription", function (e) {
       e.stopPropagation();
       hideIfShown(clickToAddDesc);
-      UpdateUTubNameHideInput();
+      updateUTubNameHideInput();
       updateUTubDescriptionShowInput();
       clickToAddDesc.off("click.createUTubdescription");
     });
@@ -442,7 +442,7 @@ function checkSameNameUTub(isAddingUTub, name) {
       : sameUTubNameOnUpdateUTubNameWarningShowModal();
   } else {
     // UTub name is unique. Proceed with requested action
-    isAddingUTub ? createUTub() : UpdateUTubName();
+    isAddingUTub ? createUTub() : updateUTubName();
   }
 }
 
@@ -529,7 +529,7 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal() {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      UpdateUTubName();
+      updateUTubName();
     });
 
   $("#confirmModal").modal("show");
