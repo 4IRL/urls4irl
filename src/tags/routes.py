@@ -21,7 +21,7 @@ STD_JSON = STD_JSON_RESPONSE
 
 @tags.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags", methods=["POST"])
 @email_validation_required
-def add_tag(utub_id: int, utub_url_id: int):
+def create_tag(utub_id: int, utub_url_id: int):
     """
     User wants to add a tag to a URL. 5 tags per URL.
     # TODO: Do not allow empty tags

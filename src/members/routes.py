@@ -116,7 +116,7 @@ def remove_member(utub_id: int, user_id: int):
 
 @members.route("/utubs/<int:utub_id>/members", methods=["POST"])
 @email_validation_required
-def add_member(utub_id: int):
+def create_member(utub_id: int):
     """
     Creator of utub wants to add a user to the utub.
 

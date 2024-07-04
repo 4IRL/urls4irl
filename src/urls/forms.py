@@ -38,7 +38,7 @@ class NewURLForm(FlaskForm):
     submit = SubmitField("Add URL to this UTub!")
 
 
-class EditURLForm(FlaskForm):
+class UpdateURLForm(FlaskForm):
     """
     Form to edit a URL in this UTub. Inherits from FlaskForm.
 
@@ -58,7 +58,7 @@ class EditURLForm(FlaskForm):
     submit = SubmitField("Edit URL!")
 
 
-class EditURLTitleForm(FlaskForm):
+class UpdateURLTitleForm(FlaskForm):
     """
     Form to edit a URL in this UTub. Inherits from FlaskForm.
 

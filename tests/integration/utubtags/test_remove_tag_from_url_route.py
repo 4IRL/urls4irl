@@ -77,7 +77,7 @@ def test_remove_tag_from_url_as_utub_creator(
         ).count()
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -88,7 +88,7 @@ def test_remove_tag_from_url_as_utub_creator(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 200
@@ -200,7 +200,7 @@ def test_remove_tag_from_url_as_utub_member(
         ).count()
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -211,7 +211,7 @@ def test_remove_tag_from_url_as_utub_member(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 200
@@ -324,7 +324,7 @@ def test_remove_tag_from_url_with_one_tag(
         ).count()
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -335,7 +335,7 @@ def test_remove_tag_from_url_with_one_tag(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 200
@@ -450,7 +450,7 @@ def test_remove_last_tag_from_utub(
         ).count()
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -461,7 +461,7 @@ def test_remove_last_tag_from_utub(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 200
@@ -606,7 +606,7 @@ def test_remove_tag_from_url_with_five_tags(
         ).count()
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -617,7 +617,7 @@ def test_remove_tag_from_url_with_five_tags(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 200
@@ -704,7 +704,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_creator(
         )
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -715,7 +715,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_creator(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=NONEXISTENT_TAG_ID,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 404
@@ -781,7 +781,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
         initial_num_tag_url_associations = Utub_Url_Tags.query.count()
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -792,7 +792,7 @@ def test_remove_nonexistent_tag_from_url_as_utub_member(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=NONEXISTENT_TAG_ID,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 404
@@ -883,7 +883,7 @@ def test_remove_tag_from_url_but_not_member_of_utub(
         )
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -894,7 +894,7 @@ def test_remove_tag_from_url_but_not_member_of_utub(
             utub_url_id=url_id_in_utub,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 403
@@ -973,7 +973,7 @@ def test_remove_tag_from_url_from_nonexistent_utub(
         initial_num_tag_url_associations = Utub_Url_Tags.query.count()
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -984,7 +984,7 @@ def test_remove_tag_from_url_from_nonexistent_utub(
             utub_url_id=url_id_to_remove,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 404
@@ -1052,7 +1052,7 @@ def test_remove_tag_from_nonexistent_url_utub(
         initial_num_tag_url_associations = Utub_Url_Tags.query.count()
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -1063,7 +1063,7 @@ def test_remove_tag_from_nonexistent_url_utub(
             utub_url_id=NONEXISTENT_URL_ID,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 404
@@ -1129,7 +1129,7 @@ def test_remove_tag_with_no_csrf_token(
         initial_num_tag_url_associations = Utub_Url_Tags.query.count()
 
     # Remove tag from this URL
-    add_tag_form = {}
+    delete_tag_form = {}
 
     remove_tag_response = client.delete(
         url_for(
@@ -1138,7 +1138,7 @@ def test_remove_tag_with_no_csrf_token(
             utub_url_id=url_id_to_remove,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     # Assert invalid response code
@@ -1190,7 +1190,7 @@ def test_remove_tag_from_url_updates_utub_last_updated(
         url_id_to_remove_tag_from = tag_url_utub_association.utub_url_id
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -1201,7 +1201,7 @@ def test_remove_tag_from_url_updates_utub_last_updated(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=tag_id_to_remove,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 200
@@ -1242,7 +1242,7 @@ def test_remove_nonexistent_tag_from_url_does_not_update_utub_last_updated(
         url_id_to_remove_tag_from = valid_url_in_utub.id
 
     # Remove tag from this URL
-    add_tag_form = {
+    delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
     }
 
@@ -1253,7 +1253,7 @@ def test_remove_nonexistent_tag_from_url_does_not_update_utub_last_updated(
             utub_url_id=url_id_to_remove_tag_from,
             tag_id=NONEXISTENT_TAG_ID,
         ),
-        data=add_tag_form,
+        data=delete_tag_form,
     )
 
     assert remove_tag_response.status_code == 404

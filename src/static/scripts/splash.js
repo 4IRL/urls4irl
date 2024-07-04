@@ -22,7 +22,7 @@ function setToLoginButton() {
 }
 
 function loginModalOpener() {
-  const modalOpener = $.get(routes.login());
+  const modalOpener = $.get(routes.login);
 
   modalOpener.done((data, _, xhr) => {
     if (xhr.status === 200) {
@@ -38,7 +38,7 @@ function loginModalOpener() {
 }
 
 function registerModalOpener() {
-  const modalOpener = $.get(routes.register());
+  const modalOpener = $.get(routes.register);
 
   modalOpener.done((data, _, xhr) => {
     if (xhr.status === 200) {
@@ -104,7 +104,7 @@ function handleUserHasAccountNotEmailValidated(message) {
 }
 
 function emailValidationModalOpener() {
-  const modalOpener = $.get(routes.confirmEmailAfterRegister());
+  const modalOpener = $.get(routes.confirmEmailAfterRegister);
 
   modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;

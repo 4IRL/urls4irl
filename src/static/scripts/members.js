@@ -25,7 +25,7 @@ function getCurrentUTubOwnerUserID() {
 
 // Clear member selection
 function resetNewMemberForm() {
-  $(".add#username").val(null);
+  $("#usernameCreate").val(null);
 }
 
 // Clear the Member Deck

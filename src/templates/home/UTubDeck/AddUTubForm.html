@@ -1,17 +1,17 @@
 <div id="createUTubWrap" class="input-text-holder flex-column createDiv pad-in-15p" style="display: none;">
     <div class="text-input-container">
         <div class="text-input-inner-container">
-            <input class="text-input add" type="text" id="utubName" name="utubName" minlength={{CONSTANTS.UTUBS.MIN_NAME_LENGTH}} maxlength={{CONSTANTS.UTUBS.MAX_NAME_LENGTH}} required>
+            <input class="text-input" type="text" id="utubNameCreate" name="utubName" minlength={{CONSTANTS.UTUBS.MIN_NAME_LENGTH}} maxlength={{CONSTANTS.UTUBS.MAX_NAME_LENGTH}} required>
             <label class="text-input-label" for="utubName">UTub Name</label>
         </div>
-        <span class="text-input-error-message add" id="utubName-error"></span>
+        <span class="text-input-error-message" id="utubNameCreate-error"></span>
     </div>
     <div class="text-input-container">
         <div class="text-input-inner-container">
-            <input class="text-input add" type="text" id="utubDescription" name="utubDescription" maxlength={{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}}>
+            <input class="text-input" type="text" id="utubDescriptionCreate" name="utubDescription" maxlength={{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}}>
             <label class="text-input-label" for="utubDescription">UTub Description</label>
         </div>
-        <span class="text-input-error-message add" id="utubDescription-error"></span>
+        <span class="text-input-error-message" id="utubDescriptionCreate-error"></span>
     </div>
     <div class="flex-row justify-center" style="gap: 8px; flex: 1 1 auto; align-items: flex-end;">
         <!-- Checkbox to accept UTub creation -->

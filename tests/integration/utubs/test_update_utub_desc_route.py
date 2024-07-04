@@ -63,20 +63,20 @@ def test_update_valid_utub_description_as_creator(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 200
+    assert update_utub_desc_response.status_code == 200
 
     # Ensure JSON response is correct
-    edit_utub_desc_json_response = edit_utub_desc_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(update_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -155,20 +155,20 @@ def test_update_valid_empty_utub_description_as_creator(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 200
+    assert update_utub_desc_response.status_code == 200
 
     # Ensure JSON response is correct
-    edit_utub_desc_json_response = edit_utub_desc_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(update_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -247,20 +247,20 @@ def test_update_only_spaces_utub_description_as_creator(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 200
+    assert update_utub_desc_response.status_code == 200
 
     # Ensure JSON response is correct
-    edit_utub_desc_json_response = edit_utub_desc_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == ""
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(update_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == ""
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -341,20 +341,20 @@ def test_update_utub_description_with_same_description_as_creator(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 200
+    assert update_utub_desc_response.status_code == 200
 
     # Ensure JSON response is correct
-    edit_utub_desc_json_response = edit_utub_desc_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert int(edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert edit_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(update_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -431,20 +431,22 @@ def test_update_utub_description_as_member(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 403
+    assert update_utub_desc_response.status_code == 403
 
     # Ensure JSON response is correct
-    edit_utub_desc_json_response = edit_utub_desc_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
-    assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        update_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    )
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -522,20 +524,22 @@ def test_update_utub_description_as_creator_of_other_utub(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 403
+    assert update_utub_desc_response.status_code == 403
 
     # Ensure JSON response is correct
-    edit_utub_desc_json_response = edit_utub_desc_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
-    assert edit_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        update_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    )
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -596,13 +600,13 @@ def test_update_utub_description_of_invalid_utub(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=NONEXISTENT_UTUB_ID),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 404
+    assert update_utub_desc_response.status_code == 404
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -682,25 +686,25 @@ def test_update_utub_description_too_long(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 400
+    assert update_utub_desc_response.status_code == 400
 
     # Ensure JSON response is correct
-    edit_utub_desc_json_response = edit_utub_desc_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        edit_utub_desc_json_response[STD_JSON.MESSAGE]
+        update_utub_desc_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UTUB_DESC_TOO_LONG
     )
-    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 3
     assert (
-        edit_utub_desc_json_response[STD_JSON.ERRORS][
+        update_utub_desc_json_response[STD_JSON.ERRORS][
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM
         ]
         == UTUB_FAILURE.UTUB_DESC_FIELD_TOO_LONG
@@ -779,23 +783,23 @@ def test_update_utub_description_missing_description_field(
         UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 400
+    assert update_utub_desc_response.status_code == 400
 
     # Ensure JSON response is correct
-    edit_utub_desc_json_response = edit_utub_desc_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert edit_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
-        edit_utub_desc_json_response[STD_JSON.MESSAGE]
+        update_utub_desc_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
     )
-    assert int(edit_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 2
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -863,14 +867,14 @@ def test_update_utub_description_missing_csrf_token(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in edit_utub_desc_response.data
+    assert update_utub_desc_response.status_code == 400
+    assert b"<p>The CSRF token is missing.</p>" in update_utub_desc_response.data
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -923,13 +927,13 @@ def test_update_utub_description_updates_utub_last_updated(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 200
+    assert update_utub_desc_response.status_code == 200
 
     with app.app_context():
         updated_utub: Utubs = Utubs.query.filter(Utubs.id == current_utub_id).first()
@@ -965,13 +969,13 @@ def test_update_utub_desc_same_desc_does_not_update_utub_last_updated(
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: current_utub_description,
     }
 
-    edit_utub_desc_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
         data=utub_desc_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_desc_response.status_code == 200
+    assert update_utub_desc_response.status_code == 200
 
     with app.app_context():
         updated_utub: Utubs = Utubs.query.filter(Utubs.id == current_utub_id).first()

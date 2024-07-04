@@ -9,7 +9,7 @@ $("#ToLoginFromRegister")
 $("#submit").click((event) => handleRegister(event));
 
 function loginModalOpenerFromRegister() {
-  const modalOpener = $.get(routes.login());
+  const modalOpener = $.get(routes.login);
 
   modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
@@ -25,7 +25,7 @@ function handleRegister(event) {
   $("#submit").attr("disabled", "disabled");
 
   const registerRequest = $.ajax({
-    url: routes.register(),
+    url: routes.register,
     type: "POST",
     data: $("#ModalForm").serialize(),
   });

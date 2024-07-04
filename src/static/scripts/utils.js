@@ -35,7 +35,7 @@ $(document).ready(function () {
 });
 
 // Keyboard navigation between selected UTubs or URLs
-function bindURLKeyboardEventListenersWhenEditsNotOccurring() {
+function bindURLKeyboardEventListenersWhenUpdatesNotOccurring() {
   $(document)
     .off("keyup.switchurls")
     .on("keyup.switchurls", function (e) {
@@ -83,7 +83,7 @@ function bindURLKeyboardEventListenersWhenEditsNotOccurring() {
     });
 }
 
-function unbindURLKeyboardEventListenersWhenEditsOccurring() {
+function unbindURLKeyboardEventListenersWhenUpdatesOccurring() {
   $(document).off("keyup.switchurls");
 }
 
@@ -115,13 +115,13 @@ function hideInputs() {
   // Show UTub creation instead of UTub form
   if (!isHidden($("#createUTubWrap"))) addUTubHideInput();
   // Show UTub name instead of edit UTub name form
-  if (isHidden($("#URLDeckHeader"))) editUTubNameHideInput();
+  if (isHidden($("#URLDeckHeader"))) updateUTubNameHideInput();
   // Show UTub description instead of edit UTub description form
   if (
     isHidden($("#URLDeckSubheader")) &&
     $("#URLDeckSubheader").text().length !== 0
   )
-    editUTubDescriptionHideInput();
+    updateUTubDescriptionHideInput();
   // Show members instead of add member form
   if (isHidden($("#displayMemberWrap"))) addMemberHideInput();
 
@@ -187,7 +187,7 @@ function AJAXCall(type, url, data) {
 }
 
 // Creates edit button
-function makeEditButton(wh) {
+function makeUpdateButton(wh) {
   const editBtn = document.createElement("i");
 
   // Edit icon box

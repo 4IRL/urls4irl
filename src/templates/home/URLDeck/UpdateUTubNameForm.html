@@ -1,19 +1,14 @@
-
-<!-- Shown when editing UTub title and UTub has no description -->
-<p id="URLDeckSubheaderAddDescription" style="display: none;">Add a description?</p>
-
-<!-- Form to edit UTub Description -->
-<div class="createDiv flex-row full-width" id="UTubDescriptionEditWrap" style="display: none;">
-	<div class="text-input-container sixtyfive-width">
+<div class="createDiv flex-row full-width pad-top-5p" style="display: none;">
+	<div class="text-input-container full-width">
 		<div class="text-input-inner-container">
-			<input class="text-input edit" type="text" id="utubDescription" name="utubDescription" maxlength={{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}} required>
-			<label class="text-input-label" for="utubDescription">UTub Description</label>
+			<input class="text-input" type="text" id="utubNameUpdate" name="utubName" minlength={{CONSTANTS.UTUBS.MIN_NAME_LENGTH}} maxlength={{CONSTANTS.UTUBS.MAX_NAME_LENGTH}} required>
+			<label class="text-input-label" for="utubName">UTub Name</label>
 		</div>
-		<span class="text-input-error-message edit" id="utubDescription-error">This field is required.</span>
+		<span class="text-input-error-message" id="utubNameUpdate-error">This field is required.</span>
 	</div>
 
-	<!-- Submit edit UTub description -->
-	<i id="submitEditUTubDescriptionBtn" class="green-clickable mx-1 py-2">
+	<!-- Submit edit UTub name -->
+	<i id="utubNameSubmitBtnUpdate" class="green-clickable mx-1 py-2">
 		<svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor"
 			class="bi bi-check-square-fill" viewBox="0 0 16 16">
 			<path
@@ -21,8 +16,8 @@
 		</svg>
 	</i>
 
-	<!-- Cancel edit UTub description -->
-	<i class="mx-1 py-2" id="cancelEditUTubDescriptionBtn">
+	<!-- Cancel edit UTub name -->
+	<i class="mx-1 py-2" id="utubNameCancelBtnUpdate">
 		<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill cancelButton" viewBox="0 0 16 16" width="30" height="30">
 			<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708">
 			</path>

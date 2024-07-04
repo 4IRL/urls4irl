@@ -63,20 +63,20 @@ def test_update_valid_utub_name_as_creator(
         UTUB_FORM.UTUB_NAME: NEW_NAME,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 200
+    assert update_utub_name_response.status_code == 200
 
     # Ensure JSON response is correct
-    edit_utub_name_json_response = edit_utub_name_response.json
+    update_utub_name_json_response = update_utub_name_response.json
 
-    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert int(edit_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(update_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert update_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -156,20 +156,20 @@ def test_update_valid_utub_same_name_as_creator(
         UTUB_FORM.UTUB_NAME: NEW_NAME,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 200
+    assert update_utub_name_response.status_code == 200
 
     # Ensure JSON response is correct
-    edit_utub_name_json_response = edit_utub_name_response.json
+    update_utub_name_json_response = update_utub_name_response.json
 
-    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert int(edit_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert edit_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert int(update_utub_name_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
+    assert update_utub_name_json_response[UTUB_SUCCESS.UTUB_NAME] == NEW_NAME
 
     # Ensure database is consistent after user requested same name for UTub
     with app.app_context():
@@ -254,25 +254,25 @@ def test_update_utub_empty_name_as_creator(
         UTUB_FORM.UTUB_NAME: NEW_NAME,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 400
+    assert update_utub_name_response.status_code == 400
 
     # Ensure JSON response is correct
-    edit_utub_name_json_response = edit_utub_name_response.json
+    update_utub_name_json_response = update_utub_name_response.json
 
-    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
-        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
     )
     assert (
-        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
+        update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
         == UTUB_FAILURE.FIELD_REQUIRED
     )
 
@@ -359,24 +359,24 @@ def test_update_utub_name_only_spaces_as_creator(
         UTUB_FORM.UTUB_NAME: NEW_NAME,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 400
+    assert update_utub_name_response.status_code == 400
 
     # Ensure JSON response is correct
-    edit_utub_name_json_response = edit_utub_name_response.json
+    update_utub_name_json_response = update_utub_name_response.json
 
-    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
-        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
     )
-    assert edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
+    assert update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
         "Name cannot contain only spaces or be empty."
     ]
 
@@ -459,20 +459,22 @@ def test_update_utub_name_as_member(
         UTUB_FORM.UTUB_NAME: NEW_NAME,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 403
+    assert update_utub_name_response.status_code == 403
 
     # Ensure JSON response is correct
-    edit_utub_name_json_response = edit_utub_name_response.json
+    update_utub_name_json_response = update_utub_name_response.json
 
-    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
-    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        update_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    )
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -547,20 +549,22 @@ def test_update_utub_name_as_creator_of_another_utub(
         UTUB_FORM.UTUB_NAME: NEW_NAME,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 403
+    assert update_utub_name_response.status_code == 403
 
     # Ensure JSON response is correct
-    edit_utub_name_json_response = edit_utub_name_response.json
+    update_utub_name_json_response = update_utub_name_response.json
 
-    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
-    assert edit_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        update_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
+    )
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -627,13 +631,13 @@ def test_update_name_of_invalid_utub(
         UTUB_FORM.UTUB_NAME: utub_of_user.name + "Hello",
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=NONEXISTENT_UTUB_ID),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 404
+    assert update_utub_name_response.status_code == 404
 
     # Ensure database is consistent after user requested same name for UTub
     with app.app_context():
@@ -722,25 +726,25 @@ def test_update_name_of_utub_too_long_name(
         UTUB_FORM.UTUB_NAME: NEW_NAME,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 400
+    assert update_utub_name_response.status_code == 400
 
     # Ensure JSON response is correct
-    edit_utub_name_json_response = edit_utub_name_response.json
+    update_utub_name_json_response = update_utub_name_response.json
 
-    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
-        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
     )
     assert (
-        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
+        update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
         == UTUB_FAILURE.UTUB_NAME_FIELD_INVALID
     )
 
@@ -824,25 +828,25 @@ def test_update_name_of_utub_missing_name_field_form(
         UTUB_FORM.CSRF_TOKEN: csrf_token_string,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 400
+    assert update_utub_name_response.status_code == 400
 
     # Ensure JSON response is correct
-    edit_utub_name_json_response = edit_utub_name_response.json
+    update_utub_name_json_response = update_utub_name_response.json
 
-    assert edit_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(edit_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
-        edit_utub_name_json_response[STD_JSON.MESSAGE]
+        update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
     )
     assert (
-        edit_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
+        update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
         == UTUB_FAILURE.FIELD_REQUIRED
     )
 
@@ -915,14 +919,14 @@ def test_update_name_of_utub_missing_csrf_token(
 
     utub_name_form = {UTUB_FORM.UTUB_NAME: NEW_NAME}
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in edit_utub_name_response.data
+    assert update_utub_name_response.status_code == 400
+    assert b"<p>The CSRF token is missing.</p>" in update_utub_name_response.data
 
     # Ensure database is consistent with just updating the UTub name
     with app.app_context():
@@ -975,13 +979,13 @@ def test_update_name_updates_utub_last_updated_field(
         UTUB_FORM.UTUB_NAME: NEW_NAME,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 200
+    assert update_utub_name_response.status_code == 200
 
     with app.app_context():
         updated_utub: Utubs = Utubs.query.filter(Utubs.id == current_utub_id).first()
@@ -1015,13 +1019,13 @@ def test_same_name_does_not_update_utub_last_updated_time(
         UTUB_FORM.UTUB_NAME: current_utub_name,
     }
 
-    edit_utub_name_response = client.patch(
+    update_utub_name_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
         data=utub_name_form,
     )
 
     # Ensure valid reponse
-    assert edit_utub_name_response.status_code == 200
+    assert update_utub_name_response.status_code == 200
 
     with app.app_context():
         updated_utub: Utubs = Utubs.query.filter(Utubs.id == current_utub_id).first()

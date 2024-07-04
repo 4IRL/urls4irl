@@ -86,7 +86,7 @@ def get_utubs():
 
 @utubs.route("/utubs", methods=["POST"])
 @email_validation_required
-def add_utub():
+def create_utub():
     """
     User wants to create a new utub.
     Assocation Object:

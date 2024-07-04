@@ -378,7 +378,7 @@
     flex-shrink: 1;
 }
 
-.editURL {
+.updateURL {
     width: 75%;
     color: var(--darkGrayTextColor);
 }
@@ -391,13 +391,13 @@
     display: flex !important;
 }
 
-.editURLBtnWrap {
+.updateURLBtnWrap {
     padding-inline:10px;
     gap: 10px;
 }
 
-.hiddenBtn#editUTubDescriptionBtn, 
-.hiddenBtn#editUTubNameBtn {
+.hiddenBtn#updateUTubDescriptionBtn, 
+.hiddenBtn#updateUTubNameBtn {
     display: none !important;
 }
 
@@ -530,19 +530,19 @@
     color: rgba(255, 255, 255, 0.75);
 }
 
-#editUTubDescriptionBtn,
-#editUTubNameBtn {
+#updateUTubDescriptionBtn,
+#updateUTubNameBtn {
     color: rgba(84, 84, 84, 1.0);
 }
 
 #UTubDescriptionSubheaderWrap > .visibleBtn,
-#UTubNameEditWrap > .visibleBtn {
+#UTubNameUpdateWrap > .visibleBtn {
     display: none !important;
 
 }
 
 #UTubDescriptionSubheaderWrap:hover > .visibleBtn,
-#UTubNameEditWrap:hover > .visibleBtn {
+#UTubNameUpdateWrap:hover > .visibleBtn {
     display: flex !important;
 }
 
