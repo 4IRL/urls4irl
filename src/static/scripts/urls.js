@@ -141,9 +141,9 @@ function accessAllURLsInUTub() {
 
 // Clear new URL Form
 function resetNewURLForm() {
-  $(".add#urlTitle").val("");
-  $(".add#urlString").val("");
-  hideIfShown($(".add#urlString").closest(".createDiv"));
+  $("#urlTitleCreate").val("");
+  $("#urlStringCreate").val("");
+  hideIfShown($("#urlStringCreate").closest(".createDiv"));
 }
 
 // Clear the URL Deck

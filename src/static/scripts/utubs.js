@@ -337,7 +337,7 @@ function createNewUTubEventListeners() {
     .on("click.addUTub", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      checkSameNameUTub(true, $(".add#utubName").val());
+      checkSameNameUTub(true, $("#utubNameCreate").val());
     });
 
   $("#cancelCreateUTub")
@@ -354,7 +354,7 @@ function createNewUTubEventListeners() {
       switch (e.which) {
         case 13:
           // Handle enter key pressed
-          checkSameNameUTub(true, $(".add#utubName").val());
+          checkSameNameUTub(true, $("#utubNameCreate").val());
           break;
         case 27:
           // Handle escape key pressed
@@ -471,7 +471,7 @@ function sameUTubNameOnNewUTubWarningShowModal() {
       e.preventDefault();
       e.stopPropagation();
       sameNameWarningHideModal();
-      highlightInput($(".add#utubName"));
+      highlightInput($("#utubNameCreate"));
     });
 
   hideIfShown($("#modalRedirect"));
@@ -485,14 +485,14 @@ function sameUTubNameOnNewUTubWarningShowModal() {
     .on("click", function (e) {
       e.preventDefault();
       addUTub();
-      $(".add#utubName").val(null);
-      $(".add#utubDescription").val(null);
+      $("#utubNameCreate").val(null);
+      $("#utubDescriptionCreate").val(null);
     });
 
   $("#confirmModal").modal("show");
   $("#confirmModal").on("hidden.bs.modal", function (e) {
     // Refocus on the name's input box
-    highlightInput($(".add#utubName"));
+    highlightInput($("#utubNameCreate"));
   });
 }
 

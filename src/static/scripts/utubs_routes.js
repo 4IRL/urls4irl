@@ -46,7 +46,7 @@ $(document).ready(function () {
 // Shows new UTub input fields
 function addUTubShowInput() {
   showInput("#createUTubWrap");
-  highlightInput($(".add#utubName"));
+  highlightInput($("#utubNameCreate"));
   createNewUTubEventListeners();
   hideIfShown($("#listUTubs"));
   $("#UTubDeck").find(".icon-holder").hide();
@@ -57,8 +57,8 @@ function addUTubShowInput() {
 function addUTubHideInput() {
   hideIfShown($("#createUTubWrap"));
   showIfHidden($("#listUTubs"));
-  $(".add#utubName").val(null);
-  $(".add#utubDescription").val(null);
+  $("#utubNameCreate").val(null);
+  $("#utubDescriptionCreate").val(null);
   removeNewUTubEventListeners();
   resetUTubFailErrors();
   $("#UTubDeck").find(".icon-holder").show();
@@ -88,8 +88,8 @@ function addUTub() {
 // Handles preparation for post request to create a new UTub
 function addUTubSetup() {
   const postURL = routes.addUTub;
-  const newUTubName = $(".add#utubName").val();
-  const newUTubDescription = $(".add#utubDescription").val();
+  const newUTubName = $("#utubNameCreate").val();
+  const newUTubDescription = $("#utubDescriptionCreate").val();
   data = { utubName: newUTubName, utubDescription: newUTubDescription };
 
   return [postURL, data];
@@ -144,17 +144,17 @@ function addUTubFailShowErrors(errors) {
 
 // Show the error message and highlight the input box border red on error of field
 function displayUTubFailErrors(key, errorMessage) {
-  $(".add#" + key + "-error")
+  $("#" + key + "Create-error")
     .addClass("visible")
     .text(errorMessage);
-  $(".add#" + key).addClass("invalid-field");
+  $("#" + key + "Create").addClass("invalid-field");
 }
 
 function resetUTubFailErrors() {
   const newUTubFields = ["utubName", "utubDescription"];
   newUTubFields.forEach((fieldName) => {
-    $(".add#" + fieldName).removeClass("invalid-field");
-    $(".add#" + fieldName + "-error").removeClass("visible");
+    $("#" + fieldName + "Create").removeClass("invalid-field");
+    $("#" + fieldName + "Create-error").removeClass("visible");
   });
 }
 

@@ -5,7 +5,7 @@ function addMemberShowInput() {
   showIfHidden($("#addMemberWrap").show());
   hideIfShown($("#displayMemberWrap"));
   hideIfShown($("#addMemberBtn"));
-  highlightInput($(".add#username"));
+  highlightInput($("#usernameCreate"));
   setupAddMemberEventListeners();
 }
 
@@ -39,7 +39,7 @@ function addMember() {
 
 function setupAddMemberEventListeners() {
   // Prevent clicking in input box from closing the form
-  $(".add#username")
+  $("#usernameCreate")
     .off("click.addMember")
     .on("click.addMember", function (e) {
       e.stopPropagation();
@@ -100,7 +100,7 @@ function removeAddMemberEventListeners() {
 function addMemberSetup() {
   const postURL = routes.addMember(getActiveUTubID());
 
-  const newMemberUsername = $(".add#username").val();
+  const newMemberUsername = $("#usernameCreate").val();
   data = {
     username: newMemberUsername,
   };
@@ -157,17 +157,17 @@ function addMemberFailShowErrors(errors) {
 }
 
 function displayAddMemberFailErrors(key, errorMessage) {
-  $(".add#" + key + "-error")
+  $("#" + key + "Create-error")
     .addClass("visible")
     .text(errorMessage);
-  $("input.add#" + key).addClass("invalid-field");
+  $("#" + key + "Create").addClass("invalid-field");
 }
 
 function resetAddMemberFailErrors() {
   const addMemberFields = ["username"];
   addMemberFields.forEach((fieldName) => {
-    $(".add#" + fieldName + "-error").removeClass("visible");
-    $("input.add#" + fieldName).removeClass("invalid-field");
+    $("#" + fieldName + "Create-error").removeClass("visible");
+    $("#" + fieldName + "Create").removeClass("invalid-field");
   });
 }
 
