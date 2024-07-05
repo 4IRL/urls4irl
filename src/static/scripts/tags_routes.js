@@ -1,9 +1,9 @@
 /* Add tag to URL */
 
-// DP 09/17 do we need the ability to addTagtoURL interstitially before addURL is completed?
+// DP 09/17 do we need the ability to createTagtoURL interstitially before addURL is completed?
 
 // Displays new Tag input prompt on selected URL
-function addTagShowInput() {
+function createTagShowInput() {
   // Prevent deselection of URL while modifying its values
   unbindSelectURLBehavior();
   unbindEscapeKey();
@@ -12,7 +12,7 @@ function addTagShowInput() {
   let URLCard = getSelectedURLCard();
 
   // Show temporary div element containing input
-  let inputEl = URLCard.find(".addTag");
+  let inputEl = URLCard.find(".createTag");
   inputEl.addClass("activeInput");
 
   const inputWrapper = inputEl.closest(".createDiv");
@@ -21,22 +21,22 @@ function addTagShowInput() {
   bindEscapeToExitCreateNewTag(inputWrapper);
 
   // Disable the other buttons in the URL
-  disable(URLCard.find(".accessURLBtn"));
-  disable(URLCard.find(".updateURLBtn"));
-  disable(URLCard.find(".delURLBtn"));
+  disable(URLCard.find(".urlBtnAccess"));
+  disable(URLCard.find(".urlBtnUpdate"));
+  disable(URLCard.find(".urlBtnDelete"));
 
   // Modify add tag button
-  const addTagBtn = URLCard.find(".addTagBtn");
-  addTagBtn.removeClass("btn-info").addClass("btn-warning");
-  addTagBtn.text("Return");
-  addTagBtn.off("click").on("click", function (e) {
+  const tagBtnCreate = URLCard.find(".tagBtnCreate");
+  tagBtnCreate.removeClass("btn-info").addClass("btn-warning");
+  tagBtnCreate.text("Return");
+  tagBtnCreate.off("click").on("click", function (e) {
     e.stopPropagation();
-    cancelAddTagHideInput(inputWrapper);
+    tagCancelBtnCreateHideInput(inputWrapper);
   });
 
   // 02/29/24 Ideally this input would be a dropdown select input that allowed typing. As user types, selection menu filters on each keypress. User can either choose a suggested existing option, or enter a new custom tag
   // Redefine UI interaction with showInputBtn
-  // let showInputBtn = $(URLCard).find(".addTagBtn");
+  // let showInputBtn = $(URLCard).find(".tagBtnCreate");
   // showInputBtn.off("click");
   // showInputBtn.on("click", highlightInput(inputEl));
 
@@ -49,23 +49,23 @@ function addTagShowInput() {
   // </select>
 }
 
-function cancelAddTagHideInput(inputWrapper) {
+function tagCancelBtnCreateHideInput(inputWrapper) {
   let URLCard = getSelectedURLCard();
   bindEscapeToUnselectURL(getSelectedURLID());
 
   // Enable the buttons again
-  enable(URLCard.find(".accessURLBtn"));
-  enable(URLCard.find(".updateURLBtn"));
-  enable(URLCard.find(".delURLBtn"));
+  enable(URLCard.find(".urlBtnAccess"));
+  enable(URLCard.find(".urlBtnUpdate"));
+  enable(URLCard.find(".urlBtnDelete"));
 
   // Modify add tag button
-  const addTagBtn = URLCard.find(".addTagBtn");
-  addTagBtn.removeClass("btn-warning").addClass("btn-info");
-  addTagBtn.text("Add Tag");
+  const tagBtnCreate = URLCard.find(".tagBtnCreate");
+  tagBtnCreate.removeClass("btn-warning").addClass("btn-info");
+  tagBtnCreate.text("Add Tag");
 
-  addTagBtn.off("click").on("click", function (e) {
+  tagBtnCreate.off("click").on("click", function (e) {
     e.stopPropagation();
-    addTagShowInput();
+    createTagShowInput();
   });
 
   hideIfShown(inputWrapper);
@@ -74,9 +74,9 @@ function cancelAddTagHideInput(inputWrapper) {
 }
 
 // Handles addition of new Tag to URL after user submission
-function addTag() {
+function createTag() {
   // Extract data to submit in POST request
-  [postURL, data] = addTagSetup();
+  [postURL, data] = createTagSetup();
 
   AJAXCall("post", postURL, data);
 
@@ -85,7 +85,7 @@ function addTag() {
     console.log("success");
 
     if (xhr.status === 200) {
-      addTagSuccess(response);
+      createTagSuccess(response);
     }
   });
 
@@ -95,18 +95,18 @@ function addTag() {
     if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
-      addTagFail(response);
+      createTagFail(response);
     }
   });
 }
 
 // Prepares post request inputs for addition of a new Tag to URL
-function addTagSetup() {
+function createTagSetup() {
   // Assemble post request route
   let postURL = routes.createTag(getActiveUTubID(), getSelectedURLID());
 
   // Assemble submission data
-  let newTag = getSelectedURLCard().find(".addTag").val();
+  let newTag = getSelectedURLCard().find(".createTag").val();
   data = {
     tagString: newTag,
   };
@@ -115,14 +115,14 @@ function addTagSetup() {
 }
 
 // Displays changes related to a successful addition of a new Tag
-function addTagSuccess(response) {
+function createTagSuccess(response) {
   // Rebind selection behavior of current URL
   rebindSelectBehavior();
 
   let selectedURLCard = getSelectedURLCard();
 
   // Clear input field
-  let newTagInputField = selectedURLCard.find(".addTag");
+  let newTagInputField = selectedURLCard.find(".createTag");
   newTagInputField.val("");
   hideIfShown(newTagInputField.closest(".createDiv"));
 
@@ -148,7 +148,7 @@ function addTagSuccess(response) {
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new Tag
-function addTagFail(response) {
+function createTagFail(response) {
   console.log("Basic implementation. Needs revision");
   console.log(response.responseJSON.errorCode);
   console.log(response.responseJSON.message);
@@ -157,9 +157,9 @@ function addTagFail(response) {
 /* Remove tag from URL */
 
 // Remove tag from selected URL
-function removeTag(tagID) {
+function deleteTag(tagID) {
   // Extract data to submit in POST request
-  postURL = removeTagSetup(tagID);
+  postURL = deleteTagSetup(tagID);
 
   let request = AJAXCall("delete", postURL, []);
 
@@ -167,7 +167,7 @@ function removeTag(tagID) {
   request.done(function (response, textStatus, xhr) {
     if (xhr.status === 200) {
       console.log("success");
-      removeTagSuccess(response);
+      deleteTagSuccess(response);
     }
   });
 
@@ -178,20 +178,20 @@ function removeTag(tagID) {
     if (xhr.status === 404) {
       // Reroute to custom U4I 404 error page
     } else {
-      removeTagFail(response);
+      deleteTagFail(response);
     }
   });
 }
 
 // Prepares post request inputs for removal of a URL
-function removeTagSetup(tagID) {
-  let postURL = routes.removeTag(getActiveUTubID(), getSelectedURLID(), tagID);
+function deleteTagSetup(tagID) {
+  let postURL = routes.deleteTag(getActiveUTubID(), getSelectedURLID(), tagID);
 
   return postURL;
 }
 
 // Displays changes related to a successful removal of a URL
-function removeTagSuccess(response) {
+function deleteTagSuccess(response) {
   // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
 
   let tagID = response.tag.tagID;
@@ -214,7 +214,7 @@ function removeTagSuccess(response) {
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
-function removeTagFail(response) {
+function deleteTagFail(response) {
   console.log("Basic implementation. Needs revision");
   console.log(response);
   console.log(response.responseJSON);
@@ -225,14 +225,14 @@ function removeTagFail(response) {
 /* Add tag to UTub */
 // Unimplemented on backend
 
-/* Edit tag in URL */
+/* Update tag in URL */
 // Unimplemented on frontend
 
-/* Edit tag in UTub */
+/* Update tag in UTub */
 // Unimplemented on backend
-// Allows user to edit all tags in the UTub
-// function editTagsInDeckShowInput(handle) {
-//   hideIfShown($("#editTagButton"));
+// Allows user to update all tags in the UTub
+// function updateTagsInDeckShowInput(handle) {
+//   hideIfShown($("#updateTagButton"));
 //   showIfHidden($("#submitTagButton"));
 //   var listTagDivs = $("#listTags").children();
 
@@ -240,22 +240,22 @@ function removeTagFail(response) {
 //     if (i == 0 || i >= listTagDivs.length - 1) {
 //     } else {
 //       if (handle == "submit") {
-//         // Editing, then handle submission
+//         // Updating, then handle submission
 //         console.log("submit initiated");
 //         var tagID = $(listTagDivs[i]).find('input[type="checkbox"]')[0].tagid;
 //         var tagText = $($(listTagDivs[i]).find('input[type="text"]')).val();
 //         console.log(tagID);
 //         console.log(tagText);
-//         postData([tagID, tagText], "editTags");
+//         postData([tagID, tagText], "updateTags");
 //       } else {
-//         // User wants to edit, handle input text field display
+//         // User wants to update, handle input text field display
 //         var tagText = $(listTagDivs[i]).find("label")[0].innerHTML;
 
 //         var input = document.createElement("input");
 //         $(input).attr({
 //           type: "text",
 //           class: "userInput",
-//           placeholder: "Edit tag name",
+//           placeholder: "Update tag name",
 //           value: tagText,
 //         });
 //         $(listTagDivs[i]).find("label").hide();

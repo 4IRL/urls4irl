@@ -2,10 +2,10 @@
 
 $(document).ready(function () {
   /* Bind click functions */
-  setAddDeleteUTubEventListeners();
+  setCreateDeleteUTubEventListeners();
 
-  // Edit UTub name
-  $("#updateUTubNameBtn").on("click", function (e) {
+  // Update UTub name
+  $("#utubNameBtnUpdate").on("click", function (e) {
     hideInputs();
     deselectAllURLs();
     updateUTubDescriptionHideInput();
@@ -17,7 +17,7 @@ $(document).ready(function () {
   $("#utubNameSubmitBtnUpdate").on("click", function (e) {
     // Prevent event from bubbling up to window which would exit the input box
     e.stopPropagation();
-    // Skip if edit is identical to original
+    // Skip if update is identical to original
     if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
       updateUTubNameHideInput();
       return;
@@ -25,7 +25,7 @@ $(document).ready(function () {
     checkSameNameUTub(false, $("#utubNameUpdate").val());
   });
 
-  // Edit UTub description
+  // Update UTub description
   $("#updateUTubDescriptionBtn").on("click", function (e) {
     hideInputs();
     deselectAllURLs();
@@ -50,7 +50,7 @@ function createUTubShowInput() {
   createNewUTubEventListeners();
   hideIfShown($("#listUTubs"));
   $("#UTubDeck").find(".icon-holder").hide();
-  removeAddDeleteUTubEventListeners();
+  removeCreateDeleteUTubEventListeners();
 }
 
 // Hides new UTub input fields
@@ -62,7 +62,7 @@ function createUTubHideInput() {
   removeNewUTubEventListeners();
   resetUTubFailErrors();
   $("#UTubDeck").find(".icon-holder").show();
-  setAddDeleteUTubEventListeners();
+  setCreateDeleteUTubEventListeners();
 }
 
 // Handles post request and response for adding a new UTub
@@ -158,63 +158,63 @@ function resetUTubFailErrors() {
   });
 }
 
-/* Edit UTub */
+/* Update UTub */
 
-// Shows input fields for editing an exiting UTub's name
+// Shows input fields for updating an exiting UTub's name
 function updateUTubNameShowInput() {
-  // Show edit fields
+  // Show update fields
   $("#utubNameUpdate").text(getCurrentUTubName());
   showInput("#utubNameUpdate");
 
-  // Hide current name and edit button
+  // Hide current name and update button
   hideIfShown($("#URLDeckHeader"));
-  hideIfShown($("#updateUTubNameBtn"));
-  hideIfShown($("#addURLBtn"));
+  hideIfShown($("#utubNameBtnUpdate"));
+  hideIfShown($("#urlBtnCreate"));
 
   // Handle hiding the button on mobile when hover events stay after touch
-  $("#updateUTubNameBtn").removeClass("visibleBtn");
+  $("#utubNameBtnUpdate").removeClass("visibleBtn");
 
   // Setup event listeners on window and escape/enter keys to escape the input box
   setEventListenersToEscapeUpdateUTubName();
 
-  // Prevent URL keyboard selection while editing name
+  // Prevent URL keyboard selection while updating name
   unbindURLKeyboardEventListenersWhenUpdatesOccurring();
 
   if ($("#URLDeckSubheader").text().length === 0) {
-    allowUserToAddDescriptionIfEmptyOnTitleUpdate();
+    allowUserToCreateDescriptionIfEmptyOnTitleUpdate();
   }
 }
 
-// Hides input fields for editing an exiting UTub's name
+// Hides input fields for updating an exiting UTub's name
 function updateUTubNameHideInput() {
-  // Hide edit fields
+  // Hide update fields
   hideInput("#utubNameUpdate");
 
-  // Show values and edit button
+  // Show values and update button
   showIfHidden($("#URLDeckHeader"));
-  showIfHidden($("#updateUTubNameBtn"));
-  showIfHidden($("#addURLBtn"));
+  showIfHidden($("#utubNameBtnUpdate"));
+  showIfHidden($("#urlBtnCreate"));
 
   // Remove event listeners on window and escape/enter keys
   removeEventListenersToEscapeUpdateUTubName();
 
   // Handle giving mobile devices ability to see button again
-  $("#updateUTubNameBtn").addClass("visibleBtn");
+  $("#utubNameBtnUpdate").addClass("visibleBtn");
 
   // Allow URL selection with keyboard again
   bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
 
   if ($("#URLDeckSubheader").text().length === 0) {
-    hideIfShown($("p#URLDeckSubheaderAddDescription"));
+    hideIfShown($("#URLDeckSubheaderCreateDescription"));
   }
 
   // Remove any errors if shown
   resetUpdateUTubNameFailErrors();
 }
 
-// Handles post request and response for editing an existing UTub's name
+// Handles post request and response for updating an existing UTub's name
 function updateUTubName() {
-  // Skip if edit is identical
+  // Skip if update is identical
   if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
     updateUTubNameHideInput();
     return;
@@ -237,25 +237,25 @@ function updateUTubName() {
   });
 }
 
-// Handles preparation for post request to edit an existing UTub
+// Handles preparation for post request to update an existing UTub
 function updateUTubNameSetup() {
   const postURL = routes.updateUTubName(getActiveUTubID());
 
-  const editedUTubName = $("#utubNameUpdate").val();
-  data = { utubName: editedUTubName };
+  const updatedUTubName = $("#utubNameUpdate").val();
+  data = { utubName: updatedUTubName };
 
   return [postURL, data];
 }
 
-// Handle edition of UTub's name
+// Handle updateion of UTub's name
 function updateUTubNameSuccess(response) {
   const UTubName = response.utubName;
 
   $("#confirmModal").modal("hide");
 
   // UTubDeck display updates
-  const editedUTubSelector = $("#listUTubs").find(".active");
-  editedUTubSelector.find(".UTubName").text(UTubName);
+  const updatedUTubSelector = $("#listUTubs").find(".active");
+  updatedUTubSelector.find(".UTubName").text(UTubName);
 
   // Display updates
   displayState1UTubDeck(getActiveUTubID(), getCurrentUTubOwnerUserID());
@@ -278,7 +278,7 @@ function updateUTubNameFail(xhr) {
   }
 }
 
-// Cycle through the valid errors for editing a UTub name
+// Cycle through the valid errors for updating a UTub name
 function updateUTubNameFailShowErrors(errors) {
   for (let key in errors) {
     switch (key) {
@@ -306,11 +306,11 @@ function resetUpdateUTubNameFailErrors() {
   });
 }
 
-/* Edit UTub Description */
+/* Update UTub Description */
 
-// Shows input fields for editing an exiting UTub's description
+// Shows input fields for updating an exiting UTub's description
 function updateUTubDescriptionShowInput() {
-  // Show edit fields
+  // Show update fields
   $("#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
   showInput("#utubDescriptionUpdate");
   showIfHidden($("#utubDescriptionSubmitBtnUpdate"));
@@ -321,15 +321,15 @@ function updateUTubDescriptionShowInput() {
   // Handle hiding the button on mobile when hover events stay after touch
   $("#updateUTubDescriptionBtn").removeClass("visibleBtn");
 
-  // Hide current description and edit button
+  // Hide current description and update button
   hideIfShown($("#UTubDescription"));
   hideIfShown($("#updateUTubDescriptionBtn"));
   hideIfShown($("#URLDeckSubheader"));
 }
 
-// Hides input fields for editing an exiting UTub's description
+// Hides input fields for updating an exiting UTub's description
 function updateUTubDescriptionHideInput() {
-  // Hide edit fields
+  // Hide update fields
   hideInput("#utubDescriptionUpdate");
   hideIfShown($("#utubDescriptionSubmitBtnUpdate"));
 
@@ -339,7 +339,7 @@ function updateUTubDescriptionHideInput() {
   // Remove event listeners for window click and escape/enter keys
   removeEventListenersToEscapeUpdateUTubDescription();
 
-  // Show values and edit button
+  // Show values and update button
   showIfHidden($("#URLDeckSubheader"));
   showIfHidden($("#updateUTubDescriptionBtn"));
 
@@ -347,7 +347,7 @@ function updateUTubDescriptionHideInput() {
   resetUpdateUTubDescriptionFailErrors();
 }
 
-// Handles post request and response for editing an existing UTub's description
+// Handles post request and response for updating an existing UTub's description
 function updateUTubDescription() {
   // Skip if identical
   if ($("#URLDeckSubheader").text() === $("#utubDescriptionUpdate").val()) {
@@ -372,21 +372,21 @@ function updateUTubDescription() {
   });
 }
 
-// Handles preparation for post request to edit an existing UTub
+// Handles preparation for post request to update an existing UTub
 function updateUTubDescriptionSetup() {
   const postURL = routes.updateUTubDescription(getActiveUTubID());
 
-  const editedUTubDescription = $("#utubDescriptionUpdate").val();
-  data = { utubDescription: editedUTubDescription };
+  const updatedUTubDescription = $("#utubDescriptionUpdate").val();
+  data = { utubDescription: updatedUTubDescription };
 
   return [postURL, data];
 }
 
-// Handle edition of UTub's description
+// Handle updateion of UTub's description
 function updateUTubDescriptionSuccess(response) {
   const utubDescription = response.utubDescription;
 
-  // Change displayed and editable value for utub description
+  // Change displayed and updateable value for utub description
   $("#URLDeckSubheader").text(utubDescription);
   $("#utubDescriptionUpdate").val(utubDescription);
 
@@ -410,7 +410,7 @@ function updateUTubDescriptionFail(xhr) {
   }
 }
 
-// Cycle through the valid errors for editing a UTub name
+// Cycle through the valid errors for updating a UTub name
 function updateUTubDescriptionFailShowErrors(errors) {
   for (let key in errors) {
     switch (key) {

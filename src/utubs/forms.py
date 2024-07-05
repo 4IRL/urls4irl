@@ -40,7 +40,7 @@ class UTubForm(FlaskForm):
 
 class UTubNewNameForm(FlaskForm):
     """
-    Form to edit a UTub name. Inherits from FlaskForm. All fields require data.
+    Form to update a UTub name. Inherits from FlaskForm. All fields require data.
 
     Fields:
         name (Stringfield): Maximum 30 chars? TODO

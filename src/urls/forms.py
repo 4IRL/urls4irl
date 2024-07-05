@@ -40,7 +40,7 @@ class NewURLForm(FlaskForm):
 
 class UpdateURLForm(FlaskForm):
     """
-    Form to edit a URL in this UTub. Inherits from FlaskForm.
+    Form to update a URL in this UTub. Inherits from FlaskForm.
 
     Fields:
         URL (Stringfield): Required. Maximum 2000 chars? TODO
@@ -60,7 +60,7 @@ class UpdateURLForm(FlaskForm):
 
 class UpdateURLTitleForm(FlaskForm):
     """
-    Form to edit a URL in this UTub. Inherits from FlaskForm.
+    Form to update a URL in this UTub. Inherits from FlaskForm.
 
     Fields:
         url_title (Stringfield): Required. Maximum 2000 chars? TODO

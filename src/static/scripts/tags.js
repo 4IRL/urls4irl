@@ -3,11 +3,11 @@
 $(document).ready(function () {
   /* Bind click functions */
 
-  // Complete edit tags
+  // Complete update tags
   $("#submitTagButton").on("click", function (e) {
     e.stopPropagation();
     e.preventDefault();
-    editTags();
+    updateTags();
   });
 });
 
@@ -51,7 +51,7 @@ function bindEscapeToExitCreateNewTag(inputWrapper) {
     .bind("keyup.27", function (e) {
       if (e.which === 27) {
         e.stopPropagation();
-        cancelAddTagHideInput(inputWrapper);
+        cancelCreateTagHideInput(inputWrapper);
       }
     });
 }

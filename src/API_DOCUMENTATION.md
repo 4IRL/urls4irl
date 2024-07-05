@@ -874,13 +874,13 @@ Invalid form data sent with the request.
 
 </details>
 <details>
- <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/name</b></code> <code>(edit a UTub name)</code></summary>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/name</b></code> <code>(update a UTub name)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
-> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to edit |
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to update |
 
 ##### Request Payload
 
@@ -962,13 +962,13 @@ Invalid form data sent with the request.
 
 </details>
 <details>
- <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/description</b></code> <code>(edit a UTub description)</code></summary>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/description</b></code> <code>(update a UTub description)</code></summary>
 
 ##### Parameters
 
 > | name   |  type      | data type      | description                                          |
 > |--------|------------|----------------|------------------------------------------------------|
-> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to edit |
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to update |
 
 ##### Request Payload
 
@@ -1434,7 +1434,7 @@ Indicates form errors with adding this URL to this UTub.
 
 </details>
 <details>
- <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}</b></code> <code>(edit the URL string in a UTub)</code></summary>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}</b></code> <code>(update the URL string in a UTub)</code></summary>
 
 ##### Parameters
 
@@ -1553,7 +1553,7 @@ Indicates missing or invalid form data sent in the request.
 </details>
 
 <details>
- <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/title</b></code> <code>(edit the title of a URL in a UTub)</code></summary>
+ <summary><code>PATCH</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/title</b></code> <code>(update the title of a URL in a UTub)</code></summary>
 
 ##### Parameters
 

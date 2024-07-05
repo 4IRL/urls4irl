@@ -1,24 +1,24 @@
 /* Add URL */
 
 // Displays new URL input prompt
-function addURLHideInput() {
-  hideInput("#addURL");
+function createURLHideInput() {
+  hideInput("#createURL");
   newURLInputRemoveEventListeners();
   if (!getNumOfURLs()) $("#NoURLsSubheader").show();
 }
 
-// Displays new URL input prompt
-function addURLShowInput() {
-  showInput("#addURL");
+// Hides new URL input prompt
+function createURLShowInput() {
+  showInput("#createURL");
   highlightInput($("#urlTitleCreate"));
   newURLInputAddEventListeners();
   if (!getNumOfURLs()) $("#NoURLsSubheader").hide();
 }
 
 // Handles addition of new URL after user submission
-function addURL() {
+function createURL() {
   // Extract data to submit in POST request
-  [postURL, data] = addURLSetup();
+  [postURL, data] = createURLSetup();
 
   AJAXCall("post", postURL, data);
 
@@ -27,7 +27,7 @@ function addURL() {
     console.log("success");
 
     if (xhr.status === 200) {
-      addURLSuccess(response);
+      createURLSuccess(response);
     }
   });
 
@@ -38,13 +38,13 @@ function addURL() {
       // Reroute to custom U4I 404 error page
       window.replace.href = "/invalid";
     } else {
-      addURLFail(response);
+      createURLFail(response);
     }
   });
 }
 
 // Prepares post request inputs for addition of a new URL
-function addURLSetup() {
+function createURLSetup() {
   // Assemble post request route
   let postURL = routes.createURL(getActiveUTubID());
 
@@ -60,10 +60,10 @@ function addURLSetup() {
 }
 
 // Displays changes related to a successful addition of a new URL
-function addURLSuccess(response) {
+function createURLSuccess(response) {
   resetNewURLForm();
 
-  // DP 09/17 need to implement ability to addTagtoURL interstitially before addURL is completed
+  // DP 09/17 need to implement ability to addTagtoURL interstitially before createURL is completed
   let URLcol = createURLBlock(
     response.URL.utubUrlID,
     response.URL.urlString,
@@ -74,13 +74,13 @@ function addURLSuccess(response) {
   );
 
   $("#UPRRow").prepend(URLcol);
-  moveURLsToUpperRowOnSuccessfulAddURL();
+  moveURLsToUpperRowOnSuccessfulCreateURL();
 
   displayState1URLDeck();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
-function addURLFail(response) {
+function createURLFail(response) {
   console.log(response);
   console.log("Basic implementation. Needs revision");
   console.log(response.responseJSON.errorCode);
@@ -89,11 +89,11 @@ function addURLFail(response) {
   // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
 }
 
-/* Edit URL */
+/* Update URL */
 
-// Shows edit URL inputs
+// Shows update URL inputs
 function updateURLShowInput() {
-  // Show edit submission and cancel button, hide edit button
+  // Show update submission and cancel button, hide update button
   unbindURLKeyboardEventListenersWhenUpdatesOccurring();
   const selectedCardDiv = getSelectedURLCard();
   const updateURLInput = selectedCardDiv.find(".updateURL");
@@ -101,32 +101,32 @@ function updateURLShowInput() {
 
   // Show input field
   showIfHidden(updateURLInput.closest(".createDiv"));
-  showIfHidden(updateURLInput.next(".updateURLBtnWrap"));
+  showIfHidden(updateURLInput.next(".urlBtnUpdateWrap"));
   updateURLInput.focus();
 
   // Hide published value
   hideIfShown(URL);
 
   // Disable URL Buttons
-  disable(selectedCardDiv.find(".accessURLBtn"));
-  disable(selectedCardDiv.find(".addTagBtn"));
-  disable(selectedCardDiv.find(".delURLBtn"));
+  disable(selectedCardDiv.find(".urlBtnAccess"));
+  disable(selectedCardDiv.find(".tagBtnCreate"));
+  disable(selectedCardDiv.find(".urlBtnDelete"));
 
-  // Edit URL Button text to show a return string
-  const updateURLBtn = selectedCardDiv.find(".updateURLBtn");
-  updateURLBtn.text("Exit Updating");
-  updateURLBtn.removeClass("btn-light").addClass("btn-warning");
+  // Update URL Button text to show a return string
+  const urlBtnUpdate = selectedCardDiv.find(".urlBtnUpdate");
+  urlBtnUpdate.text("Exit Updating");
+  urlBtnUpdate.removeClass("btn-light").addClass("btn-warning");
 
-  // Make the button close editing now if clicked
-  updateURLBtn.off("click").on("click", function (e) {
+  // Make the button close updating now if clicked
+  urlBtnUpdate.off("click").on("click", function (e) {
     e.stopPropagation();
     updateURLHideInput();
   });
 
-  // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
+  // Inhibit selection toggle behavior until user cancels update, or successfully submits update. User can still select and update other URLs in UTub
   unbindSelectURLBehavior();
 
-  // Allow escape key to close editing
+  // Allow escape key to close updating
   $(document)
     .unbind("keyup.27")
     .bind("keyup.27", function (e) {
@@ -137,9 +137,9 @@ function updateURLShowInput() {
     });
 }
 
-// Hides edit URL inputs
+// Hides update URL inputs
 function updateURLHideInput() {
-  // Show edit button, hide other buttons
+  // Show update button, hide other buttons
   const selectedCardDiv = getSelectedURLCard();
   const updateURLInput = selectedCardDiv.find(".updateURL");
   const URL = selectedCardDiv.find(".URL");
@@ -154,15 +154,15 @@ function updateURLHideInput() {
   showIfHidden(URL);
 
   // Enable URL Buttons
-  enable(selectedCardDiv.find(".accessURLBtn"));
-  enable(selectedCardDiv.find(".addTagBtn"));
-  enable(selectedCardDiv.find(".delURLBtn"));
+  enable(selectedCardDiv.find(".urlBtnAccess"));
+  enable(selectedCardDiv.find(".tagBtnCreate"));
+  enable(selectedCardDiv.find(".urlBtnDelete"));
 
-  // Edit URL Button text to show a return string
-  const updateURLBtn = selectedCardDiv.find(".updateURLBtn");
-  updateURLBtn.text("Edit URL");
-  updateURLBtn.removeClass("btn-warning").addClass("btn-light");
-  updateURLBtn.off("click").on("click", function (e) {
+  // Update URL Button text to show a return string
+  const urlBtnUpdate = selectedCardDiv.find(".urlBtnUpdate");
+  urlBtnUpdate.text("Update URL");
+  urlBtnUpdate.removeClass("btn-warning").addClass("btn-light");
+  urlBtnUpdate.off("click").on("click", function (e) {
     e.stopPropagation();
     updateURLShowInput();
   });
@@ -170,7 +170,7 @@ function updateURLHideInput() {
   // Rebind click selection behavior to unselect URL
   rebindSelectBehavior();
 
-  // Unbind escape key from hiding edit
+  // Unbind escape key from hiding update
   $(document).unbind("keyup.27");
 
   // Rebind escape key to hiding selected URL
@@ -178,7 +178,7 @@ function updateURLHideInput() {
   bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
 }
 
-// Handles edition of an existing URL
+// Handles update of an existing URL
 function updateURL() {
   // Extract data to submit in POST request
   [postURL, data] = updateURLSetup();
@@ -201,50 +201,50 @@ function updateURL() {
   });
 }
 
-// Prepares post request inputs for edition of a URL
+// Prepares post request inputs for update of a URL
 function updateURLSetup() {
   let postURL = routes.updateURL(getActiveUTubID(), getSelectedURLID());
 
-  let editedURL = getSelectedURLCard().find(".updateURL")[0].value;
+  let updatedURL = getSelectedURLCard().find(".updateURL")[0].value;
 
-  data = { urlString: editedURL };
+  data = { urlString: updatedURL };
 
   return [postURL, data];
 }
 
-// Displays changes related to a successful edition of a URL
+// Displays changes related to a successful update of a URL
 function updateURLSuccess(response) {
   // Extract response data
-  let editedURLID = response.URL.urlID;
-  let editedURLString = response.URL.urlString;
+  let updatedURLID = response.URL.urlID;
+  let updatedURLString = response.URL.urlString;
 
   const selectedCardDiv = getSelectedURLCard();
 
   // Update URL ID
-  selectedCardDiv.attr("urlid", editedURLID);
+  selectedCardDiv.attr("urlid", updatedURLID);
 
-  // If edit URL action, rebind the ability to select/deselect URL by clicking it
+  // If update URL action, rebind the ability to select/deselect URL by clicking it
   rebindSelectBehavior();
 
   // Update URL body with latest published data
-  selectedCardDiv.find(".card-text").text(editedURLString);
+  selectedCardDiv.find(".card-text").text(updatedURLString);
 
   // Update URL options
   selectedCardDiv
-    .find(".accessURLBtn")
+    .find(".urlBtnAccess")
     .off("click")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      accessLink(editedURLString);
+      accessLink(updatedURLString);
     });
 
   updateURLHideInput();
 }
 
-// Displays appropriate prompts and options to user following a failed edition of a URL
+// Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLFail(response) {
-  console.log("Error: Could not edit URL");
+  console.log("Error: Could not update URL");
   console.log(
     "Failure. Error code: " +
       response.responseJSON.errorCode +
@@ -253,11 +253,11 @@ function updateURLFail(response) {
   );
 }
 
-/* Edit URL Title */
+/* Update URL Title */
 
-// Shows edit URL Title inputs
+// Shows update URL Title inputs
 function updateURLTitleShowInput() {
-  // Show edit submission and cancel button, hide edit button
+  // Show update submission and cancel button, hide update button
   const selectedCardDiv = getSelectedURLCard();
   const updateURLTitleInput = selectedCardDiv.find(".updateURLTitle");
   const URLTitle = selectedCardDiv.find(".URLTitle");
@@ -268,7 +268,7 @@ function updateURLTitleShowInput() {
   // Hide published value
   hideIfShown(URLTitle);
 
-  // Inhibit selection toggle behavior until user cancels edit, or successfully submits edit. User can still select and edit other URLs in UTub
+  // Inhibit selection toggle behavior until user cancels update, or successfully submits update. User can still select and update other URLs in UTub
   unbindSelectURLBehavior();
   unbindURLKeyboardEventListenersWhenUpdatesOccurring();
   unbindEscapeKey();
@@ -277,9 +277,9 @@ function updateURLTitleShowInput() {
   $(updateURLTitleInput).focus();
 }
 
-// Hides edit URL Title inputs
+// Hides update URL Title inputs
 function updateURLTitleHideInput() {
-  // Show edit button, hide other buttons
+  // Show update button, hide other buttons
   const selectedCardDiv = getSelectedURLCard();
   const updateURLTitleInput = selectedCardDiv.find(".updateURLTitle");
   const URLTitle = selectedCardDiv.find(".URLTitle");
@@ -296,7 +296,7 @@ function updateURLTitleHideInput() {
   // Rebind click selection behavior to unselect URL
   rebindSelectBehavior();
 
-  // Unbind escape key from hiding edit
+  // Unbind escape key from hiding update
   $(document).unbind("keyup.escapeUrlTitleUpdating");
 
   // Rebind escape key to hiding selected URL
@@ -304,7 +304,7 @@ function updateURLTitleHideInput() {
   bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
 }
 
-// Handles edition of an existing URL
+// Handles update of an existing URL
 function updateURLTitle() {
   // Extract data to submit in POST request
   [postURL, data] = updateURLTitleSetup();
@@ -327,36 +327,36 @@ function updateURLTitle() {
   });
 }
 
-// Prepares post request inputs for edition of a URL
+// Prepares post request inputs for update of a URL
 function updateURLTitleSetup() {
   let postURL = routes.updateURLTitle(getActiveUTubID(), getSelectedURLID());
 
-  let editedURLTitle = getSelectedURLCard().find(".updateURLTitle")[0].value;
+  let updatedURLTitle = getSelectedURLCard().find(".updateURLTitle")[0].value;
 
-  data = { urlTitle: editedURLTitle };
+  data = { urlTitle: updatedURLTitle };
 
   return [postURL, data];
 }
 
-// Displays changes related to a successful edition of a URL
+// Displays changes related to a successful update of a URL
 function updateURLTitleSuccess(response) {
   // Extract response data
-  let editedURLTitle = response.URL.urlTitle;
+  let updatedURLTitle = response.URL.urlTitle;
 
   const selectedCardDiv = getSelectedURLCard();
 
-  // If edit URL action, rebind the ability to select/deselect URL by clicking it
+  // If update URL action, rebind the ability to select/deselect URL by clicking it
   rebindSelectBehavior();
 
   // Update URL body with latest published data
-  selectedCardDiv.find(".card-title").text(editedURLTitle);
+  selectedCardDiv.find(".card-title").text(updatedURLTitle);
 
   updateURLTitleHideInput();
 }
 
-// Displays appropriate prompts and options to user following a failed edition of a URL
+// Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLTitleFail(response) {
-  console.log("Error: Could not edit URL");
+  console.log("Error: Could not update URL");
   console.log(
     "Failure. Error code: " +
       response.responseJSON.errorCode +

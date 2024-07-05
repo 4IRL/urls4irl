@@ -12,7 +12,7 @@ from src.utils.strings.model_strs import MODELS as MODEL_STRS
 
 
 class Utubs(db.Model):
-    """Class represents a UTub. A UTub is created by a specific user, but has read-edit access given to other users depending on who it
+    """Class represents a UTub. A UTub is created by a specific user, but has read-update access given to other users depending on who it
     is shared with. The UTub contains a set of URL's and their associated tags."""
 
     __tablename__ = "Utubs"

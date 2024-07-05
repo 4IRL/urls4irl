@@ -1040,7 +1040,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
         ).first()
         current_title = url_in_this_utub.url_title
         url_in_this_utub_id = url_in_this_utub.id
-        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_string_edit
+        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_string_update
         original_url_id = url_in_this_utub.url_id
 
         # Find associated tags with this url
@@ -1093,7 +1093,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
 
         # Verify original serialization still exists
         assert (
-            utub_url_object.serialized_on_string_edit
+            utub_url_object.serialized_on_string_update
             == url_in_utub_serialized_originally
         )
 
@@ -1139,7 +1139,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_user_not_member_of.id
         ).first()
-        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_string_edit
+        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_string_update
         original_user_id = url_in_this_utub.user_id
         original_url_id = url_in_this_utub.id
 
@@ -1202,7 +1202,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
                 Utub_Urls.user_id == original_user_id,
             )
             .first()
-            .serialized_on_string_edit
+            .serialized_on_string_update
             == url_in_utub_serialized_originally
         )
 
@@ -1251,7 +1251,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
             Utub_Urls.utub_id == utub_user_not_member_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_string_edit
+        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_string_update
         original_user_id = url_in_this_utub.user_id
         original_url_id = url_in_this_utub.url_id
 
@@ -1317,7 +1317,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         assert utub_url_object is not None
 
         assert (
-            utub_url_object.serialized_on_string_edit
+            utub_url_object.serialized_on_string_update
             == url_in_utub_serialized_originally
         )
 
