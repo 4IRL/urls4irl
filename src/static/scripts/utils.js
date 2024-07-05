@@ -113,26 +113,26 @@ function highlightInput(inputEl) {
 // Hides any active input fields
 function hideInputs() {
   // Show UTub creation instead of UTub form
-  if (!isHidden($("#createUTubWrap"))) addUTubHideInput();
-  // Show UTub name instead of edit UTub name form
+  if (!isHidden($("#createUTubWrap"))) createUTubHideInput();
+  // Show UTub name instead of update UTub name form
   if (isHidden($("#URLDeckHeader"))) updateUTubNameHideInput();
-  // Show UTub description instead of edit UTub description form
+  // Show UTub description instead of update UTub description form
   if (
     isHidden($("#URLDeckSubheader")) &&
     $("#URLDeckSubheader").text().length !== 0
   )
     updateUTubDescriptionHideInput();
   // Show members instead of add member form
-  if (isHidden($("#displayMemberWrap"))) addMemberHideInput();
+  if (isHidden($("#displayMemberWrap"))) createMemberHideInput();
 
   /*
   $(".createDiv").each(function () {
     hideIfShown($(this));
   });
   */
-  // editURLHideInput();
-  // editUTubNameHideInput();
-  // editUTubDescriptionHideInput();
+  // updateURLHideInput();
+  // updateUTubNameHideInput();
+  // updateUTubDescriptionHideInput();
 }
 
 // Hide specified input field. Typically done if user successfully completes, or cancels an action
@@ -186,13 +186,13 @@ function AJAXCall(type, url, data) {
   }));
 }
 
-// Creates edit button
+// Creates update button
 function makeUpdateButton(wh) {
-  const editBtn = document.createElement("i");
+  const updateBtn = document.createElement("i");
 
-  // Edit icon box
+  // update icon box
   let htmlString =
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-pencil-square editIcon" viewBox="0 0 16 16" width="' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-pencil-square updateIcon" viewBox="0 0 16 16" width="' +
     wh +
     '" height="' +
     wh +
@@ -200,14 +200,14 @@ function makeUpdateButton(wh) {
     '<path d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z"/><path fill-rule="evenodd" d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z"/>' +
     "</svg>";
 
-  $(editBtn)
+  $(updateBtn)
     .addClass("mx-1 flex-row align-center")
     .attr({
       style: "color: #545454",
     })
     .html(htmlString);
 
-  return editBtn;
+  return updateBtn;
 }
 
 // Creates submit button

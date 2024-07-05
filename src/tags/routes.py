@@ -165,7 +165,7 @@ def create_tag(utub_id: int, utub_url_id: int):
     "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:tag_id>", methods=["DELETE"]
 )
 @email_validation_required
-def remove_tag(utub_id: int, utub_url_id: int, tag_id: int):
+def delete_tag(utub_id: int, utub_url_id: int, tag_id: int):
     """
     User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
 
@@ -182,7 +182,7 @@ def remove_tag(utub_id: int, utub_url_id: int, tag_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_REMOVE_TAGS,
+                    STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_DELETE_TAGS,
                 }
             ),
             403,
@@ -225,7 +225,7 @@ def remove_tag(utub_id: int, utub_url_id: int, tag_id: int):
     "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:tag_id>", methods=["PUT"]
 )
 @email_validation_required
-def modify_tag_on_url(utub_id: int, utub_url_id: int, tag_id: int):
+def update_tag_on_url(utub_id: int, utub_url_id: int, tag_id: int):
     """
     User wants to modify an existing tag on a URL
 
@@ -242,7 +242,7 @@ def modify_tag_on_url(utub_id: int, utub_url_id: int, tag_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_MODIFY_TAGS,
+                    STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_UPDATE_TAGS,
                     STD_JSON.ERROR_CODE: 1,
                 }
             ),

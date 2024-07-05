@@ -96,7 +96,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -256,7 +256,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -413,7 +413,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -561,7 +561,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -691,7 +691,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -806,7 +806,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -922,7 +922,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -1033,7 +1033,7 @@ def test_modify_tag_on_another_utub_url(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_not_member_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -1048,7 +1048,7 @@ def test_modify_tag_on_another_utub_url(
     assert modify_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         modify_tag_response_json[STD_JSON.MESSAGE]
-        == TAGS_FAILURE.ONLY_UTUB_MEMBERS_MODIFY_TAGS
+        == TAGS_FAILURE.ONLY_UTUB_MEMBERS_UPDATE_TAGS
     )
     assert int(modify_tag_response_json[STD_JSON.ERROR_CODE]) == 1
 
@@ -1123,7 +1123,7 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=NONEXISTENT_URL_ID,
             tag_id=1,
@@ -1172,7 +1172,7 @@ def test_modify_tag_on_url_in_nonexistent_utub(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=NONEXISTENT_UTUB_ID,
             utub_url_id=NONEXISTENT_URL_ID,
             tag_id=1,
@@ -1257,7 +1257,7 @@ def test_modify_tag_with_missing_tag_field(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,
@@ -1366,7 +1366,7 @@ def test_modify_tag_with_missing_csrf_token(
 
     modify_tag_response = client.put(
         url_for(
-            ROUTES.TAGS.MODIFY_TAG,
+            ROUTES.TAGS.UPDATE_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_update_tag_on,
             tag_id=curr_tag_id_on_url,

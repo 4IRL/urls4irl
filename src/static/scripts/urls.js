@@ -4,13 +4,13 @@ $(document).ready(function () {
   /* Bind click functions */
 
   // Add new URL to current UTub
-  $("#addURLBtn").on("click", function (e) {
+  $("#urlBtnCreate").on("click", function (e) {
     e.stopPropagation();
     e.preventDefault();
     hideInputs();
-    if (getSelectedURLCard().length === 0) moveURLsToLowerRowOnAddURLShown();
+    if (getSelectedURLCard().length === 0) moveURLsToLowerRowOnCreateURLShown();
     deselectAllURLs();
-    addURLShowInput();
+    createURLShowInput();
   });
 
   // Open all URLs in UTub in separate tabs
@@ -43,7 +43,7 @@ function getSelectedURLCard() {
   return $("#listURLs").find(".url[urlid = " + getSelectedURLID() + "]");
 }
 
-// Prevent deselection of URL while modifying its values (e.g. adding a tag, editing URL string or title)
+// Prevent deselection of URL while modifying its values (e.g. adding a tag, updating URL string or title)
 function unbindSelectURLBehavior() {
   $(getSelectedURLCard().closest(".cardCol")).off("click");
 }
@@ -154,13 +154,13 @@ function resetURLDeck() {
   const noURLsText = $("#NoURLsSubheader").remove();
   $("#UPRRow").empty().append(noURLsText);
 
-  const createURLBlock = $("#addURL").parent().remove();
+  const createURLBlock = $("#createURL").parent().remove();
   $("#URLFocusRow").empty().append(createURLBlock);
   newURLInputRemoveEventListeners();
 
   $("#LWRRow").empty();
-  $("#updateUTubNameBtn").hide();
-  $("#addURLBtn").hide();
+  $("#utubNameBtnUpdate").hide();
+  $("#urlBtnCreate").hide();
   $("#accessAllURLsBtn").hide();
 }
 
@@ -197,30 +197,30 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
   const card = document.createElement("div");
   // const cardImg = document.createElement('img');
   const URLInfo = document.createElement("div"); // This element holds the URL title and string
-  const URLTitleWrap = document.createElement("div"); // This element wraps the URL title and edit button
+  const URLTitleWrap = document.createElement("div"); // This element wraps the URL title and update button
   const URLTitleInnerWrap = document.createElement("div");
   const URLTitle = document.createElement("h5"); // This element displays the user-created title of the URL
-  const updateURLTitleBtn = canModify ? makeUpdateButton(25) : null;
-  const updateURLTitleWrap = canModify ? document.createElement("div") : null; // This element wraps the edit field for URL title
+  const urlTitleBtnUpdate = canModify ? makeUpdateButton(25) : null;
+  const updateURLTitleWrap = canModify ? document.createElement("div") : null; // This element wraps the update field for URL title
   const updateURLTitleInput = canModify
     ? document.createElement("input")
     : null; // This element is instantiated with the URL title
-  const updateURLBtnWrap = canModify ? document.createElement("div") : null;
-  const urlTitleSubmitBtnUpdate = canModify ? makeSubmitButton(25) : null; // Submit changes after 'edit' operations
-  const cancelEditURLTitleBtn = canModify ? makeCancelButton(25) : null; // Cancel changes after 'edit' operations, populate with pre-edit values
-  const URLWrap = document.createElement("div"); // This element wraps the URL title and edit button
+  const urlBtnUpdateWrap = canModify ? document.createElement("div") : null;
+  const urlTitleSubmitBtnUpdate = canModify ? makeSubmitButton(25) : null; // Submit changes after 'update' operations
+  const urlTitleCancelBtnUpdate = canModify ? makeCancelButton(25) : null; // Cancel changes after 'update' operations, populate with pre-update values
+  const URLWrap = document.createElement("div"); // This element wraps the URL title and update button
   const URL = document.createElement("a"); // This element displays the user's URL
-  const updateURLWrap = canModify ? document.createElement("div") : null; // This element wraps the edit field for URL string
+  const updateURLWrap = canModify ? document.createElement("div") : null; // This element wraps the update field for URL string
   const updateURLInput = canModify ? document.createElement("input") : null; // This element is instantiated with the URL
-  const submitEditURLBtn = canModify ? makeSubmitButton(25) : null; // Submit changes after 'edit' operations
-  const cancelEditURLBtn = canModify ? makeCancelButton(25) : null; // Cancel changes after 'edit' operations, populate with pre-edit values
+  const urlSubmitBtnUpdate = canModify ? makeSubmitButton(25) : null; // Submit changes after 'update' operations
+  const urlCancelBtnUpdate = canModify ? makeCancelButton(25) : null; // Cancel changes after 'update' operations, populate with pre-update values
   const URLTags = document.createElement("div");
   const tagsWrap = document.createElement("div");
   const URLOptions = document.createElement("div");
-  const accessURLBtn = document.createElement("button");
-  const updateURLBtn = canModify ? document.createElement("button") : null;
-  const addTagBtn = document.createElement("button");
-  const delURLBtn = canModify ? document.createElement("button") : null;
+  const urlBtnAccess = document.createElement("button");
+  const urlBtnUpdate = canModify ? document.createElement("button") : null;
+  const tagBtnCreate = document.createElement("button");
+  const urlBtnDelete = canModify ? document.createElement("button") : null;
 
   $(col)
     .addClass("cardCol mb-3 col-md-12 col-sm-12 col-lg-12 col-xl-12 col-xxl-6")
@@ -253,8 +253,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
   $(URL).addClass("card-text url-string").text(string);
 
   if (canModify) {
-    $(updateURLTitleBtn)
-      .addClass("updateURLTitleBtn visibleBtn")
+    $(urlTitleBtnUpdate)
+      .addClass("urlTitleBtnUpdate visibleBtn")
       .on("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -284,8 +284,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
         updateURLTitle();
       });
 
-    $(cancelEditURLTitleBtn)
-      .addClass("cancelEditURLTitleBtn")
+    $(urlTitleCancelBtnUpdate)
+      .addClass("urlTitleCancelBtnUpdate")
       .on("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -296,8 +296,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
       .addClass("createDiv flex-row form-group")
       .attr({ style: "display: none" });
 
-    $(updateURLBtnWrap)
-      .addClass("updateURLBtnWrap createDiv flex-row form-group")
+    $(urlBtnUpdateWrap)
+      .addClass("urlBtnUpdateWrap createDiv flex-row form-group")
       .attr({ style: "display: none;" });
 
     $(updateURLInput)
@@ -310,8 +310,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
         placeholder: "Edit URL",
       });
 
-    $(submitEditURLBtn)
-      .addClass("submitEditURLBtn")
+    $(urlSubmitBtnUpdate)
+      .addClass("urlSubmitBtnUpdate")
       .on("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -323,8 +323,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
         });
       });
 
-    $(cancelEditURLBtn)
-      .addClass("cancelEditURLBtn")
+    $(urlCancelBtnUpdate)
+      .addClass("urlCancelBtnUpdate")
       .on("click", function (e) {
         e.stopPropagation();
         e.preventDefault();
@@ -336,7 +336,7 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
         });
       });
 
-    $(updateURLBtnWrap).append(submitEditURLBtn).append(cancelEditURLBtn);
+    $(urlBtnUpdateWrap).append(urlSubmitBtnUpdate).append(urlCancelBtnUpdate);
   }
 
   $(URLInfo).addClass("card-body URLInfo");
@@ -369,8 +369,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
     .addClass("card-body URLOptions")
     .attr({ style: "display: none" });
 
-  $(accessURLBtn)
-    .addClass("card-link btn btn-primary accessURLBtn")
+  $(urlBtnAccess)
+    .addClass("card-link btn btn-primary urlBtnAccess")
     .attr({ type: "button" })
     .text("Access Link")
     .on("click", function (e) {
@@ -379,19 +379,19 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
       accessLink(string);
     });
 
-  $(addTagBtn)
-    .addClass("card-link btn btn-info addTagBtn")
+  $(tagBtnCreate)
+    .addClass("card-link btn btn-info tagBtnCreate")
     .attr({ type: "button" })
     .text("Add Tag")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      addTagShowInput();
+      createTagShowInput();
     });
 
   if (canModify) {
-    $(delURLBtn)
-      .addClass("card-link btn btn-danger delURLBtn")
+    $(urlBtnDelete)
+      .addClass("card-link btn btn-danger urlBtnDelete")
       .attr({ type: "button" })
       .text("Delete")
       .on("click", function (e) {
@@ -400,8 +400,8 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
         deleteURLShowModal();
       });
 
-    $(updateURLBtn)
-      .addClass("card-link btn btn-light updateURLBtn")
+    $(urlBtnUpdate)
+      .addClass("card-link btn btn-light urlBtnUpdate")
       .attr({ type: "button" })
       .text("Edit Link")
       .on("click", function (e) {
@@ -418,15 +418,15 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
 
   if (canModify) {
     $(URLTitleWrap).append(URLTitleInnerWrap);
-    $(URLTitleInnerWrap).append(URLTitle).append(updateURLTitleBtn);
+    $(URLTitleInnerWrap).append(URLTitle).append(urlTitleBtnUpdate);
     $(updateURLTitleWrap)
       .append(updateURLTitleInput)
       .append(urlTitleSubmitBtnUpdate)
-      .append(cancelEditURLTitleBtn);
-    $(URLWrap).append(URL).append(updateURLBtn);
-    $(updateURLWrap).append(updateURLInput).append(updateURLBtnWrap);
-    //.append(submitEditURLBtn)
-    //.append(cancelEditURLBtn);
+      .append(urlTitleCancelBtnUpdate);
+    $(URLWrap).append(URL).append(urlBtnUpdate);
+    $(updateURLWrap).append(updateURLInput).append(urlBtnUpdateWrap);
+    //.append(urlSubmitBtnUpdate)
+    //.append(urlCancelBtnUpdate);
     $(URLInfo)
       .append(URLTitleWrap)
       .append(updateURLTitleWrap)
@@ -437,10 +437,10 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
 
     $(card).append(URLOptions);
     $(URLOptions)
-      .append(accessURLBtn)
-      .append(updateURLBtn)
-      .append(addTagBtn)
-      .append(delURLBtn);
+      .append(urlBtnAccess)
+      .append(urlBtnUpdate)
+      .append(tagBtnCreate)
+      .append(urlBtnDelete);
   } else {
     $(URLTitleWrap).append(URLTitle);
     $(URLWrap).append(URL);
@@ -449,39 +449,39 @@ function createURLBlock(URLID, string, title, tagArray, dictTags, canModify) {
     $(card).append(URLTags);
 
     $(card).append(URLOptions);
-    $(URLOptions).append(accessURLBtn).append(addTagBtn);
+    $(URLOptions).append(urlBtnAccess).append(tagBtnCreate);
   }
-  // $(URLOptions).append(submitEditBtn);
-  // $(URLOptions).append(cancelEditBtn);
+  // $(URLOptions).append(submitUpdateBtn);
+  // $(URLOptions).append(cancelUpdateBtn);
 
   return col;
 }
 
 // New URL card and input text fields. Initially hidden, shown when create URL is requested. Input field recreated here to ensure at the end of list after creation of new URL
 function newURLInputAddEventListeners() {
-  const addURLBtn = $("#SubmitNewURLBtn");
-  const delURLBtn = $("#CancelAddURLBtn");
+  const urlBtnCreate = $("#urlSubmitBtnCreate");
+  const urlBtnDelete = $("#urlCancelBtnCreate");
 
-  $(addURLBtn)
+  $(urlBtnCreate)
     .off("click")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      addURL();
+      createURL();
     });
 
-  $(delURLBtn)
+  $(urlBtnDelete)
     .off("click")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      addURLHideInput();
+      createURLHideInput();
     });
 }
 
 function newURLInputRemoveEventListeners() {
-  $("#SubmitNewURLBtn").off("click");
-  $("#CancelAddURLBtn").off("click");
+  $("#urlSubmitBtnCreate").off("click");
+  $("#urlCancelBtnCreate").off("click");
 }
 
 // Handle URL deck display changes related to creating a new tag
@@ -492,11 +492,11 @@ function createTagBadgeInURL(tagID, string) {
   $(tagSpan).addClass("tagBadge").attr({ tagid: tagID }).text(string);
 
   $(removeButton)
-    .addClass("btn btn-sm btn-outline-link border-0 tag-remove")
+    .addClass("btn btn-sm btn-outline-link border-0 tagBtnDelete")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      removeTag(tagID);
+      deleteTag(tagID);
     });
   removeButton.innerHTML = "&times;";
 
@@ -526,21 +526,21 @@ function createNewTagInputField() {
       type: "text",
       placeholder: "Attribute Tag to URL",
     })
-    .addClass("tag userInput addTag");
+    .addClass("tag userInput createTag");
 
   $(submitBtn)
-    .addClass("mx-1 green-clickable submitAddTag")
+    .addClass("mx-1 green-clickable tagSubmitBtnCreate")
     .on("click", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      addTag();
+      createTag();
     });
 
   $(cancelBtn)
-    .addClass("mx-1 cancelAddTag")
+    .addClass("mx-1 tagCancelBtnCreate")
     .on("click", function (e) {
       e.stopPropagation();
-      cancelAddTagHideInput($(wrapper));
+      tagCancelBtnCreateHideInput($(wrapper));
       //hideIfShown(wrapper);
     });
 
@@ -567,8 +567,8 @@ function selectURL(selectedCardCol) {
 
   showIfHidden(selectedCardCol.find(".URLTags"));
   showIfHidden(selectedCardCol.find(".URLOptions"));
-  showIfHidden(selectedCardCol.find(".updateURLTitleBtn"));
-  showIfHidden(selectedCardCol.find(".updateURLBtn"));
+  showIfHidden(selectedCardCol.find(".urlTitleBtnUpdate"));
+  showIfHidden(selectedCardCol.find(".urlBtnUpdate"));
 
   // Add clickability to the URL itself
   const urlString = card.find(".url-string");
@@ -593,8 +593,8 @@ function deselectURL(deselectedCardCol) {
 
   hideIfShown(deselectedCardCol.find(".URLTags"));
   hideIfShown(deselectedCardCol.find(".URLOptions"));
-  hideIfShown(deselectedCardCol.find(".updateURLTitleBtn"));
-  hideIfShown(deselectedCardCol.find(".updateURLBtn"));
+  hideIfShown(deselectedCardCol.find(".urlTitleBtnUpdate"));
+  hideIfShown(deselectedCardCol.find(".urlBtnUpdate"));
 
   // Remove clickability from the URL
   card.find(".url-string").off("click");
@@ -620,8 +620,8 @@ function deselectAllURLs() {
   unbindURLKeyboardEventListenersWhenUpdatesOccurring();
 }
 
-// Deselects addURL block
-function deselectAddURL() {
+// Deselects createURL block
+function deselectCreateURL() {
   hideIfShown($("#newURL").closest(".cardCol"));
 }
 
@@ -633,8 +633,8 @@ function toggleSelectedURL(selectedURLID) {
   let activeRow = $("#UPRRow");
   let focusRow = $("#URLFocusRow");
 
-  // Hide addURL block
-  hideInput("#addURL");
+  // Hide createURL block
+  hideInput("#createURL");
 
   // Loop through all cardCols and add to UPR row until selected URL card, then subsequent cardCols are added to LWR row
   for (let i = 0; i < cardCols.length; i++) {
@@ -643,10 +643,10 @@ function toggleSelectedURL(selectedURLID) {
     let URLID = card.attr("urlid");
     let selectBool = card.hasClass("selectedURL");
     let clickedCardBool = URLID == selectedURLID;
-    let addURLBlockBool = card.attr("id") === "addURL";
+    let createURLBlockBool = card.attr("id") === "createURL";
 
     // If this cardCol is the creation block, skip it and move to the next iteration
-    if (addURLBlockBool) continue;
+    if (createURLBlockBool) continue;
     // If this is not the card the user clicked or it's already selected, deselect it and add it to the activeRow
     if (!clickedCardBool || selectBool) {
       deselectURL(cardCol);
@@ -657,8 +657,8 @@ function toggleSelectedURL(selectedURLID) {
       selectURL(cardCol);
       focusRow.append(cardCol);
 
-      // Reorder addURL card to before selected URL
-      let createCardCol = $("#addURL").closest(".cardCol").detach();
+      // Reorder createURL card to before selected URL
+      let createCardCol = $("#createURL").closest(".cardCol").detach();
       focusRow.prepend(createCardCol);
 
       // All subsequent cardCols should be added below the focusRow
@@ -736,7 +736,7 @@ function filterURL(tagID) {
 }
 
 // Moves all upper row URLs to lower row on adding a new URL
-function moveURLsToLowerRowOnAddURLShown() {
+function moveURLsToLowerRowOnCreateURLShown() {
   const upperRowChildren = $("#UPRRow").children();
   const upperRowChildrenLength = upperRowChildren.length;
 
@@ -750,7 +750,7 @@ function moveURLsToLowerRowOnAddURLShown() {
   }
 }
 
-function moveURLsToUpperRowOnSuccessfulAddURL() {
+function moveURLsToUpperRowOnSuccessfulCreateURL() {
   const lowerRowChildren = $("#LWRRow").children();
   const lowerRowChildrenLength = lowerRowChildren.length;
 
@@ -770,16 +770,16 @@ function moveURLsToUpperRowOnSuccessfulAddURL() {
 function displayState0URLDeck() {
   $("#URLDeckHeader").text("URLs");
   hideIfShown($(".updateUTubBtn"));
-  hideIfShown($("#addURLBtn"));
+  hideIfShown($("#urlBtnCreate"));
   hideIfShown($("#accessAllURLsBtn"));
-  hideIfShown($("#URLDeckSubheaderAddDescription"));
+  hideIfShown($("#URLDeckSubheaderCreateDescription"));
 
   const URLDeckSubheader = $("#URLDeckSubheader");
   URLDeckSubheader.text("Select a UTub");
   showIfHidden(URLDeckSubheader);
 
-  // Prevent on-hover of URL Deck Header to show edit UTub name button in case of back button
-  $("#updateUTubNameBtn").removeClass("visibleBtn");
+  // Prevent on-hover of URL Deck Header to show update UTub name button in case of back button
+  $("#utubNameBtnUpdate").removeClass("visibleBtn");
 }
 
 // Display state 1: UTub selected, URL list and subheader prompt

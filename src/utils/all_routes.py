@@ -25,15 +25,15 @@ class SPLASH_ROUTES:
 class TAG_ROUTES:
     _TAGS = "tags."
     CREATE_TAG = _TAGS + "create_tag"
-    REMOVE_TAG = _TAGS + "remove_tag"
-    MODIFY_TAG = _TAGS + "modify_tag_on_url"
+    DELETE_TAG = _TAGS + "delete_tag"
+    UPDATE_TAG = _TAGS + "update_tag_on_url"
 
 
 class URL_ROUTES:
     _URLS = "urls."
     REMOVE_URL = _URLS + "remove_url"
     CREATE_URL = _URLS + "create_url"
-    EDIT_URL_AND_TITLE = _URLS + "edit_url_and_title"
+    UPDATE_URL_AND_TITLE = _URLS + "update_url_and_title"
     UPDATE_URL = _URLS + "update_url"
     UPDATE_URL_TITLE = _URLS + "update_url_title"
 

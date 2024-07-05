@@ -204,7 +204,7 @@
     color: var(--deckSelectionGreenHover)
 }
 
-.editIcon:hover {
+.updateIcon:hover {
     cursor: pointer;
     color: white;
 }
@@ -224,21 +224,21 @@
     white-space: nowrap;
 }
 
-.tagBadge:hover .tag-remove {
+.tagBadge:hover .tagBtnDelete {
     display: inline-block;
     line-height: 100%;
     height: 100%;
     font-size: 100%;
 }
 
-.tag-remove {
+.tagBtnDelete {
     padding: 0rem;
     vertical-align: unset;
     padding-left: 5px;
     display: none;
 }
 
-.tag-remove:focus {
+.tagBtnDelete:focus {
     outline: none;
     box-shadow: none;
 }
@@ -391,13 +391,13 @@
     display: flex !important;
 }
 
-.updateURLBtnWrap {
+.urlBtnUpdateWrap {
     padding-inline:10px;
     gap: 10px;
 }
 
 .hiddenBtn#updateUTubDescriptionBtn, 
-.hiddenBtn#updateUTubNameBtn {
+.hiddenBtn#utubNameBtnUpdate {
     display: none !important;
 }
 
@@ -412,21 +412,21 @@
     background-color: var(--tagBackgroundColorSelected);
 }
 
-.member:hover > .member-remove {
+.member:hover > .memberOtherBtnDelete {
     display: flex;
 }
 
-.member-remove {
+.memberOtherBtnDelete {
     display: none;
     color: var(--removeMemberColor);
     transition: color 0.2s;
 }
 
-.member-remove:hover {
+.memberOtherBtnDelete:hover {
     color: red;
 }
 
-.member-remove:focus {
+.memberOtherBtnDelete:focus {
     outline: none;
     box-shadow: none;
 }
@@ -531,7 +531,7 @@
 }
 
 #updateUTubDescriptionBtn,
-#updateUTubNameBtn {
+#utubNameBtnUpdate {
     color: rgba(84, 84, 84, 1.0);
 }
 
@@ -546,20 +546,20 @@
     display: flex !important;
 }
 
-#addMemberWrap,
+#createMemberWrap,
 #createUTubWrap {
     height: 100%;
     gap: 20px;
     margin-top: 20px;
 }
 
-#URLDeckSubheaderAddDescription {
+#URLDeckSubheaderCreateDescription {
     margin-top: 5px;
     margin-bottom: 5px;
     color: var(--cardURLTextColor);
 }
 
-#URLDeckSubheaderAddDescription:hover {
+#URLDeckSubheaderCreateDescription:hover {
     cursor: pointer;
     text-decoration: underline;
 }
@@ -583,8 +583,8 @@
         justify-content: flex-start;
     }
 
-    #addMemberBtn,
-    #createUTubBtn {
+    #memberBtnCreate,
+    #utubBtnCreate {
         margin-inline: 0px !important;
     }
 }

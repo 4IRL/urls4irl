@@ -259,7 +259,7 @@ def create_url(utub_id: int):
 @email_validation_required
 def update_url(utub_id: int, utub_url_id: int):
     """
-    Allows a user to edit a URL without editing the title.
+    Allows a user to update a URL without updating the title.
     Only the user who added the URL, or who created the UTub containing
     the URL, can modify the URL.
 
@@ -312,7 +312,7 @@ def update_url(utub_id: int, utub_url_id: int):
                 400,
             )
 
-        serialized_url_in_utub = url_in_utub.serialized_on_string_edit
+        serialized_url_in_utub = url_in_utub.serialized_on_string_update
 
         if url_to_change_to == url_in_utub.standalone_url.url_string:
             # Identical URL
@@ -379,7 +379,7 @@ def update_url(utub_id: int, utub_url_id: int):
         url_in_utub.url_id = url_in_database.id
         url_in_utub.standalone_url = url_in_database
 
-        new_serialized_url = url_in_utub.serialized_on_string_edit
+        new_serialized_url = url_in_utub.serialized_on_string_update
 
         utub.set_last_updated()
         db.session.commit()
@@ -428,7 +428,7 @@ def update_url(utub_id: int, utub_url_id: int):
 @email_validation_required
 def update_url_title(utub_id: int, utub_url_id: int):
     """
-    Allows a user to edit a URL title without editing the url.
+    Allows a user to update a URL title without updating the url.
     Only the user who added the URL, or who created the UTub containing
     the URL, can modify the title.
 
@@ -467,13 +467,13 @@ def update_url_title(utub_id: int, utub_url_id: int):
 
     if update_url_title_form.validate_on_submit():
         url_title_to_change_to = update_url_title_form.url_title.data
-        serialized_url_in_utub = url_in_utub.serialized_on_title_edit
+        serialized_url_in_utub = url_in_utub.serialized_on_title_update
         title_diff = url_title_to_change_to != url_in_utub.url_title
 
         if title_diff:
             # Change the title
             url_in_utub.url_title = url_title_to_change_to
-            serialized_url_in_utub = url_in_utub.serialized_on_title_edit
+            serialized_url_in_utub = url_in_utub.serialized_on_title_update
             utub.set_last_updated()
             db.session.commit()
 

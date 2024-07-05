@@ -1,89 +1,91 @@
 /* Add Member */
 
 // Shows new Member input fields
-function addMemberShowInput() {
-  showIfHidden($("#addMemberWrap").show());
+function createMemberShowInput() {
+  showIfHidden($("#createMemberWrap").show());
   hideIfShown($("#displayMemberWrap"));
-  hideIfShown($("#addMemberBtn"));
+  hideIfShown($("#memberBtnCreate"));
   highlightInput($("#usernameCreate"));
-  setupAddMemberEventListeners();
+  setupCreateMemberEventListeners();
 }
 
 // Hides new Member input fields
-function addMemberHideInput() {
-  hideIfShown($("#addMemberWrap"));
+function createMemberHideInput() {
+  hideIfShown($("#createMemberWrap"));
   showIfHidden($("#displayMemberWrap"));
-  showIfHidden($("#addMemberBtn"));
-  removeAddMemberEventListeners();
-  resetAddMemberFailErrors();
+  showIfHidden($("#memberBtnCreate"));
+  removeCreateMemberEventListeners();
+  resetCreateMemberFailErrors();
   resetNewMemberForm();
 }
 
-function addMember() {
+function createMember() {
   // Extract data to submit in POST request
-  [postURL, data] = addMemberSetup();
+  [postURL, data] = createMemberSetup();
 
   AJAXCall("post", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
     if (xhr.status === 200) {
-      addMemberSuccess(response);
+      createMemberSuccess(response);
     }
   });
 
   request.fail(function (xhr, _, textStatus) {
-    addMemberFail(xhr);
+    createMemberFail(xhr);
   });
 }
 
-function setupAddMemberEventListeners() {
+function setupCreateMemberEventListeners() {
   // Prevent clicking in input box from closing the form
   $("#usernameCreate")
-    .off("click.addMember")
-    .on("click.addMember", function (e) {
+    .off("click.createMember")
+    .on("click.createMember", function (e) {
       e.stopPropagation();
     });
 
   // Allow submission button to not close form in case of error
-  $("#submitAddMember")
-    .off("click.addMember")
-    .on("click.addMember", function (e) {
+  $("#memberSubmitBtnCreate")
+    .off("click.createMember")
+    .on("click.createMember", function (e) {
       e.stopPropagation();
-      addMember();
+      createMember();
     });
 
   // Allow closing add member form by clicking anywhere else
   $(window)
-    .off("click.addMember")
-    .on("click.addMember", function (e) {
+    .off("click.createMember")
+    .on("click.createMember", function (e) {
       const target = $(e.target);
       // Allow the cancel button to close the form
       if (
-        target.parents("#cancelAddMember").length ||
-        target.is("#cancelAddMember")
+        target.parents("#memberCancelBtnCreate").length ||
+        target.is("#memberCancelBtnCreate")
       ) {
-        addMemberHideInput();
+        createMemberHideInput();
         return;
       }
 
       // Prevent initial opening form click or add member form area click from closing form
-      const isInitialAddMemberBtn = target.parents("#addMemberBtn").length;
-      const isInAddMemberFormArea = target.parents("#addMemberWrap").length;
-      if (isInitialAddMemberBtn || isInAddMemberFormArea) return;
-      addMemberHideInput();
+      const isInitialCreateMemberBtn =
+        target.parents("#memberBtnCreate").length;
+      const isInCreateMemberFormArea =
+        target.parents("#createMemberWrap").length;
+      if (isInitialCreateMemberBtn || isInCreateMemberFormArea) return;
+      createMemberHideInput();
     });
 
   // Allow closing by pressing escape key
-  $(document).bind("keyup.addMember", function (e) {
+  $(document).bind("keyup.createMember", function (e) {
     switch (e.which) {
       case 13:
         // Handle enter key pressed
-        addMember();
+        createMember();
         break;
       case 27:
         // Handle escape  key pressed
-        addMemberHideInput();
+        createMemberHideInput();
         break;
       default:
       /* no-op */
@@ -91,13 +93,13 @@ function setupAddMemberEventListeners() {
   });
 }
 
-function removeAddMemberEventListeners() {
-  $(document).off(".addMember");
-  $(window).off(".addMember");
+function removeCreateMemberEventListeners() {
+  $(document).off(".createMember");
+  $(window).off(".createMember");
 }
 
 // This function will extract the current selection data needed for POST request (member ID)
-function addMemberSetup() {
+function createMemberSetup() {
   const postURL = routes.createMember(getActiveUTubID());
 
   const newMemberUsername = $("#usernameCreate").val();
@@ -109,7 +111,7 @@ function addMemberSetup() {
 }
 
 // Perhaps update a scrollable/searchable list of members?
-function addMemberSuccess(response) {
+function createMemberSuccess(response) {
   resetNewMemberForm();
 
   // Create and append newly created Member badge - only creators can add members
@@ -117,11 +119,11 @@ function addMemberSuccess(response) {
     createMemberBadge(response.member.id, response.member.username, true),
   );
 
-  addMemberHideInput();
+  createMemberHideInput();
   displayState1MemberDeck();
 }
 
-function addMemberFail(xhr) {
+function createMemberFail(xhr) {
   switch (xhr.status) {
     case 400:
       const responseJSON = xhr.responseJSON;
@@ -129,11 +131,11 @@ function addMemberFail(xhr) {
       const hasMessage = responseJSON.hasOwnProperty("message");
       if (hasErrors) {
         // Show form errors
-        addMemberFailShowErrors(responseJSON.errors);
+        createMemberFailShowErrors(responseJSON.errors);
         break;
       } else if (hasMessage) {
         // Show message
-        displayAddMemberFailErrors("username", responseJSON.message);
+        displayCreateMemberFailErrors("username", responseJSON.message);
         break;
       }
     case 403:
@@ -145,27 +147,27 @@ function addMemberFail(xhr) {
   // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
 }
 
-function addMemberFailShowErrors(errors) {
+function createMemberFailShowErrors(errors) {
   for (let key in errors) {
     switch (key) {
       case "username":
         let errorMessage = errors[key][0];
-        displayAddMemberFailErrors(key, errorMessage);
+        displayCreateMemberFailErrors(key, errorMessage);
         return;
     }
   }
 }
 
-function displayAddMemberFailErrors(key, errorMessage) {
+function displayCreateMemberFailErrors(key, errorMessage) {
   $("#" + key + "Create-error")
     .addClass("visible")
     .text(errorMessage);
   $("#" + key + "Create").addClass("invalid-field");
 }
 
-function resetAddMemberFailErrors() {
-  const addMemberFields = ["username"];
-  addMemberFields.forEach((fieldName) => {
+function resetCreateMemberFailErrors() {
+  const createMemberFields = ["username"];
+  createMemberFields.forEach((fieldName) => {
     $("#" + fieldName + "Create-error").removeClass("visible");
     $("#" + fieldName + "Create").removeClass("invalid-field");
   });
@@ -231,7 +233,7 @@ function removeMember(memberID, isCreator) {
         removeMemberSuccess(memberID);
         return;
       }
-      $("#leaveUTubBtn").hide();
+      $("#memberSelfBtnDelete").hide();
       $("#confirmModal").modal("hide");
       displayState0();
       displayState1UTubDeck(null, null);

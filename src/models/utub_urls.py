@@ -52,7 +52,7 @@ class Utub_Urls(db.Model):
         }
 
     @property
-    def serialized_on_string_edit(self) -> dict[str, int | str | list[int]]:
+    def serialized_on_string_update(self) -> dict[str, int | str | list[int]]:
         return {
             MODEL_STRS.UTUB_URL_ID: self.id,
             MODEL_STRS.URL_STRING: self.standalone_url.url_string,
@@ -60,7 +60,7 @@ class Utub_Urls(db.Model):
         }
 
     @property
-    def serialized_on_title_edit(self) -> dict[str, int | str | list[int]]:
+    def serialized_on_title_update(self) -> dict[str, int | str | list[int]]:
         return {
             MODEL_STRS.UTUB_URL_ID: self.id,
             MODEL_STRS.URL_TITLE: self.url_title,

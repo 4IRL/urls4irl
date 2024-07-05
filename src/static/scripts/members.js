@@ -4,10 +4,10 @@ $(document).ready(function () {
   /* Bind click functions */
 
   // Add member to UTub
-  $("#addMemberBtn").on("click.addMember", function () {
+  $("#memberBtnCreate").on("click.createMember", function () {
     hideInputs();
     deselectAllURLs();
-    addMemberShowInput();
+    createMemberShowInput();
   });
 });
 
@@ -71,11 +71,11 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
 
   // Ability to add members is restricted to UTub owner
   if (isCurrentUserOwner) {
-    hideIfShown($("#leaveUTubBtn"));
-    showIfHidden($("#addMemberBtn"));
+    hideIfShown($("#memberSelfBtnDelete"));
+    showIfHidden($("#memberBtnCreate"));
   } else {
-    hideIfShown($("#addMemberBtn"));
-    showIfHidden($("#leaveUTubBtn"));
+    hideIfShown($("#memberBtnCreate"));
+    showIfHidden($("#memberSelfBtnDelete"));
   }
 }
 
@@ -113,7 +113,7 @@ function createMemberBadge(
     $(memberSpan).append(removeIcon);
   } else {
     // Leave UTub if member
-    $("#leaveUTubBtn")
+    $("#memberSelfBtnDelete")
       .off("click.removeMember")
       .on("click.removeMember", function (e) {
         e.stopPropagation();
@@ -146,7 +146,7 @@ function createMemberRemoveIcon() {
       width: WIDTH_HEIGHT_PX,
       height: WIDTH_HEIGHT_PX,
       fill: "currentColor",
-      class: "bi bi-person-x-fill member-remove pointerable",
+      class: "bi bi-person-x-fill memberOtherBtnDelete pointerable",
       viewBox: "0 0 16 16",
     })
     .append(removeMemberInnerIconPath);
@@ -160,8 +160,8 @@ function createMemberRemoveIcon() {
 function displayState0MemberDeck() {
   resetMemberDeck();
 
-  hideIfShown($("#addMemberBtn"));
-  hideIfShown($("#leaveUTubBtn"));
+  hideIfShown($("#memberBtnCreate"));
+  hideIfShown($("#memberSelfBtnDelete"));
 
   // Subheader prompt hidden
   hideIfShown($("#MemberDeckSubheader").closest(".titleElement"));
@@ -169,7 +169,7 @@ function displayState0MemberDeck() {
 
 // Display state 1: Selected UTub has no Members
 function displayState1MemberDeck() {
-  showIfHidden($("#addMemberBtn"));
+  showIfHidden($("#memberBtnCreate"));
 
   let MemberDeckSubheader = $("#MemberDeckSubheader");
 
