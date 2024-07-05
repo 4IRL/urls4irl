@@ -8,6 +8,7 @@ from typing import Tuple
 # External libraries
 from flask import Flask
 from flask.testing import FlaskCliRunner
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -65,7 +66,19 @@ def ping_server(url: str, timeout: float = 2) -> bool:
     return is_server_ready
 
 
-def wait_then_get_element(browser, css_selector: str, time: float = 10):
+def get_all_attributes(driver, element):
+    driver.execute_script(
+        "var items = {};"
+        + "element = arguments[0];"
+        + "for (i = 0; i < element.attributes.length; ++i) { "
+        + "items[element.attributes[i].name] = element.attributes[i].value;"
+        + "}; "
+        + "return items;",
+        element,
+    )
+
+
+def wait_then_get_element(browser, css_selector: str, time: float = 2):
     """
     Streamlines waiting for UI load after interaction.
     Returns element
@@ -83,7 +96,25 @@ def wait_then_get_element(browser, css_selector: str, time: float = 10):
     return element
 
 
-def wait_then_click_element(browser, css_selector: str, time: float = 10):
+def wait_then_get_elements(browser, css_selector: str, time: float = 2):
+    """
+    Streamlines waiting for UI load after interaction.
+    Returns list of elements
+    """
+
+    elements = WebDriverWait(browser, time).until(
+        EC.presence_of_all_elements_located(
+            (
+                By.CSS_SELECTOR,
+                css_selector,
+            )
+        )
+    )
+
+    return elements
+
+
+def wait_then_click_element(browser, css_selector: str, time: float = 2):
     """
     Streamlines waiting for UI load after interaction.
     Clicks element
@@ -99,6 +130,7 @@ def wait_then_click_element(browser, css_selector: str, time: float = 10):
     )
 
     element.click()
+    return element
 
 
 def clear_then_send_keys(element, input_text: str):
@@ -118,7 +150,7 @@ def login_user(
 ):
 
     # Find and click login button to open modal
-    wait_then_get_element(browser, SPL.LOGIN_OPTION_BUTTON).click()
+    wait_then_click_element(browser, SPL.LOGIN_OPTION_BUTTON)
 
     # Input login details
     login_input_field = wait_then_get_element(browser, SPL.USERNAME_INPUT)
@@ -128,32 +160,105 @@ def login_user(
     clear_then_send_keys(password_input_field, password)
 
     # Find submit button to login
-    wait_then_get_element(browser, SPL.LOGIN_BUTTON).click()
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON)
 
 
-def add_utub(browser, utub_name: str):
+def create_utub(browser, utub_name: str, utub_description: str):
     """
-    Once logged in, this function adds new UTub, awaits its creation, then selects to make active
+    Once logged in, this function adds new UTub by selecting the option to open the input field, fills in the fields with the specified values for utub_name and utub_description, and submits the form.
     """
 
     # Click createUTub button to show input
-    wait_then_get_element(browser, MPL.CREATE_UTUB_BUTTON, 2).click()
+    wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
 
     # Types new UTub name
-    create_utub_input = wait_then_get_element(browser, MPL.CREATE_UTUB_INPUT)
-    clear_then_send_keys(create_utub_input, utub_name)
+    create_utub_name_input = wait_then_get_element(browser, MPL.INPUT_UTUB_NAME_CREATE)
+    clear_then_send_keys(create_utub_name_input, utub_name)
+
+    # Types new UTub description
+    create_utub_description_input = wait_then_get_element(
+        browser, MPL.INPUT_UTUB_DESCRIPTION_CREATE
+    )
+    clear_then_send_keys(create_utub_description_input, utub_description)
 
     # Submits new UTub
-    wait_then_get_element(browser, MPL.SUBMIT_UTUB_INPUT).click()
-
-    selector_UTub = wait_then_click_element(browser, MPL.SELECTED_UTUB_SELECTOR)
-
-    return selector_UTub
+    wait_then_click_element(browser, MPL.BUTTON_UTUB_SUBMIT_CREATE)
 
 
-# Regardless of the current page state, this function clicks the UTub selector matching the indicated utub_name
-def select_utub(browser, utub_name: str):
+def delete_active_utub(browser, user_name):
+    if is_owner(user_name):
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+    else:
+        return False
 
-    wait_then_get_element(
-        browser,
-    )
+
+def select_utub_by_name(browser, utub_name: str):
+    """
+    Regardless of the current page state, this function clicks the UTub selector matching the indicated utub_name
+    """
+
+    UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+
+    # Cycle through all
+    for selector in UTub_selectors:
+        utub_selector_name = selector.get_attribute("innerText")
+        if utub_selector_name == utub_name:
+            selector.click()
+            return True
+        else:
+            return False
+
+
+def get_selected_utub_name(browser):
+    active_utub_selector = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
+
+    utub_name = active_utub_selector.get_attribute("innerText")
+
+    return utub_name
+
+
+def leave_active_utub(browser):
+    """
+    Selects UTub matching the indicated utub_name, selects and confirms leaving the UTub
+    """
+
+    try:
+        leave_utub_btn = browser.find_element_by_css_selector(MPL.BUTTON_UTUB_LEAVE)
+    except NoSuchElementException:
+        return False
+
+    leave_utub_btn.click()
+
+    # assert modal
+    # wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+
+
+def leave_all_utubs(browser, user_name):
+    """
+    Cycles through all user's UTubs and leaves them, if not owner.
+    """
+
+    UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+
+    # Cycle through all UTubs and leave, if possible.
+    for selector in UTub_selectors:
+        selector.click()
+        if is_owner(browser, user_name):
+            continue
+        else:
+            leave_active_utub(browser)
+
+
+def get_active_utub_owner_id(browser):
+    return True
+
+
+def get_current_user_id(browser):
+    return True
+
+
+def is_owner(browser):
+    """
+    Returns true if user is the owner of the selected UTub
+    """
+    return get_current_user_id(browser) == get_active_utub_owner_id(browser)

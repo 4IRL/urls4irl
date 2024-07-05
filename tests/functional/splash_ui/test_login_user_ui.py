@@ -3,7 +3,7 @@
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.functional.utils_for_test import login_user
+from tests.functional.utils_for_test import login_user, wait_then_get_element
 from tests.functional.locators import MainPageLocators as MPL
 
 
@@ -20,11 +20,11 @@ def test_login_test_user(browser, add_test_users):
 
     # Confirm user logged in
     # Logout button visible
-    btn_logout = browser.wait_then_get_element(MPL.LOGOUT_BUTTON)
+    btn_logout = wait_then_get_element(browser, MPL.BUTTON_LOGOUT)
     assert btn_logout.text == "Logout"
 
     # Correct user logged in
-    user_logged_in = browser.find_element(MPL.USERNAME_LOGGED_IN_OUTPUT)
+    user_logged_in = wait_then_get_element(browser, MPL.USERNAME_LOGGED_IN_OUTPUT)
     userLoggedInText = "Logged in as " + UI_TEST_STRINGS.TEST_USER_1
 
     assert user_logged_in.text == userLoggedInText

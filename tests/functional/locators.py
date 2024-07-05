@@ -2,38 +2,50 @@ class MainPageLocators:
     """A class for main page locators. All main page locators should come here"""
 
     # Navbar
-    LOGOUT_BUTTON = "#Logout"
+    BUTTON_LOGOUT = "#Logout"
     USERNAME_LOGGED_IN_OUTPUT = "#userLoggedIn"
 
     # UTub Deck
-    UTUB_DECK_SUBHEADER = "#UTubDeckSubheader"
-    CREATE_UTUB_BUTTON = "#createUTubBtn"
-    CREATE_UTUB_BUTTON = "#utubBtnCreate"
-    CREATE_UTUB_INPUT = ".add#utubName"
+    BUTTON_UTUB_CREATE = "#createUTubBtn"
+    # CREATE_UTUB_BUTTON = "#utubBtnCreate"
+    BUTTON_UTUB_DELETE = "#deleteUTubBtn"
+    INPUT_UTUB_NAME_CREATE = ".add#utubName"
     # CREATE_UTUB_INPUT = "#utubNameCreate"
-    SUBMIT_UTUB_INPUT = "#utubSubmitBtnCreate"
-    CANCEL_UTUB_INPUT = "#cancelCreateUTub"
-    UTUB_SELECTORS = "#listUTubs"
-    SELECTED_UTUB_SELECTOR = ".UTubSelector.active"
-    DELETE_UTUB_BUTTON = "#deleteUTubBtn"
+    INPUT_UTUB_DESCRIPTION_CREATE = ".add#utubDescription"
+    # CREATE_UTUB_INPUT = "#utubDescriptionCreate"
+    BUTTON_UTUB_SUBMIT_CREATE = "#submitCreateUTub"
+    # BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
+    BUTTON_UTUB_CANCEL = "#cancelCreateUTub"
+    # BUTTON_UTUB_CANCEL = "#utubCancelBtnCreate"
+
+    SELECTORS_UTUB = "#listUTubs"
+    SUBHEADER_UTUB = "#UTubDeckSubheader"
+    SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
 
     # Tag Deck
-    TAG_DECK_SUBHEADER = "#TagDeckSubheader"
+    SUBHEADER_TAG_DECK = "#TagDeckSubheader"
 
     # URL Deck
-    URL_DECK_SUBHEADER = "#URLDeckSubheader"
-    EDIT_UTUB_BUTTON = "#editUTubNameBtn"
-    # UPDATE_UTUB_BUTTON = "#utubNameBtnUpdate"
-    ADD_URL_BUTTON = "#addURLBtn"
-    # ADD_URL_BUTTON = "#addURLBtn"
-
-    # UTub Description Deck
-    UTUB_DESCRIPTION_DECK_SUBHEADER = "#UTubDescriptionDeckSubheader"
-    EDIT_UTUB_DESCRIPTION_BUTTON = "#editUTubDescriptionBtn"
+    SUBHEADER_URL_DECK = "#URLDeckSubheader"
+    BUTTON_UTUB_UPDATE = "#editUTubNameBtn"
+    # BUTTON_UTUB_UPDATE = "#utubNameBtnUpdate"
+    BUTTON_URL_CREATE = "#addURLBtn"
+    # BUTTON_URL_CREATE = "#urlBtnCreate"
+    SUBHEADER_UTUB_DESCRIPTION = "#UTubDescriptionDeckSubheader"
+    BUTTON_UTUB_DESCRIPTION_UPDATE = "#editUTubDescriptionBtn"
 
     # Members Deck
-    MEMBER_DECK_SUBHEADER = "#MemberDeckSubheader"
-    ADD_MEMBER_BUTTON = "#addMemberBtn"
+    SUBHEADER_MEMBER_DECK = "#MemberDeckSubheader"
+    BUTTON_MEMBER_CREATE = "#addMemberBtn"
+    # BUTTON_MEMBER_CREATE = "#memberBtnCreate"
+    BUTTON_UTUB_LEAVE = "#leaveUTubBtn"
+
+    # Modal
+    HEADER_MODAL = "#confirmModalTitle"
+    BODY_MODAL = "#confirmModalBody"
+    BUTTON_MODAL_DISMISS = "#modalDismiss"
+    BUTTON_MODAL_REDIRECT = "#modalRedirect"
+    BUTTON_MODAL_SUBMIT = "#modalSubmit"
 
 
 class SplashPageLocators:

@@ -163,7 +163,7 @@ def add_test_utub(runner):
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "utub"])
-    print("utubs added")
+    print("utub added")
     # if debug_strings:
     #     print("one utub added")
 

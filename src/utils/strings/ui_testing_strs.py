@@ -8,4 +8,4 @@ class UI_TEST_STRINGS:
     TEST_USER_1 = USERNAME_BASE + "1"
     TEST_PASSWORD_1 = TEST_USER_1 + EMAIL_SUFFIX
 
-    MAX_CHAR_LIM_UTUB_NAME = "jhfj"
+    MAX_CHAR_LIM_UTUB_NAME = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
