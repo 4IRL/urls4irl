@@ -1,4 +1,5 @@
 # External libraries
+import time
 import pytest
 
 # Internal libraries
@@ -35,6 +36,12 @@ def test_delete_utub(create_test_utubs):
     assert confirmation_modal_body_text == "This action is irreverisible!"
 
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+
+    # Wait for DELETE request
+    time.sleep(4)
+
+    # Assert UTub selector no longer exists
+    assert not select_utub_by_name(browser, utub_name)
 
 
 @pytest.mark.skip(reason="Testing another in isolation")

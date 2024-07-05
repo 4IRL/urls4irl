@@ -197,11 +197,13 @@ def select_utub_by_name(browser, utub_name: str):
     Regardless of the current page state, this function clicks the UTub selector matching the indicated utub_name
     """
 
-    UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
 
     # Cycle through all
-    for selector in UTub_selectors:
+    for selector in utub_selectors:
         utub_selector_name = selector.get_attribute("innerText")
+        print(utub_selector_name)
+
         if utub_selector_name == utub_name:
             selector.click()
             return True
