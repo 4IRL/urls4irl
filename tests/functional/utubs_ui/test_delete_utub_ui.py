@@ -32,8 +32,10 @@ def test_delete_utub(create_test_utubs):
     warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
+    utub_delete_check_text = "This action is irreverisible!"
+
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == "This action is irreverisible!"
+    assert confirmation_modal_body_text == utub_delete_check_text
 
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
 
@@ -44,7 +46,7 @@ def test_delete_utub(create_test_utubs):
     assert not select_utub_by_name(browser, utub_name)
 
 
-@pytest.mark.skip(reason="Testing another in isolation")
+@pytest.mark.skip(reason="Test not yet implemented")
 def test_delete_last_utub(create_test_utub):
     """
     GIVEN a user has one UTub
@@ -57,36 +59,9 @@ def test_delete_last_utub(create_test_utub):
     delete_active_utub(browser)
 
     # Extract confirming result
-    selector_UTub1 = wait_then_get_element(browser, MPL.SELECTED_UTUB_SELECTOR)
+    selector_UTub1 = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
 
     # Assert new UTub selector was created with input UTub Name
     assert selector_UTub1.text == UTUB_NAME_BASE + "1"
     # Assert new UTub is now active and displayed to user
     assert "active" in selector_UTub1.get_attribute("class")
-
-
-@pytest.mark.skip(reason="Testing another in isolation")
-def test_add_utub_name_similar(create_test_utubs):
-    """
-    GIVEN a user trying to add a new UTub
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
-    """
-
-    browser = create_test_utubs
-
-    # Extract name of a pre-existing UTub
-    first_UTub_selector = wait_then_get_element(browser, ".UTubSelector")
-    utub_name = first_UTub_selector.get_attribute("innerText")
-
-    print(utub_name)
-
-    # Extract modal body element
-    confirmation_modal_body = wait_then_get_element(
-        browser, "#confirmModalBody", False, 100
-    )
-
-    # Assert modal prompts user to consider duplicate UTub naming
-    assert (
-        confirmation_modal_body.text == "A UTub in your repository has a similar name."
-    )

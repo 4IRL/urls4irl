@@ -150,17 +150,17 @@ def login_user(
 ):
 
     # Find and click login button to open modal
-    wait_then_click_element(browser, SPL.LOGIN_OPTION_BUTTON)
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
 
     # Input login details
-    login_input_field = wait_then_get_element(browser, SPL.USERNAME_INPUT)
-    clear_then_send_keys(login_input_field, username)
+    username_input = wait_then_get_element(browser, SPL.INPUT_USERNAME)
+    clear_then_send_keys(username_input, username)
 
-    password_input_field = wait_then_get_element(browser, SPL.PASSWORD_INPUT)
-    clear_then_send_keys(password_input_field, password)
+    password_input = wait_then_get_element(browser, SPL.INPUT_PASSWORD)
+    clear_then_send_keys(password_input, password)
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.LOGIN_BUTTON)
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
 
 def create_utub(browser, utub_name: str, utub_description: str):
@@ -202,7 +202,7 @@ def select_utub_by_name(browser, utub_name: str):
     # Cycle through all
     for selector in utub_selectors:
         utub_selector_name = selector.get_attribute("innerText")
-        print(utub_selector_name)
+        # print(utub_selector_name)
 
         if utub_selector_name == utub_name:
             selector.click()

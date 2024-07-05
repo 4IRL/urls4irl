@@ -24,7 +24,7 @@ def test_login_test_user(browser, add_test_users):
     assert btn_logout.text == "Logout"
 
     # Correct user logged in
-    user_logged_in = wait_then_get_element(browser, MPL.USERNAME_LOGGED_IN_OUTPUT)
+    user_logged_in = wait_then_get_element(browser, MPL.OUTPUT_LOGGED_IN_USERNAME)
     userLoggedInText = "Logged in as " + UI_TEST_STRINGS.TEST_USER_1
 
     assert user_logged_in.text == userLoggedInText

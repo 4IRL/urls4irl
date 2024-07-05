@@ -3,16 +3,16 @@ class MainPageLocators:
 
     # Navbar
     BUTTON_LOGOUT = "#Logout"
-    USERNAME_LOGGED_IN_OUTPUT = "#userLoggedIn"
+    OUTPUT_LOGGED_IN_USERNAME = "#userLoggedIn"
 
     # UTub Deck
     BUTTON_UTUB_CREATE = "#createUTubBtn"
-    # CREATE_UTUB_BUTTON = "#utubBtnCreate"
+    # BUTTON_UTUB_CREATE = "#utubBtnCreate"
     BUTTON_UTUB_DELETE = "#deleteUTubBtn"
     INPUT_UTUB_NAME_CREATE = ".add#utubName"
-    # CREATE_UTUB_INPUT = "#utubNameCreate"
+    # INPUT_UTUB_NAME_CREATE = "#utubNameCreate"
     INPUT_UTUB_DESCRIPTION_CREATE = ".add#utubDescription"
-    # CREATE_UTUB_INPUT = "#utubDescriptionCreate"
+    # INPUT_UTUB_DESCRIPTION_CREATE = "#utubDescriptionCreate"
     BUTTON_UTUB_SUBMIT_CREATE = "#submitCreateUTub"
     # BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
     BUTTON_UTUB_CANCEL = "#cancelCreateUTub"
@@ -39,6 +39,7 @@ class MainPageLocators:
     BUTTON_MEMBER_CREATE = "#addMemberBtn"
     # BUTTON_MEMBER_CREATE = "#memberBtnCreate"
     BUTTON_UTUB_LEAVE = "#leaveUTubBtn"
+    # BUTTON_UTUB_LEAVE = "#memberBtnDelete"
 
     # Modal
     HEADER_MODAL = "#confirmModalTitle"
@@ -51,9 +52,25 @@ class MainPageLocators:
 class SplashPageLocators:
     """A class for main page locators. All main page locators should come here"""
 
-    REGISTER_OPTION_BUTTON = ".to-register"
-    LOGIN_OPTION_BUTTON = ".to-login"
-    USERNAME_INPUT = "#username"
-    PASSWORD_INPUT = "#password"
-    LOGIN_BUTTON = "#submit"
-    REGISTER_FROM_LOGIN_BUTTON = "#oRegisterFromLogin"
+    # Options
+    BUTTON_REGISTER = ".to-register"
+    BUTTON_LOGIN = ".to-login"
+
+    # Common
+    INPUT_USERNAME = "#username"
+    INPUT_PASSWORD = "#password"
+    BUTTON_SUBMIT = "#submit"
+
+    # Register
+    INPUT_EMAIL = "#email"
+    INPUT_EMAIL_CONFIRM = "#confirmEmail"
+    INPUT_PASSWORD_CONFIRM = "#confirmPassword"
+    BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"
+    HEADER_VALIDATE_EMAIL = ".validate-email-title"
+    SUBHEADER_INVALID_FEEDBACK = ".invalid-feedback"
+
+    # Login
+    BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"
+
+    # Modal
+    HEADER_MODAL = "#SplashModalAlertBanner"
