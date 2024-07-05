@@ -29,10 +29,10 @@ def _handle_email_sending_result(email_result: requests.Response):
 
     elif status_code < 500:
         message = json_response.get(EMAILS.MESSAGES, EMAILS.ERROR_WITH_MAILJET)
-        if message == EMAILS.ERROR_WITH_MAILJET:
+        if message == EMAILS.ERROR_WITH_MAILJET or type(message) is not list:
             errors = message
         else:
-            errors = message.get(EMAILS.MAILJET_ERRORS, EMAILS.ERROR_WITH_MAILJET)
+            errors = message[0].get(EMAILS.MAILJET_ERRORS, EMAILS.ERROR_WITH_MAILJET)
 
         return (
             jsonify(

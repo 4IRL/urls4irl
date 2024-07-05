@@ -1,11 +1,16 @@
 # External libraries
-from threading import Thread
 import pytest
+import time
 
 # Internal libraries
-from src.mocks.mock_constants import UTUB_NAME_BASE
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.functional.utils_for_test import add_utub, wait_then_get_element
+from src.mocks.mock_constants import TEST_UTUB_DESCRIPTION, UTUB_NAME_BASE
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.utils_for_test import (
+    create_utub,
+    wait_then_get_element,
+    wait_then_get_elements,
+)
+from tests.functional.locators import MainPageLocators as MPL
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
@@ -18,20 +23,25 @@ def test_add_utub(login_test_user):
 
     browser = login_test_user
 
-    selector_UTub = add_utub(browser, UTUB_NAME_BASE + "1")
+    utub_name = UTUB_NAME_BASE + "1"
 
-    # print("sleeping")
-    Thread.sleep(10)
-    # print("awake!")
+    create_utub(browser, utub_name, TEST_UTUB_DESCRIPTION)
+
+    time.sleep(10)
+
+    # Extract new UTub selector. Selector should be active.
+    selector_UTub = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
 
     # Assert new UTub selector was created with input UTub Name
-    assert selector_UTub.text == UTUB_NAME_BASE + "1"
+    assert selector_UTub.text == utub_name
+
+    selector_UTub.click()
     # Assert new UTub is now active and displayed to user
     assert "active" in selector_UTub.get_attribute("class")
 
 
 @pytest.mark.skip(
-    reason="This test tests functionality that is not yet captured on the frontend"
+    reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
 def test_add_utub_name_length_exceeded(login_test_user):
     """
@@ -42,15 +52,15 @@ def test_add_utub_name_length_exceeded(login_test_user):
 
     browser = login_test_user
 
-    add_utub(browser, UI_TEST_STRINGS.MAX_CHAR_LIM_UTUB_NAME)
+    create_utub(browser, UTS.MAX_CHAR_LIM_UTUB_NAME)
 
-    warning_modal_body = wait_then_get_element(browser, "#confirmModalBody", False, 100)
+    warning_modal_body = wait_then_get_element(browser, "#confirmModalBody")
 
     # Assert new UTub is now active and displayed to user
     assert warning_modal_body.text == "Try shortening your UTub name"
 
 
-@pytest.mark.skip(reason="This test is not yet implemented")
+# @pytest.mark.skip(reason="Testing another in isolation")
 def test_add_utub_name_similar(create_test_utubs):
     """
     GIVEN a user trying to add a new UTub
@@ -61,20 +71,17 @@ def test_add_utub_name_similar(create_test_utubs):
     browser = create_test_utubs
 
     # Extract name of a pre-existing UTub
-    first_UTub_selector = wait_then_get_element(browser, ".UTubSelector")
-    utub_name = first_UTub_selector.get_attribute("innerText")
-
-    print(utub_name)
+    UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    first_UTub_selector = UTub_selectors[0]
+    utub_name = first_UTub_selector.text
 
     # Attempt to add a new UTub with the same name
-    add_utub(browser, utub_name)
+    create_utub(browser, utub_name, TEST_UTUB_DESCRIPTION)
 
     # Extract modal body element
-    confirmation_modal_body = wait_then_get_element(
-        browser, "#confirmModalBody", False, 100
-    )
+    confirmation_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    confirmation_modal_body_text = confirmation_modal_body.get_attribute("innerText")
+    utub_same_name_check_text = UTS.BODY_MODAL_UTUB_SAME_NAME
 
     # Assert modal prompts user to consider duplicate UTub naming
-    assert (
-        confirmation_modal_body.text == "A UTub in your repository has a similar name."
-    )
+    assert confirmation_modal_body_text == utub_same_name_check_text

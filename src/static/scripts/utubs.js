@@ -454,7 +454,7 @@ function sameNameWarningHideModal() {
 // Handles a double check if user inputs a new UTub name similar to one already existing. mode true 'add', mode false 'edit'
 function sameUTubNameOnNewUTubWarningShowModal() {
   const modalTitle = "Create a new UTub with this name?";
-  const modalBody = "You're already in a UTub with an identical name.";
+  const modalBody = "You already have a UTub with a similar name.";
   const buttonTextDismiss = "Go Back to Editing";
   const buttonTextSubmit = "Create";
 
