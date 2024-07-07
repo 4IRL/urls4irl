@@ -15,7 +15,7 @@ def test_example(browser):
     assert "URLS4IRL" in browser.title
 
 
-def test_login_test_user(browser, add_test_users):
+def test_login_test_user(browser, create_test_users):
     login_user(browser)
 
     # Confirm user logged in

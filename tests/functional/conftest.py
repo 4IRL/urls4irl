@@ -1,7 +1,9 @@
 # Standard library
 from typing import Generator, Tuple
 import multiprocessing
-import time
+from time import sleep
+import requests
+import socket
 
 # External libraries
 from flask import Flask
@@ -13,14 +15,54 @@ from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
 # Internal libraries
+from src import create_app
 from src.config import TestingConfig
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.functional.utils_for_test import (
-    clear_db,
-    find_open_port,
-    ping_server,
-    run_app,
-)
+
+
+def run_app(port: int):
+    """
+    Runs app
+    """
+    config = TestingConfig()
+    app_for_test = create_app(config)
+    app_for_test.run(debug=False, port=port)
+
+
+def clear_db(runner: Tuple[Flask, FlaskCliRunner]):
+    # Clear db
+    _, cli_runner = runner
+    cli_runner.invoke(args=["managedb", "clear", "test"])
+    print("\ndb cleared")
+
+
+def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
+    for port in range(start_port, end_port + 1):
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+            try:
+                s.bind(("127.0.0.1", port))
+                return port
+            except OSError:
+                continue
+    raise RuntimeError("No available port found in the specified range.")
+
+
+def ping_server(url: str, timeout: float = 2) -> bool:
+    total_time = 0
+    max_time = 10
+    is_server_ready = False
+
+    # Keep pinging server until status code 200 or time limit is reached
+    while not is_server_ready and total_time < max_time:
+        try:
+            status_code = requests.get(url, timeout=timeout).status_code
+        except requests.ConnectTimeout:
+            sleep(timeout)
+            total_time += timeout
+        else:
+            is_server_ready = status_code == 200
+
+    return is_server_ready
 
 
 @pytest.fixture(scope="session")
@@ -43,7 +85,7 @@ def init_multiprocessing():
 def provide_port() -> int:
     open_port = find_open_port()
     print(f"Found an open port: {open_port}")
-    time.sleep(2)
+    sleep(2)
     return open_port
 
 
@@ -56,7 +98,7 @@ def parallelize_app(provide_port, init_multiprocessing):
     process = multiprocessing.Process(target=run_app, args=(open_port,))
 
     process.start()
-    time.sleep(5)
+    sleep(5)
     yield process
     process.kill()
     process.join()
@@ -147,35 +189,36 @@ def browser(
 
 
 @pytest.fixture
-def add_test_users(runner):
+# def create_test_users(runner, debug_strings):
+def create_test_users(runner):
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "users"])
-    print("users added")
+    print("\nusers added")
     # if debug_strings:
     #     print("users added")
 
 
 @pytest.fixture
-# def add_test_utubs(runner, debug_strings):
-def add_test_utub(runner):
+# def create_test_utub(runner, debug_strings):
+def create_test_utub(runner):
     """
     Adds test users and a single sample UTub
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "utub"])
-    print("utub added")
+    print("\nutub added")
     # if debug_strings:
     #     print("one utub added")
 
 
 @pytest.fixture
-# def add_test_utubs(runner, debug_strings):
-def add_test_utubs(runner):
+# def create_test_utubs(runner, debug_strings):
+def create_test_utubs(runner):
     """
     Adds test users and sample UTubs
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "utubs"])
-    print("utubs added")
+    print("\nutubs added")
     # if debug_strings:
     #     print("utubs added")

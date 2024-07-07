@@ -1,27 +1,28 @@
 # External libraries
-import time
+from time import sleep
 import pytest
 
 # Internal libraries
 from src.mocks.mock_constants import UTUB_NAME_BASE, USERNAME_BASE
 from tests.functional.utils_for_test import (
-    delete_active_utub,
+    login_user,
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
 )
 from locators import MainPageLocators as MPL
+from tests.functional.utubs_ui.utils_for_test_utub_ui import delete_active_utub
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_delete_utub(create_test_utubs):
+def test_delete_utub(browser, create_test_utubs):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    browser = create_test_utubs
+    login_user(browser)
 
     utub_name = UTUB_NAME_BASE + "1"
     user_name = USERNAME_BASE + "1"
@@ -40,21 +41,21 @@ def test_delete_utub(create_test_utubs):
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for DELETE request
-    time.sleep(4)
+    sleep(4)
 
     # Assert UTub selector no longer exists
     assert not select_utub_by_name(browser, utub_name)
 
 
 @pytest.mark.skip(reason="Test not yet implemented")
-def test_delete_last_utub(create_test_utub):
+def test_delete_last_utub(browser, create_test_utub):
     """
     GIVEN a user has one UTub
     WHEN they delete the UTub
     THEN ensure the main page shows appropriate prompts to create a new UTub
     """
 
-    browser = create_test_utub
+    login_user(browser)
 
     delete_active_utub(browser)
 

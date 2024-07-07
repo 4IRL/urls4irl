@@ -1,33 +1,35 @@
 # External libraries
 import pytest
-import time
+from time import sleep
 
 # Internal libraries
 from src.mocks.mock_constants import TEST_UTUB_DESCRIPTION, UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.utils_for_test import (
-    create_utub,
+    login_user,
     wait_then_get_element,
     wait_then_get_elements,
 )
 from tests.functional.locators import MainPageLocators as MPL
+from utils_for_test_utub_ui import create_utub
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_add_utub(login_test_user):
+def test_create_utub(browser, create_test_users):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    browser = login_test_user
+    login_user(browser)
 
     utub_name = UTUB_NAME_BASE + "1"
 
     create_utub(browser, utub_name, TEST_UTUB_DESCRIPTION)
 
-    time.sleep(10)
+    # Wait for POST request
+    sleep(4)
 
     # Extract new UTub selector. Selector should be active.
     selector_UTub = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
@@ -43,14 +45,14 @@ def test_add_utub(login_test_user):
 @pytest.mark.skip(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
-def test_add_utub_name_length_exceeded(login_test_user):
+def test_create_utub_name_length_exceeded(browser, create_test_users):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    browser = login_test_user
+    login_user(browser)
 
     create_utub(browser, UTS.MAX_CHAR_LIM_UTUB_NAME)
 
@@ -61,14 +63,14 @@ def test_add_utub_name_length_exceeded(login_test_user):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_add_utub_name_similar(create_test_utubs):
+def test_create_utub_name_similar(browser, create_test_utubs):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    browser = create_test_utubs
+    login_user(browser)
 
     # Extract name of a pre-existing UTub
     UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
