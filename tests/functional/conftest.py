@@ -189,7 +189,8 @@ def browser(
 
 
 @pytest.fixture
-def add_test_users(runner):
+# def create_test_users(runner, debug_strings):
+def create_test_users(runner):
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "users"])
     print("\nusers added")
@@ -198,8 +199,8 @@ def add_test_users(runner):
 
 
 @pytest.fixture
-# def add_test_utubs(runner, debug_strings):
-def add_test_utub(runner):
+# def create_test_utub(runner, debug_strings):
+def create_test_utub(runner):
     """
     Adds test users and a single sample UTub
     """
@@ -211,8 +212,8 @@ def add_test_utub(runner):
 
 
 @pytest.fixture
-# def add_test_utubs(runner, debug_strings):
-def add_test_utubs(runner):
+# def create_test_utubs(runner, debug_strings):
+def create_test_utubs(runner):
     """
     Adds test users and sample UTubs
     """

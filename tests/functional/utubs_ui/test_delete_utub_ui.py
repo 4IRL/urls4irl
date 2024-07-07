@@ -15,7 +15,7 @@ from tests.functional.utubs_ui.utils_for_test_utub_ui import delete_active_utub
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_delete_utub(browser, add_test_utubs):
+def test_delete_utub(browser, create_test_utubs):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
@@ -48,7 +48,7 @@ def test_delete_utub(browser, add_test_utubs):
 
 
 @pytest.mark.skip(reason="Test not yet implemented")
-def test_delete_last_utub(browser, add_test_utub):
+def test_delete_last_utub(browser, create_test_utub):
     """
     GIVEN a user has one UTub
     WHEN they delete the UTub

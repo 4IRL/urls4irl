@@ -6,16 +6,26 @@ from selenium.common.exceptions import NoSuchElementException
 # Internal libraries
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
+    clear_then_send_keys,
     is_owner,
     wait_then_click_element,
+    wait_then_get_element,
     wait_then_get_elements,
 )
 
 
 def create_member_active_utub(browser, user_name, member_name):
     if is_owner(user_name):
+
+        # Click createMember button to show input
         wait_then_click_element(browser, MPL.BUTTON_MEMBER_CREATE)
 
+        # Types new member name
+        create_member_input = wait_then_get_element(browser, MPL.INPUT_MEMBER_CREATE)
+        clear_then_send_keys(create_member_input, member_name)
+
+        # Submits new member form
+        wait_then_click_element(browser, MPL.BUTTON_MEMBER_SUBMIT_CREATE)
     else:
         return False
 

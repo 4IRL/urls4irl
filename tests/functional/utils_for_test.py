@@ -141,6 +141,7 @@ def get_current_user_name(browser):
     logged_in_user = wait_then_get_element(browser, MPL.OUTPUT_LOGGED_IN_USERNAME)
     logged_in_user_string = logged_in_user.get_attribute("innerText")
     user_name = logged_in_user_string.split("as ")
+    print(user_name[1])
 
     return user_name[1]
 

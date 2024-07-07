@@ -15,7 +15,7 @@ from utils_for_test_utub_ui import create_utub
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_utub(browser, add_test_users):
+def test_create_utub(browser, create_test_users):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
@@ -45,7 +45,7 @@ def test_create_utub(browser, add_test_users):
 @pytest.mark.skip(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
-def test_create_utub_name_length_exceeded(browser, add_test_users):
+def test_create_utub_name_length_exceeded(browser, create_test_users):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
@@ -63,7 +63,7 @@ def test_create_utub_name_length_exceeded(browser, add_test_users):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_utub_name_similar(browser, add_test_utubs):
+def test_create_utub_name_similar(browser, create_test_utubs):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form

@@ -13,8 +13,8 @@ class MainPageLocators:
     BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
     BUTTON_UTUB_CANCEL = "#utubCancelBtnCreate"
 
-    SELECTORS_UTUB = "#listUTubs"
     SUBHEADER_UTUB = "#UTubDeckSubheader"
+    SELECTORS_UTUB = ".UTubSelector"
     SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
 
     # Tag Deck
@@ -30,7 +30,12 @@ class MainPageLocators:
     # Members Deck
     SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"
     BUTTON_MEMBER_CREATE = "#memberBtnCreate"
+    INPUT_MEMBER_CREATE = "#memberCreate"
+    BUTTON_MEMBER_SUBMIT_CREATE = "#memberSubmitBtnCreate"
     BUTTON_UTUB_LEAVE = "#memberBtnDelete"
+
+    SUBHEADER_UTUB = "#MemberDeckSubheader"
+    BADGES_MEMBERS = ".member"
 
     # Modal
     HEADER_MODAL = "#confirmModalTitle"
