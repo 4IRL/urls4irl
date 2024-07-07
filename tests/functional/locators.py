@@ -6,17 +6,12 @@ class MainPageLocators:
     OUTPUT_LOGGED_IN_USERNAME = "#userLoggedIn"
 
     # UTub Deck
-    BUTTON_UTUB_CREATE = "#createUTubBtn"
-    # BUTTON_UTUB_CREATE = "#utubBtnCreate"
-    BUTTON_UTUB_DELETE = "#deleteUTubBtn"
-    INPUT_UTUB_NAME_CREATE = ".add#utubName"
-    # INPUT_UTUB_NAME_CREATE = "#utubNameCreate"
-    INPUT_UTUB_DESCRIPTION_CREATE = ".add#utubDescription"
-    # INPUT_UTUB_DESCRIPTION_CREATE = "#utubDescriptionCreate"
-    BUTTON_UTUB_SUBMIT_CREATE = "#submitCreateUTub"
-    # BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
-    BUTTON_UTUB_CANCEL = "#cancelCreateUTub"
-    # BUTTON_UTUB_CANCEL = "#utubCancelBtnCreate"
+    BUTTON_UTUB_CREATE = "#utubBtnCreate"
+    BUTTON_UTUB_DELETE = "#utubBtnDelete"
+    INPUT_UTUB_NAME_CREATE = "#utubNameCreate"
+    INPUT_UTUB_DESCRIPTION_CREATE = "#utubDescriptionCreate"
+    BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
+    BUTTON_UTUB_CANCEL = "#utubCancelBtnCreate"
 
     SELECTORS_UTUB = "#listUTubs"
     SUBHEADER_UTUB = "#UTubDeckSubheader"
@@ -27,19 +22,15 @@ class MainPageLocators:
 
     # URL Deck
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
-    BUTTON_UTUB_UPDATE = "#editUTubNameBtn"
-    # BUTTON_UTUB_UPDATE = "#utubNameBtnUpdate"
-    BUTTON_URL_CREATE = "#addURLBtn"
-    # BUTTON_URL_CREATE = "#urlBtnCreate"
+    BUTTON_UTUB_UPDATE = "#utubNameBtnUpdate"
+    BUTTON_URL_CREATE = "#urlBtnCreate"
     SUBHEADER_UTUB_DESCRIPTION = "#UTubDescriptionDeckSubheader"
     BUTTON_UTUB_DESCRIPTION_UPDATE = "#editUTubDescriptionBtn"
 
     # Members Deck
-    SUBHEADER_MEMBER_DECK = "#MemberDeckSubheader"
-    BUTTON_MEMBER_CREATE = "#addMemberBtn"
-    # BUTTON_MEMBER_CREATE = "#memberBtnCreate"
-    BUTTON_UTUB_LEAVE = "#leaveUTubBtn"
-    # BUTTON_UTUB_LEAVE = "#memberBtnDelete"
+    SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"
+    BUTTON_MEMBER_CREATE = "#memberBtnCreate"
+    BUTTON_UTUB_LEAVE = "#memberBtnDelete"
 
     # Modal
     HEADER_MODAL = "#confirmModalTitle"

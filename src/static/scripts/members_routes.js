@@ -5,7 +5,7 @@ function createMemberShowInput() {
   showIfHidden($("#createMemberWrap").show());
   hideIfShown($("#displayMemberWrap"));
   hideIfShown($("#memberBtnCreate"));
-  highlightInput($("#usernameCreate"));
+  highlightInput($("#memberCreate"));
   setupCreateMemberEventListeners();
 }
 
@@ -39,7 +39,7 @@ function createMember() {
 
 function setupCreateMemberEventListeners() {
   // Prevent clicking in input box from closing the form
-  $("#usernameCreate")
+  $("#memberCreate")
     .off("click.createMember")
     .on("click.createMember", function (e) {
       e.stopPropagation();
@@ -102,7 +102,7 @@ function removeCreateMemberEventListeners() {
 function createMemberSetup() {
   const postURL = routes.createMember(getActiveUTubID());
 
-  const newMemberUsername = $("#usernameCreate").val();
+  const newMemberUsername = $("#memberCreate").val();
   data = {
     username: newMemberUsername,
   };

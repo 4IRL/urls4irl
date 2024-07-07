@@ -9,7 +9,7 @@ import pytest
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.splash_ui.utils_for_test_register_user import (
+from tests.functional.splash_ui.utils_for_test_splash_ui import (
     register_user,
     register_user_unconfirmed_email,
     register_user_unconfirmed_password,
