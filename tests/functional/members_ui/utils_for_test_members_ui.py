@@ -2,6 +2,7 @@
 
 # External libraries
 from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
 
 # Internal libraries
 from tests.functional.locators import MainPageLocators as MPL
@@ -12,6 +13,21 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_then_get_elements,
 )
+
+
+def get_all_member_badges(browser):
+    return wait_then_get_elements(browser, MPL.BADGES_MEMBERS)
+
+
+def get_all_member_usernames(browser):
+    members = get_all_member_badges(browser)
+    member_names = []
+
+    for member in members:
+        member_name = member.get_attribute("innerText")
+        member_names.append(member_name)
+
+    return member_names
 
 
 def create_member_active_utub(browser, user_name, member_name):
@@ -26,6 +42,37 @@ def create_member_active_utub(browser, user_name, member_name):
 
         # Submits new member form
         wait_then_click_element(browser, MPL.BUTTON_MEMBER_SUBMIT_CREATE)
+
+        return True
+    else:
+        return False
+
+
+def delete_member_active_utub(browser, user_name, member_name):
+    actions = ActionChains(browser)
+    if is_owner(user_name):
+
+        # Extract all deleteMember buttons
+        member_delete_buttons = wait_then_get_elements(
+            browser, MPL.BUTTON_MEMBER_DELETE
+        )
+
+        member_badges = get_all_member_badges(browser)
+
+        # Find index for appropriate member to delete
+        member_usernames = get_all_member_usernames(browser)
+        i = 0
+        for username in member_usernames:
+            if username == member_name:
+                # Delete only indicated member
+                actions.move_to_element(member_badges[i])
+                actions.pause(3)
+                actions.click(member_delete_buttons[i])
+                actions.perform()
+                return True
+            i += 1
+
+        return False
     else:
         return False
 

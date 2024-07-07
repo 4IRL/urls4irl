@@ -75,7 +75,6 @@ def wait_then_click_element(browser, css_selector: str, time: float = 2):
     )
 
     element.click()
-    return element
 
 
 def clear_then_send_keys(element, input_text: str):
@@ -120,13 +119,12 @@ def select_utub_by_name(browser, utub_name: str):
     # Cycle through all
     for selector in utub_selectors:
         utub_selector_name = selector.get_attribute("innerText")
-        # print(utub_selector_name)
 
         if utub_selector_name == utub_name:
             selector.click()
             return True
-        else:
-            return False
+
+    return False
 
 
 def get_selected_utub_name(browser):

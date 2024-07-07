@@ -25,3 +25,9 @@ class UI_TEST_STRINGS:
 
     # UTubs
     BODY_MODAL_UTUB_SAME_NAME = "You already have a UTub with a similar name."
+    BODY_MODAL_UTUB_DELETE = "This action is irreverisible!"
+
+    # Members
+    BODY_MODAL_MEMBER_DELETE = (
+        "This member will no longer have access to the URLs in this UTub."
+    )

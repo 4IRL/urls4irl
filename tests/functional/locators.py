@@ -32,7 +32,8 @@ class MainPageLocators:
     BUTTON_MEMBER_CREATE = "#memberBtnCreate"
     INPUT_MEMBER_CREATE = "#memberCreate"
     BUTTON_MEMBER_SUBMIT_CREATE = "#memberSubmitBtnCreate"
-    BUTTON_UTUB_LEAVE = "#memberBtnDelete"
+    BUTTON_UTUB_LEAVE = "#memberSelfBtnDelete"
+    BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"
 
     SUBHEADER_UTUB = "#MemberDeckSubheader"
     BADGES_MEMBERS = ".member"
