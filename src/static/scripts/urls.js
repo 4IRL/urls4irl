@@ -32,7 +32,7 @@ function getNumOfURLs() {
 
 // Simple function to streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
 function getSelectedUrlCard() {
-  const selectedUrlCard = $(".urlRow[urlselected=true]");
+  const selectedUrlCard = $(".urlRow[urlSelected=true]");
   return selectedUrlCard.length ? selectedUrlCard : null;
 }
 
@@ -44,12 +44,11 @@ function getSelectedURLID() {
 
 // Prevent deselection of URL while modifying its values (e.g. adding a tag, updating URL string or title)
 function unbindSelectURLBehavior() {
-  getSelectedUrlCard().off("click");
+  getSelectedUrlCard().off(".urlSelected");
 }
 
 // Perform actions on selection of a URL card
 function selectUrlCard(urlCard, url) {
-  //hideIfShown($("#createURLWrap"))
   deselectAllUrls();
   urlCard
     .find(".urlString")
@@ -59,40 +58,20 @@ function selectUrlCard(urlCard, url) {
       accessLink(url.string);
     });
   urlCard.attr({ urlSelected: true });
+  urlCard.find(".goToUrlIcon").addClass("visible-flex");
 }
 
 // Clean up when deselecting a URL card
 function deselectUrl(urlCard) {
   urlCard.attr({ urlSelected: false });
   urlCard.find(".urlString").off("click.goToURL");
+  urlCard.find(".goToUrlIcon").removeClass("visible-flex");
+  resetUpdateUrlTitleForm(urlCard);
 }
 
 function deselectAllUrls() {
   const previouslySelectedCard = getSelectedUrlCard();
   if (previouslySelectedCard !== null) deselectUrl(previouslySelectedCard);
-}
-
-// Rebinds selection click behavior after URL-modifying post requests are complete
-function rebindSelectBehavior() {
-  const urlID = getSelectedURLID();
-  $(getSelectedUrlCard())
-    .closest(".cardCol")
-    .off("click")
-    .on("click", function () {
-      toggleSelectedURL(urlID);
-      bindEscapeToUnselectURL(urlID);
-    });
-}
-
-function bindEscapeToUnselectURL(urlID) {
-  $(document)
-    .unbind("keyup.27")
-    .bind("keyup.27", function (e) {
-      if (e.which === 27) {
-        toggleSelectedURL(urlID);
-        unbindEscapeKey();
-      }
-    });
 }
 
 function bindEscapeToExitURLTitleUpdating() {
@@ -210,18 +189,27 @@ function createURLBlock(url, tagArray) {
   const outerUrlCard = $(document.createElement("div")).addClass(
     "urlRow flex-column full-width pad-in-15p pointerable",
   ); // Holds everything in the URL
-  const innerUrlCard = $(document.createElement("div")); // Flex Row when unselected, flex column when selected
-  const urlTitleStringWrap = $(document.createElement("div")); // Flex row when unselected, flex column when selected
 
   const urlTitleGoToUrlWrap = $(document.createElement("div")).addClass(
     "flex-row full-width justify-space-between",
   );
-  const urlTitle = $(document.createElement("h6"))
-    .addClass("urlTitle long-text-ellipsis")
-    .text(url.urlTitle);
-  urlTitleGoToUrlWrap.append(urlTitle).append(createGoToUrlIcon(url.urlString));
+
+  if (url.canDelete) {
+    const urlTitleAndTitleUpdateBlock = createUrlTitleAndUpdateBlock(
+      url.urlTitle,
+      outerUrlCard,
+    );
+    urlTitleGoToUrlWrap.append(urlTitleAndTitleUpdateBlock);
+  } else {
+    const urlTitle = $(document.createElement("h6"))
+      .addClass("urlTitle long-text-ellipsis")
+      .text(url.urlTitle);
+    urlTitleGoToUrlWrap.append(urlTitle);
+  }
+  urlTitleGoToUrlWrap.append(createGoToUrlIcon(url.urlString));
+
   const urlString = $(document.createElement("span"))
-    .addClass("urlString full-width long-text-ellipsis")
+    .addClass("urlString long-text-ellipsis")
     .text(url.urlString);
   outerUrlCard.append(urlTitleGoToUrlWrap).append(urlString).attr({
     urlID: url.utubUrlID,
@@ -231,6 +219,7 @@ function createURLBlock(url, tagArray) {
   outerUrlCard.append(createTagsAndOptionsForUrlBlock(url, tagArray));
   outerUrlCard.off("click.urlSelected").on("click.urlSelected", function (e) {
     if ($(e.target).parents(".urlRow").length > 0) {
+      if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") return;
       console.log("Setting parent to selected");
       selectUrlCard(outerUrlCard, url);
     }
@@ -267,6 +256,82 @@ function createGoToUrlIcon(urlString) {
     });
 
   return goToUrlOuterIconSvg;
+}
+
+function createUrlTitleAndUpdateBlock(urlTitleText, urlCard) {
+  const urlTitleAndUpdateWrap = $(document.createElement("div")).addClass(
+    "flex-row ninetyfive-width",
+  );
+  const urlTitleAndShowUpdateIconWrap = $(
+    document.createElement("div"),
+  ).addClass("flex-row ninetyfive-width urlTitleAndUpdateIconWrap");
+  const urlTitleAndShowUpdateIconInnerWrap = $(
+    document.createElement("div"),
+  ).addClass("flex-row full-width urlTitleAndUpdateIconInnerWrap");
+
+  const urlTitle = $(document.createElement("h6"))
+    .addClass("urlTitle long-text-ellipsis")
+    .text(urlTitleText);
+
+  const urlTitleShowUpdateIcon = makeUpdateButton(20);
+  urlTitleShowUpdateIcon
+    .css("display", "none")
+    .on("click.showUpdateUrlTitle", function (e) {
+      if ($(e.target).parents(".urlTitleAndUpdateIconWrap").length > 0) {
+        const urlTitleAndIcon = $(e.target).closest(
+          ".urlTitleAndUpdateIconWrap",
+        );
+        hideIfShown(urlTitleAndIcon);
+        const updateTitleForm = urlTitleAndIcon.siblings(".updateUrlTitleWrap");
+        showIfHidden(updateTitleForm);
+        highlightInput(updateTitleForm.find("input"));
+      }
+    });
+  urlTitleAndShowUpdateIconInnerWrap
+    .append(urlTitle)
+    .append(urlTitleShowUpdateIcon);
+  urlTitleAndShowUpdateIconWrap.append(urlTitleAndShowUpdateIconInnerWrap);
+
+  const urlUpdateTextInputContainer = makeUpdateTextInput("urlTitle")
+    .addClass("updateUrlTitleWrap")
+    .css("display", "none");
+
+  urlUpdateTextInputContainer.find("label").text("URL Title");
+
+  const urlUpdateTextInput = urlUpdateTextInputContainer
+    .find("input")
+    .prop("minLength", CONSTANTS.URLS_TITLE_MIN_LENGTH)
+    .prop("maxLength", CONSTANTS.URLS_TITLE_MAX_LENGTH)
+    .val(urlTitleText);
+
+  const urlTitleSubmitBtnUpdate = makeSubmitButton(30)
+    .addClass("urlTitleSubmitBtnUpdate")
+    .on("click.updateUrlTitle", function (e) {
+      updateURLTitle(urlUpdateTextInput);
+    });
+
+  const urlTitleCancelBtnUpdate = makeCancelButton(30)
+    .addClass("urlTitleCancelBtnUpdate")
+    .on("click.updateUrlTitle", function (e) {
+      resetUpdateUrlTitleForm(urlCard);
+    });
+
+  urlUpdateTextInputContainer
+    .append(urlTitleSubmitBtnUpdate)
+    .append(urlTitleCancelBtnUpdate);
+
+  urlTitleAndUpdateWrap
+    .append(urlTitleAndShowUpdateIconWrap)
+    .append(urlUpdateTextInputContainer);
+
+  return urlTitleAndUpdateWrap;
+}
+
+function resetUpdateUrlTitleForm(urlCard) {
+  hideIfShown(urlCard.find(".updateUrlTitleWrap"));
+  showIfHidden(urlCard.find(".urlTitleAndUpdateIconWrap"));
+  urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
+  resetUpdateURLTitleFailErrors(urlCard);
 }
 
 function createTagsAndOptionsForUrlBlock(url, tagArray) {
@@ -475,52 +540,6 @@ function createNewTagInputField() {
   $(wrapper).append(wrapperInput).append(wrapperBtns);
 
   return wrapper;
-}
-
-// User clicks a URL. If already selected, URL is deselected, else it is selected. All other URLs are deselected. This function places all URLs prior to selected URL into #UPRRow, inserts selected URL into a separate #URLFocusRow, and places all subsequent URLs into #LWRRow. It also adjusts css displays accordingly
-// REHch goal 09/12/23 may want a "display order" attribute stored in backend. Option to sort by alpha, date added, or custom prescribed "display order". This display can be manipulated by drag-drop of the URL card.
-function toggleSelectedURL(selectedURLID) {
-  let cardCols = $(".cardCol");
-
-  let activeRow = $("#UPRRow");
-  let focusRow = $("#URLFocusRow");
-
-  // Hide createURL block
-  hideInput("#createURL");
-
-  // Loop through all cardCols and add to UPR row until selected URL card, then subsequent cardCols are added to LWR row
-  for (let i = 0; i < cardCols.length; i++) {
-    let cardCol = $(cardCols[i]);
-    let card = cardCol.find(".card");
-    let URLID = card.attr("urlid");
-    let selectBool = card.hasClass("selectedURL");
-    let clickedCardBool = URLID == selectedURLID;
-    let createURLBlockBool = card.attr("id") === "createURL";
-
-    // If this cardCol is the creation block, skip it and move to the next iteration
-    if (createURLBlockBool) continue;
-    // If this is not the card the user clicked or it's already selected, deselect it and add it to the activeRow
-    if (!clickedCardBool || selectBool) {
-      deselectURL(cardCol);
-      activeRow.append(cardCol);
-    }
-    // URL the user clicked is deselected, select it
-    if (!selectBool && clickedCardBool) {
-      selectURL(cardCol);
-      focusRow.append(cardCol);
-
-      // Reorder createURL card to before selected URL
-      let createCardCol = $("#createURL").closest(".cardCol").detach();
-      focusRow.prepend(createCardCol);
-
-      // All subsequent cardCols should be added below the focusRow
-      activeRow = $("#LWRRow");
-    }
-  }
-
-  if (!isNaN(getSelectedURLID())) {
-    bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
-  }
 }
 
 // Filters all URLs with tags

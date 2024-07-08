@@ -185,12 +185,24 @@
     width: 100%;
 }
 
+.ninetyfive-width {
+    width: 95%;
+}
+
 .border-radius-5px {
     border-radius: 10px;
 }
 
 .visible {
     display: block !important;
+}
+
+.visible-flex {
+    display: flex !important;
+}
+
+.hidden {
+    display: none !important;
 }
 
 .invalid-field {
@@ -209,6 +221,10 @@
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
+}
+
+.width-with-icon {
+    width: calc(100% - 25px);
 }
 
 /* UTubs */
@@ -302,15 +318,17 @@
 
 /* URLs */
 
-#listURLs .urlRow:nth-child(odd) {
+#listURLs .urlRow:nth-child(odd),
+#listURLs .urlRow:nth-child(odd) .text-input-inner-container > label, 
+#listURLs .urlRow:nth-child(odd) .text-input-inner-container > input { 
     background-color: var(--cardBackgroundColor);
 }
 
-#listURLs .urlRow:nth-child(odd):hover {
+#listURLs .urlRow:nth-child(odd):not([urlSelected="true"]):hover {
     background-color: rgba(61, 71, 71, 1.0); 
 }
 
-#listURLs .urlRow:nth-child(even):hover {
+#listURLs .urlRow:nth-child(even):not([urlSelected="true"]):hover {
     background-color: rgba(51, 61, 61, 1.0);
 }
 
@@ -329,7 +347,6 @@
     margin: 0;
     font-weight: bold;
     line-height: inherit;
-    max-width: 90%;
 }
 
 .urlString {
@@ -370,7 +387,7 @@
     opacity: 0;
 }
 
-.urlRow[urlSelected=true] {
+.urlRow[urlSelected="true"] {
     border-top: 1px solid var(--selectedUrlBorder);
     border-bottom: 1px solid var(--selectedUrlBorder) !important;
     cursor: auto;
@@ -378,27 +395,39 @@
     padding-bottom: 20px;
 }
 
-.urlRow[urlSelected=true] .urlTags,
-.urlRow[urlSelected=true] .urlOptions {
+.urlRow[urlSelected="true"] .urlTags,
+.urlRow[urlSelected="true"] .urlOptions {
     height: auto;
     opacity: 1;
 }
 
-.urlRow[urlSelected=true] .urlTags {
+.urlRow[urlSelected="true"] .urlTags {
     padding: 20px 0 15px 0;
 }
 
-.urlRow[urlSelected=true] .urlOptions {
+.urlRow[urlSelected="true"] .urlOptions {
     padding: 15px 0 0 0;
 }
 
-.urlRow[urlSelected=true] .urlString {
+.urlRow[urlSelected="true"] .urlString {
     width: fit-content;
 }
 
-.urlRow[urlSelected=true] .urlString:hover {
+.urlRow[urlSelected="true"] .urlString:hover {
     text-decoration: underline;
     cursor: pointer;
+}
+
+.urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover > i {
+    display: flex !important;
+}
+
+.urlRow[urlSelected=false] .urlTitle {
+    width: 95%;
+}
+
+.urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
+    width: max-content;
 }
 
 .urlTags::before,
@@ -426,29 +455,8 @@
     padding-bottom: 15px;
 }
 
-.card {
-    background-color: var(--cardBackgroundColor);
-    height: 100%;
-    margin: 2px;
-    border: 2px solid var(--borderColor);
-    border-radius: 20px;
-}
-
-.card:hover {
-    cursor: pointer;
-    background-color: var(--cardBackgroundColorHover);
-}
-
-.card-title {
-    color: #1abc9c;
-    margin-bottom: 2px;
-    overflow: hidden;
-    white-space: nowrap;
-    text-overflow: ellipsis;
-}
-
-.card-text {
-    color: var(--cardURLTextColor);
+.updateUrlTitleWrap {
+    padding-bottom: 20px;
 }
 
 .url-string {
@@ -470,14 +478,7 @@
     cursor: auto;
 }
 
-.URL .url-string {
-    text-decoration: none;
-}
-
-.URL .url-string:hover {
-    color: var(--cardURLTextColor);
-}
-
+.urlRow[urlSelected="true"] .urlTitle, 
 .selectedURL .card-title,
 .selectedURL .url-string {
     white-space: normal;
@@ -741,6 +742,15 @@
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 
  * */
 
+@media (max-width: 1100px) {
+    .urlRow[urlSelected="true"] .urlTitle {
+        /*
+        width: max-content;
+        max-width: 95%;
+        */
+    }
+}
+
 @media (max-width: 767.98px) {
     .titleElement {
         align-items: flex-start;
@@ -771,3 +781,4 @@
     }
 
 }
+
