@@ -14,7 +14,7 @@ CF_MITIGATED = "cf-mitigated"
 CLOUDFLARE_SERVER = "cloudflare"
 SERVER = "server"
 GOOGLE_CACHE = "https://webcache.googleusercontent.com/search?q=cache:"
-WAYBACK_ARCHIVE = "https://archive.org/wayback/available?url="
+WAYBACK_ARCHIVE = "https://web.archive.org/web/"
 
 
 class URL_VALIDATION:

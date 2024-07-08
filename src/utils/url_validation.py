@@ -23,11 +23,13 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 
 """
 
+from datetime import datetime
+import random
+import requests
+from typing import Union
 from url_normalize import url_normalize
 from url_normalize.tools import deconstruct_url
 from urllib.parse import unquote
-import random
-import requests
 
 if __name__ == "__main__":
     from strings.url_validation_strs import URL_VALIDATION as VALIDATION_STRS
@@ -169,22 +171,9 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
                 If a given response is valid, the "url" value of the response object is replaced with the requested URL from the user.
                 This is because, if Google cache or Wayback Archive are able to find the URL, we can consider it valid
                 """
-
-                google_cache_response = perform_head_request(
-                    VALIDATION_STRS.GOOGLE_CACHE + url,
-                    headers.get(VALIDATION_STRS.USER_AGENT),
-                )
-                if google_cache_response.status_code < 400:
-                    google_cache_response.url = url
-                    return google_cache_response
-
-                wayback_archive_response = perform_head_request(
-                    VALIDATION_STRS.WAYBACK_ARCHIVE + url,
-                    headers.get(VALIDATION_STRS.USER_AGENT),
-                )
-                if wayback_archive_response.status_code < 400:
-                    wayback_archive_response.url = url
-                    return wayback_archive_response
+                internet_cache_response = perform_google_or_wayback_check(url, headers)
+                if internet_cache_response is not None:
+                    return internet_cache_response
 
             return response
 
@@ -200,6 +189,35 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
 
     else:
         return response
+
+
+def perform_google_or_wayback_check(
+    url: str, headers: dict[str, str]
+) -> Union[None, requests.Response]:
+    google_cache_response = perform_get_request(
+        VALIDATION_STRS.GOOGLE_CACHE + url, headers
+    )
+    if google_cache_response.status_code < 400:
+        # Reset status code because a redirect is effectively a successful find
+        google_cache_response.status_code = 200
+        google_cache_response.url = url
+        return google_cache_response
+
+    # Iterate from year 2020 onwards
+    current_year = datetime.now().year
+
+    for year in range(2020, current_year + 1):
+        wayback_archive_response = perform_head_request(
+            VALIDATION_STRS.WAYBACK_ARCHIVE + str(year) + "/" + url,
+            headers.get(VALIDATION_STRS.USER_AGENT),
+        )
+        if wayback_archive_response.status_code < 400:
+            # Reset status code because a redirect is effectively a successful find
+            wayback_archive_response.url = url
+            wayback_archive_response.status_code = 200
+            return wayback_archive_response
+
+    return None
 
 
 def all_user_agent_sampling(url: str) -> requests.Response:
