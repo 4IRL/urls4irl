@@ -156,8 +156,21 @@
     padding-inline: 15px;
 }
 
+.gap-20p {
+    gap: 20px;
+}
+
 .pad-top-5p {
     padding-top: 5px;
+}
+
+.pad-bot-5p {
+    padding-bottom: 5px;
+}
+
+.pad-top-bot-5p {
+    padding-top: 5px;
+    padding-bottom: 5px;
 }
 
 .half-width {
@@ -190,6 +203,12 @@
 
 .btn-text-on-hvr:hover {
     color: white;
+}
+
+.long-text-ellipsis {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
 }
 
 /* UTubs */
@@ -277,18 +296,134 @@
     border-color: var(--tagBorderColor);
 }
 
-.URLTags {
+.urlTags {
     gap: 2rem;
 }
 
 /* URLs */
 
-.URLOptions {
-    display: flex;
-    flex-direction: row;
+#listURLs .urlRow:nth-child(odd) {
+    background-color: var(--cardBackgroundColor);
+}
+
+#listURLs .urlRow:nth-child(odd):hover {
+    background-color: rgba(61, 71, 71, 1.0); 
+}
+
+#listURLs .urlRow:nth-child(even):hover {
+    background-color: rgba(51, 61, 61, 1.0);
+}
+
+#listURLs .urlRow:last-child {
+    border-bottom-width: 2px;
+}
+
+.urlRow {
+    border-bottom: 1px solid var(--borderColor);
+    border-top: 1px solid var(--borderColor);
+    transition: background-color 0.15s ease, padding 0.2s ease-in-out;
+    padding: 5px 15px;
+}
+
+.urlTitle {
+    margin: 0;
+    font-weight: bold;
+    line-height: inherit;
+    max-width: 90%;
+}
+
+.urlString {
+    width: 100%;
+    color: var(--cardURLTextColor);
+}
+
+.urlOptions {
     flex-wrap: no-wrap;
-    justify-content: flex-start;
-    align-items: baseline;
+    gap: 15px;
+}
+
+.goToUrlIcon {
+    display: none;
+    color: var(--deckSelectionGreenHover);
+    transition: color 0.1s ease, visibility 2.5s ease;
+}
+
+.urlRow:hover .goToUrlIcon {
+    display: flex !important;
+}
+
+.goToUrlIcon:hover {
+    color: var(--deckSelectionGreen);
+}
+
+.outerTagsAndButtonsWrap {
+    display: grid;
+    grid-template-rows: min-content 0fr;
+}
+
+.urlTags,
+.urlOptions {
+    height: 0;
+    overflow: hidden;
+    transition: padding 0.2s ease-in-out, opacity 0.2s ease-in-out;
+    padding: 0;
+    opacity: 0;
+}
+
+.urlRow[urlSelected=true] {
+    border-top: 1px solid var(--selectedUrlBorder);
+    border-bottom: 1px solid var(--selectedUrlBorder) !important;
+    cursor: auto;
+    padding-top: 15px;
+    padding-bottom: 20px;
+}
+
+.urlRow[urlSelected=true] .urlTags,
+.urlRow[urlSelected=true] .urlOptions {
+    height: auto;
+    opacity: 1;
+}
+
+.urlRow[urlSelected=true] .urlTags {
+    padding: 20px 0 15px 0;
+}
+
+.urlRow[urlSelected=true] .urlOptions {
+    padding: 15px 0 0 0;
+}
+
+.urlRow[urlSelected=true] .urlString {
+    width: fit-content;
+}
+
+.urlRow[urlSelected=true] .urlString:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.urlTags::before,
+.urlOptions::before {
+    margin-top: -30px;
+}
+
+.urlTags::after,
+.urlOptions::after {
+    margin-bottom: -30px;
+}
+
+.urlOptions::after {
+    padding-bottom: 0;
+}
+
+.urlTagsContainer span:first-child {
+    margin-left: 0;
+}
+
+#createURLWrap {
+    border-top: 1px solid var(--selectedUrlBorder);
+    border-bottom: 1px solid var(--selectedUrlBorder) !important;
+    padding-top: 15px;
+    padding-bottom: 15px;
 }
 
 .card {
@@ -404,12 +539,12 @@
 /* Members */
 
 .member {
-    color: var(--panelBackgroundColor);
+    color: #aaa;
     border-color: #aaa;
     padding: 3px 3px;
     border-radius: 25px;
-    border: 2px solid #aaa;
-    background-color: var(--tagBackgroundColorSelected);
+    border: 2px solid var(--tagBorderColor);
+    background-color: var(--cardBackgroundColor);
 }
 
 .member:hover > .memberOtherBtnDelete {
@@ -490,13 +625,46 @@
     margin-top: 5px;
 }
 
-/*
-.text-input-inner-container:has(> input.text-input:invalid) + span.text-input-error-message {
-    display: inline-block;
+/** Loading ring **/
+.dual-loading-ring {
+  /* change color here */
+  color: #1c4c5b
 }
-*/
+.dual-loading-ring,
+.dual-loading-ring:after {
+  box-sizing: border-box;
+}
+.dual-loading-ring {
+  display: flex !important;
+  align-items: center;
+  height: 38px;
+  width: auto;
+}
+.dual-loading-ring:after {
+  content: " ";
+  display: inline-block !important;
+  height: 38px;
+  width: 38px;
+  border-radius: 50%;
+  border: 6.4px solid currentColor;
+  border-color: currentColor transparent currentColor transparent;
+  animation: dual-loading-ring 1.2s linear infinite;
+}
+@keyframes dual-loading-ring {
+  0% {
+    transform: rotate(0deg);
+  }
+  100% {
+    transform: rotate(360deg);
+  }
+}
+
 
 /** ID specific **/
+
+#urlCreateDualLoadingRing {
+    display: none;
+}
 
 #UTubDescriptionSubheaderWrap ~ .createDiv {
     padding-top: 1rem;

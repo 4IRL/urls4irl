@@ -34,6 +34,7 @@
     --contentTopBorder: rgba(126, 130, 130, 0.25);
 
     --cardURLTextColor: rgba(140, 155, 157, 1.0);
+    --selectedUrlBorder: rgba(13, 255, 0, 1.0);
 }
 
 /** HTML DOM Elements **/

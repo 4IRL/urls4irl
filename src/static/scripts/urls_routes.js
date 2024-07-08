@@ -1,56 +1,69 @@
 /* Add URL */
 
 // Displays new URL input prompt
-function createURLHideInput() {
-  hideInput("#createURL");
-  newURLInputRemoveEventListeners();
+function createURLHideInput(urlInputForm) {
+  resetNewURLForm();
   if (!getNumOfURLs()) $("#NoURLsSubheader").show();
 }
 
 // Hides new URL input prompt
 function createURLShowInput() {
-  showInput("#createURL");
-  highlightInput($("#urlTitleCreate"));
-  newURLInputAddEventListeners();
   if (!getNumOfURLs()) $("#NoURLsSubheader").hide();
+  const createURLInputForm = $("#createURLWrap");
+  showIfHidden(createURLInputForm);
+  highlightInput(createURLInputForm.find("#urlTitleCreate"));
+  newURLInputAddEventListeners(createURLInputForm);
 }
 
 // Handles addition of new URL after user submission
-function createURL() {
+function createURL(createUrlTitleInput, createUrlInput) {
   // Extract data to submit in POST request
-  [postURL, data] = createURLSetup();
+  [postURL, data] = createURLSetup(createUrlTitleInput, createUrlInput);
 
-  AJAXCall("post", postURL, data);
+  const SHOW_LOADING_ICON_AFTER_MS = 25;
 
-  // Handle response
-  request.done(function (response, textStatus, xhr) {
-    console.log("success");
+  // A custom AJAX call, built to show a loading icon after a given number of MS
+  let timeoutId;
+  $.ajax({
+    url: postURL,
+    method: "POST",
+    data: data,
 
-    if (xhr.status === 200) {
-      createURLSuccess(response);
-    }
-  });
+    // Following overwrites the global ajaxSetup call, so needs to include CSRFToken again
+    beforeSend: function (xhr, settings) {
+      globalBeforeSend(xhr, settings);
+      timeoutId = setTimeout(function () {
+        $("#urlCreateDualLoadingRing").addClass("dual-loading-ring");
+      }, SHOW_LOADING_ICON_AFTER_MS);
+    },
 
-  request.fail(function (response, textStatus, xhr) {
-    console.log("failed");
+    success: function (response, _, xhr) {
+      if (xhr.status === 200) {
+        createURLSuccess(response);
+      }
+    },
 
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-      window.replace.href = "/invalid";
-    } else {
-      createURLFail(response);
-    }
+    error: function (xhr, _, errorThrown) {
+      resetCreateUrlFailErrors();
+      createURLFail(xhr);
+    },
+
+    complete: function () {
+      // Icon is only shown after 25ms - if <25ms, the timeout and callback function are cleared
+      clearTimeout(timeoutId);
+      $("#urlCreateDualLoadingRing").removeClass("dual-loading-ring");
+    },
   });
 }
 
 // Prepares post request inputs for addition of a new URL
-function createURLSetup() {
+function createURLSetup(createUrlTitleInput, createUrlInput) {
   // Assemble post request route
-  let postURL = routes.createURL(getActiveUTubID());
+  const postURL = routes.createURL(getActiveUTubID());
 
   // Assemble submission data
-  let newURLTitle = $(".#urlTitleCreate").val();
-  let newURL = $("#urlStringCreate").val();
+  const newURLTitle = createUrlTitleInput.val();
+  const newURL = createUrlInput.val();
   data = {
     urlString: newURL,
     urlTitle: newURLTitle,
@@ -62,31 +75,69 @@ function createURLSetup() {
 // Displays changes related to a successful addition of a new URL
 function createURLSuccess(response) {
   resetNewURLForm();
+  const url = response.URL;
+  url.urlTagIDs = [];
+  url.canDelete = true;
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before createURL is completed
-  let URLcol = createURLBlock(
-    response.URL.utubUrlID,
-    response.URL.urlString,
-    response.URL.urlTitle,
-    [],
-    [],
-    true,
+  const newUrlCard = createURLBlock(
+    url,
+    [], // Mimics an empty array of tags to match against
   );
 
-  $("#UPRRow").prepend(URLcol);
-  moveURLsToUpperRowOnSuccessfulCreateURL();
-
+  newUrlCard.insertAfter($("#createURLWrap"));
   displayState1URLDeck();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
-function createURLFail(response) {
-  console.log(response);
-  console.log("Basic implementation. Needs revision");
-  console.log(response.responseJSON.errorCode);
-  console.log(response.responseJSON.message);
+function createURLFail(xhr) {
+  switch (xhr.status) {
+    case 400:
+      const responseJSON = xhr.responseJSON;
+      if (
+        responseJSON !== undefined &&
+        responseJSON.hasOwnProperty("message")
+      ) {
+        responseJSON.hasOwnProperty("errors")
+          ? createURLShowFormErrors(responseJSON.errors)
+          : displayCreateUrlFailErrors("urlString", responseJSON.message);
+        highlightInput($("#urlStringCreate"));
+      }
+      break;
+    case 403:
+    case 404:
+    default:
+      window.location.assign(routes.errorPage);
+  }
   // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to user?
   // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
+}
+
+function createURLShowFormErrors(errors) {
+  for (let key in errors) {
+    switch (key) {
+      case "urlString":
+      case "urlTitle":
+        let errorMessage = errors[key][0];
+        displayCreateUrlFailErrors(key, errorMessage);
+    }
+  }
+}
+
+// Show the error message and highlight the input box border red on error of field
+function displayCreateUrlFailErrors(key, errorMessage) {
+  $("#" + key + "Create-error")
+    .addClass("visible")
+    .text(errorMessage);
+  $("#" + key + "Create").addClass("invalid-field");
+}
+
+function resetCreateUrlFailErrors() {
+  const newUrlFields = ["urlString", "urlTitle"];
+  newUrlFields.forEach((fieldName) => {
+    $("#" + fieldName + "Create").removeClass("invalid-field");
+    $("#" + fieldName + "Create-error").removeClass("visible");
+  });
 }
 
 /* Update URL */
@@ -95,7 +146,7 @@ function createURLFail(response) {
 function updateURLShowInput() {
   // Show update submission and cancel button, hide update button
   unbindURLKeyboardEventListenersWhenUpdatesOccurring();
-  const selectedCardDiv = getSelectedURLCard();
+  const selectedCardDiv = getSelectedUrlCard();
   const updateURLInput = selectedCardDiv.find(".updateURL");
   const URL = selectedCardDiv.find(".URL");
 
@@ -140,7 +191,7 @@ function updateURLShowInput() {
 // Hides update URL inputs
 function updateURLHideInput() {
   // Show update button, hide other buttons
-  const selectedCardDiv = getSelectedURLCard();
+  const selectedCardDiv = getSelectedUrlCard();
   const updateURLInput = selectedCardDiv.find(".updateURL");
   const URL = selectedCardDiv.find(".URL");
 
@@ -205,7 +256,7 @@ function updateURL() {
 function updateURLSetup() {
   let postURL = routes.updateURL(getActiveUTubID(), getSelectedURLID());
 
-  let updatedURL = getSelectedURLCard().find(".updateURL")[0].value;
+  let updatedURL = getSelectedUrlCard().find(".updateURL")[0].value;
 
   data = { urlString: updatedURL };
 
@@ -218,7 +269,7 @@ function updateURLSuccess(response) {
   let updatedURLID = response.URL.urlID;
   let updatedURLString = response.URL.urlString;
 
-  const selectedCardDiv = getSelectedURLCard();
+  const selectedCardDiv = getSelectedUrlCard();
 
   // Update URL ID
   selectedCardDiv.attr("urlid", updatedURLID);
@@ -258,7 +309,7 @@ function updateURLFail(response) {
 // Shows update URL Title inputs
 function updateURLTitleShowInput() {
   // Show update submission and cancel button, hide update button
-  const selectedCardDiv = getSelectedURLCard();
+  const selectedCardDiv = getSelectedUrlCard();
   const updateURLTitleInput = selectedCardDiv.find(".updateURLTitle");
   const URLTitle = selectedCardDiv.find(".URLTitle");
 
@@ -280,7 +331,7 @@ function updateURLTitleShowInput() {
 // Hides update URL Title inputs
 function updateURLTitleHideInput() {
   // Show update button, hide other buttons
-  const selectedCardDiv = getSelectedURLCard();
+  const selectedCardDiv = getSelectedUrlCard();
   const updateURLTitleInput = selectedCardDiv.find(".updateURLTitle");
   const URLTitle = selectedCardDiv.find(".URLTitle");
 
@@ -331,7 +382,7 @@ function updateURLTitle() {
 function updateURLTitleSetup() {
   let postURL = routes.updateURLTitle(getActiveUTubID(), getSelectedURLID());
 
-  let updatedURLTitle = getSelectedURLCard().find(".updateURLTitle")[0].value;
+  let updatedURLTitle = getSelectedUrlCard().find(".updateURLTitle")[0].value;
 
   data = { urlTitle: updatedURLTitle };
 
@@ -343,7 +394,7 @@ function updateURLTitleSuccess(response) {
   // Extract response data
   let updatedURLTitle = response.URL.urlTitle;
 
-  const selectedCardDiv = getSelectedURLCard();
+  const selectedCardDiv = getSelectedUrlCard();
 
   // If update URL action, rebind the ability to select/deselect URL by clicking it
   rebindSelectBehavior();
@@ -373,7 +424,7 @@ function deleteURLHideModal() {
 }
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
-function deleteURLShowModal() {
+function deleteURLShowModal(urlID) {
   let modalTitle = "Are you sure you want to delete this URL from the UTub?";
   let modalText = "You can always add it back again!";
   let buttonTextDismiss = "Just kidding";
@@ -394,7 +445,7 @@ function deleteURLShowModal() {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      deleteURL();
+      deleteURL(urlID);
     })
     .text(buttonTextSubmit);
 
@@ -404,35 +455,28 @@ function deleteURLShowModal() {
 }
 
 // Handles post request and response for removing an existing URL from current UTub, after confirmation
-function deleteURL() {
+function deleteURL(urlID) {
   // Extract data to submit in POST request
-  postURL = deleteURLSetup();
+  postURL = deleteURLSetup(urlID);
 
   let request = AJAXCall("delete", postURL, []);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
-    console.log("success");
-
+  request.done(function (_, textStatus, xhr) {
     if (xhr.status === 200) {
       deleteURLSuccess();
     }
   });
 
-  request.fail(function (response, textStatus, xhr) {
-    console.log("failed");
-
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      deleteURLFail(response);
-    }
+  request.fail(function (xhr, _, textStatus) {
+    // Reroute to custom U4I 404 error page
+    deleteURLFail(xhr);
   });
 }
 
 // Prepares post request inputs for removal of a URL
-function deleteURLSetup() {
-  let postURL = routes.deleteURL(getActiveUTubID(), getSelectedURLID());
+function deleteURLSetup(urlID) {
+  let postURL = routes.deleteURL(getActiveUTubID(), urlID);
 
   return postURL;
 }
@@ -441,22 +485,23 @@ function deleteURLSetup() {
 function deleteURLSuccess() {
   // Close modal
   $("#confirmModal").modal("hide");
-
-  let cardCol = $("div[urlid=" + getSelectedURLID() + "]").closest(".cardCol");
-  cardCol.fadeOut();
-  cardCol.remove();
+  const selectedUrlToRemove = getSelectedUrlCard();
+  selectedUrlToRemove.fadeOut("slow", function () {
+    selectedUrlToRemove.remove();
+    $("#listURLs").children().length === 0
+      ? hideIfShown($("#accessAllURLsBtn"))
+      : null;
+  });
 
   displayState1URLDeck();
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
-function deleteURLFail(xhr, textStatus, error) {
-  console.log("Error: Could not delete URL");
-
-  if (xhr.status === 409) {
-    console.log(
-      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-    );
-    console.log("Error: " + error.Error_code);
+function deleteURLFail(xhr) {
+  switch (xhr.status) {
+    case 403:
+    case 404:
+    default:
+      window.location.assign(routes.errorPage);
   }
 }

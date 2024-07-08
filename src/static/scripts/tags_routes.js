@@ -9,7 +9,7 @@ function createTagShowInput() {
   unbindEscapeKey();
   unbindURLKeyboardEventListenersWhenUpdatesOccurring();
 
-  let URLCard = getSelectedURLCard();
+  let URLCard = getSelectedUrlCard();
 
   // Show temporary div element containing input
   let inputEl = URLCard.find(".createTag");
@@ -50,7 +50,7 @@ function createTagShowInput() {
 }
 
 function tagCancelBtnCreateHideInput(inputWrapper) {
-  let URLCard = getSelectedURLCard();
+  let URLCard = getSelectedUrlCard();
   bindEscapeToUnselectURL(getSelectedURLID());
 
   // Enable the buttons again
@@ -106,7 +106,7 @@ function createTagSetup() {
   let postURL = routes.createTag(getActiveUTubID(), getSelectedURLID());
 
   // Assemble submission data
-  let newTag = getSelectedURLCard().find(".createTag").val();
+  let newTag = getSelectedUrlCard().find(".createTag").val();
   data = {
     tagString: newTag,
   };
@@ -119,7 +119,7 @@ function createTagSuccess(response) {
   // Rebind selection behavior of current URL
   rebindSelectBehavior();
 
-  let selectedURLCard = getSelectedURLCard();
+  let selectedURLCard = getSelectedUrlCard();
 
   // Clear input field
   let newTagInputField = selectedURLCard.find(".createTag");

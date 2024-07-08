@@ -16,6 +16,7 @@ $(document).ready(function () {
       ) {
         xhr.setRequestHeader("X-CSRFToken", csrftoken);
       }
+      return true;
     },
   });
 
@@ -33,6 +34,13 @@ $(document).ready(function () {
     textInput.on("blur", handleBlur);
   }
 });
+
+const globalBeforeSend = function (xhr, settings) {
+  const csrftoken = $("meta[name=csrf-token]").attr("content");
+  if (!/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) && !this.crossDomain) {
+    xhr.setRequestHeader("X-CSRFToken", csrftoken);
+  }
+};
 
 // Keyboard navigation between selected UTubs or URLs
 function bindURLKeyboardEventListenersWhenUpdatesNotOccurring() {

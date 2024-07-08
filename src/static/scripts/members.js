@@ -6,7 +6,7 @@ $(document).ready(function () {
   // Add member to UTub
   $("#memberBtnCreate").on("click.createMember", function () {
     hideInputs();
-    deselectAllURLs();
+    deselectAllUrls();
     createMemberShowInput();
   });
 });
@@ -118,7 +118,7 @@ function createMemberBadge(
       .on("click.removeMember", function (e) {
         e.stopPropagation();
         hideInputs();
-        deselectAllURLs();
+        deselectAllUrls();
         removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
       });
   }
