@@ -10,6 +10,11 @@ SEC_FETCH_USER = "Sec-Fetch-User"
 LOCATION = "Location"
 X_REQUESTED_WITH = "X-Requested-With"
 XMLHTTPREQUEST = "XMLHttpRequest"
+CF_MITIGATED = "cf-mitigated"
+CLOUDFLARE_SERVER = "cloudflare"
+SERVER = "server"
+GOOGLE_CACHE = "https://webcache.googleusercontent.com/search?q=cache:"
+WAYBACK_ARCHIVE = "https://archive.org/wayback/available?url="
 
 
 class URL_VALIDATION:
@@ -25,3 +30,8 @@ class URL_VALIDATION:
     LOCATION = LOCATION
     X_REQUESTED_WITH = X_REQUESTED_WITH
     XMLHTTPREQUEST = XMLHTTPREQUEST
+    CF_MITIGATED = CF_MITIGATED
+    CLOUDFLARE_SERVER = CLOUDFLARE_SERVER
+    SERVER = SERVER
+    GOOGLE_CACHE = GOOGLE_CACHE
+    WAYBACK_ARCHIVE = WAYBACK_ARCHIVE

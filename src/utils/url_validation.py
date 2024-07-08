@@ -121,7 +121,10 @@ def perform_head_request(url: str, user_agent: str = None) -> requests.Response:
             ),
             headers=headers,
         )
-        if response.status_code == 405:
+        if response.status_code in (
+            403,
+            405,
+        ):
             # HEAD not allowed, try get
             return perform_get_request(url, headers)
 
@@ -152,6 +155,38 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
             ),
             headers=headers,
         )
+
+        if response.status_code == 403:
+            all_headers = (header.lower() for header in response.headers.keys())
+
+            if (
+                VALIDATION_STRS.CF_MITIGATED in all_headers
+                or VALIDATION_STRS.CLOUDFLARE_SERVER
+                == response.headers.get(VALIDATION_STRS.SERVER, None)
+            ):
+                """
+                This generally indicates a Cloudflare challenge - bypass by checking archive records for the requested URL
+                If a given response is valid, the "url" value of the response object is replaced with the requested URL from the user.
+                This is because, if Google cache or Wayback Archive are able to find the URL, we can consider it valid
+                """
+
+                google_cache_response = perform_head_request(
+                    VALIDATION_STRS.GOOGLE_CACHE + url,
+                    headers.get(VALIDATION_STRS.USER_AGENT),
+                )
+                if google_cache_response.status_code < 400:
+                    google_cache_response.url = url
+                    return google_cache_response
+
+                wayback_archive_response = perform_head_request(
+                    VALIDATION_STRS.WAYBACK_ARCHIVE + url,
+                    headers.get(VALIDATION_STRS.USER_AGENT),
+                )
+                if wayback_archive_response.status_code < 400:
+                    wayback_archive_response.url = url
+                    return wayback_archive_response
+
+            return response
 
     except requests.exceptions.ReadTimeout:
         # Try all user agents
@@ -256,4 +291,4 @@ def filter_out_common_redirect(url: str) -> str:
 
 
 if __name__ == "__main__":
-    print(find_common_url("instagram.com"))
+    print(find_common_url("stackoverflow.com"))
