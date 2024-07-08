@@ -96,7 +96,7 @@ function setCreateDeleteUTubEventListeners() {
     .off("click.createDeleteUTub")
     .on("click.createDeleteUTub", function () {
       hideInputs();
-      deselectAllURLs();
+      deselectAllUrls();
       createUTubShowInput();
     });
 
@@ -136,7 +136,7 @@ function setEventListenersToEscapeUpdateUTubName() {
     });
 
   // Bind escape and enter key
-  $(document).bind("keyup.updateUTubname", function (e) {
+  $(document).on("keyup.updateUTubname", function (e) {
     switch (e.which) {
       case 13:
         // Handle enter key pressed
