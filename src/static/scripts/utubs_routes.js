@@ -25,6 +25,12 @@ $(document).ready(function () {
     checkSameNameUTub(false, $("#utubNameUpdate").val());
   });
 
+  /*
+  $("#utubNameCancelBtnUpdate").on("click", function() {
+    $("#utubNameUpdate").val($("#URLDeckHeader").text());
+  });
+  */
+
   // Update UTub description
   $("#updateUTubDescriptionBtn").on("click", function (e) {
     hideInputs();
@@ -210,6 +216,9 @@ function updateUTubNameHideInput() {
 
   // Remove any errors if shown
   resetUpdateUTubNameFailErrors();
+
+  // Replace default value
+  $("#utubNameUpdate").val($("#URLDeckHeader").text());
 }
 
 // Handles post request and response for updating an existing UTub's name

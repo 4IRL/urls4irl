@@ -306,114 +306,94 @@ function updateURLFail(response) {
 
 /* Update URL Title */
 
-// Shows update URL Title inputs
-function updateURLTitleShowInput() {
-  // Show update submission and cancel button, hide update button
-  const selectedCardDiv = getSelectedUrlCard();
-  const updateURLTitleInput = selectedCardDiv.find(".updateURLTitle");
-  const URLTitle = selectedCardDiv.find(".URLTitle");
-
-  // Show input field
-  showIfHidden(updateURLTitleInput.closest(".createDiv"));
-
-  // Hide published value
-  hideIfShown(URLTitle);
-
-  // Inhibit selection toggle behavior until user cancels update, or successfully submits update. User can still select and update other URLs in UTub
-  unbindSelectURLBehavior();
-  unbindURLKeyboardEventListenersWhenUpdatesOccurring();
-  unbindEscapeKey();
-  bindEscapeToExitURLTitleUpdating();
-
-  $(updateURLTitleInput).focus();
-}
-
-// Hides update URL Title inputs
-function updateURLTitleHideInput() {
-  // Show update button, hide other buttons
-  const selectedCardDiv = getSelectedUrlCard();
-  const updateURLTitleInput = selectedCardDiv.find(".updateURLTitle");
-  const URLTitle = selectedCardDiv.find(".URLTitle");
-
-  // Updating input field placeholders
-  updateURLTitleInput.text(URLTitle.find("card-title").text());
-
-  // Hide input field
-  hideIfShown(updateURLTitleInput.closest(".createDiv"));
-
-  // Show published value
-  showIfHidden(URLTitle);
-
-  // Rebind click selection behavior to unselect URL
-  rebindSelectBehavior();
-
-  // Unbind escape key from hiding update
-  $(document).unbind("keyup.escapeUrlTitleUpdating");
-
-  // Rebind escape key to hiding selected URL
-  bindEscapeToUnselectURL(getSelectedURLID());
-  bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
-}
-
-// Handles update of an existing URL
-function updateURLTitle() {
-  // Extract data to submit in POST request
-  [postURL, data] = updateURLTitleSetup();
-
-  AJAXCall("patch", postURL, data);
-
-  // Handle response
-  request.done(function (response, textStatus, xhr) {
-    if (xhr.status === 200) {
-      updateURLTitleSuccess(response);
-    }
-  });
-
-  request.fail(function (response, textStatus, xhr) {
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      updateURLTitleFail(response);
-    }
-  });
-}
-
 // Prepares post request inputs for update of a URL
-function updateURLTitleSetup() {
-  let postURL = routes.updateURLTitle(getActiveUTubID(), getSelectedURLID());
+function updateURLTitleSetup(urlTitleInput) {
+  const postURL = routes.updateURLTitle(getActiveUTubID(), getSelectedURLID());
 
-  let updatedURLTitle = getSelectedUrlCard().find(".updateURLTitle")[0].value;
+  const updatedURLTitle = urlTitleInput.val();
 
   data = { urlTitle: updatedURLTitle };
 
   return [postURL, data];
 }
 
+// Handles update of an existing URL
+function updateURLTitle(urlTitleInput) {
+  // Extract data to submit in POST request
+  [postURL, data] = updateURLTitleSetup(urlTitleInput);
+
+  AJAXCall("patch", postURL, data);
+  const selectedUrlCard = getSelectedUrlCard();
+
+  // Handle response
+  request.done(function (response, _, xhr) {
+    if (xhr.status === 200) {
+      resetUpdateURLTitleFailErrors(selectedUrlCard);
+      if (
+        response.hasOwnProperty("URL") &&
+        response.URL.hasOwnProperty("urlTitle")
+      )
+        updateURLTitleSuccess(response, selectedUrlCard);
+    }
+  });
+
+  request.fail(function (xhr, _, textStatus) {
+    updateURLTitleFail(xhr, selectedUrlCard);
+  });
+}
+
 // Displays changes related to a successful update of a URL
-function updateURLTitleSuccess(response) {
+function updateURLTitleSuccess(response, urlCard) {
   // Extract response data
-  let updatedURLTitle = response.URL.urlTitle;
-
-  const selectedCardDiv = getSelectedUrlCard();
-
-  // If update URL action, rebind the ability to select/deselect URL by clicking it
-  rebindSelectBehavior();
+  const updatedURLTitle = response.URL.urlTitle;
 
   // Update URL body with latest published data
-  selectedCardDiv.find(".card-title").text(updatedURLTitle);
-
-  updateURLTitleHideInput();
+  urlCard.find(".urlTitle").text(updatedURLTitle);
+  resetUpdateUrlTitleForm(urlCard);
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
-function updateURLTitleFail(response) {
-  console.log("Error: Could not update URL");
-  console.log(
-    "Failure. Error code: " +
-      response.responseJSON.errorCode +
-      ". Status: " +
-      response.responseJSON.message,
-  );
+function updateURLTitleFail(xhr, urlCard) {
+  switch (xhr.status) {
+    case 400:
+      const responseJSON = xhr.responseJSON;
+      const hasErrors = responseJSON.hasOwnProperty("errors");
+      if (hasErrors) {
+        updateURLTitleFailShowErrors(responseJSON.errors, urlCard);
+        break;
+      }
+    case 403:
+    case 404:
+    default:
+      window.location.assign(routes.errorPage);
+  }
+}
+
+function updateURLTitleFailShowErrors(errors, urlCard) {
+  for (let key in errors) {
+    switch (key) {
+      case "urlTitle":
+        let errorMessage = errors[key][0];
+        displayUpdateURLTitleErrors(key, errorMessage, urlCard);
+        return;
+    }
+  }
+}
+
+function displayUpdateURLTitleErrors(key, errorMessage, urlCard) {
+  urlCard
+    .find("." + key + "Update-error")
+    .addClass("visible")
+    .text(errorMessage);
+  urlCard.find("." + key + "Update").addClass("invalid-field");
+}
+
+function resetUpdateURLTitleFailErrors(urlCard) {
+  const urlTitleUpdateFields = ["urlTitle"];
+  urlTitleUpdateFields.forEach((fieldName) => {
+    urlCard.find("." + fieldName + "Update").removeClass("invalid-field");
+    urlCard.find("." + fieldName + "Update-error").removeClass("visible");
+  });
 }
 
 /* Delete URL */
