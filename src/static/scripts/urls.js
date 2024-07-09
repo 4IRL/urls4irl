@@ -66,7 +66,7 @@ function deselectUrl(urlCard) {
   urlCard.attr({ urlSelected: false });
   urlCard.find(".urlString").off("click.goToURL");
   urlCard.find(".goToUrlIcon").removeClass("visible-flex");
-  resetUpdateUrlTitleForm(urlCard);
+  hideAndResetUpdateURLTitleForm(urlCard);
 }
 
 function deselectAllUrls() {
@@ -191,7 +191,7 @@ function createURLBlock(url, tagArray) {
   ); // Holds everything in the URL
 
   const urlTitleGoToUrlWrap = $(document.createElement("div")).addClass(
-    "flex-row full-width justify-space-between",
+    "flex-row full-width align-center justify-space-between",
   );
 
   if (url.canDelete) {
@@ -201,10 +201,7 @@ function createURLBlock(url, tagArray) {
     );
     urlTitleGoToUrlWrap.append(urlTitleAndTitleUpdateBlock);
   } else {
-    const urlTitle = $(document.createElement("h6"))
-      .addClass("urlTitle long-text-ellipsis")
-      .text(url.urlTitle);
-    urlTitleGoToUrlWrap.append(urlTitle);
+    urlTitleGoToUrlWrap.append(createUrlTitle(url.urlTitle));
   }
   urlTitleGoToUrlWrap.append(createGoToUrlIcon(url.urlString));
 
@@ -258,82 +255,91 @@ function createGoToUrlIcon(urlString) {
   return goToUrlOuterIconSvg;
 }
 
+function createUrlTitle(urlTitleText) {
+  return $(document.createElement("h6"))
+    .addClass("urlTitle long-text-ellipsis")
+    .text(urlTitleText);
+}
+
 function createUrlTitleAndUpdateBlock(urlTitleText, urlCard) {
+  // Overall container for title and updating title
   const urlTitleAndUpdateWrap = $(document.createElement("div")).addClass(
     "flex-row ninetyfive-width",
   );
+
+  // Contains the url title and icon to show the updating input box
   const urlTitleAndShowUpdateIconWrap = $(
     document.createElement("div"),
   ).addClass("flex-row ninetyfive-width urlTitleAndUpdateIconWrap");
+  // Parent container with both show update icon and url title, allows hover to show the update icon
   const urlTitleAndShowUpdateIconInnerWrap = $(
     document.createElement("div"),
   ).addClass("flex-row full-width urlTitleAndUpdateIconInnerWrap");
 
-  const urlTitle = $(document.createElement("h6"))
-    .addClass("urlTitle long-text-ellipsis")
-    .text(urlTitleText);
-
+  // Icon to show update title input box when clicked
   const urlTitleShowUpdateIcon = makeUpdateButton(20);
   urlTitleShowUpdateIcon
     .css("display", "none")
-    .on("click.showUpdateUrlTitle", function (e) {
+    .on("click.showUpdateURLTitle", function (e) {
       if ($(e.target).parents(".urlTitleAndUpdateIconWrap").length > 0) {
         const urlTitleAndIcon = $(e.target).closest(
           ".urlTitleAndUpdateIconWrap",
         );
-        hideIfShown(urlTitleAndIcon);
-        const updateTitleForm = urlTitleAndIcon.siblings(".updateUrlTitleWrap");
-        showIfHidden(updateTitleForm);
-        highlightInput(updateTitleForm.find("input"));
+        showUpdateURLTitleForm(urlTitleAndIcon);
       }
     });
+
+  // Add icon and title to the container
   urlTitleAndShowUpdateIconInnerWrap
-    .append(urlTitle)
+    .append(createUrlTitle(urlTitleText))
     .append(urlTitleShowUpdateIcon);
   urlTitleAndShowUpdateIconWrap.append(urlTitleAndShowUpdateIconInnerWrap);
 
+  // Add icon + title container, and update input container to the parent container
+  urlTitleAndUpdateWrap
+    .append(urlTitleAndShowUpdateIconWrap)
+    .append(createUpdateURLTitleInput(urlTitleText, urlCard));
+
+  return urlTitleAndUpdateWrap;
+}
+
+function createUpdateURLTitleInput(urlTitleText, urlCard) {
+  // Create the update title text box
   const urlUpdateTextInputContainer = makeUpdateTextInput("urlTitle")
     .addClass("updateUrlTitleWrap")
     .css("display", "none");
 
   urlUpdateTextInputContainer.find("label").text("URL Title");
 
+  // Customize the input text box for the Url title
   const urlUpdateTextInput = urlUpdateTextInputContainer
     .find("input")
     .prop("minLength", CONSTANTS.URLS_TITLE_MIN_LENGTH)
     .prop("maxLength", CONSTANTS.URLS_TITLE_MAX_LENGTH)
     .val(urlTitleText);
 
+  // Update Url Title submit button
   const urlTitleSubmitBtnUpdate = makeSubmitButton(30)
     .addClass("urlTitleSubmitBtnUpdate")
-    .on("click.updateUrlTitle", function (e) {
+    .on("click.updateUrlTitle", function () {
       updateURLTitle(urlUpdateTextInput);
     });
 
+  // Update Url Title cancel button
   const urlTitleCancelBtnUpdate = makeCancelButton(30)
     .addClass("urlTitleCancelBtnUpdate")
-    .on("click.updateUrlTitle", function (e) {
-      resetUpdateUrlTitleForm(urlCard);
+    .on("click.updateUrlTitle", function () {
+      hideAndResetUpdateURLTitleForm(urlCard);
     });
 
   urlUpdateTextInputContainer
     .append(urlTitleSubmitBtnUpdate)
     .append(urlTitleCancelBtnUpdate);
 
-  urlTitleAndUpdateWrap
-    .append(urlTitleAndShowUpdateIconWrap)
-    .append(urlUpdateTextInputContainer);
-
-  return urlTitleAndUpdateWrap;
+  return urlUpdateTextInputContainer;
 }
 
-function resetUpdateUrlTitleForm(urlCard) {
-  hideIfShown(urlCard.find(".updateUrlTitleWrap"));
-  showIfHidden(urlCard.find(".urlTitleAndUpdateIconWrap"));
-  urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
-  resetUpdateURLTitleFailErrors(urlCard);
-}
-
+// Create both the tag container and the button container for a URL
 function createTagsAndOptionsForUrlBlock(url, tagArray) {
   const tagsAndButtonsWrap = $(document.createElement("div")).addClass(
     "tagsAndButtonsWrap full-width",
@@ -353,6 +359,7 @@ function createTagsAndOptionsForUrlBlock(url, tagArray) {
   return tagsAndButtonsWrap;
 }
 
+// Create the outer container for the tag badges
 function createTagBadgesAndWrap(dictTags, tagArray) {
   const tagBadgesWrap = $(document.createElement("div")).addClass(
     "urlTagsContainer flex-row flex-start",
@@ -376,6 +383,7 @@ function createTagBadgesAndWrap(dictTags, tagArray) {
 
 function createTagInputBlock() {}
 
+// Create all the buttons necessary for a url card
 function createUrlOptionsButtons(url) {
   const urlOptions = $(document.createElement("div")).addClass(
     "urlOptions flex-row justify-content-start",

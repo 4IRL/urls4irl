@@ -306,6 +306,24 @@ function updateURLFail(response) {
 
 /* Update URL Title */
 
+// Shows the update URL title form
+function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap) {
+  hideIfShown(urlTitleAndShowUpdateIconWrap);
+  const updateTitleForm = urlTitleAndShowUpdateIconWrap.siblings(
+    ".updateUrlTitleWrap",
+  );
+  showIfHidden(updateTitleForm);
+  highlightInput(updateTitleForm.find("input"));
+}
+
+// Resets and hides the Update URL form upon cancellation or selection of another URL
+function hideAndResetUpdateURLTitleForm(urlCard) {
+  hideIfShown(urlCard.find(".updateUrlTitleWrap"));
+  showIfHidden(urlCard.find(".urlTitleAndUpdateIconWrap"));
+  urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
+  resetUpdateURLTitleFailErrors(urlCard);
+}
+
 // Prepares post request inputs for update of a URL
 function updateURLTitleSetup(urlTitleInput) {
   const postURL = routes.updateURLTitle(getActiveUTubID(), getSelectedURLID());
@@ -349,7 +367,7 @@ function updateURLTitleSuccess(response, urlCard) {
 
   // Update URL body with latest published data
   urlCard.find(".urlTitle").text(updatedURLTitle);
-  resetUpdateUrlTitleForm(urlCard);
+  hideAndResetUpdateURLTitleForm(urlCard);
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL

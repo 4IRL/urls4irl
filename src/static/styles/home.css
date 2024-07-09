@@ -478,58 +478,9 @@
     cursor: auto;
 }
 
-.urlRow[urlSelected="true"] .urlTitle, 
-.selectedURL .card-title,
-.selectedURL .url-string {
+.urlRow[urlSelected="true"] .urlTitle {
     white-space: normal;
     text-overflow: unset;
-}
-
-.selectedURL .url-string:hover {
-    text-decoration: underline;
-    cursor: pointer;
-}
-
-.URLString {
-    width: 200px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis
-}
-
-
-.col-lg-10 {
-    flex-grow: 1;
-}
-
-.col-lg-4 {
-    flex-shrink: 1;
-}
-
-.col-xl-10 {
-    flex-grow: 1;
-}
-
-.col-xl-3 {
-    flex-shrink: 1;
-}
-
-.updateURL {
-    width: 75%;
-    color: var(--darkGrayTextColor);
-}
-
-.URLTitleInnerWrap > .visibleBtn {
-    display: none !important;
-}
-
-.URLTitleInnerWrap:hover > .visibleBtn {
-    display: flex !important;
-}
-
-.urlBtnUpdateWrap {
-    padding-inline:10px;
-    gap: 10px;
 }
 
 .hiddenBtn#updateUTubDescriptionBtn, 
