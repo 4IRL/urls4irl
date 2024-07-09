@@ -1,3 +1,6 @@
+// Time until loading icon is shown for URL validation after creation/updating, in ms
+const SHOW_LOADING_ICON_AFTER_MS = 25;
+
 /* Add URL */
 
 // Displays new URL input prompt
@@ -15,12 +18,26 @@ function createURLShowInput() {
   newURLInputAddEventListeners(createURLInputForm);
 }
 
-// Handles addition of new URL after user submission
-function createURL(createUrlTitleInput, createUrlInput) {
-  // Extract data to submit in POST request
-  [postURL, data] = createURLSetup(createUrlTitleInput, createUrlInput);
+// Prepares post request inputs for addition of a new URL
+function createURLSetup(createURLTitleInput, createURLInput) {
+  // Assemble post request route
+  const postURL = routes.createURL(getActiveUTubID());
 
-  const SHOW_LOADING_ICON_AFTER_MS = 25;
+  // Assemble submission data
+  const newURLTitle = createURLTitleInput.val();
+  const newURL = createURLInput.val();
+  const data = {
+    urlString: newURL,
+    urlTitle: newURLTitle,
+  };
+
+  return [postURL, data];
+}
+
+// Handles addition of new URL after user submission
+function createURL(createURLTitleInput, createURLInput) {
+  // Extract data to submit in POST request
+  [postURL, data] = createURLSetup(createURLTitleInput, createURLInput);
 
   // A custom AJAX call, built to show a loading icon after a given number of MS
   let timeoutId;
@@ -54,22 +71,6 @@ function createURL(createUrlTitleInput, createUrlInput) {
       $("#urlCreateDualLoadingRing").removeClass("dual-loading-ring");
     },
   });
-}
-
-// Prepares post request inputs for addition of a new URL
-function createURLSetup(createUrlTitleInput, createUrlInput) {
-  // Assemble post request route
-  const postURL = routes.createURL(getActiveUTubID());
-
-  // Assemble submission data
-  const newURLTitle = createUrlTitleInput.val();
-  const newURL = createUrlInput.val();
-  data = {
-    urlString: newURL,
-    urlTitle: newURLTitle,
-  };
-
-  return [postURL, data];
 }
 
 // Displays changes related to a successful addition of a new URL
@@ -143,168 +144,228 @@ function resetCreateUrlFailErrors() {
 /* Update URL */
 
 // Shows update URL inputs
-function updateURLShowInput() {
-  // Show update submission and cancel button, hide update button
-  unbindURLKeyboardEventListenersWhenUpdatesOccurring();
-  const selectedCardDiv = getSelectedUrlCard();
-  const updateURLInput = selectedCardDiv.find(".updateURL");
-  const URL = selectedCardDiv.find(".URL");
+function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
+  hideIfShown(urlCard.find(".urlString"));
+  const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
+  showIfHidden(updateURLStringWrap);
+  highlightInput(updateURLStringWrap.find("input"));
 
-  // Show input field
-  showIfHidden(updateURLInput.closest(".createDiv"));
-  showIfHidden(updateURLInput.next(".urlBtnUpdateWrap"));
-  updateURLInput.focus();
+  // Disable URL Buttons as URL is being edited
+  hideIfShown(urlCard.find(".urlBtnAccess"));
+  hideIfShown(urlCard.find(".tagBtnCreate"));
+  hideIfShown(urlCard.find(".urlBtnDelete"));
 
-  // Hide published value
-  hideIfShown(URL);
+  // Disable Go To URL Icon
+  urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
 
-  // Disable URL Buttons
-  disable(selectedCardDiv.find(".urlBtnAccess"));
-  disable(selectedCardDiv.find(".tagBtnCreate"));
-  disable(selectedCardDiv.find(".urlBtnDelete"));
-
-  // Update URL Button text to show a return string
-  const urlBtnUpdate = selectedCardDiv.find(".urlBtnUpdate");
-  urlBtnUpdate.text("Exit Updating");
-  urlBtnUpdate.removeClass("btn-light").addClass("btn-warning");
-
-  // Make the button close updating now if clicked
-  urlBtnUpdate.off("click").on("click", function (e) {
-    e.stopPropagation();
-    updateURLHideInput();
-  });
-
-  // Inhibit selection toggle behavior until user cancels update, or successfully submits update. User can still select and update other URLs in UTub
-  unbindSelectURLBehavior();
-
-  // Allow escape key to close updating
-  $(document)
-    .unbind("keyup.27")
-    .bind("keyup.27", function (e) {
-      if (e.which === 27) {
-        e.stopPropagation();
-        updateURLHideInput();
-      }
+  // Update URL Button text to exit editing
+  urlCard
+    .find(".urlBtnUpdate")
+    .removeClass("btn-light")
+    .addClass("btn-warning")
+    .text("Return")
+    .off("click")
+    .on("click", function (e) {
+      e.stopPropagation();
+      hideAndResetUpdateURLStringForm(urlCard);
     });
+
+  disableTagRemovalInURLCard(urlCard);
 }
 
-// Hides update URL inputs
-function updateURLHideInput() {
-  // Show update button, hide other buttons
-  const selectedCardDiv = getSelectedUrlCard();
-  const updateURLInput = selectedCardDiv.find(".updateURL");
-  const URL = selectedCardDiv.find(".URL");
+// Resets and hides the Update URL form upon cancellation or selection of another URL
+function hideAndResetUpdateURLStringForm(urlCard) {
+  // Toggle input form and display of URL
+  hideIfShown(urlCard.find(".updateUrlStringWrap"));
+  const urlStringElem = urlCard.find(".urlString");
+  showIfHidden(urlStringElem);
 
-  // Updating input field placeholders
-  updateURLInput.text(URL.find("card-text").text());
+  // Update the input with current value of url string element
+  urlCard.find(".urlStringUpdate").val(urlStringElem.text());
 
-  // Hide input field
-  hideIfShown(updateURLInput.closest(".createDiv"));
-
-  // Show published value
-  showIfHidden(URL);
+  // Make the Update URL button now allow updating again
+  const urlBtnUpdate = urlCard.find(".urlBtnUpdate");
+  urlBtnUpdate
+    .removeClass("btn-warning")
+    .addClass("btn-light")
+    .text("Edit URL")
+    .off("click")
+    .on("click", function (e) {
+      e.stopPropagation();
+      showUpdateURLStringForm(urlCard, urlBtnUpdate);
+    });
 
   // Enable URL Buttons
-  enable(selectedCardDiv.find(".urlBtnAccess"));
-  enable(selectedCardDiv.find(".tagBtnCreate"));
-  enable(selectedCardDiv.find(".urlBtnDelete"));
+  showIfHidden(urlCard.find(".urlBtnAccess"));
+  showIfHidden(urlCard.find(".tagBtnCreate"));
+  showIfHidden(urlCard.find(".urlBtnDelete"));
 
-  // Update URL Button text to show a return string
-  const urlBtnUpdate = selectedCardDiv.find(".urlBtnUpdate");
-  urlBtnUpdate.text("Update URL");
-  urlBtnUpdate.removeClass("btn-warning").addClass("btn-light");
-  urlBtnUpdate.off("click").on("click", function (e) {
-    e.stopPropagation();
-    updateURLShowInput();
-  });
+  // Enable Go To URL Icon
+  const selected = urlCard.attr("urlSelected");
+  if (typeof selected === "string" && selected.toLowerCase() === "true") {
+    urlCard.find(".goToUrlIcon").removeClass("hidden").addClass("visible-flex");
+  }
 
-  // Rebind click selection behavior to unselect URL
-  rebindSelectBehavior();
-
-  // Unbind escape key from hiding update
-  $(document).unbind("keyup.27");
-
-  // Rebind escape key to hiding selected URL
-  bindEscapeToUnselectURL(getSelectedURLID());
-  bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
-}
-
-// Handles update of an existing URL
-function updateURL() {
-  // Extract data to submit in POST request
-  [postURL, data] = updateURLSetup();
-
-  AJAXCall("patch", postURL, data);
-
-  // Handle response
-  request.done(function (response, textStatus, xhr) {
-    if (xhr.status === 200) {
-      updateURLSuccess(response);
-    }
-  });
-
-  request.fail(function (response, textStatus, xhr) {
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      updateURLFail(response);
-    }
-  });
+  resetUpdateURLFailErrors(urlCard);
+  enableTagRemovalInURLCard(urlCard);
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLSetup() {
-  let postURL = routes.updateURL(getActiveUTubID(), getSelectedURLID());
+function updateURLSetup(urlStringUpdateInput) {
+  const postURL = routes.updateURL(getActiveUTubID(), getSelectedURLID());
 
-  let updatedURL = getSelectedUrlCard().find(".updateURL")[0].value;
+  const updatedURL = urlStringUpdateInput.val();
 
-  data = { urlString: updatedURL };
+  const data = { urlString: updatedURL };
 
   return [postURL, data];
 }
 
+// Handles update of an existing URL
+function updateURL(urlStringUpdateInput, urlCard) {
+  if (urlStringUpdateInput.val() === urlCard.find(".urlString").text()) {
+    hideAndResetUpdateURLStringForm(urlCard);
+    return;
+  }
+
+  // Extract data to submit in POST request
+  [patchURL, data] = updateURLSetup(urlStringUpdateInput);
+
+  // A custom AJAX call, built to show a loading icon after a given number of MS
+  let timeoutId;
+  $.ajax({
+    url: patchURL,
+    method: "PATCH",
+    data: data,
+
+    // Following overwrites the global ajaxSetup call, so needs to include CSRFToken again
+    beforeSend: function (xhr, settings) {
+      globalBeforeSend(xhr, settings);
+      timeoutId = setTimeout(function () {
+        urlCard.find(".urlUpdateDualLoadingRing").addClass("dual-loading-ring");
+      }, SHOW_LOADING_ICON_AFTER_MS);
+    },
+
+    success: function (response, _, xhr) {
+      if (xhr.status === 200) {
+        updateURLSuccess(response, urlCard);
+      }
+    },
+
+    error: function (xhr, _, errorThrown) {
+      resetUpdateURLFailErrors(urlCard);
+      updateURLFail(xhr, urlCard);
+    },
+
+    complete: function () {
+      // Icon is only shown after 25ms - if <25ms, the timeout and callback function are cleared
+      clearTimeout(timeoutId);
+      urlCard
+        .find(".urlUpdateDualLoadingRing")
+        .removeClass("dual-loading-ring");
+    },
+  });
+}
+
 // Displays changes related to a successful update of a URL
-function updateURLSuccess(response) {
+function updateURLSuccess(response, urlCard) {
   // Extract response data
-  let updatedURLID = response.URL.urlID;
-  let updatedURLString = response.URL.urlString;
-
-  const selectedCardDiv = getSelectedUrlCard();
-
-  // Update URL ID
-  selectedCardDiv.attr("urlid", updatedURLID);
+  const updatedURLString = response.URL.urlString;
 
   // If update URL action, rebind the ability to select/deselect URL by clicking it
-  rebindSelectBehavior();
+  //rebindSelectBehavior();
 
   // Update URL body with latest published data
-  selectedCardDiv.find(".card-text").text(updatedURLString);
+  urlCard.find(".urlString").text(updatedURLString);
 
   // Update URL options
-  selectedCardDiv
+  urlCard
     .find(".urlBtnAccess")
     .off("click")
     .on("click", function (e) {
       e.stopPropagation();
-      e.preventDefault();
       accessLink(updatedURLString);
     });
 
-  updateURLHideInput();
+  urlCard
+    .find(".goToUrlIcon")
+    .off("click")
+    .on("click", function (e) {
+      e.stopPropagation();
+      accessLink(updatedURLString);
+    });
+
+  hideAndResetUpdateURLStringForm(urlCard);
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
-function updateURLFail(response) {
-  console.log("Error: Could not update URL");
-  console.log(
-    "Failure. Error code: " +
-      response.responseJSON.errorCode +
-      ". Status: " +
-      response.responseJSON.message,
-  );
+function updateURLFail(xhr, urlCard) {
+  switch (xhr.status) {
+    case 400:
+      const responseJSON = xhr.responseJSON;
+      const hasErrors = responseJSON.hasOwnProperty("errors");
+      const hasMessage = responseJSON.hasOwnProperty("message");
+      if (hasErrors) {
+        updateURLFailShowErrors(responseJSON.errors, urlCard);
+        break;
+      }
+      if (hasMessage) {
+        displayUpdateURLErrors("urlString", responseJSON.message, urlCard);
+        break;
+      }
+    case 403:
+    case 404:
+    default:
+      window.location.assign(routes.errorPage);
+  }
+}
+
+function updateURLFailShowErrors(errors, urlCard) {
+  for (let key in errors) {
+    switch (key) {
+      case "urlString":
+        let errorMessage = errors[key][0];
+        displayUpdateURLErrors(key, errorMessage, urlCard);
+        return;
+    }
+  }
+}
+
+function displayUpdateURLErrors(key, errorMessage, urlCard) {
+  urlCard
+    .find("." + key + "Update-error")
+    .addClass("visible")
+    .text(errorMessage);
+  urlCard.find("." + key + "Update").addClass("invalid-field");
+}
+
+function resetUpdateURLFailErrors(urlCard) {
+  const urlStringUpdateFields = ["urlString"];
+  urlStringUpdateFields.forEach((fieldName) => {
+    urlCard.find("." + fieldName + "Update").removeClass("invalid-field");
+    urlCard.find("." + fieldName + "Update-error").removeClass("visible");
+  });
 }
 
 /* Update URL Title */
+
+// Shows the update URL title form
+function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap) {
+  hideIfShown(urlTitleAndShowUpdateIconWrap);
+  const updateTitleForm = urlTitleAndShowUpdateIconWrap.siblings(
+    ".updateUrlTitleWrap",
+  );
+  showIfHidden(updateTitleForm);
+  updateTitleForm.find("input").focus();
+}
+
+// Resets and hides the Update URL form upon cancellation or selection of another URL
+function hideAndResetUpdateURLTitleForm(urlCard) {
+  hideIfShown(urlCard.find(".updateUrlTitleWrap"));
+  showIfHidden(urlCard.find(".urlTitleAndUpdateIconWrap"));
+  urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
+  resetUpdateURLTitleFailErrors(urlCard);
+}
 
 // Prepares post request inputs for update of a URL
 function updateURLTitleSetup(urlTitleInput) {
@@ -349,7 +410,7 @@ function updateURLTitleSuccess(response, urlCard) {
 
   // Update URL body with latest published data
   urlCard.find(".urlTitle").text(updatedURLTitle);
-  resetUpdateUrlTitleForm(urlCard);
+  hideAndResetUpdateURLTitleForm(urlCard);
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL

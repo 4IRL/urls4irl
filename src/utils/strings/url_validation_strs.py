@@ -15,6 +15,10 @@ CLOUDFLARE_SERVER = "cloudflare"
 SERVER = "server"
 GOOGLE_CACHE = "https://webcache.googleusercontent.com/search?q=cache:"
 WAYBACK_ARCHIVE = "https://web.archive.org/web/"
+ORIGINAL = "original"
+URL = "url"
+CONTENT_TYPE = "Content-Type"
+HTML_CONTENT = "text/html"
 
 
 class URL_VALIDATION:
@@ -35,3 +39,7 @@ class URL_VALIDATION:
     SERVER = SERVER
     GOOGLE_CACHE = GOOGLE_CACHE
     WAYBACK_ARCHIVE = WAYBACK_ARCHIVE
+    ORIGINAL = ORIGINAL
+    URL = URL
+    CONTENT_TYPE = CONTENT_TYPE
+    HTML_CONTENT = HTML_CONTENT

@@ -7,7 +7,7 @@ $(document).ready(function () {
   // Update UTub name
   $("#utubNameBtnUpdate").on("click", function (e) {
     hideInputs();
-    deselectAllUrls();
+    deselectAllURLs();
     updateUTubDescriptionHideInput();
     updateUTubNameShowInput();
     // Prevent this event from bubbling up to the window to allow event listener creation
@@ -34,7 +34,7 @@ $(document).ready(function () {
   // Update UTub description
   $("#updateUTubDescriptionBtn").on("click", function (e) {
     hideInputs();
-    deselectAllUrls();
+    deselectAllURLs();
     updateUTubNameHideInput();
     updateUTubDescriptionShowInput();
     // Prevent this event from bubbling up to the window to allow event listener creation
