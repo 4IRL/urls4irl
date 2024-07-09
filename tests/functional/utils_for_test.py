@@ -1,6 +1,7 @@
 # Standard library
 
 # External libraries
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -29,16 +30,19 @@ def wait_then_get_element(browser, css_selector: str, time: float = 2):
     Returns element
     """
 
-    element = WebDriverWait(browser, time).until(
-        EC.presence_of_element_located(
-            (
-                By.CSS_SELECTOR,
-                css_selector,
+    try:
+        element = WebDriverWait(browser, time).until(
+            EC.presence_of_element_located(
+                (
+                    By.CSS_SELECTOR,
+                    css_selector,
+                )
             )
         )
-    )
 
-    return element
+        return element
+    except NoSuchElementException:
+        return False
 
 
 def wait_then_get_elements(browser, css_selector: str, time: float = 2):
@@ -47,16 +51,19 @@ def wait_then_get_elements(browser, css_selector: str, time: float = 2):
     Returns list of elements
     """
 
-    elements = WebDriverWait(browser, time).until(
-        EC.presence_of_all_elements_located(
-            (
-                By.CSS_SELECTOR,
-                css_selector,
+    try:
+        elements = WebDriverWait(browser, time).until(
+            EC.presence_of_all_elements_located(
+                (
+                    By.CSS_SELECTOR,
+                    css_selector,
+                )
             )
         )
-    )
 
-    return elements
+        return elements
+    except NoSuchElementException:
+        return False
 
 
 def wait_then_click_element(browser, css_selector: str, time: float = 2):
@@ -65,16 +72,19 @@ def wait_then_click_element(browser, css_selector: str, time: float = 2):
     Clicks element
     """
 
-    element = WebDriverWait(browser, time).until(
-        EC.element_to_be_clickable(
-            (
-                By.CSS_SELECTOR,
-                css_selector,
+    try:
+        element = WebDriverWait(browser, time).until(
+            EC.element_to_be_clickable(
+                (
+                    By.CSS_SELECTOR,
+                    css_selector,
+                )
             )
         )
-    )
 
-    element.click()
+        element.click()
+    except NoSuchElementException:
+        return False
 
 
 def clear_then_send_keys(element, input_text: str):
