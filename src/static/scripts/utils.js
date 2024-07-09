@@ -265,7 +265,7 @@ function makeUpdateTextInput(textInputID) {
     "createDiv flex-row full-width pad-top-5p",
   );
   const inputOuterContainer = $(document.createElement("div")).addClass(
-    "text-input-container sixtyfive-width",
+    "text-input-container",
   );
   const inputInnerContainer = $(document.createElement("div")).addClass(
     "text-input-inner-container",

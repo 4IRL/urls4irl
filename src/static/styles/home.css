@@ -363,10 +363,11 @@
     display: none;
     color: var(--deckSelectionGreenHover);
     transition: color 0.1s ease, visibility 2.5s ease;
+    align-self: flex-start;
 }
 
 .urlRow:hover .goToUrlIcon {
-    display: flex !important;
+    display: flex;
 }
 
 .goToUrlIcon:hover {
@@ -410,7 +411,8 @@
 }
 
 .urlRow[urlSelected="true"] .urlString {
-    width: fit-content;
+    overflow-wrap: break-word;
+    white-space: normal;
 }
 
 .urlRow[urlSelected="true"] .urlString:hover {
@@ -428,6 +430,14 @@
 
 .urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
     width: max-content;
+}
+
+.urlRow[urlSelected="true"] .updateUrlTitleWrap > .text-input-container {
+    width: 65%;
+}
+
+.urlRow[urlSelected="true"] .updateUrlStringWrap > .text-input-container {
+    width: 100%;
 }
 
 .urlTags::before,
@@ -459,24 +469,11 @@
     padding-bottom: 20px;
 }
 
-.url-string {
-    margin-bottom: 0px;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    overflow: hidden;
+.updateUrlStringWrap {
+    padding-bottom: 20px;
+    padding-top: 20px;
 }
 
-.selected {
-    border: 5px solid rgb(13, 255, 0);
-}
-
-.selectedURL {
-    border: 5px solid rgb(13, 255, 0);
-}
-
-.selectedURL:hover {
-    cursor: auto;
-}
 
 .urlRow[urlSelected="true"] .urlTitle {
     white-space: normal;

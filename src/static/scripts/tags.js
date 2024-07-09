@@ -58,6 +58,23 @@ function bindEscapeToExitCreateNewTag(inputWrapper) {
 
 // 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
 // Function to evaluate whether newly added tag already exists in Tag Deck
+
+// Hide tag deletion button when needed
+function disableTagRemovalInURLCard(urlCard) {
+  const allTagsDelBtns = urlCard.find(".tagBtnDelete");
+  for (let i = 0; i < allTagsDelBtns.length; i++) {
+    $(allTagsDelBtns[i]).addClass("hidden");
+  }
+}
+
+// Show tag deletion when needed
+function enableTagRemovalInURLCard(urlCard) {
+  const allTagsDelBtns = urlCard.find(".tagBtnDelete");
+  for (let i = 0; i < allTagsDelBtns.length; i++) {
+    $(allTagsDelBtns[i]).removeClass("hidden");
+  }
+}
+
 function isTagInDeck(tagid) {
   return currentTagDeckIDs().includes("" + tagid);
 }

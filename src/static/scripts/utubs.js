@@ -96,7 +96,7 @@ function setCreateDeleteUTubEventListeners() {
     .off("click.createDeleteUTub")
     .on("click.createDeleteUTub", function () {
       hideInputs();
-      deselectAllUrls();
+      deselectAllURLs();
       createUTubShowInput();
     });
 
