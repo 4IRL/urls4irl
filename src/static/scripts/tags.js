@@ -61,7 +61,7 @@ function bindEscapeToExitCreateNewTag(inputWrapper) {
 
 // Hide tag deletion button when needed
 function disableTagRemovalInURLCard(urlCard) {
-  const allTagsDelBtns = urlCard.find(".tagBtnDelete");
+  const allTagsDelBtns = urlCard.find(".urlTagBtnDelete");
   for (let i = 0; i < allTagsDelBtns.length; i++) {
     $(allTagsDelBtns[i]).addClass("hidden");
   }
@@ -69,7 +69,7 @@ function disableTagRemovalInURLCard(urlCard) {
 
 // Show tag deletion when needed
 function enableTagRemovalInURLCard(urlCard) {
-  const allTagsDelBtns = urlCard.find(".tagBtnDelete");
+  const allTagsDelBtns = urlCard.find(".urlTagBtnDelete");
   for (let i = 0; i < allTagsDelBtns.length; i++) {
     $(allTagsDelBtns[i]).removeClass("hidden");
   }
@@ -105,24 +105,17 @@ function alphasortTags(dictTags) {
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
   resetTagDeck();
+  const parent = $("#listTags");
 
-  let numOfTags = dictTags.length ? dictTags.length : 0;
+  // Select all checkbox if tags in UTub
+  dictTags.length > 0 ? parent.append(createSelectAllTagFilterInDeck()) : null;
 
-  if (numOfTags) {
-    const parent = $("#listTags");
+  // Loop through all tags and provide checkbox input for filtering
+  for (let i in dictTags) {
+    parent.append(createTagFilterInDeck(dictTags[i].id, dictTags[i].tagString));
+  }
 
-    // Select all checkbox
-    parent.append(createSelectAllTagFilterInDeck());
-
-    // Loop through all tags and provide checkbox input for filtering
-    for (let i in dictTags) {
-      parent.append(
-        createTagFilterInDeck(dictTags[i].id, dictTags[i].tagString),
-      );
-    }
-
-    displayState2TagDeck();
-  } else displayState0TagDeck();
+  updateCountOfTagFiltersApplied();
 }
 
 // Creates Select All tag filter for addition to Tag deck
@@ -179,7 +172,7 @@ function filterAllTags() {
     selAll.html("Deselect All");
   }
 
-  displayState2TagDeck();
+  updateCountOfTagFiltersApplied();
 }
 
 // Update Tag Deck display in response to tag filter selection
@@ -203,37 +196,22 @@ function filterTag(tagID) {
     selAll.html("Deselect All");
   }
 
-  displayState2TagDeck();
+  updateCountOfTagFiltersApplied();
 }
 
 /** Tags Display State Functions **/
 
-// Display state 0: Clean slate, no UTub selected
-function displayState0TagDeck() {
-  // Subheader prompt hidden
+// Subheader prompt hidden when no UTub selected
+function hideTagDeckSubheaderWhenNoUTubSelected() {
   hideIfShown($("#TagDeckSubheader").closest(".titleElement"));
 }
 
-// Display state 1: Selected UTub has URLs, no Tags
-function displayState1TagDeck() {
-  // Subheader prompt shown
-  let TagDeckSubheader = $("#TagDeckSubheader");
-  showIfHidden(TagDeckSubheader.closest(".titleElement"));
-  TagDeckSubheader.text("Add a tag to a URL");
-
-  let selectAll = $("#selectAll");
-  // Remove SelectAll button if no tags
-  if (!isEmpty(selectAll)) {
-    selectAll.remove();
-  }
-}
-
-// Display state 2: Selected UTub has URLs and Tags
-function displayState2TagDeck() {
-  let numOfTags = getNumOfTags();
-  let TagDeckSubheader = $("#TagDeckSubheader");
-  showIfHidden(TagDeckSubheader.closest(".titleElement"));
-  TagDeckSubheader.text(
+// Selected UTub, show filters applied
+function updateCountOfTagFiltersApplied() {
+  const tagDeckSubheader = $("#TagDeckSubheader");
+  showIfHidden(tagDeckSubheader.closest(".titleElement"));
+  const numOfTags = getNumOfTags();
+  tagDeckSubheader.text(
     numOfTags -
       getActiveTagIDs().length +
       " of " +

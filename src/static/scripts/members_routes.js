@@ -131,7 +131,7 @@ function createMemberFail(xhr) {
       const hasMessage = responseJSON.hasOwnProperty("message");
       if (hasErrors) {
         // Show form errors
-        createMemberFailShowErrors(responseJSON.errors);
+        createMemberFailErrors(responseJSON.errors);
         break;
       } else if (hasMessage) {
         // Show message
@@ -147,7 +147,7 @@ function createMemberFail(xhr) {
   // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
 }
 
-function createMemberFailShowErrors(errors) {
+function createMemberFailErrors(errors) {
   for (let key in errors) {
     switch (key) {
       case "username":

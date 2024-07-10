@@ -30,12 +30,12 @@
                         .replace("-2", utub_url_id);
 
                 // Tag routes
-                this.createTag = (utub_id, utub_url_id) =>
-                    "{{url_for('tags.create_tag', utub_id=-1, utub_url_id=-2)}}"
+                this.createURLTag = (utub_id, utub_url_id) =>
+                    "{{url_for('tags.create_utub_url_tag', utub_id=-1, utub_url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", utub_url_id);
-                this.removeTag = (utub_id, utub_url_id, tag_id) =>
-                    "{{url_for('tags.delete_tag', utub_id=-1, utub_url_id=-2, tag_id=-3)}}"
+                this.deleteURLTag = (utub_id, utub_url_id, tag_id) =>
+                    "{{url_for('tags.delete_utub_url_tag', utub_id=-1, utub_url_id=-2, tag_id=-3)}}"
                         .replace("-1", utub_id)
                         .replace("-2", utub_url_id)
                         .replace("-3", tag_id);
@@ -89,6 +89,10 @@
                 this.URLS_TITLE_MAX_LENGTH = {{CONSTANTS.URLS.MAX_URL_TITLE_LENGTH}}
                 this.URLS_MIN_LENGTH = {{CONSTANTS.URLS.MIN_URL_LENGTH}}
                 this.URLS_MAX_LENGTH = {{CONSTANTS.URLS.MAX_URL_LENGTH}}
+
+                // Tag Constants
+                this.TAGS_MIN_LENGTH = {{CONSTANTS.TAGS.MIN_TAG_LENGTH}}
+                this.TAGS_MAX_LENGTH = {{CONSTANTS.TAGS.MAX_TAG_LENGTH}}
 
                 Constants.instance = this;
             }

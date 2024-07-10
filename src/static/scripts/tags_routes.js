@@ -1,42 +1,37 @@
 /* Add tag to URL */
 
-// DP 09/17 do we need the ability to createTagtoURL interstitially before addURL is completed?
+// DP 09/17 do we need the ability to createURLTagtoURL interstitially before addURL is completed?
 
 // Displays new Tag input prompt on selected URL
-function createTagShowInput() {
-  // Prevent deselection of URL while modifying its values
-  unbindSelectURLBehavior();
-  unbindEscapeKey();
-  unbindURLKeyboardEventListenersWhenUpdatesOccurring();
+function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
+  // Show form to add a tag to this URL
+  const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
+  showIfHidden(tagInputFormContainer);
 
-  let URLCard = getSelectedUrlCard();
+  // Focus on the input to add a tag
+  tagInputFormContainer.find("input").focus();
 
-  // Show temporary div element containing input
-  let inputEl = URLCard.find(".createTag");
-  inputEl.addClass("activeInput");
-
-  const inputWrapper = inputEl.closest(".createDiv");
-  showIfHidden(inputWrapper);
-  highlightInput(inputEl);
-  bindEscapeToExitCreateNewTag(inputWrapper);
-
-  // Disable the other buttons in the URL
-  disable(URLCard.find(".urlBtnAccess"));
-  disable(URLCard.find(".urlBtnUpdate"));
-  disable(URLCard.find(".urlBtnDelete"));
+  // Disable URL Buttons as url Tag is being created
+  hideIfShown(urlCard.find(".urlBtnAccess"));
+  hideIfShown(urlCard.find(".urlBtnUpdate"));
+  hideIfShown(urlCard.find(".urlBtnDelete"));
 
   // Modify add tag button
-  const tagBtnCreate = URLCard.find(".tagBtnCreate");
-  tagBtnCreate.removeClass("btn-info").addClass("btn-warning");
-  tagBtnCreate.text("Return");
-  tagBtnCreate.off("click").on("click", function (e) {
-    e.stopPropagation();
-    tagCancelBtnCreateHideInput(inputWrapper);
-  });
+  urlTagBtnCreate
+    .removeClass("btn-info")
+    .addClass("btn-warning")
+    .text("Cancel")
+    .off("click")
+    .on("click", function (e) {
+      e.stopPropagation();
+      hideAndResetCreateURLTagForm(urlCard);
+    });
 
+  disableTagRemovalInURLCard(urlCard);
+  disableEditingURLTitle(urlCard);
   // 02/29/24 Ideally this input would be a dropdown select input that allowed typing. As user types, selection menu filters on each keypress. User can either choose a suggested existing option, or enter a new custom tag
   // Redefine UI interaction with showInputBtn
-  // let showInputBtn = $(URLCard).find(".tagBtnCreate");
+  // let showInputBtn = $(URLCard).find(".urlTagBtnCreate");
   // showInputBtn.off("click");
   // showInputBtn.on("click", highlightInput(inputEl));
 
@@ -49,109 +44,137 @@ function createTagShowInput() {
   // </select>
 }
 
-function tagCancelBtnCreateHideInput(inputWrapper) {
-  let URLCard = getSelectedUrlCard();
-  bindEscapeToUnselectURL(getSelectedURLID());
+function hideAndResetCreateURLTagForm(urlCard) {
+  resetCreateURLTagFailErrors(urlCard);
 
-  // Enable the buttons again
-  enable(URLCard.find(".urlBtnAccess"));
-  enable(URLCard.find(".urlBtnUpdate"));
-  enable(URLCard.find(".urlBtnDelete"));
+  // Hide form to add a tag to this URL
+  const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
+  hideIfShown(tagInputFormContainer);
+
+  // Reset input form
+  tagInputFormContainer.find("input").val(null);
 
   // Modify add tag button
-  const tagBtnCreate = URLCard.find(".tagBtnCreate");
-  tagBtnCreate.removeClass("btn-warning").addClass("btn-info");
-  tagBtnCreate.text("Add Tag");
+  const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
+  urlTagBtnCreate
+    .removeClass("btn-warning")
+    .addClass("btn-info")
+    .text("Add Tag")
+    .off("click")
+    .on("click", function (e) {
+      e.stopPropagation();
+      showCreateURLTagForm(urlCard, urlTagBtnCreate);
+    });
 
-  tagBtnCreate.off("click").on("click", function (e) {
-    e.stopPropagation();
-    createTagShowInput();
-  });
+  // Enable URL Buttons as url Tag creation form is hidden
+  showIfHidden(urlCard.find(".urlBtnAccess"));
+  showIfHidden(urlCard.find(".urlBtnUpdate"));
+  showIfHidden(urlCard.find(".urlBtnDelete"));
 
-  hideIfShown(inputWrapper);
-  rebindSelectBehavior();
-  bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
-}
-
-// Handles addition of new Tag to URL after user submission
-function createTag() {
-  // Extract data to submit in POST request
-  [postURL, data] = createTagSetup();
-
-  AJAXCall("post", postURL, data);
-
-  // Handle response
-  request.done(function (response, textStatus, xhr) {
-    console.log("success");
-
-    if (xhr.status === 200) {
-      createTagSuccess(response);
-    }
-  });
-
-  request.fail(function (response, textStatus, xhr) {
-    console.log("failed");
-
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      createTagFail(response);
-    }
-  });
+  enableTagRemovalInURLCard(urlCard);
+  enableEditingURLTitle(urlCard);
 }
 
 // Prepares post request inputs for addition of a new Tag to URL
-function createTagSetup() {
+function createURLTagSetup(urlTagCreateInput) {
   // Assemble post request route
-  let postURL = routes.createTag(getActiveUTubID(), getSelectedURLID());
+  const postURL = routes.createURLTag(getActiveUTubID(), getSelectedURLID());
 
   // Assemble submission data
-  let newTag = getSelectedUrlCard().find(".createTag").val();
-  data = {
-    tagString: newTag,
+  const data = {
+    tagString: urlTagCreateInput.val(),
   };
 
   return [postURL, data];
 }
 
+// Handles addition of new Tag to URL after user submission
+function createURLTag(urlTagCreateInput, urlCard) {
+  // Extract data to submit in POST request
+  [postURL, data] = createURLTagSetup(urlTagCreateInput);
+
+  AJAXCall("post", postURL, data);
+
+  // Handle response
+  request.done(function (response, _, xhr) {
+    if (xhr.status === 200) {
+      resetCreateURLTagFailErrors(urlCard);
+      createURLTagSuccess(response, urlCard);
+    }
+  });
+
+  request.fail(function (xhr, _, textStatus) {
+    createURLTagFail(xhr, urlCard);
+  });
+}
+
 // Displays changes related to a successful addition of a new Tag
-function createTagSuccess(response) {
-  // Rebind selection behavior of current URL
-  rebindSelectBehavior();
+function createURLTagSuccess(response, urlCard) {
+  // Clear and reset input field
+  hideAndResetCreateURLTagForm(urlCard);
 
-  let selectedURLCard = getSelectedUrlCard();
+  // Extract response data
+  const tagID = response.tag.tagID;
+  const string = response.tag.tagString;
 
-  // Clear input field
-  let newTagInputField = selectedURLCard.find(".createTag");
-  newTagInputField.val("");
-  hideIfShown(newTagInputField.closest(".createDiv"));
+  // Update tags in URL
+  urlCard.find(".urlTagsContainer").append(createTagBadgeInURL(tagID, string));
 
   // Add SelectAll button if not yet there
   if (isEmpty($("#selectAll"))) {
     $("#listTags").append(createSelectAllTagFilterInDeck());
   }
 
-  // Extract response data
-  let tagID = response.tag.tagID;
-  let string = response.tag.tagString;
-
   if (!isTagInDeck(tagID)) {
     $("#listTags").append(createTagFilterInDeck(tagID, string));
   }
 
-  // Update tags in URL
-  let URLTagDeck = selectedURLCard.find(".URLTags");
-  let tagSpan = createTagBadgeInURL(tagID, string);
-  URLTagDeck.append(tagSpan);
-
-  displayState2TagDeck();
+  updateCountOfTagFiltersApplied();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new Tag
-function createTagFail(response) {
-  console.log("Basic implementation. Needs revision");
-  console.log(response.responseJSON.errorCode);
-  console.log(response.responseJSON.message);
+function createURLTagFail(xhr, urlCard) {
+  switch (xhr.status) {
+    case 400:
+      const responseJSON = xhr.responseJSON;
+      if (responseJSON.hasOwnProperty("message")) {
+        responseJSON.hasOwnProperty("errors")
+          ? createURLTagFailErrors(responseJSON.errors, urlCard)
+          : displayCreateURLTagErrors("urlTag", responseJSON.message, urlCard);
+        break;
+      }
+    case 403:
+    case 404:
+    default:
+      window.location.assign(routes.errorPage);
+  }
+}
+
+function createURLTagFailErrors(errors, urlCard) {
+  for (let key in errors) {
+    switch (key) {
+      case "tagString":
+        let errorMessage = errors[key][0];
+        displayCreateURLTagErrors("urlTag", errorMessage, urlCard);
+        return;
+    }
+  }
+}
+
+function displayCreateURLTagErrors(key, errorMessage, urlCard) {
+  urlCard
+    .find("." + key + "Create-error")
+    .addClass("visible")
+    .text(errorMessage);
+  urlCard.find("." + key + "Create").addClass("invalid-field");
+}
+
+function resetCreateURLTagFailErrors(urlCard) {
+  const urlTagCreateFields = ["urlTag"];
+  urlTagCreateFields.forEach((fieldName) => {
+    urlCard.find("." + fieldName + "Create").removeClass("invalid-field");
+    urlCard.find("." + fieldName + "Create-error").removeClass("visible");
+  });
 }
 
 /* Remove tag from URL */
@@ -185,7 +208,11 @@ function deleteTag(tagID) {
 
 // Prepares post request inputs for removal of a URL
 function deleteTagSetup(tagID) {
-  let postURL = routes.deleteTag(getActiveUTubID(), getSelectedURLID(), tagID);
+  let postURL = routes.deleteURLTag(
+    getActiveUTubID(),
+    getSelectedURLID(),
+    tagID,
+  );
 
   return postURL;
 }
@@ -207,10 +234,8 @@ function deleteTagSuccess(response) {
   // Remove SelectAll button if no tags
   if (isEmpty($(".tagFilter"))) {
     $("#selectAll").remove();
-    displayState1TagDeck();
-  } else {
-    displayState2TagDeck();
   }
+  updateCountOfTagFiltersApplied();
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL

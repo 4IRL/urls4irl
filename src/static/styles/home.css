@@ -247,35 +247,34 @@
 /* Tags */
 
 .tagBadge {
-    color: var(--splashGreen);
-    background: white;
+    color: var(--darkSplashGreen);
+    background: var(--cardBackgroundColor);
     margin-left: 2px;
     margin-right: 2px;
     padding-left: 6px;
     padding-right: 6px;
-    padding-top: 1px;
-    padding-bottom: 1px;
-    border-radius: 16px;
+    border-radius: 12px;
     white-space: nowrap;
+    border: 1px solid var(--borderColor);
 }
 
-.tagBadge:hover .tagBtnDelete {
-    display: inline-block;
-    line-height: 100%;
-    height: 100%;
-    font-size: 100%;
+
+.tagBadge:hover .urlTagBtnDelete {
+    width: 100%;
+    opacity: 100%;
+    padding-left: 6px;
 }
 
-.tagBtnDelete {
-    padding: 0rem;
-    vertical-align: unset;
-    padding-left: 5px;
-    display: none;
+.urlTagBtnDelete {
+    width: 0;
+    opacity: 0;
+    padding: 0;
+    color: var(--tagBadgeDeleteBtnColor);
+    transition: width 0.1s ease-in, opacity 0.1s ease-in, color 0.1s ease-in, padding 0.1s ease-in;
 }
 
-.tagBtnDelete:focus {
-    outline: none;
-    box-shadow: none;
+.urlTagBtnDelete:hover {
+    color: var(--tagBadgeDeleteBtnColorHover);
 }
 
 #selectAll,
@@ -312,7 +311,7 @@
     border-color: var(--tagBorderColor);
 }
 
-.urlTags {
+.urlTags:has(.tagBadge) {
     gap: 2rem;
 }
 
@@ -322,6 +321,10 @@
 #listURLs .urlRow:nth-child(odd) .text-input-inner-container > label, 
 #listURLs .urlRow:nth-child(odd) .text-input-inner-container > input { 
     background-color: var(--cardBackgroundColor);
+}
+
+#listURLs .urlRow:nth-child(odd) .tagBadge {
+    background: var(--pageBackgroundColor);
 }
 
 #listURLs .urlRow:nth-child(odd):not([urlSelected="true"]):hover {
@@ -420,8 +423,12 @@
     cursor: pointer;
 }
 
-.urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover > i {
-    display: flex !important;
+.updateURLTitleShowFormIcon {
+    display: none;
+}
+
+.urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover > .updateURLTitleShowFormIcon {
+    display: flex;
 }
 
 .urlRow[urlSelected=false] .urlTitle {
@@ -438,6 +445,10 @@
 
 .urlRow[urlSelected="true"] .updateUrlStringWrap > .text-input-container {
     width: 100%;
+}
+
+.urlRow[urlSelected="true"] .createUrlTagWrap > .text-input-container {
+    width: 45%;
 }
 
 .urlTags::before,

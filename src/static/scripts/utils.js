@@ -101,12 +101,18 @@ function unbindEscapeKey() {
   $(document).unbind("keyup.27");
 }
 
+// To differentiate between the text box types when dynamically creating input text boxes
+const INPUT_TYPES = Object.freeze({
+  CREATE: Symbol("Create"),
+  UPDATE: Symbol("Update"),
+});
+
 // General Functions
 
 // Request user text input by showing the appropriate text input element and await valid input
 function showInput(handle) {
-  let inputEl = $(handle);
-  let inputDiv = inputEl.closest(".createDiv");
+  const inputEl = $(handle);
+  const inputDiv = inputEl.closest(".createDiv");
   showIfHidden(inputDiv);
 
   highlightInput(inputEl);
@@ -138,8 +144,8 @@ function hideInputs() {
 
 // Hide specified input field. Typically done if user successfully completes, or cancels an action
 function hideInput(handle) {
-  let inputEl = $(handle);
-  let inputDiv = inputEl.closest(".createDiv");
+  const inputEl = $(handle);
+  const inputDiv = inputEl.closest(".createDiv");
   hideIfShown(inputDiv);
 }
 
@@ -260,7 +266,7 @@ function enable(jqueryObj) {
 }
 
 // Fancy text box creation
-function makeUpdateTextInput(textInputID) {
+function makeTextInput(textInputID, type) {
   const inputAndButtonWrap = $(document.createElement("div")).addClass(
     "createDiv flex-row full-width pad-top-5p",
   );
@@ -285,11 +291,11 @@ function makeUpdateTextInput(textInputID) {
       type: "text",
       name: textInputID,
     })
-    .addClass(textInputID + "Update");
+    .addClass(textInputID + type);
 
   inputLabel.attr({ for: textInputID });
 
-  inputErrorMessage.addClass(textInputID + "Update-error");
+  inputErrorMessage.addClass(textInputID + type + "-error");
 
   inputInnerContainer.append(inputInputBox).append(inputLabel);
 
@@ -320,7 +326,7 @@ function handleBlur(event) {
 
 function displayState0() {
   hideInputs();
-  displayState0TagDeck();
+  hideTagDeckSubheaderWhenNoUTubSelected();
   resetTagDeck();
   displayState0URLDeck();
   resetURLDeck();
@@ -330,7 +336,7 @@ function displayState0() {
 
 function displayState1() {
   displayState1UTubDeck(null, null);
-  displayState1TagDeck();
+  updateCountOfTagFiltersApplied();
   displayState1URLDeck();
   displayState1MemberDeck();
 }

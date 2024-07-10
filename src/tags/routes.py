@@ -21,7 +21,7 @@ STD_JSON = STD_JSON_RESPONSE
 
 @tags.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags", methods=["POST"])
 @email_validation_required
-def create_tag(utub_id: int, utub_url_id: int):
+def create_utub_url_tag(utub_id: int, utub_url_id: int):
     """
     User wants to add a tag to a URL. 5 tags per URL.
     # TODO: Do not allow empty tags
@@ -165,7 +165,7 @@ def create_tag(utub_id: int, utub_url_id: int):
     "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:tag_id>", methods=["DELETE"]
 )
 @email_validation_required
-def delete_tag(utub_id: int, utub_url_id: int, tag_id: int):
+def delete_utub_url_tag(utub_id: int, utub_url_id: int, tag_id: int):
     """
     User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
 

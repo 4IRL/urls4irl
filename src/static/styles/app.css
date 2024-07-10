@@ -31,10 +31,16 @@
     --tagBackgroundColorSelected: rgba(126, 130, 130, 1.0);
     --tagSelectedTextColor: rgba(14, 66, 27, 1.0);
 
+    --tagBadgeDeleteBtnColor: rgba(136, 136, 136, 0.85);
+    --tagBadgeDeleteBtnColorHover: var(--removeMemberColor);
+
     --contentTopBorder: rgba(126, 130, 130, 0.25);
 
     --cardURLTextColor: rgba(140, 155, 157, 1.0);
     --selectedUrlBorder: rgba(13, 255, 0, 1.0);
+
+    --oddUrlCardsBackgroundColor: rgba(61, 71, 71, 1.0);
+    --evenUrlCardsBackgroundColor: rgba(51, 61, 61, 1.0);
 }
 
 /** HTML DOM Elements **/
