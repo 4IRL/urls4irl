@@ -26,17 +26,17 @@ function createTagShowInput() {
   disable(URLCard.find(".urlBtnDelete"));
 
   // Modify add tag button
-  const tagBtnCreate = URLCard.find(".tagBtnCreate");
-  tagBtnCreate.removeClass("btn-info").addClass("btn-warning");
-  tagBtnCreate.text("Return");
-  tagBtnCreate.off("click").on("click", function (e) {
+  const urlTagBtnCreate = URLCard.find(".urlTagBtnCreate");
+  urlTagBtnCreate.removeClass("btn-info").addClass("btn-warning");
+  urlTagBtnCreate.text("Return");
+  urlTagBtnCreate.off("click").on("click", function (e) {
     e.stopPropagation();
     tagCancelBtnCreateHideInput(inputWrapper);
   });
 
   // 02/29/24 Ideally this input would be a dropdown select input that allowed typing. As user types, selection menu filters on each keypress. User can either choose a suggested existing option, or enter a new custom tag
   // Redefine UI interaction with showInputBtn
-  // let showInputBtn = $(URLCard).find(".tagBtnCreate");
+  // let showInputBtn = $(URLCard).find(".urlTagBtnCreate");
   // showInputBtn.off("click");
   // showInputBtn.on("click", highlightInput(inputEl));
 
@@ -59,11 +59,11 @@ function tagCancelBtnCreateHideInput(inputWrapper) {
   enable(URLCard.find(".urlBtnDelete"));
 
   // Modify add tag button
-  const tagBtnCreate = URLCard.find(".tagBtnCreate");
-  tagBtnCreate.removeClass("btn-warning").addClass("btn-info");
-  tagBtnCreate.text("Add Tag");
+  const urlTagBtnCreate = URLCard.find(".urlTagBtnCreate");
+  urlTagBtnCreate.removeClass("btn-warning").addClass("btn-info");
+  urlTagBtnCreate.text("Add Tag");
 
-  tagBtnCreate.off("click").on("click", function (e) {
+  urlTagBtnCreate.off("click").on("click", function (e) {
     e.stopPropagation();
     createTagShowInput();
   });

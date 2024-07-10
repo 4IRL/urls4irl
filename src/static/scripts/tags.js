@@ -61,7 +61,7 @@ function bindEscapeToExitCreateNewTag(inputWrapper) {
 
 // Hide tag deletion button when needed
 function disableTagRemovalInURLCard(urlCard) {
-  const allTagsDelBtns = urlCard.find(".tagBtnDelete");
+  const allTagsDelBtns = urlCard.find(".urlTagBtnDelete");
   for (let i = 0; i < allTagsDelBtns.length; i++) {
     $(allTagsDelBtns[i]).addClass("hidden");
   }
@@ -69,7 +69,7 @@ function disableTagRemovalInURLCard(urlCard) {
 
 // Show tag deletion when needed
 function enableTagRemovalInURLCard(urlCard) {
-  const allTagsDelBtns = urlCard.find(".tagBtnDelete");
+  const allTagsDelBtns = urlCard.find(".urlTagBtnDelete");
   for (let i = 0; i < allTagsDelBtns.length; i++) {
     $(allTagsDelBtns[i]).removeClass("hidden");
   }

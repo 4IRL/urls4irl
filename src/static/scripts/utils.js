@@ -101,6 +101,11 @@ function unbindEscapeKey() {
   $(document).unbind("keyup.27");
 }
 
+const INPUT_TYPES = Object.freeze({
+  CREATE: { type: "Create" },
+  UPDATE: { type: "Update" },
+});
+
 // General Functions
 
 // Request user text input by showing the appropriate text input element and await valid input
@@ -260,7 +265,7 @@ function enable(jqueryObj) {
 }
 
 // Fancy text box creation
-function makeUpdateTextInput(textInputID) {
+function makeUpdateTextInput(textInputID, type) {
   const inputAndButtonWrap = $(document.createElement("div")).addClass(
     "createDiv flex-row full-width pad-top-5p",
   );

@@ -55,7 +55,7 @@ function selectURLCard(urlCard, url) {
     .off("click.goToURL")
     .on("click.goToURL", function (e) {
       e.stopPropagation();
-      accessLink(url.string);
+      accessLink(url.urlString);
     });
   urlCard.attr({ urlSelected: true });
   urlCard.find(".goToUrlIcon").addClass("visible-flex");
@@ -329,14 +329,14 @@ function createURLTitleAndUpdateBlock(urlTitleText, urlCard) {
 // Create the form to update the URL Title
 function createUpdateURLTitleInput(urlTitleText, urlCard) {
   // Create the update title text box
-  const urlTitleTextInputContainer = makeUpdateTextInput("urlTitle")
+  const urlTitleUpdateInputContainer = makeUpdateTextInput("urlTitle", "Update")
     .addClass("updateUrlTitleWrap")
     .css("display", "none");
 
-  urlTitleTextInputContainer.find("label").text("URL Title");
+  urlTitleUpdateInputContainer.find("label").text("URL Title");
 
   // Customize the input text box for the Url title
-  const urlTitleTextInput = urlTitleTextInputContainer
+  const urlTitleTextInput = urlTitleUpdateInputContainer
     .find("input")
     .prop("minLength", CONSTANTS.URLS_TITLE_MIN_LENGTH)
     .prop("maxLength", CONSTANTS.URLS_TITLE_MAX_LENGTH)
@@ -356,11 +356,11 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
       hideAndResetUpdateURLTitleForm(urlCard);
     });
 
-  urlTitleTextInputContainer
+  urlTitleUpdateInputContainer
     .append(urlTitleSubmitBtnUpdate)
     .append(urlTitleCancelBtnUpdate);
 
-  return urlTitleTextInputContainer;
+  return urlTitleUpdateInputContainer;
 }
 
 function createURLStringAndUpdateBlock(urlStringText, urlCard) {
@@ -461,7 +461,7 @@ function createURLOptionsButtons(url, urlCard) {
     "urlOptions flex-row justify-content-start",
   );
   const urlBtnAccess = $(document.createElement("button"));
-  const tagBtnCreate = $(document.createElement("button"));
+  const urlTagBtnCreate = $(document.createElement("button"));
 
   // Access the URL button
   urlBtnAccess
@@ -474,8 +474,8 @@ function createURLOptionsButtons(url, urlCard) {
     });
 
   // Add a tag button
-  tagBtnCreate
-    .addClass("btn btn-info tagBtnCreate")
+  urlTagBtnCreate
+    .addClass("btn btn-info urlTagBtnCreate")
     .attr({ type: "button" })
     .text("Add Tag")
     .on("click", function (e) {
@@ -483,7 +483,7 @@ function createURLOptionsButtons(url, urlCard) {
       createTagShowInput();
     });
 
-  urlOptions.append(urlBtnAccess).append(tagBtnCreate);
+  urlOptions.append(urlBtnAccess).append(urlTagBtnCreate);
 
   if (url.canDelete) {
     const urlBtnUpdate = $(document.createElement("button"));
@@ -561,23 +561,54 @@ function newURLInputRemoveEventListeners() {
 
 // Handle URL deck display changes related to creating a new tag
 function createTagBadgeInURL(tagID, string) {
-  let tagSpan = document.createElement("span");
-  let removeButton = document.createElement("a");
+  let tagSpan = $(document.createElement("span"));
+  let removeButton = $(document.createElement("div"));
 
-  $(tagSpan).addClass("tagBadge").attr({ tagid: tagID }).text(string);
+  tagSpan
+    .addClass("tagBadge flex-row align-center")
+    .attr({ tagid: tagID })
+    .text(string);
 
-  $(removeButton)
-    .addClass("btn btn-sm btn-outline-link border-0 tagBtnDelete")
+  removeButton
+    .addClass("urlTagBtnDelete flex-row align-center pointerable")
     .on("click", function (e) {
       e.stopPropagation();
-      e.preventDefault();
       deleteTag(tagID);
     });
-  removeButton.innerHTML = "&times;";
+  //removeButton.innerHTML = "&times;";
+  //
+  removeButton.append(createTagRemoveIcon());
 
   $(tagSpan).append(removeButton);
 
   return tagSpan;
+}
+
+// Dynamically generates the remove URL-Tag icon when needed
+function createTagRemoveIcon() {
+  const WIDTH_HEIGHT_PX = "15px";
+  const SVG_NS = "http://www.w3.org/2000/svg";
+  const removeTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
+  const removeTagInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
+  const path =
+    "M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353zm-6.106 4.5L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708";
+
+  removeTagInnerIconPath.attr({
+    d: path,
+  });
+
+  removeTagOuterIconSvg
+    .attr({
+      xmlns: SVG_NS,
+      width: WIDTH_HEIGHT_PX,
+      height: WIDTH_HEIGHT_PX,
+      fill: "currentColor",
+      class: "bi bi-x-octagon-fill",
+      viewBox: "0 0 16 16",
+    })
+    .append(removeTagInnerIconPath);
+
+  return removeTagOuterIconSvg;
 }
 
 // Add a new URL tag input text field. Initially hidden, shown when Create Tag is requested. Input field recreated here to ensure at the end of list after creation of new URL

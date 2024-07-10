@@ -152,7 +152,7 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
 
   // Disable URL Buttons as URL is being edited
   hideIfShown(urlCard.find(".urlBtnAccess"));
-  hideIfShown(urlCard.find(".tagBtnCreate"));
+  hideIfShown(urlCard.find(".urlTagBtnCreate"));
   hideIfShown(urlCard.find(".urlBtnDelete"));
 
   // Disable Go To URL Icon
@@ -163,7 +163,7 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
     .find(".urlBtnUpdate")
     .removeClass("btn-light")
     .addClass("btn-warning")
-    .text("Return")
+    .text("Cancel")
     .off("click")
     .on("click", function (e) {
       e.stopPropagation();
@@ -197,7 +197,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
 
   // Enable URL Buttons
   showIfHidden(urlCard.find(".urlBtnAccess"));
-  showIfHidden(urlCard.find(".tagBtnCreate"));
+  showIfHidden(urlCard.find(".urlTagBtnCreate"));
   showIfHidden(urlCard.find(".urlBtnDelete"));
 
   // Enable Go To URL Icon
