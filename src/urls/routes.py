@@ -362,6 +362,27 @@ def update_url(utub_id: int, utub_url_id: int):
         else:
             url_in_database = url_already_in_database
 
+            # Check if URL already in UTub
+            url_already_in_utub = (
+                Utub_Urls.query.filter(
+                    Utub_Urls.utub_id == utub_id,
+                    Utub_Urls.url_id == url_already_in_database.id,
+                ).first()
+                is not None
+            )
+
+            if url_already_in_utub:
+                return (
+                    jsonify(
+                        {
+                            STD_JSON.STATUS: STD_JSON.FAILURE,
+                            STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
+                            STD_JSON.ERROR_CODE: 4,
+                        }
+                    ),
+                    400,
+                )
+
         # Now check if this normalized URL is the same as the original
         if url_in_database.url_string == url_in_utub.standalone_url.url_string:
             # Same URL after normalizing
@@ -404,7 +425,7 @@ def update_url(utub_id: int, utub_url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
                     STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-                    STD_JSON.ERROR_CODE: 4,
+                    STD_JSON.ERROR_CODE: 5,
                     STD_JSON.ERRORS: build_form_errors(update_url_form),
                 }
             ),
@@ -417,7 +438,7 @@ def update_url(utub_id: int, utub_url_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                STD_JSON.ERROR_CODE: 5,
+                STD_JSON.ERROR_CODE: 6,
             }
         ),
         404,

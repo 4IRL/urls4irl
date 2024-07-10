@@ -392,7 +392,8 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
 
 
 def test_update_valid_url_with_previously_added_url_as_url_adder(
-    add_two_url_and_all_users_to_each_utub_no_tags, login_first_user_without_register
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
@@ -431,7 +432,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
 
         # Get a URL that isn't in this UTub
         url_not_in_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.user_id != current_user.id, Utub_Urls.utub_id != utub_id
+            Utub_Urls.url_id != current_url_id, Utub_Urls.utub_id != utub_id
         ).first()
         url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
@@ -969,7 +970,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
     json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
-    assert int(json_response[STD_JSON.ERROR_CODE]) == 4
+    assert int(json_response[STD_JSON.ERROR_CODE]) == 5
     assert (
         json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
         == URL_FAILURE.FIELD_REQUIRED
@@ -1344,6 +1345,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+        STD_JSON.ERROR_CODE: 5,
         STD_JSON.ERRORS : Object representing the errors found in the form, with the following fields
         {
             URL_FORM.URL_STRING: Array of errors associated with the url_string field,
@@ -1395,7 +1397,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
     json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
-    assert int(json_response[STD_JSON.ERROR_CODE]) == 4
+    assert int(json_response[STD_JSON.ERROR_CODE]) == 5
     assert (
         json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
         == URL_FAILURE.FIELD_REQUIRED
@@ -1607,3 +1609,85 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(utub_id)
         assert current_utub.last_updated == initial_last_updated
+
+
+def test_update_utub_url_with_url_already_in_utub(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid member of a UTub that has members, URLs added by each member, and tags associated with each URL
+    WHEN the member attempts to modify the URL with a URL already in the UTub, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add
+    THEN verify that the server responds with a 400 HTTP status code, the URL is not modified in the UTub, and the proper JSON response
+        is given
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
+        STD_JSON.ERROR_CODE: 4
+    }
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get UTub this user is member of
+        utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Find URL already in UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id
+        ).first()
+        current_url_id = url_in_this_utub.url_id
+        current_url_string = url_in_this_utub.standalone_url.url_string
+
+        # Find another URL in this UTub that doesn't match given URL
+        other_url_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.url_id != current_url_id
+        ).first()
+        other_utub_url_id_to_update = other_url_in_utub.id
+        other_url_id = other_url_in_utub.url_id
+
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: current_url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_member_of.id,
+            utub_url_id=other_utub_url_id_to_update,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 400
+
+    # Assert JSON response from server is valid
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
+    assert json_response[STD_JSON.ERROR_CODE] == 4
+
+    with app.app_context():
+        # Assert database is consistent after newly modified URL
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+
+        # Assert previous entity no longer exists
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.url_id == other_url_id
+            ).first()
+            is not None
+        )
