@@ -311,7 +311,7 @@
     border-color: var(--tagBorderColor);
 }
 
-.urlTags {
+.urlTags:has(.tagBadge) {
     gap: 2rem;
 }
 
@@ -423,8 +423,12 @@
     cursor: pointer;
 }
 
-.urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover > i {
-    display: flex !important;
+.updateURLTitleShowFormIcon {
+    display: none;
+}
+
+.urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover > .updateURLTitleShowFormIcon {
+    display: flex;
 }
 
 .urlRow[urlSelected=false] .urlTitle {
@@ -441,6 +445,10 @@
 
 .urlRow[urlSelected="true"] .updateUrlStringWrap > .text-input-container {
     width: 100%;
+}
+
+.urlRow[urlSelected="true"] .createUrlTagWrap > .text-input-container {
+    width: 45%;
 }
 
 .urlTags::before,

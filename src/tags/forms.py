@@ -2,6 +2,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField
 from wtforms.validators import Length, InputRequired, ValidationError
 
+from src.utils.constants import TAG_CONSTANTS
 from src.utils.strings import model_strs as MODEL_STRS
 
 
@@ -15,7 +16,10 @@ class UTubNewUrlTagForm(FlaskForm):
 
     tag_string = StringField(
         "Tag",
-        validators=[InputRequired(), Length(min=1, max=30)],
+        validators=[
+            InputRequired(),
+            Length(min=TAG_CONSTANTS.MIN_TAG_LENGTH, max=TAG_CONSTANTS.MAX_TAG_LENGTH),
+        ],
         name=MODEL_STRS.TAG_STRING,
     )
 

@@ -61,7 +61,7 @@ function createURL(createURLTitleInput, createURLInput) {
     },
 
     error: function (xhr, _, errorThrown) {
-      resetCreateUrlFailErrors();
+      resetCreateURLFailErrors();
       createURLFail(xhr);
     },
 
@@ -133,7 +133,7 @@ function displayCreateUrlFailErrors(key, errorMessage) {
   $("#" + key + "Create").addClass("invalid-field");
 }
 
-function resetCreateUrlFailErrors() {
+function resetCreateURLFailErrors() {
   const newUrlFields = ["urlString", "urlTitle"];
   newUrlFields.forEach((fieldName) => {
     $("#" + fieldName + "Create").removeClass("invalid-field");
@@ -159,8 +159,7 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
 
   // Update URL Button text to exit editing
-  urlCard
-    .find(".urlBtnUpdate")
+  urlBtnUpdate
     .removeClass("btn-light")
     .addClass("btn-warning")
     .text("Cancel")
@@ -306,7 +305,7 @@ function updateURLFail(xhr, urlCard) {
       const hasErrors = responseJSON.hasOwnProperty("errors");
       const hasMessage = responseJSON.hasOwnProperty("message");
       if (hasErrors) {
-        updateURLFailShowErrors(responseJSON.errors, urlCard);
+        updateURLFailErrors(responseJSON.errors, urlCard);
         break;
       }
       if (hasMessage) {
@@ -320,7 +319,7 @@ function updateURLFail(xhr, urlCard) {
   }
 }
 
-function updateURLFailShowErrors(errors, urlCard) {
+function updateURLFailErrors(errors, urlCard) {
   for (let key in errors) {
     switch (key) {
       case "urlString":
@@ -420,7 +419,7 @@ function updateURLTitleFail(xhr, urlCard) {
       const responseJSON = xhr.responseJSON;
       const hasErrors = responseJSON.hasOwnProperty("errors");
       if (hasErrors) {
-        updateURLTitleFailShowErrors(responseJSON.errors, urlCard);
+        updateURLTitleFailErrors(responseJSON.errors, urlCard);
         break;
       }
     case 403:
@@ -430,7 +429,7 @@ function updateURLTitleFail(xhr, urlCard) {
   }
 }
 
-function updateURLTitleFailShowErrors(errors, urlCard) {
+function updateURLTitleFailErrors(errors, urlCard) {
   for (let key in errors) {
     switch (key) {
       case "urlTitle":

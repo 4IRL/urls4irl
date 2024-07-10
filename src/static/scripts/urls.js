@@ -68,6 +68,7 @@ function deselectURL(urlCard) {
   urlCard.find(".goToUrlIcon").removeClass("visible-flex hidden");
   hideAndResetUpdateURLTitleForm(urlCard);
   hideAndResetUpdateURLStringForm(urlCard);
+  hideAndResetCreateURLTagForm(urlCard);
 }
 
 function deselectAllURLs() {
@@ -161,6 +162,35 @@ function resetURLDeck() {
   $(".urlRow").remove();
 }
 
+// Prevent editing URL title when needed
+function disableEditingURLTitle(urlCard) {
+  const showUpdateURLTitleFormIcon = urlCard.find(
+    ".updateURLTitleShowFormIcon",
+  );
+  if (showUpdateURLTitleFormIcon.length > 0) {
+    showUpdateURLTitleFormIcon.addClass("hidden");
+  }
+}
+
+// Allow editing URL title when needed
+function enableEditingURLTitle(urlCard) {
+  const showUpdateURLTitleFormIcon = urlCard.find(
+    ".updateURLTitleShowFormIcon",
+  );
+  if (showUpdateURLTitleFormIcon.length > 0) {
+    showUpdateURLTitleFormIcon.removeClass("hidden");
+  }
+}
+
+function setURLCardSelectionEventListener(urlCard, url) {
+  urlCard.off("click.urlSelected").on("click.urlSelected", function (e) {
+    if ($(e.target).parents(".urlRow").length > 0) {
+      if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") return;
+      selectURLCard(urlCard, url);
+    }
+  });
+}
+
 /** URL Functions **/
 
 // Build center panel URL list for selectedUTub
@@ -196,15 +226,12 @@ function createURLBlock(url, tagArray) {
   );
 
   // Append update URL title form if user can edit the URL
-  if (url.canDelete) {
-    const urlTitleAndTitleUpdateBlock = createURLTitleAndUpdateBlock(
-      url.urlTitle,
-      outerUrlCard,
-    );
-    urlTitleGoToURLWrap.append(urlTitleAndTitleUpdateBlock);
-  } else {
-    urlTitleGoToURLWrap.append(createURLTitle(url.urlTitle));
-  }
+  url.canDelete
+    ? urlTitleGoToURLWrap.append(
+        createURLTitleAndUpdateBlock(url.urlTitle, outerUrlCard),
+      )
+    : urlTitleGoToURLWrap.append(createURLTitle(url.urlTitle));
+
   urlTitleGoToURLWrap.append(createGoToURLIcon(url.urlString));
 
   outerUrlCard.append(urlTitleGoToURLWrap).attr({
@@ -213,27 +240,17 @@ function createURLBlock(url, tagArray) {
   });
 
   // Append update URL form if user can edit the URL
-  if (url.canDelete) {
-    console.log("Can edit URL");
-    const urlStringAndStringUpdateBlock = createURLStringAndUpdateBlock(
-      url.urlString,
-      outerUrlCard,
-    );
-    outerUrlCard.append(urlStringAndStringUpdateBlock);
-  } else {
-    outerUrlCard.append(createURLString(url.urlString));
-  }
+  url.canDelete
+    ? outerUrlCard.append(
+        createURLStringAndUpdateBlock(url.urlString, outerUrlCard),
+      )
+    : outerUrlCard.append(createURLString(url.urlString));
 
   outerUrlCard.append(
     createTagsAndOptionsForUrlBlock(url, tagArray, outerUrlCard),
   );
-  outerUrlCard.off("click.urlSelected").on("click.urlSelected", function (e) {
-    if ($(e.target).parents(".urlRow").length > 0) {
-      if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") return;
-      console.log("Setting parent to selected");
-      selectURLCard(outerUrlCard, url);
-    }
-  });
+
+  setURLCardSelectionEventListener(outerUrlCard, url);
 
   return outerUrlCard;
 }
@@ -299,23 +316,10 @@ function createURLTitleAndUpdateBlock(urlTitleText, urlCard) {
     document.createElement("div"),
   ).addClass("flex-row full-width urlTitleAndUpdateIconInnerWrap");
 
-  // Icon to show update title input box when clicked
-  const urlTitleShowUpdateIcon = makeUpdateButton(20);
-  urlTitleShowUpdateIcon
-    .css("display", "none")
-    .on("click.showUpdateURLTitle", function (e) {
-      if ($(e.target).parents(".urlTitleAndUpdateIconWrap").length > 0) {
-        const urlTitleAndIcon = $(e.target).closest(
-          ".urlTitleAndUpdateIconWrap",
-        );
-        showUpdateURLTitleForm(urlTitleAndIcon);
-      }
-    });
-
   // Add icon and title to the container
   urlTitleAndShowUpdateIconInnerWrap
     .append(createURLTitle(urlTitleText))
-    .append(urlTitleShowUpdateIcon);
+    .append(createShowUpdateURLTitleIcon());
   urlTitleAndShowUpdateIconWrap.append(urlTitleAndShowUpdateIconInnerWrap);
 
   // Add icon + title container, and update input container to the parent container
@@ -326,10 +330,27 @@ function createURLTitleAndUpdateBlock(urlTitleText, urlCard) {
   return urlTitleAndUpdateWrap;
 }
 
+// Create the icon that will show the update URL title form
+function createShowUpdateURLTitleIcon() {
+  return makeUpdateButton(20)
+    .addClass("updateURLTitleShowFormIcon")
+    .on("click.showUpdateURLTitle", function (e) {
+      if ($(e.target).parents(".urlTitleAndUpdateIconWrap").length > 0) {
+        const urlTitleAndIcon = $(e.target).closest(
+          ".urlTitleAndUpdateIconWrap",
+        );
+        showUpdateURLTitleForm(urlTitleAndIcon);
+      }
+    });
+}
+
 // Create the form to update the URL Title
 function createUpdateURLTitleInput(urlTitleText, urlCard) {
   // Create the update title text box
-  const urlTitleUpdateInputContainer = makeUpdateTextInput("urlTitle", "Update")
+  const urlTitleUpdateInputContainer = makeTextInput(
+    "urlTitle",
+    INPUT_TYPES.UPDATE.description,
+  )
     .addClass("updateUrlTitleWrap")
     .css("display", "none");
 
@@ -363,8 +384,9 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
   return urlTitleUpdateInputContainer;
 }
 
+// Create the container for both displaying URL string, and updating the URL string
 function createURLStringAndUpdateBlock(urlStringText, urlCard) {
-  // Overall container for title and updating title
+  // Overall container for string and updating string
   const urlStringAndUpdateWrap = $(document.createElement("div")).addClass(
     "flex-row ninetyfive-width",
   );
@@ -376,8 +398,12 @@ function createURLStringAndUpdateBlock(urlStringText, urlCard) {
   return urlStringAndUpdateWrap;
 }
 
+// Create form to update the URL
 function createUpdateURLStringInput(urlStringText, urlCard) {
-  const urlStringUpdateTextInputContainer = makeUpdateTextInput("urlString")
+  const urlStringUpdateTextInputContainer = makeTextInput(
+    "urlString",
+    INPUT_TYPES.UPDATE.description,
+  )
     .addClass("updateUrlStringWrap")
     .css("display", "none");
 
@@ -424,7 +450,7 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard) {
   tagsAndButtonsWrap.append(tagsAndTagCreateWrap);
   tagsAndTagCreateWrap.append(tagBadgesWrap);
 
-  if (url.canDelete) tagsAndTagCreateWrap.append(createTagInputBlock());
+  tagsAndTagCreateWrap.append(createTagInputBlock(urlCard));
 
   tagsAndButtonsWrap.append(createURLOptionsButtons(url, urlCard));
 
@@ -453,7 +479,42 @@ function createTagBadgesAndWrap(dictTags, tagArray) {
   return tagBadgesWrap;
 }
 
-function createTagInputBlock() {}
+function createTagInputBlock(urlCard) {
+  const urlTagCreateTextInputContainer = makeTextInput(
+    "urlTag",
+    INPUT_TYPES.CREATE.description,
+  )
+    .addClass("createUrlTagWrap")
+    .css("display", "none");
+
+  urlTagCreateTextInputContainer.find("label").text("Tag");
+
+  // Customize the input text box for the Url title
+  const urlTagTextInput = urlTagCreateTextInputContainer
+    .find("input")
+    .prop("minLength", CONSTANTS.TAGS_MIN_LENGTH)
+    .prop("maxLength", CONSTANTS.TAGS_MAX_LENGTH);
+
+  // Create Url Title submit button
+  const urlTagSubmitBtnCreate = makeSubmitButton(30)
+    .addClass("urlTagSubmitBtnCreate")
+    .on("click.createURLTag", function () {
+      createURLTag(urlTagTextInput, urlCard);
+    });
+
+  // Create Url Title cancel button
+  const urlTagCancelBtnCreate = makeCancelButton(30)
+    .addClass("urlTagCancelBtnCreate")
+    .on("click.createURLTag", function () {
+      hideAndResetCreateURLTagForm(urlCard);
+    });
+
+  urlTagCreateTextInputContainer
+    .append(urlTagSubmitBtnCreate)
+    .append(urlTagCancelBtnCreate);
+
+  return urlTagCreateTextInputContainer;
+}
 
 // Create all the buttons necessary for a url card
 function createURLOptionsButtons(url, urlCard) {
@@ -480,7 +541,7 @@ function createURLOptionsButtons(url, urlCard) {
     .text("Add Tag")
     .on("click", function (e) {
       e.stopPropagation();
-      createTagShowInput();
+      showCreateURLTagForm(urlCard, urlTagBtnCreate);
     });
 
   urlOptions.append(urlBtnAccess).append(urlTagBtnCreate);
@@ -553,7 +614,7 @@ function newURLInputAddEventListeners(urlInputForm) {
 }
 
 function newURLInputRemoveEventListeners() {
-  resetCreateUrlFailErrors();
+  resetCreateURLFailErrors();
   $("#urlSubmitBtnCreate").off();
   $("#urlCancelBtnCreate").off();
   $(document).off(".createURL");
@@ -561,8 +622,8 @@ function newURLInputRemoveEventListeners() {
 
 // Handle URL deck display changes related to creating a new tag
 function createTagBadgeInURL(tagID, string) {
-  let tagSpan = $(document.createElement("span"));
-  let removeButton = $(document.createElement("div"));
+  const tagSpan = $(document.createElement("span"));
+  const removeButton = $(document.createElement("div"));
 
   tagSpan
     .addClass("tagBadge flex-row align-center")
@@ -577,27 +638,27 @@ function createTagBadgeInURL(tagID, string) {
     });
   //removeButton.innerHTML = "&times;";
   //
-  removeButton.append(createTagRemoveIcon());
+  removeButton.append(createTagDeleteIcon());
 
   $(tagSpan).append(removeButton);
 
   return tagSpan;
 }
 
-// Dynamically generates the remove URL-Tag icon when needed
-function createTagRemoveIcon() {
+// Dynamically generates the delete URL-Tag icon when needed
+function createTagDeleteIcon() {
   const WIDTH_HEIGHT_PX = "15px";
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const removeTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
-  const removeTagInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
+  const deleteTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
+  const deleteTagInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
   const path =
     "M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353zm-6.106 4.5L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708";
 
-  removeTagInnerIconPath.attr({
+  deleteTagInnerIconPath.attr({
     d: path,
   });
 
-  removeTagOuterIconSvg
+  deleteTagOuterIconSvg
     .attr({
       xmlns: SVG_NS,
       width: WIDTH_HEIGHT_PX,
@@ -606,57 +667,9 @@ function createTagRemoveIcon() {
       class: "bi bi-x-octagon-fill",
       viewBox: "0 0 16 16",
     })
-    .append(removeTagInnerIconPath);
+    .append(deleteTagInnerIconPath);
 
-  return removeTagOuterIconSvg;
-}
-
-// Add a new URL tag input text field. Initially hidden, shown when Create Tag is requested. Input field recreated here to ensure at the end of list after creation of new URL
-function createNewTagInputField() {
-  const wrapper = document.createElement("div");
-  const wrapperInput = document.createElement("div");
-  const wrapperBtns = document.createElement("div");
-
-  const input = document.createElement("input");
-  const submitBtn = makeSubmitButton(24);
-  const cancelBtn = makeCancelButton(24);
-
-  $(wrapper)
-    .attr({
-      style: "display: none",
-    })
-    .addClass("createDiv flex-row");
-
-  $(input)
-    .attr({
-      type: "text",
-      placeholder: "Attribute Tag to URL",
-    })
-    .addClass("tag userInput createTag");
-
-  $(submitBtn)
-    .addClass("mx-1 green-clickable tagSubmitBtnCreate")
-    .on("click", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      createTag();
-    });
-
-  $(cancelBtn)
-    .addClass("mx-1 tagCancelBtnCreate")
-    .on("click", function (e) {
-      e.stopPropagation();
-      tagCancelBtnCreateHideInput($(wrapper));
-      //hideIfShown(wrapper);
-    });
-
-  $(wrapperInput).append(input);
-
-  $(wrapperBtns).append(submitBtn).append(cancelBtn);
-
-  $(wrapper).append(wrapperInput).append(wrapperBtns);
-
-  return wrapper;
+  return deleteTagOuterIconSvg;
 }
 
 // Filters all URLs with tags

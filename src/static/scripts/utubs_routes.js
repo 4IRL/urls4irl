@@ -25,12 +25,6 @@ $(document).ready(function () {
     checkSameNameUTub(false, $("#utubNameUpdate").val());
   });
 
-  /*
-  $("#utubNameCancelBtnUpdate").on("click", function() {
-    $("#utubNameUpdate").val($("#URLDeckHeader").text());
-  });
-  */
-
   // Update UTub description
   $("#updateUTubDescriptionBtn").on("click", function (e) {
     hideInputs();
@@ -127,7 +121,7 @@ function createUTubFail(xhr) {
       const responseJSON = xhr.responseJSON;
       if (responseJSON.hasOwnProperty("message")) {
         if (responseJSON.hasOwnProperty("errors"))
-          createUTubFailShowErrors(responseJSON.errors);
+          createUTubFailErrors(responseJSON.errors);
         break;
       }
     case 404:
@@ -137,7 +131,7 @@ function createUTubFail(xhr) {
 }
 
 // Cycle through the valid errors for adding a UTub
-function createUTubFailShowErrors(errors) {
+function createUTubFailErrors(errors) {
   for (let key in errors) {
     switch (key) {
       case "utubName":
@@ -278,7 +272,7 @@ function updateUTubNameFail(xhr) {
       const responseJSON = xhr.responseJSON;
       if (responseJSON.hasOwnProperty("message")) {
         if (responseJSON.hasOwnProperty("errors"))
-          updateUTubNameFailShowErrors(responseJSON.errors);
+          updateUTubNameFailErrors(responseJSON.errors);
         break;
       }
     case 404:
@@ -288,7 +282,7 @@ function updateUTubNameFail(xhr) {
 }
 
 // Cycle through the valid errors for updating a UTub name
-function updateUTubNameFailShowErrors(errors) {
+function updateUTubNameFailErrors(errors) {
   for (let key in errors) {
     switch (key) {
       case "utubName":
@@ -410,7 +404,7 @@ function updateUTubDescriptionFail(xhr) {
       const responseJSON = xhr.responseJSON;
       if (responseJSON.hasOwnProperty("message")) {
         if (responseJSON.hasOwnProperty("errors"))
-          updateUTubDescriptionFailShowErrors(responseJSON.errors);
+          updateUTubDescriptionFailErrors(responseJSON.errors);
         break;
       }
     case 404:
@@ -420,7 +414,7 @@ function updateUTubDescriptionFail(xhr) {
 }
 
 // Cycle through the valid errors for updating a UTub name
-function updateUTubDescriptionFailShowErrors(errors) {
+function updateUTubDescriptionFailErrors(errors) {
   for (let key in errors) {
     switch (key) {
       case "utubDescription":

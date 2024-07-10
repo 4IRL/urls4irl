@@ -24,8 +24,8 @@ class SPLASH_ROUTES:
 
 class TAG_ROUTES:
     _TAGS = "tags."
-    CREATE_TAG = _TAGS + "create_tag"
-    DELETE_TAG = _TAGS + "delete_tag"
+    CREATE_TAG = _TAGS + "create_utub_url_tag"
+    DELETE_TAG = _TAGS + "delete_utub_url_tag"
     UPDATE_TAG = _TAGS + "update_tag_on_url"
 
 
