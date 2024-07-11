@@ -291,7 +291,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             {
                 MODEL_STRS.URL_ID: Integer repsenting the URL ID,
                 MODEL_STRS.URL_STRING: String representing the URL,
-                MODEL_STRS.URL_TAGS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                MODEL_STRS.URL_TAG_IDS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
                 MODEL_STRS.ADDED_BY: Integer ID of user identifying who added this,
                 MODEL_STRS.URL_TITLE: String representing a description of this URL in this UTub
             }
@@ -349,7 +349,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             {
                 MODEL_STRS.URL_ID: Integer repsenting the URL ID,
                 MODEL_STRS.URL_STRING: String representing the URL,
-                MODEL_STRS.URL_TAGS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                MODEL_STRS.URL_TAG_IDS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
                 MODEL_STRS.ADDED_BY: Integer ID of user identifying who added this,
                 MODEL_STRS.URL_TITLE: String representing a description of this URL in this UTub
             }
@@ -417,7 +417,7 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             {
                 MODEL_STRS.URL_ID: Integer repsenting the URL ID,
                 MODEL_STRS.URL_STRING: String representing the URL,
-                MODEL_STRS.URL_TAGS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                MODEL_STRS.URL_TAG_IDS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
                 MODEL_STRS.ADDED_BY: Integer ID of user identifying who added this,
                 MODEL_STRS.URL_TITLE: String representing a description of this URL in this UTub
             }
@@ -496,7 +496,7 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             {
                 MODEL_STRS.URL_ID: Integer repsenting the URL ID,
                 MODEL_STRS.URL_STRING: String representing the URL,
-                MODEL_STRS.URL_TAGS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
+                MODEL_STRS.URL_TAG_IDS: Array containing integer IDs of all tags on this URL, such as: [1, 2, 3],
                 MODEL_STRS.ADDED_BY: Integer ID of user identifying who added this,
                 MODEL_STRS.URL_TITLE: String representing a description of this URL in this UTub
             }
@@ -556,7 +556,7 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             # Array of tag IDs in URLs must also be sorted
             for idx in range(len(utub_in_data_serialized[MODEL_STRS.URLS])):
                 utub_in_data_serialized[MODEL_STRS.URLS][idx][
-                    MODEL_STRS.URL_TAGS
+                    MODEL_STRS.URL_TAG_IDS
                 ].sort()
 
             # Set boolean for deleting equivalent since not considering a user session for this test

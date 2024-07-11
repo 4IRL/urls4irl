@@ -191,6 +191,18 @@ function setURLCardSelectionEventListener(urlCard, url) {
   });
 }
 
+// Show error at top of URL deck
+function showURLDeckBannerError(errorMessage) {
+  const SECONDS_TO_SHOW_ERROR = 3.5;
+  const errorBanner = $("#URLDeckErrorIndicator");
+  const CLASS_TO_SHOW = "URLDeckErrorIndicatorShow";
+  errorBanner.text(errorMessage).addClass(CLASS_TO_SHOW).focus();
+
+  setTimeout(() => {
+    errorBanner.removeClass(CLASS_TO_SHOW);
+  }, 1000 * SECONDS_TO_SHOW_ERROR);
+}
+
 /** URL Functions **/
 
 // Build center panel URL list for selectedUTub
@@ -555,13 +567,13 @@ function createURLOptionsButtons(url, urlCard) {
       .text("Delete")
       .on("click", function (e) {
         e.stopPropagation();
-        deleteURLShowModal(url.utubUrlID);
+        deleteURLShowModal(url.utubUrlID, urlCard);
       });
 
     urlBtnUpdate
       .addClass("btn btn-light urlBtnUpdate")
       .attr({ type: "button" })
-      .text("Edit Link")
+      .text("Edit URL")
       .on("click", function (e) {
         e.stopPropagation();
         showUpdateURLStringForm(urlCard, urlBtnUpdate);
@@ -634,10 +646,9 @@ function createTagBadgeInURL(tagID, string) {
     .addClass("urlTagBtnDelete flex-row align-center pointerable")
     .on("click", function (e) {
       e.stopPropagation();
-      deleteTag(tagID);
+      deleteURLTag(tagID, tagSpan);
     });
-  //removeButton.innerHTML = "&times;";
-  //
+
   removeButton.append(createTagDeleteIcon());
 
   $(tagSpan).append(removeButton);
@@ -649,16 +660,16 @@ function createTagBadgeInURL(tagID, string) {
 function createTagDeleteIcon() {
   const WIDTH_HEIGHT_PX = "15px";
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const deleteTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
-  const deleteTagInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
+  const deleteURLTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
+  const deleteURLTagInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
   const path =
     "M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353zm-6.106 4.5L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708";
 
-  deleteTagInnerIconPath.attr({
+  deleteURLTagInnerIconPath.attr({
     d: path,
   });
 
-  deleteTagOuterIconSvg
+  deleteURLTagOuterIconSvg
     .attr({
       xmlns: SVG_NS,
       width: WIDTH_HEIGHT_PX,
@@ -667,9 +678,9 @@ function createTagDeleteIcon() {
       class: "bi bi-x-octagon-fill",
       viewBox: "0 0 16 16",
     })
-    .append(deleteTagInnerIconPath);
+    .append(deleteURLTagInnerIconPath);
 
-  return deleteTagOuterIconSvg;
+  return deleteURLTagOuterIconSvg;
 }
 
 // Filters all URLs with tags

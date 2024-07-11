@@ -179,52 +179,45 @@ function resetCreateURLTagFailErrors(urlCard) {
 
 /* Remove tag from URL */
 
-// Remove tag from selected URL
-function deleteTag(tagID) {
-  // Extract data to submit in POST request
-  postURL = deleteTagSetup(tagID);
-
-  let request = AJAXCall("delete", postURL, []);
-
-  // Handle response
-  request.done(function (response, textStatus, xhr) {
-    if (xhr.status === 200) {
-      console.log("success");
-      deleteTagSuccess(response);
-    }
-  });
-
-  request.fail(function (response, textStatus, xhr) {
-    console.log(
-      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-    );
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      deleteTagFail(response);
-    }
-  });
-}
-
-// Prepares post request inputs for removal of a URL
-function deleteTagSetup(tagID) {
-  let postURL = routes.deleteURLTag(
+// Prepares post request inputs for removal of a URL - tag
+function deleteURLTagSetup(tagID) {
+  const deleteURL = routes.deleteURLTag(
     getActiveUTubID(),
     getSelectedURLID(),
     tagID,
   );
 
-  return postURL;
+  return deleteURL;
+}
+
+// Remove tag from selected URL
+async function deleteURLTag(tagID, tagBadge) {
+  try {
+    // Extract data to submit in POST request
+    const deleteURL = deleteURLTagSetup(tagID);
+
+    const request = AJAXCall("delete", deleteURL, []);
+
+    // Handle response
+    request.done(function (response, _, xhr) {
+      if (xhr.status === 200) {
+        deleteURLTagSuccess(response, tagBadge);
+      }
+    });
+
+    request.fail(function (xhr, _, textStatus) {
+      deleteURLTagFail(xhr);
+    });
+  } catch (error) {
+    handleRejectFromGetURL(error);
+  }
 }
 
 // Displays changes related to a successful removal of a URL
-function deleteTagSuccess(response) {
+function deleteURLTagSuccess(response, tagBadge) {
   // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
-
-  let tagID = response.tag.tagID;
-  let tagBadgeJQuerySelector = ".tagBadge[tagid=" + tagID + "]";
-
-  $(".selectedURL").find(tagBadgeJQuerySelector).remove();
+  tagBadge.remove();
+  const tagID = response.tag.tagID;
 
   // Determine whether the removed tag is the last instance in the UTub. Remove, if yes
   if (!response.tagInUTub) {
@@ -239,12 +232,8 @@ function deleteTagSuccess(response) {
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
-function deleteTagFail(response) {
-  console.log("Basic implementation. Needs revision");
-  console.log(response);
-  console.log(response.responseJSON);
-  console.log(response.responseJSON.errorCode);
-  console.log(response.responseJSON.message);
+function deleteURLTagFail(_) {
+  window.location.assign(routes.errorPage);
 }
 
 /* Add tag to UTub */

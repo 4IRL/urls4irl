@@ -16,6 +16,7 @@
     --darkGrayTextColor: rgba(51, 51, 51, 1.0);
     --selectedUTubColor: rgba(244, 94, 97, 1.0);
     --removeMemberColor: rgba(170, 65, 67, 1.0);
+    --removeMemberColorLighter: rgba(170, 65, 67, 0.1);
 
     --cardBackgroundColor: rgba(40, 47, 47, 1.0);
     --cardBackgroundColorHover: rgba(40, 47, 47, 0.8);

@@ -100,6 +100,16 @@ function alphasortTags(dictTags) {
   });
 }
 
+function isTagInUTub(tagBadges, tagID) {
+  let tagExistsInUTub = false;
+  tagBadges.each(function () {
+    if (parseInt($(this).attr("tagid")) === tagID) {
+      tagExistsInUTub = true;
+    }
+  });
+  return tagExistsInUTub;
+}
+
 /** Tag Functions **/
 
 // Build LH panel tag list in selectedUTub

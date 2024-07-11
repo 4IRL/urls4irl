@@ -696,6 +696,26 @@
     word-break: break-all;
 }
 
+#URLDeckErrorIndicator {
+    color: var(--removeIconColor);
+    background-color: var(--removeMemberColorLighter);
+    height: 0;
+    padding: 0;
+    opacity: 0;
+    margin: 0;
+    font-size: 0;
+    transition: height 0.3s ease-in-out, opacity 0.3s ease-in-out, padding 0.3s ease-in-out, border 0.3s ease-in-out, font-size 0.3s ease-in-out;
+}
+
+.URLDeckErrorIndicatorShow {
+    height: auto !important;
+    padding: 5px !important;
+    opacity: 100% !important;
+    font-size: larger !important;
+    border-radius: 5px;
+    border: 2px solid var(--removeMemberColor);
+}
+
 
 /* Media size for responsiveness 
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 

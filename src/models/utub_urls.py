@@ -45,30 +45,14 @@ class Utub_Urls(db.Model):
         return {
             MODEL_STRS.UTUB_URL_ID: self.id,
             MODEL_STRS.URL_STRING: url_item.url_string,
-            MODEL_STRS.URL_TAGS: self.associated_tags,
+            MODEL_STRS.URL_TAG_IDS: self.associated_tag_ids,
             MODEL_STRS.URL_TITLE: self.url_title,
             MODEL_STRS.CAN_DELETE: current_user_id == self.user_id
             or current_user_id == utub_creator,
         }
 
     @property
-    def serialized_on_string_update(self) -> dict[str, int | str | list[int]]:
-        return {
-            MODEL_STRS.UTUB_URL_ID: self.id,
-            MODEL_STRS.URL_STRING: self.standalone_url.url_string,
-            MODEL_STRS.URL_TAGS: self.associated_tags,
-        }
-
-    @property
-    def serialized_on_title_update(self) -> dict[str, int | str | list[int]]:
-        return {
-            MODEL_STRS.UTUB_URL_ID: self.id,
-            MODEL_STRS.URL_TITLE: self.url_title,
-            MODEL_STRS.URL_TAGS: self.associated_tags,
-        }
-
-    @property
-    def associated_tags(self) -> list[int]:
+    def associated_tag_ids(self) -> list[int]:
         # Only return tags for the requested UTub
         url_tags = []
         for tag_in_utub in self.url_tags:
@@ -76,3 +60,27 @@ class Utub_Urls(db.Model):
                 url_tags.append(tag_in_utub.tag_id)
 
         return sorted(url_tags)
+
+    @property
+    def associated_tags(self) -> list[dict[str, int | str]]:
+        url_tags = []
+        for tag_in_utub in self.url_tags:
+            if tag_in_utub.utub_id == self.utub_id:
+                url_tags.append(
+                    {
+                        MODEL_STRS.TAG_ID: tag_in_utub.tag_id,
+                        MODEL_STRS.TAG_STRING: tag_in_utub.tag_item.tag_string,
+                    }
+                )
+        return url_tags
+
+    @property
+    def serialized_on_get_or_update(
+        self,
+    ) -> dict[str, int | str | list[dict[str, int | str]]]:
+        return {
+            MODEL_STRS.UTUB_URL_ID: self.id,
+            MODEL_STRS.URL_TITLE: self.url_title,
+            MODEL_STRS.URL_STRING: self.standalone_url.url_string,
+            MODEL_STRS.URL_TAGS: self.associated_tags,
+        }

@@ -17,7 +17,8 @@ TAGS = "tags"
 TAG_ID = "tagID"
 URLS = "urls"
 URL = "URL"
-URL_TAGS = "urlTagIDs"
+URL_TAG_IDS = "urlTagIDs"
+URL_TAGS = "urlTags"
 URL_STRING = "urlString"
 URL_ID = "urlID"
 URL_TITLE = "urlTitle"
@@ -30,6 +31,7 @@ class MODELS:
     ID = ID
     NAME = NAME
     URL_ID = URL_ID
+    URL_TAG_IDS = URL_TAG_IDS
     URL_TAGS = URL_TAGS
     URL_STRING = URL_STRING
     ADDED_BY = ADDED_BY

@@ -37,8 +37,9 @@ def test_update_url_title_utub_creator(
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
             MODEL_STRS.URL_ID: ID of URL that was modified,
-            MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
+            MODEL_STRS.URL_TAGS: An array of tag objects associated with this URL
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
+            MODEL_STRS.URL_STRING: String representing the URL in this UTub
         }
     }
     """
@@ -61,7 +62,13 @@ def test_update_url_title_utub_creator(
             Utub_Url_Tags.utub_id == utub_creator_of.id,
             Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
-        associated_tag_ids = [tag.tag_id for tag in associated_tags]
+        associated_tag_objects = [
+            {
+                MODEL_STRS.TAG_ID: tag.tag_id,
+                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+            }
+            for tag in associated_tags
+        ]
 
         num_of_url_tag_assocs = Utub_Url_Tags.query.count()
         num_of_urls = Urls.query.count()
@@ -89,7 +96,7 @@ def test_update_url_title_utub_creator(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_TITLE_MODIFIED
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == NEW_TITLE
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == current_url_id
-    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
+    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objects
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -127,8 +134,9 @@ def test_update_url_title_url_adder(
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
             MODEL_STRS.URL_ID: ID of URL that was modified,
-            MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
+            MODEL_STRS.URL_TAGS: An array of tag objects associated with this URL
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
+            MODEL_STRS.URL_STRING: String representing the URL in this UTub
         }
     }
     """
@@ -153,7 +161,13 @@ def test_update_url_title_url_adder(
             Utub_Url_Tags.utub_id == utub_member_of.id,
             Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
-        associated_tag_ids = [tag.tag_id for tag in associated_tags]
+        associated_tag_objects = [
+            {
+                MODEL_STRS.TAG_ID: tag.tag_id,
+                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+            }
+            for tag in associated_tags
+        ]
 
         num_of_url_tag_assocs = Utub_Url_Tags.query.count()
         num_of_urls = Urls.query.count()
@@ -182,7 +196,7 @@ def test_update_url_title_url_adder(
     assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_TITLE_MODIFIED
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == NEW_TITLE
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == current_url_id
-    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
+    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objects
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -222,8 +236,9 @@ def test_update_url_title_with_same_title_utub_creator(
         URL_SUCCESS.URL: Object representing a Utub_Urls, with the following fields
         {
             MODEL_STRS.URL_ID: ID of URL that was not modified,
-            MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
+            MODEL_STRS.URL_TAGS: An array of tag objects associated with this URL
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
+            MODEL_STRS.URL_STRING: String representing the URL in this UTub
         }
     }
     """
@@ -246,7 +261,13 @@ def test_update_url_title_with_same_title_utub_creator(
             Utub_Url_Tags.utub_id == utub_creator_of.id,
             Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
-        associated_tag_ids = [tag.tag_id for tag in associated_tags]
+        associated_tag_objects = [
+            {
+                MODEL_STRS.TAG_ID: tag.tag_id,
+                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+            }
+            for tag in associated_tags
+        ]
 
         num_of_url_tag_assocs = Utub_Url_Tags.query.count()
         num_of_urls = Urls.query.count()
@@ -274,7 +295,7 @@ def test_update_url_title_with_same_title_utub_creator(
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == current_title
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == current_url_id
-    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
+    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objects
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -312,8 +333,9 @@ def test_update_url_title_with_same_title_url_adder(
         URL_SUCCESS.URL: Object representing a Utub_Urls, with the following fields
         {
             MODEL_STRS.URL_ID: ID of URL that was not modified,
-            MODEL_STRS.URL_TAGS: An array of tag ID's associated with this URL
+            MODEL_STRS.URL_TAGS: An array of tag objects associated with this URL
             MODEL_STRS.URL_TITLE: String representing the URL title in this UTub
+            MODEL_STRS.URL_STRING: String representing the URL in this UTub
         }
     }
     """
@@ -338,7 +360,13 @@ def test_update_url_title_with_same_title_url_adder(
             Utub_Url_Tags.utub_id == utub_member_of.id,
             Utub_Url_Tags.utub_url_id == current_url_id,
         ).all()
-        associated_tag_ids = [tag.tag_id for tag in associated_tags]
+        associated_tag_objects = [
+            {
+                MODEL_STRS.TAG_ID: tag.tag_id,
+                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+            }
+            for tag in associated_tags
+        ]
 
         num_of_url_tag_assocs = Utub_Url_Tags.query.count()
         num_of_urls = Urls.query.count()
@@ -367,7 +395,7 @@ def test_update_url_title_with_same_title_url_adder(
     assert json_response[STD_JSON.MESSAGE] == URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TITLE] == current_title
     assert int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID]) == current_url_id
-    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_ids
+    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objects
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

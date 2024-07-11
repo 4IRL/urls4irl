@@ -14,10 +14,14 @@
                     "{{url_for('utubs.update_utub_desc', utub_id=-1)}}".replace("-1", utub_id);
 
                 // URL routes
+                this.getURL = (utub_id, utub_url_id) =>
+                    "{{url_for('urls.get_url', utub_id=-1, utub_url_id=-2)}}"
+                        .replace("-1", utub_id)
+                        .replace("-2", utub_url_id);
                 this.createURL = (utub_id) =>
                     "{{url_for('urls.create_url', utub_id=-1)}}".replace("-1", utub_id);
                 this.deleteURL = (utub_id, utub_url_id) =>
-                    "{{url_for('urls.remove_url', utub_id=-1, utub_url_id=-2)}}"
+                    "{{url_for('urls.delete_url', utub_id=-1, utub_url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", utub_url_id);
                 this.updateURL = (utub_id, utub_url_id) =>
