@@ -191,34 +191,63 @@ def browser(
 @pytest.fixture
 # def create_test_users(runner, debug_strings):
 def create_test_users(runner):
+    """ "
+    Assumes nothing created. Creates users
+    """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "users"])
-    print("\nusers added")
+    print("\nusers created")
     # if debug_strings:
-    #     print("users added")
-
-
-@pytest.fixture
-# def create_test_utub(runner, debug_strings):
-def create_test_utub(runner):
-    """
-    Adds test users and a single sample UTub
-    """
-    _, cli_runner = runner
-    cli_runner.invoke(args=["addmock", "utub"])
-    print("\nutub added")
-    # if debug_strings:
-    #     print("one utub added")
+    #     print("\nusers created")
 
 
 @pytest.fixture
 # def create_test_utubs(runner, debug_strings):
 def create_test_utubs(runner):
     """
-    Adds test users and sample UTubs
+    Assumes users created. Creates sample UTubs, each user owns one.
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "utubs"])
-    print("\nutubs added")
+    print("\nusers and utubs created")
     # if debug_strings:
-    #     print("utubs added")
+    #     print("\nusers and utubs created")
+
+
+@pytest.fixture
+# def create_test_members(runner, debug_strings):
+def create_test_utubmembers(runner):
+    """
+    Assumes users created, and each own one UTub. Creates all users as members of each UTub.
+    """
+    _, cli_runner = runner
+    cli_runner.invoke(args=["addmock", "utubmembers"])
+    print("\nusers, utubs, and members created")
+    # if debug_strings:
+    #     print("\nusers, utubs, and members created")
+
+
+@pytest.fixture
+# def create_test_urls(runner, debug_strings):
+def create_test_urls(runner):
+    """
+    Assumes users created, each own one UTub, and all users are members of each UTub. Creates URLs in each UTub.
+    """
+    _, cli_runner = runner
+    cli_runner.invoke(args=["addmock", "urls"])
+    print("\nusers, utubs, members, and urls created")
+    # if debug_strings:
+    #     print("\nusers, utubs, and members created")
+
+
+@pytest.fixture
+# def create_test_tags(runner, debug_strings):
+def create_test_tags(runner):
+    """
+    Assumes users created, each own one UTub, all users are members of each UTub, and URLs added to each UTub. Creates all tags on all URLs.
+    """
+    _, cli_runner = runner
+    cli_runner.invoke(args=["addmock", "tags"])
+    print("\nusers, utubs, members, urls, and tags created")
+    # if debug_strings:
+    #     print("\nusers, utubs, and members created")
