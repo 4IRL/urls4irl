@@ -76,6 +76,26 @@ function deselectAllURLs() {
   if (previouslySelectedCard !== null) deselectURL(previouslySelectedCard);
 }
 
+function showURLCardLoadingIcon(urlCard) {
+  urlCard.find(".urlCardDualLoadingRing").addClass("dual-loading-ring");
+}
+
+function hideURLCardLoadingIcon(urlCard) {
+  urlCard.find(".urlCardDualLoadingRing").removeClass("dual-loading-ring");
+}
+
+function setTimeoutAndShowLoadingIcon(urlCard) {
+  const timeoutID = setTimeout(function () {
+    showURLCardLoadingIcon(urlCard);
+  }, SHOW_LOADING_ICON_AFTER_MS);
+  return timeoutID;
+}
+
+function clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard) {
+  clearTimeout(timeoutID);
+  hideURLCardLoadingIcon(urlCard);
+}
+
 function bindEscapeToExitURLTitleUpdating() {
   $(document)
     .unbind("keyup.escapeUrlTitleUpdating")
@@ -379,7 +399,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
   const urlTitleSubmitBtnUpdate = makeSubmitButton(30)
     .addClass("urlTitleSubmitBtnUpdate")
     .on("click.updateUrlTitle", function () {
-      updateURLTitle(urlTitleTextInput);
+      updateURLTitle(urlTitleTextInput, urlCard);
     });
 
   // Update Url Title cancel button
@@ -579,14 +599,12 @@ function createURLOptionsButtons(url, urlCard) {
         showUpdateURLStringForm(urlCard, urlBtnUpdate);
       });
 
-    const urlUpdateLoadingIcon = $(document.createElement("div")).addClass(
-      "urlUpdateDualLoadingRing",
-    );
-    urlOptions
-      .append(urlBtnUpdate)
-      .append(urlBtnDelete)
-      .append(urlUpdateLoadingIcon);
+    urlOptions.append(urlBtnUpdate).append(urlBtnDelete);
   }
+  const urlCardLoadingIcon = $(document.createElement("div")).addClass(
+    "urlCardDualLoadingRing",
+  );
+  urlOptions.append(urlCardLoadingIcon);
 
   return urlOptions;
 }

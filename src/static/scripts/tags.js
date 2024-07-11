@@ -100,6 +100,7 @@ function alphasortTags(dictTags) {
   });
 }
 
+// Given a set of tag badges, verify a given tagID exists within those badges
 function isTagInUTub(tagBadges, tagID) {
   let tagExistsInUTub = false;
   tagBadges.each(function () {
@@ -108,6 +109,13 @@ function isTagInUTub(tagBadges, tagID) {
     }
   });
   return tagExistsInUTub;
+}
+
+// Remove a tag from tag deck given its ID
+function removeTagFromUTubDeckGivenTagID(tagID) {
+  $(".tagFilter[tagid=" + tagID + "]")
+    .addClass("unselected")
+    .remove();
 }
 
 /** Tag Functions **/
