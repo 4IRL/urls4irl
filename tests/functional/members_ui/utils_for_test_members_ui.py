@@ -3,6 +3,7 @@
 # External libraries
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.common.by import By
 
 # Internal libraries
 from tests.functional.locators import MainPageLocators as MPL
@@ -58,19 +59,28 @@ def delete_member_active_utub(browser, user_name, member_name):
         member_usernames = get_all_member_usernames(browser)
         i = 0
         for username in member_usernames:
+            print(username)
             # Delete only indicated member
             if username == member_name:
+                member_badge_to_delete = member_badges[i]
                 # Hover over badge to display deleteMember button
-                actions.move_to_element(member_badges[i])
+                actions.move_to_element(member_badge_to_delete)
+
                 # Pause to make sure deleteMember button is visible
-                actions.pause(3)
-                # Extract all deleteMember buttons
-                member_delete_buttons = wait_then_get_elements(
-                    browser, MPL.BUTTON_MEMBER_DELETE
+                actions.pause(3).perform()
+
+                member_delete_button = member_badge_to_delete.find_element(
+                    By.CSS_SELECTOR, MPL.BUTTON_MEMBER_DELETE
                 )
-                print(member_delete_buttons[i].is_displayed())
-                actions.click(member_delete_buttons[i])
+
+                print(member_delete_button.is_displayed())
+
+                actions.move_to_element(member_delete_button).pause(2)
+
+                actions.click(member_delete_button)
+
                 actions.perform()
+
                 return True
             i += 1
 
