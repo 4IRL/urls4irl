@@ -20,23 +20,56 @@ from src import create_app
 from src.config import TestingConfig
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 
+# CLI commands
 
-def run_app(port: int):
+
+def pytest_addoption(parser):
+    """
+    Option 1:
+    Adds CLI option for headless operation.
+    Default runs tests headless; option to observe UI interactions when debugging by assigning False.
+
+    Option 2:
+    Adds CLI option for display of pytest debug strings.
+    Default keeps all strings hidden from CLI.
+
+    Option 3:
+    Adds CLI option for display of Flask logs.
+    Default keeps all strings hidden from CLI.
+    """
+
+    # Option 1: Headless
+    parser.addoption(
+        "--headless", action="store", default="true", help="my option: true or false"
+    )
+
+    # Option 2: Show Pytest debug strings
+    parser.addoption(
+        "--DS", action="store_true", help="Show debug strings when included"
+    )
+
+    # Option 3: Show Flask logs
+    parser.addoption("--FL", action="store_true", help="Show Flask logs when included")
+
+
+def run_app(port: int, show_flask_logs: bool):
     """
     Runs app
     """
     config = TestingConfig()
     app_for_test = create_app(config)
-    log = logging.getLogger("werkzeug")
-    log.disabled = True
+    if not show_flask_logs:
+        log = logging.getLogger("werkzeug")
+        log.disabled = True
     app_for_test.run(debug=False, port=port)
 
 
-def clear_db(runner: Tuple[Flask, FlaskCliRunner]):
+def clear_db(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
     # Clear db
     _, cli_runner = runner
     cli_runner.invoke(args=["managedb", "clear", "test"])
-    print("\ndb cleared")
+    if debug_strings:
+        print("\ndb cleared")
 
 
 def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
@@ -93,57 +126,39 @@ def provide_port() -> int:
 
 
 @pytest.fixture(scope="session")
-def parallelize_app(provide_port, init_multiprocessing):
-    """
-    Starts a parallel process, runs Flask app
-    """
-    open_port = provide_port
-    process = multiprocessing.Process(target=run_app, args=(open_port,))
-
-    process.start()
-    sleep(5)
-    yield process
-    process.kill()
-    process.join()
-
-
-# CLI commands
-
-
-def pytest_addoption(parser):
-    """
-    Option 1:
-    Adds CLI option for headless operation.
-    Default runs tests headless; option to observe UI interactions when debugging by assigning False.
-
-    Option 2:
-    Adds CLI option for display of debug strings.
-    Default keeps all strings hidden from CLI.
-    """
-
-    # Option 1: Headless
-    parser.addoption(
-        "--headless", action="store", default="true", help="my option: true or false"
-    )
-
-    # Option 2: Debug strings
-    parser.addoption(
-        "--debug_strings",
-        action="store",
-        default="false",
-        help="my option: true or false",
-    )
-
-
-@pytest.fixture(scope="session")
 def headless(request):
     return request.config.getoption("--headless")
 
 
 @pytest.fixture(scope="session")
 def debug_strings(request):
-    is_true = request.config.getoption("--debug_strings").lower() == "true"
-    return is_true
+    return request.config.getoption("--DS")
+
+
+@pytest.fixture(scope="session")
+def flask_logs(request):
+    return request.config.getoption("--FL")
+
+
+@pytest.fixture(scope="session")
+def parallelize_app(provide_port, init_multiprocessing, flask_logs):
+    """
+    Starts a parallel process, runs Flask app
+    """
+    open_port = provide_port
+    process = multiprocessing.Process(
+        target=run_app,
+        args=(
+            open_port,
+            flask_logs,
+        ),
+    )
+
+    process.start()
+    sleep(5)
+    yield process
+    process.kill()
+    process.join()
 
 
 @pytest.fixture(scope="session")
@@ -177,7 +192,10 @@ def build_driver(
 
 @pytest.fixture
 def browser(
-    provide_port: int, build_driver: WebDriver, runner: Tuple[Flask, FlaskCliRunner]
+    provide_port: int,
+    build_driver: WebDriver,
+    runner: Tuple[Flask, FlaskCliRunner],
+    debug_strings,
 ):
     """
     This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
@@ -189,72 +207,67 @@ def browser(
 
     driver.get(UI_TEST_STRINGS.BASE_URL + str(open_port))
 
-    clear_db(runner)
+    clear_db(runner, debug_strings)
 
     # Return the driver object to be used in the test functions
     yield driver
 
 
 @pytest.fixture
-# def create_test_users(runner, debug_strings):
-def create_test_users(runner):
+def create_test_users(runner, debug_strings):
     """ "
     Assumes nothing created. Creates users
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "users"])
-    # print("\nusers created")
+
     if debug_strings:
         print("\nusers created")
 
 
 @pytest.fixture
-# def create_test_utubs(runner, debug_strings):
-def create_test_utubs(runner):
+def create_test_utubs(runner, debug_strings):
     """
     Assumes users created. Creates sample UTubs, each user owns one.
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "utubs"])
-    print("\nusers and utubs created")
-    # if debug_strings:
-    #     print("\nusers and utubs created")
+
+    if debug_strings:
+        print("\nusers and utubs created")
 
 
 @pytest.fixture
-# def create_test_members(runner, debug_strings):
-def create_test_utubmembers(runner):
+def create_test_utubmembers(runner, debug_strings):
     """
     Assumes users created, and each own one UTub. Creates all users as members of each UTub.
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "utubmembers"])
-    print("\nusers, utubs, and members created")
-    # if debug_strings:
-    #     print("\nusers, utubs, and members created")
+
+    if debug_strings:
+        print("\nusers, utubs, and members created")
 
 
 @pytest.fixture
-# def create_test_urls(runner, debug_strings):
-def create_test_urls(runner):
+def create_test_urls(runner, debug_strings):
     """
     Assumes users created, each own one UTub, and all users are members of each UTub. Creates URLs in each UTub.
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "urls"])
-    print("\nusers, utubs, members, and urls created")
-    # if debug_strings:
-    #     print("\nusers, utubs, and members created")
+
+    if debug_strings:
+        print("\nusers, utubs, and members created")
 
 
 @pytest.fixture
-# def create_test_tags(runner, debug_strings):
-def create_test_tags(runner):
+def create_test_tags(runner, debug_strings):
     """
     Assumes users created, each own one UTub, all users are members of each UTub, and URLs added to each UTub. Creates all tags on all URLs.
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "tags"])
-    print("\nusers, utubs, members, urls, and tags created")
-    # if debug_strings:
-    #     print("\nusers, utubs, and members created")
+
+    if debug_strings:
+        print("\nusers, utubs, and members created")

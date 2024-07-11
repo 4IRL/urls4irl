@@ -92,14 +92,9 @@ def leave_active_utub(browser):
     """
 
     try:
-        leave_utub_btn = browser.find_element_by_css_selector(MPL.BUTTON_UTUB_LEAVE)
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_LEAVE)
     except NoSuchElementException:
         return False
-
-    leave_utub_btn.click()
-
-    # assert modal
-    # wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
 
 
 def leave_all_utubs(browser, user_name):
