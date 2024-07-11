@@ -59,7 +59,6 @@ def delete_member_active_utub(browser, user_name, member_name):
         member_usernames = get_all_member_usernames(browser)
         i = 0
         for username in member_usernames:
-            print(username)
             # Delete only indicated member
             if username == member_name:
                 member_badge_to_delete = member_badges[i]
@@ -72,8 +71,6 @@ def delete_member_active_utub(browser, user_name, member_name):
                 member_delete_button = member_badge_to_delete.find_element(
                     By.CSS_SELECTOR, MPL.BUTTON_MEMBER_DELETE
                 )
-
-                print(member_delete_button.is_displayed())
 
                 actions.move_to_element(member_delete_button).pause(2)
 

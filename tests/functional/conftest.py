@@ -1,9 +1,10 @@
 # Standard library
-from typing import Generator, Tuple
+import logging
 import multiprocessing
-from time import sleep
 import requests
 import socket
+from time import sleep
+from typing import Generator, Tuple
 
 # External libraries
 from flask import Flask
@@ -26,6 +27,8 @@ def run_app(port: int):
     """
     config = TestingConfig()
     app_for_test = create_app(config)
+    log = logging.getLogger("werkzeug")
+    log.disabled = True
     app_for_test.run(debug=False, port=port)
 
 
@@ -124,9 +127,12 @@ def pytest_addoption(parser):
     )
 
     # Option 2: Debug strings
-    # parser.addoption(
-    #     "--debug_strings", action="store", default="false", help="my option: true or false"
-    # )
+    parser.addoption(
+        "--debug_strings",
+        action="store",
+        default="false",
+        help="my option: true or false",
+    )
 
 
 @pytest.fixture(scope="session")
@@ -134,9 +140,10 @@ def headless(request):
     return request.config.getoption("--headless")
 
 
-# @pytest.fixture(scope="session")
-# def debug_strings(request):
-#     return request.config.getoption("--debug_strings")
+@pytest.fixture(scope="session")
+def debug_strings(request):
+    is_true = request.config.getoption("--debug_strings").lower() == "true"
+    return is_true
 
 
 @pytest.fixture(scope="session")
@@ -196,9 +203,9 @@ def create_test_users(runner):
     """
     _, cli_runner = runner
     cli_runner.invoke(args=["addmock", "users"])
-    print("\nusers created")
-    # if debug_strings:
-    #     print("\nusers created")
+    # print("\nusers created")
+    if debug_strings:
+        print("\nusers created")
 
 
 @pytest.fixture

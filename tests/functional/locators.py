@@ -14,6 +14,7 @@ class MainPageLocators:
     BUTTON_UTUB_CANCEL = "#utubCancelBtnCreate"
 
     SUBHEADER_UTUB = "#UTubDeckSubheader"
+    LIST_UTUB = "#listUTubs"
     SELECTORS_UTUB = ".UTubSelector"
     SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
 

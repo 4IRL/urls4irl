@@ -49,7 +49,7 @@ def test_delete_utub(browser, create_test_utubs):
 
 
 @pytest.mark.skip(reason="Test not yet implemented")
-def test_delete_last_utub(browser, create_test_utub):
+def test_delete_last_utub(browser, create_test_utubs):
     """
     GIVEN a user has one UTub
     WHEN they delete the UTub
