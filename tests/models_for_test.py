@@ -76,7 +76,7 @@ Valid URLs used for testing, without tags
 valid_url_without_tag_1 = {
     MODEL_STRS.UTUB_URL_ID: 1,
     MODEL_STRS.URL_STRING: "https://www.google.com/",
-    MODEL_STRS.URL_TAGS: [],
+    MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
 }
@@ -84,7 +84,7 @@ valid_url_without_tag_1 = {
 valid_url_without_tag_2 = {
     MODEL_STRS.UTUB_URL_ID: 2,
     MODEL_STRS.URL_STRING: "https://github.com/",
-    MODEL_STRS.URL_TAGS: [],
+    MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
 }
@@ -92,7 +92,7 @@ valid_url_without_tag_2 = {
 valid_url_without_tag_3 = {
     MODEL_STRS.UTUB_URL_ID: 3,
     MODEL_STRS.URL_STRING: "https://www.microsoft.com/",
-    MODEL_STRS.URL_TAGS: [],
+    MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
 }
@@ -118,7 +118,7 @@ Valid URLs used for testing, with tags
 valid_url_with_tag_1 = {
     MODEL_STRS.UTUB_URL_ID: 1,
     MODEL_STRS.URL_STRING: "https://www.google.com/",
-    MODEL_STRS.URL_TAGS: valid_tag_ids,
+    MODEL_STRS.URL_TAG_IDS: valid_tag_ids,
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
 }
@@ -126,7 +126,7 @@ valid_url_with_tag_1 = {
 valid_url_with_tag_2 = {
     MODEL_STRS.UTUB_URL_ID: 2,
     MODEL_STRS.URL_STRING: "https://github.com/",
-    MODEL_STRS.URL_TAGS: valid_tag_ids,
+    MODEL_STRS.URL_TAG_IDS: valid_tag_ids,
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
 }
@@ -134,7 +134,7 @@ valid_url_with_tag_2 = {
 valid_url_with_tag_3 = {
     MODEL_STRS.UTUB_URL_ID: 3,
     MODEL_STRS.URL_STRING: "https://www.microsoft.com/",
-    MODEL_STRS.URL_TAGS: valid_tag_ids,
+    MODEL_STRS.URL_TAG_IDS: valid_tag_ids,
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
 }
@@ -233,7 +233,7 @@ for utub, user, url in zip(all_empty_utubs, valid_users, all_urls_no_tags):
                 {
                     MODEL_STRS.UTUB_URL_ID: url[MODEL_STRS.UTUB_URL_ID],
                     MODEL_STRS.URL_STRING: url[MODEL_STRS.URL_STRING],
-                    MODEL_STRS.URL_TAGS: [],
+                    MODEL_STRS.URL_TAG_IDS: [],
                     MODEL_STRS.URL_TITLE: f"This is {url[MODEL_STRS.URL_STRING]}",
                     MODEL_STRS.CAN_DELETE: False,
                 }
@@ -264,7 +264,7 @@ for utub in all_empty_utubs:
                 {
                     MODEL_STRS.UTUB_URL_ID: url[MODEL_STRS.UTUB_URL_ID],
                     MODEL_STRS.URL_STRING: url[MODEL_STRS.URL_STRING],
-                    MODEL_STRS.URL_TAGS: [tag[MODEL_STRS.ID] for tag in all_tags],
+                    MODEL_STRS.URL_TAG_IDS: [tag[MODEL_STRS.ID] for tag in all_tags],
                     MODEL_STRS.URL_TITLE: f"This is {url[MODEL_STRS.URL_STRING]}",
                     MODEL_STRS.CAN_DELETE: True,
                 }

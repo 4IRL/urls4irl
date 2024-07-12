@@ -76,9 +76,9 @@ function hideAndResetCreateURLTagForm(urlCard) {
 }
 
 // Prepares post request inputs for addition of a new Tag to URL
-function createURLTagSetup(urlTagCreateInput) {
+function createURLTagSetup(urlTagCreateInput, utubID, urlID) {
   // Assemble post request route
-  const postURL = routes.createURLTag(getActiveUTubID(), getSelectedURLID());
+  const postURL = routes.createURLTag(utubID, urlID);
 
   // Assemble submission data
   const data = {
@@ -89,23 +89,41 @@ function createURLTagSetup(urlTagCreateInput) {
 }
 
 // Handles addition of new Tag to URL after user submission
-function createURLTag(urlTagCreateInput, urlCard) {
+async function createURLTag(urlTagCreateInput, urlCard) {
+  const utubID = getActiveUTubID();
+  const urlID = parseInt(urlCard.attr("urlid"));
   // Extract data to submit in POST request
-  [postURL, data] = createURLTagSetup(urlTagCreateInput);
+  [postURL, data] = createURLTagSetup(urlTagCreateInput, utubID, urlID);
 
-  AJAXCall("post", postURL, data);
+  let timeoutID;
+  try {
+    timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
+    await getUpdatedURL(utubID, urlID, urlCard);
 
-  // Handle response
-  request.done(function (response, _, xhr) {
-    if (xhr.status === 200) {
-      resetCreateURLTagFailErrors(urlCard);
-      createURLTagSuccess(response, urlCard);
-    }
-  });
+    const request = AJAXCall("post", postURL, data);
 
-  request.fail(function (xhr, _, textStatus) {
-    createURLTagFail(xhr, urlCard);
-  });
+    // Handle response
+    request.done(function (response, _, xhr) {
+      if (xhr.status === 200) {
+        resetCreateURLTagFailErrors(urlCard);
+        createURLTagSuccess(response, urlCard);
+      }
+    });
+
+    request.fail(function (xhr, _, textStatus) {
+      createURLTagFail(xhr, urlCard);
+    });
+
+    request.always(function () {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    });
+  } catch (error) {
+    clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    handleRejectFromGetURL(error, urlCard, {
+      showError: true,
+      message: "Another user has deleted this URL",
+    });
+  }
 }
 
 // Displays changes related to a successful addition of a new Tag
@@ -118,7 +136,9 @@ function createURLTagSuccess(response, urlCard) {
   const string = response.tag.tagString;
 
   // Update tags in URL
-  urlCard.find(".urlTagsContainer").append(createTagBadgeInURL(tagID, string));
+  urlCard
+    .find(".urlTagsContainer")
+    .append(createTagBadgeInURL(tagID, string, urlCard));
 
   // Add SelectAll button if not yet there
   if (isEmpty($("#selectAll"))) {
@@ -179,52 +199,61 @@ function resetCreateURLTagFailErrors(urlCard) {
 
 /* Remove tag from URL */
 
-// Remove tag from selected URL
-function deleteTag(tagID) {
-  // Extract data to submit in POST request
-  postURL = deleteTagSetup(tagID);
+// Prepares post request inputs for removal of a URL - tag
+function deleteURLTagSetup(utubID, urlID, tagID) {
+  const deleteURL = routes.deleteURLTag(utubID, urlID, tagID);
 
-  let request = AJAXCall("delete", postURL, []);
-
-  // Handle response
-  request.done(function (response, textStatus, xhr) {
-    if (xhr.status === 200) {
-      console.log("success");
-      deleteTagSuccess(response);
-    }
-  });
-
-  request.fail(function (response, textStatus, xhr) {
-    console.log(
-      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-    );
-    if (xhr.status === 404) {
-      // Reroute to custom U4I 404 error page
-    } else {
-      deleteTagFail(response);
-    }
-  });
+  return deleteURL;
 }
 
-// Prepares post request inputs for removal of a URL
-function deleteTagSetup(tagID) {
-  let postURL = routes.deleteURLTag(
-    getActiveUTubID(),
-    getSelectedURLID(),
-    tagID,
-  );
+// Remove tag from selected URL
+async function deleteURLTag(tagID, tagBadge, urlCard) {
+  const utubID = getActiveUTubID();
+  const urlID = parseInt(urlCard.attr("urlid"));
+  let timeoutID;
+  try {
+    timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
+    await getUpdatedURL(utubID, urlID, urlCard);
 
-  return postURL;
+    // If tag was already deleted on update of URL, exit early
+    if (!isTagInURL(tagID, urlCard)) {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+      return;
+    }
+
+    // Extract data to submit in POST request
+    const deleteURL = deleteURLTagSetup(utubID, urlID, tagID);
+
+    const request = AJAXCall("delete", deleteURL, []);
+
+    // Handle response
+    request.done(function (response, _, xhr) {
+      if (xhr.status === 200) {
+        deleteURLTagSuccess(response, tagBadge);
+      }
+    });
+
+    request.fail(function (xhr, _, textStatus) {
+      deleteURLTagFail(xhr);
+    });
+
+    request.always(function () {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    });
+  } catch (error) {
+    clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    handleRejectFromGetURL(error, urlCard, {
+      showError: true,
+      message: "Another user has deleted this URL",
+    });
+  }
 }
 
 // Displays changes related to a successful removal of a URL
-function deleteTagSuccess(response) {
+function deleteURLTagSuccess(response, tagBadge) {
   // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
-
-  let tagID = response.tag.tagID;
-  let tagBadgeJQuerySelector = ".tagBadge[tagid=" + tagID + "]";
-
-  $(".selectedURL").find(tagBadgeJQuerySelector).remove();
+  tagBadge.remove();
+  const tagID = response.tag.tagID;
 
   // Determine whether the removed tag is the last instance in the UTub. Remove, if yes
   if (!response.tagInUTub) {
@@ -239,12 +268,8 @@ function deleteTagSuccess(response) {
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
-function deleteTagFail(response) {
-  console.log("Basic implementation. Needs revision");
-  console.log(response);
-  console.log(response.responseJSON);
-  console.log(response.responseJSON.errorCode);
-  console.log(response.responseJSON.message);
+function deleteURLTagFail(_) {
+  window.location.assign(routes.errorPage);
 }
 
 /* Add tag to UTub */

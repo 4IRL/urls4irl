@@ -28,7 +28,7 @@ STD_JSON = STD_JSON_RESPONSE
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["DELETE"])
 @email_validation_required
-def remove_url(utub_id: int, utub_url_id: int):
+def delete_url(utub_id: int, utub_url_id: int):
     """
     User wants to remove a URL from a UTub. Only available to owner of that utub,
     or whoever added the URL into that Utubs.
@@ -52,7 +52,7 @@ def remove_url(utub_id: int, utub_url_id: int):
 
     if user_in_utub and user_url_adder_or_utub_creator:
         # Store serialized data from URL association with UTub and associated tags
-        associated_tags = url_in_utub.associated_tags
+        associated_tags = url_in_utub.associated_tag_ids
         url_string_to_remove = url_in_utub.standalone_url.url_string
 
         # Remove all tags associated with this URL in this UTub
@@ -101,7 +101,7 @@ def remove_url(utub_id: int, utub_url_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_REMOVE_URL,
+                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_DELETE_URL,
                 }
             ),
             403,
@@ -190,9 +190,10 @@ def create_url(utub_id: int):
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
                             STD_JSON.ERROR_CODE: 3,
+                            URL_FAILURE.URL_STRING: already_created_url.url_string,
                         }
                     ),
-                    400,
+                    409,
                 )
 
         # Associate URL with given UTub
@@ -249,6 +250,57 @@ def create_url(utub_id: int):
                 STD_JSON.STATUS: STD_JSON.FAILURE,
                 STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
                 STD_JSON.ERROR_CODE: 5,
+            }
+        ),
+        404,
+    )
+
+
+@urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["GET"])
+@email_validation_required
+def get_url(utub_id: int, utub_url_id: int):
+    """
+    Allows a user to read a URL in a UTub. Only users who are a member of the
+    UTub can GET this URL.
+
+    Args:
+        utub_id (int): The UTub ID containing the relevant URL
+        utub_url_id (int): The URL ID to be modified
+    """
+    # Following line enforces standard response of 404 error page
+    Utubs.query.get_or_404(utub_id)
+
+    user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
+    if not user_in_utub:
+        return (
+            jsonify(
+                {
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_RETRIEVE_URL,
+                }
+            ),
+            403,
+        )
+
+    url_in_utub: Utub_Urls | None = Utub_Urls.query.get(utub_url_id)
+
+    if url_in_utub is not None:
+        return (
+            jsonify(
+                {
+                    STD_JSON.STATUS: STD_JSON.SUCCESS,
+                    STD_JSON.MESSAGE: URL_SUCCESS.URL_FOUND_IN_UTUB,
+                    URL_SUCCESS.URL: url_in_utub.serialized_on_get_or_update,
+                }
+            ),
+            200,
+        )
+
+    return (
+        jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_RETRIEVE_URL,
             }
         ),
         404,
@@ -312,7 +364,7 @@ def update_url(utub_id: int, utub_url_id: int):
                 400,
             )
 
-        serialized_url_in_utub = url_in_utub.serialized_on_string_update
+        serialized_url_in_utub = url_in_utub.serialized_on_get_or_update
 
         if url_to_change_to == url_in_utub.standalone_url.url_string:
             # Identical URL
@@ -346,7 +398,7 @@ def update_url(utub_id: int, utub_url_id: int):
             )
 
         # Now check if url already in database
-        url_already_in_database: Urls = Urls.query.filter(
+        url_already_in_database: Urls | None = Urls.query.filter(
             Urls.url_string == normalized_url
         ).first()
 
@@ -378,9 +430,10 @@ def update_url(utub_id: int, utub_url_id: int):
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
                             STD_JSON.ERROR_CODE: 4,
+                            URL_FAILURE.URL_STRING: url_already_in_database.url_string,
                         }
                     ),
-                    400,
+                    409,
                 )
 
         # Now check if this normalized URL is the same as the original
@@ -400,7 +453,7 @@ def update_url(utub_id: int, utub_url_id: int):
         url_in_utub.url_id = url_in_database.id
         url_in_utub.standalone_url = url_in_database
 
-        new_serialized_url = url_in_utub.serialized_on_string_update
+        new_serialized_url = url_in_utub.serialized_on_get_or_update
 
         utub.set_last_updated()
         db.session.commit()
@@ -488,13 +541,13 @@ def update_url_title(utub_id: int, utub_url_id: int):
 
     if update_url_title_form.validate_on_submit():
         url_title_to_change_to = update_url_title_form.url_title.data
-        serialized_url_in_utub = url_in_utub.serialized_on_title_update
+        serialized_url_in_utub = url_in_utub.serialized_on_get_or_update
         title_diff = url_title_to_change_to != url_in_utub.url_title
 
         if title_diff:
             # Change the title
             url_in_utub.url_title = url_title_to_change_to
-            serialized_url_in_utub = url_in_utub.serialized_on_title_update
+            serialized_url_in_utub = url_in_utub.serialized_on_get_or_update
             utub.set_last_updated()
             db.session.commit()
 

@@ -4,6 +4,7 @@ from src.utils.strings.model_strs import (
     URL_ID,
     URL_STRING,
     URL_TITLE,
+    URL_TAG_IDS,
     URL_TAGS,
     UTUB_URL_ID,
 )
@@ -18,13 +19,14 @@ URL_REMOVED = "URL removed from this UTub."
 URL_TITLE_MODIFIED = "URL title was modified."
 URL_OR_TITLE_MODIFIED = "URL and/or URL title modified."
 URL_MODIFIED = "URL modified."
+URL_FOUND_IN_UTUB = "URL found in UTub."
 TAG_IN_UTUB = "tagInUTub"
 
 
 class URL_GENERAL:
     URL = URL
     REDIRECT = REDIRECT
-    URL_TAGS = URL_TAGS
+    URL_TAG_IDS = URL_TAG_IDS
     URL_ID = URL_ID
     TAG_IN_UTUB = TAG_IN_UTUB
 
@@ -40,29 +42,34 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     URL_OR_TITLE_MODIFIED = URL_OR_TITLE_MODIFIED
     URL_MODIFIED = URL_MODIFIED
     UTUB_URL_ID = UTUB_URL_ID
+    URL_FOUND_IN_UTUB = URL_FOUND_IN_UTUB
+    URL_TAGS = URL_TAGS
 
 
 # Strings for URL failure
-UNABLE_TO_REMOVE_URL = "Unable to remove this URL."
+UNABLE_TO_DELETE_URL = "Unable to remove this URL."
 UNABLE_TO_ADD_URL = "Unable to add this URL."
 UNABLE_TO_VALIDATE_THIS_URL = "Unable to validate this URL."
 URL_IN_UTUB = "URL already in UTub."
 UNABLE_TO_ADD_URL_FORM = "Unable to add this URL, please check inputs."
 UNABLE_TO_MODIFY_URL_FORM = "Unable to update, please check inputs."
 UNABLE_TO_MODIFY_URL = "Unable to modify this URL."
+UNABLE_TO_RETRIEVE_URL = "Unable to retrieve this URL."
 EMPTY_URL = "URL cannot be empty."
 
 
 class URL_FAILURE(FAILURE_GENERAL):
     UNABLE_TO_VALIDATE_THIS_URL = UNABLE_TO_VALIDATE_THIS_URL
     UNABLE_TO_ADD_URL = UNABLE_TO_ADD_URL
-    UNABLE_TO_REMOVE_URL = UNABLE_TO_REMOVE_URL
+    UNABLE_TO_DELETE_URL = UNABLE_TO_DELETE_URL
     URL_IN_UTUB = URL_IN_UTUB
     UNABLE_TO_ADD_URL_FORM = UNABLE_TO_ADD_URL_FORM
     UNABLE_TO_MODIFY_URL = UNABLE_TO_MODIFY_URL
+    UNABLE_TO_RETRIEVE_URL = UNABLE_TO_RETRIEVE_URL
     EMPTY_URL = EMPTY_URL
     UNABLE_TO_MODIFY_URL_FORM = UNABLE_TO_MODIFY_URL_FORM
     URL_TITLE = URL_TITLE
+    URL_STRING = URL_STRING
 
 
 # Strings for URL no change

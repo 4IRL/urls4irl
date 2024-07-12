@@ -29,7 +29,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
     WHEN the user tries to modify a URL's tag with a tag not currently in the database
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag exists, the Tag-URL-UTub association is modified,
@@ -39,7 +39,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
-        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
+        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
@@ -67,7 +67,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
         url_id_to_update_tag_on = url_utub_association.id
-        associated_tags = url_utub_association.associated_tags
+        associated_tags = url_utub_association.associated_tag_ids
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
@@ -135,7 +135,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
         associated_tags[associated_tags.index(curr_tag_id_on_url)] = (
             new_tag_from_server.id
         )
-        assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
             associated_tags
         )
 
@@ -143,8 +143,8 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_creator(
             Utub_Urls.id == url_id_to_update_tag_on,
         ).first()
 
-        assert sorted(url_utub_association.associated_tags) == sorted(
-            modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        assert sorted(url_utub_association.associated_tag_ids) == sorted(
+            modify_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
         )
 
         # Ensure number of Tag-URL association do not change on this URL in this UTub
@@ -186,7 +186,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
     WHEN the user tries to modify a URL's tag with a tag not currently in the database
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag exists, the Tag-URL-UTub association is modified,
@@ -196,7 +196,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
-        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
+        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
@@ -227,7 +227,7 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_update_tag_on = url_utub_association.id
-        associated_tags = url_utub_association.associated_tags
+        associated_tags = url_utub_association.associated_tag_ids
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
@@ -295,14 +295,14 @@ def test_modify_tag_with_fresh_tag_on_valid_url_as_utub_member(
         associated_tags[associated_tags.index(curr_tag_id_on_url)] = (
             new_tag_from_server.id
         )
-        assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+        assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
             associated_tags
         )
 
         url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_update_tag_on)
 
-        assert sorted(url_utub_association.associated_tags) == sorted(
-            modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        assert sorted(url_utub_association.associated_tag_ids) == sorted(
+            modify_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
         )
 
         # Ensure number of Tag-URL association do not change on this URL in this UTub
@@ -341,7 +341,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
     WHEN the user tries to modify a URL's tag by changing it to a tag already contained in the database
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag does not exist, the Tag-URL-UTub association is modified,
@@ -351,7 +351,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
-        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
+        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
@@ -378,7 +378,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
             Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
         url_id_to_update_tag_on = url_utub_association.id
-        associated_tags = url_utub_association.associated_tags
+        associated_tags = url_utub_association.associated_tag_ids
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
@@ -437,7 +437,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         == curr_tag_id_on_url
     )
     associated_tags[associated_tags.index(curr_tag_id_on_url)] = tag_to_replace_with.id
-    assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+    assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
         associated_tags
     )
 
@@ -446,8 +446,8 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_creator(
         assert Tags.query.count() == num_tags
 
         url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_update_tag_on)
-        assert sorted(url_utub_association.associated_tags) == sorted(
-            modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        assert sorted(url_utub_association.associated_tag_ids) == sorted(
+            modify_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
         )
 
         # Ensure number of Tag-URL association do not change on this URL in this UTub
@@ -486,7 +486,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
     WHEN the user tries to modify a URL's tag with a tag not currently in the database
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag does not exist, the Tag-URL-UTub association is modified,
@@ -496,7 +496,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
-        TAGS_SUCCESS.URL_TAGS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
+        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including modified tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
@@ -527,7 +527,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_update_tag_on = url_utub_association.id
-        associated_tags = url_utub_association.associated_tags
+        associated_tags = url_utub_association.associated_tag_ids
 
         # Find number of tags on this URL in this UTub
         num_of_tags_on_url = Utub_Url_Tags.query.filter(
@@ -586,7 +586,7 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         == curr_tag_id_on_url
     )
     associated_tags[associated_tags.index(curr_tag_id_on_url)] = tag_from_database.id
-    assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]) == sorted(
+    assert sorted(modify_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
         associated_tags
     )
 
@@ -595,8 +595,8 @@ def test_modify_tag_with_other_tag_on_valid_url_as_utub_member(
         assert Tags.query.count() == num_tags
 
         url_utub_association: Utub_Urls = Utub_Urls.query.get(url_id_to_update_tag_on)
-        assert sorted(url_utub_association.associated_tags) == sorted(
-            modify_tag_response_json[TAGS_SUCCESS.URL_TAGS]
+        assert sorted(url_utub_association.associated_tag_ids) == sorted(
+            modify_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
         )
 
         # Ensure number of Tag-URL association do not change on this URL in this UTub
@@ -635,7 +635,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_creator(
     WHEN the user tries to modify a URL's tag by changing it to the same tag
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag does not exist, the Tag-URL-UTub association is modified,
@@ -748,7 +748,7 @@ def test_modify_tag_with_same_tag_on_valid_url_as_utub_member(
     WHEN the user tries to modify a URL's tag with the same tag
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag does not exist, the Tag-URL-UTub association is modified,
@@ -858,7 +858,7 @@ def test_modify_tag_with_tag_already_on_url_as_utub_creator(
     WHEN the user tries to modify a URL's tag by changing it to a tag already on the URL
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 404 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag does not exist, the Tag-URL-UTub association is modified,
@@ -976,7 +976,7 @@ def test_modify_tag_on_another_utub_url(
     WHEN the user tries to modify a URL's tag in another UTub
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 404 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag does not exist, and the Tag-URL-UTub association is not modified
@@ -1090,7 +1090,7 @@ def test_modify_tag_on_invalid_url_as_utub_creator(
     WHEN the user tries to modify a nonexistent URL's tag by changing it to the same tag
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag does not exist, the Tag-URL-UTub association is modified,
@@ -1151,7 +1151,7 @@ def test_modify_tag_on_url_in_nonexistent_utub(
     WHEN the user tries to modify a URL's tag in a nonexistent UTub
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 404 HTTP status code, proper response is sent by the server,
         and that a new Tag does not exist
@@ -1200,7 +1200,7 @@ def test_modify_tag_with_missing_tag_field(
     WHEN the user tries to modify a URL's tag but doesn't include tag field in form
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 404 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag does not exist, the Tag-URL-UTub association is not modified,
@@ -1318,7 +1318,7 @@ def test_modify_tag_with_missing_csrf_token(
     WHEN the user tries to modify a URL's tag but doesn't include csrf token
         - By PUT to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "url_id": An integer representing URL ID to add tag to
+            "urlID": An integer representing URL ID to add tag to
             "tag_id": An integer representing the tag currently on the URL
     THEN ensure that the server responds with a 400 HTTP status code,
         and that a new Tag does not exist and the Tag-URL-UTub association is not modified

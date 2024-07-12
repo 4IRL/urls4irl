@@ -186,7 +186,7 @@ def test_get_valid_utub_with_members_urls_no_tags(
             or current_user.id == utub_user_is_member_of.utub_creator,
             MODELS.UTUB_URL_ID: url.id,
             MODELS.URL_STRING: standalone_url.url_string,
-            MODELS.URL_TAGS: [],
+            MODELS.URL_TAG_IDS: [],
             MODELS.URL_TITLE: url.url_title,
         }
         assert url_dict in response_json[MODELS.URLS]
@@ -257,7 +257,7 @@ def test_get_valid_utub_with_members_urls_tags(
             or current_user.id == utub_user_is_creator_of.utub_creator,
             MODELS.UTUB_URL_ID: url.id,
             MODELS.URL_STRING: url_string,
-            MODELS.URL_TAGS: sorted([tag.id for tag in all_tags]),
+            MODELS.URL_TAG_IDS: sorted([tag.id for tag in all_tags]),
             MODELS.URL_TITLE: f"This is {url_string}",
         }
         assert url_dict in response_json[MODELS.URLS]

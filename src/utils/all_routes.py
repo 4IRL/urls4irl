@@ -31,7 +31,8 @@ class TAG_ROUTES:
 
 class URL_ROUTES:
     _URLS = "urls."
-    REMOVE_URL = _URLS + "remove_url"
+    DELETE_URL = _URLS + "delete_url"
+    GET_URL = _URLS + "get_url"
     CREATE_URL = _URLS + "create_url"
     UPDATE_URL_AND_TITLE = _URLS + "update_url_and_title"
     UPDATE_URL = _URLS + "update_url"

@@ -41,7 +41,7 @@ def create_app(config_class: Config = Config):
 
     limiter = Limiter(
         key_func=get_remote_address,
-        default_limits=["2/second", "100/minute"],
+        default_limits=["20/second", "100/minute"],
         default_limits_exempt_when=lambda: True if testing else False,
         on_breach=handle_429_response_default_ratelimit,
         storage_uri="redis://localhost:6379" if production else "memory://",

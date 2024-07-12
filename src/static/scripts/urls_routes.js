@@ -1,5 +1,5 @@
 // Time until loading icon is shown for URL validation after creation/updating, in ms
-const SHOW_LOADING_ICON_AFTER_MS = 25;
+const SHOW_LOADING_ICON_AFTER_MS = 50;
 
 /* Add URL */
 
@@ -19,9 +19,9 @@ function createURLShowInput() {
 }
 
 // Prepares post request inputs for addition of a new URL
-function createURLSetup(createURLTitleInput, createURLInput) {
+function createURLSetup(createURLTitleInput, createURLInput, utubID) {
   // Assemble post request route
-  const postURL = routes.createURL(getActiveUTubID());
+  const postURL = routes.createURL(utubID);
 
   // Assemble submission data
   const newURLTitle = createURLTitleInput.val();
@@ -36,40 +36,31 @@ function createURLSetup(createURLTitleInput, createURLInput) {
 
 // Handles addition of new URL after user submission
 function createURL(createURLTitleInput, createURLInput) {
+  const utubID = getActiveUTubID();
   // Extract data to submit in POST request
-  [postURL, data] = createURLSetup(createURLTitleInput, createURLInput);
+  [postURL, data] = createURLSetup(createURLTitleInput, createURLInput, utubID);
 
-  // A custom AJAX call, built to show a loading icon after a given number of MS
-  let timeoutId;
-  $.ajax({
-    url: postURL,
-    method: "POST",
-    data: data,
+  // Show loading icon when creating a URL
+  const timeoutId = setTimeout(function () {
+    $("#urlCreateDualLoadingRing").addClass("dual-loading-ring");
+  }, SHOW_LOADING_ICON_AFTER_MS);
+  const request = AJAXCall("post", postURL, data);
 
-    // Following overwrites the global ajaxSetup call, so needs to include CSRFToken again
-    beforeSend: function (xhr, settings) {
-      globalBeforeSend(xhr, settings);
-      timeoutId = setTimeout(function () {
-        $("#urlCreateDualLoadingRing").addClass("dual-loading-ring");
-      }, SHOW_LOADING_ICON_AFTER_MS);
-    },
+  request.done(function (response, _, xhr) {
+    if (xhr.status === 200) {
+      createURLSuccess(response);
+    }
+  });
 
-    success: function (response, _, xhr) {
-      if (xhr.status === 200) {
-        createURLSuccess(response);
-      }
-    },
+  request.fail(function (xhr, _, textStatus) {
+    resetCreateURLFailErrors();
+    createURLFail(xhr, utubID);
+  });
 
-    error: function (xhr, _, errorThrown) {
-      resetCreateURLFailErrors();
-      createURLFail(xhr);
-    },
-
-    complete: function () {
-      // Icon is only shown after 25ms - if <25ms, the timeout and callback function are cleared
-      clearTimeout(timeoutId);
-      $("#urlCreateDualLoadingRing").removeClass("dual-loading-ring");
-    },
+  request.always(function () {
+    // Icon is only shown after 25ms - if <25ms, the timeout and callback function are cleared
+    clearTimeout(timeoutId);
+    $("#urlCreateDualLoadingRing").removeClass("dual-loading-ring");
   });
 }
 
@@ -91,19 +82,30 @@ function createURLSuccess(response) {
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
-function createURLFail(xhr) {
+function createURLFail(xhr, utubID) {
+  const responseJSON = xhr.responseJSON;
+  const hasErrors = responseJSON.hasOwnProperty("errors");
+  const hasMessage = responseJSON.hasOwnProperty("message");
   switch (xhr.status) {
     case 400:
-      const responseJSON = xhr.responseJSON;
-      if (
-        responseJSON !== undefined &&
-        responseJSON.hasOwnProperty("message")
-      ) {
-        responseJSON.hasOwnProperty("errors")
+      if (responseJSON !== undefined && hasMessage) {
+        hasErrors
           ? createURLShowFormErrors(responseJSON.errors)
           : displayCreateUrlFailErrors("urlString", responseJSON.message);
         highlightInput($("#urlStringCreate"));
       }
+      break;
+    case 409:
+      // Indicates duplicate URL error
+      // If duplicate URL is not currently visible, indicates another user has added this URL
+      // or updated another card to the new URL
+      // Reload UTub and add/modify differences
+      if (responseJSON.hasOwnProperty("urlString")) {
+        if (!isURLCurrentlyVisibleInURLDeck(responseJSON.urlString)) {
+          updateUTubOnFindingStaleData(utubID);
+        }
+      }
+      displayCreateUrlFailErrors("urlString", responseJSON.message);
       break;
     case 403:
     case 404:
@@ -210,8 +212,8 @@ function hideAndResetUpdateURLStringForm(urlCard) {
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLSetup(urlStringUpdateInput) {
-  const postURL = routes.updateURL(getActiveUTubID(), getSelectedURLID());
+function updateURLSetup(urlStringUpdateInput, utubID, urlID) {
+  const postURL = routes.updateURL(utubID, urlID);
 
   const updatedURL = urlStringUpdateInput.val();
 
@@ -221,49 +223,45 @@ function updateURLSetup(urlStringUpdateInput) {
 }
 
 // Handles update of an existing URL
-function updateURL(urlStringUpdateInput, urlCard) {
-  if (urlStringUpdateInput.val() === urlCard.find(".urlString").text()) {
-    hideAndResetUpdateURLStringForm(urlCard);
-    return;
-  }
+async function updateURL(urlStringUpdateInput, urlCard) {
+  const utubID = getActiveUTubID();
+  const urlID = parseInt(urlCard.attr("urlid"));
+  let timeoutID;
+  try {
+    timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
+    await getUpdatedURL(utubID, urlID, urlCard);
 
-  // Extract data to submit in POST request
-  [patchURL, data] = updateURLSetup(urlStringUpdateInput);
+    if (urlStringUpdateInput.val() === urlCard.find(".urlString").text()) {
+      hideAndResetUpdateURLStringForm(urlCard);
+      return;
+    }
 
-  // A custom AJAX call, built to show a loading icon after a given number of MS
-  let timeoutId;
-  $.ajax({
-    url: patchURL,
-    method: "PATCH",
-    data: data,
+    // Extract data to submit in POST request
+    [patchURL, data] = updateURLSetup(urlStringUpdateInput, utubID, urlID);
 
-    // Following overwrites the global ajaxSetup call, so needs to include CSRFToken again
-    beforeSend: function (xhr, settings) {
-      globalBeforeSend(xhr, settings);
-      timeoutId = setTimeout(function () {
-        urlCard.find(".urlUpdateDualLoadingRing").addClass("dual-loading-ring");
-      }, SHOW_LOADING_ICON_AFTER_MS);
-    },
+    const request = AJAXCall("patch", patchURL, data);
 
-    success: function (response, _, xhr) {
+    request.done(function (response, _, xhr) {
       if (xhr.status === 200) {
         updateURLSuccess(response, urlCard);
       }
-    },
+    });
 
-    error: function (xhr, _, errorThrown) {
+    request.fail(function (xhr, _, textStatus) {
       resetUpdateURLFailErrors(urlCard);
-      updateURLFail(xhr, urlCard);
-    },
+      updateURLFail(xhr, urlCard, utubID);
+    });
 
-    complete: function () {
-      // Icon is only shown after 25ms - if <25ms, the timeout and callback function are cleared
-      clearTimeout(timeoutId);
-      urlCard
-        .find(".urlUpdateDualLoadingRing")
-        .removeClass("dual-loading-ring");
-    },
-  });
+    request.always(function () {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    });
+  } catch (error) {
+    clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    handleRejectFromGetURL(error, urlCard, {
+      showError: true,
+      message: "Another user has deleted this URL",
+    });
+  }
 }
 
 // Displays changes related to a successful update of a URL
@@ -298,12 +296,12 @@ function updateURLSuccess(response, urlCard) {
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
-function updateURLFail(xhr, urlCard) {
+function updateURLFail(xhr, urlCard, utubID) {
+  const responseJSON = xhr.responseJSON;
+  const hasErrors = responseJSON.hasOwnProperty("errors");
+  const hasMessage = responseJSON.hasOwnProperty("message");
   switch (xhr.status) {
     case 400:
-      const responseJSON = xhr.responseJSON;
-      const hasErrors = responseJSON.hasOwnProperty("errors");
-      const hasMessage = responseJSON.hasOwnProperty("message");
       if (hasErrors) {
         updateURLFailErrors(responseJSON.errors, urlCard);
         break;
@@ -312,6 +310,18 @@ function updateURLFail(xhr, urlCard) {
         displayUpdateURLErrors("urlString", responseJSON.message, urlCard);
         break;
       }
+    case 409:
+      // Indicates duplicate URL error
+      // If duplicate URL is not currently visible, indicates another user has added this URL
+      // or updated another card to the new URL
+      // Reload UTub and add/modify differences
+      if (responseJSON.hasOwnProperty("urlString")) {
+        if (!isURLCurrentlyVisibleInURLDeck(responseJSON.urlString)) {
+          updateUTubOnFindingStaleData(utubID);
+        }
+      }
+      displayUpdateURLErrors("urlString", responseJSON.message, urlCard);
+      break;
     case 403:
     case 404:
     default:
@@ -367,39 +377,61 @@ function hideAndResetUpdateURLTitleForm(urlCard) {
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLTitleSetup(urlTitleInput) {
-  const postURL = routes.updateURLTitle(getActiveUTubID(), getSelectedURLID());
+function updateURLTitleSetup(urlTitleInput, utubID, urlID) {
+  const patchURL = routes.updateURLTitle(utubID, urlID);
 
   const updatedURLTitle = urlTitleInput.val();
 
-  data = { urlTitle: updatedURLTitle };
+  const data = { urlTitle: updatedURLTitle };
 
-  return [postURL, data];
+  return [patchURL, data];
 }
 
 // Handles update of an existing URL
-function updateURLTitle(urlTitleInput) {
+async function updateURLTitle(urlTitleInput, urlCard) {
   // Extract data to submit in POST request
-  [postURL, data] = updateURLTitleSetup(urlTitleInput);
+  const utubID = getActiveUTubID();
+  const urlID = parseInt(urlCard.attr("urlid"));
+  let timeoutID;
+  try {
+    timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
+    await getUpdatedURL(utubID, urlID, urlCard);
 
-  AJAXCall("patch", postURL, data);
-  const selectedUrlCard = getSelectedUrlCard();
-
-  // Handle response
-  request.done(function (response, _, xhr) {
-    if (xhr.status === 200) {
-      resetUpdateURLTitleFailErrors(selectedUrlCard);
-      if (
-        response.hasOwnProperty("URL") &&
-        response.URL.hasOwnProperty("urlTitle")
-      )
-        updateURLTitleSuccess(response, selectedUrlCard);
+    if (urlTitleInput.val() === urlCard.find(".urlTitle").text()) {
+      hideAndResetUpdateURLTitleForm(urlCard);
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
     }
-  });
 
-  request.fail(function (xhr, _, textStatus) {
-    updateURLTitleFail(xhr, selectedUrlCard);
-  });
+    [patchURL, data] = updateURLTitleSetup(urlTitleInput, utubID, urlID);
+
+    const request = AJAXCall("patch", patchURL, data);
+
+    // Handle response
+    request.done(function (response, _, xhr) {
+      if (xhr.status === 200) {
+        resetUpdateURLTitleFailErrors(urlCard);
+        if (
+          response.hasOwnProperty("URL") &&
+          response.URL.hasOwnProperty("urlTitle")
+        )
+          updateURLTitleSuccess(response, urlCard);
+      }
+    });
+
+    request.fail(function (xhr, _, textStatus) {
+      updateURLTitleFail(xhr, urlCard);
+    });
+
+    request.always(function () {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    });
+  } catch (error) {
+    clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    handleRejectFromGetURL(error, urlCard, {
+      showError: true,
+      message: "Another user has deleted this URL",
+    });
+  }
 }
 
 // Displays changes related to a successful update of a URL
@@ -464,7 +496,7 @@ function deleteURLHideModal() {
 }
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
-function deleteURLShowModal(urlID) {
+function deleteURLShowModal(urlID, urlCard) {
   let modalTitle = "Are you sure you want to delete this URL from the UTub?";
   let modalText = "You can always add it back again!";
   let buttonTextDismiss = "Just kidding";
@@ -485,7 +517,7 @@ function deleteURLShowModal(urlID) {
     .off("click")
     .on("click", function (e) {
       e.preventDefault();
-      deleteURL(urlID);
+      deleteURL(urlID, urlCard);
     })
     .text(buttonTextSubmit);
 
@@ -494,46 +526,64 @@ function deleteURLShowModal(urlID) {
   hideIfShown($("#modalRedirect"));
 }
 
-// Handles post request and response for removing an existing URL from current UTub, after confirmation
-function deleteURL(urlID) {
-  // Extract data to submit in POST request
-  postURL = deleteURLSetup(urlID);
-
-  let request = AJAXCall("delete", postURL, []);
-
-  // Handle response
-  request.done(function (_, textStatus, xhr) {
-    if (xhr.status === 200) {
-      deleteURLSuccess();
-    }
-  });
-
-  request.fail(function (xhr, _, textStatus) {
-    // Reroute to custom U4I 404 error page
-    deleteURLFail(xhr);
-  });
+// Prepares post request inputs for removal of a URL
+function deleteURLSetup(utubID, urlID) {
+  const deleteURL = routes.deleteURL(utubID, urlID);
+  return deleteURL;
 }
 
-// Prepares post request inputs for removal of a URL
-function deleteURLSetup(urlID) {
-  let postURL = routes.deleteURL(getActiveUTubID(), urlID);
+// Handles post request and response for removing an existing URL from current UTub, after confirmation
+async function deleteURL(urlID, urlCard) {
+  const utubID = getActiveUTubID();
+  try {
+    // Check for stale data
+    await getUpdatedURL(utubID, urlID, urlCard);
+    // Extract data to submit in POST request
+    const deleteURL = deleteURLSetup(utubID, urlID);
 
-  return postURL;
+    const request = AJAXCall("delete", deleteURL, []);
+
+    // Handle response
+    request.done(function (response, textStatus, xhr) {
+      if (xhr.status === 200) {
+        deleteURLSuccessOnDelete(response, urlCard);
+      }
+    });
+
+    request.fail(function (xhr, _, textStatus) {
+      // Reroute to custom U4I 404 error page
+      deleteURLFail(xhr);
+    });
+  } catch (error) {
+    handleRejectFromGetURL(error, urlCard, { showError: false });
+  }
 }
 
 // Displays changes related to a successful removal of a URL
-function deleteURLSuccess() {
+function deleteURLSuccessOnDelete(response, urlCard) {
   // Close modal
   $("#confirmModal").modal("hide");
-  const selectedUrlToRemove = getSelectedUrlCard();
-  selectedUrlToRemove.fadeOut("slow", function () {
-    selectedUrlToRemove.remove();
+  urlCard.fadeOut("slow", function () {
+    cleanTagsAfterDeleteURL(response);
+    urlCard.remove();
     $("#listURLs").children().length === 0
       ? hideIfShown($("#accessAllURLsBtn"))
       : null;
   });
 
   displayState1URLDeck();
+}
+
+// Cleans tags after successful URL deletion
+function cleanTagsAfterDeleteURL(response) {
+  if (!response.hasOwnProperty("tags") || response.tags.length === 0) return;
+  const tagsInResponse = response.tags;
+
+  let tag;
+  for (let i = 0; i < tagsInResponse.length; i++) {
+    tag = tagsInResponse[i];
+    if (!tag.tagInUTub) removeTagFromUTubDeckGivenTagID(tag.id);
+  }
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
@@ -543,5 +593,162 @@ function deleteURLFail(xhr) {
     case 404:
     default:
       window.location.assign(routes.errorPage);
+  }
+}
+
+/* Get URL */
+async function getUpdatedURL(utubID, utubUrlID, urlCard) {
+  return new Promise((resolve, reject) => {
+    $.ajax({
+      url: routes.getURL(utubID, utubUrlID),
+      type: "GET",
+      dataType: "json",
+      success: (response, _, xhr) => {
+        if (xhr.status === 200 && response.hasOwnProperty("URL")) {
+          updateURLBasedOnGetData(response.URL, urlCard);
+          resolve();
+        }
+        resolve(xhr);
+      },
+      error: (xhr, _, errorThrown) => {
+        reject(xhr);
+      },
+    });
+  });
+}
+
+function updateURLBasedOnGetData(urlUpdateResponse, urlCard) {
+  const urlTitleElem = urlCard.find(".urlTitle");
+  const urlStringElem = urlCard.find(".urlString");
+  const urlTags = urlCard.find(".tagBadge");
+
+  urlTitleElem !== urlUpdateResponse.urlTitle
+    ? urlTitleElem.text(urlUpdateResponse.urlTitle)
+    : null;
+
+  urlStringElem !== urlUpdateResponse.urlString
+    ? urlStringElem.text(urlUpdateResponse.urlString)
+    : null;
+
+  updateURLTagsAndUTubTagsBasedOnGetURLData(
+    urlTags,
+    urlUpdateResponse.urlTags,
+    urlCard,
+  );
+}
+
+function updateURLTagsAndUTubTagsBasedOnGetURLData(
+  currentTags,
+  receivedTags,
+  urlCard,
+) {
+  const receivedTagIDs = receivedTags.map((tag) => tag.tagID);
+  let removedTagIDs = [];
+
+  // Remove current tags that are not in received tags
+  currentTags.each(function () {
+    const tagID = parseInt($(this).attr("tagid"));
+    if (!receivedTagIDs.includes(tagID)) {
+      $(this).remove();
+      removedTagIDs.push(tagID);
+    }
+  });
+
+  // Based on IDs, find if tag still exists in UTub - if not, remove from tag deck
+  const allCurrentTags = $(".tagBadge");
+  for (let i = 0; i < removedTagIDs.length; i++) {
+    if (!isTagInUTub(allCurrentTags, removedTagIDs[i])) {
+      removeTagFromUTubDeckGivenTagID(removedTagIDs[i]);
+    }
+  }
+
+  // Add tags that are in received tags but not in current tags
+  let exists, receivedTag;
+  for (let i = 0; i < receivedTags.length; i++) {
+    exists = false;
+    receivedTag = receivedTags[i];
+    currentTags.each(function () {
+      if (parseInt($(this).attr("tagid")) === receivedTag.tagID) {
+        exists = true;
+      }
+    });
+
+    if (!exists) {
+      // Add tag to URL
+      urlCard
+        .find(".urlTagsContainer")
+        .append(
+          createTagBadgeInURL(
+            receivedTag.tagID,
+            receivedTag.tagString,
+            urlCard,
+          ),
+        );
+
+      // Add tag to UTub if it doesn't already exist
+      if (!isTagInUTub(allCurrentTags, receivedTag.tagID)) {
+        $("#listTags").append(
+          createTagFilterInDeck(receivedTag.tagID, receivedTag.tagString),
+        );
+      }
+    }
+  }
+}
+
+function handleRejectFromGetURL(xhr, urlCard, errorMessage) {
+  switch (xhr.status) {
+    case 403:
+      // User not authorized for this UTub
+      window.location.assign(routes.errorPage);
+      break;
+    case 404:
+      if (xhr.getResponseHeader("content-type").indexOf("text/html") >= 0) {
+        // UTub does not exist
+        window.location.assign(routes.errorPage);
+        break;
+      }
+      // URL no longer exists
+      errorMessage.showError
+        ? showURLDeckBannerError(errorMessage.message)
+        : null;
+      checkForTagUpdatesAndRemoveOnStaleURLDeletion(urlCard);
+      deleteURLOnStale(urlCard);
+      break;
+
+    default:
+      window.location.assign(routes.errorPage);
+      break;
+  }
+}
+
+function deleteURLOnStale(urlCard) {
+  // Close modal in case URL was found stale while it's shown
+  $("#confirmModal").modal("hide");
+  urlCard.fadeOut("slow", function () {
+    checkForTagUpdatesAndRemoveOnStaleURLDeletion(urlCard);
+    urlCard.remove();
+    $("#listURLs").children().length === 0
+      ? hideIfShown($("#accessAllURLsBtn"))
+      : null;
+  });
+
+  displayState1URLDeck();
+}
+
+function checkForTagUpdatesAndRemoveOnStaleURLDeletion(staleURLCard) {
+  const unstaleTagBadges = $(".tagBadge").filter(
+    (_, tag) => !$(tag).closest(".urlRow").is(staleURLCard),
+  );
+
+  const staleURLTagBadges = staleURLCard.find(".tagBadge");
+  if (staleURLTagBadges.length === 0) return;
+  const staleURLTagBadgeIDs = staleURLTagBadges.map((_, tag) =>
+    parseInt($(tag).attr("tagid")),
+  );
+
+  for (let i = 0; i < staleURLTagBadgeIDs.length; i++) {
+    if (!isTagInUTub(unstaleTagBadges, staleURLTagBadgeIDs[i])) {
+      removeTagFromUTubDeckGivenTagID(staleURLTagBadgeIDs[i]);
+    }
   }
 }

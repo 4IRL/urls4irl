@@ -1251,6 +1251,71 @@ Indicates missing or invalid form data sent with the request.
 #### UTub URLs
 
 <details>
+ <summary><code>GET</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}</b></code> <code>(get details of the UTub URL)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
+> | `utubUrlID` |  required  | int ($int64) | The unique ID of the UTub-URL to get |
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully retrieved the URL. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `403`         | `application/json`                | `See below.` | User not authorized to view this URL in this UTub. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success",
+>     "message": "URL found in UTub.",
+>     "URL": {
+>         "utubUrlID": 1,
+>         "urlString": "https://www.google.com",
+>         "urlTitle": "This is google.com",
+>         "urlTags": [
+>           {
+>               "tagID": 1,
+>               "tagString": "Goodbye"
+>           },
+>           {
+>               "tagID": 2,
+>               "tagString": "Hello"
+>           },
+>         ]
+>     }
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+User not member of this UTub.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to retrieve this URL.",
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to retrieve this URL.",
+> }
+> ```
+
+</details>
+<details>
  <summary><code>POST</code> <code><b>/utubs/{UTubID}/urls</b></code> <code>(add a URL to a UTub)</code></summary>
 
 ##### Parameters
@@ -1276,11 +1341,12 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a URL to a UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | URL unable to be validated, or already in UTub, or form errors. |
+> | `400`         | `application/json`                | `See below.` | URL unable to be validated, or form errors. |
 > | `403`         | `application/json`                | `See below.` | Requesting user not in the requested UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+> | `409`         | `application/json`                | `See below.` | URL already in UTub. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1308,16 +1374,6 @@ Indicates the URL could not be validated.
 >     "message": "Unable to validate this URL.",
 >     "details": "Message describing the connection error.",
 >     "errorCode": 2,
-> }
-> ```
-
-###### 400 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "URL already in UTub.",
->     "errorCode": 3,
 > }
 > ```
 
@@ -1354,6 +1410,19 @@ Indicates form errors with adding this URL to this UTub.
 >     "status": "Failure",
 >     "message": "Unable to add this URL.",
 >     "errorCode": 5,
+> }
+> ```
+
+###### 409 HTTP Code Response Body
+
+URL already in UTub.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "URL already in UTub.",
+>     "errorCode": 3,
+>     "urlString": "https://www.google.com/"  
 > }
 > ```
 
@@ -1459,11 +1528,12 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified the URL string, or no change. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors, or unable to validate URL, or URL already in UTub. |
+> | `400`         | `application/json`                | `See below.` | Form errors, or unable to validate URL. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+> | `409`         | `application/json`                | `See below.` | URL already in UTub. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1474,7 +1544,17 @@ Required form data:
 >     "URL": {
 >         "utubUrlID": 1,
 >         "urlString": "https://www.google.com",
->         "urlTagIDs": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
+>         "urlTitle": "This is google.com",
+>         "urlTags": [
+>           {
+>               "tagID": 1,
+>               "tagString": "Goodbye"
+>           },
+>           {
+>               "tagID": 2,
+>               "tagString": "Hello"
+>           },
+>         ]
 >     }
 > }
 > ```
@@ -1501,18 +1581,6 @@ Unable to validate the given URL.
 >     "message": "Unable to validate this URL.",
 >     "details": "Message describing the connection error.",
 >     "errorCode": 3,
-> }
-> ```
-
-###### 400 HTTP Code Response Body
-
-URL already in UTub.
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "URL already in UTub.",
->     "errorCode": 4,
 > }
 > ```
 
@@ -1548,6 +1616,19 @@ Indicates missing or invalid form data sent in the request.
 >     "status": "Failure",
 >     "message": "Unable to update, please check inputs.",
 >     "errorCode": 6,
+> }
+> ```
+
+###### 409 HTTP Code Response Body
+
+URL already in UTub.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "URL already in UTub.",
+>     "errorCode": 4,
+>     "urlString": "https://www.google.com/"  
 > }
 > ```
 
@@ -1604,8 +1685,18 @@ Required form data:
 >     "message": "URL title was modified." or "URL title not modified",
 >     "URL": {
 >         "utubUrlID": 1,
->         "urlTitle": "This is google.",
->         "urlTagIDs": [1, 2, 3],                   // Array of tag IDs associated with this URL in UTub
+>         "urlString": "https://www.google.com",
+>         "urlTitle": "This is google.com",
+>         "urlTags": [
+>           {
+>               "tagID": 1,
+>               "tagString": "Goodbye"
+>           },
+>           {
+>               "tagID": 2,
+>               "tagString": "Hello"
+>           },
+>         ]
 >     }
 > }
 > ```
@@ -1675,7 +1766,7 @@ Indicates invalid form data sent in the request.
 
 ------------------------------------------------------------------------------------------
 
-#### UTub Tags
+#### UTub URL Tags
 
 <details>
  <summary><code>POST</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/tags</b></code> <code>(add a tag to a URL in a UTub)</code></summary>

@@ -47,6 +47,17 @@ function unbindSelectURLBehavior() {
   getSelectedUrlCard().off(".urlSelected");
 }
 
+function isURLCurrentlyVisibleInURLDeck(urlString) {
+  const visibleURLs = $(".urlString");
+
+  for (let i = 0; i < visibleURLs.length; i++) {
+    if ($(visibleURLs[i]).text() === urlString) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Perform actions on selection of a URL card
 function selectURLCard(urlCard, url) {
   deselectAllURLs();
@@ -74,6 +85,26 @@ function deselectURL(urlCard) {
 function deselectAllURLs() {
   const previouslySelectedCard = getSelectedUrlCard();
   if (previouslySelectedCard !== null) deselectURL(previouslySelectedCard);
+}
+
+function showURLCardLoadingIcon(urlCard) {
+  urlCard.find(".urlCardDualLoadingRing").addClass("dual-loading-ring");
+}
+
+function hideURLCardLoadingIcon(urlCard) {
+  urlCard.find(".urlCardDualLoadingRing").removeClass("dual-loading-ring");
+}
+
+function setTimeoutAndShowLoadingIcon(urlCard) {
+  const timeoutID = setTimeout(function () {
+    showURLCardLoadingIcon(urlCard);
+  }, SHOW_LOADING_ICON_AFTER_MS);
+  return timeoutID;
+}
+
+function clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard) {
+  clearTimeout(timeoutID);
+  hideURLCardLoadingIcon(urlCard);
 }
 
 function bindEscapeToExitURLTitleUpdating() {
@@ -191,7 +222,99 @@ function setURLCardSelectionEventListener(urlCard, url) {
   });
 }
 
+// Show error at top of URL deck
+function showURLDeckBannerError(errorMessage) {
+  const SECONDS_TO_SHOW_ERROR = 3.5;
+  const errorBanner = $("#URLDeckErrorIndicator");
+  const CLASS_TO_SHOW = "URLDeckErrorIndicatorShow";
+  errorBanner.text(errorMessage).addClass(CLASS_TO_SHOW).focus();
+
+  setTimeout(() => {
+    errorBanner.removeClass(CLASS_TO_SHOW);
+  }, 1000 * SECONDS_TO_SHOW_ERROR);
+}
+
 /** URL Functions **/
+
+// Update URLs in center panel based on asynchronous updates or stale data
+function updateURLDeck(updatedUTubUrls, updatedUTubTags) {
+  const oldURLs = $(".urlRow");
+  const oldURLIDs = $.map(oldURLs, (url) => parseInt($(url).attr("urlid")));
+  const newURLIDs = $.map(updatedUTubUrls, (newURL) => newURL.utubUrlID);
+
+  // Remove any URLs that are in old that aren't in new
+  let oldURLID, urlToRemove;
+  for (let i = 0; i < oldURLIDs.length; i++) {
+    oldURLID = parseInt($(oldURLIDs[i]).attr("urlid"));
+    if (!newURLIDs.includes(oldURLID)) {
+      urlToRemove = $(".urlRow[urlid=" + oldURLID + "]");
+      urlToRemove.fadeOut("fast", function () {
+        urlToRemove.remove();
+      });
+    }
+  }
+
+  // Add any URLs that are in new that aren't in old
+  const urlDeck = $("#listURLs");
+  for (let i = 0; i < updatedUTubUrls.length; i++) {
+    if (!oldURLIDs.includes(updatedUTubUrls[i].utubUrlID)) {
+      urlDeck.append(createURLBlock(updatedUTubUrls[i], updatedUTubTags));
+    }
+  }
+
+  // Update any URLs in both old/new that might have new data from new
+  let urlToUpdate;
+  for (let i = 0; i < oldURLIDs.length; i++) {
+    if (newURLIDs.includes(oldURLIDs[i])) {
+      urlToUpdate = $(".urlRow[urlid=" + oldURLIDs[i] + "]");
+      updateURLAfterFindingStaleData(
+        urlToUpdate,
+        updatedUTubUrls.find((url) => url.utubUrlID === oldURLIDs[i]),
+        updatedUTubTags,
+      );
+    }
+  }
+}
+
+function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
+  const urlTitle = urlCard.find(".urlTitle");
+  const urlString = urlCard.find(".urlString");
+
+  urlTitle.text() !== newUrl.urlTitle ? urlTitle.text(newUrl.urlTitle) : null;
+
+  urlString.text() !== newUrl.urlString
+    ? urlString.text(newUrl.urlString)
+    : null;
+
+  const currentURLTags = urlCard.find(".tagBadge");
+  const currentURLTagIDs = $.map(currentURLTags, (tag) =>
+    parseInt($(tag).attr("tagid")),
+  );
+
+  // Find tag IDs that are in old and not in new and remove them
+  for (let i = 0; i < currentURLTagIDs.length; i++) {
+    if (!newUrl.urlTagIDs.includes(currentURLTagIDs[i])) {
+      currentURLTags.each(function (_, tag) {
+        if (parseInt($(tag).attr("tagid")) === currentURLTagIDs[i]) {
+          $(tag).remove();
+          return false;
+        }
+      });
+    }
+  }
+
+  // Find tag IDs that are in new and not old and add them
+  const urlTagContainer = urlCard.find(".urlTagsContainer");
+  let tagToAdd;
+  for (let i = 0; i < newUrl.urlTagIDs.length; i++) {
+    if (!currentURLTagIDs.includes(newUrl.urlTagIDs[i])) {
+      tagToAdd = updatedUTubTags.find((tag) => tag.id === newUrl.urlTagIDs[i]);
+      urlTagContainer.append(
+        createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString, urlCard),
+      );
+    }
+  }
+}
 
 // Build center panel URL list for selectedUTub
 function buildURLDeck(UTubName, dictURLs, dictTags) {
@@ -367,7 +490,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
   const urlTitleSubmitBtnUpdate = makeSubmitButton(30)
     .addClass("urlTitleSubmitBtnUpdate")
     .on("click.updateUrlTitle", function () {
-      updateURLTitle(urlTitleTextInput);
+      updateURLTitle(urlTitleTextInput, urlCard);
     });
 
   // Update Url Title cancel button
@@ -445,7 +568,11 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard) {
   const tagsAndTagCreateWrap = $(document.createElement("div")).addClass(
     "urlTags flex-column",
   );
-  const tagBadgesWrap = createTagBadgesAndWrap(tagArray, url.urlTagIDs);
+  const tagBadgesWrap = createTagBadgesAndWrap(
+    tagArray,
+    url.urlTagIDs,
+    urlCard,
+  );
 
   tagsAndButtonsWrap.append(tagsAndTagCreateWrap);
   tagsAndTagCreateWrap.append(tagBadgesWrap);
@@ -458,7 +585,7 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard) {
 }
 
 // Create the outer container for the tag badges
-function createTagBadgesAndWrap(dictTags, tagArray) {
+function createTagBadgesAndWrap(dictTags, tagArray, urlCard) {
   const tagBadgesWrap = $(document.createElement("div")).addClass(
     "urlTagsContainer flex-row flex-start",
   );
@@ -471,7 +598,7 @@ function createTagBadgesAndWrap(dictTags, tagArray) {
       }
     });
 
-    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString);
+    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString, urlCard);
 
     $(tagBadgesWrap).append(tagSpan);
   }
@@ -555,26 +682,24 @@ function createURLOptionsButtons(url, urlCard) {
       .text("Delete")
       .on("click", function (e) {
         e.stopPropagation();
-        deleteURLShowModal(url.utubUrlID);
+        deleteURLShowModal(url.utubUrlID, urlCard);
       });
 
     urlBtnUpdate
       .addClass("btn btn-light urlBtnUpdate")
       .attr({ type: "button" })
-      .text("Edit Link")
+      .text("Edit URL")
       .on("click", function (e) {
         e.stopPropagation();
         showUpdateURLStringForm(urlCard, urlBtnUpdate);
       });
 
-    const urlUpdateLoadingIcon = $(document.createElement("div")).addClass(
-      "urlUpdateDualLoadingRing",
-    );
-    urlOptions
-      .append(urlBtnUpdate)
-      .append(urlBtnDelete)
-      .append(urlUpdateLoadingIcon);
+    urlOptions.append(urlBtnUpdate).append(urlBtnDelete);
   }
+  const urlCardLoadingIcon = $(document.createElement("div")).addClass(
+    "urlCardDualLoadingRing",
+  );
+  urlOptions.append(urlCardLoadingIcon);
 
   return urlOptions;
 }
@@ -621,23 +746,22 @@ function newURLInputRemoveEventListeners() {
 }
 
 // Handle URL deck display changes related to creating a new tag
-function createTagBadgeInURL(tagID, string) {
+function createTagBadgeInURL(tagID, tagString, urlCard) {
   const tagSpan = $(document.createElement("span"));
   const removeButton = $(document.createElement("div"));
 
   tagSpan
     .addClass("tagBadge flex-row align-center")
     .attr({ tagid: tagID })
-    .text(string);
+    .text(tagString);
 
   removeButton
     .addClass("urlTagBtnDelete flex-row align-center pointerable")
     .on("click", function (e) {
       e.stopPropagation();
-      deleteTag(tagID);
+      deleteURLTag(tagID, tagSpan, urlCard);
     });
-  //removeButton.innerHTML = "&times;";
-  //
+
   removeButton.append(createTagDeleteIcon());
 
   $(tagSpan).append(removeButton);
@@ -649,16 +773,16 @@ function createTagBadgeInURL(tagID, string) {
 function createTagDeleteIcon() {
   const WIDTH_HEIGHT_PX = "15px";
   const SVG_NS = "http://www.w3.org/2000/svg";
-  const deleteTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
-  const deleteTagInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
+  const deleteURLTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
+  const deleteURLTagInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
   const path =
     "M11.46.146A.5.5 0 0 0 11.107 0H4.893a.5.5 0 0 0-.353.146L.146 4.54A.5.5 0 0 0 0 4.893v6.214a.5.5 0 0 0 .146.353l4.394 4.394a.5.5 0 0 0 .353.146h6.214a.5.5 0 0 0 .353-.146l4.394-4.394a.5.5 0 0 0 .146-.353V4.893a.5.5 0 0 0-.146-.353zm-6.106 4.5L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708";
 
-  deleteTagInnerIconPath.attr({
+  deleteURLTagInnerIconPath.attr({
     d: path,
   });
 
-  deleteTagOuterIconSvg
+  deleteURLTagOuterIconSvg
     .attr({
       xmlns: SVG_NS,
       width: WIDTH_HEIGHT_PX,
@@ -667,9 +791,9 @@ function createTagDeleteIcon() {
       class: "bi bi-x-octagon-fill",
       viewBox: "0 0 16 16",
     })
-    .append(deleteTagInnerIconPath);
+    .append(deleteURLTagInnerIconPath);
 
-  return deleteTagOuterIconSvg;
+  return deleteURLTagOuterIconSvg;
 }
 
 // Filters all URLs with tags

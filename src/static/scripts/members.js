@@ -36,6 +36,38 @@ function resetMemberDeck() {
 
 /** Member Functions **/
 
+// Update member deck on asynchronous update, either due to stale data or refresh
+function updateMemberDeck(newMembers, UTubOwnerUserID, isCurrentUserOwner) {
+  const currentMembers = $(".member");
+  const currentMemberIDs = $.map(currentMembers, (member) =>
+    parseInt($(member).attr("memberid")),
+  );
+  const newMemberIDs = $.map(newMembers, (member) => member.id);
+
+  // Find any old members that aren't in new and remove them
+  let memberIDToRemove;
+  for (let i = 0; i < currentMemberIDs.length; i++) {
+    memberIDToRemove = currentMemberIDs[i];
+    if (!newMemberIDs.includes(memberIDToRemove)) {
+      $(".member[memberid=" + memberIDToRemove + "]").remove();
+    }
+  }
+
+  // Find any new members that aren't in old and add them
+  const memberDeck = $("#listMembers");
+  for (let i = 0; i < newMembers.length; i++) {
+    if (!currentMemberIDs.includes(newMembers[i].id)) {
+      memberDeck.append(
+        createMemberBadge(
+          newMembers[i].id,
+          newMembers[i].username,
+          isCurrentUserOwner,
+        ),
+      );
+    }
+  }
+}
+
 // Build center panel URL list for selectedUTub
 function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
   resetMemberDeck();

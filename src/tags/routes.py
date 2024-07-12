@@ -127,7 +127,7 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_URL,
-                    TAGS_SUCCESS.URL_TAGS: utub_url_association.associated_tags,
+                    TAGS_SUCCESS.URL_TAG_IDS: utub_url_association.associated_tag_ids,
                     TAGS_SUCCESS.TAG: tag_model.serialized_on_add_delete,
                 }
             ),
@@ -212,7 +212,7 @@ def delete_utub_url_tag(utub_id: int, utub_url_id: int, tag_id: int):
             {
                 STD_JSON.STATUS: STD_JSON.SUCCESS,
                 STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
-                TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
+                TAGS_SUCCESS.URL_TAG_IDS: url_utub_association.associated_tag_ids,
                 TAGS_SUCCESS.TAG_STILL_IN_UTUB: num_left_in_utub > 0,
                 TAGS_SUCCESS.TAG: tag_to_remove.serialized_on_add_delete,
             }
@@ -318,7 +318,7 @@ def update_tag_on_url(utub_id: int, utub_url_id: int, tag_id: int):
                 {
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_MODIFIED_ON_URL,
-                    TAGS_SUCCESS.URL_TAGS: url_utub_association.associated_tags,
+                    TAGS_SUCCESS.URL_TAG_IDS: url_utub_association.associated_tag_ids,
                     TAGS_SUCCESS.TAG: tag_that_already_exists.serialized,
                     TAGS_SUCCESS.PREVIOUS_TAG: {
                         MODELS.ID: tag_id,

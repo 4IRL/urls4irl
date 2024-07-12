@@ -30,10 +30,13 @@ from tests.models_for_test import (
 )
 
 TEST_SPLIT = (
-    {"urls", "members"},
-    {"cli", "tags"},
-    {"splash", "utubs"},
-    {"unit"},
+    "unit",
+    "splash",
+    "utubs",
+    "members",
+    "urls",
+    "tags",
+    "cli",
 )
 
 
@@ -48,13 +51,12 @@ def pytest_collection_modifyitems(
         selected_items = []
 
         for item in items:
-            parent_markers = set([mark.name for mark in item.parent.own_markers])
-            if not TEST_SPLIT[current_worker] & parent_markers:
+            if item.get_closest_marker(TEST_SPLIT[current_worker]) is None:
                 deselected_items.append(item)
             else:
                 selected_items.append(item)
 
-        print(f"Running markers: {', '.join(TEST_SPLIT[current_worker])}")
+        print(f"Running marker: {TEST_SPLIT[current_worker]}")
         config.hook.pytest_deselected(items=deselected_items)
         items[:] = selected_items
 
