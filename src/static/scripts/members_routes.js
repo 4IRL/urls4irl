@@ -158,15 +158,13 @@ function createMemberFailErrors(errors) {
   }
 }
 
-function displayCreateMemberFailErrors(key, errorMessage) {
-  $("#" + key + "Create-error")
-    .addClass("visible")
-    .text(errorMessage);
-  $("#" + key + "Create").addClass("invalid-field");
+function displayCreateMemberFailErrors(_, errorMessage) {
+  $("#memberCreate-error").addClass("visible").text(errorMessage);
+  $("#memberCreate").addClass("invalid-field");
 }
 
 function resetCreateMemberFailErrors() {
-  const createMemberFields = ["username"];
+  const createMemberFields = ["member"];
   createMemberFields.forEach((fieldName) => {
     $("#" + fieldName + "Create-error").removeClass("visible");
     $("#" + fieldName + "Create").removeClass("invalid-field");

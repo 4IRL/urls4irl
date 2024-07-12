@@ -47,6 +47,17 @@ function unbindSelectURLBehavior() {
   getSelectedUrlCard().off(".urlSelected");
 }
 
+function isURLCurrentlyVisibleInURLDeck(urlString) {
+  const visibleURLs = $(".urlString");
+
+  for (let i = 0; i < visibleURLs.length; i++) {
+    if ($(visibleURLs[i]).text() === urlString) {
+      return true;
+    }
+  }
+  return false;
+}
+
 // Perform actions on selection of a URL card
 function selectURLCard(urlCard, url) {
   deselectAllURLs();
@@ -224,6 +235,86 @@ function showURLDeckBannerError(errorMessage) {
 }
 
 /** URL Functions **/
+
+// Update URLs in center panel based on asynchronous updates or stale data
+function updateURLDeck(updatedUTubUrls, updatedUTubTags) {
+  const oldURLs = $(".urlRow");
+  const oldURLIDs = $.map(oldURLs, (url) => parseInt($(url).attr("urlid")));
+  const newURLIDs = $.map(updatedUTubUrls, (newURL) => newURL.utubUrlID);
+
+  // Remove any URLs that are in old that aren't in new
+  let oldURLID, urlToRemove;
+  for (let i = 0; i < oldURLIDs.length; i++) {
+    oldURLID = parseInt($(oldURLIDs[i]).attr("urlid"));
+    if (!newURLIDs.includes(oldURLID)) {
+      urlToRemove = $(".urlRow[urlid=" + oldURLID + "]");
+      urlToRemove.fadeOut("fast", function () {
+        urlToRemove.remove();
+      });
+    }
+  }
+
+  // Add any URLs that are in new that aren't in old
+  const urlDeck = $("#listURLs");
+  for (let i = 0; i < updatedUTubUrls.length; i++) {
+    if (!oldURLIDs.includes(updatedUTubUrls[i].utubUrlID)) {
+      urlDeck.append(createURLBlock(updatedUTubUrls[i], updatedUTubTags));
+    }
+  }
+
+  // Update any URLs in both old/new that might have new data from new
+  let urlToUpdate;
+  for (let i = 0; i < oldURLIDs.length; i++) {
+    if (newURLIDs.includes(oldURLIDs[i])) {
+      urlToUpdate = $(".urlRow[urlid=" + oldURLIDs[i] + "]");
+      updateURLAfterFindingStaleData(
+        urlToUpdate,
+        updatedUTubUrls.find((url) => url.utubUrlID === oldURLIDs[i]),
+        updatedUTubTags,
+      );
+    }
+  }
+}
+
+function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
+  const urlTitle = urlCard.find(".urlTitle");
+  const urlString = urlCard.find(".urlString");
+
+  urlTitle.text() !== newUrl.urlTitle ? urlTitle.text(newUrl.urlTitle) : null;
+
+  urlString.text() !== newUrl.urlString
+    ? urlString.text(newUrl.urlString)
+    : null;
+
+  const currentURLTags = urlCard.find(".tagBadge");
+  const currentURLTagIDs = $.map(currentURLTags, (tag) =>
+    parseInt($(tag).attr("tagid")),
+  );
+
+  // Find tag IDs that are in old and not in new and remove them
+  for (let i = 0; i < currentURLTagIDs.length; i++) {
+    if (!newUrl.urlTagIDs.includes(currentURLTagIDs[i])) {
+      currentURLTags.each(function (_, tag) {
+        if (parseInt($(tag).attr("tagid")) === currentURLTagIDs[i]) {
+          $(tag).remove();
+          return false;
+        }
+      });
+    }
+  }
+
+  // Find tag IDs that are in new and not old and add them
+  const urlTagContainer = urlCard.find(".urlTagsContainer");
+  let tagToAdd;
+  for (let i = 0; i < newUrl.urlTagIDs.length; i++) {
+    if (!currentURLTagIDs.includes(newUrl.urlTagIDs[i])) {
+      tagToAdd = updatedUTubTags.find((tag) => tag.id === newUrl.urlTagIDs[i]);
+      urlTagContainer.append(
+        createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString),
+      );
+    }
+  }
+}
 
 // Build center panel URL list for selectedUTub
 function buildURLDeck(UTubName, dictURLs, dictTags) {

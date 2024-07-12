@@ -1524,11 +1524,12 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified the URL string, or no change. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors, or unable to validate URL, or URL already in UTub. |
+> | `400`         | `application/json`                | `See below.` | Form errors, or unable to validate URL. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+> | `409`         | `application/json`                | `See below.` | URL already in UTub. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1581,18 +1582,6 @@ Unable to validate the given URL.
 
 ###### 400 HTTP Code Response Body
 
-URL already in UTub.
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "URL already in UTub.",
->     "errorCode": 4,
-> }
-> ```
-
-###### 400 HTTP Code Response Body
-
 Indicates missing or invalid form data sent in the request.
 
 > ```json
@@ -1623,6 +1612,19 @@ Indicates missing or invalid form data sent in the request.
 >     "status": "Failure",
 >     "message": "Unable to update, please check inputs.",
 >     "errorCode": 6,
+> }
+> ```
+
+###### 409 HTTP Code Response Body
+
+URL already in UTub.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "URL already in UTub.",
+>     "errorCode": 4,
+>     "urlString": "https://www.google.com/"  
 > }
 > ```
 

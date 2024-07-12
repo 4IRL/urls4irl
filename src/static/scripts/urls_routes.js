@@ -247,7 +247,7 @@ async function updateURL(urlStringUpdateInput, urlCard) {
 
     request.fail(function (xhr, _, textStatus) {
       resetUpdateURLFailErrors(urlCard);
-      updateURLFail(xhr, urlCard);
+      updateURLFail(xhr, urlCard, utubID);
     });
 
     request.always(function () {
@@ -294,12 +294,12 @@ function updateURLSuccess(response, urlCard) {
 }
 
 // Displays appropriate prompts and options to user following a failed update of a URL
-function updateURLFail(xhr, urlCard) {
+function updateURLFail(xhr, urlCard, utubID) {
+  const responseJSON = xhr.responseJSON;
+  const hasErrors = responseJSON.hasOwnProperty("errors");
+  const hasMessage = responseJSON.hasOwnProperty("message");
   switch (xhr.status) {
     case 400:
-      const responseJSON = xhr.responseJSON;
-      const hasErrors = responseJSON.hasOwnProperty("errors");
-      const hasMessage = responseJSON.hasOwnProperty("message");
       if (hasErrors) {
         updateURLFailErrors(responseJSON.errors, urlCard);
         break;
@@ -308,6 +308,18 @@ function updateURLFail(xhr, urlCard) {
         displayUpdateURLErrors("urlString", responseJSON.message, urlCard);
         break;
       }
+    case 409:
+      // Indicates duplicate URL error
+      // If duplicate URL is not currently visible, indicates another user has added this URL
+      // or updated another card to the new URL
+      // Reload UTub and add/modify differences
+      if (responseJSON.hasOwnProperty("urlString")) {
+        if (!isURLCurrentlyVisibleInURLDeck(responseJSON.urlString)) {
+          updateUTubOnFindingStaleData(utubID);
+        }
+      }
+      displayUpdateURLErrors("urlString", responseJSON.message, urlCard);
+      break;
     case 403:
     case 404:
     default:

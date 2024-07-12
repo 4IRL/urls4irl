@@ -1662,7 +1662,7 @@ def test_update_utub_url_with_url_already_in_utub(
         "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
-    THEN verify that the server responds with a 400 HTTP status code, the URL is not modified in the UTub, and the proper JSON response
+    THEN verify that the server responds with a 409 HTTP status code, the URL is not modified in the UTub, and the proper JSON response
         is given
 
     Proper JSON is as follows:
@@ -1712,13 +1712,14 @@ def test_update_utub_url_with_url_already_in_utub(
         data=update_url_string_form,
     )
 
-    assert update_url_string_form.status_code == 400
+    assert update_url_string_form.status_code == 409
 
     # Assert JSON response from server is valid
     json_response = update_url_string_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
     assert json_response[STD_JSON.ERROR_CODE] == 4
+    assert json_response[MODEL_STRS.URL_STRING] == current_url_string
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

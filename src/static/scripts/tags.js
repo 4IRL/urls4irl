@@ -120,6 +120,32 @@ function removeTagFromUTubDeckGivenTagID(tagID) {
 
 /** Tag Functions **/
 
+// Update tags in LH panel based on asynchronous updates or stale data
+function updateTagDeck(updatedTags) {
+  const oldTags = $(".tagFilter");
+  const oldTagIDs = $.map(oldTags, (tag) => parseInt($(tag).attr("tagid")));
+  const newTagIDs = $.map(updatedTags, (tag) => tag.id);
+
+  // Find any tags in old that aren't in new and remove them
+  let oldTagID;
+  for (let i = 0; i < oldTags.length; i++) {
+    oldTagID = parseInt($(oldTags[i]).attr("tagid"));
+    if (!newTagIDs.includes(oldTagID)) {
+      $(".tagFilter[tagid=" + oldTagID + "]").remove();
+    }
+  }
+
+  // Find any tags in new that aren't in old and add them
+  const tagDeck = $("#listTags");
+  for (let i = 0; i < updatedTags.length; i++) {
+    if (!oldTagIDs.includes(updatedTags[i].id)) {
+      tagDeck.append(
+        createTagFilterInDeck(updatedTags[i].id, updatedTags[i].tagString),
+      );
+    }
+  }
+}
+
 // Build LH panel tag list in selectedUTub
 function buildTagDeck(dictTags) {
   resetTagDeck();

@@ -429,9 +429,10 @@ def update_url(utub_id: int, utub_url_id: int):
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
                             STD_JSON.ERROR_CODE: 4,
+                            URL_FAILURE.URL_STRING: url_already_in_database.url_string,
                         }
                     ),
-                    400,
+                    409,
                 )
 
         # Now check if this normalized URL is the same as the original
