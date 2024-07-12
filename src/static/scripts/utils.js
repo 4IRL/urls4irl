@@ -55,10 +55,17 @@ function bindSwitchURLKeyboardEventListeners() {
 
       if (!prev && !next) return;
       const selectedURLCard = getSelectedURLCard();
-      if (selectedURLCard === null) return;
 
       const allURLs = $(".urlRow");
       const allURLsLength = allURLs.length;
+      if (allURLsLength === 0) return;
+
+      if (selectedURLCard === null) {
+        // Select first url if none are selected
+        selectURLCard($(allURLs[0]));
+        return;
+      }
+
       const currentIndex = allURLs.index(selectedURLCard);
 
       if (prev) {
