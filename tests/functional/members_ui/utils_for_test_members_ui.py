@@ -1,6 +1,7 @@
 # Standard library
 
 # External libraries
+from time import sleep
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
@@ -111,3 +112,6 @@ def leave_all_utubs(browser, user_name):
             continue
         else:
             leave_active_utub(browser)
+            wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+            # Wait for POST request
+            sleep(4)

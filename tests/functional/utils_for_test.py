@@ -100,6 +100,7 @@ def clear_then_send_keys(element, input_text: str):
     input_field.send_keys(input_text)
 
 
+# Splash Page
 def login_user(
     browser,
     username: str = UI_TEST_STRINGS.TEST_USER_1,
@@ -123,6 +124,7 @@ def login_user(
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
 
+# UTub Deck
 def select_utub_by_name(browser, utub_name: str):
     """
     Regardless of the current page state, this function clicks the UTub selector matching the indicated utub_name
@@ -148,6 +150,15 @@ def get_selected_utub_name(browser):
     utub_name = active_utub_selector.get_attribute("innerText")
 
     return utub_name
+
+
+def get_num_utubs(browser):
+    utub_deck_subheader = wait_then_get_element(browser, MPL.SUBHEADER_UTUB_DECK)
+
+    utub_deck_subheader_text = utub_deck_subheader.get_attribute("innerText")
+    num_utubs = utub_deck_subheader_text.split(" UTub")[0]
+
+    return int(num_utubs)
 
 
 def get_current_user_name(browser):

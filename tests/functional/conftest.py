@@ -40,7 +40,7 @@ def pytest_addoption(parser):
 
     # Option 1: Headless
     parser.addoption(
-        "--headless", action="store", default="true", help="my option: true or false"
+        "--show_browser", action="store_true", help="Show browser when included"
     )
 
     # Option 2: Show Pytest debug strings
@@ -50,6 +50,21 @@ def pytest_addoption(parser):
 
     # Option 3: Show Flask logs
     parser.addoption("--FL", action="store_true", help="Show Flask logs when included")
+
+
+@pytest.fixture(scope="session")
+def turn_off_headless(request):
+    return request.config.getoption("--show_browser")
+
+
+@pytest.fixture(scope="session")
+def debug_strings(request):
+    return request.config.getoption("--DS")
+
+
+@pytest.fixture(scope="session")
+def flask_logs(request):
+    return request.config.getoption("--FL")
 
 
 def run_app(port: int, show_flask_logs: bool):
@@ -126,21 +141,6 @@ def provide_port() -> int:
 
 
 @pytest.fixture(scope="session")
-def headless(request):
-    return request.config.getoption("--headless")
-
-
-@pytest.fixture(scope="session")
-def debug_strings(request):
-    return request.config.getoption("--DS")
-
-
-@pytest.fixture(scope="session")
-def flask_logs(request):
-    return request.config.getoption("--FL")
-
-
-@pytest.fixture(scope="session")
 def parallelize_app(provide_port, init_multiprocessing, flask_logs):
     """
     Starts a parallel process, runs Flask app
@@ -163,7 +163,7 @@ def parallelize_app(provide_port, init_multiprocessing, flask_logs):
 
 @pytest.fixture(scope="session")
 def build_driver(
-    provide_port: int, parallelize_app, headless
+    provide_port: int, parallelize_app, turn_off_headless
 ) -> Generator[WebDriver, None, None]:
     """
     Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
@@ -171,7 +171,7 @@ def build_driver(
     open_port = provide_port
     options = Options()
 
-    if headless == "false":
+    if turn_off_headless:
         # Disable Chrome browser pop-up notifications
         # prefs = {"profile.default_content_setting_values.notifications" : 2}
         # options.add_experimental_option("prefs",prefs)

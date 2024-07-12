@@ -3,7 +3,7 @@
 $(document).ready(function () {
   // Dev tracking of click-triggered objects
   $(document).on("click", function (e) {
-    console.log($(e.target)[0]);
+    // console.log($(e.target)[0]);
   });
 
   // CSRF token initialization for non-modal POST requests
@@ -338,5 +338,5 @@ function displayState1() {
   displayState1UTubDeck(null, null);
   updateCountOfTagFiltersApplied();
   displayState1URLDeck();
-  displayState1MemberDeck();
+  displayState1MemberDeck(null, false);
 }
