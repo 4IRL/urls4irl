@@ -1341,11 +1341,12 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a URL to a UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | URL unable to be validated, or already in UTub, or form errors. |
+> | `400`         | `application/json`                | `See below.` | URL unable to be validated, or form errors. |
 > | `403`         | `application/json`                | `See below.` | Requesting user not in the requested UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+> | `409`         | `application/json`                | `See below.` | URL already in UTub. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1373,16 +1374,6 @@ Indicates the URL could not be validated.
 >     "message": "Unable to validate this URL.",
 >     "details": "Message describing the connection error.",
 >     "errorCode": 2,
-> }
-> ```
-
-###### 400 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "URL already in UTub.",
->     "errorCode": 3,
 > }
 > ```
 
@@ -1419,6 +1410,19 @@ Indicates form errors with adding this URL to this UTub.
 >     "status": "Failure",
 >     "message": "Unable to add this URL.",
 >     "errorCode": 5,
+> }
+> ```
+
+###### 409 HTTP Code Response Body
+
+URL already in UTub.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "URL already in UTub.",
+>     "errorCode": 3,
+>     "urlString": "https://www.google.com/"  
 > }
 > ```
 

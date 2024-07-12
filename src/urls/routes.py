@@ -190,9 +190,10 @@ def create_url(utub_id: int):
                             STD_JSON.STATUS: STD_JSON.FAILURE,
                             STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
                             STD_JSON.ERROR_CODE: 3,
+                            URL_FAILURE.URL_STRING: already_created_url.url_string,
                         }
                     ),
-                    400,
+                    409,
                 )
 
         # Associate URL with given UTub

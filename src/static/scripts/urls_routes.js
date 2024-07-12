@@ -19,9 +19,9 @@ function createURLShowInput() {
 }
 
 // Prepares post request inputs for addition of a new URL
-function createURLSetup(createURLTitleInput, createURLInput) {
+function createURLSetup(createURLTitleInput, createURLInput, utubID) {
   // Assemble post request route
-  const postURL = routes.createURL(getActiveUTubID());
+  const postURL = routes.createURL(utubID);
 
   // Assemble submission data
   const newURLTitle = createURLTitleInput.val();
@@ -36,40 +36,31 @@ function createURLSetup(createURLTitleInput, createURLInput) {
 
 // Handles addition of new URL after user submission
 function createURL(createURLTitleInput, createURLInput) {
+  const utubID = getActiveUTubID();
   // Extract data to submit in POST request
-  [postURL, data] = createURLSetup(createURLTitleInput, createURLInput);
+  [postURL, data] = createURLSetup(createURLTitleInput, createURLInput, utubID);
 
-  // A custom AJAX call, built to show a loading icon after a given number of MS
-  let timeoutId;
-  $.ajax({
-    url: postURL,
-    method: "POST",
-    data: data,
+  // Show loading icon when creating a URL
+  const timeoutId = setTimeout(function () {
+    $("#urlCreateDualLoadingRing").addClass("dual-loading-ring");
+  }, SHOW_LOADING_ICON_AFTER_MS);
+  const request = AJAXCall("post", postURL, data);
 
-    // Following overwrites the global ajaxSetup call, so needs to include CSRFToken again
-    beforeSend: function (xhr, settings) {
-      globalBeforeSend(xhr, settings);
-      timeoutId = setTimeout(function () {
-        $("#urlCreateDualLoadingRing").addClass("dual-loading-ring");
-      }, SHOW_LOADING_ICON_AFTER_MS);
-    },
+  request.done(function (response, _, xhr) {
+    if (xhr.status === 200) {
+      createURLSuccess(response);
+    }
+  });
 
-    success: function (response, _, xhr) {
-      if (xhr.status === 200) {
-        createURLSuccess(response);
-      }
-    },
+  request.fail(function (xhr, _, textStatus) {
+    resetCreateURLFailErrors();
+    createURLFail(xhr, utubID);
+  });
 
-    error: function (xhr, _, errorThrown) {
-      resetCreateURLFailErrors();
-      createURLFail(xhr);
-    },
-
-    complete: function () {
-      // Icon is only shown after 25ms - if <25ms, the timeout and callback function are cleared
-      clearTimeout(timeoutId);
-      $("#urlCreateDualLoadingRing").removeClass("dual-loading-ring");
-    },
+  request.always(function () {
+    // Icon is only shown after 25ms - if <25ms, the timeout and callback function are cleared
+    clearTimeout(timeoutId);
+    $("#urlCreateDualLoadingRing").removeClass("dual-loading-ring");
   });
 }
 
@@ -91,19 +82,30 @@ function createURLSuccess(response) {
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
-function createURLFail(xhr) {
+function createURLFail(xhr, utubID) {
+  const responseJSON = xhr.responseJSON;
+  const hasErrors = responseJSON.hasOwnProperty("errors");
+  const hasMessage = responseJSON.hasOwnProperty("message");
   switch (xhr.status) {
     case 400:
-      const responseJSON = xhr.responseJSON;
-      if (
-        responseJSON !== undefined &&
-        responseJSON.hasOwnProperty("message")
-      ) {
-        responseJSON.hasOwnProperty("errors")
+      if (responseJSON !== undefined && hasMessage) {
+        hasErrors
           ? createURLShowFormErrors(responseJSON.errors)
           : displayCreateUrlFailErrors("urlString", responseJSON.message);
         highlightInput($("#urlStringCreate"));
       }
+      break;
+    case 409:
+      // Indicates duplicate URL error
+      // If duplicate URL is not currently visible, indicates another user has added this URL
+      // or updated another card to the new URL
+      // Reload UTub and add/modify differences
+      if (responseJSON.hasOwnProperty("urlString")) {
+        if (!isURLCurrentlyVisibleInURLDeck(responseJSON.urlString)) {
+          updateUTubOnFindingStaleData(utubID);
+        }
+      }
+      displayCreateUrlFailErrors("urlString", responseJSON.message);
       break;
     case 403:
     case 404:

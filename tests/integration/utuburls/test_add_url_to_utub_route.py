@@ -569,7 +569,7 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that they already added the URL to, as the creator of the UTub
         - By POST to "/utubs/<int:utub_id>/urls" where "urlID" is an integer representing UTub ID
-    THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
+    THEN ensure that the server responds with a 409 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
     Proper JSON response is as follows:
@@ -577,6 +577,7 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : "URL already in UTub",
         STD_JSON.ERROR_CODE: 3
+        URLS_FAILURE.URL_STRING : "https://www.google.com",
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -619,12 +620,13 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         data=add_url_form,
     )
 
-    assert add_url_response.status_code == 400
+    assert add_url_response.status_code == 409
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert add_url_json_response[URL_FAILURE.URL_STRING] == url_string_to_add
 
     with app.app_context():
         # Ensure same number of URLs in UTub as before
@@ -655,14 +657,15 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that someone else added, as the creator of the UTub
         - By POST to "/utubs/<int:utub_id>/urls" where "urlID" is an integer representing UTub ID
-    THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
+    THEN ensure that the server responds with a 409 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : URL_FAILURE.URL_IN_UTUB,
+        STD_JSON.MESSAGE : "URL already in UTub",
         STD_JSON.ERROR_CODE: 3
+        URLS_FAILURE.URL_STRING : "https://www.google.com",
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -708,12 +711,13 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
         data=add_url_form,
     )
 
-    assert add_url_response.status_code == 400
+    assert add_url_response.status_code == 409
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert add_url_json_response[URL_FAILURE.URL_STRING] == url_string_to_add
 
     with app.app_context():
         # Ensure same number of URLs in UTub as before
@@ -743,7 +747,7 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that someone else added, as the member of the UTub
         - By POST to "/utubs/<int:utub_id>/urls" where "urlID" is an integer representing UTub ID
-    THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
+    THEN ensure that the server responds with a 409 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Url_UTub-User association exists
 
     Proper JSON response is as follows:
@@ -751,6 +755,7 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : URL_FAILURE.URL_IN_UTUB,
         STD_JSON.ERROR_CODE: 3
+        URL_FAILURE.URL_STRING : URL_FAILURE.URL_IN_UTUB,
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -796,12 +801,13 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         data=add_url_form,
     )
 
-    assert add_url_response.status_code == 400
+    assert add_url_response.status_code == 409
 
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
     assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert add_url_json_response[URL_FAILURE.URL_STRING] == url_string_to_add
 
     with app.app_context():
         # Ensure same number of URLs in UTub as before
@@ -1091,7 +1097,7 @@ def test_add_duplicate_url_to_utub_does_not_update_utub_last_updated(
         currently in the database, with all UTubs containing all URLs
     WHEN the user tries to add a URL to a UTub that someone else added, as the member of the UTub
         - By POST to "/utubs/<int:utub_id>/urls" where "urlID" is an integer representing UTub ID
-    THEN ensure that the server responds with a 400 HTTP status code, and the last updated field
+    THEN ensure that the server responds with a 409 HTTP status code, and the last updated field
          of the UTub is not modified
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -1132,7 +1138,7 @@ def test_add_duplicate_url_to_utub_does_not_update_utub_last_updated(
         data=add_url_form,
     )
 
-    assert add_url_response.status_code == 400
+    assert add_url_response.status_code == 409
 
     with app.app_context():
         utub_to_check: Utubs = Utubs.query.get(id_of_utub_that_is_member_of)
