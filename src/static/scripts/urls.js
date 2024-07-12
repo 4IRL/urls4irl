@@ -31,20 +31,20 @@ function getNumOfURLs() {
 }
 
 // Simple function to streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
-function getSelectedUrlCard() {
+function getSelectedURLCard() {
   const selectedUrlCard = $(".urlRow[urlSelected=true]");
   return selectedUrlCard.length ? selectedUrlCard : null;
 }
 
 // function to streamline the jQuery selector extraction of selected URL ID. And makes it easier in case the ID is encoded in a new location in the future
 function getSelectedURLID() {
-  const selectedUrlCard = getSelectedUrlCard();
+  const selectedUrlCard = getSelectedURLCard();
   return selectedUrlCard === null ? NaN : selectedUrlCard.attr("urlid");
 }
 
 // Prevent deselection of URL while modifying its values (e.g. adding a tag, updating URL string or title)
 function unbindSelectURLBehavior() {
-  getSelectedUrlCard().off(".urlSelected");
+  getSelectedURLCard().off(".urlSelected");
 }
 
 function isURLCurrentlyVisibleInURLDeck(urlString) {
@@ -59,14 +59,15 @@ function isURLCurrentlyVisibleInURLDeck(urlString) {
 }
 
 // Perform actions on selection of a URL card
-function selectURLCard(urlCard, url) {
+function selectURLCard(urlCard) {
   deselectAllURLs();
+  const urlString = urlCard.find(".urlString").text();
   urlCard
     .find(".urlString")
     .off("click.goToURL")
     .on("click.goToURL", function (e) {
       e.stopPropagation();
-      accessLink(url.urlString);
+      accessLink(urlString);
     });
   urlCard.attr({ urlSelected: true });
   urlCard.find(".goToUrlIcon").addClass("visible-flex");
@@ -83,7 +84,7 @@ function deselectURL(urlCard) {
 }
 
 function deselectAllURLs() {
-  const previouslySelectedCard = getSelectedUrlCard();
+  const previouslySelectedCard = getSelectedURLCard();
   if (previouslySelectedCard !== null) deselectURL(previouslySelectedCard);
 }
 
@@ -213,11 +214,11 @@ function enableEditingURLTitle(urlCard) {
   }
 }
 
-function setURLCardSelectionEventListener(urlCard, url) {
+function setURLCardSelectionEventListener(urlCard) {
   urlCard.off("click.urlSelected").on("click.urlSelected", function (e) {
     if ($(e.target).parents(".urlRow").length > 0) {
       if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") return;
-      selectURLCard(urlCard, url);
+      selectURLCard(urlCard);
     }
   });
 }
@@ -373,7 +374,7 @@ function createURLBlock(url, tagArray) {
     createTagsAndOptionsForUrlBlock(url, tagArray, outerUrlCard),
   );
 
-  setURLCardSelectionEventListener(outerUrlCard, url);
+  setURLCardSelectionEventListener(outerUrlCard);
 
   return outerUrlCard;
 }

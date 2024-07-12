@@ -177,9 +177,6 @@ function updateUTubNameShowInput() {
   // Setup event listeners on window and escape/enter keys to escape the input box
   setEventListenersToEscapeUpdateUTubName();
 
-  // Prevent URL keyboard selection while updating name
-  unbindURLKeyboardEventListenersWhenUpdatesOccurring();
-
   if ($("#URLDeckSubheader").text().length === 0) {
     allowUserToCreateDescriptionIfEmptyOnTitleUpdate();
   }
@@ -200,9 +197,6 @@ function updateUTubNameHideInput() {
 
   // Handle giving mobile devices ability to see button again
   $("#utubNameBtnUpdate").addClass("visibleBtn");
-
-  // Allow URL selection with keyboard again
-  bindURLKeyboardEventListenersWhenUpdatesNotOccurring();
 
   if ($("#URLDeckSubheader").text().length === 0) {
     hideIfShown($("#URLDeckSubheaderCreateDescription"));
