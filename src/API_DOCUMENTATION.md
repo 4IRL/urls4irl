@@ -1766,7 +1766,7 @@ Indicates invalid form data sent in the request.
 
 ------------------------------------------------------------------------------------------
 
-#### UTub Tags
+#### UTub URL Tags
 
 <details>
  <summary><code>POST</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/tags</b></code> <code>(add a tag to a URL in a UTub)</code></summary>

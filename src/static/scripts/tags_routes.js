@@ -76,9 +76,9 @@ function hideAndResetCreateURLTagForm(urlCard) {
 }
 
 // Prepares post request inputs for addition of a new Tag to URL
-function createURLTagSetup(urlTagCreateInput) {
+function createURLTagSetup(urlTagCreateInput, utubID, urlID) {
   // Assemble post request route
-  const postURL = routes.createURLTag(getActiveUTubID(), getSelectedURLID());
+  const postURL = routes.createURLTag(utubID, urlID);
 
   // Assemble submission data
   const data = {
@@ -89,23 +89,41 @@ function createURLTagSetup(urlTagCreateInput) {
 }
 
 // Handles addition of new Tag to URL after user submission
-function createURLTag(urlTagCreateInput, urlCard) {
+async function createURLTag(urlTagCreateInput, urlCard) {
+  const utubID = getActiveUTubID();
+  const urlID = parseInt(urlCard.attr("urlid"));
   // Extract data to submit in POST request
-  [postURL, data] = createURLTagSetup(urlTagCreateInput);
+  [postURL, data] = createURLTagSetup(urlTagCreateInput, utubID, urlID);
 
-  AJAXCall("post", postURL, data);
+  let timeoutID;
+  try {
+    timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
+    await getUpdatedURL(utubID, urlID, urlCard);
 
-  // Handle response
-  request.done(function (response, _, xhr) {
-    if (xhr.status === 200) {
-      resetCreateURLTagFailErrors(urlCard);
-      createURLTagSuccess(response, urlCard);
-    }
-  });
+    const request = AJAXCall("post", postURL, data);
 
-  request.fail(function (xhr, _, textStatus) {
-    createURLTagFail(xhr, urlCard);
-  });
+    // Handle response
+    request.done(function (response, _, xhr) {
+      if (xhr.status === 200) {
+        resetCreateURLTagFailErrors(urlCard);
+        createURLTagSuccess(response, urlCard);
+      }
+    });
+
+    request.fail(function (xhr, _, textStatus) {
+      createURLTagFail(xhr, urlCard);
+    });
+
+    request.always(function () {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    });
+  } catch (error) {
+    clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    handleRejectFromGetURL(error, urlCard, {
+      showError: true,
+      message: "Another user has deleted this URL",
+    });
+  }
 }
 
 // Displays changes related to a successful addition of a new Tag
