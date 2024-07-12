@@ -25,6 +25,8 @@ $(document).ready(function () {
     return false;
   });
 
+  bindSwitchURLKeyboardEventListeners();
+
   // Provide responsiveness to the custom text input boxes
   const textInputs = $(".text-input");
   let textInput;
@@ -43,58 +45,47 @@ const globalBeforeSend = function (xhr, settings) {
 };
 
 // Keyboard navigation between selected UTubs or URLs
-function bindURLKeyboardEventListenersWhenUpdatesNotOccurring() {
-  /*
+function bindSwitchURLKeyboardEventListeners() {
   $(document)
     .off("keyup.switchurls")
     .on("keyup.switchurls", function (e) {
-      if (isNaN(getSelectedURLID())) return;
-      e.stopPropagation();
       const keycode = e.keyCode ? e.keyCode : e.which;
-      const prev = keycode === 37 || keycode === 38; // UP and LEFT keys
-      const next = keycode === 39 || keycode === 40; // DOWN and RIGHT keys
+      const prev = keycode === 38; // UP
+      const next = keycode === 40; // DOWN
 
-      const UPRCards = $("#UPRRow").children(".cardCol");
-      const LWRCards = $("#LWRRow").children(".cardCol");
+      if (!prev && !next) return;
+      const selectedURLCard = getSelectedURLCard();
 
-      const UPRcardsCount = UPRCards.length;
-      const LWRcardsCount = LWRCards.length;
+      const allURLs = $(".urlRow");
+      const allURLsLength = allURLs.length;
+      if (allURLsLength === 0) return;
 
-      if (prev) {
-        let urlID;
-        if (UPRcardsCount > 0) {
-          // User wants to highlight previous URL
-          const cardCol = $($(UPRCards)[UPRcardsCount - 1]);
-          urlID = $(cardCol[0].children).attr("urlid");
-        } else {
-          // Highlight last card in lower row
-          const cardCol = $($(LWRCards)[LWRcardsCount - 1]);
-          urlID = $(cardCol[0].children).attr("urlid");
-        }
-        toggleSelectedURL(urlID);
-        bindEscapeToUnselectURL(urlID);
-      } else if (next) {
-        let urlID;
-        if (LWRcardsCount === 0) {
-          // User hit the last URL and should cycle back
-          const cardCol = $($(UPRCards)[0]);
-          urlID = $(cardCol[0].children).attr("urlid");
-        } else {
-          // User has another URL in the LWRRow to select
-          const cardCol = $($(LWRCards)[0]);
-          urlID = $($(cardCol)[0].children).attr("urlid");
-        }
-        toggleSelectedURL(urlID);
-        bindEscapeToUnselectURL(urlID);
+      if (selectedURLCard === null) {
+        // Select first url if none are selected
+        selectURLCard($(allURLs[0]));
+        return;
       }
 
-      //REHCH Goal: No URL selected, switch UTubs
-    });
-  */
-}
+      const currentIndex = allURLs.index(selectedURLCard);
 
-function unbindURLKeyboardEventListenersWhenUpdatesOccurring() {
-  $(document).off("keyup.switchurls");
+      if (prev) {
+        if (currentIndex === 0) {
+          // Wrap to select the bottom URL instead
+          selectURLCard($(allURLs[allURLsLength - 1]));
+        } else {
+          selectURLCard($(allURLs[currentIndex - 1]));
+        }
+      }
+
+      if (next) {
+        if (currentIndex === allURLsLength - 1) {
+          // Wrap to select first URL
+          selectURLCard($(allURLs[0]));
+        } else {
+          selectURLCard($(allURLs[currentIndex + 1]));
+        }
+      }
+    });
 }
 
 function unbindEscapeKey() {
