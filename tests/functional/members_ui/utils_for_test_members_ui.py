@@ -1,6 +1,7 @@
 # Standard library
 
 # External libraries
+from time import sleep
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
@@ -59,7 +60,6 @@ def delete_member_active_utub(browser, user_name, member_name):
         member_usernames = get_all_member_usernames(browser)
         i = 0
         for username in member_usernames:
-            print(username)
             # Delete only indicated member
             if username == member_name:
                 member_badge_to_delete = member_badges[i]
@@ -72,8 +72,6 @@ def delete_member_active_utub(browser, user_name, member_name):
                 member_delete_button = member_badge_to_delete.find_element(
                     By.CSS_SELECTOR, MPL.BUTTON_MEMBER_DELETE
                 )
-
-                print(member_delete_button.is_displayed())
 
                 actions.move_to_element(member_delete_button).pause(2)
 
@@ -95,14 +93,9 @@ def leave_active_utub(browser):
     """
 
     try:
-        leave_utub_btn = browser.find_element_by_css_selector(MPL.BUTTON_UTUB_LEAVE)
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_LEAVE)
     except NoSuchElementException:
         return False
-
-    leave_utub_btn.click()
-
-    # assert modal
-    # wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
 
 
 def leave_all_utubs(browser, user_name):
@@ -119,3 +112,6 @@ def leave_all_utubs(browser, user_name):
             continue
         else:
             leave_active_utub(browser)
+            wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+            # Wait for POST request
+            sleep(4)

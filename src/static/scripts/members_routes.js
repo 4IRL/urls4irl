@@ -120,7 +120,7 @@ function createMemberSuccess(response) {
   );
 
   createMemberHideInput();
-  displayState1MemberDeck();
+  displayState1MemberDeck(null, true);
 }
 
 function createMemberFail(xhr) {
@@ -229,15 +229,9 @@ function removeMember(memberID, isCreator) {
     if (xhr.status === 200) {
       if (isCreator) {
         removeMemberSuccess(memberID);
-        return;
+      } else {
+        leaveUTubSuccess();
       }
-      $("#memberSelfBtnDelete").hide();
-      $("#confirmModal").modal("hide");
-      displayState0();
-      displayState1UTubDeck(null, null);
-
-      if ($("#listUTubs").find(".UTubSelector").length === 0)
-        displayState0UTubDeck();
     }
   });
 
@@ -262,7 +256,24 @@ function removeMemberSuccess(memberID) {
     memberListItem.remove();
   });
 
-  displayState1MemberDeck();
+  displayState1MemberDeck(null, true);
+}
+
+function leaveUTubSuccess() {
+  // Close modal
+  $("#confirmModal").modal("hide");
+
+  // Members Deck display updates
+  $("#memberSelfBtnDelete").hide();
+  $("#confirmModal").modal("hide");
+  displayState0();
+
+  // UTub Deck display updates
+  const UTubSelector = $(".UTubSelector[utubid=" + getActiveUTubID() + "]");
+  UTubSelector.fadeOut("slow", function () {
+    UTubSelector.remove();
+    displayState1UTubDeck(null, null);
+  });
 }
 
 function removeMemberFail(xhr) {

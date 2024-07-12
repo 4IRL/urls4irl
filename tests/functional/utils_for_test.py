@@ -1,7 +1,7 @@
 # Standard library
 
 # External libraries
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -43,6 +43,8 @@ def wait_then_get_element(browser, css_selector: str, time: float = 2):
         return element
     except NoSuchElementException:
         return False
+    except TimeoutException:
+        return 0
 
 
 def wait_then_get_elements(browser, css_selector: str, time: float = 2):
@@ -64,6 +66,8 @@ def wait_then_get_elements(browser, css_selector: str, time: float = 2):
         return elements
     except NoSuchElementException:
         return False
+    except TimeoutException:
+        return 0
 
 
 def wait_then_click_element(browser, css_selector: str, time: float = 2):
@@ -96,6 +100,7 @@ def clear_then_send_keys(element, input_text: str):
     input_field.send_keys(input_text)
 
 
+# Splash Page
 def login_user(
     browser,
     username: str = UI_TEST_STRINGS.TEST_USER_1,
@@ -119,14 +124,16 @@ def login_user(
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
 
+# UTub Deck
 def select_utub_by_name(browser, utub_name: str):
     """
     Regardless of the current page state, this function clicks the UTub selector matching the indicated utub_name
     """
 
-    utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    utub_list = wait_then_get_element(browser, MPL.LIST_UTUB)
 
-    # Cycle through all
+    utub_selectors = utub_list.find_elements(By.CSS_SELECTOR, "*")
+
     for selector in utub_selectors:
         utub_selector_name = selector.get_attribute("innerText")
 
@@ -145,11 +152,19 @@ def get_selected_utub_name(browser):
     return utub_name
 
 
+def get_num_utubs(browser):
+    utub_deck_subheader = wait_then_get_element(browser, MPL.SUBHEADER_UTUB_DECK)
+
+    utub_deck_subheader_text = utub_deck_subheader.get_attribute("innerText")
+    num_utubs = utub_deck_subheader_text.split(" UTub")[0]
+
+    return int(num_utubs)
+
+
 def get_current_user_name(browser):
     logged_in_user = wait_then_get_element(browser, MPL.OUTPUT_LOGGED_IN_USERNAME)
     logged_in_user_string = logged_in_user.get_attribute("innerText")
     user_name = logged_in_user_string.split("as ")
-    print(user_name[1])
 
     return user_name[1]
 

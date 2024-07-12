@@ -31,3 +31,4 @@ class UI_TEST_STRINGS:
     BODY_MODAL_MEMBER_DELETE = (
         "This member will no longer have access to the URLs in this UTub."
     )
+    BODY_MODAL_LEAVE_UTUB = "You will no longer have access to the URLs in this UTub."

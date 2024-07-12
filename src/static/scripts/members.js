@@ -99,16 +99,7 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
   }
 
   // Subheader prompt
-  displayState1MemberDeck(numOfMembers);
-
-  // Ability to add members is restricted to UTub owner
-  if (isCurrentUserOwner) {
-    hideIfShown($("#memberSelfBtnDelete"));
-    showIfHidden($("#memberBtnCreate"));
-  } else {
-    hideIfShown($("#memberBtnCreate"));
-    showIfHidden($("#memberSelfBtnDelete"));
-  }
+  displayState1MemberDeck(numOfMembers, isCurrentUserOwner);
 }
 
 // Creates member list item
@@ -200,16 +191,25 @@ function displayState0MemberDeck() {
 }
 
 // Display state 1: Selected UTub has no Members
-function displayState1MemberDeck() {
-  showIfHidden($("#memberBtnCreate"));
+function displayState1MemberDeck(numOfMembers, isCurrentUserOwner) {
+  if (numOfMembers == null) {
+    // Count UTub members
+    numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
+  }
+
+  // Ability to add members is restricted to UTub owner
+  if (isCurrentUserOwner) {
+    hideIfShown($("#memberSelfBtnDelete"));
+    showIfHidden($("#memberBtnCreate"));
+  } else {
+    hideIfShown($("#memberBtnCreate"));
+    showIfHidden($("#memberSelfBtnDelete"));
+  }
 
   let MemberDeckSubheader = $("#MemberDeckSubheader");
 
   // Subheader prompt shown
   showIfHidden(MemberDeckSubheader.closest(".titleElement"));
-
-  // Count UTub members
-  let numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
 
   if (numOfMembers === 1) {
     MemberDeckSubheader.text("Add a member");

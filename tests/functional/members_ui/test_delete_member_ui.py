@@ -2,6 +2,7 @@
 from time import sleep
 
 # Internal libraries
+from locators import MainPageLocators as MPL
 from src.mocks.mock_constants import UTUB_NAME_BASE, USERNAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.members_ui.utils_for_test_members_ui import (
@@ -14,7 +15,6 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
     wait_then_get_element,
 )
-from locators import MainPageLocators as MPL
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
