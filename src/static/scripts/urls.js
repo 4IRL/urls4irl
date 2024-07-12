@@ -310,7 +310,7 @@ function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
     if (!currentURLTagIDs.includes(newUrl.urlTagIDs[i])) {
       tagToAdd = updatedUTubTags.find((tag) => tag.id === newUrl.urlTagIDs[i]);
       urlTagContainer.append(
-        createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString),
+        createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString, urlCard),
       );
     }
   }
@@ -568,7 +568,11 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard) {
   const tagsAndTagCreateWrap = $(document.createElement("div")).addClass(
     "urlTags flex-column",
   );
-  const tagBadgesWrap = createTagBadgesAndWrap(tagArray, url.urlTagIDs);
+  const tagBadgesWrap = createTagBadgesAndWrap(
+    tagArray,
+    url.urlTagIDs,
+    urlCard,
+  );
 
   tagsAndButtonsWrap.append(tagsAndTagCreateWrap);
   tagsAndTagCreateWrap.append(tagBadgesWrap);
@@ -581,7 +585,7 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard) {
 }
 
 // Create the outer container for the tag badges
-function createTagBadgesAndWrap(dictTags, tagArray) {
+function createTagBadgesAndWrap(dictTags, tagArray, urlCard) {
   const tagBadgesWrap = $(document.createElement("div")).addClass(
     "urlTagsContainer flex-row flex-start",
   );
@@ -594,7 +598,7 @@ function createTagBadgesAndWrap(dictTags, tagArray) {
       }
     });
 
-    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString);
+    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString, urlCard);
 
     $(tagBadgesWrap).append(tagSpan);
   }
@@ -742,20 +746,20 @@ function newURLInputRemoveEventListeners() {
 }
 
 // Handle URL deck display changes related to creating a new tag
-function createTagBadgeInURL(tagID, string) {
+function createTagBadgeInURL(tagID, tagString, urlCard) {
   const tagSpan = $(document.createElement("span"));
   const removeButton = $(document.createElement("div"));
 
   tagSpan
     .addClass("tagBadge flex-row align-center")
     .attr({ tagid: tagID })
-    .text(string);
+    .text(tagString);
 
   removeButton
     .addClass("urlTagBtnDelete flex-row align-center pointerable")
     .on("click", function (e) {
       e.stopPropagation();
-      deleteURLTag(tagID, tagSpan);
+      deleteURLTag(tagID, tagSpan, urlCard);
     });
 
   removeButton.append(createTagDeleteIcon());

@@ -118,6 +118,14 @@ function removeTagFromUTubDeckGivenTagID(tagID) {
     .remove();
 }
 
+// Is a tag in a given url deck
+function isTagInURL(tagID, urlCard) {
+  return (
+    urlCard.find(".urlTagsContainer > .tagBadge[tagid=" + tagID + "]").length >
+    0
+  );
+}
+
 /** Tag Functions **/
 
 // Update tags in LH panel based on asynchronous updates or stale data

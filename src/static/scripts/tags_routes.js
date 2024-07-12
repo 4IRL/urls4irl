@@ -136,7 +136,9 @@ function createURLTagSuccess(response, urlCard) {
   const string = response.tag.tagString;
 
   // Update tags in URL
-  urlCard.find(".urlTagsContainer").append(createTagBadgeInURL(tagID, string));
+  urlCard
+    .find(".urlTagsContainer")
+    .append(createTagBadgeInURL(tagID, string, urlCard));
 
   // Add SelectAll button if not yet there
   if (isEmpty($("#selectAll"))) {
@@ -198,21 +200,29 @@ function resetCreateURLTagFailErrors(urlCard) {
 /* Remove tag from URL */
 
 // Prepares post request inputs for removal of a URL - tag
-function deleteURLTagSetup(tagID) {
-  const deleteURL = routes.deleteURLTag(
-    getActiveUTubID(),
-    getSelectedURLID(),
-    tagID,
-  );
+function deleteURLTagSetup(utubID, urlID, tagID) {
+  const deleteURL = routes.deleteURLTag(utubID, urlID, tagID);
 
   return deleteURL;
 }
 
 // Remove tag from selected URL
-async function deleteURLTag(tagID, tagBadge) {
+async function deleteURLTag(tagID, tagBadge, urlCard) {
+  const utubID = getActiveUTubID();
+  const urlID = parseInt(urlCard.attr("urlid"));
+  let timeoutID;
   try {
+    timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
+    await getUpdatedURL(utubID, urlID, urlCard);
+
+    // If tag was already deleted on update of URL, exit early
+    if (!isTagInURL(tagID, urlCard)) {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+      return;
+    }
+
     // Extract data to submit in POST request
-    const deleteURL = deleteURLTagSetup(tagID);
+    const deleteURL = deleteURLTagSetup(utubID, urlID, tagID);
 
     const request = AJAXCall("delete", deleteURL, []);
 
@@ -226,8 +236,16 @@ async function deleteURLTag(tagID, tagBadge) {
     request.fail(function (xhr, _, textStatus) {
       deleteURLTagFail(xhr);
     });
+
+    request.always(function () {
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    });
   } catch (error) {
-    handleRejectFromGetURL(error);
+    clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+    handleRejectFromGetURL(error, urlCard, {
+      showError: true,
+      message: "Another user has deleted this URL",
+    });
   }
 }
 

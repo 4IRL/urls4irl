@@ -677,7 +677,13 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
       // Add tag to URL
       urlCard
         .find(".urlTagsContainer")
-        .append(createTagBadgeInURL(receivedTag.tagID, receivedTag.tagString));
+        .append(
+          createTagBadgeInURL(
+            receivedTag.tagID,
+            receivedTag.tagString,
+            urlCard,
+          ),
+        );
 
       // Add tag to UTub if it doesn't already exist
       if (!isTagInUTub(allCurrentTags, receivedTag.tagID)) {
