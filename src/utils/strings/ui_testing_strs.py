@@ -1,5 +1,5 @@
 # Internal libraries
-from src.mocks.mock_constants import USERNAME_BASE, EMAIL_SUFFIX
+from src.mocks.mock_constants import USERNAME_BASE, MOCK_UTUB_NAME_BASE, EMAIL_SUFFIX
 
 
 class UI_TEST_STRINGS:
@@ -12,8 +12,6 @@ class UI_TEST_STRINGS:
     TEST_USER_UNLISTED = USERNAME_BASE + "_UNLISTED"
     TEST_PASSWORD_UNLISTED = TEST_USER_UNLISTED + EMAIL_SUFFIX
 
-    MAX_CHAR_LIM_UTUB_NAME = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
-
     # Register
     HEADER_MODAL_EMAIL_VALIDATION = "Validate Your Email!"
 
@@ -24,11 +22,24 @@ class UI_TEST_STRINGS:
     )
 
     # UTubs
+    TEST_UTUB_1 = MOCK_UTUB_NAME_BASE + "1"
     BODY_MODAL_UTUB_SAME_NAME = "You already have a UTub with a similar name."
     BODY_MODAL_UTUB_DELETE = "This action is irreverisible!"
+
+    MAX_CHAR_LIM_UTUB_NAME = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
 
     # Members
     BODY_MODAL_MEMBER_DELETE = (
         "This member will no longer have access to the URLs in this UTub."
     )
     BODY_MODAL_LEAVE_UTUB = "You will no longer have access to the URLs in this UTub."
+
+    # Tags
+
+    # URLs
+    BODY_MODAL_URL_DELETE = (
+        "This member will no longer have access to the URLs in this UTub."
+    )
+
+    MAX_CHAR_LIM_URL_STRING = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
+    MAX_CHAR_LIM_URL_TITLE = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"

@@ -2,7 +2,7 @@
 from time import sleep
 
 # Internal libraries
-from src.mocks.mock_constants import UTUB_NAME_BASE, USERNAME_BASE
+from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE, USERNAME_BASE
 from tests.functional.members_ui.utils_for_test_members_ui import (
     create_member_active_utub,
     get_all_member_usernames,
@@ -25,7 +25,7 @@ def test_create_member(browser, create_test_utubs):
     login_user(browser)
 
     new_member_username = USERNAME_BASE + "2"
-    utub_name = UTUB_NAME_BASE + "1"
+    utub_name = MOCK_UTUB_NAME_BASE + "1"
     user_name = get_current_user_name(browser)
 
     select_utub_by_name(browser, utub_name)

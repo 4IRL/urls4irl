@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from src.mocks.mock_constants import TEST_USER_COUNT, UTUB_NAME_BASE
+from src.mocks.mock_constants import TEST_USER_COUNT, MOCK_UTUB_NAME_BASE
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Member_Role, Utub_Members
@@ -17,7 +17,7 @@ def generate_mock_utubs(db: SQLAlchemy, no_dupes: bool):
     """
     for i in range(TEST_USER_COUNT):
         creator_id = i + 1
-        utub_name = f"{UTUB_NAME_BASE}{creator_id}"
+        utub_name = f"{MOCK_UTUB_NAME_BASE}{creator_id}"
         creator: Users = Users.query.get(creator_id)
 
         if (

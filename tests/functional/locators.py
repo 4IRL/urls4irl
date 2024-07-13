@@ -24,9 +24,13 @@ class MainPageLocators:
     # URL Deck
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     BUTTON_UTUB_UPDATE = "#utubNameBtnUpdate"
-    BUTTON_URL_CREATE = "#urlBtnCreate"
     SUBHEADER_UTUB_DESCRIPTION = "#UTubDescriptionDeckSubheader"
     BUTTON_UTUB_DESCRIPTION_UPDATE = "#editUTubDescriptionBtn"
+
+    BUTTON_URL_CREATE = "#urlBtnCreate"
+    INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
+    INPUT_URL_STRING_CREATE = "#URLStringCreate"
+    BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
 
     # Members Deck
     SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"

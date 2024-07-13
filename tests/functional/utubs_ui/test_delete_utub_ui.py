@@ -3,7 +3,7 @@ from time import sleep
 import pytest
 
 # Internal libraries
-from src.mocks.mock_constants import UTUB_NAME_BASE, USERNAME_BASE
+from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE, USERNAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.utils_for_test import (
     login_user,
@@ -25,7 +25,7 @@ def test_delete_utub(browser, create_test_utubs):
 
     login_user(browser)
 
-    utub_name = UTUB_NAME_BASE + "1"
+    utub_name = MOCK_UTUB_NAME_BASE + "1"
     user_name = USERNAME_BASE + "1"
 
     select_utub_by_name(browser, utub_name)
@@ -64,6 +64,6 @@ def test_delete_last_utub(browser, create_test_utubs):
     selector_UTub1 = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
 
     # Assert new UTub selector was created with input UTub Name
-    assert selector_UTub1.text == UTUB_NAME_BASE + "1"
+    assert selector_UTub1.text == MOCK_UTUB_NAME_BASE + "1"
     # Assert new UTub is now active and displayed to user
     assert "active" in selector_UTub1.get_attribute("class")

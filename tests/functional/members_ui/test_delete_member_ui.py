@@ -3,7 +3,7 @@ from time import sleep
 
 # Internal libraries
 from locators import MainPageLocators as MPL
-from src.mocks.mock_constants import UTUB_NAME_BASE, USERNAME_BASE
+from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE, USERNAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.members_ui.utils_for_test_members_ui import (
     delete_member_active_utub,
@@ -27,8 +27,8 @@ def test_delete_member(browser, create_test_utubmembers):
 
     login_user(browser)
 
-    utub_name = UTUB_NAME_BASE + "1"
-    user_name = UTUB_NAME_BASE + "1"
+    utub_name = MOCK_UTUB_NAME_BASE + "1"
+    user_name = MOCK_UTUB_NAME_BASE + "1"
     member_name = USERNAME_BASE + "2"
 
     select_utub_by_name(browser, utub_name)
