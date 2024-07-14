@@ -65,16 +65,18 @@ def update_url_title(browser, url_row, url_title: str):
 
     # Select editURL button
     url_title_text = url_row.find_element(By.CSS_SELECTOR, ".urlTitle")
-    update_url_title_button = url_row.find_element(
-        By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_UPDATE
-    )
 
     actions = ActionChains(browser)
 
     # Hover over URL title to display editURLTitle button
     actions.move_to_element(url_title_text)
+
     # Pause to make sure editURLTitle button is visible
-    actions.pause(3)
+    actions.pause(3).perform()
+
+    update_url_title_button = url_row.find_element(
+        By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_UPDATE
+    )
 
     actions.move_to_element(update_url_title_button).pause(2)
 
@@ -92,7 +94,7 @@ def update_url_title(browser, url_row, url_title: str):
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE).click()
 
 
-def delete_url(browser):
+def delete_active_url(browser):
     """
     Once logged in, with users, UTubs, and URLs this function initiates the action to delete one URL from the UTub. Modal confirmation handled in test.
     """

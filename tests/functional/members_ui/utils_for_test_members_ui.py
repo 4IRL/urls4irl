@@ -58,8 +58,7 @@ def delete_member_active_utub(browser, member_name):
 
         # Find index for appropriate member to delete
         member_usernames = get_all_member_usernames(browser)
-        i = 0
-        for username in member_usernames:
+        for i, username in enumerate(member_usernames):
             # Delete only indicated member
             if username == member_name:
                 member_badge_to_delete = member_badges[i]
@@ -80,7 +79,6 @@ def delete_member_active_utub(browser, member_name):
                 actions.perform()
 
                 return True
-            i += 1
 
         return False
     else:
