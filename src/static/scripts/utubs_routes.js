@@ -45,9 +45,9 @@ $(document).ready(function () {
 
 // Shows new UTub input fields
 function createUTubShowInput() {
-  showInput("#createUTubWrap");
-  highlightInput($("#utubNameCreate"));
+  showIfHidden($("#createUTubWrap"));
   createNewUTubEventListeners();
+  $("#utubNameCreate").trigger("focus");
   hideIfShown($("#listUTubs"));
   $("#UTubDeck").find(".icon-holder").hide();
   removeCreateDeleteUTubEventListeners();
@@ -69,6 +69,7 @@ function createUTubHideInput() {
 function createUTub() {
   // Extract data to submit in POST request
   [postURL, data] = createUTubSetup();
+  resetUTubFailErrors();
 
   let request = AJAXCall("post", postURL, data);
 

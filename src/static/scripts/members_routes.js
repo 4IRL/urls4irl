@@ -2,11 +2,11 @@
 
 // Shows new Member input fields
 function createMemberShowInput() {
-  showIfHidden($("#createMemberWrap").show());
+  showIfHidden($("#createMemberWrap"));
   hideIfShown($("#displayMemberWrap"));
   hideIfShown($("#memberBtnCreate"));
-  highlightInput($("#memberCreate"));
   setupCreateMemberEventListeners();
+  $("#memberCreate").trigger("focus");
 }
 
 // Hides new Member input fields
@@ -19,14 +19,27 @@ function createMemberHideInput() {
   resetNewMemberForm();
 }
 
+// This function will extract the current selection data needed for POST request (member ID)
+function createMemberSetup() {
+  const postURL = routes.createMember(getActiveUTubID());
+
+  const newMemberUsername = $("#memberCreate").val();
+  const data = {
+    username: newMemberUsername,
+  };
+
+  return [postURL, data];
+}
+
 function createMember() {
   // Extract data to submit in POST request
   [postURL, data] = createMemberSetup();
+  resetCreateMemberFailErrors();
 
-  AJAXCall("post", postURL, data);
+  const request = AJAXCall("post", postURL, data);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
+  request.done(function (response, _, xhr) {
     if (xhr.status === 200) {
       createMemberSuccess(response);
     }
@@ -38,46 +51,67 @@ function createMember() {
 }
 
 function setupCreateMemberEventListeners() {
-  // Prevent clicking in input box from closing the form
-  $("#memberCreate")
-    .off("click.createMember")
-    .on("click.createMember", function (e) {
-      e.stopPropagation();
+  const memberSubmitBtnCreate = $("#memberSubmitBtnCreate");
+  const memberCancelBtnCreate = $("#memberCancelBtnCreate");
+
+  memberSubmitBtnCreate
+    .off("click.createMemberSubmit")
+    .on("click.createMemberSubmit", function (e) {
+      if ($(e.target).closest("#memberSubmitBtnCreate").length > 0)
+        createMember();
     });
 
-  // Allow submission button to not close form in case of error
-  $("#memberSubmitBtnCreate")
-    .off("click.createMember")
-    .on("click.createMember", function (e) {
-      e.stopPropagation();
-      createMember();
+  memberSubmitBtnCreate
+    .off("focus.createMemberSubmit")
+    .on("focus.createMemberSubmit", function () {
+      $(document).on("keyup.createMemberSubmit", function (e) {
+        if (e.which === 13) createMember();
+      });
     });
 
-  // Allow closing add member form by clicking anywhere else
-  $(window)
-    .off("click.createMember")
-    .on("click.createMember", function (e) {
-      const target = $(e.target);
-      // Allow the cancel button to close the form
-      if (
-        target.parents("#memberCancelBtnCreate").length ||
-        target.is("#memberCancelBtnCreate")
-      ) {
+  memberSubmitBtnCreate
+    .off("blur.createMemberSubmit")
+    .on("blur.createMemberSubmit", function () {
+      $(document).off("keyup.createMemberSubmit");
+    });
+
+  memberCancelBtnCreate
+    .off("click.createMemberEscape")
+    .on("click.createMemberEscape", function (e) {
+      if ($(e.target).closest("#memberCancelBtnCreate").length > 0)
         createMemberHideInput();
-        return;
-      }
-
-      // Prevent initial opening form click or add member form area click from closing form
-      const isInitialCreateMemberBtn =
-        target.parents("#memberBtnCreate").length;
-      const isInCreateMemberFormArea =
-        target.parents("#createMemberWrap").length;
-      if (isInitialCreateMemberBtn || isInCreateMemberFormArea) return;
-      createMemberHideInput();
     });
 
+  memberCancelBtnCreate
+    .off("focus.createMemberEscape")
+    .on("focus.createMemberEscape", function () {
+      $(document).on("keyup.createMemberEscape", function (e) {
+        if (e.which === 13) createMemberHideInput();
+      });
+    });
+
+  memberCancelBtnCreate
+    .off("blur.createMemberEscape")
+    .on("blur.createMemberEscape", function () {
+      $(document).off("keyup.createMemberEscape");
+    });
+
+  const memberInput = $("#memberCreate");
+  memberInput.on("focus.createMemberSubmitEscape", function () {
+    bindCreateMemberFocusEventListeners();
+  });
+  memberInput.on("blur.createMemberSubmitSubmitEscape", function () {
+    unbindCreateMemberFocusEventListeners();
+  });
+}
+
+function removeCreateMemberEventListeners() {
+  $("#memberCreate").off(".createMemberSubmitEscape");
+}
+
+function bindCreateMemberFocusEventListeners() {
   // Allow closing by pressing escape key
-  $(document).bind("keyup.createMember", function (e) {
+  $(document).on("keyup.createMemberSubmitEscape", function (e) {
     switch (e.which) {
       case 13:
         // Handle enter key pressed
@@ -93,21 +127,8 @@ function setupCreateMemberEventListeners() {
   });
 }
 
-function removeCreateMemberEventListeners() {
-  $(document).off(".createMember");
-  $(window).off(".createMember");
-}
-
-// This function will extract the current selection data needed for POST request (member ID)
-function createMemberSetup() {
-  const postURL = routes.createMember(getActiveUTubID());
-
-  const newMemberUsername = $("#memberCreate").val();
-  data = {
-    username: newMemberUsername,
-  };
-
-  return [postURL, data];
+function unbindCreateMemberFocusEventListeners() {
+  $(document).off(".createMemberSubmitEscape");
 }
 
 // Perhaps update a scrollable/searchable list of members?

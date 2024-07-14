@@ -106,12 +106,12 @@ function showInput(handle) {
   const inputDiv = inputEl.closest(".createDiv");
   showIfHidden(inputDiv);
 
-  highlightInput(inputEl);
+  //highlightInput(inputEl);
 }
 
 // Highlight the input field. Typically if user requests action that is already displayed
 function highlightInput(inputEl) {
-  inputEl.focus();
+  $(inputEl).trigger("focus");
   if (inputEl[0].value) {
     inputEl[0].setSelectionRange(0, inputEl[0].value.length);
   }

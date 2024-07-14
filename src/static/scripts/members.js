@@ -2,12 +2,21 @@
 
 $(document).ready(function () {
   /* Bind click functions */
+  const memberBtnCreate = $("#memberBtnCreate");
 
   // Add member to UTub
-  $("#memberBtnCreate").on("click.createMember", function () {
-    hideInputs();
-    deselectAllURLs();
+  memberBtnCreate.on("click.createMember", function () {
     createMemberShowInput();
+  });
+
+  memberBtnCreate.on("focus", function () {
+    $(document).on("keyup.createMember", function (e) {
+      if (e.which === 13) createMemberShowInput();
+    });
+  });
+
+  memberBtnCreate.on("blur", function () {
+    $(document).off(".createMember");
   });
 });
 

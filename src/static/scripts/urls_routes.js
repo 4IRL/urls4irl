@@ -4,8 +4,9 @@ const SHOW_LOADING_ICON_AFTER_MS = 50;
 /* Add URL */
 
 // Displays new URL input prompt
-function createURLHideInput(urlInputForm) {
+function createURLHideInput() {
   resetNewURLForm();
+  showIfHidden($("#urlBtnCreate"));
   if (!getNumOfURLs()) $("#NoURLsSubheader").show();
 }
 
@@ -14,8 +15,9 @@ function createURLShowInput() {
   if (!getNumOfURLs()) $("#NoURLsSubheader").hide();
   const createURLInputForm = $("#createURLWrap");
   showIfHidden(createURLInputForm);
-  highlightInput(createURLInputForm.find("#urlTitleCreate"));
   newURLInputAddEventListeners(createURLInputForm);
+  $("#urlTitleCreate").trigger("focus");
+  hideIfShown($("#urlBtnCreate"));
 }
 
 // Prepares post request inputs for addition of a new URL
@@ -92,7 +94,6 @@ function createURLFail(xhr, utubID) {
         hasErrors
           ? createURLShowFormErrors(responseJSON.errors)
           : displayCreateUrlFailErrors("urlString", responseJSON.message);
-        highlightInput($("#urlStringCreate"));
       }
       break;
     case 409:

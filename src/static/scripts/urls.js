@@ -2,12 +2,23 @@
 
 $(document).ready(function () {
   /* Bind click functions */
+  const urlBtnCreate = $("#urlBtnCreate");
 
   // Add new URL to current UTub
-  $("#urlBtnCreate").on("click", function (e) {
-    e.stopPropagation();
-    hideInputs();
-    createURLShowInput();
+  urlBtnCreate.on("click", function (e) {
+    if ($(e.target).closest("#urlBtnCreate").length > 0) createURLShowInput();
+  });
+
+  urlBtnCreate.on("focus", function () {
+    $(document).on("keyup.createURL", function (e) {
+      if (e.which === 13) {
+        createURLShowInput();
+      }
+    });
+  });
+
+  urlBtnCreate.on("blur", function () {
+    $(document).off(".createURL");
   });
 
   // Open all URLs in UTub in separate tabs
@@ -110,8 +121,8 @@ function clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard) {
 
 function bindEscapeToExitURLTitleUpdating() {
   $(document)
-    .unbind("keyup.escapeUrlTitleUpdating")
-    .bind("keyup.escapeUrlTitleUpdating", function (e) {
+    .off("keyup.escapeUrlTitleUpdating")
+    .on("keyup.escapeUrlTitleUpdating", function (e) {
       if (e.which === 27) {
         console.log("Trying to hide URL title input");
         updateURLTitleHideInput();
@@ -718,11 +729,32 @@ function newURLInputAddEventListeners(urlInputForm) {
   });
 
   $(urlBtnDelete).on("click.createURL", function (e) {
-    e.stopPropagation();
-    createURLHideInput();
+    if ($(e.target).closest(urlBtnDelete).length > 0) createURLHideInput();
   });
 
-  // TODO: Escape and enter functionality
+  const inputArr = [createURLInput, createURLTitleInput];
+
+  for (let i = 0; i < inputArr.length; i++) {
+    $(inputArr[i]).on("focus.createURL", function () {
+      bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput);
+    });
+
+    $(inputArr[i]).on("blur.createURL", function () {
+      unbindCreateURLFocusEventListeners();
+    });
+  }
+}
+
+function newURLInputRemoveEventListeners() {
+  resetCreateURLFailErrors();
+  $("#urlSubmitBtnCreate").off();
+  $("#urlCancelBtnCreate").off();
+  $(document).off(".createURL");
+  $("#urlTitleCreate").off(".createURL");
+  $("#urlStringCreate").off(".createURL");
+}
+
+function bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput) {
   $(document).on("keyup.createURL", function (e) {
     switch (e.which) {
       case 13:
@@ -739,10 +771,7 @@ function newURLInputAddEventListeners(urlInputForm) {
   });
 }
 
-function newURLInputRemoveEventListeners() {
-  resetCreateURLFailErrors();
-  $("#urlSubmitBtnCreate").off();
-  $("#urlCancelBtnCreate").off();
+function unbindCreateURLFocusEventListeners() {
   $(document).off(".createURL");
 }
 

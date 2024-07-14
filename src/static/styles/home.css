@@ -207,6 +207,7 @@
 
 .invalid-field {
     border-color: red !important;
+    transition: border-color 0.2s ease-in-out;
 }
 
 .pointerable {
