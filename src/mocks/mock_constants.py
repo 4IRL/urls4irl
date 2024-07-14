@@ -7,11 +7,11 @@ MOCK_UTUB_DESCRIPTION = "This is a description"
 MOCK_URL_TITLES = ("Google", "Github", "Microsoft", "Yahoo", "Flask")
 
 MOCK_URL_STRINGS = (
-    "https://www.google.com",
-    "https://www.github.com",
-    "https://www.microsoft.com",
-    "https://www.yahoo.com",
-    "https://flask.palletsprojects.com",
+    "https://www.google.com/",
+    "https://www.github.com/",
+    "https://www.microsoft.com/",
+    "https://www.yahoo.com/",
+    "https://flask.palletsprojects.com/",
 )
 
 MOCK_TAGS = (

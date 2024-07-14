@@ -22,15 +22,33 @@ class MainPageLocators:
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
 
     # URL Deck
+    HEADER_URL_DECK = "#URLDeckHeader"
+    BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
-    BUTTON_UTUB_UPDATE = "#utubNameBtnUpdate"
-    SUBHEADER_UTUB_DESCRIPTION = "#UTubDescriptionDeckSubheader"
-    BUTTON_UTUB_DESCRIPTION_UPDATE = "#editUTubDescriptionBtn"
+    BUTTON_UTUB_DESCRIPTION_UPDATE = "#updateUTubDescriptionBtn"
+    LIST_URL = "#listURLs"
+    ROWS_URLS = ".urlRow"
 
     BUTTON_URL_CREATE = "#urlBtnCreate"
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
-    INPUT_URL_STRING_CREATE = "#URLStringCreate"
+    INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
+
+    # URLs
+    BUTTON_URL_ACCESS = ".urlBtnAccess"
+
+    BUTTON_URL_UPDATE = ".urlBtnUpdate"
+    # BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
+    INPUT_URL_STRING_UPDATE = ".urlStringUpdate"
+    BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
+
+    BUTTON_URL_TITLE_UPDATE = ".urlTitleBtnUpdate"
+    INPUT_URL_TITLE_UPDATE = ".urlTitleUpdate"
+    BUTTON_URL_TITLE_SUBMIT_UPDATE = ".urlTitleSubmitBtnUpdate"
+
+    INPUT_URL_TITLE_UPDATE = "#urlTitleCreate"
+
+    BUTTON_ACCESS_ALL_URLS = "#accessAllURLsBtn"
 
     # Members Deck
     SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"
@@ -41,7 +59,9 @@ class MainPageLocators:
     BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"
 
     SUBHEADER_UTUB = "#MemberDeckSubheader"
+    LIST_MEMBERS = "#listMembers"
     BADGES_MEMBERS = ".member"
+    BADGE_OWNER = "#UTubOwner"
 
     # Modal
     HEADER_MODAL = "#confirmModalTitle"

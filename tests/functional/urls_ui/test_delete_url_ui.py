@@ -5,6 +5,7 @@ import pytest
 # Internal libraries
 from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.urls_ui.utils_for_test_url_ui import delete_url
 from tests.functional.utils_for_test import (
     login_user,
     select_utub_by_name,
@@ -16,7 +17,7 @@ from tests.functional.utubs_ui.utils_for_test_utub_ui import delete_active_utub
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_delete_utub(browser, create_test_utubs):
+def test_delete_url(browser, create_test_urls):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
@@ -28,7 +29,7 @@ def test_delete_utub(browser, create_test_utubs):
     utub_name = UTS.TEST_UTUB_NAME_1
 
     select_utub_by_name(browser, utub_name)
-    delete_active_utub(browser)
+    delete_url(browser)
 
     warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
@@ -48,7 +49,7 @@ def test_delete_utub(browser, create_test_utubs):
 
 
 @pytest.mark.skip(reason="Test not yet implemented")
-def test_delete_last_utub(browser, create_test_utubs):
+def test_delete_last_url(browser, create_test_urls):
     """
     GIVEN a user has one UTub
     WHEN they delete the UTub

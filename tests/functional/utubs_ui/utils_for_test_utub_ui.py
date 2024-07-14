@@ -6,7 +6,7 @@
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
-    is_owner,
+    current_user_is_owner,
     wait_then_click_element,
     wait_then_get_element,
 )
@@ -34,8 +34,8 @@ def create_utub(browser, utub_name: str, utub_description: str):
     wait_then_click_element(browser, MPL.BUTTON_UTUB_SUBMIT_CREATE)
 
 
-def delete_active_utub(browser, user_name):
-    if is_owner(user_name):
+def delete_active_utub(browser):
+    if current_user_is_owner(browser):
         wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
     else:
         return False

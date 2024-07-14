@@ -1,7 +1,7 @@
 # Standard library
+from time import sleep
 
 # External libraries
-from time import sleep
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
@@ -10,7 +10,7 @@ from selenium.webdriver.common.by import By
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
-    is_owner,
+    current_user_is_owner,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -32,8 +32,8 @@ def get_all_member_usernames(browser):
     return member_names
 
 
-def create_member_active_utub(browser, user_name, member_name):
-    if is_owner(user_name):
+def create_member_active_utub(browser, member_name):
+    if current_user_is_owner(browser):
 
         # Click createMember button to show input
         wait_then_click_element(browser, MPL.BUTTON_MEMBER_CREATE)
@@ -50,9 +50,9 @@ def create_member_active_utub(browser, user_name, member_name):
         return False
 
 
-def delete_member_active_utub(browser, user_name, member_name):
+def delete_member_active_utub(browser, member_name):
     actions = ActionChains(browser)
-    if is_owner(user_name):
+    if current_user_is_owner(browser):
 
         member_badges = get_all_member_badges(browser)
 
@@ -98,7 +98,7 @@ def leave_active_utub(browser):
         return False
 
 
-def leave_all_utubs(browser, user_name):
+def leave_all_utubs(browser):
     """
     Cycles through all user's UTubs and leaves them, if not owner.
     """
@@ -108,7 +108,7 @@ def leave_all_utubs(browser, user_name):
     # Cycle through all UTubs and leave, if possible.
     for selector in UTub_selectors:
         selector.click()
-        if is_owner(browser, user_name):
+        if current_user_is_owner(browser):
             continue
         else:
             leave_active_utub(browser)

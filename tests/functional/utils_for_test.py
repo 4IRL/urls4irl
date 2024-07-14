@@ -67,6 +67,7 @@ def wait_then_get_elements(browser, css_selector: str, time: float = 2):
     except NoSuchElementException:
         return False
     except TimeoutException:
+        print("Timeout")
         return 0
 
 
@@ -103,11 +104,11 @@ def clear_then_send_keys(element, input_text: str):
 # Splash Page
 def login_user(
     browser,
-    username: str = UI_TEST_STRINGS.TEST_USER_1,
+    username: str = UI_TEST_STRINGS.TEST_USERNAME_1,
     password: str = UI_TEST_STRINGS.TEST_PASSWORD_1,
 ):
     """
-    Logs a user in using the Splash page modal. Defaults to TEST_USER_1
+    Logs a user in using the Splash page modal. Defaults to TEST_USERNAME_1
     """
 
     # Find and click login button to open modal
@@ -161,6 +162,12 @@ def get_num_utubs(browser):
     return int(num_utubs)
 
 
+def get_active_utub_owner_id(browser):
+    owner_badge = wait_then_get_element(browser, MPL.BADGE_OWNER)
+    owner_id = owner_badge.find_element(By.TAG_NAME, "span").get_attribute("memberid")
+    return int(owner_id)
+
+
 def get_current_user_name(browser):
     logged_in_user = wait_then_get_element(browser, MPL.OUTPUT_LOGGED_IN_USERNAME)
     logged_in_user_string = logged_in_user.get_attribute("innerText")
@@ -169,16 +176,32 @@ def get_current_user_name(browser):
     return user_name[1]
 
 
-def get_active_utub_owner_id(browser):
-    return True
-
-
 def get_current_user_id(browser):
-    return True
+    logged_in_user = wait_then_get_element(browser, MPL.OUTPUT_LOGGED_IN_USERNAME)
+
+    parent_element = logged_in_user.find_element(By.XPATH, "..")
+
+    user_id = parent_element.get_attribute("userid")
+
+    return int(user_id)
 
 
-def is_owner(browser):
+def current_user_is_owner(browser):
     """
-    Returns true if user is the owner of the selected UTub
+    Returns true if current user is the owner of the selected UTub
     """
     return get_current_user_id(browser) == get_active_utub_owner_id(browser)
+
+
+def get_url_row_by_title(browser, url_title: str):
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+
+    for url_row in url_rows:
+
+        url_row_title = url_row.find_element(By.CLASS_NAME, "urlTitle").get_attribute(
+            "innerText"
+        )
+        if url_row_title == url_title:
+            return url_row
+
+    return False

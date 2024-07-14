@@ -28,7 +28,9 @@ def test_register_new_user(browser):
     THEN U4I responds with a success modal prompting user to 'Validate Your Email!'
     """
 
-    register_user(browser, UTS.TEST_USER_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1)
+    register_user(
+        browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+    )
 
     # Await response
     time.sleep(3)
@@ -48,7 +50,10 @@ def test_register_existing_username(browser, add_test_users):
 
     # register_user(browser, username, email, password)
     register_user(
-        browser, UTS.TEST_USER_1, UTS.TEST_PASSWORD_UNLISTED, UTS.TEST_PASSWORD_UNLISTED
+        browser,
+        UTS.TEST_USERNAME_1,
+        UTS.TEST_PASSWORD_UNLISTED,
+        UTS.TEST_PASSWORD_UNLISTED,
     )
 
     # Extract error message text
@@ -89,7 +94,9 @@ def test_register_existing_username_and_email(browser, add_test_users):
     """
 
     # register_user(browser, username, email, password)
-    register_user(browser, UTS.TEST_USER_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1)
+    register_user(
+        browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+    )
 
     # Extract error message text
     invalid_feedback_messages = wait_then_get_elements(
@@ -105,12 +112,12 @@ def test_register_existing_username_and_email(browser, add_test_users):
 @pytest.mark.skip(reason="Not on happy path.")
 def test_register_failed_email_confirmation(browser):
     register_user_unconfirmed_email(
-        browser, UTS.TEST_USER_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+        browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )
 
 
 @pytest.mark.skip(reason="Not on happy path.")
 def test_register_failed_password_confirmation(browser):
     register_user_unconfirmed_password(
-        browser, UTS.TEST_USER_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+        browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )

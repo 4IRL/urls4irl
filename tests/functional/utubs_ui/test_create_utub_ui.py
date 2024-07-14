@@ -3,7 +3,7 @@ import pytest
 from time import sleep
 
 # Internal libraries
-from src.mocks.mock_constants import MOCK_UTUB_DESCRIPTION, MOCK_UTUB_NAME_BASE
+from src.mocks.mock_constants import MOCK_UTUB_DESCRIPTION
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.utils_for_test import (
     login_user,
@@ -24,7 +24,7 @@ def test_create_utub(browser, create_test_users):
 
     login_user(browser)
 
-    utub_name = MOCK_UTUB_NAME_BASE + "1"
+    utub_name = UTS.TEST_UTUB_NAME_1
 
     create_utub(browser, utub_name, MOCK_UTUB_DESCRIPTION)
 
@@ -56,7 +56,7 @@ def test_create_utub_name_length_exceeded(browser, create_test_users):
 
     create_utub(browser, UTS.MAX_CHAR_LIM_UTUB_NAME)
 
-    warning_modal_body = wait_then_get_element(browser, "#confirmModalBody")
+    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
 
     # Assert new UTub is now active and displayed to user
     assert warning_modal_body.text == "Try shortening your UTub name"
