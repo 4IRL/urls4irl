@@ -561,16 +561,18 @@
     background-color: var(--cardBackgroundColor);
 }
 
+.memberOtherBtnDelete:focus,
 .member:hover > .memberOtherBtnDelete {
-    display: flex;
+    opacity: 1;
 }
 
 .memberOtherBtnDelete {
-    display: none;
+    opacity: 0;
     color: var(--removeMemberColor);
     transition: color 0.2s;
 }
 
+.memberOtherBtnDelete:focus,
 .memberOtherBtnDelete:hover {
     color: red;
 }
@@ -578,6 +580,7 @@
 .memberOtherBtnDelete:focus {
     outline: none;
     box-shadow: none;
+    border: 1px solid red;
 }
 
 /** Custom Text Input Box **/
