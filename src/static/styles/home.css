@@ -152,6 +152,10 @@
     justify-content: space-between;
 }
 
+.justify-flex-end {
+    justify-content: flex-end;
+}
+
 .pad-in-15p {
     padding-inline: 15px;
 }
@@ -228,6 +232,10 @@
     width: calc(100% - 25px);
 }
 
+.visible-on-focus {
+    visibility: visible !important;
+}
+
 /* UTubs */
 
 .active,
@@ -260,10 +268,22 @@
 }
 
 
+.urlTagBtnDelete:focus,
 .tagBadge:hover .urlTagBtnDelete {
     width: 100%;
     opacity: 100%;
-    padding-left: 6px;
+}
+
+.tagText {
+    transition: padding 0.1s ease-in;
+}
+
+.tagBadge:hover > .tagText {
+    padding-right: 6px;
+}
+
+.urlTagBtnDelete:focus ~ .tagText {
+    padding-right: 6px;
 }
 
 .urlTagBtnDelete {
@@ -363,15 +383,22 @@
 }
 
 .goToUrlIcon {
-    display: none;
+    display: flex;
     color: var(--deckSelectionGreenHover);
-    transition: color 0.1s ease, visibility 2.5s ease;
+    transition: color 0.1s ease;
     align-self: flex-start;
 }
 
-.urlRow:hover .goToUrlIcon {
-    display: flex;
+.urlRow .goToUrlIcon {
+    visibility: hidden;
 }
+
+.urlRow[urlSelected="false"]:focus .goToUrlIcon,
+.urlRow[urlSelected="false"]:hover .goToUrlIcon,
+.urlRow[urlSelected="true"] .goToUrlIcon{
+    visibility: visible;
+}
+
 
 .goToUrlIcon:hover {
     color: var(--deckSelectionGreen);
@@ -385,10 +412,28 @@
 .urlTags,
 .urlOptions {
     height: 0;
-    overflow: hidden;
     transition: padding 0.2s ease-in-out, opacity 0.2s ease-in-out;
     padding: 0;
     opacity: 0;
+}
+
+.urlOptions > button {
+    font-size: 0;
+    transition: font-size: 0.2s ease-in-out;
+}
+
+.urlTags {
+    overflow: hidden;
+}
+
+.urlRow:focus {
+    outline: none;
+}
+
+.urlRow[urlSelected="false"]:focus-visible,
+.urlRow[urlSelected="false"]:focus {
+    border-top: 1px solid var(--focusedUrlBorder);
+    border-bottom: 1px solid var(--focusedUrlBorder) !important;
 }
 
 .urlRow[urlSelected="true"] {
@@ -411,6 +456,10 @@
 
 .urlRow[urlSelected="true"] .urlOptions {
     padding: 15px 0 0 0;
+}
+
+.urlRow[urlSelected="true"] .urlOptions > button {
+    font-size: initial;
 }
 
 .urlRow[urlSelected="true"] .urlString {

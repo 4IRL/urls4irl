@@ -39,6 +39,7 @@
 
     --cardURLTextColor: rgba(140, 155, 157, 1.0);
     --selectedUrlBorder: rgba(13, 255, 0, 1.0);
+    --focusedUrlBorder: rgba(13, 255, 0, 0.75);
 
     --oddUrlCardsBackgroundColor: rgba(61, 71, 71, 1.0);
     --evenUrlCardsBackgroundColor: rgba(51, 61, 61, 1.0);
