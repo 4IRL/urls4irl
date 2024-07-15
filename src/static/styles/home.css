@@ -354,7 +354,6 @@
 }
 
 .urlString {
-    width: 100%;
     color: var(--cardURLTextColor);
 }
 

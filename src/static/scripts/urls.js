@@ -573,6 +573,8 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     .prop("maxLength", CONSTANTS.URLS_MAX_LENGTH)
     .val(urlStringText);
 
+  setFocusEventListenersOnUpdateURLStringInput(urlStringTextInput, urlCard);
+
   // Update Url Title submit button
   const urlStringSubmitBtnUpdate = makeSubmitButton(30)
     .addClass("urlStringSubmitBtnUpdate")
@@ -592,6 +594,29 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     .append(urlStringCancelBtnUpdate);
 
   return urlStringUpdateTextInputContainer;
+}
+
+function setFocusEventListenersOnUpdateURLStringInput(urlStringInput, urlCard) {
+  urlStringInput.offAndOn("focus.updateURLStringFocus", function () {
+    $(document).on("keyup.updateURLStringFocus", function (e) {
+      switch (e.which) {
+        case 13:
+          // Handle enter key pressed
+          updateURL(urlStringInput, urlCard);
+          break;
+        case 27:
+          // Handle escape key pressed
+          hideAndResetUpdateURLStringForm(urlCard);
+          break;
+        default:
+        /* no-op */
+      }
+    });
+  });
+
+  urlStringInput.offAndOn("blur.updateURLStringFocus", function () {
+    $(document).off("keyup.updateURLStringFocus");
+  });
 }
 
 // Create both the tag container and the button container for a URL

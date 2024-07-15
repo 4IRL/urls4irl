@@ -232,6 +232,7 @@ async function updateURL(urlStringUpdateInput, urlCard) {
 
     if (urlStringUpdateInput.val() === urlCard.find(".urlString").text()) {
       hideAndResetUpdateURLStringForm(urlCard);
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
 
