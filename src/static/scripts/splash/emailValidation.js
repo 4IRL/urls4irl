@@ -6,9 +6,9 @@ $("#SplashModal").on("hide.bs.modal", function (_) {
   $("#SplashModal").off("hide.bs.modal");
   const searchParams = new URLSearchParams(window.location.search);
   if (searchParams.has("token")) {
-    window.location.replace(routes.logout());
+    window.location.replace(routes.logout);
   } else {
-    $.get(routes.logout());
+    $.get(routes.logout);
   }
 });
 

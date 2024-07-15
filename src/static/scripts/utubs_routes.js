@@ -6,7 +6,6 @@ $(document).ready(function () {
 
   // Update UTub name
   $("#utubNameBtnUpdate").on("click", function (e) {
-    hideInputs();
     deselectAllURLs();
     updateUTubDescriptionHideInput();
     updateUTubNameShowInput();
@@ -27,7 +26,6 @@ $(document).ready(function () {
 
   // Update UTub description
   $("#updateUTubDescriptionBtn").on("click", function (e) {
-    hideInputs();
     deselectAllURLs();
     updateUTubNameHideInput();
     updateUTubDescriptionShowInput();
@@ -45,9 +43,9 @@ $(document).ready(function () {
 
 // Shows new UTub input fields
 function createUTubShowInput() {
-  showInput("#createUTubWrap");
-  highlightInput($("#utubNameCreate"));
+  showIfHidden($("#createUTubWrap"));
   createNewUTubEventListeners();
+  $("#utubNameCreate").trigger("focus");
   hideIfShown($("#listUTubs"));
   $("#UTubDeck").find(".icon-holder").hide();
   removeCreateDeleteUTubEventListeners();
@@ -69,8 +67,9 @@ function createUTubHideInput() {
 function createUTub() {
   // Extract data to submit in POST request
   [postURL, data] = createUTubSetup();
+  resetUTubFailErrors();
 
-  let request = AJAXCall("post", postURL, data);
+  let request = ajaxCall("post", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -163,8 +162,10 @@ function resetUTubFailErrors() {
 // Shows input fields for updating an exiting UTub's name
 function updateUTubNameShowInput() {
   // Show update fields
-  $("#utubNameUpdate").text(getCurrentUTubName());
+  const utubNameUpdate = $("#utubNameUpdate");
+  utubNameUpdate.val(getCurrentUTubName());
   showInput("#utubNameUpdate");
+  utubNameUpdate.trigger("focus");
 
   // Hide current name and update button
   hideIfShown($("#URLDeckHeader"));
@@ -220,7 +221,7 @@ function updateUTubName() {
   // Extract data to submit in POST request
   [postURL, data] = updateUTubNameSetup();
 
-  let request = AJAXCall("patch", postURL, data);
+  let request = ajaxCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -308,8 +309,10 @@ function resetUpdateUTubNameFailErrors() {
 // Shows input fields for updating an exiting UTub's description
 function updateUTubDescriptionShowInput() {
   // Show update fields
-  $("#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
+  const utubDescriptionUpdate = $("#utubDescriptionUpdate");
+  utubDescriptionUpdate.val($("#URLDeckSubheader").text());
   showInput("#utubDescriptionUpdate");
+  utubDescriptionUpdate.trigger("focus");
   showIfHidden($("#utubDescriptionSubmitBtnUpdate"));
 
   // Setup event listeners for window click and escape/enter keys
@@ -355,7 +358,7 @@ function updateUTubDescription() {
   // Extract data to submit in POST request
   [postURL, data] = updateUTubDescriptionSetup();
 
-  const request = AJAXCall("patch", postURL, data);
+  const request = ajaxCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -454,8 +457,7 @@ function deleteUTubShowModal() {
 
   $("#modalDismiss")
     .addClass("btn btn-secondary")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       deleteUTubHideModal();
     })
@@ -465,8 +467,7 @@ function deleteUTubShowModal() {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       deleteUTub();
     });
@@ -480,7 +481,7 @@ function deleteUTub() {
   // Extract data to submit in POST request
   postURL = deleteUTubSetup();
 
-  let request = AJAXCall("delete", postURL, []);
+  let request = ajaxCall("delete", postURL, []);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {

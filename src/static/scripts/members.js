@@ -2,12 +2,21 @@
 
 $(document).ready(function () {
   /* Bind click functions */
+  const memberBtnCreate = $("#memberBtnCreate");
 
   // Add member to UTub
-  $("#memberBtnCreate").on("click.createMember", function () {
-    hideInputs();
-    deselectAllURLs();
+  memberBtnCreate.on("click.createMember", function () {
     createMemberShowInput();
+  });
+
+  memberBtnCreate.on("focus", function () {
+    $(document).on("keyup.createMember", function (e) {
+      if (e.which === 13) createMemberShowInput();
+    });
+  });
+
+  memberBtnCreate.on("blur", function () {
+    $(document).off(".createMember");
   });
 });
 
@@ -129,21 +138,19 @@ function createMemberBadge(
 
   if (isCurrentUserOwner) {
     const removeIcon = createMemberRemoveIcon();
-    removeIcon.off("click.removeMember").on("click.removeMember", function (e) {
+    removeIcon.offAndOn("click.removeMember", function (e) {
       e.stopPropagation();
       removeMemberShowModal(UTubMemberUserID, isCurrentUserOwner);
     });
     $(memberSpan).append(removeIcon);
   } else {
     // Leave UTub if member
-    $("#memberSelfBtnDelete")
-      .off("click.removeMember")
-      .on("click.removeMember", function (e) {
-        e.stopPropagation();
-        hideInputs();
-        deselectAllURLs();
-        removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
-      });
+    $("#memberSelfBtnDelete").offAndOn("click.removeMember", function (e) {
+      e.stopPropagation();
+      hideInputs();
+      deselectAllURLs();
+      removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+    });
   }
 
   return memberSpan;

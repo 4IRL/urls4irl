@@ -2,11 +2,11 @@
 
 // Shows new Member input fields
 function createMemberShowInput() {
-  showIfHidden($("#createMemberWrap").show());
+  showIfHidden($("#createMemberWrap"));
   hideIfShown($("#displayMemberWrap"));
   hideIfShown($("#memberBtnCreate"));
-  highlightInput($("#memberCreate"));
   setupCreateMemberEventListeners();
+  $("#memberCreate").trigger("focus");
 }
 
 // Hides new Member input fields
@@ -19,14 +19,27 @@ function createMemberHideInput() {
   resetNewMemberForm();
 }
 
+// This function will extract the current selection data needed for POST request (member ID)
+function createMemberSetup() {
+  const postURL = routes.createMember(getActiveUTubID());
+
+  const newMemberUsername = $("#memberCreate").val();
+  const data = {
+    username: newMemberUsername,
+  };
+
+  return [postURL, data];
+}
+
 function createMember() {
   // Extract data to submit in POST request
   [postURL, data] = createMemberSetup();
+  resetCreateMemberFailErrors();
 
-  AJAXCall("post", postURL, data);
+  const request = ajaxCall("post", postURL, data);
 
   // Handle response
-  request.done(function (response, textStatus, xhr) {
+  request.done(function (response, _, xhr) {
     if (xhr.status === 200) {
       createMemberSuccess(response);
     }
@@ -38,46 +51,55 @@ function createMember() {
 }
 
 function setupCreateMemberEventListeners() {
-  // Prevent clicking in input box from closing the form
-  $("#memberCreate")
-    .off("click.createMember")
-    .on("click.createMember", function (e) {
-      e.stopPropagation();
-    });
+  const memberSubmitBtnCreate = $("#memberSubmitBtnCreate");
+  const memberCancelBtnCreate = $("#memberCancelBtnCreate");
 
-  // Allow submission button to not close form in case of error
-  $("#memberSubmitBtnCreate")
-    .off("click.createMember")
-    .on("click.createMember", function (e) {
-      e.stopPropagation();
+  memberSubmitBtnCreate.offAndOn("click.createMemberSubmit", function (e) {
+    if ($(e.target).closest("#memberSubmitBtnCreate").length > 0)
       createMember();
+  });
+
+  memberSubmitBtnCreate.offAndOn("focus.createMemberSubmit", function () {
+    $(document).on("keyup.createMemberSubmit", function (e) {
+      if (e.which === 13) createMember();
     });
+  });
 
-  // Allow closing add member form by clicking anywhere else
-  $(window)
-    .off("click.createMember")
-    .on("click.createMember", function (e) {
-      const target = $(e.target);
-      // Allow the cancel button to close the form
-      if (
-        target.parents("#memberCancelBtnCreate").length ||
-        target.is("#memberCancelBtnCreate")
-      ) {
-        createMemberHideInput();
-        return;
-      }
+  memberSubmitBtnCreate.offAndOn("blur.createMemberSubmit", function () {
+    $(document).off("keyup.createMemberSubmit");
+  });
 
-      // Prevent initial opening form click or add member form area click from closing form
-      const isInitialCreateMemberBtn =
-        target.parents("#memberBtnCreate").length;
-      const isInCreateMemberFormArea =
-        target.parents("#createMemberWrap").length;
-      if (isInitialCreateMemberBtn || isInCreateMemberFormArea) return;
+  memberCancelBtnCreate.offAndOn("click.createMemberEscape", function (e) {
+    if ($(e.target).closest("#memberCancelBtnCreate").length > 0)
       createMemberHideInput();
-    });
+  });
 
+  memberCancelBtnCreate.offAndOn("focus.createMemberEscape", function () {
+    $(document).on("keyup.createMemberEscape", function (e) {
+      if (e.which === 13) createMemberHideInput();
+    });
+  });
+
+  memberCancelBtnCreate.offAndOn("blur.createMemberEscape", function () {
+    $(document).off("keyup.createMemberEscape");
+  });
+
+  const memberInput = $("#memberCreate");
+  memberInput.on("focus.createMemberSubmitEscape", function () {
+    bindCreateMemberFocusEventListeners();
+  });
+  memberInput.on("blur.createMemberSubmitSubmitEscape", function () {
+    unbindCreateMemberFocusEventListeners();
+  });
+}
+
+function removeCreateMemberEventListeners() {
+  $("#memberCreate").off(".createMemberSubmitEscape");
+}
+
+function bindCreateMemberFocusEventListeners() {
   // Allow closing by pressing escape key
-  $(document).bind("keyup.createMember", function (e) {
+  $(document).on("keyup.createMemberSubmitEscape", function (e) {
     switch (e.which) {
       case 13:
         // Handle enter key pressed
@@ -93,21 +115,8 @@ function setupCreateMemberEventListeners() {
   });
 }
 
-function removeCreateMemberEventListeners() {
-  $(document).off(".createMember");
-  $(window).off(".createMember");
-}
-
-// This function will extract the current selection data needed for POST request (member ID)
-function createMemberSetup() {
-  const postURL = routes.createMember(getActiveUTubID());
-
-  const newMemberUsername = $("#memberCreate").val();
-  data = {
-    username: newMemberUsername,
-  };
-
-  return [postURL, data];
+function unbindCreateMemberFocusEventListeners() {
+  $(document).off(".createMemberSubmitEscape");
 }
 
 // Perhaps update a scrollable/searchable list of members?
@@ -195,8 +204,7 @@ function removeMemberShowModal(memberID, isCreator) {
 
   $("#modalDismiss")
     .addClass("btn btn-secondary")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       removeMemberHideModal();
     })
@@ -206,8 +214,7 @@ function removeMemberShowModal(memberID, isCreator) {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       removeMember(memberID, isCreator);
     })
@@ -222,7 +229,7 @@ function removeMember(memberID, isCreator) {
   // Extract data to submit in POST request
   postURL = removeMemberSetup(memberID);
 
-  let request = AJAXCall("delete", postURL, []);
+  let request = ajaxCall("delete", postURL, []);
 
   // Handle response
   request.done(function (_, textStatus, xhr) {
@@ -269,9 +276,9 @@ function leaveUTubSuccess() {
   displayState0();
 
   // UTub Deck display updates
-  const UTubSelector = $(".UTubSelector[utubid=" + getActiveUTubID() + "]");
-  UTubSelector.fadeOut("slow", function () {
-    UTubSelector.remove();
+  const utubSelector = $(".UTubSelector[utubid=" + getActiveUTubID() + "]");
+  utubSelector.fadeOut("slow", function () {
+    utubSelector.remove();
     displayState1UTubDeck(null, null);
   });
 }

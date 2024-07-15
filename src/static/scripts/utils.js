@@ -46,50 +46,44 @@ const globalBeforeSend = function (xhr, settings) {
 
 // Keyboard navigation between selected UTubs or URLs
 function bindSwitchURLKeyboardEventListeners() {
-  $(document)
-    .off("keyup.switchurls")
-    .on("keyup.switchurls", function (e) {
-      const keycode = e.keyCode ? e.keyCode : e.which;
-      const prev = keycode === 38; // UP
-      const next = keycode === 40; // DOWN
+  $(document).offAndOn("keyup.switchurls", function (e) {
+    const keycode = e.keyCode ? e.keyCode : e.which;
+    const prev = keycode === 38; // UP
+    const next = keycode === 40; // DOWN
 
-      if (!prev && !next) return;
-      const selectedURLCard = getSelectedURLCard();
+    if (!prev && !next) return;
+    const selectedURLCard = getSelectedURLCard();
 
-      const allURLs = $(".urlRow");
-      const allURLsLength = allURLs.length;
-      if (allURLsLength === 0) return;
+    const allURLs = $(".urlRow");
+    const allURLsLength = allURLs.length;
+    if (allURLsLength === 0) return;
 
-      if (selectedURLCard === null) {
-        // Select first url if none are selected
+    if (selectedURLCard === null) {
+      // Select first url if none are selected
+      selectURLCard($(allURLs[0]));
+      return;
+    }
+
+    const currentIndex = allURLs.index(selectedURLCard);
+
+    if (prev) {
+      if (currentIndex === 0) {
+        // Wrap to select the bottom URL instead
+        selectURLCard($(allURLs[allURLsLength - 1]));
+      } else {
+        selectURLCard($(allURLs[currentIndex - 1]));
+      }
+    }
+
+    if (next) {
+      if (currentIndex === allURLsLength - 1) {
+        // Wrap to select first URL
         selectURLCard($(allURLs[0]));
-        return;
+      } else {
+        selectURLCard($(allURLs[currentIndex + 1]));
       }
-
-      const currentIndex = allURLs.index(selectedURLCard);
-
-      if (prev) {
-        if (currentIndex === 0) {
-          // Wrap to select the bottom URL instead
-          selectURLCard($(allURLs[allURLsLength - 1]));
-        } else {
-          selectURLCard($(allURLs[currentIndex - 1]));
-        }
-      }
-
-      if (next) {
-        if (currentIndex === allURLsLength - 1) {
-          // Wrap to select first URL
-          selectURLCard($(allURLs[0]));
-        } else {
-          selectURLCard($(allURLs[currentIndex + 1]));
-        }
-      }
-    });
-}
-
-function unbindEscapeKey() {
-  $(document).unbind("keyup.27");
+    }
+  });
 }
 
 // To differentiate between the text box types when dynamically creating input text boxes
@@ -106,12 +100,12 @@ function showInput(handle) {
   const inputDiv = inputEl.closest(".createDiv");
   showIfHidden(inputDiv);
 
-  highlightInput(inputEl);
+  //highlightInput(inputEl);
 }
 
 // Highlight the input field. Typically if user requests action that is already displayed
 function highlightInput(inputEl) {
-  inputEl.focus();
+  $(inputEl).trigger("focus");
   if (inputEl[0].value) {
     inputEl[0].setSelectionRange(0, inputEl[0].value.length);
   }
@@ -176,7 +170,7 @@ function hideIfShown(jqueryObj) {
 }
 
 // AJAX request
-function AJAXCall(type, url, data) {
+function ajaxCall(type, url, data) {
   return (request = $.ajax({
     type: type,
     url: url,
@@ -331,3 +325,22 @@ function displayState1() {
   displayState1URLDeck();
   displayState1MemberDeck(null, false);
 }
+
+// jQuery plugins
+(function ($) {
+  $.fn.enableTab = function () {
+    this.attr({ tabindex: 0 });
+    return this;
+  };
+
+  $.fn.disableTab = function () {
+    this.attr({ tabindex: -1 });
+    return this;
+  };
+
+  $.fn.offAndOn = function (eventName, callback) {
+    this.off(eventName).on(eventName, callback);
+
+    return this;
+  };
+})(jQuery);

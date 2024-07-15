@@ -207,6 +207,7 @@
 
 .invalid-field {
     border-color: red !important;
+    transition: border-color 0.2s ease-in-out;
 }
 
 .pointerable {
@@ -353,7 +354,6 @@
 }
 
 .urlString {
-    width: 100%;
     color: var(--cardURLTextColor);
 }
 
@@ -467,6 +467,11 @@
 
 .urlTagsContainer span:first-child {
     margin-left: 0;
+}
+
+.urlBtnUpdate,
+.urlTagBtnCreate {
+    transition: background-color 0.3s ease-in-out;
 }
 
 #createURLWrap {

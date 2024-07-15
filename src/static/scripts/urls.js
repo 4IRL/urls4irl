@@ -2,12 +2,23 @@
 
 $(document).ready(function () {
   /* Bind click functions */
+  const urlBtnCreate = $("#urlBtnCreate");
 
   // Add new URL to current UTub
-  $("#urlBtnCreate").on("click", function (e) {
-    e.stopPropagation();
-    hideInputs();
-    createURLShowInput();
+  urlBtnCreate.on("click", function (e) {
+    if ($(e.target).closest("#urlBtnCreate").length > 0) createURLShowInput();
+  });
+
+  urlBtnCreate.on("focus", function () {
+    $(document).on("keyup.createURL", function (e) {
+      if (e.which === 13) {
+        createURLShowInput();
+      }
+    });
+  });
+
+  urlBtnCreate.on("blur", function () {
+    $(document).off(".createURL");
   });
 
   // Open all URLs in UTub in separate tabs
@@ -62,13 +73,10 @@ function isURLCurrentlyVisibleInURLDeck(urlString) {
 function selectURLCard(urlCard) {
   deselectAllURLs();
   const urlString = urlCard.find(".urlString").text();
-  urlCard
-    .find(".urlString")
-    .off("click.goToURL")
-    .on("click.goToURL", function (e) {
-      e.stopPropagation();
-      accessLink(urlString);
-    });
+  urlCard.find(".urlString").offAndOn("click.goToURL", function (e) {
+    e.stopPropagation();
+    accessLink(urlString);
+  });
   urlCard.attr({ urlSelected: true });
   urlCard.find(".goToUrlIcon").addClass("visible-flex");
 }
@@ -108,25 +116,14 @@ function clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard) {
   hideURLCardLoadingIcon(urlCard);
 }
 
-function bindEscapeToExitURLTitleUpdating() {
-  $(document)
-    .unbind("keyup.escapeUrlTitleUpdating")
-    .bind("keyup.escapeUrlTitleUpdating", function (e) {
-      if (e.which === 27) {
-        console.log("Trying to hide URL title input");
-        updateURLTitleHideInput();
-      }
-    });
-}
-
 // Opens new tab
 function accessLink(url_string) {
   // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
 
   if (!url_string.startsWith("https://")) {
-    window.open("https://" + url_string, "_blank").focus();
+    window.open("https://" + url_string, "_blank").trigger("focus");
   } else {
-    window.open(url_string, "_blank").focus();
+    window.open(url_string, "_blank").trigger("focus");
   }
 }
 
@@ -215,7 +212,7 @@ function enableEditingURLTitle(urlCard) {
 }
 
 function setURLCardSelectionEventListener(urlCard) {
-  urlCard.off("click.urlSelected").on("click.urlSelected", function (e) {
+  urlCard.offAndOn("click.urlSelected", function (e) {
     if ($(e.target).parents(".urlRow").length > 0) {
       if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") return;
       selectURLCard(urlCard);
@@ -228,7 +225,7 @@ function showURLDeckBannerError(errorMessage) {
   const SECONDS_TO_SHOW_ERROR = 3.5;
   const errorBanner = $("#URLDeckErrorIndicator");
   const CLASS_TO_SHOW = "URLDeckErrorIndicatorShow";
-  errorBanner.text(errorMessage).addClass(CLASS_TO_SHOW).focus();
+  errorBanner.text(errorMessage).addClass(CLASS_TO_SHOW).trigger("focus");
 
   setTimeout(() => {
     errorBanner.removeClass(CLASS_TO_SHOW);
@@ -481,24 +478,60 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
   urlTitleUpdateInputContainer.find("label").text("URL Title");
 
   // Customize the input text box for the Url title
-  const urlTitleTextInput = urlTitleUpdateInputContainer
-    .find("input")
+  const urlTitleTextInput = urlTitleUpdateInputContainer.find("input");
+
+  urlTitleTextInput
     .prop("minLength", CONSTANTS.URLS_TITLE_MIN_LENGTH)
     .prop("maxLength", CONSTANTS.URLS_TITLE_MAX_LENGTH)
     .val(urlTitleText);
 
+  urlTitleTextInput.offAndOn("focus.updateURLTitleInputFocus", function () {
+    $(document).on("keyup.updateURLTitleSubmitEscape", function (e) {
+      switch (e.which) {
+        case 13:
+          updateURLTitle(urlTitleTextInput, urlCard);
+          break;
+        case 27:
+          hideAndResetUpdateURLTitleForm(urlCard);
+          break;
+        default:
+        /* no-op */
+      }
+    });
+  });
+
+  urlTitleTextInput.offAndOn("blur.updateURLTitleInputFocus", function () {
+    $(document).off("keyup.updateURLTitleSubmitEscape");
+  });
+
   // Update Url Title submit button
-  const urlTitleSubmitBtnUpdate = makeSubmitButton(30)
+  const urlTitleSubmitBtnUpdate = makeSubmitButton(30);
+
+  urlTitleSubmitBtnUpdate
     .addClass("urlTitleSubmitBtnUpdate")
-    .on("click.updateUrlTitle", function () {
-      updateURLTitle(urlTitleTextInput, urlCard);
+    .on("click.updateUrlTitle", function (e) {
+      if (
+        $(e.target)
+          .closest(".urlTitleSubmitBtnUpdate")
+          .is(urlTitleSubmitBtnUpdate) &&
+        $(e.target).closest(".urlRow").is(urlCard)
+      )
+        updateURLTitle(urlTitleTextInput, urlCard);
     });
 
   // Update Url Title cancel button
-  const urlTitleCancelBtnUpdate = makeCancelButton(30)
+  const urlTitleCancelBtnUpdate = makeCancelButton(30);
+
+  urlTitleCancelBtnUpdate
     .addClass("urlTitleCancelBtnUpdate")
-    .on("click.updateUrlTitle", function () {
-      hideAndResetUpdateURLTitleForm(urlCard);
+    .on("click.updateUrlTitle", function (e) {
+      if (
+        $(e.target)
+          .closest(".urlTitleCancelBtnUpdate")
+          .is(urlTitleCancelBtnUpdate) &&
+        $(e.target).closest(".urlRow").is(urlCard)
+      )
+        hideAndResetUpdateURLTitleForm(urlCard);
     });
 
   urlTitleUpdateInputContainer
@@ -540,6 +573,8 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     .prop("maxLength", CONSTANTS.URLS_MAX_LENGTH)
     .val(urlStringText);
 
+  setFocusEventListenersOnUpdateURLStringInput(urlStringTextInput, urlCard);
+
   // Update Url Title submit button
   const urlStringSubmitBtnUpdate = makeSubmitButton(30)
     .addClass("urlStringSubmitBtnUpdate")
@@ -559,6 +594,29 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     .append(urlStringCancelBtnUpdate);
 
   return urlStringUpdateTextInputContainer;
+}
+
+function setFocusEventListenersOnUpdateURLStringInput(urlStringInput, urlCard) {
+  urlStringInput.offAndOn("focus.updateURLStringFocus", function () {
+    $(document).on("keyup.updateURLStringFocus", function (e) {
+      switch (e.which) {
+        case 13:
+          // Handle enter key pressed
+          updateURL(urlStringInput, urlCard);
+          break;
+        case 27:
+          // Handle escape key pressed
+          hideAndResetUpdateURLStringForm(urlCard);
+          break;
+        default:
+        /* no-op */
+      }
+    });
+  });
+
+  urlStringInput.offAndOn("blur.updateURLStringFocus", function () {
+    $(document).off("keyup.updateURLStringFocus");
+  });
 }
 
 // Create both the tag container and the button container for a URL
@@ -623,6 +681,8 @@ function createTagInputBlock(urlCard) {
     .prop("minLength", CONSTANTS.TAGS_MIN_LENGTH)
     .prop("maxLength", CONSTANTS.TAGS_MAX_LENGTH);
 
+  setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard);
+
   // Create Url Title submit button
   const urlTagSubmitBtnCreate = makeSubmitButton(30)
     .addClass("urlTagSubmitBtnCreate")
@@ -642,6 +702,29 @@ function createTagInputBlock(urlCard) {
     .append(urlTagCancelBtnCreate);
 
   return urlTagCreateTextInputContainer;
+}
+
+function setFocusEventListenersOnCreateURLTagInput(urlTagInput, urlCard) {
+  urlTagInput.offAndOn("focus.createURLTagFocus", function () {
+    $(document).on("keyup.createURLTagFocus", function (e) {
+      switch (e.which) {
+        case 13:
+          // Handle enter key pressed
+          createURLTag(urlTagInput, urlCard);
+          break;
+        case 27:
+          // Handle escape key pressed
+          hideAndResetCreateURLTagForm(urlCard);
+          break;
+        default:
+        /* no-op */
+      }
+    });
+  });
+
+  urlTagInput.offAndOn("blur.createURLTagFocus", function () {
+    $(document).off("keyup.createURLTagFocus");
+  });
 }
 
 // Create all the buttons necessary for a url card
@@ -718,11 +801,32 @@ function newURLInputAddEventListeners(urlInputForm) {
   });
 
   $(urlBtnDelete).on("click.createURL", function (e) {
-    e.stopPropagation();
-    createURLHideInput();
+    if ($(e.target).closest(urlBtnDelete).length > 0) createURLHideInput();
   });
 
-  // TODO: Escape and enter functionality
+  const inputArr = [createURLInput, createURLTitleInput];
+
+  for (let i = 0; i < inputArr.length; i++) {
+    $(inputArr[i]).on("focus.createURL", function () {
+      bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput);
+    });
+
+    $(inputArr[i]).on("blur.createURL", function () {
+      unbindCreateURLFocusEventListeners();
+    });
+  }
+}
+
+function newURLInputRemoveEventListeners() {
+  resetCreateURLFailErrors();
+  $("#urlSubmitBtnCreate").off();
+  $("#urlCancelBtnCreate").off();
+  $(document).off(".createURL");
+  $("#urlTitleCreate").off(".createURL");
+  $("#urlStringCreate").off(".createURL");
+}
+
+function bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput) {
   $(document).on("keyup.createURL", function (e) {
     switch (e.which) {
       case 13:
@@ -739,10 +843,7 @@ function newURLInputAddEventListeners(urlInputForm) {
   });
 }
 
-function newURLInputRemoveEventListeners() {
-  resetCreateURLFailErrors();
-  $("#urlSubmitBtnCreate").off();
-  $("#urlCancelBtnCreate").off();
+function unbindCreateURLFocusEventListeners() {
   $(document).off(".createURL");
 }
 
