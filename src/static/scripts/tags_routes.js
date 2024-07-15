@@ -6,10 +6,13 @@
 function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   // Show form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
+  enableTabbableChildElements(tagInputFormContainer);
   showIfHidden(tagInputFormContainer);
 
-  // Focus on the input to add a tag
-  tagInputFormContainer.find("input").trigger("focus");
+  // Focus on the input to add a tag - with delay in case user opened by pressing enter
+  setTimeout(function () {
+    tagInputFormContainer.find("input").trigger("focus");
+  }, 100);
 
   // Disable URL Buttons as url Tag is being created
   hideIfShown(urlCard.find(".urlBtnAccess"));
@@ -19,7 +22,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   // Modify add tag button
   urlTagBtnCreate
     .removeClass("btn-info")
-    .addClass("btn-warning")
+    .addClass("btn-warning cancel")
     .text("Cancel")
     .offAndOn("click", function (e) {
       e.stopPropagation();
@@ -48,6 +51,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
 
   // Hide form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
+  disableTabbableChildElements(tagInputFormContainer);
   hideIfShown(tagInputFormContainer);
 
   // Reset input form
@@ -56,7 +60,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
   // Modify add tag button
   const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
   urlTagBtnCreate
-    .removeClass("btn-warning")
+    .removeClass("btn-warning cancel")
     .addClass("btn-info")
     .text("Add Tag")
     .offAndOn("click", function (e) {

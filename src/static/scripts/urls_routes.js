@@ -150,8 +150,13 @@ function resetCreateURLFailErrors() {
 function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
   hideIfShown(urlCard.find(".urlString"));
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
+  enableTabbableChildElements(updateURLStringWrap);
   showIfHidden(updateURLStringWrap);
-  highlightInput(updateURLStringWrap.find("input"));
+
+  // Set timeout in case user pressed enter to avoid propagation through to URL string update
+  setTimeout(function () {
+    highlightInput(updateURLStringWrap.find("input"));
+  }, 100);
 
   // Disable URL Buttons as URL is being edited
   hideIfShown(urlCard.find(".urlBtnAccess"));
@@ -177,7 +182,9 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
 // Resets and hides the Update URL form upon cancellation or selection of another URL
 function hideAndResetUpdateURLStringForm(urlCard) {
   // Toggle input form and display of URL
-  hideIfShown(urlCard.find(".updateUrlStringWrap"));
+  const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
+  hideIfShown(updateURLStringWrap);
+  disableTabbableChildElements(updateURLStringWrap);
   const urlStringElem = urlCard.find(".urlString");
   showIfHidden(urlStringElem);
 

@@ -6,6 +6,10 @@ $(document).ready(function () {
     // console.log($(e.target)[0]);
   });
 
+  $(document).on("focus", function (e) {
+    console.log($(e.target)[0]);
+  });
+
   // CSRF token initialization for non-modal POST requests
   let csrftoken = $("meta[name=csrf-token]").attr("content");
   $.ajaxSetup({
@@ -34,6 +38,30 @@ $(document).ready(function () {
     textInput = $(textInputs[i]);
     textInput.on("focus", handleFocus);
     textInput.on("blur", handleBlur);
+  }
+});
+
+$(window).on("focus", () => {
+  const prevFocusedElem = $(".focus");
+  if (prevFocusedElem.length === 0) return;
+  if (prevFocusedElem.length > 1) {
+    // Only one should've been focused before
+    prevFocusedElem.removeClass("focus");
+    return;
+  }
+  // Find the first URL card closest to last focused item
+  const urlCard = prevFocusedElem.closest(".urlRow");
+
+  if (prevFocusedElem.hasClass("goToUrlIcon")) {
+    urlCard.find(".goToUrlIcon").addClass("visible-on-focus").trigger("focus");
+  }
+});
+
+// Refocus when going to another tab
+$(window).on("blur", () => {
+  if (document.activeElement !== null) {
+    $(document.activeElement).addClass("focus");
+    console.log($(document.activeElement));
   }
 });
 
@@ -250,6 +278,15 @@ function enable(jqueryObj) {
   $(jqueryObj).prop("disabled", false);
 }
 
+// Enable all child elements to be tabbable
+function enableTabbableChildElements(parent) {
+  $(parent).find(".tabbable").enableTab();
+}
+
+function disableTabbableChildElements(parent) {
+  $(parent).find(".tabbable").disableTab();
+}
+
 // Fancy text box creation
 function makeTextInput(textInputID, type) {
   const inputAndButtonWrap = $(document.createElement("div")).addClass(
@@ -340,7 +377,6 @@ function displayState1() {
 
   $.fn.offAndOn = function (eventName, callback) {
     this.off(eventName).on(eventName, callback);
-
     return this;
   };
 })(jQuery);
