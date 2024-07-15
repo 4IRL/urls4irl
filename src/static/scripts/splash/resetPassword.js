@@ -39,12 +39,11 @@ function handleResetPasswordSuccess(response, _, xhr) {
 function handleUserChangedPassword() {
   $("#submit").removeClass("login-register-buttons");
   $("#submit")
-    .off("click")
     .prop("type", "button")
     .val("Close")
     .removeClass("btn-success")
     .addClass("btn-warning")
-    .on("click", function (_) {
+    .offAndOn("click", function (_) {
       bootstrap.Modal.getOrCreateInstance("#SplashModal").hide();
     });
 }

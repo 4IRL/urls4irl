@@ -36,7 +36,7 @@ function createMember() {
   [postURL, data] = createMemberSetup();
   resetCreateMemberFailErrors();
 
-  const request = AJAXCall("post", postURL, data);
+  const request = ajaxCall("post", postURL, data);
 
   // Handle response
   request.done(function (response, _, xhr) {
@@ -54,47 +54,35 @@ function setupCreateMemberEventListeners() {
   const memberSubmitBtnCreate = $("#memberSubmitBtnCreate");
   const memberCancelBtnCreate = $("#memberCancelBtnCreate");
 
-  memberSubmitBtnCreate
-    .off("click.createMemberSubmit")
-    .on("click.createMemberSubmit", function (e) {
-      if ($(e.target).closest("#memberSubmitBtnCreate").length > 0)
-        createMember();
-    });
+  memberSubmitBtnCreate.offAndOn("click.createMemberSubmit", function (e) {
+    if ($(e.target).closest("#memberSubmitBtnCreate").length > 0)
+      createMember();
+  });
 
-  memberSubmitBtnCreate
-    .off("focus.createMemberSubmit")
-    .on("focus.createMemberSubmit", function () {
-      $(document).on("keyup.createMemberSubmit", function (e) {
-        if (e.which === 13) createMember();
-      });
+  memberSubmitBtnCreate.offAndOn("focus.createMemberSubmit", function () {
+    $(document).on("keyup.createMemberSubmit", function (e) {
+      if (e.which === 13) createMember();
     });
+  });
 
-  memberSubmitBtnCreate
-    .off("blur.createMemberSubmit")
-    .on("blur.createMemberSubmit", function () {
-      $(document).off("keyup.createMemberSubmit");
-    });
+  memberSubmitBtnCreate.offAndOn("blur.createMemberSubmit", function () {
+    $(document).off("keyup.createMemberSubmit");
+  });
 
-  memberCancelBtnCreate
-    .off("click.createMemberEscape")
-    .on("click.createMemberEscape", function (e) {
-      if ($(e.target).closest("#memberCancelBtnCreate").length > 0)
-        createMemberHideInput();
-    });
+  memberCancelBtnCreate.offAndOn("click.createMemberEscape", function (e) {
+    if ($(e.target).closest("#memberCancelBtnCreate").length > 0)
+      createMemberHideInput();
+  });
 
-  memberCancelBtnCreate
-    .off("focus.createMemberEscape")
-    .on("focus.createMemberEscape", function () {
-      $(document).on("keyup.createMemberEscape", function (e) {
-        if (e.which === 13) createMemberHideInput();
-      });
+  memberCancelBtnCreate.offAndOn("focus.createMemberEscape", function () {
+    $(document).on("keyup.createMemberEscape", function (e) {
+      if (e.which === 13) createMemberHideInput();
     });
+  });
 
-  memberCancelBtnCreate
-    .off("blur.createMemberEscape")
-    .on("blur.createMemberEscape", function () {
-      $(document).off("keyup.createMemberEscape");
-    });
+  memberCancelBtnCreate.offAndOn("blur.createMemberEscape", function () {
+    $(document).off("keyup.createMemberEscape");
+  });
 
   const memberInput = $("#memberCreate");
   memberInput.on("focus.createMemberSubmitEscape", function () {
@@ -216,8 +204,7 @@ function removeMemberShowModal(memberID, isCreator) {
 
   $("#modalDismiss")
     .addClass("btn btn-secondary")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       removeMemberHideModal();
     })
@@ -227,8 +214,7 @@ function removeMemberShowModal(memberID, isCreator) {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       removeMember(memberID, isCreator);
     })
@@ -243,7 +229,7 @@ function removeMember(memberID, isCreator) {
   // Extract data to submit in POST request
   postURL = removeMemberSetup(memberID);
 
-  let request = AJAXCall("delete", postURL, []);
+  let request = ajaxCall("delete", postURL, []);
 
   // Handle response
   request.done(function (_, textStatus, xhr) {
@@ -290,9 +276,9 @@ function leaveUTubSuccess() {
   displayState0();
 
   // UTub Deck display updates
-  const UTubSelector = $(".UTubSelector[utubid=" + getActiveUTubID() + "]");
-  UTubSelector.fadeOut("slow", function () {
-    UTubSelector.remove();
+  const utubSelector = $(".UTubSelector[utubid=" + getActiveUTubID() + "]");
+  utubSelector.fadeOut("slow", function () {
+    utubSelector.remove();
     displayState1UTubDeck(null, null);
   });
 }

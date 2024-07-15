@@ -138,21 +138,19 @@ function createMemberBadge(
 
   if (isCurrentUserOwner) {
     const removeIcon = createMemberRemoveIcon();
-    removeIcon.off("click.removeMember").on("click.removeMember", function (e) {
+    removeIcon.offAndOn("click.removeMember", function (e) {
       e.stopPropagation();
       removeMemberShowModal(UTubMemberUserID, isCurrentUserOwner);
     });
     $(memberSpan).append(removeIcon);
   } else {
     // Leave UTub if member
-    $("#memberSelfBtnDelete")
-      .off("click.removeMember")
-      .on("click.removeMember", function (e) {
-        e.stopPropagation();
-        hideInputs();
-        deselectAllURLs();
-        removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
-      });
+    $("#memberSelfBtnDelete").offAndOn("click.removeMember", function (e) {
+      e.stopPropagation();
+      hideInputs();
+      deselectAllURLs();
+      removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+    });
   }
 
   return memberSpan;

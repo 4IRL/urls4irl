@@ -46,7 +46,7 @@ function createURL(createURLTitleInput, createURLInput) {
   const timeoutId = setTimeout(function () {
     $("#urlCreateDualLoadingRing").addClass("dual-loading-ring");
   }, SHOW_LOADING_ICON_AFTER_MS);
-  const request = AJAXCall("post", postURL, data);
+  const request = ajaxCall("post", postURL, data);
 
   request.done(function (response, _, xhr) {
     if (xhr.status === 200) {
@@ -166,8 +166,7 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
     .removeClass("btn-light")
     .addClass("btn-warning")
     .text("Cancel")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.stopPropagation();
       hideAndResetUpdateURLStringForm(urlCard);
     });
@@ -191,8 +190,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
     .removeClass("btn-warning")
     .addClass("btn-light")
     .text("Edit URL")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.stopPropagation();
       showUpdateURLStringForm(urlCard, urlBtnUpdate);
     });
@@ -240,7 +238,7 @@ async function updateURL(urlStringUpdateInput, urlCard) {
     // Extract data to submit in POST request
     [patchURL, data] = updateURLSetup(urlStringUpdateInput, utubID, urlID);
 
-    const request = AJAXCall("patch", patchURL, data);
+    const request = ajaxCall("patch", patchURL, data);
 
     request.done(function (response, _, xhr) {
       if (xhr.status === 200) {
@@ -277,21 +275,15 @@ function updateURLSuccess(response, urlCard) {
   urlCard.find(".urlString").text(updatedURLString);
 
   // Update URL options
-  urlCard
-    .find(".urlBtnAccess")
-    .off("click")
-    .on("click", function (e) {
-      e.stopPropagation();
-      accessLink(updatedURLString);
-    });
+  urlCard.find(".urlBtnAccess").offAndOn("click", function (e) {
+    e.stopPropagation();
+    accessLink(updatedURLString);
+  });
 
-  urlCard
-    .find(".goToUrlIcon")
-    .off("click")
-    .on("click", function (e) {
-      e.stopPropagation();
-      accessLink(updatedURLString);
-    });
+  urlCard.find(".goToUrlIcon").offAndOn("click", function (e) {
+    e.stopPropagation();
+    accessLink(updatedURLString);
+  });
 
   hideAndResetUpdateURLStringForm(urlCard);
 }
@@ -366,7 +358,7 @@ function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap) {
     ".updateUrlTitleWrap",
   );
   showIfHidden(updateTitleForm);
-  updateTitleForm.find("input").focus();
+  updateTitleForm.find("input").trigger("focus");
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
@@ -401,11 +393,12 @@ async function updateURLTitle(urlTitleInput, urlCard) {
     if (urlTitleInput.val() === urlCard.find(".urlTitle").text()) {
       hideAndResetUpdateURLTitleForm(urlCard);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+      return;
     }
 
     [patchURL, data] = updateURLTitleSetup(urlTitleInput, utubID, urlID);
 
-    const request = AJAXCall("patch", patchURL, data);
+    const request = ajaxCall("patch", patchURL, data);
 
     // Handle response
     request.done(function (response, _, xhr) {
@@ -507,16 +500,14 @@ function deleteURLShowModal(urlID, urlCard) {
   $("#confirmModalBody").text(modalText);
 
   $("#modalDismiss")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       deleteURLHideModal();
     })
     .text(buttonTextDismiss);
 
   $("#modalSubmit")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       deleteURL(urlID, urlCard);
     })
@@ -542,7 +533,7 @@ async function deleteURL(urlID, urlCard) {
     // Extract data to submit in POST request
     const deleteURL = deleteURLSetup(utubID, urlID);
 
-    const request = AJAXCall("delete", deleteURL, []);
+    const request = ajaxCall("delete", deleteURL, []);
 
     // Handle response
     request.done(function (response, textStatus, xhr) {

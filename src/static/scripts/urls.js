@@ -73,13 +73,10 @@ function isURLCurrentlyVisibleInURLDeck(urlString) {
 function selectURLCard(urlCard) {
   deselectAllURLs();
   const urlString = urlCard.find(".urlString").text();
-  urlCard
-    .find(".urlString")
-    .off("click.goToURL")
-    .on("click.goToURL", function (e) {
-      e.stopPropagation();
-      accessLink(urlString);
-    });
+  urlCard.find(".urlString").offAndOn("click.goToURL", function (e) {
+    e.stopPropagation();
+    accessLink(urlString);
+  });
   urlCard.attr({ urlSelected: true });
   urlCard.find(".goToUrlIcon").addClass("visible-flex");
 }
@@ -119,25 +116,14 @@ function clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard) {
   hideURLCardLoadingIcon(urlCard);
 }
 
-function bindEscapeToExitURLTitleUpdating() {
-  $(document)
-    .off("keyup.escapeUrlTitleUpdating")
-    .on("keyup.escapeUrlTitleUpdating", function (e) {
-      if (e.which === 27) {
-        console.log("Trying to hide URL title input");
-        updateURLTitleHideInput();
-      }
-    });
-}
-
 // Opens new tab
 function accessLink(url_string) {
   // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
 
   if (!url_string.startsWith("https://")) {
-    window.open("https://" + url_string, "_blank").focus();
+    window.open("https://" + url_string, "_blank").trigger("focus");
   } else {
-    window.open(url_string, "_blank").focus();
+    window.open(url_string, "_blank").trigger("focus");
   }
 }
 
@@ -226,7 +212,7 @@ function enableEditingURLTitle(urlCard) {
 }
 
 function setURLCardSelectionEventListener(urlCard) {
-  urlCard.off("click.urlSelected").on("click.urlSelected", function (e) {
+  urlCard.offAndOn("click.urlSelected", function (e) {
     if ($(e.target).parents(".urlRow").length > 0) {
       if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") return;
       selectURLCard(urlCard);
@@ -239,7 +225,7 @@ function showURLDeckBannerError(errorMessage) {
   const SECONDS_TO_SHOW_ERROR = 3.5;
   const errorBanner = $("#URLDeckErrorIndicator");
   const CLASS_TO_SHOW = "URLDeckErrorIndicatorShow";
-  errorBanner.text(errorMessage).addClass(CLASS_TO_SHOW).focus();
+  errorBanner.text(errorMessage).addClass(CLASS_TO_SHOW).trigger("focus");
 
   setTimeout(() => {
     errorBanner.removeClass(CLASS_TO_SHOW);
@@ -492,24 +478,60 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
   urlTitleUpdateInputContainer.find("label").text("URL Title");
 
   // Customize the input text box for the Url title
-  const urlTitleTextInput = urlTitleUpdateInputContainer
-    .find("input")
+  const urlTitleTextInput = urlTitleUpdateInputContainer.find("input");
+
+  urlTitleTextInput
     .prop("minLength", CONSTANTS.URLS_TITLE_MIN_LENGTH)
     .prop("maxLength", CONSTANTS.URLS_TITLE_MAX_LENGTH)
     .val(urlTitleText);
 
+  urlTitleTextInput.offAndOn("focus.updateURLTitleInputFocus", function () {
+    $(document).on("keyup.updateURLTitleSubmitEscape", function (e) {
+      switch (e.which) {
+        case 13:
+          updateURLTitle(urlTitleTextInput, urlCard);
+          break;
+        case 27:
+          hideAndResetUpdateURLTitleForm(urlCard);
+          break;
+        default:
+        /* no-op */
+      }
+    });
+  });
+
+  urlTitleTextInput.offAndOn("blur.updateURLTitleInputFocus", function () {
+    $(document).off("keyup.updateURLTitleSubmitEscape");
+  });
+
   // Update Url Title submit button
-  const urlTitleSubmitBtnUpdate = makeSubmitButton(30)
+  const urlTitleSubmitBtnUpdate = makeSubmitButton(30);
+
+  urlTitleSubmitBtnUpdate
     .addClass("urlTitleSubmitBtnUpdate")
-    .on("click.updateUrlTitle", function () {
-      updateURLTitle(urlTitleTextInput, urlCard);
+    .on("click.updateUrlTitle", function (e) {
+      if (
+        $(e.target)
+          .closest(".urlTitleSubmitBtnUpdate")
+          .is(urlTitleSubmitBtnUpdate) &&
+        $(e.target).closest(".urlRow").is(urlCard)
+      )
+        updateURLTitle(urlTitleTextInput, urlCard);
     });
 
   // Update Url Title cancel button
-  const urlTitleCancelBtnUpdate = makeCancelButton(30)
+  const urlTitleCancelBtnUpdate = makeCancelButton(30);
+
+  urlTitleCancelBtnUpdate
     .addClass("urlTitleCancelBtnUpdate")
-    .on("click.updateUrlTitle", function () {
-      hideAndResetUpdateURLTitleForm(urlCard);
+    .on("click.updateUrlTitle", function (e) {
+      if (
+        $(e.target)
+          .closest(".urlTitleCancelBtnUpdate")
+          .is(urlTitleCancelBtnUpdate) &&
+        $(e.target).closest(".urlRow").is(urlCard)
+      )
+        hideAndResetUpdateURLTitleForm(urlCard);
     });
 
   urlTitleUpdateInputContainer

@@ -9,7 +9,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   showIfHidden(tagInputFormContainer);
 
   // Focus on the input to add a tag
-  tagInputFormContainer.find("input").focus();
+  tagInputFormContainer.find("input").trigger("focus");
 
   // Disable URL Buttons as url Tag is being created
   hideIfShown(urlCard.find(".urlBtnAccess"));
@@ -21,8 +21,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
     .removeClass("btn-info")
     .addClass("btn-warning")
     .text("Cancel")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.stopPropagation();
       hideAndResetCreateURLTagForm(urlCard);
     });
@@ -60,8 +59,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
     .removeClass("btn-warning")
     .addClass("btn-info")
     .text("Add Tag")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.stopPropagation();
       showCreateURLTagForm(urlCard, urlTagBtnCreate);
     });
@@ -100,7 +98,7 @@ async function createURLTag(urlTagCreateInput, urlCard) {
     timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
     await getUpdatedURL(utubID, urlID, urlCard);
 
-    const request = AJAXCall("post", postURL, data);
+    const request = ajaxCall("post", postURL, data);
 
     // Handle response
     request.done(function (response, _, xhr) {
@@ -224,7 +222,7 @@ async function deleteURLTag(tagID, tagBadge, urlCard) {
     // Extract data to submit in POST request
     const deleteURL = deleteURLTagSetup(utubID, urlID, tagID);
 
-    const request = AJAXCall("delete", deleteURL, []);
+    const request = ajaxCall("delete", deleteURL, []);
 
     // Handle response
     request.done(function (response, _, xhr) {

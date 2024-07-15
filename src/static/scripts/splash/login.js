@@ -1,12 +1,8 @@
 "use strict";
 
-$("#ToRegisterFromLogin")
-  .off("click")
-  .on("click", () => openRegisterModalFromLogin());
+$("#ToRegisterFromLogin").offAndOn("click", () => openRegisterModalFromLogin());
 
-$(".to-forgot-password")
-  .off("click")
-  .on("click", () => openForgotPasswordModal());
+$(".to-forgot-password").offAndOn("click", () => openForgotPasswordModal());
 
 $("#submit").click((event) => handleLogin(event));
 

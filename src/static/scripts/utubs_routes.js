@@ -71,7 +71,7 @@ function createUTub() {
   [postURL, data] = createUTubSetup();
   resetUTubFailErrors();
 
-  let request = AJAXCall("post", postURL, data);
+  let request = ajaxCall("post", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -221,7 +221,7 @@ function updateUTubName() {
   // Extract data to submit in POST request
   [postURL, data] = updateUTubNameSetup();
 
-  let request = AJAXCall("patch", postURL, data);
+  let request = ajaxCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -356,7 +356,7 @@ function updateUTubDescription() {
   // Extract data to submit in POST request
   [postURL, data] = updateUTubDescriptionSetup();
 
-  const request = AJAXCall("patch", postURL, data);
+  const request = ajaxCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
@@ -455,8 +455,7 @@ function deleteUTubShowModal() {
 
   $("#modalDismiss")
     .addClass("btn btn-secondary")
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       deleteUTubHideModal();
     })
@@ -466,8 +465,7 @@ function deleteUTubShowModal() {
     .removeClass()
     .addClass("btn btn-danger")
     .text(buttonTextSubmit)
-    .off("click")
-    .on("click", function (e) {
+    .offAndOn("click", function (e) {
       e.preventDefault();
       deleteUTub();
     });
@@ -481,7 +479,7 @@ function deleteUTub() {
   // Extract data to submit in POST request
   postURL = deleteUTubSetup();
 
-  let request = AJAXCall("delete", postURL, []);
+  let request = ajaxCall("delete", postURL, []);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
