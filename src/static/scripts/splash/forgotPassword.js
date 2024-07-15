@@ -33,9 +33,8 @@ function disableSendPasswordResetEmailButton() {
   const submitButton = $("#submit");
   submitButton
     .prop("type", "button")
-    .off("click")
     .prop("disabled", true)
-    .on("click", function (_) {
+    .offAndOn("click", function (_) {
       submitButton.prop("disabled", true);
     });
 }

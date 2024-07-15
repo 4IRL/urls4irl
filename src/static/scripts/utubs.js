@@ -172,7 +172,6 @@ function setEventListenersToEscapeUpdateUTubName() {
         break;
       case 27:
         // Handle escape key pressed
-        hideInputs();
         updateUTubNameHideInput();
         break;
       default:
@@ -208,7 +207,6 @@ function setEventListenersToEscapeUpdateUTubDescription() {
         break;
       case 27:
         // Handle escape key pressed
-        hideInputs();
         updateUTubDescriptionHideInput();
         break;
       default:

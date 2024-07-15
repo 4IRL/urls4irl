@@ -91,7 +91,7 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".modal-footer").remove();
 
   const logoutOnExit = () => {
-    $.get(routes.logout());
+    $.get(routes.logout);
     $("#SplashModal").off("hide.bs.modal", logoutOnExit);
   };
   $("#SplashModal").on("hide.bs.modal", logoutOnExit);

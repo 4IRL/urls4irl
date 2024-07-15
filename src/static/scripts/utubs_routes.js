@@ -6,7 +6,6 @@ $(document).ready(function () {
 
   // Update UTub name
   $("#utubNameBtnUpdate").on("click", function (e) {
-    hideInputs();
     deselectAllURLs();
     updateUTubDescriptionHideInput();
     updateUTubNameShowInput();
@@ -27,7 +26,6 @@ $(document).ready(function () {
 
   // Update UTub description
   $("#updateUTubDescriptionBtn").on("click", function (e) {
-    hideInputs();
     deselectAllURLs();
     updateUTubNameHideInput();
     updateUTubDescriptionShowInput();
@@ -164,8 +162,10 @@ function resetUTubFailErrors() {
 // Shows input fields for updating an exiting UTub's name
 function updateUTubNameShowInput() {
   // Show update fields
-  $("#utubNameUpdate").text(getCurrentUTubName());
+  const utubNameUpdate = $("#utubNameUpdate");
+  utubNameUpdate.val(getCurrentUTubName());
   showInput("#utubNameUpdate");
+  utubNameUpdate.trigger("focus");
 
   // Hide current name and update button
   hideIfShown($("#URLDeckHeader"));
@@ -309,8 +309,10 @@ function resetUpdateUTubNameFailErrors() {
 // Shows input fields for updating an exiting UTub's description
 function updateUTubDescriptionShowInput() {
   // Show update fields
-  $("#utubDescriptionUpdate").val($("#URLDeckSubheader").text());
+  const utubDescriptionUpdate = $("#utubDescriptionUpdate");
+  utubDescriptionUpdate.val($("#URLDeckSubheader").text());
   showInput("#utubDescriptionUpdate");
+  utubDescriptionUpdate.trigger("focus");
   showIfHidden($("#utubDescriptionSubmitBtnUpdate"));
 
   // Setup event listeners for window click and escape/enter keys
