@@ -469,6 +469,11 @@
     margin-left: 0;
 }
 
+.urlBtnUpdate,
+.urlTagBtnCreate {
+    transition: background-color 0.3s ease-in-out;
+}
+
 #createURLWrap {
     border-top: 1px solid var(--selectedUrlBorder);
     border-bottom: 1px solid var(--selectedUrlBorder) !important;

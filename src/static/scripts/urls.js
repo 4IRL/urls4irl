@@ -681,6 +681,8 @@ function createTagInputBlock(urlCard) {
     .prop("minLength", CONSTANTS.TAGS_MIN_LENGTH)
     .prop("maxLength", CONSTANTS.TAGS_MAX_LENGTH);
 
+  setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard);
+
   // Create Url Title submit button
   const urlTagSubmitBtnCreate = makeSubmitButton(30)
     .addClass("urlTagSubmitBtnCreate")
@@ -700,6 +702,29 @@ function createTagInputBlock(urlCard) {
     .append(urlTagCancelBtnCreate);
 
   return urlTagCreateTextInputContainer;
+}
+
+function setFocusEventListenersOnCreateURLTagInput(urlTagInput, urlCard) {
+  urlTagInput.offAndOn("focus.createURLTagFocus", function () {
+    $(document).on("keyup.createURLTagFocus", function (e) {
+      switch (e.which) {
+        case 13:
+          // Handle enter key pressed
+          createURLTag(urlTagInput, urlCard);
+          break;
+        case 27:
+          // Handle escape key pressed
+          hideAndResetCreateURLTagForm(urlCard);
+          break;
+        default:
+        /* no-op */
+      }
+    });
+  });
+
+  urlTagInput.offAndOn("blur.createURLTagFocus", function () {
+    $(document).off("keyup.createURLTagFocus");
+  });
 }
 
 // Create all the buttons necessary for a url card
