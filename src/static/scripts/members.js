@@ -155,12 +155,25 @@ function createMemberBadge(
     $(memberSpan).append(removeIcon);
   } else {
     // Leave UTub if member
-    $("#memberSelfBtnDelete").offAndOn("click.removeMember", function (e) {
-      e.stopPropagation();
-      hideInputs();
-      deselectAllURLs();
-      removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
-    });
+    $("#memberSelfBtnDelete")
+      .offAndOn("click.removeMember", function (e) {
+        e.stopPropagation();
+        hideInputs();
+        deselectAllURLs();
+        removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+      })
+      .offAndOn("focus.removeSelf", function () {
+        $(document).on("keyup.removeSelf", function (e) {
+          if (e.which === 13) {
+            hideInputs();
+            deselectAllURLs();
+            removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+          }
+        });
+      })
+      .offAndOn("blur.removeSelf", function () {
+        $(document).off("keyup.removeSelf");
+      });
   }
 
   return memberSpan;
