@@ -348,18 +348,16 @@ function handleBlur(event) {
 
 function displayState0() {
   hideInputs();
-  hideTagDeckSubheaderWhenNoUTubSelected();
+  setTagDeckSubheaderWhenNoUTubSelected();
   resetTagDeck();
-  displayState0URLDeck();
+  setURLDeckWhenNoUTubSelected();
   resetURLDeck();
-  displayState0MemberDeck();
+  setMemberDeckWhenNoUTubSelected();
   resetMemberDeck();
 }
 
 function displayState1() {
   displayState1UTubDeck(null, null);
-  updateCountOfTagFiltersApplied();
-  displayState1URLDeck();
   displayState1MemberDeck(null, false);
 }
 

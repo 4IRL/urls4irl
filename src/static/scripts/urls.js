@@ -345,7 +345,11 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
   if (numOfURLs !== 0) {
     // Instantiate deck with list of URLs stored in current UTub
     for (let i = 0; i < dictURLs.length; i++) {
-      parent.append(createURLBlock(dictURLs[i], dictTags));
+      parent.append(
+        createURLBlock(dictURLs[i], dictTags).addClass(
+          i % 2 == 0 ? "even" : "odd",
+        ),
+      );
     }
 
     // Show access all URLs button
@@ -355,7 +359,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
     showIfHidden($("#NoURLsSubheader"));
     hideIfShown($("#accessAllURLsBtn"));
   }
-  displayState1URLDeck(UTubName);
+  setUTubNameAndDescription(UTubName);
 }
 
 // Create a URL block to add to current UTub/URLDeck
@@ -380,6 +384,7 @@ function createURLBlock(url, tagArray) {
   outerUrlCard.append(urlTitleGoToURLWrap).attr({
     urlID: url.utubUrlID,
     urlSelected: false,
+    filterable: true,
   });
 
   // Append update URL form if user can edit the URL
@@ -1012,79 +1017,17 @@ function createTagDeleteIcon() {
   return deleteURLTagOuterIconSvg;
 }
 
-// Filters all URLs with tags
-function filterAllTaggedURLs() {
-  hideInputs();
-
-  let selectedBool = $("#selectAll").hasClass("selected");
-
-  let URLCards = $("div.url");
-
-  // For each URL card, verify there remain at least one visible tagBadge, else hide card.
-  for (let i = 0; i < URLCards.length; i++) {
-    let cardCol = $(URLCards[i]).closest(".cardCol");
-    let tagBadges = cardCol.find("span.tagBadge");
-
-    // Only do something if URL has tags applied
-    if (tagBadges.length > 0) {
-      if (selectedBool) {
-        // Show all tagBadges and URLs
-        cardCol.show();
-        tagBadges.show();
-      } else {
-        // Hide all tagBadges and URLs
-        cardCol.hide();
-        tagBadges.hide();
-      }
-    }
-  }
-}
-
-// Filters URLs based on Tag Deck state
-function filterURL(tagID) {
-  hideInputs();
-
-  let filteredTagList = $(".tagBadge[tagid=" + tagID + "]");
-  filteredTagList.toggle();
-
-  let URLCards = $("div.url");
-  console.log(URLCards);
-
-  for (let i = 0; i < URLCards.length; i++) {
-    console.log($(URLCards[i]).closest(".cardCol").find(".URLTitle").text());
-    let cardCol = $(URLCards[i]).closest(".cardCol");
-    let tagBadges = cardCol.find("span.tagBadge");
-
-    // Default to hiding URL if it has tags
-    // Automaticaly show URL if it doesn't have tags
-    let hideBool = tagBadges.length ? 0 : 1;
-
-    // If all tags are filtered, hide URL
-    for (let j = 0; j < tagBadges.length; j++) {
-      console.log(!($(tagBadges[j]).attr("style") == "display: none;"));
-
-      // If any 1 tag is not "display: none;", then URL remains shown
-      if (!($(tagBadges[j]).attr("style") == "display: none;")) hideBool ||= 1;
-    }
-
-    if (hideBool) {
-      cardCol.show();
-    } else {
-      deselectURL(cardCol);
-      cardCol.hide();
-    }
-  }
-}
-
 /** URL Display State Functions **/
 
 // Display state 0: Clean slate, no UTub selected
-function displayState0URLDeck() {
+function setURLDeckWhenNoUTubSelected() {
   $("#URLDeckHeader").text("URLs");
   hideIfShown($(".updateUTubBtn"));
   hideIfShown($("#urlBtnCreate"));
   hideIfShown($("#accessAllURLsBtn"));
   hideIfShown($("#URLDeckSubheaderCreateDescription"));
+  hideIfShown($("#utubNameBtnUpdate"));
+  $("#updateUTubDescriptionBtn").removeClass("visibleBtn");
 
   const URLDeckSubheader = $("#URLDeckSubheader");
   URLDeckSubheader.text("Select a UTub");
@@ -1095,7 +1038,7 @@ function displayState0URLDeck() {
 }
 
 // Display state 1: UTub selected, URL list and subheader prompt
-function displayState1URLDeck(UTubName) {
+function setUTubNameAndDescription(UTubName) {
   $("#URLDeckHeader").text(UTubName);
   $("#utubNameUpdate").val(UTubName);
 

@@ -25,5 +25,9 @@
 
 <!-- Subheader -->
 <div class="titleElement pad-in-15p">
-    <h5 id="UTubDeckSubheader">Create a UTub</h5>
+    {% if utubs_for_this_user|length == 0 %}
+        <h5 id="UTubDeckSubheader">Create a UTub</h5>
+    {% else %}
+        <h5 id="UTubDeckSubheader">{{ utubs_for_this_user|length }} UTubs</h5>
+    {% endif %}
 </div>

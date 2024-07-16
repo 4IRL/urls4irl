@@ -143,15 +143,18 @@ function createURLTagSuccess(response, urlCard) {
     .append(createTagBadgeInURL(tagID, string, urlCard));
 
   // Add SelectAll button if not yet there
-  if (isEmpty($("#selectAll"))) {
-    $("#listTags").append(createSelectAllTagFilterInDeck());
+  if (isEmpty($("#unselectAll"))) {
+    $("#listTags").append(createUnselectAllTagFilterInDeck());
   }
 
   if (!isTagInDeck(tagID)) {
-    $("#listTags").append(createTagFilterInDeck(tagID, string));
+    const newTag = createTagFilterInDeck(tagID, string);
+    // If max number of tags already selected
+    $(".tagFilter.selected") === CONSTANTS.TAGS_MAX_ON_URL
+      ? newTag.addClass("disabled").off(".tagFilterSelected")
+      : null;
+    $("#listTags").append(newTag);
   }
-
-  updateCountOfTagFiltersApplied();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new Tag
@@ -260,13 +263,13 @@ function deleteURLTagSuccess(response, tagBadge) {
   // Determine whether the removed tag is the last instance in the UTub. Remove, if yes
   if (!response.tagInUTub) {
     $(".tagFilter[tagid=" + tagID + "]").remove();
+    updateTagFilteringOnURLOrURLTagDeletion();
   }
 
   // Remove SelectAll button if no tags
   if (isEmpty($(".tagFilter"))) {
-    $("#selectAll").remove();
+    $("#unselectAll").remove();
   }
-  updateCountOfTagFiltersApplied();
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
