@@ -13,35 +13,9 @@ $(document).ready(function () {
 
 /* Tag Utility Functions */
 
-// Function to count number of tags in current UTub
-function getNumOfTags() {
-  return $(".tagFilter").length;
-}
-
-// Function to enumerate applied tag filters in current UTub
-function getActiveTagIDs() {
-  let activeTagIDList = [];
-  let tagFilterList = $(".tagFilter");
-
-  for (let i = 0; i < tagFilterList.length; i++) {
-    let tagFilter = tagFilterList[i];
-    // if ($(tagFilter).hasClass("selected")) activeTagIDList.push($(tagFilter).tagid)
-    // if ($(tagFilter).hasClass("selected")) [activeTagIDList, $(tagFilter).tagid]
-    if ($(tagFilter).hasClass("unselected"))
-      activeTagIDList.push($(tagFilter).attr("tagid"));
-    // if ($(tagFilter).hasClass("selected")) [activeTagIDList, $(tagFilter).attr('tagid')]
-  }
-
-  return activeTagIDList;
-}
-
 // Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
 function currentTagDeckIDs() {
-  let tagList = $(".tagFilter");
-  let tagIDList = Object.keys(tagList).map(function (property) {
-    return "" + $(tagList[property]).attr("tagid");
-  });
-  return tagIDList;
+  return $.map($(".tagFilter"), (tag) => parseInt($(tag).attr("tagid")));
 }
 
 // 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
@@ -64,7 +38,7 @@ function enableTagRemovalInURLCard(urlCard) {
 }
 
 function isTagInDeck(tagid) {
-  return currentTagDeckIDs().includes("" + tagid);
+  return currentTagDeckIDs().includes(tagid);
 }
 
 // Clear the Tag Deck
@@ -165,10 +139,24 @@ function createUnselectAllTagFilterInDeck() {
   const container = $(document.createElement("div"));
   const span = $(document.createElement("span"));
 
-  container.addClass("pointerable unselected disabled col-12").attr({
-    id: "unselectAll",
-    tagid: "all",
-  });
+  container
+    .addClass("pointerable unselected disabled col-12")
+    .attr({
+      id: "unselectAll",
+      tagid: "all",
+      tabindex: -1,
+    })
+    .on("focus.unselectAllSelected", function () {
+      $(document).on("keyup.unselectAllSelected", function (e) {
+        if (e.which === 13) {
+          unselectAllTags();
+          container.trigger("blur");
+        }
+      });
+    })
+    .on("blur.unselectAllSelected", function () {
+      $(document).off("keyup.unselectAllSelected");
+    });
 
   span.text("Unselect All");
 
@@ -186,9 +174,18 @@ function createTagFilterInDeck(tagID, string) {
     .addClass("tagFilter pointerable unselected col-12")
     .attr({
       tagid: tagID,
+      tabindex: 0,
     })
     .on("click.tagFilterSelected", function () {
       toggleTagFilterSelected(container);
+    })
+    .on("focus.tagFilterSelected", function () {
+      $(document).on("keyup.tagFilterSelected", function (e) {
+        if (e.which === 13) toggleTagFilterSelected(container);
+      });
+    })
+    .on("blur.tagFilterSelected", function () {
+      $(document).off("keyup.tagFilterSelected");
     });
 
   span.text(string);
@@ -286,26 +283,40 @@ function enableUnselectAllButtonAfterTagFilterApplied() {
     .removeClass("disabled")
     .on("click.unselectAllTags", function () {
       unselectAllTags();
-    });
+    })
+    .attr({ tabindex: 0 });
 }
 
 function disableUnselectAllButtonAfterTagFilterRemoved() {
-  $("#unselectAll").addClass("disabled").off(".unselectAllTags");
+  $("#unselectAll")
+    .addClass("disabled")
+    .off(".unselectAllTags")
+    .attr({ tabindex: -1 });
 }
 
 function enableUnselectedTagsAfterDisabledDueToLimit() {
   const unselectedTags = $(".tagFilter.unselected").removeClass("disabled");
   unselectedTags.each((_, tag) => {
-    $(tag).on("click.tagFilterSelected", function () {
-      toggleTagFilterSelected($(tag));
-    });
+    $(tag)
+      .on("click.tagFilterSelected", function () {
+        toggleTagFilterSelected($(tag));
+      })
+      .offAndOn("focus.tagFilterSelected", function () {
+        $(document).on("keyup.tagFilterSelected", function (e) {
+          if (e.which === 13) toggleTagFilterSelected($(tag));
+        });
+      })
+      .offAndOn("blur.tagFilterSelected", function () {
+        $(document).off("keyup.tagFilterSelected");
+      })
+      .attr({ tabindex: 0 });
   });
 }
 
 function disableUnselectedTagsAfterLimitReached() {
   const unselectedTags = $(".tagFilter.unselected").addClass("disabled");
   unselectedTags.each((_, tag) => {
-    $(tag).off(".tagFilterSelected");
+    $(tag).off(".tagFilterSelected").attr({ tabindex: -1 });
   });
 }
 
@@ -314,9 +325,19 @@ function unselectAllTags() {
     .removeClass("selected unselected disabled")
     .addClass("unselected")
     .each((_, tag) => {
-      $(tag).offAndOn("click.tagFilterSelected", function () {
-        toggleTagFilterSelected($(tag));
-      });
+      $(tag)
+        .offAndOn("click.tagFilterSelected", function () {
+          toggleTagFilterSelected($(tag));
+        })
+        .offAndOn("focus.tagFilterSelected", function () {
+          $(document).on("keyup.tagFilterSelected", function (e) {
+            if (e.which === 13) toggleTagFilterSelected($(tag));
+          });
+        })
+        .offAndOn("blur.tagFilterSelected", function () {
+          $(document).off("keyup.tagFilterSelected");
+        })
+        .attr({ tabindex: 0 });
     });
   disableUnselectAllButtonAfterTagFilterRemoved();
   updateURLsAndTagSubheaderWhenTagSelected();
