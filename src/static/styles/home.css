@@ -236,6 +236,12 @@
     visibility: visible !important;
 }
 
+.member,
+.tagFilter,
+#unselectAll {
+    padding: 3px 10px;
+}
+
 /* UTubs */
 
 .active,
@@ -298,27 +304,26 @@
     color: var(--tagBadgeDeleteBtnColorHover);
 }
 
-#selectAll,
+#unselectAll,
 .tagFilter {
     display: flex;
-    padding: 3px 3px;
     margin-top: 5px;
     border-radius: 25px;
     transition: background-color 0.3s, border-color 0.3s;
 }
 
-#selectAll,
+#unselectAll,
 .tagFilter {
     border: 2px solid var(--tagBorderColor);
     background-color: var(--tagBackgroundColorSelected);
 }
 
-#selectAll:hover,
+#unselectAll:hover,
 .tagFilter:hover {
     border-color: #aaa;
 }
 
-#selectAll.unselected,
+#unselectAll.unselected,
 .tagFilter.unselected {
     background-color: var(--tagBackgroundColor);
     border: 2px solid var(--tagBorderColor);
@@ -326,7 +331,7 @@
     color: white;
 }
 
-#selectAll.unselected:hover,
+#unselectAll.unselected:hover,
 .tagFilter.unselected:hover {
     background-color: var(--tagBackgroundColorHover);
     border-color: var(--tagBorderColor);
@@ -336,27 +341,37 @@
     gap: 2rem;
 }
 
+#unselectAll.disabled,
+.unselected.disabled {
+    cursor: not-allowed;
+    color: gray;
+}
+
+.unselected.disabled:hover {
+    background-color: var(--tagBackgroundColor) !important;
+}
+
 /* URLs */
 
-#listURLs .urlRow:nth-child(odd),
-#listURLs .urlRow:nth-child(odd) .text-input-inner-container > label, 
-#listURLs .urlRow:nth-child(odd) .text-input-inner-container > input { 
+#listURLs .urlRow.even[filterable="true"],
+#listURLs .urlRow.even[filterable="true"] .text-input-inner-container > label, 
+#listURLs .urlRow.even[filterable="true"] .text-input-inner-container > input { 
     background-color: var(--cardBackgroundColor);
 }
 
-#listURLs .urlRow:nth-child(odd) .tagBadge {
+#listURLs .urlRow.even[filterable="true"] .tagBadge {
     background: var(--pageBackgroundColor);
 }
 
-#listURLs .urlRow:nth-child(odd):not([urlSelected="true"]):hover {
+#listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
     background-color: rgba(61, 71, 71, 1.0); 
 }
 
-#listURLs .urlRow:nth-child(even):not([urlSelected="true"]):hover {
+#listURLs .urlRow.odd[filterable="true"]:not([urlSelected="true"]):hover {
     background-color: rgba(51, 61, 61, 1.0);
 }
 
-#listURLs .urlRow:last-child {
+#listURLs .urlRow[filterable="true"]:last-child {
     border-bottom-width: 2px;
 }
 
@@ -393,9 +408,9 @@
     visibility: hidden;
 }
 
-.urlRow[urlSelected="false"]:focus .goToUrlIcon,
-.urlRow[urlSelected="false"]:hover .goToUrlIcon,
-.urlRow[urlSelected="true"] .goToUrlIcon{
+.urlRow[filterable="true"][urlSelected="false"]:focus .goToUrlIcon,
+.urlRow[filterable="true"][urlSelected="false"]:hover .goToUrlIcon,
+.urlRow[filterable="true"][urlSelected="true"] .goToUrlIcon{
     visibility: visible;
 }
 
@@ -430,13 +445,13 @@
     outline: none;
 }
 
-.urlRow[urlSelected="false"]:focus-visible,
-.urlRow[urlSelected="false"]:focus {
+.urlRow[filterable="true"][urlSelected="false"]:focus-visible,
+.urlRow[filterable="true"][urlSelected="false"]:focus {
     border-top: 1px solid var(--focusedUrlBorder);
     border-bottom: 1px solid var(--focusedUrlBorder) !important;
 }
 
-.urlRow[urlSelected="true"] {
+.urlRow[filterable="true"][urlSelected="true"] {
     border-top: 1px solid var(--selectedUrlBorder);
     border-bottom: 1px solid var(--selectedUrlBorder) !important;
     cursor: auto;
@@ -444,30 +459,31 @@
     padding-bottom: 20px;
 }
 
-.urlRow[urlSelected="true"] .urlTags,
-.urlRow[urlSelected="true"] .urlOptions {
+.urlRow[filterable="true"][urlSelected="true"] .urlTags,
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions {
     height: auto;
     opacity: 1;
 }
 
-.urlRow[urlSelected="true"] .urlTags {
+.urlRow[filterable="true"][urlSelected="true"] .urlTags {
     padding: 20px 0 15px 0;
 }
 
-.urlRow[urlSelected="true"] .urlOptions {
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions {
     padding: 15px 0 0 0;
 }
 
-.urlRow[urlSelected="true"] .urlOptions > button {
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions > button {
     font-size: initial;
 }
 
-.urlRow[urlSelected="true"] .urlString {
+.urlRow[filterable="true"][urlSelected="true"] .urlString {
     overflow-wrap: break-word;
     white-space: normal;
+    width: fit-content;
 }
 
-.urlRow[urlSelected="true"] .urlString:hover {
+.urlRow[filterable="true"][urlSelected="true"] .urlString:hover {
     text-decoration: underline;
     cursor: pointer;
 }
@@ -476,28 +492,32 @@
     display: none;
 }
 
-.urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover > .updateURLTitleShowFormIcon {
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover > .updateURLTitleShowFormIcon {
     display: flex;
 }
 
-.urlRow[urlSelected=false] .urlTitle {
+.urlRow[filterable="true"][urlSelected=false] .urlTitle {
     width: 95%;
 }
 
-.urlRow[urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
     width: max-content;
 }
 
-.urlRow[urlSelected="true"] .updateUrlTitleWrap > .text-input-container {
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap > .text-input-container {
     width: 65%;
 }
 
-.urlRow[urlSelected="true"] .updateUrlStringWrap > .text-input-container {
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlStringWrap > .text-input-container {
     width: 100%;
 }
 
-.urlRow[urlSelected="true"] .createUrlTagWrap > .text-input-container {
+.urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap > .text-input-container {
     width: 45%;
+}
+
+.urlRow[filterable="false"] {
+    display: none;
 }
 
 .urlTags::before,
@@ -540,7 +560,7 @@
 }
 
 
-.urlRow[urlSelected="true"] .urlTitle {
+.urlRow[filterable="true"][urlSelected="true"] .urlTitle {
     white-space: normal;
     text-overflow: unset;
 }
@@ -555,7 +575,6 @@
 .member {
     color: #aaa;
     border-color: #aaa;
-    padding: 3px 3px;
     border-radius: 25px;
     border: 2px solid var(--tagBorderColor);
     background-color: var(--cardBackgroundColor);

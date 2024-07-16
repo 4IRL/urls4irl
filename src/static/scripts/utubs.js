@@ -18,8 +18,11 @@ window.addEventListener("popstate", function (e) {
   } else {
     // If does not contain query parameter, user is at /home - then update UTub titles/IDs
     displayState0();
-    console.log("Display state 0");
-    getAllUTubs().then((utubData) => buildUTubDeck(utubData));
+    getAllUTubs().then((utubData) => {
+      buildUTubDeck(utubData);
+      setMemberDeckWhenNoUTubSelected();
+      setTagDeckSubheaderWhenNoUTubSelected();
+    });
   }
 });
 
@@ -238,7 +241,7 @@ function allowUserToCreateDescriptionIfEmptyOnTitleUpdate() {
 function buildUTubDeck(UTubs) {
   resetUTubDeck();
   const parent = $("#listUTubs");
-  let numOfUTubs = UTubs.length;
+  const numOfUTubs = UTubs.length;
 
   if (numOfUTubs !== 0) {
     // Instantiate deck with list of UTubs accessible to current user
@@ -247,8 +250,8 @@ function buildUTubDeck(UTubs) {
     }
 
     displayState1UTubDeck(null, null);
-    displayState0URLDeck();
-  } else displayState0UTubDeck();
+    setURLDeckWhenNoUTubSelected();
+  } else resetUTubDeckIfNoUTubs();
 }
 
 function buildSelectedUTub(selectedUTub) {
@@ -346,6 +349,9 @@ async function updateUTubOnFindingStaleData(selectedUTubID) {
   const utubOwnerID = utub.createdByUserID;
   const isCurrentUserOwner = utub.isCreator;
   updateMemberDeck(utubMembers, utubOwnerID, isCurrentUserOwner);
+
+  // Update filtering
+  updateTagFilteringOnFindingStaleData();
 }
 
 function updateUTubNameAndDescription(utubID, utubName, utubDescription) {
@@ -503,7 +509,7 @@ function bindUTubSelectionBehavior() {
 /** UTub Display State Functions **/
 
 // Display state 0: Clean slate, no UTubs
-function displayState0UTubDeck() {
+function resetUTubDeckIfNoUTubs() {
   // Subheader to prompt user to create a UTub shown
   $("#UTubDeckSubheader").text("Create a UTub");
 

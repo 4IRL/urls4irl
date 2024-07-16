@@ -257,7 +257,7 @@ function updateUTubNameSuccess(response) {
 
   // Display updates
   displayState1UTubDeck(getActiveUTubID(), getCurrentUTubOwnerUserID());
-  displayState1URLDeck(UTubName);
+  setUTubNameAndDescription(UTubName);
 }
 
 // Handle error response display to user
@@ -524,7 +524,7 @@ function deleteUTubSuccess() {
   displayState1UTubDeck(null, null);
 
   if ($("#listUTubs").find(".UTubSelector").length === 0)
-    displayState0UTubDeck();
+    resetUTubDeckIfNoUTubs();
 }
 
 function deleteUTubFail(response, textStatus, xhr) {

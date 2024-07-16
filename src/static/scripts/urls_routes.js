@@ -80,7 +80,6 @@ function createURLSuccess(response) {
   );
 
   newUrlCard.insertAfter($("#createURLWrap"));
-  displayState1URLDeck();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
@@ -566,12 +565,10 @@ function deleteURLSuccessOnDelete(response, urlCard) {
   urlCard.fadeOut("slow", function () {
     cleanTagsAfterDeleteURL(response);
     urlCard.remove();
-    $("#listURLs").children().length === 0
+    $("#listURLs .urlRow").length === 0
       ? hideIfShown($("#accessAllURLsBtn"))
-      : null;
+      : updateTagFilteringOnURLOrURLTagDeletion();
   });
-
-  displayState1URLDeck();
 }
 
 // Cleans tags after successful URL deletion
@@ -582,7 +579,7 @@ function cleanTagsAfterDeleteURL(response) {
   let tag;
   for (let i = 0; i < tagsInResponse.length; i++) {
     tag = tagsInResponse[i];
-    if (!tag.tagInUTub) removeTagFromUTubDeckGivenTagID(tag.id);
+    if (!tag.tagInUTub) removeTagFromTagDeckGivenTagID(tag.id);
   }
 }
 
@@ -658,7 +655,7 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
   const allCurrentTags = $(".tagBadge");
   for (let i = 0; i < removedTagIDs.length; i++) {
     if (!isTagInUTub(allCurrentTags, removedTagIDs[i])) {
-      removeTagFromUTubDeckGivenTagID(removedTagIDs[i]);
+      removeTagFromTagDeckGivenTagID(removedTagIDs[i]);
     }
   }
 
@@ -727,12 +724,10 @@ function deleteURLOnStale(urlCard) {
   urlCard.fadeOut("slow", function () {
     checkForTagUpdatesAndRemoveOnStaleURLDeletion(urlCard);
     urlCard.remove();
-    $("#listURLs").children().length === 0
+    $("#listURLs .urlRow").length === 0
       ? hideIfShown($("#accessAllURLsBtn"))
-      : null;
+      : updateTagFilteringOnURLOrURLTagDeletion();
   });
-
-  displayState1URLDeck();
 }
 
 function checkForTagUpdatesAndRemoveOnStaleURLDeletion(staleURLCard) {
@@ -748,7 +743,7 @@ function checkForTagUpdatesAndRemoveOnStaleURLDeletion(staleURLCard) {
 
   for (let i = 0; i < staleURLTagBadgeIDs.length; i++) {
     if (!isTagInUTub(unstaleTagBadges, staleURLTagBadgeIDs[i])) {
-      removeTagFromUTubDeckGivenTagID(staleURLTagBadgeIDs[i]);
+      removeTagFromTagDeckGivenTagID(staleURLTagBadgeIDs[i]);
     }
   }
 }

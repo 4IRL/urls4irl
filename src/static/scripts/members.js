@@ -211,14 +211,14 @@ function createMemberRemoveIcon() {
 /** Member Display State Functions **/
 
 // Display state 0: Clean slate, no UTub selected
-function displayState0MemberDeck() {
+function setMemberDeckWhenNoUTubSelected() {
   resetMemberDeck();
 
   hideIfShown($("#memberBtnCreate"));
   hideIfShown($("#memberSelfBtnDelete"));
 
   // Subheader prompt hidden
-  hideIfShown($("#MemberDeckSubheader").closest(".titleElement"));
+  $("#MemberDeckSubheader").text(null);
 }
 
 // Display state 1: Selected UTub has no Members
