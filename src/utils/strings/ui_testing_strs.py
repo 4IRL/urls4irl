@@ -42,9 +42,7 @@ class UI_TEST_STRINGS:
     # Tags
 
     # URLs
-    BODY_MODAL_URL_DELETE = (
-        "This member will no longer have access to the URLs in this UTub."
-    )
+    BODY_MODAL_URL_DELETE = "You can always add it back again!"
 
     TEST_URL_STRING_CREATE = MOCK_URL_STRINGS[0]
     TEST_URL_STRING_UPDATE = "https://support.microsoft.com/en-us/microsoft-edge"

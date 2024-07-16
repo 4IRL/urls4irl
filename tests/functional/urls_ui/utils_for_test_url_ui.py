@@ -8,7 +8,6 @@ from selenium.webdriver.common.action_chains import ActionChains
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
-    current_user_is_owner,
     wait_then_click_element,
     wait_then_get_element,
 )
@@ -39,9 +38,6 @@ def update_url_string(browser, url_row, url_string: str):
     Once logged in, with users, UTub, URLs, and a URL selected this function initiates the action to update the string of the active URL in the UTub.
     """
 
-    # Activate URL
-    url_row.click()
-
     # Select editURL button
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_UPDATE).click()
 
@@ -59,9 +55,6 @@ def update_url_title(browser, url_row, url_title: str):
     """
     Once logged in, with users, UTub, URLs, and a URL selected this function initiates the action to update the title of the active URL in the UTub.
     """
-
-    # Activate URL
-    url_row.click()
 
     # Select editURL button
     url_title_text = url_row.find_element(By.CSS_SELECTOR, ".urlTitle")
@@ -94,12 +87,10 @@ def update_url_title(browser, url_row, url_title: str):
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE).click()
 
 
-def delete_active_url(browser):
+def delete_url(browser, url_row):
     """
     Once logged in, with users, UTubs, and URLs this function initiates the action to delete one URL from the UTub. Modal confirmation handled in test.
     """
 
-    if current_user_is_owner(browser):
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
-    else:
-        return False
+    # Select deleteURL button
+    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_DELETE).click()

@@ -38,6 +38,7 @@ def test_update_url_string(browser, create_test_urls):
     url_string = UTS.TEST_URL_STRING_UPDATE
 
     url_row = get_url_row_by_title(browser, UTS.TEST_URL_TITLE)
+    url_row.click()
     update_url_string(browser, url_row, url_string)
 
     # Wait for POST request
@@ -70,6 +71,7 @@ def test_update_url_title(browser, create_test_urls):
     url_title = UTS.TEST_URL_TITLE_UPDATE
 
     url_row = get_url_row_by_title(browser, UTS.TEST_URL_TITLE)
+    url_row.click()
     update_url_title(browser, url_row, url_title)
 
     # Wait for POST request

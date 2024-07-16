@@ -162,6 +162,7 @@ def get_num_utubs(browser):
     return int(num_utubs)
 
 
+# Members Deck
 def get_active_utub_owner_id(browser):
     owner_badge = wait_then_get_element(browser, MPL.BADGE_OWNER)
     owner_id = owner_badge.find_element(By.TAG_NAME, "span").get_attribute("memberid")
@@ -193,6 +194,7 @@ def current_user_is_owner(browser):
     return get_current_user_id(browser) == get_active_utub_owner_id(browser)
 
 
+# URL Deck
 def get_url_row_by_title(browser, url_title: str):
     url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
 

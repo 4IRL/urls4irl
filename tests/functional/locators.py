@@ -48,6 +48,8 @@ class MainPageLocators:
 
     INPUT_URL_TITLE_UPDATE = "#urlTitleCreate"
 
+    BUTTON_URL_DELETE = ".urlBtnDelete"
+
     BUTTON_ACCESS_ALL_URLS = "#accessAllURLsBtn"
 
     # Members Deck
