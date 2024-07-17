@@ -273,13 +273,13 @@ function leaveUTubSuccess() {
   // Members Deck display updates
   $("#memberSelfBtnDelete").hide();
   $("#confirmModal").modal("hide");
-  displayState0();
+  setUIWhenNoUTubSelected();
 
   // UTub Deck display updates
   const utubSelector = $(".UTubSelector[utubid=" + getActiveUTubID() + "]");
   utubSelector.fadeOut("slow", function () {
     utubSelector.remove();
-    displayState1UTubDeck(null, null);
+    hideInputsAndSetUTubDeckSubheader();
   });
 }
 

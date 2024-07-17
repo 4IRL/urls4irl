@@ -256,7 +256,7 @@ function updateUTubNameSuccess(response) {
   updatedUTubSelector.find(".UTubName").text(UTubName);
 
   // Display updates
-  displayState1UTubDeck(getActiveUTubID(), getCurrentUTubOwnerUserID());
+  setUTubDeckOnUTubSelected(getActiveUTubID(), getCurrentUTubOwnerUserID());
   setUTubNameAndDescription(UTubName);
 }
 
@@ -519,9 +519,9 @@ function deleteUTubSuccess() {
   UTubSelector.remove();
 
   // Reset all panels
-  displayState0();
+  setUIWhenNoUTubSelected();
 
-  displayState1UTubDeck(null, null);
+  hideInputsAndSetUTubDeckSubheader();
 
   if ($("#listUTubs").find(".UTubSelector").length === 0)
     resetUTubDeckIfNoUTubs();

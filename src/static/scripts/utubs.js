@@ -1,10 +1,11 @@
 /** UTub UI Interactions **/
 
 $(document).ready(function () {
-  displayState0();
+  const timeoutID = showUTubLoadingIconAndSetTimeout();
+  setUIWhenNoUTubSelected();
   // Instantiate UTubDeck with user's accessible UTubs
   try {
-    buildUTubDeck(UTubs);
+    buildUTubDeck(UTubs, timeoutID);
   } catch (error) {
     console.log("Something is wrong!");
     console.log(error);
@@ -17,7 +18,7 @@ window.addEventListener("popstate", function (e) {
     buildSelectedUTub(e.state.UTub);
   } else {
     // If does not contain query parameter, user is at /home - then update UTub titles/IDs
-    displayState0();
+    setUIWhenNoUTubSelected();
     getAllUTubs().then((utubData) => {
       buildUTubDeck(utubData);
       setMemberDeckWhenNoUTubSelected();
@@ -77,19 +78,37 @@ function getCurrentUTubName() {
 // Quickly extracts all UTub names from #listUTubs and returns an array.
 function getAllAccessibleUTubNames() {
   let UTubNames = [];
-  let UTubSelectorNames = $(".UTubName");
+  const UTubSelectorNames = $(".UTubName");
   UTubSelectorNames.map((i) => UTubNames.push($(UTubSelectorNames[i]).text()));
   return UTubNames;
 }
 
 // Streamline the AJAX call to db for updated info
 function getUTubInfo(selectedUTubID) {
-  return $.getJSON("/home?UTubID=" + selectedUTubID);
+  const timeoutID = showUTubLoadingIconAndSetTimeout();
+  return $.getJSON("/home?UTubID=" + selectedUTubID).always(function () {
+    hideUTubLoadingIconAndClearTimeout(timeoutID);
+  });
 }
 
 // Utility route to get all UTub summaries
 function getAllUTubs() {
-  return $.getJSON("/utubs");
+  const timeoutID = showUTubLoadingIconAndSetTimeout();
+  return $.getJSON("/utubs").always(function () {
+    hideUTubLoadingIconAndClearTimeout(timeoutID);
+  });
+}
+
+// Utility function to show a loading icon when loading UTubs
+function showUTubLoadingIconAndSetTimeout() {
+  return setTimeout(function () {
+    $("#UTubSelectDualLoadingRing").addClass("dual-loading-ring");
+  }, SHOW_LOADING_ICON_AFTER_MS);
+}
+
+function hideUTubLoadingIconAndClearTimeout(timeoutID) {
+  clearTimeout(timeoutID);
+  $("#UTubSelectDualLoadingRing").removeClass("dual-loading-ring");
 }
 
 // Set event listeners for add and delete UTubs
@@ -238,7 +257,7 @@ function allowUserToCreateDescriptionIfEmptyOnTitleUpdate() {
 /** UTub Functions **/
 
 // Assembles components of the UTubDeck (top left panel)
-function buildUTubDeck(utubs) {
+function buildUTubDeck(utubs, timeoutID) {
   resetUTubDeck();
   const parent = $("#listUTubs");
   const numOfUTubs = utubs.length;
@@ -249,9 +268,11 @@ function buildUTubDeck(utubs) {
       parent.append(createUTubSelector(utubs[i].name, utubs[i].id, i));
     }
 
-    displayState1UTubDeck(null, null);
+    hideInputsAndSetUTubDeckSubheader();
     setURLDeckWhenNoUTubSelected();
   } else resetUTubDeckIfNoUTubs();
+
+  if (timeoutID) hideUTubLoadingIconAndClearTimeout(timeoutID);
 }
 
 function buildSelectedUTub(selectedUTub) {
@@ -281,7 +302,7 @@ function buildSelectedUTub(selectedUTub) {
 
   // LH panels
   // UTub deck
-  displayState1UTubDeck(selectedUTub.id, utubOwnerID);
+  setUTubDeckOnUTubSelected(selectedUTub.id, utubOwnerID);
 
   // Tag deck
   buildTagDeck(dictTags);
@@ -528,10 +549,7 @@ function resetUTubDeckIfNoUTubs() {
 
 // Display state 1: UTubs list, none selected. selectedUTubID, UTubOwnerID == null
 // Enter into this state only at page load, or after UTub deletion
-// Display state 2: UTubs list, 1x selected
-// Enter into this state change only if new UTub is selected
-// No actions performed within other decks can affect UTub Deck display
-function displayState1UTubDeck(selectedUTubID, UTubOwnerUserID) {
+function hideInputsAndSetUTubDeckSubheader() {
   hideInputs();
   const numOfUTubs = getNumOfUTubs();
   const subheaderText =
@@ -539,8 +557,13 @@ function displayState1UTubDeck(selectedUTubID, UTubOwnerUserID) {
 
   // Subheader to tell user how many UTubs are accessible
   $("#UTubDeckSubheader").text(subheaderText);
+}
 
-  // UTub selected
+// Display state 2: UTubs list, 1x selected
+// Enter into this state change only if new UTub is selected
+// No actions performed within other decks can affect UTub Deck display
+function setUTubDeckOnUTubSelected(selectedUTubID, UTubOwnerUserID) {
+  hideInputsAndSetUTubDeckSubheader();
 
   // Bind selection behavior to depature UTub, unbind from selected UTub
   bindUTubSelectionBehavior();

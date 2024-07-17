@@ -164,6 +164,10 @@
     gap: 20px;
 }
 
+.gap-10p {
+    gap: 10px;
+}
+
 .pad-top-5p {
     padding-top: 5px;
 }
