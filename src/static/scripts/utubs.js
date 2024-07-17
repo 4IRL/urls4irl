@@ -238,15 +238,15 @@ function allowUserToCreateDescriptionIfEmptyOnTitleUpdate() {
 /** UTub Functions **/
 
 // Assembles components of the UTubDeck (top left panel)
-function buildUTubDeck(UTubs) {
+function buildUTubDeck(utubs) {
   resetUTubDeck();
   const parent = $("#listUTubs");
-  const numOfUTubs = UTubs.length;
+  const numOfUTubs = utubs.length;
 
   if (numOfUTubs !== 0) {
     // Instantiate deck with list of UTubs accessible to current user
     for (let i = 0; i < numOfUTubs; i++) {
-      parent.append(createUTubSelector(UTubs[i].name, UTubs[i].id, i));
+      parent.append(createUTubSelector(utubs[i].name, utubs[i].id, i));
     }
 
     displayState1UTubDeck(null, null);
@@ -256,12 +256,12 @@ function buildUTubDeck(UTubs) {
 
 function buildSelectedUTub(selectedUTub) {
   // Parse incoming data, pass them into subsequent functions as required
-  const UTubName = selectedUTub.name;
+  const utubName = selectedUTub.name;
   const dictURLs = selectedUTub.urls;
   const dictTags = selectedUTub.tags;
   const dictMembers = selectedUTub.members;
-  const UTubOwnerID = selectedUTub.createdByUserID;
-  const UTubDescription = selectedUTub.description;
+  const utubOwnerID = selectedUTub.createdByUserID;
+  const utubDescription = selectedUTub.description;
   const isCurrentUserOwner = selectedUTub.isCreator;
 
   const isUTubHistoryNull = window.history.state === null;
@@ -281,25 +281,25 @@ function buildSelectedUTub(selectedUTub) {
 
   // LH panels
   // UTub deck
-  displayState1UTubDeck(selectedUTub.id, UTubOwnerID);
+  displayState1UTubDeck(selectedUTub.id, utubOwnerID);
 
   // Tag deck
   buildTagDeck(dictTags);
 
   // Center panel
   // URL deck
-  buildURLDeck(UTubName, dictURLs, dictTags);
+  buildURLDeck(utubName, dictURLs, dictTags);
 
   // UTub Description
   const utubDescriptionHeader = $("#URLDeckSubheader");
-  if (UTubDescription) {
-    utubDescriptionHeader.text(UTubDescription);
+  if (utubDescription) {
+    utubDescriptionHeader.text(utubDescription);
   } else {
     utubDescriptionHeader.text(null);
   }
 
   // Members deck
-  buildMemberDeck(dictMembers, UTubOwnerID, isCurrentUserOwner);
+  buildMemberDeck(dictMembers, utubOwnerID, isCurrentUserOwner);
 
   // Only allow owner to update UTub name and description
   if (isCurrentUserOwner) {
@@ -372,27 +372,36 @@ function updateUTubNameAndDescription(utubID, utubName, utubDescription) {
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
-function createUTubSelector(UTubName, UTubID, index) {
-  let UTubSelector = document.createElement("div");
-  let UTubSelectorText = document.createElement("b");
+function createUTubSelector(utubName, utubID, index) {
+  const utubSelector = $(document.createElement("span"));
+  const utubSelectorText = $(document.createElement("b"));
 
-  $(UTubSelectorText).addClass("UTubName").text(UTubName);
+  $(utubSelectorText).addClass("UTubName").text(utubName);
 
-  $(UTubSelector)
+  $(utubSelector)
     .addClass("UTubSelector")
     .attr({
-      utubid: UTubID,
+      utubid: utubID,
       position: index,
+      tabindex: 0,
     })
     // Bind display state change function on click
     .on("click.selectUTub", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      selectUTub(UTubID);
+      selectUTub(utubID);
     })
-    .append(UTubSelectorText);
+    .offAndOn("focus.selectUTub", function () {
+      $(document).on("keyup.selectUTub", function (e) {
+        if (e.which === 13) selectUTub(utubID);
+      });
+    })
+    .offAndOn("blur.selectUTub", function () {
+      $(document).off("keyup.selectUTub");
+    })
+    .append(utubSelectorText);
 
-  return UTubSelector;
+  return utubSelector;
 }
 
 // Attaches appropriate event listeners to the add UTub and cancel add UTub buttons

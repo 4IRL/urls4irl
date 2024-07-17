@@ -237,6 +237,7 @@
 }
 
 .member,
+.UTubSelector,
 .tagFilter,
 #unselectAll {
     padding: 3px 10px;
@@ -244,20 +245,45 @@
 
 /* UTubs */
 
-.active,
-.active:hover .UTubName {
-    color: var(--selectedUTubColor);
+.UTubSelector {
+    color: #aaa;
+    border-color: #aaa;
+    border-radius: 25px;
+    border: 2px solid var(--tagBorderColor);
+    background-color: var(--cardBackgroundColor);
+    margin-top: 5px;
+    transition: border-color 0.2s ease-in-out, background-color 0.2s ease-in-out;
 }
 
-.UTubName:hover {
-    cursor: pointer;
-    color: var(--deckSelectionGreenHover)
+.UTubSelector:hover {
+    cursor:pointer;
+    border-color: var(--deckSelectionGreenHover);
+    background-color: var(--selectedUTubColorBackground);
+}
+
+.active:active,
+.UTubSelector:active {
+    border-color: var(--deckSelectionGreen);
+    background-color: var(--selectedUTubColorBackgroundFocus);
+}
+
+.UTubSelector:focus {
+    outline: none;
+    border: 2px solid var(--deckSelectionGreenHover);
+}
+
+.active,
+.active:hover .UTubName {
+    color: var(--deckSelectionGreen);
+    border-color: var(--deckSelectionGreenHover);
+    background-color: var(--selectedUTubColorBackground);
 }
 
 .updateIcon:hover {
     cursor: pointer;
     color: white;
 }
+
 
 /* Tags */
 
