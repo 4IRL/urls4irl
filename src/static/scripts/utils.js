@@ -346,7 +346,7 @@ function handleBlur(event) {
   }
 }
 
-function displayState0() {
+function setUIWhenNoUTubSelected() {
   hideInputs();
   setTagDeckSubheaderWhenNoUTubSelected();
   resetTagDeck();
@@ -354,11 +354,6 @@ function displayState0() {
   resetURLDeck();
   setMemberDeckWhenNoUTubSelected();
   resetMemberDeck();
-}
-
-function displayState1() {
-  displayState1UTubDeck(null, null);
-  displayState1MemberDeck(null, false);
 }
 
 // jQuery plugins
