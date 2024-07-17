@@ -2,13 +2,13 @@
 from time import sleep
 
 # Internal libraries
-from src.mocks.mock_constants import UTUB_NAME_BASE, USERNAME_BASE
+from src.mocks.mock_constants import USERNAME_BASE
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.members_ui.utils_for_test_members_ui import (
     create_member_active_utub,
     get_all_member_usernames,
 )
 from tests.functional.utils_for_test import (
-    get_current_user_name,
     login_user,
     select_utub_by_name,
 )
@@ -25,11 +25,9 @@ def test_create_member(browser, create_test_utubs):
     login_user(browser)
 
     new_member_username = USERNAME_BASE + "2"
-    utub_name = UTUB_NAME_BASE + "1"
-    user_name = get_current_user_name(browser)
 
-    select_utub_by_name(browser, utub_name)
-    create_member_active_utub(browser, user_name, new_member_username)
+    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
+    create_member_active_utub(browser, new_member_username)
 
     # Wait for POST request
     sleep(4)

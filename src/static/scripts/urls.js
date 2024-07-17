@@ -215,9 +215,7 @@ function resetURLDeck() {
 
 // Prevent editing URL title when needed
 function disableEditingURLTitle(urlCard) {
-  const showUpdateURLTitleFormIcon = urlCard.find(
-    ".updateURLTitleShowFormIcon",
-  );
+  const showUpdateURLTitleFormIcon = urlCard.find(".urlTitleBtnUpdate");
   if (showUpdateURLTitleFormIcon.length > 0) {
     showUpdateURLTitleFormIcon.addClass("hidden");
   }
@@ -225,9 +223,7 @@ function disableEditingURLTitle(urlCard) {
 
 // Allow editing URL title when needed
 function enableEditingURLTitle(urlCard) {
-  const showUpdateURLTitleFormIcon = urlCard.find(
-    ".updateURLTitleShowFormIcon",
-  );
+  const showUpdateURLTitleFormIcon = urlCard.find(".urlTitleBtnUpdate");
   if (showUpdateURLTitleFormIcon.length > 0) {
     showUpdateURLTitleFormIcon.removeClass("hidden");
   }
@@ -518,7 +514,7 @@ function createURLTitleAndUpdateBlock(urlTitleText, urlCard) {
 // Create the icon that will show the update URL title form
 function createShowUpdateURLTitleIcon() {
   return makeUpdateButton(20)
-    .addClass("updateURLTitleShowFormIcon")
+    .addClass("urlTitleBtnUpdate")
     .on("click.showUpdateURLTitle", function (e) {
       if ($(e.target).parents(".urlTitleAndUpdateIconWrap").length > 0) {
         const urlTitleAndIcon = $(e.target).closest(
@@ -1041,6 +1037,7 @@ function setURLDeckWhenNoUTubSelected() {
 function setUTubNameAndDescription(UTubName) {
   $("#URLDeckHeader").text(UTubName);
   $("#utubNameUpdate").val(UTubName);
+  showIfHidden($("#accessAllURLsBtn"));
 
   updateUTubNameHideInput();
 }

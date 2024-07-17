@@ -2,10 +2,10 @@ import pytest
 
 from src.mocks.mock_constants import (
     MOCK_TAGS,
-    MOCK_URLS,
+    MOCK_URL_STRINGS,
     TEST_USER_COUNT,
     USERNAME_BASE,
-    UTUB_NAME_BASE,
+    MOCK_UTUB_NAME_BASE,
 )
 from src.models.email_validations import Email_Validations
 from src.models.tags import Tags
@@ -286,14 +286,14 @@ def _verify_utubs_added_duplicates(utub_count: int):
     assert Users.query.count() == TEST_USER_COUNT
     assert Utubs.query.count() == TEST_USER_COUNT * utub_count
     for i in range(TEST_USER_COUNT):
-        utub_name = f"{UTUB_NAME_BASE}{i + 1}"
+        utub_name = f"{MOCK_UTUB_NAME_BASE}{i + 1}"
         assert Utubs.query.filter(Utubs.name == utub_name).count() == utub_count
 
 
 def _verify_utubs_added_no_duplicates():
     """Verifies all unique utubs are in the database"""
     for i in range(TEST_USER_COUNT):
-        utub_name = f"{UTUB_NAME_BASE}{i + 1}"
+        utub_name = f"{MOCK_UTUB_NAME_BASE}{i + 1}"
         assert Utubs.query.filter(Utubs.name == utub_name).count() == 1
 
 
@@ -309,7 +309,7 @@ def _verify_utubmembers_added():
 
 def _verify_urls_in_database():
     """Verifies all mock URLs are stored in the database"""
-    for url in MOCK_URLS:
+    for url in MOCK_URL_STRINGS:
         assert Urls.query.filter(Urls.url_string == url).count() == 1
 
 
@@ -320,7 +320,7 @@ def _verify_urls_added_to_all_utubs():
         urls_in_utub: list[Utub_Urls] = utub.utub_urls
         assert sorted(
             [url.standalone_url.url_string for url in urls_in_utub]
-        ) == sorted(MOCK_URLS)
+        ) == sorted(MOCK_URL_STRINGS)
 
 
 def _verify_tags_in_database():

@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from src.mocks.mock_constants import MOCK_URLS
+from src.mocks.mock_constants import MOCK_URL_STRINGS
 from src.models.urls import Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -20,7 +20,7 @@ def generate_mock_urls(db: SQLAlchemy):
     for utub in all_utubs:
         utub_members: list[Utub_Members] = utub.members
 
-        for member, url in zip(utub_members, MOCK_URLS):
+        for member, url in zip(utub_members, MOCK_URL_STRINGS):
             url_to_add = Urls.query.filter(Urls.url_string == url).first()
             if url_to_add is not None:
                 print(f"Already added {url} to database")
