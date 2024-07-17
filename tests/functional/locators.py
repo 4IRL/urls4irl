@@ -46,8 +46,6 @@ class MainPageLocators:
     INPUT_URL_TITLE_UPDATE = ".urlTitleUpdate"
     BUTTON_URL_TITLE_SUBMIT_UPDATE = ".urlTitleSubmitBtnUpdate"
 
-    INPUT_URL_TITLE_UPDATE = "#urlTitleCreate"
-
     BUTTON_URL_DELETE = ".urlBtnDelete"
 
     BUTTON_ACCESS_ALL_URLS = "#accessAllURLsBtn"

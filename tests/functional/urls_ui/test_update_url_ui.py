@@ -23,7 +23,7 @@ from tests.functional.urls_ui.utils_for_test_url_ui import (
 )
 
 
-@pytest.mark.skip(reason="Test complete. Testing another in isolation")
+# @pytest.mark.skip(reason="Test complete. Testing another in isolation")
 def test_update_url_string(browser, create_test_urls):
     """
     GIVEN a user has access to a URL
