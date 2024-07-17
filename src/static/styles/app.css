@@ -45,6 +45,9 @@
 
     --oddUrlCardsBackgroundColor: rgba(61, 71, 71, 1.0);
     --evenUrlCardsBackgroundColor: rgba(51, 61, 61, 1.0);
+
+    --grayBadgeSelection: rgba(170, 170, 170, 1.0); /* #aaaaaa */
+    --grayBadgeSelectionFocus: rgba(187, 187, 187, 1.0); /* #bbbbbb */
 }
 
 /** HTML DOM Elements **/

@@ -246,8 +246,8 @@
 /* UTubs */
 
 .UTubSelector {
-    color: #aaa;
-    border-color: #aaa;
+    color: var(--grayBadgeSelection);
+    border-color: var(--grayBadgeSelection);
     border-radius: 25px;
     border: 2px solid var(--tagBorderColor);
     background-color: var(--cardBackgroundColor);
@@ -335,7 +335,7 @@
     display: flex;
     margin-top: 5px;
     border-radius: 25px;
-    transition: background-color 0.3s, border-color 0.3s;
+    transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 
 #unselectAll,
@@ -346,7 +346,21 @@
 
 #unselectAll:hover,
 .tagFilter:hover {
-    border-color: #aaa;
+    border-color: var(--grayBadgeSelection);
+}
+
+#unselectAll.unselected:hover,
+.tagFilter.unselected:hover {
+    background-color: var(--tagBackgroundColorHover);
+    border-color: var(--tagBorderColor);
+}
+
+.tagFilter.unselected:active,
+#unselectAll:active,
+#unselectAll.unselected:active,
+.tagFilter:active {
+    background-color: var(--grayBadgeSelectionFocus);
+    color: var(--tagBackgroundColor);
 }
 
 #unselectAll.unselected,
@@ -357,11 +371,6 @@
     color: white;
 }
 
-#unselectAll.unselected:hover,
-.tagFilter.unselected:hover {
-    background-color: var(--tagBackgroundColorHover);
-    border-color: var(--tagBorderColor);
-}
 
 .urlTags:has(.tagBadge) {
     gap: 2rem;
@@ -599,8 +608,8 @@
 /* Members */
 
 .member {
-    color: #aaa;
-    border-color: #aaa;
+    color: var(--grayBadgeSelection);
+    border-color: var(--grayBadgeSelection);
     border-radius: 25px;
     border: 2px solid var(--tagBorderColor);
     background-color: var(--cardBackgroundColor);
