@@ -1,5 +1,8 @@
 /** U4I UI Interactions **/
 
+const TABLET_WIDTH = 992;
+const NAVBAR_TOGGLER = { toggler: null };
+
 $(document).ready(function () {
   // Dev tracking of click-triggered objects
   $(document).on("click", function (e) {
@@ -39,7 +42,54 @@ $(document).ready(function () {
     textInput.on("focus", handleFocus);
     textInput.on("blur", handleBlur);
   }
+
+  // Grab toggler for the navbar
+  NAVBAR_TOGGLER.toggler = new bootstrap.Collapse("#NavbarNavDropdown", {
+    toggle: false,
+  });
+
+  // Event listeners when hiding and showing the mobile navbar
+  $("#NavbarNavDropdown")
+    .on("show.bs.collapse", () => {
+      onMobileNavbarOpened();
+    })
+    .on("hide.bs.collapse", () => {
+      onMobileNavbarClosed();
+    });
 });
+
+function onMobileNavbarOpened() {
+  const navbarBackdrop = $(document.createElement("div")).addClass(
+    "navbar-backdrop",
+  );
+
+  navbarBackdrop.on("click", function () {
+    NAVBAR_TOGGLER.toggler.hide();
+  });
+
+  setTimeout(function () {
+    navbarBackdrop.addClass("navbar-backdrop-show");
+  }, 0);
+
+  $(".navbar-brand").addClass("z9999");
+  $(".navbar-toggler").addClass("z9999");
+  $("#NavbarNavDropdown").addClass("z9999");
+
+  $("#mainNavbar").append(navbarBackdrop);
+}
+
+function onMobileNavbarClosed() {
+  const navbarBackdrop = $(".navbar-backdrop");
+  navbarBackdrop.addClass("navbar-backdrop-fade");
+
+  setTimeout(function () {
+    navbarBackdrop.remove();
+  }, 300);
+
+  $(".navbar-brand").removeClass("z9999");
+  $(".navbar-toggler").removeClass("z9999");
+  $("#NavbarNavDropdown").removeClass("z9999");
+}
 
 $(window).on("focus", () => {
   const prevFocusedElem = $(".focus");
@@ -236,7 +286,7 @@ function makeSubmitButton(wh) {
 
   // Submit checkbox
   const htmlString =
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-check-square-fill" viewBox="0 0 16 16" width="' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-check-square-fill submitButton tabbable" viewBox="0 0 16 16" width="' +
     wh +
     '" height="' +
     wh +
@@ -244,7 +294,7 @@ function makeSubmitButton(wh) {
     '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm10.03 4.97a.75.75 0 0 1 .011 1.05l-3.992 4.99a.75.75 0 0 1-1.08.02L4.324 8.384a.75.75 0 1 1 1.06-1.06l2.094 2.093 3.473-4.425a.75.75 0 0 1 1.08-.022z"/>' +
     "</svg>";
 
-  submitBtn.addClass("mx-1 py-2 green-clickable").html(htmlString);
+  submitBtn.addClass("mx-1 my-2 green-clickable").html(htmlString);
 
   return submitBtn;
 }
@@ -255,7 +305,7 @@ function makeCancelButton(wh) {
 
   // Cancel x-box
   const htmlString =
-    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill cancelButton" viewBox="0 0 16 16" width="' +
+    '<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-x-square-fill cancelButton tabbable" viewBox="0 0 16 16" width="' +
     wh +
     '" height="' +
     wh +
@@ -263,7 +313,7 @@ function makeCancelButton(wh) {
     '<path d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm3.354 4.646L8 7.293l2.646-2.647a.5.5 0 0 1 .708.708L8.707 8l2.647 2.646a.5.5 0 0 1-.708.708L8 8.707l-2.646 2.647a.5.5 0 0 1-.708-.708L7.293 8 4.646 5.354a.5.5 0 1 1 .708-.708"/>' +
     "</svg>";
 
-  cancelBtn.addClass("mx-1 py-2").html(htmlString);
+  cancelBtn.addClass("mx-1 my-2").html(htmlString);
 
   return cancelBtn;
 }
@@ -344,6 +394,100 @@ function handleBlur(event) {
     label.style.left = "10px";
     label.style.fontSize = "16px";
   }
+}
+
+function setMobileUIWhenUTubSelectedOrURLNavSelected() {
+  $(".panel#leftPanel").addClass("hidden");
+  $(".panel#centerPanel").addClass("visible-flex");
+  $(".home#toUTubs").removeClass("hidden");
+  $(".home#toMembers").removeClass("hidden");
+  $(".home#toTags").removeClass("hidden");
+
+  $(".deck#MemberDeck").removeClass("visible-flex");
+  $(".deck#TagDeck").removeClass("visible-flex");
+
+  NAVBAR_TOGGLER.toggler.hide();
+}
+
+function setMobileUIWhenUTubNotSelectedOrUTubDeleted() {
+  $(".home#toUTubs").addClass("hidden");
+  $(".home#toMembers").addClass("hidden");
+  $(".home#toTags").addClass("hidden");
+  $(".home#toURLs").addClass("hidden");
+
+  $(".panel#centerPanel").removeClass("visible-flex");
+  $(".deck#MemberDeck").removeClass("visible-flex");
+  $(".deck#TagDeck").removeClass("visible-flex");
+
+  $(".deck#UTubDeck").removeClass("hidden");
+
+  NAVBAR_TOGGLER.toggler.hide();
+}
+
+function setMobileUIWhenUTubDeckSelected() {
+  $(".home#toUTubs").addClass("hidden");
+  $(".home#toMembers").removeClass("hidden");
+  $(".home#toTags").removeClass("hidden");
+  $(".home#toURLs").removeClass("hidden");
+
+  $(".panel#leftPanel").removeClass("hidden");
+
+  $(".panel#centerPanel").removeClass("visible-flex");
+  $(".deck#MemberDeck").removeClass("visible-flex");
+  $(".deck#TagDeck").removeClass("visible-flex");
+
+  $(".deck#UTubDeck").removeClass("hidden");
+
+  NAVBAR_TOGGLER.toggler.hide();
+}
+
+function setMobileUIWhenMemberDeckSelected() {
+  $(".home#toMembers").addClass("hidden");
+  $(".deck#MemberDeck").addClass("visible-flex").removeClass("hidden");
+
+  $(".panel#leftPanel").removeClass("hidden");
+  $(".panel#centerPanel").removeClass("visible-flex");
+  $(".deck#UTubDeck").addClass("hidden");
+  $(".deck#TagDeck").addClass("hidden");
+
+  $(".home#toUTubs").removeClass("hidden");
+  $(".home#toTags").removeClass("hidden");
+  $(".home#toURLs").removeClass("hidden");
+
+  NAVBAR_TOGGLER.toggler.hide();
+}
+
+function setMobileUIWhenTagDeckSelected() {
+  $(".home#toTags").addClass("hidden");
+  $(".deck#TagDeck").addClass("visible-flex").removeClass("hidden");
+
+  $(".panel#leftPanel").removeClass("hidden");
+  $(".panel#centerPanel").removeClass("visible-flex");
+  $(".deck#UTubDeck").addClass("hidden");
+  $(".deck#MemberDeck").addClass("hidden");
+
+  $(".home#toUTubs").removeClass("hidden");
+  $(".home#toTags").removeClass("hidden");
+  $(".home#toURLs").removeClass("hidden");
+  $(".home#toMembers").removeClass("hidden");
+
+  NAVBAR_TOGGLER.toggler.hide();
+}
+
+function revertMobileUIToFullScreenUI() {
+  NAVBAR_TOGGLER.toggler.hide();
+
+  $(".home#toUTubs").addClass("hidden");
+  $(".home#toMembers").addClass("hidden");
+  $(".home#toTags").addClass("hidden");
+  $(".home#toURLs").addClass("hidden");
+
+  $(".panel#centerPanel").removeClass("hidden");
+  $(".panel#leftPanel").removeClass("hidden");
+
+  $(".deck#UTubDeck").removeClass("hidden");
+  $(".deck#MemberDeck").removeClass("hidden");
+  $(".deck#TagDeck").removeClass("hidden");
 }
 
 function setUIWhenNoUTubSelected() {

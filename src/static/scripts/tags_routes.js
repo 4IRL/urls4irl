@@ -19,6 +19,9 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   hideIfShown(urlCard.find(".urlBtnUpdate"));
   hideIfShown(urlCard.find(".urlBtnDelete"));
 
+  // Prevent hovering on tags from adding padding
+  urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
+
   // Modify add tag button
   urlTagBtnCreate
     .removeClass("btn-info")
@@ -29,8 +32,15 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
       hideAndResetCreateURLTagForm(urlCard);
     });
 
+  // For tablets, change some of the sizing
+  if ($(window).width() < TABLET_WIDTH) {
+    urlTagBtnCreate.addClass("full-width");
+    urlTagBtnCreate.closest(".urlOptionsInner").addClass("half-width");
+  }
+
   disableTagRemovalInURLCard(urlCard);
   disableEditingURLTitle(urlCard);
+  disableClickOnSelectedURLCardToHide(urlCard);
   // 02/29/24 Ideally this input would be a dropdown select input that allowed typing. As user types, selection menu filters on each keypress. User can either choose a suggested existing option, or enter a new custom tag
   // Redefine UI interaction with showInputBtn
   // let showInputBtn = $(URLCard).find(".urlTagBtnCreate");
@@ -73,8 +83,16 @@ function hideAndResetCreateURLTagForm(urlCard) {
   showIfHidden(urlCard.find(".urlBtnUpdate"));
   showIfHidden(urlCard.find(".urlBtnDelete"));
 
+  // For tablets or in case of resize, change some of the sizing
+  urlTagBtnCreate.removeClass("full-width");
+  urlTagBtnCreate.closest(".urlOptionsInner").removeClass("half-width");
+
+  // Enable hovering on tags for deletion
+  urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
+
   enableTagRemovalInURLCard(urlCard);
   enableEditingURLTitle(urlCard);
+  enableClickOnSelectedURLCardToHide(urlCard);
 }
 
 // Prepares post request inputs for addition of a new Tag to URL

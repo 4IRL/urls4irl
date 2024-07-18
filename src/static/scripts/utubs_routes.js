@@ -13,30 +13,105 @@ $(document).ready(function () {
     e.stopPropagation();
   });
 
-  $("#utubNameSubmitBtnUpdate").on("click", function (e) {
-    // Prevent event from bubbling up to window which would exit the input box
-    e.stopPropagation();
-    // Skip if update is identical to original
-    if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
+  const utubNameSubmitBtnUpdate = $("#utubNameSubmitBtnUpdate");
+  const utubNameCancelBtnUpdate = $("#utubNameCancelBtnUpdate");
+
+  utubNameSubmitBtnUpdate
+    .find(".submitButton")
+    .on("click", function (e) {
+      // Prevent event from bubbling up to window which would exit the input box
+      e.stopPropagation();
+      // Skip if update is identical to original
+      if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
+        updateUTubNameHideInput();
+        return;
+      }
+      checkSameNameUTub(false, $("#utubNameUpdate").val());
+    })
+    .on("focus.updateUTubname", function () {
+      $(document).on("keyup.updateUTubname", function (e) {
+        if (e.which === 13) {
+          if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
+            updateUTubNameHideInput();
+            return;
+          }
+          checkSameNameUTub(false, $("#utubNameUpdate").val());
+        }
+      });
+    })
+    .on("blur.updateUTubname", function () {
+      $(document).off("keyup.updateUTubname");
+    });
+
+  utubNameCancelBtnUpdate
+    .find(".cancelButton")
+    .on("click.updateUTubname", function (e) {
+      e.stopPropagation();
       updateUTubNameHideInput();
-      return;
-    }
-    checkSameNameUTub(false, $("#utubNameUpdate").val());
-  });
+    })
+    .on("focus.updateUTubname", function () {
+      $(document).on("keyup.updateUTubname", function (e) {
+        if (e.which === 13) updateUTubNameHideInput();
+      });
+    })
+    .on("blur.updateUTubname", function () {
+      $(document).off("keyup.updateUTubname");
+    });
+
+  const utubDescriptionSubmitBtnUpdate = $("#utubDescriptionSubmitBtnUpdate");
+  const utubDescriptionCancelBtnUpdate = $("#utubDescriptionCancelBtnUpdate");
 
   // Update UTub description
-  $("#updateUTubDescriptionBtn").on("click", function (e) {
-    deselectAllURLs();
-    updateUTubNameHideInput();
-    updateUTubDescriptionShowInput();
-    // Prevent this event from bubbling up to the window to allow event listener creation
-    e.stopPropagation();
-  });
+  $("#updateUTubDescriptionBtn")
+    .on("click", function (e) {
+      deselectAllURLs();
+      updateUTubNameHideInput();
+      updateUTubDescriptionShowInput();
+      // Prevent this event from bubbling up to the window to allow event listener creation
+      e.stopPropagation();
+    })
+    .on("focus.updateUTubdescription", function () {
+      $(document).on("keyup.updateUTubdescription", function (e) {
+        if (e.which === 13) {
+          deselectAllURLs();
+          updateUTubNameHideInput();
+          updateUTubDescriptionShowInput();
+        }
+      });
+    })
+    .on("blur.updateUTubdescription", function () {
+      $(document).off("keyup.updateUTubdescription");
+    });
 
-  $("#utubDescriptionSubmitBtnUpdate").on("click", function (e) {
-    e.stopPropagation();
-    updateUTubDescription();
-  });
+  utubDescriptionSubmitBtnUpdate
+    .find(".submitButton")
+    .on("click", function (e) {
+      e.stopPropagation();
+      updateUTubDescription();
+    })
+    .on("focus.updateUTubdescription", function () {
+      $(document).offAndOn("keyup.updateUTubdescription", function (e) {
+        if (e.which === 13) updateUTubDescription();
+      });
+    })
+    .on("blur.updateUTubdescription", function () {
+      $(document).off("keyup.updateUTubdescription");
+    });
+
+  utubDescriptionCancelBtnUpdate
+    .find(".cancelButton")
+    .on("click", function (e) {
+      e.stopPropagation();
+      updateUTubDescriptionHideInput();
+    })
+    .on("focus.updateUTubdescription", function () {
+      $(document).offAndOn("keyup.updateUTubdescription", function (e) {
+        if (e.which === 13) updateUTubDescriptionHideInput();
+      });
+    })
+    .on("blur.updateUTubdescription", function () {
+      $(document).off("keyup.updateUTubdescription");
+    });
 });
 
 /* Add UTub */
@@ -161,6 +236,9 @@ function resetUTubFailErrors() {
 
 // Shows input fields for updating an exiting UTub's name
 function updateUTubNameShowInput() {
+  // Setup event listeners on window and escape/enter keys to escape the input box
+  setEventListenersToEscapeUpdateUTubName();
+
   // Show update fields
   const utubNameUpdate = $("#utubNameUpdate");
   utubNameUpdate.val(getCurrentUTubName());
@@ -174,9 +252,6 @@ function updateUTubNameShowInput() {
 
   // Handle hiding the button on mobile when hover events stay after touch
   $("#utubNameBtnUpdate").removeClass("visibleBtn");
-
-  // Setup event listeners on window and escape/enter keys to escape the input box
-  setEventListenersToEscapeUpdateUTubName();
 
   if ($("#URLDeckSubheader").text().length === 0) {
     allowUserToCreateDescriptionIfEmptyOnTitleUpdate();
@@ -308,15 +383,15 @@ function resetUpdateUTubNameFailErrors() {
 
 // Shows input fields for updating an exiting UTub's description
 function updateUTubDescriptionShowInput() {
+  // Setup event listeners for window click and escape/enter keys
+  setEventListenersToEscapeUpdateUTubDescription();
+
   // Show update fields
   const utubDescriptionUpdate = $("#utubDescriptionUpdate");
   utubDescriptionUpdate.val($("#URLDeckSubheader").text());
   showInput("#utubDescriptionUpdate");
   utubDescriptionUpdate.trigger("focus");
   showIfHidden($("#utubDescriptionSubmitBtnUpdate"));
-
-  // Setup event listeners for window click and escape/enter keys
-  setEventListenersToEscapeUpdateUTubDescription();
 
   // Handle hiding the button on mobile when hover events stay after touch
   $("#updateUTubDescriptionBtn").removeClass("visibleBtn");
@@ -481,21 +556,17 @@ function deleteUTub() {
   // Extract data to submit in POST request
   postURL = deleteUTubSetup();
 
-  let request = ajaxCall("delete", postURL, []);
+  const request = ajaxCall("delete", postURL, []);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
-    console.log("success");
-
     if (xhr.status === 200) {
       deleteUTubSuccess();
     }
   });
 
-  request.fail(function (response, textStatus, xhr) {
-    console.log("failed");
-
-    deleteUTubFail(response, textStatus, xhr);
+  request.fail(function (xhr, textStatus, errorThrown) {
+    window.location.assign(routes.errorPage);
   });
 }
 
@@ -511,10 +582,11 @@ function deleteUTubSuccess() {
 
   // Close modal
   $("#confirmModal").modal("hide");
+  $("#utubBtnDelete").hide();
 
   // Update UTub Deck
-  let currentUTubID = getActiveUTubID();
-  let UTubSelector = $(".UTubSelector[utubid=" + currentUTubID + "]");
+  const currentUTubID = getActiveUTubID();
+  const UTubSelector = $(".UTubSelector[utubid=" + currentUTubID + "]");
   UTubSelector.fadeOut();
   UTubSelector.remove();
 
@@ -525,36 +597,4 @@ function deleteUTubSuccess() {
 
   if ($("#listUTubs").find(".UTubSelector").length === 0)
     resetUTubDeckIfNoUTubs();
-}
-
-function deleteUTubFail(response, textStatus, xhr) {
-  console.log("Error: Could not delete UTub");
-
-  if (xhr.status === 409) {
-    console.log(
-      "Failure. Status code: " + xhr.status + ". Status: " + textStatus,
-    );
-    // const flashMessage = xhr.responseJSON.error;
-    // const flashCategory = xhr.responseJSON.category;
-
-    // let flashElem = flashMessageBanner(flashMessage, flashCategory);
-    // flashElem.insertBefore('#modal-body').show();
-  } else if (xhr.status === 404) {
-    $(".invalid-feedback").remove();
-    $(".alert").remove();
-    $(".form-control").removeClass("is-invalid");
-    const error = JSON.parse(xhr.responseJSON);
-    for (var key in error) {
-      $('<div class="invalid-feedback"><span>' + error[key] + "</span></div>")
-        .insertAfter("#" + key)
-        .show();
-      $("#" + key).addClass("is-invalid");
-    }
-  }
-  console.log(
-    "Failure. Error code: " +
-      response.error.errorCode +
-      ". Status: " +
-      response.error.Message,
-  );
 }

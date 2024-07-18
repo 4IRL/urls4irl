@@ -165,6 +165,9 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
   // Disable Go To URL Icon
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
 
+  // Prevent hovering on tags from adding padding
+  urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
+
   // Update URL Button text to exit editing
   urlBtnUpdate
     .removeClass("btn-light")
@@ -175,7 +178,14 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
       hideAndResetUpdateURLStringForm(urlCard);
     });
 
+  // For tablets, change some of the sizing
+  if ($(window).width() < TABLET_WIDTH) {
+    urlBtnUpdate.addClass("full-width");
+    urlBtnUpdate.closest(".urlOptionsInner").addClass("half-width");
+  }
+
   disableTagRemovalInURLCard(urlCard);
+  disableClickOnSelectedURLCardToHide(urlCard);
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
@@ -188,7 +198,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   showIfHidden(urlStringElem);
 
   // Update the input with current value of url string element
-  urlCard.find(".urlStringUpdate").val(urlStringElem.text());
+  urlCard.find(".urlStringUpdate").val(urlStringElem.attr("data-url"));
 
   // Make the Update URL button now allow updating again
   const urlBtnUpdate = urlCard.find(".urlBtnUpdate");
@@ -201,6 +211,10 @@ function hideAndResetUpdateURLStringForm(urlCard) {
       showUpdateURLStringForm(urlCard, urlBtnUpdate);
     });
 
+  // For tablets or in case of resize, change some of the sizing
+  urlBtnUpdate.removeClass("full-width");
+  urlBtnUpdate.closest(".urlOptionsInner").removeClass("half-width");
+
   // Enable URL Buttons
   showIfHidden(urlCard.find(".urlBtnAccess"));
   showIfHidden(urlCard.find(".urlTagBtnCreate"));
@@ -212,8 +226,12 @@ function hideAndResetUpdateURLStringForm(urlCard) {
     urlCard.find(".goToUrlIcon").removeClass("hidden").addClass("visible-flex");
   }
 
+  // Enable hovering on tags for deletion
+  urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
+
   resetUpdateURLFailErrors(urlCard);
   enableTagRemovalInURLCard(urlCard);
+  enableClickOnSelectedURLCardToHide(urlCard);
 }
 
 // Prepares post request inputs for update of a URL
@@ -236,7 +254,9 @@ async function updateURL(urlStringUpdateInput, urlCard) {
     timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
     await getUpdatedURL(utubID, urlID, urlCard);
 
-    if (urlStringUpdateInput.val() === urlCard.find(".urlString").text()) {
+    if (
+      urlStringUpdateInput.val() === urlCard.find(".urlString").attr("data-url")
+    ) {
       hideAndResetUpdateURLStringForm(urlCard);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
@@ -279,7 +299,10 @@ function updateURLSuccess(response, urlCard) {
   //rebindSelectBehavior();
 
   // Update URL body with latest published data
-  urlCard.find(".urlString").text(updatedURLString);
+  urlCard
+    .find(".urlString")
+    .attr({ "data-url": updatedURLString })
+    .text(updatedURLString);
 
   // Update URL options
   urlCard.find(".urlBtnAccess").offAndOn("click", function (e) {
@@ -291,6 +314,7 @@ function updateURLSuccess(response, urlCard) {
     e.stopPropagation();
     accessLink(updatedURLString);
   });
+  setURLCardURLStringClickableWhenSelected(urlCard);
 
   hideAndResetUpdateURLStringForm(urlCard);
 }
@@ -359,13 +383,14 @@ function resetUpdateURLFailErrors(urlCard) {
 /* Update URL Title */
 
 // Shows the update URL title form
-function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap) {
+function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard) {
   hideIfShown(urlTitleAndShowUpdateIconWrap);
   const updateTitleForm = urlTitleAndShowUpdateIconWrap.siblings(
     ".updateUrlTitleWrap",
   );
   showIfHidden(updateTitleForm);
   updateTitleForm.find("input").trigger("focus");
+  disableClickOnSelectedURLCardToHide(urlCard);
 }
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
@@ -374,6 +399,7 @@ function hideAndResetUpdateURLTitleForm(urlCard) {
   showIfHidden(urlCard.find(".urlTitleAndUpdateIconWrap"));
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
   resetUpdateURLTitleFailErrors(urlCard);
+  enableClickOnSelectedURLCardToHide(urlCard);
 }
 
 // Prepares post request inputs for update of a URL
@@ -566,7 +592,7 @@ function deleteURLSuccessOnDelete(response, urlCard) {
     cleanTagsAfterDeleteURL(response);
     urlCard.remove();
     $("#listURLs .urlRow").length === 0
-      ? hideIfShown($("#accessAllURLsBtn"))
+      ? $("#accessAllURLsBtn").hide()
       : updateTagFilteringOnURLOrURLTagDeletion();
   });
 }
@@ -624,7 +650,9 @@ function updateURLBasedOnGetData(urlUpdateResponse, urlCard) {
     : null;
 
   urlStringElem !== urlUpdateResponse.urlString
-    ? urlStringElem.text(urlUpdateResponse.urlString)
+    ? urlStringElem
+        .attr({ "data-url": urlUpdateResponse.urlString })
+        .text(urlUpdateResponse.urlString)
     : null;
 
   updateURLTagsAndUTubTagsBasedOnGetURLData(
@@ -725,7 +753,7 @@ function deleteURLOnStale(urlCard) {
     checkForTagUpdatesAndRemoveOnStaleURLDeletion(urlCard);
     urlCard.remove();
     $("#listURLs .urlRow").length === 0
-      ? hideIfShown($("#accessAllURLsBtn"))
+      ? $("#accessAllURLsBtn").hide()
       : updateTagFilteringOnURLOrURLTagDeletion();
   });
 }

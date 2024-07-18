@@ -26,7 +26,7 @@ $(document).ready(function () {
     // e.stopPropagation();
     // e.preventDefault();
     const ACCESS_ALL_URLS_LIMIT_WARNING = 3;
-    if (getNumOfURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
+    if (getNumOfVisibleURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
       accessAllWarningShowModal();
     } else {
       accessAllURLsInUTub();
@@ -39,6 +39,11 @@ $(document).ready(function () {
 // Function to count number of URLs in current UTub
 function getNumOfURLs() {
   return $(".urlRow").length;
+}
+
+// Function to count number of visible URLs in current UTub, after filtering
+function getNumOfVisibleURLs() {
+  return $(".urlRow[filterable=true]").length;
 }
 
 // Simple function to streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
@@ -62,7 +67,7 @@ function isURLCurrentlyVisibleInURLDeck(urlString) {
   const visibleURLs = $(".urlString");
 
   for (let i = 0; i < visibleURLs.length; i++) {
-    if ($(visibleURLs[i]).text() === urlString) {
+    if ($(visibleURLs[i]).attr("data-url") === urlString) {
       return true;
     }
   }
@@ -72,7 +77,17 @@ function isURLCurrentlyVisibleInURLDeck(urlString) {
 // Perform actions on selection of a URL card
 function selectURLCard(urlCard) {
   deselectAllURLs();
-  const urlString = urlCard.find(".urlString").text();
+  setURLCardURLStringClickableWhenSelected(urlCard);
+
+  urlCard.attr({ urlSelected: true });
+  urlCard.find(".goToUrlIcon").addClass("visible-flex");
+  enableClickOnSelectedURLCardToHide(urlCard);
+
+  enableTabbingOnURLCardElements(urlCard);
+}
+
+function setURLCardURLStringClickableWhenSelected(urlCard) {
+  const urlString = urlCard.find(".urlString").attr("data-url");
   urlCard
     .find(".urlString")
     .offAndOn("click.goToURL", function (e) {
@@ -87,22 +102,32 @@ function selectURLCard(urlCard) {
     .offAndOn("blur.accessURL", function () {
       $(document).off("keyup.accessURL");
     });
+}
 
-  urlCard.attr({ urlSelected: true });
-  urlCard.find(".goToUrlIcon").addClass("visible-flex");
+function enableClickOnSelectedURLCardToHide(urlCard) {
+  urlCard.on("click.deselectURL", () => {
+    deselectURL(urlCard);
+  });
+}
 
-  enableTabbingOnURLCardElements(urlCard);
+function disableClickOnSelectedURLCardToHide(urlCard) {
+  urlCard.off("click.deselectURL");
 }
 
 // Clean up when deselecting a URL card
 function deselectURL(urlCard) {
+  disableClickOnSelectedURLCardToHide(urlCard);
   urlCard.attr({ urlSelected: false });
   urlCard.find(".urlString").off("click.goToURL");
-  urlCard.find(".goToUrlIcon").removeClass("visible-flex hidden");
+  urlCard
+    .find(".goToUrlIcon")
+    .removeClass("visible-flex hidden visible-on-focus");
   hideAndResetUpdateURLTitleForm(urlCard);
   hideAndResetUpdateURLStringForm(urlCard);
   hideAndResetCreateURLTagForm(urlCard);
   disableTabbingOnURLCardElements(urlCard);
+  setURLCardSelectionEventListener(urlCard);
+  setFocusEventListenersOnURLCard(urlCard);
 }
 
 function deselectAllURLs() {
@@ -139,24 +164,24 @@ function clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard) {
 }
 
 // Opens new tab
-function accessLink(url_string) {
+function accessLink(urlString) {
   // Still need to implement: Take user to a new tab with interstitial page warning they are now leaving U4I
 
-  if (!url_string.startsWith("https://")) {
-    window.open("https://" + url_string, "_blank").focus();
+  if (!urlString.startsWith("https://")) {
+    window.open("https://" + urlString, "_blank").focus();
   } else {
-    window.open(url_string, "_blank").focus();
+    window.open(urlString, "_blank").focus();
   }
 }
 
 // Show confirmation modal for opening all URLs in UTub
 function accessAllWarningShowModal() {
-  let modalTitle =
+  const modalTitle =
     "Are you sure you want to open all " +
     getNumOfURLs() +
     " URLs in this UTub?";
-  let modalText = "Performance issues may occur.";
-  let modalDismiss = "Cancel";
+  const modalText = "Performance issues may occur.";
+  const modalDismiss = "Cancel";
 
   $("#confirmModalTitle").text(modalTitle);
   $("#confirmModalBody").text(modalText);
@@ -184,15 +209,19 @@ function accessAllWarningShowModal() {
   hideIfShown($("#modalRedirect"));
 }
 
-// Opens all URLs in UTub in separate tabs
+// Opens all visible URLs in UTub in separate tabs
 function accessAllURLsInUTub() {
-  getUTubInfo(getActiveUTubID()).then(function (selectedUTub) {
-    let dictURLs = selectedUTub.urls;
+  const visibleSelector = ".urlRow[filterable=true] .urlString";
+  const visibleURLs = $(visibleSelector);
+  if (visibleURLs.length === 0) return;
 
-    for (i = 0; i < dictURLs.length; i++) {
-      accessLink(dictURLs[i].urlString);
-    }
-  });
+  const visibleURLsToAccess = $.map(visibleURLs, (url) =>
+    $(url).attr("data-url"),
+  );
+
+  for (i = 0; i < visibleURLsToAccess.length; i++) {
+    accessLink(visibleURLsToAccess[i]);
+  }
 }
 
 // Clear new URL Form
@@ -298,8 +327,8 @@ function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
 
   urlTitle.text() !== newUrl.urlTitle ? urlTitle.text(newUrl.urlTitle) : null;
 
-  urlString.text() !== newUrl.urlString
-    ? urlString.text(newUrl.urlString)
+  urlString.attr("data-url") !== newUrl.urlString
+    ? urlString.text(newUrl.urlString).attr({ "data-url": newUrl.urlString })
     : null;
 
   const currentURLTags = urlCard.find(".tagBadge");
@@ -349,11 +378,11 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
     }
 
     // Show access all URLs button
-    showIfHidden($("#accessAllURLsBtn"));
-    hideIfShown($("#NoURLsSubheader"));
+    $("#accessAllURLsBtn").show();
+    $("#NoURLsSubheader").hide();
   } else {
-    showIfHidden($("#NoURLsSubheader"));
-    hideIfShown($("#accessAllURLsBtn"));
+    $("#NoURLsSubheader").show();
+    $("#accessAllURLsBtn").hide();
   }
   setUTubNameAndDescription(UTubName);
 }
@@ -478,6 +507,7 @@ function createURLTitle(urlTitleText) {
 function createURLString(urlStringText) {
   return $(document.createElement("span"))
     .addClass("urlString long-text-ellipsis tabbable")
+    .attr({ "data-url": urlStringText })
     .text(urlStringText);
 }
 
@@ -500,7 +530,7 @@ function createURLTitleAndUpdateBlock(urlTitleText, urlCard) {
   // Add icon and title to the container
   urlTitleAndShowUpdateIconInnerWrap
     .append(createURLTitle(urlTitleText))
-    .append(createShowUpdateURLTitleIcon());
+    .append(createShowUpdateURLTitleIcon(urlCard));
   urlTitleAndShowUpdateIconWrap.append(urlTitleAndShowUpdateIconInnerWrap);
 
   // Add icon + title container, and update input container to the parent container
@@ -512,7 +542,7 @@ function createURLTitleAndUpdateBlock(urlTitleText, urlCard) {
 }
 
 // Create the icon that will show the update URL title form
-function createShowUpdateURLTitleIcon() {
+function createShowUpdateURLTitleIcon(urlCard) {
   return makeUpdateButton(20)
     .addClass("urlTitleBtnUpdate")
     .on("click.showUpdateURLTitle", function (e) {
@@ -520,7 +550,8 @@ function createShowUpdateURLTitleIcon() {
         const urlTitleAndIcon = $(e.target).closest(
           ".urlTitleAndUpdateIconWrap",
         );
-        showUpdateURLTitleForm(urlTitleAndIcon);
+        e.stopPropagation();
+        showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
       }
     });
 }
@@ -565,10 +596,12 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
   });
 
   // Update Url Title submit button
-  const urlTitleSubmitBtnUpdate = makeSubmitButton(30);
+  const urlTitleSubmitBtnUpdate = makeSubmitButton(30).addClass(
+    "urlTitleSubmitBtnUpdate",
+  );
 
   urlTitleSubmitBtnUpdate
-    .addClass("urlTitleSubmitBtnUpdate")
+    .find(".submitButton")
     .on("click.updateUrlTitle", function (e) {
       if (
         $(e.target)
@@ -576,14 +609,25 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
           .is(urlTitleSubmitBtnUpdate) &&
         $(e.target).closest(".urlRow").is(urlCard)
       )
-        updateURLTitle(urlTitleTextInput, urlCard);
+        e.stopPropagation();
+      updateURLTitle(urlTitleTextInput, urlCard);
+    })
+    .offAndOn("focus.submitUpdateUrlTitle", function () {
+      $(document).on("keyup.submitUpdateUrlTitle", function (e) {
+        if (e.which === 13) updateURLTitle(urlTitleTextInput, urlCard);
+      });
+    })
+    .offAndOn("blur.submitUpdateUrlTitle", function () {
+      $(document).off("keyup.submitUpdateUrlTitle");
     });
 
   // Update Url Title cancel button
-  const urlTitleCancelBtnUpdate = makeCancelButton(30);
+  const urlTitleCancelBtnUpdate = makeCancelButton(30).addClass(
+    "urlTitleCancelBtnUpdate tabbable",
+  );
 
   urlTitleCancelBtnUpdate
-    .addClass("urlTitleCancelBtnUpdate")
+    .find(".cancelButton")
     .on("click.updateUrlTitle", function (e) {
       if (
         $(e.target)
@@ -591,7 +635,16 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
           .is(urlTitleCancelBtnUpdate) &&
         $(e.target).closest(".urlRow").is(urlCard)
       )
-        hideAndResetUpdateURLTitleForm(urlCard);
+        e.stopPropagation();
+      hideAndResetUpdateURLTitleForm(urlCard);
+    })
+    .offAndOn("focus.cancelUpdateUrlTitle", function () {
+      $(document).on("keyup.cancelUpdateUrlTitle", function (e) {
+        if (e.which === 13) hideAndResetUpdateURLTitleForm(urlCard);
+      });
+    })
+    .offAndOn("blur.cancelUpdateUrlTitle", function () {
+      $(document).off("keyup.cancelUpdateUrlTitle");
     });
 
   urlTitleUpdateInputContainer
@@ -636,8 +689,12 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
   setFocusEventListenersOnUpdateURLStringInput(urlStringTextInput, urlCard);
 
   // Update Url Title submit button
-  const urlStringSubmitBtnUpdate = makeSubmitButton(30)
-    .addClass("urlStringSubmitBtnUpdate tabbable")
+  const urlStringSubmitBtnUpdate = makeSubmitButton(30).addClass(
+    "urlStringSubmitBtnUpdate",
+  );
+
+  urlStringSubmitBtnUpdate
+    .find(".submitButton")
     .on("click.updateUrlString", function () {
       updateURL(urlStringTextInput, urlCard);
     })
@@ -651,8 +708,12 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     });
 
   // Update Url Title cancel button
-  const urlStringCancelBtnUpdate = makeCancelButton(30)
-    .addClass("urlStringCancelBtnUpdate tabbable")
+  const urlStringCancelBtnUpdate = makeCancelButton(30).addClass(
+    "urlStringCancelBtnUpdate",
+  );
+
+  urlStringCancelBtnUpdate
+    .find(".cancelButton")
     .on("click.updateUrlString", function () {
       hideAndResetUpdateURLStringForm(urlCard);
     })
@@ -760,8 +821,12 @@ function createTagInputBlock(urlCard) {
   setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard);
 
   // Create Url Title submit button
-  const urlTagSubmitBtnCreate = makeSubmitButton(30)
-    .addClass("urlTagSubmitBtnCreate tabbable")
+  const urlTagSubmitBtnCreate = makeSubmitButton(30).addClass(
+    "urlTagSubmitBtnCreate",
+  );
+
+  urlTagSubmitBtnCreate
+    .find(".submitButton")
     .on("click.createURLTag", function () {
       createURLTag(urlTagTextInput, urlCard);
     })
@@ -775,8 +840,12 @@ function createTagInputBlock(urlCard) {
     });
 
   // Create Url Title cancel button
-  const urlTagCancelBtnCreate = makeCancelButton(30)
-    .addClass("urlTagCancelBtnCreate tabbable")
+  const urlTagCancelBtnCreate = makeCancelButton(30).addClass(
+    "urlTagCancelBtnCreate",
+  );
+
+  urlTagCancelBtnCreate
+    .find(".cancelButton")
     .on("click.createURLTag", function () {
       hideAndResetCreateURLTagForm(urlCard);
     })
@@ -822,10 +891,14 @@ function setFocusEventListenersOnCreateURLTagInput(urlTagInput, urlCard) {
 // Create all the buttons necessary for a url card
 function createURLOptionsButtons(url, urlCard) {
   const urlOptions = $(document.createElement("div")).addClass(
-    "urlOptions flex-row justify-content-start",
+    "urlOptions justify-content-start",
   );
   const urlBtnAccess = $(document.createElement("button"));
   const urlTagBtnCreate = $(document.createElement("button"));
+
+  const accessAndTagBtns = $(document.createElement("div")).addClass(
+    "urlOptionsInner flex-row justify-content-start gap-15p",
+  );
 
   // Access the URL button
   urlBtnAccess
@@ -858,11 +931,15 @@ function createURLOptionsButtons(url, urlCard) {
       $(document).off("keyup.showURLTagCreate");
     });
 
-  urlOptions.append(urlBtnAccess).append(urlTagBtnCreate);
+  accessAndTagBtns.append(urlBtnAccess).append(urlTagBtnCreate);
+  urlOptions.append(accessAndTagBtns);
 
   if (url.canDelete) {
     const urlBtnUpdate = $(document.createElement("button"));
     const urlBtnDelete = $(document.createElement("button"));
+    const urlUpdateAndDeleteBtns = $(document.createElement("div")).addClass(
+      "urlOptionsInner flex-row justify-content-start gap-15p",
+    );
     urlBtnDelete
       .addClass("btn btn-danger urlBtnDelete tabbable")
       .attr({ type: "button" })
@@ -883,7 +960,8 @@ function createURLOptionsButtons(url, urlCard) {
         showUpdateURLStringForm(urlCard, urlBtnUpdate);
       });
 
-    urlOptions.append(urlBtnUpdate).append(urlBtnDelete);
+    urlUpdateAndDeleteBtns.append(urlBtnUpdate).append(urlBtnDelete);
+    urlOptions.append(urlUpdateAndDeleteBtns);
   }
   const urlCardLoadingIcon = $(document.createElement("div")).addClass(
     "urlCardDualLoadingRing",
@@ -961,7 +1039,9 @@ function createTagBadgeInURL(tagID, tagString, urlCard) {
     .text(tagString);
 
   tagSpan
-    .addClass("tagBadge flex-row-reverse align-center justify-flex-end")
+    .addClass(
+      "tagBadge tagBadgeHoverable flex-row-reverse align-center justify-flex-end",
+    )
     .attr({ tagid: tagID });
 
   removeButton
@@ -1018,16 +1098,16 @@ function createTagDeleteIcon() {
 // Display state 0: Clean slate, no UTub selected
 function setURLDeckWhenNoUTubSelected() {
   $("#URLDeckHeader").text("URLs");
-  hideIfShown($(".updateUTubBtn"));
-  hideIfShown($("#urlBtnCreate"));
-  hideIfShown($("#accessAllURLsBtn"));
-  hideIfShown($("#URLDeckSubheaderCreateDescription"));
-  hideIfShown($("#utubNameBtnUpdate"));
+  $(".updateUTubBtn").hide();
+  $("#urlBtnCreate").hide();
+  $("#accessAllURLsBtn").hide();
+  $("#URLDeckSubheaderCreateDescription").hide();
+  $("#utubNameBtnUpdate").hide();
   $("#updateUTubDescriptionBtn").removeClass("visibleBtn");
 
   const URLDeckSubheader = $("#URLDeckSubheader");
   URLDeckSubheader.text("Select a UTub");
-  showIfHidden(URLDeckSubheader);
+  URLDeckSubheader.show();
 
   // Prevent on-hover of URL Deck Header to show update UTub name button in case of back button
   $("#utubNameBtnUpdate").removeClass("visibleBtn");
@@ -1037,7 +1117,5 @@ function setURLDeckWhenNoUTubSelected() {
 function setUTubNameAndDescription(UTubName) {
   $("#URLDeckHeader").text(UTubName);
   $("#utubNameUpdate").val(UTubName);
-  showIfHidden($("#accessAllURLsBtn"));
-
   updateUTubNameHideInput();
 }
