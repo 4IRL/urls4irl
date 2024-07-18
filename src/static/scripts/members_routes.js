@@ -129,7 +129,7 @@ function createMemberSuccess(response) {
   );
 
   createMemberHideInput();
-  displayState1MemberDeck(null, true);
+  setMemberDeckForUTub(true);
 }
 
 function createMemberFail(xhr) {
@@ -263,7 +263,7 @@ function removeMemberSuccess(memberID) {
     memberListItem.remove();
   });
 
-  displayState1MemberDeck(null, true);
+  setMemberDeckForUTub(true);
 }
 
 function leaveUTubSuccess() {

@@ -1,6 +1,21 @@
 /** UTub UI Interactions **/
 
 $(document).ready(function () {
+  $("#logout").on("click", () => window.location.assign(routes.logout));
+  $(".home#toMembers").on("click", () => {
+    setMobileUIWhenMemberDeckSelected();
+  });
+  $(".home#toURLs").on("click", () => {
+    setMobileUIWhenUTubSelectedOrURLNavSelected();
+  });
+  $(".home#toUTubs").on("click", () => {
+    setMobileUIWhenUTubDeckSelected();
+  });
+
+  $(".home#toTags").on("click", () => {
+    setMobileUIWhenTagDeckSelected();
+  });
+
   const timeoutID = showUTubLoadingIconAndSetTimeout();
   setUIWhenNoUTubSelected();
   // Instantiate UTubDeck with user's accessible UTubs
@@ -10,6 +25,27 @@ $(document).ready(function () {
     console.log("Something is wrong!");
     console.log(error);
   }
+
+  let width;
+  $(window).on("resize", function () {
+    width = $(window).width();
+
+    // Handle size changes when tablet or smaller
+    if (width < TABLET_WIDTH) {
+      // If UTub selected, show URL Deck
+      // If no UTub selected, show UTub deck
+      // Set tablet-mobile navbar depending on UTub selected or not
+      if (!isNaN(getActiveUTubID())) {
+        setMobileUIWhenUTubSelectedOrURLNavSelected();
+      } else {
+        setMobileUIWhenUTubNotSelectedOrUTubDeleted();
+      }
+    } else {
+      // Set full screen navbar
+      // Show all panels and decks
+      revertMobileUIToFullScreenUI();
+    }
+  });
 });
 
 window.addEventListener("popstate", function (e) {
@@ -58,7 +94,6 @@ function getUTubIDFromName(name) {
   const UTubNames = $(".UTubName");
   let UTub;
 
-  console.log(UTubNames.length);
   for (i = 0; i < UTubNames.length; i++) {
     UTub = $(UTubNames[i]);
 
@@ -170,35 +205,39 @@ function resetUTubDeck() {
 // Create event listeners to escape from updating UTub name
 function setEventListenersToEscapeUpdateUTubName() {
   // Allow user to still click in the text box
-  $("#utubNameUpdate").offAndOn("click.updateUTubname", function (e) {
-    e.stopPropagation();
-  });
+  $("#utubNameUpdate")
+    .offAndOn("click.updateUTubname", function (e) {
+      e.stopPropagation();
+    })
+    .offAndOn("focus.updateUTubname", function () {
+      $(document).on("keyup.updateUTubname", function (e) {
+        switch (e.which) {
+          case 13:
+            // Handle enter key pressed
+            // Skip if update is identical
+            if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
+              updateUTubNameHideInput();
+              return;
+            }
+            checkSameNameUTub(false, $("#utubNameUpdate").val());
+            break;
+          case 27:
+            // Handle escape key pressed
+            updateUTubNameHideInput();
+            break;
+          default:
+          /* no-op */
+        }
+      });
+    })
+    .offAndOn("blur.updateUTubname", function () {
+      $(document).off("keyup.updateUTubname");
+    });
 
   // Bind clicking outside the window
   $(window).offAndOn("click.updateUTubname", function () {
     // Hide UTub name update fields
     updateUTubNameHideInput();
-  });
-
-  // Bind escape and enter key
-  $(document).on("keyup.updateUTubname", function (e) {
-    switch (e.which) {
-      case 13:
-        // Handle enter key pressed
-        // Skip if update is identical
-        if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
-          updateUTubNameHideInput();
-          return;
-        }
-        checkSameNameUTub(false, $("#utubNameUpdate").val());
-        break;
-      case 27:
-        // Handle escape key pressed
-        updateUTubNameHideInput();
-        break;
-      default:
-      /* no-op */
-    }
   });
 }
 
@@ -210,30 +249,34 @@ function removeEventListenersToEscapeUpdateUTubName() {
 // Create event listeners to escape from updating UTub name
 function setEventListenersToEscapeUpdateUTubDescription() {
   // Allow user to still click in the text box
-  $("#utubDescriptionUpdate").on("click.updateUTubDescription", function (e) {
-    e.stopPropagation();
-  });
+  $("#utubDescriptionUpdate")
+    .on("click.updateUTubDescription", function (e) {
+      e.stopPropagation();
+    })
+    .offAndOn("focus.updateUTubDescription", function () {
+      $(document).on("keyup.updateUTubDescription", function (e) {
+        switch (e.which) {
+          case 13:
+            // Handle enter key pressed
+            updateUTubDescription();
+            break;
+          case 27:
+            // Handle escape key pressed
+            updateUTubDescriptionHideInput();
+            break;
+          default:
+          /* no-op */
+        }
+      });
+    })
+    .on("blur.updateUTubDescription", function () {
+      $(document).off("keyup.updateUTubDescription");
+    });
 
   // Bind clicking outside the window
   $(window).offAndOn("click.updateUTubDescription", function (e) {
     // Hide UTub description update fields
     updateUTubDescriptionHideInput();
-  });
-
-  // Bind escape key
-  $(document).bind("keyup.updateUTubDescription", function (e) {
-    switch (e.which) {
-      case 13:
-        // Handle enter key pressed
-        updateUTubDescription();
-        break;
-      case 27:
-        // Handle escape key pressed
-        updateUTubDescriptionHideInput();
-        break;
-      default:
-      /* no-op */
-    }
   });
 }
 
@@ -340,9 +383,26 @@ function buildSelectedUTub(selectedUTub) {
 }
 
 // Handles progagating changes across page related to a UTub selection
-function selectUTub(selectedUTubID) {
-  getUTubInfo(selectedUTubID).then((selectedUTub) =>
-    buildSelectedUTub(selectedUTub),
+function selectUTub(selectedUTubID, utubSelector) {
+  const currentlySelected = $(".UTubSelector.active");
+
+  // Avoid reselecting if choosing the same UTub selector
+  if (currentlySelected.is($(utubSelector))) return;
+
+  currentlySelected.removeClass("active");
+  utubSelector.addClass("active");
+
+  getUTubInfo(selectedUTubID).then(
+    (selectedUTub) => {
+      buildSelectedUTub(selectedUTub);
+      // If mobile, go straight to URL deck
+      if ($(window).width() < TABLET_WIDTH) {
+        setMobileUIWhenUTubSelectedOrURLNavSelected();
+      }
+    },
+    () => {
+      window.location.assign(routes.errorPage);
+    },
   );
 }
 
@@ -397,9 +457,9 @@ function createUTubSelector(utubName, utubID, index) {
   const utubSelector = $(document.createElement("span"));
   const utubSelectorText = $(document.createElement("b"));
 
-  $(utubSelectorText).addClass("UTubName").text(utubName);
+  utubSelectorText.addClass("UTubName").text(utubName);
 
-  $(utubSelector)
+  utubSelector
     .addClass("UTubSelector")
     .attr({
       utubid: utubID,
@@ -410,7 +470,7 @@ function createUTubSelector(utubName, utubID, index) {
     .on("click.selectUTub", function (e) {
       e.stopPropagation();
       e.preventDefault();
-      selectUTub(utubID);
+      selectUTub(utubID, utubSelector);
     })
     .offAndOn("focus.selectUTub", function () {
       $(document).on("keyup.selectUTub", function (e) {
@@ -511,31 +571,6 @@ function handleOnFocusEventListenersForCreateUTub(e) {
   }
 }
 
-function unbindCreateUTubFocusEventListeners() {}
-
-function unbindUTubSelectionBehavior(selectedUTubID) {
-  // Select new UTub
-  let selectedUTubSelector = getUTubSelectorElemFromID(selectedUTubID);
-  selectedUTubSelector.addClass("active");
-  // Unbind selection function
-  selectedUTubSelector.off("click.selectUTub");
-}
-
-function bindUTubSelectionBehavior() {
-  // Unselect any already selected UTub
-  let departureUTubSelector = getUTubSelectorElemFromID(getActiveUTubID());
-  if (departureUTubSelector) {
-    // Change UTub
-    departureUTubSelector.removeClass("active");
-    // Rebind selection function
-    $(departureUTubSelector).on("click.selectUTub", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
-      selectUTub(departureUTubSelector.attr("utubid"));
-    });
-  }
-}
-
 /** UTub Display State Functions **/
 
 // Display state 0: Clean slate, no UTubs
@@ -565,15 +600,8 @@ function hideInputsAndSetUTubDeckSubheader() {
 function setUTubDeckOnUTubSelected(selectedUTubID, UTubOwnerUserID) {
   hideInputsAndSetUTubDeckSubheader();
 
-  // Bind selection behavior to depature UTub, unbind from selected UTub
-  bindUTubSelectionBehavior();
-  if (selectedUTubID) {
-    unbindUTubSelectionBehavior(selectedUTubID);
-    //showIfHidden($("#updateUTubDescriptionBtn"));
-  }
-
   if (getCurrentUserID() === UTubOwnerUserID) {
-    showIfHidden($("#utubBtnDelete"));
+    $("#utubBtnDelete").show();
   } else hideIfShown($("#utubBtnDelete"));
 }
 

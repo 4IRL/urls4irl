@@ -25,7 +25,6 @@ img {
     background: url("splash.jpg");
     background-size: cover;
     min-height: 380px;
-    position: relative;
 }
 
 .email-container {
@@ -49,13 +48,12 @@ img {
     align-items: center;
     align-content: center;
     justify-content: center;
-    /* height: 100%; */
-    height: 100vh;
+    height: 100%;
 }
 
 .jumbotron {
     background: var(--offWhiteSplashBackgroundBanner);
-    padding: 6rem 2rem;
+    padding: 6rem 1rem;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -78,10 +76,12 @@ img {
     color: var(--blueLinkOnHover) !important;
 }
 
-.center-brand {
-    position: absolute;
-    top: 0.875rem;
-    left: 50%;
+#splash-mini-text {
+    font-weight: 700;
+    font-size: 120%;
+    padding-top: 20px;
+    color: var(--darkSplashLabelGreen);
+    width: fit-content;
 }
 
 /** Modals **/
@@ -228,4 +228,17 @@ img {
     font-size: 18px;
     line-height: 1.6;
     text-align: center;
+}
+
+
+/* Responsive splash page */
+@media (max-width: 529.98px) {
+    #splash-mini-text {
+        width: 85%;
+        text-align: center;
+    }
+
+    #splash-major-text {
+        text-align: center;
+    }
 }

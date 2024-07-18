@@ -5,6 +5,12 @@
     --darkSplashGreen: rgba(36, 167, 69, 0.75);
     --splashLabelGreen: rgba(46, 204, 113, 1.0);
     --darkSplashLabelGreen: rgba(30, 133, 73, 1.0);
+
+    --navbarTextHover: rgba(29, 33, 36, 1.0); /*1d2124*/
+    --navbarBackground: rgba(33, 37, 41, 1.0); /* #212529 */
+    --navbarBackgroundHover: rgba(77, 80, 83, 1.0); /* #4d5053 */
+    --navbarBackgroundFocus: rgba(121, 124, 126, 1.0); /* #797c7e */
+
     --pageBackgroundColor: rgba(31, 36, 36, 0.81);
     --panelBackgroundColor: rgba(31, 36, 36, 1.0);
     --borderColor: #343c3d;
@@ -52,12 +58,19 @@
 
 /** HTML DOM Elements **/
 
+html,
 body {
     height: 100%;
+    width: 100%;
     margin: 0;
     padding: 0;
     /* overflow-y: hidden; */
+    display: flex;
     background-color: var(--pageBackgroundColor);
+}
+
+main {
+    flex: 1 1 auto;
 }
 
 h1 {
@@ -77,8 +90,6 @@ a {
     color: aqua
 }
 
-/** Class specific **/
-
 /* Navbar */
 
 .navbar-start {
@@ -95,19 +106,50 @@ a {
     margin-inline-end: 5px;
 }
 
-/* Modals */
-
-.modal-content {
-    padding: 1%;
+.nav-item {
+    display: flex;
+    flex-direction:row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
 }
 
-/** ID specific **/
+.nav-bar-inner-item {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    width: 100%;
+    color: var(--grayBadgeSelection);
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
 
-/* Navbar */
+.nav-bar-inner-item.home,
+.nav-bar-inner-item.splash {
+    padding: 10px;
+}
 
 #mainNavbar {
     height: 50px;
 }
+
+.nav-bar-inner-item:hover {
+    cursor: pointer;
+    background-color: var(--navbarBackgroundHover);
+}
+
+.nav-bar-inner-item.splash:hover {
+    color: var(--navbarTextHover);
+}
+
+.nav-bar-inner-item#userLoggedIn:hover {
+    cursor: inherit;
+    background-color: inherit;
+    color: var(--grayBadgeSelection);
+}
+
 
 #iconContainer {
     height: inherit;
@@ -123,21 +165,101 @@ a {
     max-width: initial;
 }
 
-/* Main Page */
-
-
-#NavbarNavDropdown {
-    justify-content: flex-end;
-    padding-inline-end: 5px;
+#loggedInAsHeader {
+    text-wrap: nowrap;
+    font-style: italic;
 }
 
-@media (max-width: 767px) {
-    #NavbarDropdowns {
+
+/* Modals */
+
+.modal-content {
+    padding: 1%;
+}
+
+/** ID specific **/
+
+.splash#NavbarNavDropdown,
+.home#NavbarNavDropdown {
+    justify-content: flex-end;
+}
+
+#logoutIcon {
+    transform: rotate(90deg);
+}
+
+@media (min-width: 768px) {
+    .nav-bar-inner-item.home {
+        padding-inline: 10px;
+    }
+
+    #NavbarDropdownsSplash,
+    .splash#NavbarNavDropdown {
+        height: 100%;
+    }
+}
+
+@media (min-width: 992px) {
+    #NavbarDropdownsHome {
+        height: 100%;
+    }
+
+    .home#NavbarNavDropdown {
+        height: 100%;
+    }
+
+    .nav-bar-inner-item.home {
+        border-radius: 25px;
+    }
+}
+
+@media (max-width: 991.98px) {
+    #NavbarDropdownsHome {
         display: flex;
-        align-items: flex-end;
         flex-direction: column;
-        gap: 10px;
         padding-top: 10px;
-        padding-bottom: 10px;
+    }
+
+    .nav-bar-inner-item.home {
+        justify-content: flex-start;
+    }
+
+    .nav-item.home {
+        border-top: 2px solid var(--grayBadgeSelectionFocus);
+    }
+
+    .nav-item.home:last-of-type {
+        border-bottom: 2px solid var(--grayBadgeSelectionFocus);
+    }
+
+    .nav-bar-inner-item.home:hover {
+        background-color: var(--navbarBackgroundHover);
+        color: var(--navbarTextHover);
+    }
+
+}
+
+@media (max-width: 767.98px) {
+    #NavbarDropdownsSplash {
+        display: flex;
+        flex-direction: column;
+        padding-top: 10px;
+    }
+
+    .nav-bar-inner-item.splash {
+        justify-content: flex-start;
+    }
+
+    .nav-item.splash {
+        border-top: 2px solid var(--grayBadgeSelectionFocus);
+    }
+
+    .nav-item.splash:last-of-type {
+        border-bottom: 2px solid var(--grayBadgeSelectionFocus);
+    }
+
+    .nav-bar-inner-item.splash:hover {
+        background-color: var(--navbarBackgroundHover);
+        color: var(--navbarTextHover);
     }
 }

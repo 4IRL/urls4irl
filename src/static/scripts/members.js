@@ -108,7 +108,7 @@ function buildMemberDeck(dictMembers, UTubOwnerUserID, isCurrentUserOwner) {
   }
 
   // Subheader prompt
-  displayState1MemberDeck(numOfMembers, isCurrentUserOwner);
+  setMemberDeckForUTub(isCurrentUserOwner);
 }
 
 // Creates member list item
@@ -214,37 +214,29 @@ function createMemberRemoveIcon() {
 function setMemberDeckWhenNoUTubSelected() {
   resetMemberDeck();
 
-  hideIfShown($("#memberBtnCreate"));
-  hideIfShown($("#memberSelfBtnDelete"));
+  $("#memberBtnCreate").hide();
+  $("#memberSelfBtnDelete").hide();
 
   // Subheader prompt hidden
   $("#MemberDeckSubheader").text(null);
 }
 
-// Display state 1: Selected UTub has no Members
-function displayState1MemberDeck(numOfMembers, isCurrentUserOwner) {
-  if (numOfMembers == null) {
-    // Count UTub members
-    numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
-  }
-
+function setMemberDeckForUTub(isCurrentUserOwner) {
+  const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
+  const memberDeckSubheader = $("#MemberDeckSubheader");
   // Ability to add members is restricted to UTub owner
   if (isCurrentUserOwner) {
-    hideIfShown($("#memberSelfBtnDelete"));
-    showIfHidden($("#memberBtnCreate"));
+    $("#memberSelfBtnDelete").hide();
+    $("#memberBtnCreate").show();
+    numOfMembers === 1
+      ? memberDeckSubheader.text("Add a member")
+      : memberDeckSubheader.text(numOfMembers + " members");
   } else {
-    hideIfShown($("#memberBtnCreate"));
-    showIfHidden($("#memberSelfBtnDelete"));
+    $("#memberBtnCreate").hide();
+    $("#memberSelfBtnDelete").show();
+    memberDeckSubheader.text(numOfMembers + " members");
   }
-
-  let MemberDeckSubheader = $("#MemberDeckSubheader");
 
   // Subheader prompt shown
-  showIfHidden(MemberDeckSubheader.closest(".titleElement"));
-
-  if (numOfMembers === 1) {
-    MemberDeckSubheader.text("Add a member");
-  } else {
-    MemberDeckSubheader.text(numOfMembers + " members");
-  }
+  memberDeckSubheader.closest(".titleElement").show();
 }
