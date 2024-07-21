@@ -27,7 +27,11 @@ $(document).ready(function () {
   }
 
   let width;
-  $(window).on("resize", function () {
+  // Use matchMedia instead of resize when just need to determine if > or < than
+  // specific size
+  // https://webdevetc.com/blog/matchmedia-events-for-window-resizes/
+  const query = matchMedia("(max-width: " + TABLET_WIDTH + "px)");
+  query.addEventListener("change", function () {
     width = $(window).width();
 
     // Handle size changes when tablet or smaller
@@ -474,7 +478,7 @@ function createUTubSelector(utubName, utubID, index) {
     })
     .offAndOn("focus.selectUTub", function () {
       $(document).on("keyup.selectUTub", function (e) {
-        if (e.which === 13) selectUTub(utubID);
+        if (e.which === 13) selectUTub(utubID, utubSelector);
       });
     })
     .offAndOn("blur.selectUTub", function () {

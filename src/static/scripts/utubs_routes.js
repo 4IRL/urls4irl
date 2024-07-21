@@ -172,7 +172,7 @@ function createUTubSetup() {
 // Handle creation of new UTub
 function createUTubSuccess(response) {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
-  let UTubID = response.utubID;
+  const UTubID = response.utubID;
 
   $("#confirmModal").modal("hide");
 
@@ -180,12 +180,15 @@ function createUTubSuccess(response) {
   createUTubHideInput();
 
   // Create and append newly created UTub selector
-  let index = parseInt($(".UTubSelector").first().attr("position"));
-  $("#listUTubs").prepend(
-    createUTubSelector(response.utubName, UTubID, index - 1),
+  const index = parseInt($(".UTubSelector").first().attr("position"));
+  const newUTubSelector = createUTubSelector(
+    response.utubName,
+    UTubID,
+    index - 1,
   );
+  $("#listUTubs").prepend(newUTubSelector);
 
-  selectUTub(UTubID);
+  selectUTub(UTubID, newUTubSelector);
 }
 
 // Handle error response display to user

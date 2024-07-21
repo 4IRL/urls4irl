@@ -14,6 +14,7 @@ from src.utils.error_handler import (
     handle_404_response,
     handle_429_response_default_ratelimit,
 )
+from src.utils.strings.config_strs import CONFIG_ENVS
 
 sess = Session()
 
@@ -44,7 +45,7 @@ def create_app(config_class: Config = Config):
         default_limits=["20/second", "100/minute"],
         default_limits_exempt_when=lambda: True if testing else False,
         on_breach=handle_429_response_default_ratelimit,
-        storage_uri="redis://localhost:6379" if production else "memory://",
+        storage_uri=app.config[CONFIG_ENVS.REDIS_URI] if production else "memory://",
         storage_options={"socket_connect_timeout": 30},
     )
 
@@ -75,7 +76,7 @@ def create_app(config_class: Config = Config):
         migrate.init_app(app)
 
     with app.app_context():
-        db.create_all()
+        db.create_all(bind_key="prod") if production else db.create_all()
         app.session_interface.db.create_all()
 
     return app

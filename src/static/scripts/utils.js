@@ -4,15 +4,6 @@ const TABLET_WIDTH = 992;
 const NAVBAR_TOGGLER = { toggler: null };
 
 $(document).ready(function () {
-  // Dev tracking of click-triggered objects
-  $(document).on("click", function (e) {
-    // console.log($(e.target)[0]);
-  });
-
-  $(document).on("focus", function (e) {
-    console.log($(e.target)[0]);
-  });
-
   // CSRF token initialization for non-modal POST requests
   let csrftoken = $("meta[name=csrf-token]").attr("content");
   $.ajaxSetup({

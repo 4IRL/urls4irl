@@ -40,12 +40,16 @@ class Config:
         "dev": environ.get(
             CONFIG_ENVS.DATABASE_URL_DEV, default="sqlite://"
         ),  # When testing, give dev an in-memory database
-        "test": environ.get(CONFIG_ENVS.DATABASE_URL_TEST),
+        "test": environ.get(CONFIG_ENVS.DATABASE_URL_TEST, default="sqlite://"),
     }
 
 
 class ConfigProd(Config):
-    SQLALCHEMY_BINDS = None
+    SQLALCHEMY_BINDS = {
+        "prod": environ.get(CONFIG_ENVS.DATABASE_URL_PROD),
+    }
+    SQLALCHEMY_DATABASE_URI = environ.get(CONFIG_ENVS.DATABASE_URL_PROD)
+    REDIS_URI = environ.get(CONFIG_ENVS.REDIS_URI)
 
 
 class TestingConfig(Config):

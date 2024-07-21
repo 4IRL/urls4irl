@@ -6,7 +6,6 @@ const SHOW_LOADING_ICON_AFTER_MS = 50;
 // Displays new URL input prompt
 function createURLHideInput() {
   resetNewURLForm();
-  showIfHidden($("#urlBtnCreate"));
   if (!getNumOfURLs()) $("#NoURLsSubheader").show();
 }
 
