@@ -1,0 +1,41 @@
+name: u4i-prod
+
+services:
+  web:
+    image: ghcr.io/4irl/u4i-prod:latest
+    ports: 
+      - "127.0.0.1:8659:5000"
+    depends_on:
+      - db
+    env_file:
+      - .env
+    environment:
+      - PRODUCTION=true
+      - DATABASE_URL_PROD=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - REDIS_URI=redis://redis:6379/0
+      - FLASK_DEBUG=false
+      - BASE_EMAIL=u4i@urls4irl.app
+    command: >
+      sh -c "
+      . venv/bin/activate &&
+      flask db upgrade &&
+      gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
+      "
+
+  db:
+    image: postgres:latest
+    env_file:
+     - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6.2
+
+volumes:
+  pgdata:
+

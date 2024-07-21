@@ -230,6 +230,7 @@ function resetNewURLForm() {
   $("#urlStringCreate").val(null);
   hideIfShown($("#createURLWrap"));
   newURLInputRemoveEventListeners();
+  showIfHidden($("#urlBtnCreate"));
 }
 
 // Clear the URL Deck
