@@ -3,7 +3,7 @@ class MainPageLocators:
 
     # Navbar
     BUTTON_LOGOUT = "#Logout"
-    OUTPUT_LOGGED_IN_USERNAME = "#userLoggedIn"
+    LOGGED_IN_USERNAME_READ = "#userLoggedIn"
 
     # UTub Deck
     BUTTON_UTUB_CREATE = "#utubBtnCreate"
@@ -20,35 +20,50 @@ class MainPageLocators:
 
     # Tag Deck
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
+    ROWS_TAGS = ".tagFilter"
+    ERROR_TAG_CREATE = ".urlTagCreate-error"
 
     # URL Deck
     HEADER_URL_DECK = "#URLDeckHeader"
     BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
+    SUBHEADER_NO_URLS = "#NoURLsSubheader"
     BUTTON_UTUB_DESCRIPTION_UPDATE = "#updateUTubDescriptionBtn"
     LIST_URL = "#listURLs"
     ROWS_URLS = ".urlRow"
+    ROW_SELECTED_URL = ".urlRow[urlselected='true']"
 
     BUTTON_URL_CREATE = "#urlBtnCreate"
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
 
-    # URLs
-    BUTTON_URL_ACCESS = ".urlBtnAccess"
+    BUTTON_ACCESS_ALL_URLS = "#accessAllURLsBtn"
 
-    BUTTON_URL_UPDATE = ".urlBtnUpdate"
-    # BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
-    INPUT_URL_STRING_UPDATE = ".urlStringUpdate"
-    BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
+    # URLs
+    URL_TITLE_READ = ".urlTitle"
+    URL_STRING_READ = ".urlString"
+
+    URL_TAG_BADGES_READ = ".tagBadge"
+
+    URL_TAGS_READ = ".urlTags"
+    URL_BUTTONS_OPTIONS_READ = ".urlOptions"
 
     BUTTON_URL_TITLE_UPDATE = ".urlTitleBtnUpdate"
     INPUT_URL_TITLE_UPDATE = ".urlTitleUpdate"
     BUTTON_URL_TITLE_SUBMIT_UPDATE = ".urlTitleSubmitBtnUpdate"
 
-    BUTTON_URL_DELETE = ".urlBtnDelete"
+    BUTTON_URL_ACCESS = ".urlBtnAccess"
 
-    BUTTON_ACCESS_ALL_URLS = "#accessAllURLsBtn"
+    BUTTON_TAG_CREATE = ".urlTagBtnCreate"
+    INPUT_TAG_CREATE = ".urlTagCreate"
+    BUTTON_TAG_SUBMIT_CREATE = ".urlTagSubmitBtnCreate"
+
+    BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
+    INPUT_URL_STRING_UPDATE = ".urlStringUpdate"
+    BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
+
+    BUTTON_URL_DELETE = ".urlBtnDelete"
 
     # Members Deck
     SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"

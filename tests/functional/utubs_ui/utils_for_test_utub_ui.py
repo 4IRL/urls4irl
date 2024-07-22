@@ -6,7 +6,7 @@
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
-    current_user_is_owner,
+    user_is_selected_utub_owner,
     wait_then_click_element,
     wait_then_get_element,
 )
@@ -15,6 +15,13 @@ from tests.functional.utils_for_test import (
 def create_utub(browser, utub_name: str, utub_description: str):
     """
     Once logged in, this function adds new UTub by selecting the option to open the input field, fills in the fields with the specified values for utub_name and utub_description, and submits the form.
+
+    Args:
+        WebDriver open to U4I Home Page
+        UTub name and description inputs for creation of a new UTub
+
+    Returns:
+        WebDriver handoff to UTub tests
     """
 
     # Click createUTub button to show input
@@ -35,7 +42,19 @@ def create_utub(browser, utub_name: str, utub_description: str):
 
 
 def delete_active_utub(browser):
-    if current_user_is_owner(browser):
+    """
+    Once logged in, this function adds new UTub by selecting the option to open the input field, fills in the fields with the specified values for utub_name and utub_description, and submits the form.
+
+    Args:
+        WebDriver open to a selected UTub to be deleted
+
+    Returns:
+        Boolean confirmation of successful deletion of UTub
+        WebDriver handoff to UTub tests
+    """
+
+    if user_is_selected_utub_owner(browser):
         wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+        return True
     else:
         return False

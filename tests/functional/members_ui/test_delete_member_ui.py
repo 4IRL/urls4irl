@@ -20,7 +20,9 @@ from tests.functional.utils_for_test import (
 # @pytest.mark.skip(reason="Testing another in isolation")
 def test_delete_member(browser, create_test_utubmembers):
     """
-    GIVEN a user trying to add a new UTub
+    Tests a UTub owner's ability to delete a member from the UTub.
+
+    GIVEN a user owns a UTub with members
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """

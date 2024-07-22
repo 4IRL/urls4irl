@@ -1,4 +1,5 @@
 # Standard library
+from time import sleep
 
 # External libraries
 from selenium.webdriver.common.by import By
@@ -15,7 +16,15 @@ from tests.functional.utils_for_test import (
 
 def create_url(browser, url_title: str, url_string: str):
     """
-    Once logged in, with users, UTub this function initiates the action to create one URL in the UTub.
+    Streamlines actions required to create a URL in the selected UTub.
+
+    Args:
+        WebDriver open to a selected UTub
+        URL title
+        URL
+
+    Returns:
+        Yields WebDriver to tests
     """
 
     # Select createURL button
@@ -35,11 +44,18 @@ def create_url(browser, url_title: str, url_string: str):
 
 def update_url_string(browser, url_row, url_string: str):
     """
-    Once logged in, with users, UTub, URLs, and a URL selected this function initiates the action to update the string of the active URL in the UTub.
+    Streamlines actions required to updated a URL in the selected URL.
+
+    Args:
+        WebDriver open to a selected URL
+        New URL
+
+    Returns:
+        Yields WebDriver to tests
     """
 
     # Select editURL button
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_UPDATE).click()
+    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
 
     # Input new URL string
     url_string_input_field = url_row.find_element(
@@ -51,13 +67,20 @@ def update_url_string(browser, url_row, url_string: str):
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
 
 
-def update_url_title(browser, url_row, url_title: str):
+def update_url_title(browser, selected_url_row, url_title: str):
     """
-    Once logged in, with users, UTub, URLs, and a URL selected this function initiates the action to update the title of the active URL in the UTub.
+    Streamlines actions required to updated a URL in the selected URL.
+
+    Args:
+        WebDriver open to a selected URL
+        New URL title
+
+    Returns:
+        Yields WebDriver to tests
     """
 
     # Select editURL button
-    url_title_text = url_row.find_element(By.CSS_SELECTOR, ".urlTitle")
+    url_title_text = selected_url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ)
 
     actions = ActionChains(browser)
 
@@ -67,7 +90,7 @@ def update_url_title(browser, url_row, url_title: str):
     # Pause to make sure editURLTitle button is visible
     actions.pause(3).perform()
 
-    update_url_title_button = url_row.find_element(
+    update_url_title_button = selected_url_row.find_element(
         By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_UPDATE
     )
 
@@ -78,19 +101,65 @@ def update_url_title(browser, url_row, url_title: str):
     actions.perform()
 
     # Input new URL Title
-    url_title_input_field = url_row.find_element(
+    url_title_input_field = selected_url_row.find_element(
         By.CSS_SELECTOR, MPL.INPUT_URL_TITLE_UPDATE
     )
     clear_then_send_keys(url_title_input_field, url_title)
 
     # Submit
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE).click()
+    selected_url_row.find_element(
+        By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE
+    ).click()
 
 
 def delete_url(browser, url_row):
     """
-    Once logged in, with users, UTubs, and URLs this function initiates the action to delete one URL from the UTub. Modal confirmation handled in test.
+    Simplifies interaction with URL WebElement to initiate deletion request.
+
+    Args:
+        WebDriver open to a selected URL
+
+    Returns:
+        Yields WebDriver to tests
     """
 
     # Select deleteURL button
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_DELETE).click()
+
+
+def delete_url_confirmed(browser, url_row):
+    """
+    Simplifies interaction with URL WebElement to initiate and confirm deletion request.
+
+    Args:
+        WebDriver open to a selected URL
+
+    Returns:
+        Yields WebDriver to tests
+    """
+
+    # Select deleteURL button
+    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_DELETE).click()
+    print("")
+    # Confirm warning modal
+    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+
+
+def delete_all_urls(browser):
+    """
+    Automates deletion of all URLs in selected UTub
+
+    Args:
+        WebDriver open to a selected UTub
+
+    Returns:
+        Yields WebDriver to tests
+    """
+
+    url_rows = browser.find_elements(By.CSS_SELECTOR, MPL.ROWS_URLS)
+
+    for url_row in url_rows:
+        delete_url_confirmed(browser, url_row)
+
+        # Wait for DELETE request
+        sleep(4)

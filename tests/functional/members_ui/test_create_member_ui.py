@@ -17,8 +17,10 @@ from tests.functional.utils_for_test import (
 # @pytest.mark.skip(reason="Testing another in isolation")
 def test_create_member(browser, create_test_utubs):
     """
+    Tests a UTub owner's ability to create a member by adding another U4I user to the UTub.
+
     GIVEN a user is the UTub owner
-    WHEN they submit the createMember form
+    WHEN the createMember form is populated and submitted
     THEN ensure the new member is successfully added to the UTub.
     """
 

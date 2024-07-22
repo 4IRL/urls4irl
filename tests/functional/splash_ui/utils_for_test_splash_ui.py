@@ -14,10 +14,10 @@ from tests.functional.utils_for_test import (
 def register_user(browser, username, email, password):
     """
     Args:
-        Webdriver open to U4I Splash Page
+        WebDriver open to U4I Splash Page
 
     Returns:
-        Webdriver handoff to register tests
+        WebDriver handoff to register tests
     """
 
     # Identify and load register modal
@@ -46,10 +46,10 @@ def register_user(browser, username, email, password):
 def register_user_unconfirmed_email(browser, username, email, password):
     """
     Args:
-        Webdriver open to U4I Splash Page
+        WebDriver open to U4I Splash Page
 
     Returns:
-        Webdriver handoff to register tests
+        WebDriver handoff to register tests
     """
 
     # Identify and load register modal
@@ -80,10 +80,10 @@ def register_user_unconfirmed_email(browser, username, email, password):
 def register_user_unconfirmed_password(browser, username, email, password):
     """
     Args:
-        Webdriver open to U4I Splash Page
+        WebDriver open to U4I Splash Page
 
     Returns:
-        Webdriver handoff to register tests
+        WebDriver handoff to register tests
     """
 
     # Identify and load register modal
