@@ -46,7 +46,7 @@ class UI_TEST_STRINGS:
 
     TEST_URL_STRING_CREATE = MOCK_URL_STRINGS[0]
     TEST_URL_STRING_UPDATE = "https://support.microsoft.com/en-us/microsoft-edge"
-    TEST_URL_TITLE = "This is " + MOCK_URL_STRINGS[0] + "."
+    TEST_URL_TITLE_1 = "This is " + MOCK_URL_STRINGS[0] + "."
     # TEST_URL_TITLE = MOCK_URL_TITLES[0]
     TEST_URL_TITLE_UPDATE = "MS Support"
 
