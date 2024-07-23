@@ -11,7 +11,6 @@ from tests.functional.urls_ui.utils_for_test_url_ui import delete_all_urls, dele
 from tests.functional.utils_for_test import (
     get_selected_url,
     select_url_by_title,
-    login_utub,
     login_utub_url,
     wait_then_click_element,
     wait_then_get_element,
@@ -31,7 +30,7 @@ def test_delete_url(browser, create_test_urls):
 
     # Login as test user, select first test UTub, and select first test URL
     url_title = UTS.TEST_URL_TITLE_1
-    login_utub_url(browser, url_title)
+    login_utub_url(browser, url_title=url_title)
 
     url_row = get_selected_url(browser)
     delete_url(browser, url_row)
@@ -61,7 +60,7 @@ def test_delete_last_url(browser, create_test_urls):
     THEN ensure the empty UTub prompts user to create a URL.
     """
 
-    login_utub(browser)
+    login_utub_url(browser)
 
     delete_all_urls(browser)
 
@@ -78,9 +77,9 @@ def test_delete_url_cancel(browser, create_test_urls):
     THEN ensure the URL is not deleted from the UTub
     """
 
-    # Login test user, select first test UTub, and select first test URL
+    # Login as test user, select first test UTub, and select first test URL
     url_title = UTS.TEST_URL_TITLE_1
-    login_utub_url(browser, url_title)
+    login_utub_url(browser, url_title=url_title)
 
     url_row = get_selected_url(browser)
     delete_url(browser, url_row)
@@ -88,15 +87,13 @@ def test_delete_url_cancel(browser, create_test_urls):
     warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
-    url_delete_check_text = UTS.BODY_MODAL_URL_DELETE
-
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == url_delete_check_text
+    assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
 
     wait_then_click_element(browser, MPL.BUTTON_MODAL_DISMISS)
 
     # Pause for modal to clear
     sleep(1)
 
-    # Assert URL no longer exists in UTub
+    # Assert URL still exists in UTub
     assert select_url_by_title(browser, url_title)

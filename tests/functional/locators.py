@@ -2,7 +2,7 @@ class MainPageLocators:
     """A class for main page locators. All main page locators should come here"""
 
     # Navbar
-    BUTTON_LOGOUT = "#Logout"
+    BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"
 
     # UTub Deck
@@ -22,6 +22,8 @@ class MainPageLocators:
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
     ROWS_TAGS = ".tagFilter"
     ERROR_TAG_CREATE = ".urlTagCreate-error"
+
+    BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 
     # URL Deck
     HEADER_URL_DECK = "#URLDeckHeader"
@@ -76,7 +78,7 @@ class MainPageLocators:
     SUBHEADER_UTUB = "#MemberDeckSubheader"
     LIST_MEMBERS = "#listMembers"
     BADGES_MEMBERS = ".member"
-    BADGE_OWNER = "#UTubOwner"
+    BADGE_OWNER = "#UTubOwner > .member"
 
     # Modal
     HEADER_MODAL = "#confirmModalTitle"

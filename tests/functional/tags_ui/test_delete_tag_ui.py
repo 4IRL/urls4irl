@@ -1,12 +1,20 @@
-# External libraries
+# Standard library
 from time import sleep
+
+# External libraries
 import pytest
+from selenium.webdriver.common.by import By
 
 # Internal libraries
 from src.mocks.mock_constants import MOCK_URL_TITLES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.tags_ui.utils_for_test_tag_ui import delete_tag
 from tests.functional.urls_ui.utils_for_test_url_ui import delete_url
 from tests.functional.utils_for_test import (
+    get_selected_url,
+    get_selected_url_tags,
+    get_tag_badge_by_name,
+    login_utub_url,
     select_url_by_title,
     login_user,
     select_utub_by_name,
@@ -49,32 +57,22 @@ def test_delete_tag(browser, create_test_tags):
     THEN ensure the tag is removed from the URL
     """
 
-    login_user(browser)
+    login_utub_url(browser)
 
-    utub_name = UTS.TEST_UTUB_NAME_1
-    select_utub_by_name(browser, utub_name)
+    url_row = get_selected_url(browser)
+    tag_badges = get_selected_url_tags(url_row)
+    tag_to_delete = tag_badges[0]
+    tag_name = tag_to_delete.find_element(By.CLASS_NAME, "tagText").get_attribute(
+        "innerText"
+    )
 
-    # Select URL
-    url_title = MOCK_URL_TITLES[0]
-    url_row = select_url_by_title(browser, url_title)
-
-    delete_url(browser, url_row)
-
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
-    confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
-
-    url_delete_check_text = UTS.BODY_MODAL_URL_DELETE
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == url_delete_check_text
-
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+    delete_tag(browser, tag_to_delete)
 
     # Wait for DELETE request
     sleep(4)
 
-    # Assert URL no longer exists in UTub
-    assert not select_url_by_title(browser, url_title)
+    # Assert tag no longer exists in URL
+    assert not get_tag_badge_by_name(url_row, tag_name)
 
 
 @pytest.mark.skip(reason="Test not yet implemented")

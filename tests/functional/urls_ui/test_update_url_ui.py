@@ -4,6 +4,7 @@ from time import sleep
 
 # External libraries
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.mocks.mock_constants import (
@@ -23,7 +24,7 @@ from tests.functional.urls_ui.utils_for_test_url_ui import (
 
 
 # @pytest.mark.skip(reason="Test complete. Testing another in isolation")
-def test_update_url_string(browser, create_test_urls):
+def test_update_url_string(browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to update the URL string of the selected URL.
 
@@ -53,7 +54,7 @@ def test_update_url_string(browser, create_test_urls):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_update_url_title(browser, create_test_urls):
+def test_update_url_title(browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to update the URL title of a selected URL.
 

@@ -2,6 +2,8 @@
 
 # External libraries
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.common.action_chains import ActionChains
 
 # Internal libraries
@@ -13,7 +15,7 @@ from tests.functional.utils_for_test import (
 )
 
 
-def create_tag(browser, selected_url_row, tag_string: str):
+def create_tag(browser: WebDriver, selected_url_row: WebElement, tag_string: str):
     """
     Once logged in, with users, UTub, and URLs this function initiates the action to create one tag applied to the selected URL in the UTub.
     """
@@ -29,25 +31,23 @@ def create_tag(browser, selected_url_row, tag_string: str):
     wait_then_click_element(browser, MPL.BUTTON_TAG_SUBMIT_CREATE)
 
 
-def delete_tag(browser, selected_url_row, tag_string: str):
+def delete_tag(browser: WebDriver, tag_badge: WebElement):
     """
-    Once logged in, with users, UTubs, URLs, and tags this function initiates the action to delete one tag from the selected URL. Modal confirmation handled in test.
+    Once logged in, with users, UTubs, URLs, and tags this function initiates the action to delete the first tag in the tagList in the selected URL. Modal confirmation handled in test.
     """
 
     actions = ActionChains(browser)
 
-    # Hover over URL title to display editURLTitle button
-    actions.move_to_element(tag_string)
+    # Hover over tag to display deleteTag button
+    actions.move_to_element(tag_badge)
 
-    # Pause to make sure editURLTitle button is visible
+    # Pause to make sure deleteTag button is visible
     actions.pause(3).perform()
 
-    update_url_title_button = selected_url_row.find_element(
-        By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_UPDATE
-    )
+    delete_tag_button = tag_badge.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_DELETE)
 
-    actions.move_to_element(update_url_title_button).pause(2)
+    actions.move_to_element(delete_tag_button).pause(2)
 
-    actions.click(update_url_title_button)
+    actions.click(delete_tag_button)
 
     actions.perform()

@@ -40,6 +40,7 @@ class UI_TEST_STRINGS:
     BODY_MODAL_LEAVE_UTUB = "You will no longer have access to the URLs in this UTub."
 
     # Tags
+    TEST_TAG_NAME_1 = "Terrible"
 
     # URLs
     BODY_MODAL_URL_DELETE = "You can always add it back again!"

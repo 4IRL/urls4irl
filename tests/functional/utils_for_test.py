@@ -3,6 +3,8 @@
 # External libraries
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
@@ -12,7 +14,7 @@ from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
 
 
-def get_all_attributes(driver, element):
+def get_all_attributes(driver: WebDriver, element: WebElement):
     """
     Args:
         WebDriver open to U4I
@@ -33,7 +35,7 @@ def get_all_attributes(driver, element):
     )
 
 
-def wait_then_get_element(browser, css_selector: str, time: float = 2):
+def wait_then_get_element(browser: WebDriver, css_selector: str, time: float = 2):
     """
     Streamlines waiting for single element load after user interaction.
 
@@ -64,7 +66,7 @@ def wait_then_get_element(browser, css_selector: str, time: float = 2):
         return None
 
 
-def wait_then_get_elements(browser, css_selector: str, time: float = 2):
+def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 2):
     """
     Streamlines waiting for multiple elements load after user interaction.
 
@@ -95,7 +97,7 @@ def wait_then_get_elements(browser, css_selector: str, time: float = 2):
         return None
 
 
-def wait_then_click_element(browser, css_selector: str, time: float = 2):
+def wait_then_click_element(browser: WebDriver, css_selector: str, time: float = 2):
     """
     Streamlines waiting for load and clicking a single element after user interaction.
 
@@ -123,7 +125,7 @@ def wait_then_click_element(browser, css_selector: str, time: float = 2):
         return None
 
 
-def clear_then_send_keys(element, input_text: str):
+def clear_then_send_keys(element: WebElement, input_text: str):
     """
     Streamlines clearing an input field and sending keys provided.
 
@@ -141,18 +143,17 @@ def clear_then_send_keys(element, input_text: str):
 
 # Splash Page
 def login_user(
-    browser,
+    browser: WebDriver,
     username: str = UTS.TEST_USERNAME_1,
     password: str = UTS.TEST_PASSWORD_1,
 ):
     """
     Streamlines actions needed to login a user.
-    Logs a user in using the Splash page modal. Defaults to TEST_USERNAME_1
 
     Args:
         WebDriver open to U4I Splash Page
-        (Optional) Username
-        (Optional) Password
+        (Optional) Username of user to login as, defaults to u4i_test1
+        (Optional) Password, defaults to u4i_test1@urls4irl.app
 
     Returns:
         N/A
@@ -173,7 +174,7 @@ def login_user(
 
 
 # UTub Deck
-def select_utub_by_name(browser, utub_name: str):
+def select_utub_by_name(browser: WebDriver, utub_name: str):
     """
     Selects the first UTub selector matching the supplied UTub name
 
@@ -200,7 +201,7 @@ def select_utub_by_name(browser, utub_name: str):
 
 
 def login_utub(
-    browser,
+    browser: WebDriver,
     username: str = UTS.TEST_USERNAME_1,
     password: str = UTS.TEST_PASSWORD_1,
     utub_name: str = UTS.TEST_UTUB_NAME_1,
@@ -212,13 +213,13 @@ def login_utub(
         WebDriver open to U4I Splash Page
         (Optional) Username of user to login as, defaults to u4i_test1
         (Optional) Password, defaults to u4i_test1@urls4irl.app
-        (Optional) Name of UTub to select
+        (Optional) Name of UTub to select, defaults to MockUTub_1
 
     Returns:
         Yields WebDriver to tests
     """
 
-    login_user(browser)
+    login_user(browser, username, password)
 
     select_utub_by_name(browser, utub_name)
 
@@ -270,7 +271,7 @@ def get_selected_utub_owner_id(browser):
     """
 
     owner_badge = wait_then_get_element(browser, MPL.BADGE_OWNER)
-    owner_id = owner_badge.find_element(By.TAG_NAME, "span").get_attribute("memberid")
+    owner_id = owner_badge.get_attribute("memberid")
     return int(owner_id)
 
 
@@ -326,16 +327,16 @@ def user_is_selected_utub_owner(browser):
 
 
 # URL Deck
-def select_url_by_title(browser, url_title: str):
+def select_url_by_title(browser: WebDriver, url_title: str):
     """
-    Selects URL containing supplied URL title
+    If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL title.
 
     Args:
         WebDriver open to a selected UTub
         URL Title
 
     Returns:
-        WebElement corresponding to the url_row matching the supplied URL title
+        Boolean indicating a successful click of the indicated URL row with the provided URL title
     """
 
     url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
@@ -352,13 +353,18 @@ def select_url_by_title(browser, url_title: str):
     return False
 
 
-def login_utub_url(browser, url_title: str = UTS.TEST_URL_TITLE_1):
+def login_utub_url(
+    browser: WebDriver,
+    username: str = UTS.TEST_USERNAME_1,
+    password: str = UTS.TEST_PASSWORD_1,
+    utub_name: str = UTS.TEST_UTUB_NAME_1,
+    url_title: str = UTS.TEST_URL_TITLE_1,
+):
     """
     Streamlines test setup actions of logging in, selecting a UTub, and selecting a URL
 
     Args:
-        WebDriver open to U4I Splash Page
-        (Optional) Username of user to login as, defaults to u4i_test1
+        WebDriver open to U4I Home Page, logged in as u4i_test1
         (Optional) Password, defaults to u4i_test1@urls4irl.app
         (Optional) Name of UTub to select
         (Optional) Title of URL to select
@@ -368,14 +374,14 @@ def login_utub_url(browser, url_title: str = UTS.TEST_URL_TITLE_1):
         Yields WebDriver to tests
     """
 
-    login_utub(browser)
+    login_utub(browser, username, password, utub_name)
 
-    return select_url_by_title(browser, url_title)
+    select_url_by_title(browser, url_title)
 
 
-def get_selected_url(browser):
+def get_selected_url(browser: WebDriver) -> WebElement:
     """
-    Simplifies extraction of selected URL WebElement.
+    If a URL is selected, this function streamlines the extraction of that WebElement.
 
     Args:
         WebDriver open to a selected URL
@@ -405,7 +411,7 @@ def get_selected_url_title(browser):
 
 
 # Tag Deck
-def get_tag_filter_by_name(browser, tag_name: str):
+def get_tag_filter_by_name(browser: WebDriver, tag_name: str):
     """
     Simplifies extraction of a tag filter WebElement by its name.
 
@@ -419,7 +425,7 @@ def get_tag_filter_by_name(browser, tag_name: str):
 
     for tag_filter in tag_filters:
 
-        tag_text = tag_filter.find_element(By.CLASS_NAME, "tagText").get_attribute(
+        tag_text = tag_filter.find_element(By.TAG_NAME, "span").get_attribute(
             "innerText"
         )
         if tag_text == tag_name:
@@ -428,7 +434,7 @@ def get_tag_filter_by_name(browser, tag_name: str):
     return None
 
 
-def get_tag_badge_by_name(url_row, tag_name: str):
+def get_tag_badge_by_name(url_row: WebElement, tag_name: str):
     """
     Simplifies extraction of a tag badge WebElement by its name in a selected URL.
 
@@ -438,7 +444,7 @@ def get_tag_badge_by_name(url_row, tag_name: str):
     Returns:
         Tag badge WebElement
     """
-    tag_badges = url_row.find_elements(By.CSS_SELECTOR, MPL.URL_TAG_BADGES_READ)
+    tag_badges = get_selected_url_tags(url_row)
 
     for tag_badge in tag_badges:
 
@@ -449,3 +455,7 @@ def get_tag_badge_by_name(url_row, tag_name: str):
             return tag_badge
 
     return None
+
+
+def get_selected_url_tags(url_row: WebElement):
+    return url_row.find_elements(By.CSS_SELECTOR, MPL.URL_TAG_BADGES_READ)

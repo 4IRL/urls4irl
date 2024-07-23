@@ -1,7 +1,9 @@
+# Standard library
+from time import sleep
+
 # External libraries
 import pytest
-from time import sleep
-from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.mocks.mock_constants import (
@@ -17,16 +19,13 @@ from tests.functional.utils_for_test import (
     get_tag_badge_by_name,
     get_tag_filter_by_name,
     login_utub_url,
-    select_url_by_title,
-    login_user,
-    select_utub_by_name,
     wait_then_get_element,
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_tag(browser, create_test_urls):
+def test_create_tag(browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to create a tag to a URL.
 
@@ -37,31 +36,25 @@ def test_create_tag(browser, create_test_urls):
 
     login_utub_url(browser)
 
-    url_row = get_selected_url(browser, UTS.TEST_URL_TITLE)
+    url_row = get_selected_url(browser)
 
-    tag_text = UTS.TEST_TAG_1
+    tag_text = UTS.TEST_TAG_NAME_1
     create_tag(browser, url_row, tag_text)
 
     # Wait for POST request
     sleep(4)
 
     # Confirm tag badge added to URL
-    # Extract tag text from newly created badge
-    tag_badge = get_tag_badge_by_name(url_row, tag_text)
-    url_row_tag_text = tag_badge.find_element(By.CLASS_NAME, "tagText").get_attribute(
-        "innerText"
-    )
 
-    assert tag_text == url_row_tag_text
+    tag_badge = get_tag_badge_by_name(url_row, tag_text)
+
+    assert tag_badge.tag_name == "span"
 
     # Confirm tag displayed in Tag Deck
     # Extract tag text from newly created filter
     tag_filter = get_tag_filter_by_name(browser, tag_text)
-    tag_filter_text = tag_filter.find_element(By.CLASS_NAME, "tagText").get_attribute(
-        "innerText"
-    )
 
-    assert tag_text == tag_filter_text
+    assert tag_filter.tag_name == "div"
 
 
 @pytest.mark.skip(reason="Not on happy path. Not yet implemented")
@@ -95,13 +88,11 @@ def test_create_sixth_tag(browser, create_test_tags):
     WHEN the createTag form is populated and submitted
     THEN ensure the appropriate error is presented to the user.
     """
-    login_user(browser)
+    login_utub_url(browser)
 
-    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
+    url_row = get_selected_url(browser)
 
-    url_row = select_url_by_title(browser, UTS.TEST_URL_TITLE)
-
-    tag_text = UTS.TEST_TAG_NEW
+    tag_text = UTS.TEST_TAG_NAME_1
     create_tag(browser, url_row, tag_text)
 
     # Wait for POST request

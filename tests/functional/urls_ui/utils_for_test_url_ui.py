@@ -4,6 +4,8 @@ from time import sleep
 # External libraries
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
+from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 
 # Internal libraries
 from tests.functional.locators import MainPageLocators as MPL
@@ -14,7 +16,7 @@ from tests.functional.utils_for_test import (
 )
 
 
-def create_url(browser, url_title: str, url_string: str):
+def create_url(browser: WebDriver, url_title: str, url_string: str):
     """
     Streamlines actions required to create a URL in the selected UTub.
 
@@ -42,13 +44,13 @@ def create_url(browser, url_title: str, url_string: str):
     wait_then_click_element(browser, MPL.BUTTON_URL_SUBMIT_CREATE)
 
 
-def update_url_string(browser, url_row, url_string: str):
+def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
     """
     Streamlines actions required to updated a URL in the selected URL.
 
     Args:
         WebDriver open to a selected URL
-        New URL
+        New URL string
 
     Returns:
         Yields WebDriver to tests
