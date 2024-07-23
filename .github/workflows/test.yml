@@ -14,10 +14,16 @@ on:
       BASE_EMAIL:
         required: true
 
+env:
+  POSTGRES_USER: 'postgres'
+  POSTGRES_PASSWORD: 'postgres'
+  POSTGRES_DB: 'postgres'
+  POSTGRES_TEST_DB: 'postgres'
+
 jobs:
   Tests:
     env:
-      FLASK_DEBUG: 'development'
+      FLASK_DEBUG: 'false'
       PRODUCTION: 'false'
       SECRET_KEY: 'ABCDEFGH12345678'
       MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
@@ -47,15 +53,15 @@ jobs:
       # Label used to access the service container
       postgres:
         # Docker Hub image
-        image: 'postgres'
+        image: 'postgres:16.3-bookworm'
         # Map the ports
         ports:
           - 5432:5432
         # Provide the password for postgres
         env:
-          POSTGRES_DB: postgres
-          POSTGRES_PASSWORD: postgres
-          POSTGRES_USER: postgres
+          POSTGRES_DB: ${{ env.POSTGRES_DB }}
+          POSTGRES_PASSWORD: ${{ env.POSTGRES_PASSWORD }}
+          POSTGRES_USER: ${{ env.POSTGRES_USER }}
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
@@ -77,7 +83,7 @@ jobs:
       - name: Setup Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.11.2'
+          python-version: '3.11.9'
           cache: 'pip'
           cache-dependency-path: '**/requirements-test.txt'
       

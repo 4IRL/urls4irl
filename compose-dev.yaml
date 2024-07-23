@@ -1,8 +1,10 @@
-name: u4i-prod
+name: u4i-dev
 
 services:
   web:
-    image: ghcr.io/4irl/u4i-prod:latest
+    build:
+      context: .
+      dockerfile: DockerfileDev
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
@@ -10,11 +12,12 @@ services:
     env_file:
       - .env
     environment:
-      - PRODUCTION=true
-      - DATABASE_URL_PROD=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - PRODUCTION=false
+      - DATABASE_URL_DEV=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - REDIS_URI=redis://redis:6379/0
-      - FLASK_DEBUG=false
+      - FLASK_DEBUG=true
       - BASE_EMAIL=u4i@urls4irl.app
+      - DOCKER=true
     command: >
       sh -c "
       . venv/bin/activate &&
