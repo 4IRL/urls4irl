@@ -56,8 +56,6 @@ DEV_DB_URI = _build_db_uri(
     database=POSTGRES_DB,
     database_host="db" if IS_DOCKER else "localhost",
 )
-print(f"{TEST_DB_URI=}")
-print(f"{DEV_DB_URI=}")
 
 
 class Config:
