@@ -69,7 +69,7 @@ def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
 
 
-def update_url_title(browser, selected_url_row, url_title: str):
+def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title: str):
     """
     Streamlines actions required to updated a URL in the selected URL.
 
@@ -114,7 +114,7 @@ def update_url_title(browser, selected_url_row, url_title: str):
     ).click()
 
 
-def delete_url(browser, url_row):
+def delete_url(browser: WebDriver, url_row: WebElement):
     """
     Simplifies interaction with URL WebElement to initiate deletion request.
 
@@ -129,7 +129,7 @@ def delete_url(browser, url_row):
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_DELETE).click()
 
 
-def delete_url_confirmed(browser, url_row):
+def delete_url_confirmed(browser: WebDriver, url_row: WebElement):
     """
     Simplifies interaction with URL WebElement to initiate and confirm deletion request.
 
@@ -141,13 +141,14 @@ def delete_url_confirmed(browser, url_row):
     """
 
     # Select deleteURL button
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_DELETE).click()
-    print("")
+    delete_url(browser, url_row)
     # Confirm warning modal
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+    # Wait for DELETE request
+    sleep(4)
 
 
-def delete_all_urls(browser):
+def delete_all_urls(browser: WebDriver):
     """
     Automates deletion of all URLs in selected UTub
 
@@ -161,7 +162,5 @@ def delete_all_urls(browser):
     url_rows = browser.find_elements(By.CSS_SELECTOR, MPL.ROWS_URLS)
 
     for url_row in url_rows:
+        url_row.click()
         delete_url_confirmed(browser, url_row)
-
-        # Wait for DELETE request
-        sleep(4)

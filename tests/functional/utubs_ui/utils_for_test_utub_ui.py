@@ -1,6 +1,7 @@
 # Standard library
 
 # External libraries
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from tests.functional.locators import MainPageLocators as MPL
@@ -12,7 +13,7 @@ from tests.functional.utils_for_test import (
 )
 
 
-def create_utub(browser, utub_name: str, utub_description: str):
+def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
     """
     Once logged in, this function adds new UTub by selecting the option to open the input field, fills in the fields with the specified values for utub_name and utub_description, and submits the form.
 
@@ -41,7 +42,7 @@ def create_utub(browser, utub_name: str, utub_description: str):
     wait_then_click_element(browser, MPL.BUTTON_UTUB_SUBMIT_CREATE)
 
 
-def delete_active_utub(browser):
+def delete_active_utub(browser: WebDriver):
     """
     Once logged in, this function adds new UTub by selecting the option to open the input field, fills in the fields with the specified values for utub_name and utub_description, and submits the form.
 
@@ -58,3 +59,20 @@ def delete_active_utub(browser):
         return True
     else:
         return False
+
+
+def delete_active_utub_confirmed(browser: WebDriver):
+    """
+    Simplifies interaction with UTub WebElement to initiate and confirm deletion request.
+
+    Args:
+        WebDriver open to a selected UTub
+
+    Returns:
+        Yields WebDriver to tests
+    """
+
+    # Select deleteUTub button
+    delete_active_utub(browser)
+    # Confirm warning modal
+    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)

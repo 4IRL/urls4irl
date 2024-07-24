@@ -2,6 +2,7 @@
 import pytest
 from time import sleep
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.mocks.mock_constants import (
@@ -21,7 +22,7 @@ from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_url(browser, create_test_utubs):
+def test_create_url(browser: WebDriver, create_test_utubs):
     """
     Tests a user's ability to create a new URL in a selected UTub
 
@@ -59,7 +60,7 @@ def test_create_url(browser, create_test_utubs):
 @pytest.mark.skip(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
-def test_create_url_title_length_exceeded(browser, create_test_utubs):
+def test_create_url_title_length_exceeded(browser: WebDriver, create_test_utubs):
     """
     Tests the site error response to a user's attempt to create a new URL with a title that exceeds the maximum character length limit.
 
@@ -80,7 +81,7 @@ def test_create_url_title_length_exceeded(browser, create_test_utubs):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_select_url(browser, create_test_urls):
+def test_select_url(browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to select a URL and see more details
 

@@ -590,9 +590,12 @@ function deleteURLSuccessOnDelete(response, urlCard) {
   urlCard.fadeOut("slow", function () {
     cleanTagsAfterDeleteURL(response);
     urlCard.remove();
-    $("#listURLs .urlRow").length === 0
-      ? $("#accessAllURLsBtn").hide()
-      : updateTagFilteringOnURLOrURLTagDeletion();
+    if ($("#listURLs .urlRow").length === 0) {
+      $("#accessAllURLsBtn").hide();
+      $("#NoURLsSubheader").show();
+    } else {
+      updateTagFilteringOnURLOrURLTagDeletion();
+    }
   });
 }
 

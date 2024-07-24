@@ -598,6 +598,7 @@ function deleteUTubSuccess() {
 
   hideInputsAndSetUTubDeckSubheader();
 
-  if ($("#listUTubs").find(".UTubSelector").length === 0)
+  if (getNumOfUTubs() === 0) {
     resetUTubDeckIfNoUTubs();
+  }
 }

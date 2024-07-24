@@ -254,8 +254,11 @@ def get_num_utubs(browser):
     Returns:
         Integer length of UTub selectors available to user
     """
-
-    return len(wait_then_get_elements(browser, MPL.SELECTORS_UTUB))
+    utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    if utub_selectors:
+        return len(utub_selectors)
+    else:
+        return 0
 
 
 # Members Deck

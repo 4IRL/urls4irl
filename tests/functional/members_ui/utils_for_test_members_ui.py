@@ -5,6 +5,7 @@ from time import sleep
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from tests.functional.locators import MainPageLocators as MPL
@@ -15,9 +16,12 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_then_get_elements,
 )
+from tests.functional.utubs_ui.utils_for_test_utub_ui import (
+    delete_active_utub_confirmed,
+)
 
 
-def get_all_member_badges(browser):
+def get_all_member_badges(browser: WebDriver):
     """
     Args:
         WebDriver open to a selected UTub
@@ -30,7 +34,7 @@ def get_all_member_badges(browser):
     return wait_then_get_elements(browser, MPL.BADGES_MEMBERS)
 
 
-def get_all_member_usernames(browser):
+def get_all_member_usernames(browser: WebDriver):
     """
     Args:
         WebDriver open to a selected UTub
@@ -50,7 +54,7 @@ def get_all_member_usernames(browser):
     return member_names
 
 
-def create_member_active_utub(browser, member_name):
+def create_member_active_utub(browser: WebDriver, member_name: str):
     """
     Args:
         WebDriver open to a selected UTub
@@ -78,7 +82,7 @@ def create_member_active_utub(browser, member_name):
         return False
 
 
-def delete_member_active_utub(browser, member_name):
+def delete_member_active_utub(browser: WebDriver, member_name: str):
     """
     Args:
         WebDriver open to a selected UTub
@@ -123,7 +127,7 @@ def delete_member_active_utub(browser, member_name):
         return False
 
 
-def leave_active_utub(browser):
+def leave_active_utub(browser: WebDriver):
     """
     Args:
         WebDriver open to a selected UTub
@@ -138,28 +142,28 @@ def leave_active_utub(browser):
         return False
 
 
-def leave_all_utubs(browser):
+def leave_all_utubs(browser: WebDriver):
     """
     Args:
         WebDriver open to U4I Home Page
-        Username of a U4I user to add as a member to the selected UTub
 
     Returns:
-        Boolean confirmation of successful creation of member
         WebDriver handoff to member tests
 
-    Cycles through all user's UTubs and leaves them, if not owner.
+    Cycles through all user's UTubs and leaves or deletes them.
     """
 
     UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
 
-    # Cycle through all UTubs and leave, if possible.
+    # Cycle through all UTubs and leave or delete, as appropriate.
     for selector in UTub_selectors:
         selector.click()
+
         if user_is_selected_utub_owner(browser):
-            continue
+            delete_active_utub_confirmed(browser)
         else:
             leave_active_utub(browser)
             wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
-            # Wait for POST request
-            sleep(4)
+
+        # Wait for POST request
+        sleep(4)

@@ -33,6 +33,8 @@ class UI_TEST_STRINGS:
 
     MAX_CHAR_LIM_UTUB_NAME = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
 
+    MESSAGE_NO_UTUBS = "Create a UTub"
+
     # Members
     BODY_MODAL_MEMBER_DELETE = (
         "This member will no longer have access to the URLs in this UTub."
@@ -48,8 +50,10 @@ class UI_TEST_STRINGS:
     TEST_URL_STRING_CREATE = MOCK_URL_STRINGS[0]
     TEST_URL_STRING_UPDATE = "https://support.microsoft.com/en-us/microsoft-edge"
     TEST_URL_TITLE_1 = "This is " + MOCK_URL_STRINGS[0] + "."
-    # TEST_URL_TITLE = MOCK_URL_TITLES[0]
+    # TEST_URL_TITLE_1 = MOCK_URL_TITLES[0]
     TEST_URL_TITLE_UPDATE = "MS Support"
 
     MAX_CHAR_LIM_URL_STRING = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
     MAX_CHAR_LIM_URL_TITLE = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
+
+    MESSAGE_NO_URLS = "No URLs here - add one!"
