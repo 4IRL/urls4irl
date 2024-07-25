@@ -180,8 +180,39 @@ def build_driver(
         options.add_argument("--headless")
 
     driver = webdriver.Chrome(options=options)
+    driver.set_window_size(width=1400, height=1000)
 
-    driver.maximize_window()
+    # driver.maximize_window()
+    ping_server(UI_TEST_STRINGS.BASE_URL + str(open_port))
+
+    yield driver
+
+    # Teardown: Quit the browser after tests
+    driver.quit()
+
+
+@pytest.fixture(scope="session")
+def build_driver_mobile(
+    provide_port: int, parallelize_app, turn_off_headless
+) -> Generator[WebDriver, None, None]:
+    """
+    Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
+    """
+    open_port = provide_port
+    options = Options()
+
+    if turn_off_headless:
+        # Disable Chrome browser pop-up notifications
+        # prefs = {"profile.default_content_setting_values.notifications" : 2}
+        # options.add_experimental_option("prefs",prefs)
+        options.add_argument("--disable-notifications")
+    else:
+        options.add_argument("--headless")
+
+    driver = webdriver.Chrome(options=options)
+    driver.set_window_size(width=400, height=600)
+
+    # driver.maximize_window()
     ping_server(UI_TEST_STRINGS.BASE_URL + str(open_port))
 
     yield driver
@@ -214,8 +245,31 @@ def browser(
 
 
 @pytest.fixture
+def browser_mobile(
+    provide_port: int,
+    build_driver_mobile: WebDriver,
+    runner: Tuple[Flask, FlaskCliRunner],
+    debug_strings,
+):
+    """
+    This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
+    """
+    open_port = provide_port
+    driver = build_driver
+
+    driver.delete_all_cookies()
+
+    driver.get(UI_TEST_STRINGS.BASE_URL + str(open_port))
+
+    clear_db(runner, debug_strings)
+
+    # Return the driver object to be used in the test functions
+    yield driver
+
+
+@pytest.fixture
 def create_test_users(runner, debug_strings):
-    """ "
+    """
     Assumes nothing created. Creates users
     """
     _, cli_runner = runner

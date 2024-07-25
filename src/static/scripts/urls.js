@@ -936,7 +936,7 @@ function createURLOptionsButtons(url, urlCard) {
   urlOptions.append(accessAndTagBtns);
 
   if (url.canDelete) {
-    const urlBtnUpdate = $(document.createElement("button"));
+    const urlStringBtnUpdate = $(document.createElement("button"));
     const urlBtnDelete = $(document.createElement("button"));
     const urlUpdateAndDeleteBtns = $(document.createElement("div")).addClass(
       "urlOptionsInner flex-row justify-content-start gap-15p",
@@ -951,17 +951,17 @@ function createURLOptionsButtons(url, urlCard) {
         deleteURLShowModal(url.utubUrlID, urlCard);
       });
 
-    urlBtnUpdate
-      .addClass("btn btn-light urlBtnUpdate tabbable")
+    urlStringBtnUpdate
+      .addClass("btn btn-light urlStringBtnUpdate tabbable")
       .attr({ type: "button" })
       .text("Edit URL")
       .disableTab()
       .on("click", function (e) {
         e.stopPropagation();
-        showUpdateURLStringForm(urlCard, urlBtnUpdate);
+        showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
       });
 
-    urlUpdateAndDeleteBtns.append(urlBtnUpdate).append(urlBtnDelete);
+    urlUpdateAndDeleteBtns.append(urlStringBtnUpdate).append(urlBtnDelete);
     urlOptions.append(urlUpdateAndDeleteBtns);
   }
   const urlCardLoadingIcon = $(document.createElement("div")).addClass(

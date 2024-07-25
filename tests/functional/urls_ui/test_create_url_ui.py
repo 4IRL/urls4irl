@@ -2,6 +2,7 @@
 import pytest
 from time import sleep
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.mocks.mock_constants import (
@@ -11,8 +12,9 @@ from src.mocks.mock_constants import (
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
-    login_user,
-    select_utub_by_name,
+    get_selected_url,
+    login_utub,
+    login_utub_url,
     wait_then_get_element,
     wait_then_get_elements,
 )
@@ -20,16 +22,17 @@ from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_url(browser, create_test_utubs):
+def test_create_url(browser: WebDriver, create_test_utubs):
     """
-    GIVEN a user trying to add a new UTub
+    Tests a user's ability to create a new URL in a selected UTub
+
+    GIVEN a user and selected UTub
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    login_user(browser)
-
-    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
+    # Login test user and select first test UTub
+    login_utub(browser)
 
     url_title = MOCK_URL_TITLES[0]
     url_string = MOCK_URL_STRINGS[0]
@@ -57,14 +60,17 @@ def test_create_url(browser, create_test_utubs):
 @pytest.mark.skip(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
-def test_create_url_title_length_exceeded(browser, create_test_utubs):
+def test_create_url_title_length_exceeded(browser: WebDriver, create_test_utubs):
     """
-    GIVEN a user trying to add a new UTub
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    Tests the site error response to a user's attempt to create a new URL with a title that exceeds the maximum character length limit.
+
+    GIVEN a user and selected UTub
+    WHEN the createURL form is populated and submitted with a title that exceeds character limits
+    THEN ensure the appropriate error and prompt is shown to user.
     """
 
-    login_user(browser)
+    # Login test user and select first test UTub
+    login_utub(browser)
 
     create_url(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
 
@@ -74,39 +80,23 @@ def test_create_url_title_length_exceeded(browser, create_test_utubs):
     assert warning_modal_body.text == "Try shortening your UTub name"
 
 
-@pytest.mark.skip(
-    reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
-)
-def test_create_url_string_length_exceeded(browser, create_test_utubs):
-    """
-    GIVEN a user trying to add a new UTub
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
-    """
-
-    login_user(browser)
-
-    create_url(browser, MOCK_URL_TITLES[0], UTS.MAX_CHAR_LIM_URL_STRING)
-
-    warning_modal_body = wait_then_get_element(browser, "#confirmModalBody")
-
-    # Assert new UTub is now active and displayed to user
-    assert warning_modal_body.text == "Try shortening your UTub name"
-
-
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_activate_url(browser, create_test_urls):
+def test_select_url(browser: WebDriver, create_test_urls):
     """
+    Tests a user's ability to select a URL and see more details
+
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    login_user(browser)
+    # Login test user, select first test UTub, and select first test URL
+    login_utub_url(browser)
 
-    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
+    url_row = get_selected_url(browser)
 
-    # Click first URL to activate
-    url_row = wait_then_get_elements(browser, MPL.ROWS_URLS)[0]
-    url_row.click()
     assert "true" == url_row.get_attribute("urlselected")
+    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TAGS_READ).is_displayed
+    assert url_row.find_element(
+        By.CSS_SELECTOR, MPL.URL_BUTTONS_OPTIONS_READ
+    ).is_displayed

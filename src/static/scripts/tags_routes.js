@@ -16,7 +16,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
 
   // Disable URL Buttons as url Tag is being created
   hideIfShown(urlCard.find(".urlBtnAccess"));
-  hideIfShown(urlCard.find(".urlBtnUpdate"));
+  hideIfShown(urlCard.find(".urlStringBtnUpdate"));
   hideIfShown(urlCard.find(".urlBtnDelete"));
 
   // Prevent hovering on tags from adding padding
@@ -80,7 +80,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
 
   // Enable URL Buttons as url Tag creation form is hidden
   showIfHidden(urlCard.find(".urlBtnAccess"));
-  showIfHidden(urlCard.find(".urlBtnUpdate"));
+  showIfHidden(urlCard.find(".urlStringBtnUpdate"));
   showIfHidden(urlCard.find(".urlBtnDelete"));
 
   // For tablets or in case of resize, change some of the sizing

@@ -264,6 +264,10 @@ function removeMemberSuccess(memberID) {
   });
 
   setMemberDeckForUTub(true);
+
+  if (getNumOfUTubs() === 0) {
+    resetUTubDeckIfNoUTubs();
+  }
 }
 
 function leaveUTubSuccess() {

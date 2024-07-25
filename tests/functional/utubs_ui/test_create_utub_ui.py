@@ -17,9 +17,11 @@ from utils_for_test_utub_ui import create_utub
 # @pytest.mark.skip(reason="Testing another in isolation")
 def test_create_utub(browser, create_test_users):
     """
-    GIVEN a user trying to add a new UTub
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    Tests a user's ability to create a UTub
+
+    GIVEN a user
+    WHEN the createUTub form is populated and submitted
+    THEN ensure the new UTub is successfully added to the user's UTub Deck and is selected.
     """
 
     login_user(browser)
@@ -47,9 +49,11 @@ def test_create_utub(browser, create_test_users):
 )
 def test_create_utub_name_length_exceeded(browser, create_test_users):
     """
-    GIVEN a user trying to add a new UTub
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    Tests the site error response to a user's attempt to create a new UTub with a name that exceeds the maximum character length limit.
+
+    GIVEN a user
+    WHEN the createUTub form is populated and submitted with a name that exceeds character limits
+    THEN ensure the appropriate error and prompt is shown to user.
     """
 
     login_user(browser)
@@ -65,9 +69,11 @@ def test_create_utub_name_length_exceeded(browser, create_test_users):
 # @pytest.mark.skip(reason="Testing another in isolation")
 def test_create_utub_name_similar(browser, create_test_utubs):
     """
-    GIVEN a user trying to add a new UTub
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    Tests the site warning response to a user's attempt to create a new UTub with a name that is similar to one already in their UTub Deck.
+
+    GIVEN a user
+    WHEN the createUTub form is populated and submitted with a name that is similar to one already in their UTub Deck
+    THEN ensure the appropriate warning and prompt for confirmation is shown to user.
     """
 
     login_user(browser)

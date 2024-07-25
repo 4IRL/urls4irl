@@ -1,5 +1,8 @@
-# External libraries
+# Standard library
 from time import sleep
+
+# External libraries
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.mocks.mock_constants import USERNAME_BASE
@@ -15,10 +18,12 @@ from tests.functional.utils_for_test import (
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_member(browser, create_test_utubs):
+def test_create_member(browser: WebDriver, create_test_utubs):
     """
+    Tests a UTub owner's ability to create a member by adding another U4I user to the UTub.
+
     GIVEN a user is the UTub owner
-    WHEN they submit the createMember form
+    WHEN the createMember form is populated and submitted
     THEN ensure the new member is successfully added to the UTub.
     """
 

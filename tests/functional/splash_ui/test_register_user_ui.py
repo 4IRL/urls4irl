@@ -23,6 +23,8 @@ from tests.functional.utils_for_test import (
 # @pytest.mark.skip(reason="Testing another in isolation")
 def test_register_new_user(browser):
     """
+    Tests a user's ability to register as a new user.
+
     GIVEN a fresh load of the U4I Splash page
     WHEN initiates registration modal and inputs desired login information
     THEN U4I responds with a success modal prompting user to 'Validate Your Email!'
@@ -43,6 +45,8 @@ def test_register_new_user(browser):
 @pytest.mark.skip(reason="Not happy path. PASSES")
 def test_register_existing_username(browser, add_test_users):
     """
+    Tests the site error response to a user's attempt to register with a username that is already registered in the database.
+
     GIVEN a fresh load of the U4I Splash page, and pre-registered user
     WHEN user attempts to register an existing user again
     THEN U4I responds with a failure modal and reminds user to 'Validate Your Email!'
@@ -67,6 +71,8 @@ def test_register_existing_username(browser, add_test_users):
 @pytest.mark.skip(reason="Not happy path. FAILS")
 def test_register_existing_email(browser, add_test_users):
     """
+    Tests the site error response to a user's attempt to register with an email that is already registered in the database.
+
     GIVEN a fresh load of the U4I Splash page, and pre-registered user
     WHEN user attempts to register an existing user again
     THEN U4I responds with a failure modal and reminds user to 'Validate Your Email!'
@@ -88,6 +94,8 @@ def test_register_existing_email(browser, add_test_users):
 @pytest.mark.skip(reason="Not happy path. FAILS")
 def test_register_existing_username_and_email(browser, add_test_users):
     """
+    Tests the site error response to a user's attempt to register with a username and email that is already registered in the database.
+
     GIVEN a fresh load of the U4I Splash page, and pre-registered user
     WHEN user attempts to register an existing user again
     THEN U4I responds with a failure modal and reminds user to 'Validate Your Email!'
@@ -111,6 +119,14 @@ def test_register_existing_username_and_email(browser, add_test_users):
 
 @pytest.mark.skip(reason="Not on happy path.")
 def test_register_failed_email_confirmation(browser):
+    """
+    Tests the site error response to a user submitting a register form with mismatched email inputs.
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user attempts to register with mismatched email addresses
+    THEN U4I responds with a failure modal and prompts user to double check inputs
+    """
+
     register_user_unconfirmed_email(
         browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )
@@ -118,6 +134,14 @@ def test_register_failed_email_confirmation(browser):
 
 @pytest.mark.skip(reason="Not on happy path.")
 def test_register_failed_password_confirmation(browser):
+    """
+    Tests the site error response to a user submitting a register form with mismatched password inputs.
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user attempts to register with mismatched passwords
+    THEN U4I responds with a failure modal and prompts user to double check inputs
+    """
+
     register_user_unconfirmed_password(
         browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )

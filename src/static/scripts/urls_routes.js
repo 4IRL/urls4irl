@@ -145,7 +145,7 @@ function resetCreateURLFailErrors() {
 /* Update URL */
 
 // Shows update URL inputs
-function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
+function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
   hideIfShown(urlCard.find(".urlString"));
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
@@ -168,7 +168,7 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
 
   // Update URL Button text to exit editing
-  urlBtnUpdate
+  urlStringBtnUpdate
     .removeClass("btn-light")
     .addClass("btn-warning")
     .text("Cancel")
@@ -179,8 +179,8 @@ function showUpdateURLStringForm(urlCard, urlBtnUpdate) {
 
   // For tablets, change some of the sizing
   if ($(window).width() < TABLET_WIDTH) {
-    urlBtnUpdate.addClass("full-width");
-    urlBtnUpdate.closest(".urlOptionsInner").addClass("half-width");
+    urlStringBtnUpdate.addClass("full-width");
+    urlStringBtnUpdate.closest(".urlOptionsInner").addClass("half-width");
   }
 
   disableTagRemovalInURLCard(urlCard);
@@ -200,19 +200,19 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   urlCard.find(".urlStringUpdate").val(urlStringElem.attr("data-url"));
 
   // Make the Update URL button now allow updating again
-  const urlBtnUpdate = urlCard.find(".urlBtnUpdate");
-  urlBtnUpdate
+  const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+  urlStringBtnUpdate
     .removeClass("btn-warning")
     .addClass("btn-light")
     .text("Edit URL")
     .offAndOn("click", function (e) {
       e.stopPropagation();
-      showUpdateURLStringForm(urlCard, urlBtnUpdate);
+      showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
     });
 
   // For tablets or in case of resize, change some of the sizing
-  urlBtnUpdate.removeClass("full-width");
-  urlBtnUpdate.closest(".urlOptionsInner").removeClass("half-width");
+  urlStringBtnUpdate.removeClass("full-width");
+  urlStringBtnUpdate.closest(".urlOptionsInner").removeClass("half-width");
 
   // Enable URL Buttons
   showIfHidden(urlCard.find(".urlBtnAccess"));
@@ -590,9 +590,12 @@ function deleteURLSuccessOnDelete(response, urlCard) {
   urlCard.fadeOut("slow", function () {
     cleanTagsAfterDeleteURL(response);
     urlCard.remove();
-    $("#listURLs .urlRow").length === 0
-      ? $("#accessAllURLsBtn").hide()
-      : updateTagFilteringOnURLOrURLTagDeletion();
+    if ($("#listURLs .urlRow").length === 0) {
+      $("#accessAllURLsBtn").hide();
+      $("#NoURLsSubheader").show();
+    } else {
+      updateTagFilteringOnURLOrURLTagDeletion();
+    }
   });
 }
 

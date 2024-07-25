@@ -604,7 +604,7 @@
     margin-left: 0;
 }
 
-.urlBtnUpdate,
+.urlStringBtnUpdate,
 .urlTagBtnCreate {
     transition: background-color 0.3s ease-in-out;
 }
@@ -971,7 +971,7 @@
 
     .urlBtnAccess,
     .urlTagBtnCreate,
-    .urlBtnUpdate,
+    .urlStringBtnUpdate,
     .urlBtnDelete {
         width: 50%;
     }
@@ -982,7 +982,7 @@
 
     /*
     .urlTagBtnCreate,
-    .urlBtnUpdate {
+    .urlStringBtnUpdate {
         flex: 1 1 auto;
     }
     */
