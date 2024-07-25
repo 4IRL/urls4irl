@@ -35,7 +35,10 @@ services:
 
   redis:
     image: redis:6.2
+    volumes:
+      - redisdata:/data
 
 volumes:
   pgdata:
+  redisdata:
 

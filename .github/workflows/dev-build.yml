@@ -1,10 +1,7 @@
 name: Build development docker image
 
-on: 
-  push:
-  pull_request:
-    branches:
-      - main
+on:
+  workflow_call:
 
 env:
   # Name of docker image
@@ -14,8 +11,6 @@ jobs:
     DevBuild:
         name: Build development docker image
         runs-on: ubuntu-latest
-        permissions:
-          packages: write
 
         steps:
         - uses: actions/checkout@v4
@@ -26,6 +21,7 @@ jobs:
             FULL_TAG="$DATE-$SHORT_SHA"
 
             docker build . --file DockerfileDev --tag $IMAGE_NAME --tag $FULL_TAG --label "runnumber=${GITHUB_RUN_ID}"
+
         - name: Log in to registry
           run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 

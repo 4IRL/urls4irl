@@ -32,6 +32,7 @@ USER u4i-host
 COPY requirements-dev.txt ./
 COPY requirements-test.txt ./
 COPY requirements-prod.txt ./
+COPY compose-dev.yaml ./
 RUN python3 -m venv venv \
 	&& . venv/bin/activate \
 	&& pip install -r requirements-dev.txt --no-cache-dir

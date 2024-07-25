@@ -2,9 +2,7 @@ name: u4i-dev
 
 services:
   web:
-    build:
-      context: .
-      dockerfile: DockerfileDev
+    image: ghcr.io/4irl/u4i-dev:latest
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
@@ -20,6 +18,7 @@ services:
       - DOCKER=true
     command: >
       sh -c "
+      sleep 5 &&
       . venv/bin/activate &&
       flask db upgrade &&
       gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
@@ -38,7 +37,10 @@ services:
 
   redis:
     image: redis:6.2
+    volumes:
+      - redisdata:/data
 
 volumes:
   pgdata:
+  redisdata:
 
