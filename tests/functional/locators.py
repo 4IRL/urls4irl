@@ -6,6 +6,11 @@ class MainPageLocators:
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"
 
     # UTub Deck
+    SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
+    LIST_UTUB = "#listUTubs"
+    SELECTORS_UTUB = ".UTubSelector"
+    SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
+
     BUTTON_UTUB_CREATE = "#utubBtnCreate"
     BUTTON_UTUB_DELETE = "#utubBtnDelete"
     INPUT_UTUB_NAME_CREATE = "#utubNameCreate"
@@ -13,17 +18,11 @@ class MainPageLocators:
     BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
     BUTTON_UTUB_CANCEL = "#utubCancelBtnCreate"
 
-    SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
-    LIST_UTUB = "#listUTubs"
-    SELECTORS_UTUB = ".UTubSelector"
-    SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
-
     # Tag Deck
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
-    ROWS_TAGS = ".tagFilter"
-    ERROR_TAG_CREATE = ".urlTagCreate-error"
-
-    BUTTON_TAG_DELETE = ".urlTagBtnDelete"
+    LIST_TAGS = "#listTags"
+    TAG_FILTERS = ".tagFilter"
+    SELECTOR_UNSELECT_ALL = "#unselectAll"
 
     # URL Deck
     HEADER_URL_DECK = "#URLDeckHeader"
@@ -46,9 +45,9 @@ class MainPageLocators:
     URL_TITLE_READ = ".urlTitle"
     URL_STRING_READ = ".urlString"
 
-    URL_TAG_BADGES_READ = ".tagBadge"
-
     URL_TAGS_READ = ".urlTags"
+    TAG_BADGES = ".tagBadge"
+    TAG_BADGE_NAME_READ = ".tagBadge > span"
     URL_BUTTONS_OPTIONS_READ = ".urlOptions"
 
     BUTTON_URL_TITLE_UPDATE = ".urlTitleBtnUpdate"
@@ -60,6 +59,9 @@ class MainPageLocators:
     BUTTON_TAG_CREATE = ".urlTagBtnCreate"
     INPUT_TAG_CREATE = ".urlTagCreate"
     BUTTON_TAG_SUBMIT_CREATE = ".urlTagSubmitBtnCreate"
+    ERROR_TAG_CREATE = ".urlTagCreate-error"
+
+    BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 
     BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
     INPUT_URL_STRING_UPDATE = ".urlStringUpdate"

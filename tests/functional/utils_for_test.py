@@ -1,4 +1,5 @@
 # Standard library
+from typing import List
 
 # External libraries
 from selenium.common.exceptions import NoSuchElementException, TimeoutException
@@ -224,7 +225,24 @@ def login_utub(
     select_utub_by_name(browser, utub_name)
 
 
-def get_selected_utub_name(browser):
+def get_num_utubs(browser: WebDriver):
+    """
+    Count number of UTub selectors
+
+    Args:
+        WebDriver open to U4I Home Page
+
+    Returns:
+        Integer length of UTub selectors available to user
+    """
+    utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    if utub_selectors:
+        return len(utub_selectors)
+    else:
+        return 0
+
+
+def get_selected_utub_name(browser: WebDriver):
     """
     Extracts name of selected UTub.
 
@@ -244,25 +262,8 @@ def get_selected_utub_name(browser):
     return utub_name
 
 
-def get_num_utubs(browser):
-    """
-    Count number of UTub selectors
-
-    Args:
-        WebDriver open to U4I Home Page
-
-    Returns:
-        Integer length of UTub selectors available to user
-    """
-    utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
-    if utub_selectors:
-        return len(utub_selectors)
-    else:
-        return 0
-
-
 # Members Deck
-def get_selected_utub_owner_id(browser):
+def get_selected_utub_owner_id(browser: WebDriver):
     """
     Extracts the user ID associated with the selected UTub owner.
 
@@ -278,7 +279,7 @@ def get_selected_utub_owner_id(browser):
     return int(owner_id)
 
 
-def get_current_user_name(browser):
+def get_current_user_name(browser: WebDriver):
     """
     Extracts the user ID associated with the logged in user.
 
@@ -296,7 +297,7 @@ def get_current_user_name(browser):
     return user_name[1]
 
 
-def get_current_user_id(browser):
+def get_current_user_id(browser: WebDriver):
     """
     Extracts the user ID associated with the logged in user.
 
@@ -315,7 +316,7 @@ def get_current_user_id(browser):
     return int(user_id)
 
 
-def user_is_selected_utub_owner(browser):
+def user_is_selected_utub_owner(browser: WebDriver):
     """
     Determines whether logged in user is the owner of the selected UTub
 
@@ -382,6 +383,63 @@ def login_utub_url(
     select_url_by_title(browser, url_title)
 
 
+def get_num_url_rows(browser: WebDriver):
+    """
+    Count number of URL rows in selected UTub, regardless of filter state
+
+    Args:
+        WebDriver open to U4I Home Page with a UTub selected
+
+    Returns:
+        Integer length of URL rows in UTub
+    """
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_rows:
+        return len(url_rows)
+    else:
+        return 0
+
+
+def url_row_unfiltered(url_rows: List[WebElement]):
+    """
+    Checks if each URL row is unfiltered.
+
+    Args:
+        WebDriver open to U4I Home Page with a UTub selected. Some tag filters may be applied.
+
+    Returns:
+        List of booleans indicating whether a URL row is visible.
+    """
+    unfiltered = []
+    for url_row in url_rows:
+        unfiltered.append(url_row.get_attribute("filterable") == "true")
+
+    return unfiltered
+
+
+def get_num_url_unfiltered_rows(browser: WebDriver):
+    """
+    Count number of URL rows visible to user, based on filter state
+
+    Args:
+        WebDriver open to U4I Home Page with a UTub selected
+
+    Returns:
+        Integer length of visible URL rows in UTub available to user
+    """
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_rows:
+        visible_url_rows = [
+            url_row
+            for url_row, condition in zip(url_rows, url_row_unfiltered(url_rows))
+            if condition
+        ]
+
+        return len(visible_url_rows)
+    else:
+        return 0
+
+
 def get_selected_url(browser: WebDriver) -> WebElement:
     """
     If a URL is selected, this function streamlines the extraction of that WebElement.
@@ -395,7 +453,7 @@ def get_selected_url(browser: WebDriver) -> WebElement:
     return browser.find_element(By.CSS_SELECTOR, MPL.ROW_SELECTED_URL)
 
 
-def get_selected_url_title(browser):
+def get_selected_url_title(browser: WebDriver):
     """
     Extracts title of selected URL.
 
@@ -414,7 +472,7 @@ def get_selected_url_title(browser):
 
 
 # Tag Deck
-def get_tag_filter_by_name(browser: WebDriver, tag_name: str):
+def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement:
     """
     Simplifies extraction of a tag filter WebElement by its name.
 
@@ -424,20 +482,21 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str):
     Returns:
         Tag filter WebElement
     """
-    tag_filters = wait_then_get_elements(browser, MPL.ROWS_TAGS)
+    tag_filters = get_selected_utub_tags(browser)
 
     for tag_filter in tag_filters:
 
-        tag_text = tag_filter.find_element(By.TAG_NAME, "span").get_attribute(
+        tag_filter_name = tag_filter.find_element(By.TAG_NAME, "span").get_attribute(
             "innerText"
         )
-        if tag_text == tag_name:
+        print(tag_filter_name)
+        if tag_filter_name == tag_name:
             return tag_filter
 
     return None
 
 
-def get_tag_badge_by_name(url_row: WebElement, tag_name: str):
+def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement:
     """
     Simplifies extraction of a tag badge WebElement by its name in a selected URL.
 
@@ -460,5 +519,9 @@ def get_tag_badge_by_name(url_row: WebElement, tag_name: str):
     return None
 
 
+def get_selected_utub_tags(browser: WebDriver):
+    return wait_then_get_elements(browser, MPL.TAG_FILTERS, 0)
+
+
 def get_selected_url_tags(url_row: WebElement):
-    return url_row.find_elements(By.CSS_SELECTOR, MPL.URL_TAG_BADGES_READ)
+    return url_row.find_elements(By.CSS_SELECTOR, MPL.TAG_BADGES)
