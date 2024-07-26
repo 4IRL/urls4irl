@@ -22,22 +22,23 @@ RUN set -ex \
 	&& apt-get clean -y \
 	&& rm -rf /var/lib/apt/lists/*
 
-# Change ownership to newly created user
-RUN chown -R u4i-host:u4i-host-group /code
 
 # Create a non-root user
 USER u4i-host
 
-# Install production level requirements
+# Copy over required files
 COPY requirements-prod.txt ./
-RUN python3 -m venv venv \
-	&& . venv/bin/activate \
-	&& pip install -r requirements-prod.txt --no-cache-dir
-
-# Copy files needed
 COPY run.py ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/
+
+# Change ownership to newly created user
+RUN chown -R u4i-host:u4i-host-group /code
+
+# Install production level requirements
+RUN python3 -m venv venv \
+	&& . venv/bin/activate \
+	&& pip install -r requirements-prod.txt --no-cache-dir
 
 # Expose a port to access the container
 EXPOSE 5000
