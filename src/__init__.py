@@ -45,7 +45,7 @@ def create_app(config_class: Config = Config):
         default_limits=["20/second", "100/minute"],
         default_limits_exempt_when=lambda: True if testing else False,
         on_breach=handle_429_response_default_ratelimit,
-        storage_uri=app.config[CONFIG_ENVS.REDIS_URI] if production else "memory://",
+        storage_uri=app.config[CONFIG_ENVS.REDIS_URI],
         storage_options={"socket_connect_timeout": 30},
     )
 

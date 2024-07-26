@@ -1,8 +1,8 @@
-name: u4i-prod
+name: u4i-dev
 
 services:
   web:
-    image: ghcr.io/4irl/u4i-prod:latest
+    image: ghcr.io/4irl/u4i-dev:latest
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
@@ -10,13 +10,17 @@ services:
     env_file:
       - .env
     environment:
-      - PRODUCTION=true
-      - DATABASE_URL_PROD=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
+      - PRODUCTION=false
+      - DATABASE_URL_DEV=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - REDIS_URI=redis://redis:6379/0
-      - FLASK_DEBUG=false
+      - FLASK_DEBUG=true
       - BASE_EMAIL=u4i@urls4irl.app
+      - DOCKER=true
+
+    # Sleep for 5 seconds to allow postgres image to start if necessary
     command: >
       sh -c "
+      sleep 5 &&
       . venv/bin/activate &&
       flask db upgrade &&
       gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app

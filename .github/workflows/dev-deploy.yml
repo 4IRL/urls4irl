@@ -1,37 +1,115 @@
+
 name: Deploy to development server
 
 on:
-    pull_request:
-        branches:
-            - dev
-        types:
-            - closed
+  workflow_call:
+    inputs:
+      branch_ref:
+        required: true
+        type: string
+    secrets:
+      DEV_SSH_HOST:
+        required: true
+      DEV_SSH_USERNAME:
+        required: true
+      DEV_SSH_PRIVATE_KEY_FILENAME:
+        required: true
+      DEV_SSH_PRIVATE_KEY_VALUE:
+        required: true
+      DEV_SERVICE_TOKEN_ID:
+        required: true
+      DEV_SERVICE_TOKEN_SECRET:
+        required: true
+      DEV_DB_NAME:
+        required: true
+      DEV_DB_USER:
+        required: true
+      DEV_DB_PASSWORD:
+        required: true
 
 jobs:
     DevDeploy:
-        name: Deploy to development server
+        name: Deploy docker image to development server
         runs-on: ubuntu-latest
 
         steps:
-            - name: Deploy to development server
-              id: deploy-to-dev
-              run: |
-                echo "### Deploying to development server... :rocket:" >> $GITHUB_STEP_SUMMARY;
-                echo "status_code=$(curl -s -o /dev/null -w "%{http_code}" --location 'https://dev.urls4irl.app/restart' --header 'CF-Access-Client-Secret: ${{ secrets.CF_ACCESS_SECRET }}' --header 'CF-Access-Client-Id: ${{ secrets.CF_ACCESS_ID }}')" >> $GITHUB_OUTPUT
+          - name: Install SSH
+            run: |
+              mkdir -p ~/.ssh
+              echo "${{ secrets.DEV_SSH_PRIVATE_KEY_VALUE }}" > ~/.ssh/${{ secrets.DEV_SSH_PRIVATE_KEY_FILENAME }}
+              chmod 600 ~/.ssh/${{ secrets.DEV_SSH_PRIVATE_KEY_FILENAME }}
 
-            - name: Verify not rate limited
-              if: steps.deploy-to-dev.outputs.status_code == '500'
-              run: |
-                echo "### Failed: Please wait 20 seconds between deployments :racehorse:" >> $GITHUB_STEP_SUMMARY
+          - name: Install Cloudflared
+            run: |
+              sudo curl -L https://github.com/cloudflare/cloudflared/releases/latest/download/cloudflared-linux-amd64 -o /usr/bin/cloudflared
+              sudo chmod a+x /usr/bin/cloudflared
+
+          # Special config file required for cloudflared tunnel ssh connection
+          - name: Prepare SSH Config file
+            run: |
+              cat <<EOF > ~/.ssh/config
+              Host ${{ secrets.DEV_SSH_HOST }}
+                HostName ${{secrets.DEV_SSH_HOST }}
+                User ${{ secrets.DEV_SSH_USERNAME }}
+                IdentityFile ~/.ssh/${{ secrets.DEV_SSH_PRIVATE_KEY_FILENAME }}
+                IdentitiesOnly yes
+                AddKeysToAgent yes
+                ProxyCommand /usr/bin/cloudflared access ssh --hostname %h --id ${{ secrets.DEV_SERVICE_TOKEN_ID }} --secret ${{ secrets.DEV_SERVICE_TOKEN_SECRET }}
+              EOF
+
+              chmod 600 ~/.ssh/config
+
+          - name: Checkout code
+            uses: actions/checkout@v4
+            with:
+              ref: ${{ inputs.branch_ref }}
+
+          - name: SCP Compose File Into Development Server
+            run: |
+              scp -T -q -o StrictHostKeyChecking=no compose-dev.yaml ${{ secrets.DEV_SSH_HOST}}:~
+
+          # Allow environment file to be defined by GitHub secrets
+          - name: Generate Environment File
+            run: |
+              export KEY="$(openssl rand 64 | base64 --wrap=0 | tr -d '+')";\
+              cat <<EOF > ~/.env
+              POSTGRES_USER=${{ secrets.DEV_DB_USER }}
+              POSTGRES_DB=${{ secrets.DEV_DB_NAME }}
+              POSTGRES_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
+              SECRET_KEY=$KEY
+              EOF
+
+          - name: SCP Environment File
+            run: |
+              scp -T -q -o StrictHostKeyChecking=no ~/.env ${{ secrets.DEV_SSH_HOST}}:~
+
+          # Pull updated images, recreate if needed, run as daemon, and prune old images
+          - name: Build Docker Network
+            run: |
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
+              docker compose -f compose-dev.yaml pull;
+              docker compose -f compose-dev.yaml up --force-recreate --build -d;
+              docker image prune -f;
+              ';
+              sleep 30;
+          
+          # Verify the three services are up and running after any updates
+          - name: Verify Docker Network
+            run: >
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              hasRedis=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep redis);
+              hasDB=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep db);
+              hasWeb=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep web);
+
+              if [ -n "${hasRedis}" ] && [ -n "${hasDB}" ] && [ -n "${hasWeb}" ]; then
+                echo "After 30 seconds, all of the services are up!";
+                exit 0; 
+              else
+                echo "After 30 seconds, one or more of the services is not up: ";
+                [ "redis" != "${hasRedis}" ] && echo "Redis not operational"; 
+                [ "db" != "${hasDB}" ] && echo "Database not operational"; 
+                [ "web" != "${hasWeb}" ] && echo "Web service not operational";
                 exit 1;
-
-            - name: Verify not unknown error
-              if: steps.deploy-to-dev.outputs.status_code != '200'
-              run: |
-                echo "### Failed: Error with development server or cloudflare authentication" >> $GITHUB_STEP_SUMMARY
-                exit 2;
-
-            - name: End Action
-              run: |
-                echo "### Success! Successfully deployed dev branch on development server :sunglasses:" >> $GITHUB_STEP_SUMMARY
-
+              fi; 
+              '
