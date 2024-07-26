@@ -113,10 +113,12 @@ def test_urls_requiring_valid_user_agent():
     for unknown_url in urls_needing_valid_user_agent:
         validated_url = False
         for _ in range(3):
-            if unknown_url == url_valid.find_common_url(unknown_url):
+            try:
+                url_valid.find_common_url(unknown_url)
+            except url_valid.InvalidURLError:
+                continue
+            else:
                 validated_url = True
-                break
-            sleep(0.1)
         assert validated_url
 
 
@@ -130,11 +132,13 @@ def test_random_user_agents():
     valid_agent_used = 0
     for unknown_url in urls_needing_valid_user_agent:
         for user_agent in set(url_valid.USER_AGENTS):
-            if unknown_url == url_valid.find_common_url(unknown_url, user_agent):
+            try:
+                url_valid.find_common_url(unknown_url, user_agent)
+            except url_valid.InvalidURLError:
+                # Avoid any kind of rate limiting or semblance of being a bot
+                sleep(0.1)
+            else:
                 valid_agent_used += 1
                 break
-
-            # Avoid any kind of rate limiting or semblance of being a bot
-            sleep(0.1)
 
     assert valid_agent_used == len(urls_needing_valid_user_agent)

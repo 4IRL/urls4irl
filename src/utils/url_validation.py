@@ -38,6 +38,7 @@ else:
     from src.utils.strings.url_validation_strs import URL_VALIDATION as VALIDATION_STRS
 
 USER_AGENTS = (
+    "PostmanRuntime/7.40.0",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/109.0.0.0 Safari/537.36",
     "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
@@ -179,8 +180,7 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
             return response
 
     except requests.exceptions.ReadTimeout:
-        # Try all user agents
-        return all_user_agent_sampling(url)
+        return perform_both_all_user_agent_and_google_or_wayback_check(url, headers)
 
     except requests.exceptions.ConnectionError as e:
         raise InvalidURLError("Unable to connect to the given URL. " + str(e))
@@ -190,6 +190,23 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
 
     else:
         return response
+
+
+def perform_both_all_user_agent_and_google_or_wayback_check(
+    url: str, headers: dict[str, str]
+) -> requests.Response:
+    for idx in range(2):
+        if idx == 0:
+            try:
+                return all_user_agent_sampling(url)
+            except InvalidURLError:
+                continue
+        else:
+            response = perform_google_or_wayback_check(url, headers)
+            if response is not None:
+                return response
+
+    raise InvalidURLError("Unable to connect to and validate the URL.")
 
 
 def perform_google_or_wayback_check(
@@ -282,9 +299,10 @@ def perform_google_or_wayback_check(
 def all_user_agent_sampling(url: str) -> requests.Response:
     for agent in USER_AGENTS:
         try:
+            headers = generate_headers(url, user_agent=agent)
             response = requests.get(
                 url,
-                headers=generate_headers(url, user_agent=agent),
+                headers=headers,
                 timeout=(
                     3,
                     6,
