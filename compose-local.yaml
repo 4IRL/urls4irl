@@ -2,7 +2,9 @@ name: u4i-dev
 
 services:
   web:
-    image: ghcr.io/4irl/u4i-dev:latest
+    build:
+      context: .
+      dockerfile: DockerfileDev
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
