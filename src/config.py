@@ -1,6 +1,8 @@
 from os import environ, path
 
+from cachelib import FileSystemCache
 from dotenv import load_dotenv
+from redis import Redis
 
 from src.utils.constants import CONFIG_CONSTANTS
 from src.utils.strings.config_strs import CONFIG_ENVS as ENV
@@ -70,7 +72,18 @@ class Config:
     FLASK_DEBUG = environ.get("FLASK_DEBUG")
     SECRET_KEY = environ.get(ENV.SECRET_KEY)
     SESSION_PERMANENT = "False"
-    SESSION_TYPE = "sqlalchemy"
+    SESSION_TYPE = (
+        "cachelib" if environ.get(ENV.REDIS_URI, default=None) is None else "redis"
+    )
+    SESSION_CACHELIB = FileSystemCache(
+        threshold=500, cache_dir=f"{path.dirname(__file__)}/sessions"
+    )
+    SESSION_REDIS = (
+        Redis.from_url(environ.get(ENV.REDIS_URI))
+        if environ.get(ENV.REDIS_URI, default=None) is not None
+        else None
+    )
+    SESSION_SERIALIZATION_FORMAT = "json"
     WTF_CSRF_TIME_LIMIT = (
         CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS
     )  # Six hours until CSRF expiration
@@ -90,6 +103,27 @@ class Config:
     }
     REDIS_URI = environ.get(ENV.REDIS_URI, default="memory://")
 
+    def __init__(self) -> None:
+        if not self.SECRET_KEY:
+            raise ValueError("SECRET_KEY not found in environment variables")
+
+        if not any(
+            (
+                environ.get(ENV.POSTGRES_USER, default=None),
+                environ.get(ENV.POSTGRES_DB, default=None),
+                environ.get(ENV.POSTGRES_PASSWORD, default=None),
+            )
+        ):
+            raise ValueError(
+                "One of POSTGRES_DB, POSTGRES_USER, POSTGRES_PASSSWORD not properly set as environment variables"
+            )
+
+        if environ.get(ENV.MAILJET_API_KEY, default=None) is None:
+            raise ValueError("MAILJET_API_KEY environment variable is missing.")
+
+        if environ.get(ENV.MAILJET_SECRET_KEY, default=None) is None:
+            raise ValueError("MAILJET_SECRET_KEY environment variable is missing.")
+
 
 class ConfigProd(Config):
     SQLALCHEMY_BINDS = {
@@ -103,3 +137,8 @@ class TestingConfig(Config):
     TESTING = True
     SQLALCHEMY_BINDS = {"test": TEST_DB_URI}
     SQLALCHEMY_DATABASE_URI = TEST_DB_URI
+
+    def __init__(self) -> None:
+        super().__init__()
+        if environ.get(ENV.POSTGRES_TEST_DB, default=None) is None:
+            raise ValueError("Missing POSTGRES_TEST_DB database name for test")

@@ -79,7 +79,6 @@ def test_drop_db(runner):
         has_utub_members = inspector.has_table("UtubMembers")
         has_utub_urls = inspector.has_table("UtubUrls")
         has_utub_tags = inspector.has_table("UtubUrlTags")
-        has_sessions = inspector.has_table("sessions")
 
     cli_runner.invoke(args=["managedb", "drop", "test"])
 
@@ -94,7 +93,6 @@ def test_drop_db(runner):
         assert has_utub_members != inspector.has_table("UtubMembers")
         assert has_utub_urls != inspector.has_table("UtubUrls")
         assert has_utub_tags != inspector.has_table("UtubUrlTags")
-        assert has_sessions != inspector.has_table("sessions")
 
         # Make sure to recreate the database for future tests
         db.create_all()

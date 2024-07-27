@@ -77,6 +77,5 @@ def create_app(config_class: Config = Config):
 
     with app.app_context():
         db.create_all(bind_key="prod") if production else db.create_all()
-        app.session_interface.db.create_all()
 
     return app

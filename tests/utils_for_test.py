@@ -38,12 +38,7 @@ def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
 
 def clear_database(test_config: TestingConfig, app: Flask, sess: Session):
     engine = sqlalchemy.create_engine(test_config.SQLALCHEMY_DATABASE_URI)
-    inspector: sqlalchemy.engine.Inspector = sqlalchemy.inspect(engine)
     meta = sqlalchemy.MetaData(engine)
     meta.reflect()
     meta.drop_all()
     meta.create_all()
-    if not inspector.has_table("sessions"):
-        sess.app = app
-        with app.app_context():
-            sess.app.session_interface.db.create_all()
