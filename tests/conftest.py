@@ -83,10 +83,11 @@ def build_app(
 
 
 @pytest.fixture
-def app(build_app) -> Generator[Flask, None, None]:
+def app(build_app: Tuple[Flask, TestingConfig]) -> Generator[Flask, None, None]:
     app, testing_config = build_app
     yield app
     clear_database(testing_config, app, sess)
+    app.session_interface.cache.clear()
 
 
 @pytest.fixture

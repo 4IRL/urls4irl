@@ -30,4 +30,3 @@ def test_db_created_correctly(app):
         assert inspector.has_table(Utub_Members.__tablename__)
         assert inspector.has_table(Utub_Urls.__tablename__)
         assert inspector.has_table(Utub_Url_Tags.__tablename__)
-        assert inspector.has_table("sessions")
