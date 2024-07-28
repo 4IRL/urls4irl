@@ -64,8 +64,8 @@ def test_update_url_title_utub_creator(
         ).all()
         associated_tag_objects = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]
@@ -163,8 +163,8 @@ def test_update_url_title_url_adder(
         ).all()
         associated_tag_objects = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]
@@ -263,8 +263,8 @@ def test_update_url_title_with_same_title_utub_creator(
         ).all()
         associated_tag_objects = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]
@@ -362,8 +362,8 @@ def test_update_url_title_with_same_title_url_adder(
         ).all()
         associated_tag_objects = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]

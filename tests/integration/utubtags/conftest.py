@@ -2,17 +2,19 @@ from flask import Flask
 import pytest
 
 from src import db
-from src.models.tags import Tags
+from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
+from src.utils.strings import model_strs
+from tests.models_for_test import all_tags
 
 
 @pytest.fixture
-def add_one_url_to_each_utub_one_tag(
-    app: Flask, add_one_url_to_each_utub_no_tags, add_tags_to_database
+def add_one_url_to_each_utub_one_tag_to_each_url_all_tags_in_utub(
+    app: Flask, add_one_url_to_each_utub_no_tags, add_tags_to_utubs
 ):
     """
-    Add a single valid tag to each URL in each UTub.
+    Add a single valid tag to each URL in each UTub, after adding all tags to each UTub.
     The ID of the UTub, User, and related URL, and tag are all the same.
 
     Utub with ID of 1, created by User ID of 1, with URL ID of 1, with tag ID of 1
@@ -20,43 +22,49 @@ def add_one_url_to_each_utub_one_tag(
     Args:
         app (Flask): The Flask client providing an app context
         add_one_url_to_each_utub_no_tags (pytest fixture): Adds one url to each UTub with same ID as creator
-        add_tags_to_database (pytest fixture): Adds all test tags to the database
+        add_tags_to_all_utubs (pytest fixture): Adds all test tags to each UTub
     """
     with app.app_context():
         all_utubs: list[Utubs] = Utubs.query.all()
-        tag = Tags.query.first()
+        tag = all_tags[0]
 
         for utub in all_utubs:
             url_in_utub = utub.utub_urls[0]
+            tag_in_utub = Utub_Tags.query.filter(
+                Utub_Tags.utub_id == utub.id,
+                Utub_Tags.tag_string == tag[model_strs.TAG_STRING],
+            ).first()
 
             new_tag_url_utub_association = Utub_Url_Tags()
-            new_tag_url_utub_association.utub_containing_this_tag = utub
-            new_tag_url_utub_association.tagged_url = url_in_utub
-            new_tag_url_utub_association.tag_item = tag
             new_tag_url_utub_association.utub_id = utub.id
             new_tag_url_utub_association.utub_url_id = url_in_utub.id
-            new_tag_url_utub_association.tag_id = tag.id
-            utub.utub_url_tags.append(new_tag_url_utub_association)
+            new_tag_url_utub_association.utub_tag_id = tag_in_utub.id
+            db.session.add(new_tag_url_utub_association)
 
         db.session.commit()
 
 
 @pytest.fixture
-def add_five_tags_to_db_from_same_user(
-    app: Flask, add_one_url_and_all_users_to_each_utub_no_tags
+def add_one_tag_to_each_utub_after_one_url_added(
+    app: Flask, add_one_url_to_each_utub_no_tags
 ):
     """
-    Adds five additional tags to the database without associating them with any URLs. Assumes they are
-    all added by User ID == 1
+    Add a single valid tag to each UTub
 
     Args:
         app (Flask): The Flask client providing an app context
-        add_one_url_and_all_users_to_each_utub_no_tags (pytest fixture): Adds all users to all UTubs, each UTub containing
-            a single URL added by the creator
+        add_one_url_to_each_utub_no_tags (pytest fixture): Adds one url to each UTub with same ID as creator
     """
-    five_tags_to_add = ("Hello", "Good", "Bad", "yes", "no")
     with app.app_context():
-        for tag in five_tags_to_add:
-            new_tag = Tags(tag_string=tag, created_by=1)
-            db.session.add(new_tag)
+        all_utubs: list[Utubs] = Utubs.query.all()
+
+        for idx, utub in enumerate(all_utubs):
+            tag = all_tags[idx]
+            new_tag_in_utub = Utub_Tags(
+                utub_id=utub.id,
+                tag_string=tag[model_strs.TAG_STRING],
+                created_by=utub.utub_creator,
+            )
+            db.session.add(new_tag_in_utub)
+
         db.session.commit()

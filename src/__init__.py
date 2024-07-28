@@ -60,14 +60,14 @@ def create_app(config_class: Config = Config):
     from src.users.routes import users
     from src.members.routes import members
     from src.urls.routes import urls
-    from src.tags.routes import tags
+    from src.tags.url_tag_routes import utub_url_tags
 
     app.register_blueprint(splash)
     app.register_blueprint(utubs)
     app.register_blueprint(users)
     app.register_blueprint(members)
     app.register_blueprint(urls)
-    app.register_blueprint(tags)
+    app.register_blueprint(utub_url_tags)
     register_mocks_db_cli(app)
 
     app.register_error_handler(404, handle_404_response)

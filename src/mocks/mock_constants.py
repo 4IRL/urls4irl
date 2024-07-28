@@ -4,7 +4,6 @@ EMAIL_SUFFIX = "@urls4irl.app"
 MOCK_UTUB_NAME_BASE = "MockUTub_"
 MOCK_UTUB_DESCRIPTION = "This is a description"
 
-# MOCK_URL_TITLES = ("Google", "Github", "Microsoft", "Yahoo", "Flask")
 MOCK_URL_TITLES = (
     "This is https://www.google.com/.",
     "This is https://www.github.com/.",

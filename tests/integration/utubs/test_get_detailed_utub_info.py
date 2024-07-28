@@ -5,7 +5,7 @@ from flask.testing import FlaskClient
 from flask_login import current_user
 import pytest
 
-from src.models.tags import Tags
+from src.models.utub_tags import Utub_Tags
 from src.models.urls import Urls
 from src.models.users import Users
 from src.models.utubs import Utubs
@@ -209,7 +209,6 @@ def test_get_valid_utub_with_members_urls_tags(
     client, _, _, app = login_first_user_without_register
 
     with app.app_context():
-        all_tags: list[Tags] = Tags.query.all()
         all_urls: list[Urls] = Urls.query.all()
         all_users: list[Users] = Users.query.all()
 
@@ -218,6 +217,10 @@ def test_get_valid_utub_with_members_urls_tags(
         ).first()
         all_urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_user_is_creator_of.id
+        ).all()
+
+        all_tags: list[Utub_Tags] = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_is_creator_of.id
         ).all()
 
     response = client.get(

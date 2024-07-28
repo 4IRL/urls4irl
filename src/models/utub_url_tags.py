@@ -4,7 +4,7 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, ForeignKey, Integer
 
 from src import db
-from src.models.tags import Tags
+from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.utils.datetime_utils import utc_now
@@ -22,18 +22,29 @@ class Utub_Url_Tags(db.Model):
 
     id: int = Column(Integer, primary_key=True)
     utub_id: int = Column(
-        Integer, ForeignKey("Utubs.id"), nullable=False, name="utubID"
+        Integer,
+        ForeignKey("Utubs.id", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        name="utubID",
     )
     utub_url_id: int = Column(
-        Integer, ForeignKey("UtubUrls.id"), nullable=True, name="utubUrlID"
+        Integer,
+        ForeignKey("UtubUrls.id", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        name="utubUrlID",
     )
-    tag_id: int = Column(Integer, ForeignKey("Tags.id"), nullable=False, name="tagID")
+    utub_tag_id: int = Column(
+        Integer,
+        ForeignKey("UtubTags.id", ondelete="CASCADE"),
+        nullable=False,
+        name="utubTagID",
+    )
     added_at: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="addedAt"
     )
 
-    tag_item: Tags = db.relationship("Tags")
+    utub_tag_item: Utub_Tags = db.relationship("Utub_Tags")
     tagged_url: Utub_Urls = db.relationship("Utub_Urls", back_populates="url_tags")
-    utub_containing_this_tag: Utubs = db.relationship(
+    utub_containing_this_url_tag: Utubs = db.relationship(
         "Utubs", back_populates="utub_url_tags"
     )

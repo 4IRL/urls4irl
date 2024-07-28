@@ -73,8 +73,8 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         ).all()
         associated_tag_objs = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]
@@ -204,8 +204,8 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         ).all()
         associated_tag_objs = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]
@@ -338,8 +338,8 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         ).all()
         associated_tag_objs = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]
@@ -466,8 +466,8 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         ).all()
         associated_tag_objs = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]
@@ -591,8 +591,8 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         ).all()
         associated_tag_objs = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]
@@ -698,8 +698,8 @@ def test_update_valid_url_with_same_url_as_url_adder(
         ).all()
         associated_tag_objs = [
             {
-                MODEL_STRS.TAG_ID: tag.tag_id,
-                MODEL_STRS.TAG_STRING: tag.tag_item.tag_string,
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
             }
             for tag in associated_tags
         ]

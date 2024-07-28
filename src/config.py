@@ -134,6 +134,7 @@ class ConfigProd(Config):
 
 
 class TestingConfig(Config):
+    __test__ = False
     TESTING = True
     SQLALCHEMY_BINDS = {"test": TEST_DB_URI}
     SQLALCHEMY_DATABASE_URI = TEST_DB_URI

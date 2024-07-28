@@ -1,6 +1,6 @@
 import pytest
 
-from src.models.tags import Tags
+from src.models.utub_tags import Utub_Tags
 from src.models.urls import Urls
 from src.models.users import Users
 from src.models.utubs import Utubs
@@ -20,10 +20,7 @@ new_utub = {"name": "MyNewUTub", "creator": 1, "description": "This is my first 
 
 new_url = {"url_string": "google.com", "creator": 1}
 
-new_tag = {
-    "tag_string": "Cool",
-    "creator": 1,
-}
+new_tag = {"tag_string": "Cool", "creator": 1, "utub_id": 1}
 
 
 def test_user_model(app):
@@ -91,9 +88,12 @@ def test_tag_model(app):
     THEN ensure all fields are filled out correctly
     """
     with app.app_context():
-        new_tag_object = Tags(
-            tag_string=new_tag["tag_string"], created_by=new_tag["creator"]
+        new_tag_object = Utub_Tags(
+            utub_id=new_tag["utub_id"],
+            tag_string=new_tag["tag_string"],
+            created_by=new_tag["creator"],
         )
 
+        assert new_tag_object.utub_id == new_tag["utub_id"]
         assert new_tag_object.tag_string == new_tag["tag_string"]
         assert new_tag_object.created_by == new_tag["creator"]

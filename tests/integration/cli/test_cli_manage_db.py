@@ -3,7 +3,7 @@ from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 
 from src import db
-from src.models.tags import Tags
+from src.models.utub_tags import Utub_Tags
 from src.models.urls import Urls
 from src.models.users import Users
 from src.models.utub_members import Utub_Members
@@ -31,7 +31,7 @@ def test_clear_db(runner):
         initial_user_count = Users.query.count()
         initial_utub_count = Utubs.query.count()
         initial_urls_count = Urls.query.count()
-        initial_tags_count = Tags.query.count()
+        initial_tags_count = Utub_Tags.query.count()
         initial_utub_member_count = Utub_Members.query.count()
         initial_utub_urls_count = Utub_Urls.query.count()
         initial_utub_tag_count = Utub_Url_Tags.query.count()
@@ -42,7 +42,10 @@ def test_clear_db(runner):
         assert initial_user_count != Users.query.count() and Users.query.count() == 0
         assert initial_utub_count != Utubs.query.count() and Utubs.query.count() == 0
         assert initial_urls_count != Urls.query.count() and Urls.query.count() == 0
-        assert initial_tags_count != Tags.query.count() and Tags.query.count() == 0
+        assert (
+            initial_tags_count != Utub_Tags.query.count()
+            and Utub_Tags.query.count() == 0
+        )
         assert (
             initial_utub_member_count != Utub_Members.query.count()
             and Utub_Members.query.count() == 0
@@ -75,7 +78,7 @@ def test_drop_db(runner):
         has_email_validations = inspector.has_table("EmailValidations")
         has_utubs = inspector.has_table("Utubs")
         has_urls = inspector.has_table("Urls")
-        has_tags = inspector.has_table("Tags")
+        has_tags = inspector.has_table("UtubTags")
         has_utub_members = inspector.has_table("UtubMembers")
         has_utub_urls = inspector.has_table("UtubUrls")
         has_utub_tags = inspector.has_table("UtubUrlTags")
@@ -89,7 +92,7 @@ def test_drop_db(runner):
         assert has_email_validations != inspector.has_table("EmailValidations")
         assert has_utubs != inspector.has_table("Utubs")
         assert has_urls != inspector.has_table("Urls")
-        assert has_tags != inspector.has_table("Tags")
+        assert has_tags != inspector.has_table("UtubTags")
         assert has_utub_members != inspector.has_table("UtubMembers")
         assert has_utub_urls != inspector.has_table("UtubUrls")
         assert has_utub_tags != inspector.has_table("UtubUrlTags")

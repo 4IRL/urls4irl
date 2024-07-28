@@ -2,7 +2,7 @@ import pytest
 from sqlalchemy import inspect
 
 from src import db
-from src.models.tags import Tags
+from src.models.utub_tags import Utub_Tags
 from src.models.urls import Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
@@ -23,7 +23,7 @@ def test_db_created_correctly(app):
         engine = db.engine
         inspector = inspect(engine)
 
-        assert inspector.has_table(Tags.__tablename__)
+        assert inspector.has_table(Utub_Tags.__tablename__)
         assert inspector.has_table(Urls.__tablename__)
         assert inspector.has_table(Users.__tablename__)
         assert inspector.has_table(Utubs.__tablename__)

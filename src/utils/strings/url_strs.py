@@ -4,7 +4,7 @@ from src.utils.strings.model_strs import (
     URL_ID,
     URL_STRING,
     URL_TITLE,
-    URL_TAG_IDS,
+    UTUB_URL_TAG_IDS,
     URL_TAGS,
     UTUB_URL_ID,
 )
@@ -26,7 +26,7 @@ TAG_IN_UTUB = "tagInUTub"
 class URL_GENERAL:
     URL = URL
     REDIRECT = REDIRECT
-    URL_TAG_IDS = URL_TAG_IDS
+    UTUB_URL_TAG_IDS = UTUB_URL_TAG_IDS
     URL_ID = URL_ID
     TAG_IN_UTUB = TAG_IN_UTUB
 
