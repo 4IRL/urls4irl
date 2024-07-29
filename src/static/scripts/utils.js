@@ -102,7 +102,6 @@ $(window).on("focus", () => {
 $(window).on("blur", () => {
   if (document.activeElement !== null) {
     $(document.activeElement).addClass("focus");
-    console.log($(document.activeElement));
   }
 });
 

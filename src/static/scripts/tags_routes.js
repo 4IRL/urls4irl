@@ -152,21 +152,21 @@ function createURLTagSuccess(response, urlCard) {
   hideAndResetCreateURLTagForm(urlCard);
 
   // Extract response data
-  const tagID = response.tag.tagID;
-  const string = response.tag.tagString;
+  const utubTagID = response.utubTag.utubTagID;
+  const string = response.utubTag.tagString;
 
   // Update tags in URL
   urlCard
     .find(".urlTagsContainer")
-    .append(createTagBadgeInURL(tagID, string, urlCard));
+    .append(createTagBadgeInURL(utubTagID, string, urlCard));
 
   // Add SelectAll button if not yet there
   if (isEmpty($("#unselectAll"))) {
     $("#listTags").append(createUnselectAllTagFilterInDeck());
   }
 
-  if (!isTagInDeck(tagID)) {
-    const newTag = createTagFilterInDeck(tagID, string);
+  if (!isTagInDeck(utubTagID)) {
+    const newTag = createTagFilterInDeck(utubTagID, string);
     // If max number of tags already selected
     $(".tagFilter.selected") === CONSTANTS.TAGS_MAX_ON_URL
       ? newTag.addClass("disabled").off(".tagFilterSelected")
@@ -223,14 +223,14 @@ function resetCreateURLTagFailErrors(urlCard) {
 /* Remove tag from URL */
 
 // Prepares post request inputs for removal of a URL - tag
-function deleteURLTagSetup(utubID, urlID, tagID) {
-  const deleteURL = routes.deleteURLTag(utubID, urlID, tagID);
+function deleteURLTagSetup(utubID, urlID, utubTagID) {
+  const deleteURL = routes.deleteURLTag(utubID, urlID, utubTagID);
 
   return deleteURL;
 }
 
 // Remove tag from selected URL
-async function deleteURLTag(tagID, tagBadge, urlCard) {
+async function deleteURLTag(utubTagID, tagBadge, urlCard) {
   const utubID = getActiveUTubID();
   const urlID = parseInt(urlCard.attr("urlid"));
   let timeoutID;
@@ -239,20 +239,20 @@ async function deleteURLTag(tagID, tagBadge, urlCard) {
     await getUpdatedURL(utubID, urlID, urlCard);
 
     // If tag was already deleted on update of URL, exit early
-    if (!isTagInURL(tagID, urlCard)) {
+    if (!isTagInURL(utubTagID, urlCard)) {
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
 
     // Extract data to submit in POST request
-    const deleteURL = deleteURLTagSetup(utubID, urlID, tagID);
+    const deleteURL = deleteURLTagSetup(utubID, urlID, utubTagID);
 
     const request = ajaxCall("delete", deleteURL, []);
 
     // Handle response
     request.done(function (response, _, xhr) {
       if (xhr.status === 200) {
-        deleteURLTagSuccess(response, tagBadge);
+        deleteURLTagSuccess(tagBadge);
       }
     });
 
@@ -273,21 +273,12 @@ async function deleteURLTag(tagID, tagBadge, urlCard) {
 }
 
 // Displays changes related to a successful removal of a URL
-function deleteURLTagSuccess(response, tagBadge) {
+function deleteURLTagSuccess(tagBadge) {
   // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
   tagBadge.remove();
-  const tagID = response.tag.tagID;
 
-  // Determine whether the removed tag is the last instance in the UTub. Remove, if yes
-  if (!response.tagInUTub) {
-    $(".tagFilter[tagid=" + tagID + "]").remove();
-    updateTagFilteringOnURLOrURLTagDeletion();
-  }
-
-  // Remove SelectAll button if no tags
-  if (isEmpty($(".tagFilter"))) {
-    $("#unselectAll").remove();
-  }
+  // Hide the URL if selected tag is filtering
+  updateTagFilteringOnURLOrURLTagDeletion();
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
@@ -319,7 +310,7 @@ function deleteURLTagFail(_) {
 //         var tagText = $($(listTagDivs[i]).find('input[type="text"]')).val();
 //         console.log(tagID);
 //         console.log(tagText);
-//         postData([tagID, tagText], "updateTags");
+//         postData([data-utub-tag-id, tagText], "updateTags");
 //       } else {
 //         // User wants to update, handle input text field display
 //         var tagText = $(listTagDivs[i]).find("label")[0].innerHTML;

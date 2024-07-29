@@ -1,6 +1,6 @@
 from typing import Tuple
 
-from flask import Flask, url_for
+from flask import Flask
 from flask.testing import FlaskClient
 from flask_login import current_user
 import pytest
@@ -10,9 +10,9 @@ from src.models.urls import Urls
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
-from src.utils.all_routes import ROUTES
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_validation_strs import URL_VALIDATION
+from tests.utils_for_test import build_get_utub_route
 
 pytestmark = pytest.mark.utubs
 
@@ -37,7 +37,7 @@ def test_get_valid_utub_as_creator(
         id_of_utub = utub_user_creator_of.id
 
     response = client.get(
-        _build_get_utub_route(id_of_utub),
+        build_get_utub_route(id_of_utub),
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
@@ -83,7 +83,7 @@ def test_get_valid_utub_as_member(
         id_of_utub = utub_user_member_of.id
 
     response = client.get(
-        _build_get_utub_route(id_of_utub),
+        build_get_utub_route(id_of_utub),
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
@@ -129,7 +129,7 @@ def test_get_valid_utub_as_not_member(
         id_of_utub = utub_user_member_of.id
 
     response = client.get(
-        _build_get_utub_route(id_of_utub),
+        build_get_utub_route(id_of_utub),
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
@@ -161,7 +161,7 @@ def test_get_valid_utub_with_members_urls_no_tags(
         standalone_url: Urls = only_url_in_utub.standalone_url
 
     response = client.get(
-        _build_get_utub_route(utub_user_is_member_of.id),
+        build_get_utub_route(utub_user_is_member_of.id),
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
@@ -224,7 +224,7 @@ def test_get_valid_utub_with_members_urls_tags(
         ).all()
 
     response = client.get(
-        _build_get_utub_route(utub_user_is_creator_of.id),
+        build_get_utub_route(utub_user_is_creator_of.id),
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
@@ -268,7 +268,3 @@ def test_get_valid_utub_with_members_urls_tags(
     for tag in all_tags:
         tag_dict = {MODELS.ID: tag.id, MODELS.TAG_STRING: tag.tag_string}
         assert tag_dict in response_json[MODELS.TAGS]
-
-
-def _build_get_utub_route(utub_id: int) -> str:
-    return url_for(ROUTES.UTUBS.HOME, UTubID=utub_id)

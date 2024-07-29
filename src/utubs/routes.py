@@ -62,7 +62,9 @@ def get_single_utub(utub_id: str):
     ):
         # Ensures JSON not viewed in browser, happens if user does a refresh with URL /home?UTubID=X, which would otherwise return JSON normally
         return redirect(url_for(ROUTES.UTUBS.HOME))
-    user_in_utub: Utub_Members = Utub_Members.query.get((utub_id, current_user.id))
+    user_in_utub: Utub_Members | None = Utub_Members.query.get(
+        (utub_id, current_user.id)
+    )
 
     if user_in_utub is None:
         # User is not member of the UTub they are requesting

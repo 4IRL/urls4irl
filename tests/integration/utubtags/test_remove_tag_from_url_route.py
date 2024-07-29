@@ -13,6 +13,8 @@ from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from src.utils.strings.url_validation_strs import URL_VALIDATION
+from tests.utils_for_test import build_get_utub_route
 
 pytestmark = pytest.mark.tags
 
@@ -360,7 +362,7 @@ def test_delete_tag_from_url_with_one_tag(
         assert Utub_Url_Tags.query.count() == initial_url_tag_count - 1
 
 
-def test_delete_last_tag_from_utub(
+def test_delete_last_url_tag_in_utub(
     add_one_url_to_each_utub_one_tag_to_each_url_all_tags_in_utub,
     login_first_user_without_register,
 ):
@@ -484,6 +486,15 @@ def test_delete_last_tag_from_utub(
 
         # Ensure proper number of Url-Tag associations in db
         assert Utub_Url_Tags.query.count() == initial_url_tag_count - 1
+
+    # Ensure getting the UTub indicates the UTubTag still exists even if no UTubUrlTags exist
+    response = client.get(
+        build_get_utub_route(utub_id_this_user_member_of),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+    response_tags = [tag[MODELS.ID] for tag in response.json[MODELS.TAGS]]
+    assert tag_id_to_delete in response_tags
 
 
 def test_delete_tag_from_url_with_five_tags(

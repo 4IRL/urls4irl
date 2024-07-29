@@ -69,7 +69,7 @@ function createURL(createURLTitleInput, createURLInput) {
 function createURLSuccess(response) {
   resetNewURLForm();
   const url = response.URL;
-  url.urlTagIDs = [];
+  url.utubUrlTagIDs = [];
   url.canDelete = true;
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before createURL is completed
@@ -588,7 +588,6 @@ function deleteURLSuccessOnDelete(response, urlCard) {
   // Close modal
   $("#confirmModal").modal("hide");
   urlCard.fadeOut("slow", function () {
-    cleanTagsAfterDeleteURL(response);
     urlCard.remove();
     if ($("#listURLs .urlRow").length === 0) {
       $("#accessAllURLsBtn").hide();
@@ -597,18 +596,6 @@ function deleteURLSuccessOnDelete(response, urlCard) {
       updateTagFilteringOnURLOrURLTagDeletion();
     }
   });
-}
-
-// Cleans tags after successful URL deletion
-function cleanTagsAfterDeleteURL(response) {
-  if (!response.hasOwnProperty("tags") || response.tags.length === 0) return;
-  const tagsInResponse = response.tags;
-
-  let tag;
-  for (let i = 0; i < tagsInResponse.length; i++) {
-    tag = tagsInResponse[i];
-    if (!tag.tagInUTub) removeTagFromTagDeckGivenTagID(tag.id);
-  }
 }
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
@@ -669,15 +656,15 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
   receivedTags,
   urlCard,
 ) {
-  const receivedTagIDs = receivedTags.map((tag) => tag.tagID);
+  const receivedTagIDs = receivedTags.map((tag) => tag.utubTagID);
   let removedTagIDs = [];
 
   // Remove current tags that are not in received tags
   currentTags.each(function () {
-    const tagID = parseInt($(this).attr("tagid"));
-    if (!receivedTagIDs.includes(tagID)) {
+    const utubTagID = parseInt($(this).attr("data-utub-tag-id"));
+    if (!receivedTagIDs.includes(utubTagID)) {
       $(this).remove();
-      removedTagIDs.push(tagID);
+      removedTagIDs.push(utubTagID);
     }
   });
 
@@ -695,7 +682,9 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
     exists = false;
     receivedTag = receivedTags[i];
     currentTags.each(function () {
-      if (parseInt($(this).attr("tagid")) === receivedTag.tagID) {
+      if (
+        parseInt($(this).attr("data-utub-tag-id")) === receivedTag.utubTagID
+      ) {
         exists = true;
       }
     });
@@ -706,16 +695,16 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
         .find(".urlTagsContainer")
         .append(
           createTagBadgeInURL(
-            receivedTag.tagID,
+            receivedTag.utubTagID,
             receivedTag.tagString,
             urlCard,
           ),
         );
 
       // Add tag to UTub if it doesn't already exist
-      if (!isTagInUTub(allCurrentTags, receivedTag.tagID)) {
+      if (!isTagInUTub(allCurrentTags, receivedTag.utubTagID)) {
         $("#listTags").append(
-          createTagFilterInDeck(receivedTag.tagID, receivedTag.tagString),
+          createTagFilterInDeck(receivedTag.utubTagID, receivedTag.tagString),
         );
       }
     }
@@ -738,7 +727,6 @@ function handleRejectFromGetURL(xhr, urlCard, errorMessage) {
       errorMessage.showError
         ? showURLDeckBannerError(errorMessage.message)
         : null;
-      checkForTagUpdatesAndRemoveOnStaleURLDeletion(urlCard);
       deleteURLOnStale(urlCard);
       break;
 
@@ -752,28 +740,9 @@ function deleteURLOnStale(urlCard) {
   // Close modal in case URL was found stale while it's shown
   $("#confirmModal").modal("hide");
   urlCard.fadeOut("slow", function () {
-    checkForTagUpdatesAndRemoveOnStaleURLDeletion(urlCard);
     urlCard.remove();
     $("#listURLs .urlRow").length === 0
       ? $("#accessAllURLsBtn").hide()
       : updateTagFilteringOnURLOrURLTagDeletion();
   });
-}
-
-function checkForTagUpdatesAndRemoveOnStaleURLDeletion(staleURLCard) {
-  const unstaleTagBadges = $(".tagBadge").filter(
-    (_, tag) => !$(tag).closest(".urlRow").is(staleURLCard),
-  );
-
-  const staleURLTagBadges = staleURLCard.find(".tagBadge");
-  if (staleURLTagBadges.length === 0) return;
-  const staleURLTagBadgeIDs = staleURLTagBadges.map((_, tag) =>
-    parseInt($(tag).attr("tagid")),
-  );
-
-  for (let i = 0; i < staleURLTagBadgeIDs.length; i++) {
-    if (!isTagInUTub(unstaleTagBadges, staleURLTagBadgeIDs[i])) {
-      removeTagFromTagDeckGivenTagID(staleURLTagBadgeIDs[i]);
-    }
-  }
 }
