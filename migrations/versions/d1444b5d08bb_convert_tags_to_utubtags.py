@@ -38,8 +38,6 @@ def upgrade():
             "unique_tag_per_utub", ["utubID", "tagString"]
         )
 
-    if "Tags" in tables:
-        op.drop_table("Tags")
     #     with op.batch_alter_table('UtubMembers', schema=None) as batch_op:
     #         batch_op.create_unique_constraint('unique_member', ['utubID', 'userID'])
 
