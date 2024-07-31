@@ -133,8 +133,7 @@ class ConfigProd(Config):
     REDIS_URI = environ.get(ENV.REDIS_URI)
 
 
-class TestingConfig(Config):
-    __test__ = False
+class ConfigTest(Config):
     TESTING = True
     SQLALCHEMY_BINDS = {"test": TEST_DB_URI}
     SQLALCHEMY_DATABASE_URI = TEST_DB_URI

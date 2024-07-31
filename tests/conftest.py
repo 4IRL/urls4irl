@@ -8,7 +8,7 @@ import pytest
 import warnings
 
 from src import create_app, db, sess
-from src.config import TestingConfig
+from src.config import ConfigTest
 from src.models.email_validations import Email_Validations
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
@@ -76,14 +76,21 @@ def ignore_deprecation_warning():
 @pytest.fixture(scope="session")
 def build_app(
     ignore_deprecation_warning,
-) -> Generator[Tuple[Flask, TestingConfig], None, None]:
-    config = TestingConfig()
+) -> Generator[Tuple[Flask, ConfigTest], None, None]:
+    config = ConfigTest()
     app_for_test = create_app(config)
+    with app_for_test.app_context():
+        db.init_app(app_for_test)
+        db.create_all()
+
     yield app_for_test, config
+
+    with app_for_test.app_context():
+        db.drop_all()
 
 
 @pytest.fixture
-def app(build_app: Tuple[Flask, TestingConfig]) -> Generator[Flask, None, None]:
+def app(build_app: Tuple[Flask, ConfigTest]) -> Generator[Flask, None, None]:
     app, testing_config = build_app
     yield app
     clear_database(testing_config, app, sess)

@@ -17,7 +17,7 @@ from selenium.webdriver.chrome.options import Options
 
 # Internal libraries
 from src import create_app
-from src.config import TestingConfig
+from src.config import ConfigTest
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 
 # CLI commands
@@ -71,7 +71,7 @@ def run_app(port: int, show_flask_logs: bool):
     """
     Runs app
     """
-    config = TestingConfig()
+    config = ConfigTest()
     app_for_test = create_app(config)
     if not show_flask_logs:
         log = logging.getLogger("werkzeug")
@@ -117,9 +117,9 @@ def ping_server(url: str, timeout: float = 2) -> bool:
 
 
 @pytest.fixture(scope="session")
-def provide_config() -> TestingConfig:
+def provide_config() -> ConfigTest:
 
-    config = TestingConfig()
+    config = ConfigTest()
 
     return config
 
