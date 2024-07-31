@@ -1471,16 +1471,6 @@ URL already in UTub.
 >         "utubUrlID": 1,
 >         "urlTitle": "This is my home page!",
 >     },
->     "tags": [
->       {
->           "id": 1,
->           "tagInUTub": true       // Whether this tag still exists in the UTub
->       },
->       {
->           "id": 2,
->           "tagInUTub": false
->       },
->     ] 
 > }
 > ```
 
@@ -1806,9 +1796,9 @@ Required form data:
 > {
 >     "status": "Success",
 >     "message": "Tag added to this URL.",
->     "urlTagIDs": [1, 2, 3, 4],      // Contains newly added tag ID
->     "tag": {
->         "tagID": 4,
+>     "utubUrlTagIDs": [1, 2, 3, 4],      // Contains newly added tag ID
+>     "utubTag": {
+>         "utubTagID": 4,
 >         "tagString": "Hello",
 >     }
 > }
@@ -1908,10 +1898,9 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > {
 >     "status": "Success",
 >     "message": "Tag removed from this URL.",
->     "urlTagIDs": [1, 2, 3],         // Contains tag ID array of tags still on URL
->     "tagInUTub": false,            // Indicates if removed tag still exists in UTub
->     "tag": {
->         "tagID": 4,
+>     "utubUrlTagIDs": [1, 2, 3],         // Contains tag ID array of tags still on URL
+>     "utubTag": {
+>         "utubTagID": 4,
 >         "tagString": "Hello",
 >     }
 > }

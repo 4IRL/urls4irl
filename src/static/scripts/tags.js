@@ -15,7 +15,9 @@ $(document).ready(function () {
 
 // Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
 function currentTagDeckIDs() {
-  return $.map($(".tagFilter"), (tag) => parseInt($(tag).attr("tagid")));
+  return $.map($(".tagFilter"), (tag) =>
+    parseInt($(tag).attr("data-utub-tag-id")),
+  );
 }
 
 // 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
@@ -37,8 +39,8 @@ function enableTagRemovalInURLCard(urlCard) {
   }
 }
 
-function isTagInDeck(tagid) {
-  return currentTagDeckIDs().includes(tagid);
+function isTagInDeck(utubTagid) {
+  return currentTagDeckIDs().includes(utubTagid);
 }
 
 // Clear the Tag Deck
@@ -65,10 +67,10 @@ function alphasortTags(dictTags) {
 }
 
 // Given a set of tag badges, verify a given tagID exists within those badges
-function isTagInUTub(tagBadges, tagID) {
+function isTagInUTub(tagBadges, utubTagID) {
   let tagExistsInUTub = false;
   tagBadges.each(function () {
-    if (parseInt($(this).attr("tagid")) === tagID) {
+    if (parseInt($(this).attr("data-utub-tag-id")) === utubTagID) {
       tagExistsInUTub = true;
     }
   });
@@ -76,17 +78,18 @@ function isTagInUTub(tagBadges, tagID) {
 }
 
 // Remove a tag from tag deck given its ID
-function removeTagFromTagDeckGivenTagID(tagID) {
-  $(".tagFilter[tagid=" + tagID + "]")
+function removeTagFromTagDeckGivenTagID(utubTagID) {
+  $(".tagFilter[data-utub-tag-id=" + utubTagID + "]")
     .addClass("unselected")
     .remove();
 }
 
 // Is a tag in a given url deck
-function isTagInURL(tagID, urlCard) {
+function isTagInURL(utubTagID, urlCard) {
   return (
-    urlCard.find(".urlTagsContainer > .tagBadge[tagid=" + tagID + "]").length >
-    0
+    urlCard.find(
+      ".urlTagsContainer > .tagBadge[data-utub-tag-id=" + utubTagID + "]",
+    ).length > 0
   );
 }
 
@@ -95,15 +98,17 @@ function isTagInURL(tagID, urlCard) {
 // Update tags in LH panel based on asynchronous updates or stale data
 function updateTagDeck(updatedTags) {
   const oldTags = $(".tagFilter");
-  const oldTagIDs = $.map(oldTags, (tag) => parseInt($(tag).attr("tagid")));
+  const oldTagIDs = $.map(oldTags, (tag) =>
+    parseInt($(tag).attr("data-utub-tag-id")),
+  );
   const newTagIDs = $.map(updatedTags, (tag) => tag.id);
 
   // Find any tags in old that aren't in new and remove them
   let oldTagID;
   for (let i = 0; i < oldTags.length; i++) {
-    oldTagID = parseInt($(oldTags[i]).attr("tagid"));
+    oldTagID = parseInt($(oldTags[i]).attr("data-utub-tag-id"));
     if (!newTagIDs.includes(oldTagID)) {
-      $(".tagFilter[tagid=" + oldTagID + "]").remove();
+      $(".tagFilter[data-utub-tag-id=" + oldTagID + "]").remove();
     }
   }
 
@@ -143,7 +148,7 @@ function createUnselectAllTagFilterInDeck() {
     .addClass("pointerable unselected disabled col-12")
     .attr({
       id: "unselectAll",
-      tagid: "all",
+      "data-utub-tag-id": "all",
       tabindex: -1,
     })
     .on("focus.unselectAllSelected", function () {
@@ -198,7 +203,7 @@ function createTagFilterInDeck(tagID, string) {
 // Handle tag filtered selected - tags are filtered based on a URL having one tag AND another tag.. etc
 function toggleTagFilterSelected(activeTagFilter) {
   const currentSelectedTagIDs = $.map($(".tagFilter.selected"), (tagFilter) =>
-    parseInt($(tagFilter).attr("tagid")),
+    parseInt($(tagFilter).attr("data-utub-tag-id")),
   );
   if (
     currentSelectedTagIDs.length >= CONSTANTS.TAGS_MAX_ON_URLS &&
@@ -243,14 +248,14 @@ function toggleTagFilterSelected(activeTagFilter) {
 
 function updateURLsAndTagSubheaderWhenTagSelected() {
   const selectedTagIDs = $.map($(".tagFilter.selected"), (tagFilter) =>
-    parseInt($(tagFilter).attr("tagid")),
+    parseInt($(tagFilter).attr("data-utub-tag-id")),
   );
   const urlCards = $(".urlRow");
 
   let tagBadgeIDsOnURL, shouldShow;
   urlCards.each((_, urlCard) => {
     tagBadgeIDsOnURL = $.map($(urlCard).find(".tagBadge"), (tagBadge) =>
-      parseInt($(tagBadge).attr("tagid")),
+      parseInt($(tagBadge).attr("data-utub-tag-id")),
     );
 
     shouldShow = true;

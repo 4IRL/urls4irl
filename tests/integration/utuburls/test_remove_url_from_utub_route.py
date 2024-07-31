@@ -8,7 +8,6 @@ from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
-from src.utils.strings.model_strs import MODELS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
@@ -84,7 +83,6 @@ def test_delete_url_as_utub_creator_no_tags(
         delete_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
         == url_utub_user_association.url_title
     )
-    assert delete_url_response_json[MODELS.TAGS] == []
 
     # Ensure proper removal from database
     with app.app_context():
@@ -177,7 +175,6 @@ def test_delete_url_as_utub_member_no_tags(
         delete_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
         == current_url_title
     )
-    assert delete_url_response_json[MODELS.TAGS] == []
 
     # Ensure proper removal from database
     with app.app_context():
@@ -394,7 +391,6 @@ def test_delete_url_as_utub_creator_with_tag(
         )
         url_object: Urls = url_in_utub.standalone_url
         url_string_to_remove = url_object.url_string
-        associated_tags = url_in_utub.associated_tag_ids
 
         url_id_to_remove = url_in_utub.id
         utub_id_to_delete_url_from = current_utub.id
@@ -420,6 +416,8 @@ def test_delete_url_as_utub_creator_with_tag(
         ),
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
+
+    assert delete_url_response.status_code == 200
 
     # Ensure JSON response is correct
     delete_url_response_json = delete_url_response.json
@@ -457,11 +455,6 @@ def test_delete_url_as_utub_creator_with_tag(
             ).count()
             == 0
         )
-
-        assert delete_url_response_json[MODELS.TAGS] == [
-            {MODELS.ID: tag_id, URL_SUCCESS.TAG_IN_UTUB: False}
-            for tag_id in associated_tags
-        ]
 
         # Ensure counts of Url-Utubs-Tag associations are correct
         assert Utub_Urls.query.count() == initial_utub_urls - 1
@@ -511,7 +504,6 @@ def test_delete_url_as_utub_member_with_tags(
         url_object: Urls = current_url_in_utub.standalone_url
         url_string_to_remove = url_object.url_string
         url_title_to_remove = current_url_in_utub.url_title
-        associated_tags: list[int] = current_url_in_utub.associated_tag_ids
 
         # Get initial number of UTub-URL associations
         initial_utub_urls = Utub_Urls.query.count()
@@ -576,17 +568,6 @@ def test_delete_url_as_utub_member_with_tags(
             ).count()
             == 0
         )
-
-        tags_in_utub: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id_to_delete_url_from
-        ).all()
-        tag_ids_in_utub: list[int] = [tag.tag_id for tag in tags_in_utub]
-        tags_array_response = [
-            {MODELS.ID: tag_id, URL_SUCCESS.TAG_IN_UTUB: tag_id in tag_ids_in_utub}
-            for tag_id in associated_tags
-        ]
-
-        assert tags_array_response == delete_url_response_json[MODELS.TAGS]
 
         # Ensure counts of Url-Utubs-Tag associations are correct
         assert Utub_Urls.query.count() == initial_utub_urls - 1

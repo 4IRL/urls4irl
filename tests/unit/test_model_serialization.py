@@ -4,7 +4,7 @@ from flask import Flask
 import pytest
 
 from src import db
-from src.models.tags import Tags
+from src.models.utub_tags import Utub_Tags
 from src.models.urls import Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
@@ -29,7 +29,7 @@ Serializations to test
 """
 
 
-def test_tag_serialization(app: Flask, register_multiple_users):
+def test_tag_serialization(app: Flask, every_user_makes_a_unique_utub):
     """
     GIVEN a set of valid tags
     WHEN they are generally requested from the frontend, tags data is sent, serialized as JSON
@@ -44,23 +44,29 @@ def test_tag_serialization(app: Flask, register_multiple_users):
     input_tags = (v_models.valid_tag_1, v_models.valid_tag_2, v_models.valid_tag_3)
 
     with app.app_context():
-        for idx, tag in enumerate(input_tags):
-            new_tag = Tags(tag_string=tag[MODEL_STRS.TAG_STRING], created_by=idx + 1)
-            db.session.add(new_tag)
+        for utub in Utubs.query.all():
+            for idx, tag in enumerate(input_tags):
+                new_tag = Utub_Tags(
+                    utub_id=utub.id,
+                    tag_string=tag[MODEL_STRS.TAG_STRING],
+                    created_by=idx + 1,
+                )
+                db.session.add(new_tag)
         db.session.commit()
 
     with app.app_context():
-        all_tags = Tags.query.all()
-        for idx, tag in enumerate(all_tags):
-            json_tag = json.dumps(tag.serialized)
-            valid_json_tag = json.dumps(
-                {
-                    MODEL_STRS.ID: idx + 1,
-                    MODEL_STRS.TAG_STRING: input_tags[idx][MODEL_STRS.TAG_STRING],
-                }
-            )
+        for utub in Utubs.query.all():
+            utub: Utubs
+            for idx, tag in enumerate(utub.utub_tags):
+                json_tag = json.dumps(tag.serialized)
+                valid_json_tag = json.dumps(
+                    {
+                        MODEL_STRS.ID: tag.id,
+                        MODEL_STRS.TAG_STRING: input_tags[idx][MODEL_STRS.TAG_STRING],
+                    }
+                )
 
-        assert valid_json_tag == json_tag
+            assert valid_json_tag == json_tag
 
 
 def test_url_serialization_without_tags():
@@ -102,7 +108,7 @@ def test_url_serialization_without_tags():
 
 
 def test_url_serialization_with_tags(
-    app: Flask, add_urls_to_database, add_tags_to_database
+    app: Flask, add_urls_to_database, add_tags_to_utubs
 ):
     """
     GIVEN a valid set of URLs with tags contained within a UTub
@@ -145,17 +151,13 @@ def test_url_serialization_with_tags(
     with app.app_context():
         all_utubs = Utubs.query.all()
         all_urls = Utub_Urls.query.all()
-        all_tags = Tags.query.all()
 
         for utub, url in zip(all_utubs, all_urls):
-            for tag in all_tags:
+            for tag in Utub_Tags.query.filter(Utub_Tags.utub_id == utub.id).all():
                 new_url_tag = Utub_Url_Tags()
-                new_url_tag.utub_containing_this_tag = utub
                 new_url_tag.utub_id = utub.id
                 new_url_tag.utub_url_id = url.id
-                new_url_tag.tagged_url = url
-                new_url_tag.tag_item = tag
-                new_url_tag.tag_id = tag.id
+                new_url_tag.utub_tag_id = tag.id
 
                 db.session.add(new_url_tag)
 
@@ -169,6 +171,10 @@ def test_url_serialization_with_tags(
             url_with_tags: Utub_Urls = Utub_Urls.query.filter(
                 Utub_Urls.id == url.id, Utub_Urls.utub_id == utub.id
             ).first()
+            verified_url[MODEL_STRS.URL_TAG_IDS] = [
+                tag.id
+                for tag in Utub_Tags.query.filter(Utub_Tags.utub_id == utub.id).all()
+            ]
 
             assert json.dumps(verified_url) == json.dumps(
                 url_with_tags.serialized(1, 1)

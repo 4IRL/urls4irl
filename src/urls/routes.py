@@ -15,7 +15,6 @@ from src.urls.forms import (
 from src.urls.utils import build_form_errors
 from src.utils.email_validation import email_validation_required
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
-from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
 from src.utils.strings.url_validation_strs import URL_VALIDATION
 from src.utils.url_validation import InvalidURLError, find_common_url
@@ -52,7 +51,6 @@ def delete_url(utub_id: int, utub_url_id: int):
 
     if user_in_utub and user_url_adder_or_utub_creator:
         # Store serialized data from URL association with UTub and associated tags
-        associated_tags = url_in_utub.associated_tag_ids
         url_string_to_remove = url_in_utub.standalone_url.url_string
 
         # Remove all tags associated with this URL in this UTub
@@ -66,18 +64,6 @@ def delete_url(utub_id: int, utub_url_id: int):
 
         db.session.commit()
 
-        remaining_utub_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id,
-        ).all()
-        remaining_utub_tag_ids = set([tag.tag_id for tag in remaining_utub_tags])
-        tags = [
-            {
-                MODELS.ID: tag_id,
-                URL_SUCCESS.TAG_IN_UTUB: tag_id in remaining_utub_tag_ids,
-            }
-            for tag_id in associated_tags
-        ]
-
         return (
             jsonify(
                 {
@@ -89,7 +75,6 @@ def delete_url(utub_id: int, utub_url_id: int):
                         URL_SUCCESS.UTUB_URL_ID: utub_url_id,
                         URL_SUCCESS.URL_TITLE: url_in_utub.url_title,
                     },
-                    MODELS.TAGS: tags,
                 }
             ),
             200,

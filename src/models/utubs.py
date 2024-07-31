@@ -3,7 +3,6 @@ from datetime import datetime
 from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 
 from src import db
-from src.models.tags import Tags
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.constants import UTUB_CONSTANTS
@@ -34,13 +33,17 @@ class Utubs(db.Model):
         nullable=True,
         name="utubDescription",
     )
+    utub_tags = db.relationship(
+        "Utub_Tags", cascade="all, delete, delete-orphan", passive_deletes=True
+    )
     utub_url_tags = db.relationship(
         "Utub_Url_Tags",
-        back_populates="utub_containing_this_tag",
-        cascade="all, delete",
+        back_populates="utub_containing_this_url_tag",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
     )
     utub_urls: list[Utub_Urls] = db.relationship(
-        "Utub_Urls", back_populates="utub", cascade="all, delete"
+        "Utub_Urls", cascade="all, delete, delete-orphan", passive_deletes=True
     )
     members: list[Utub_Members] = db.relationship(
         "Utub_Members", back_populates="to_utub", cascade="all, delete, delete-orphan"
@@ -53,21 +56,6 @@ class Utubs(db.Model):
 
     def serialized(self, current_user_id: int) -> dict[str, list | int | str]:
         """Return object in serialized form."""
-
-        # self.utub_url_tags may contain repeats of tags since same tags can be on multiple URLs
-        # Need to pull only the unique ones
-        from src.models.utub_url_tags import Utub_Url_Tags
-
-        utub_url_tags: list[Utub_Url_Tags] = self.utub_url_tags
-
-        utub_tags = []
-        for utub_url_tag in utub_url_tags:
-            tag_item: Tags = utub_url_tag.tag_item
-            tag_object = tag_item.serialized
-
-            if tag_object not in utub_tags:
-                utub_tags.append(tag_object)
-
         return {
             MODEL_STRS.ID: self.id,
             MODEL_STRS.NAME: self.name,
@@ -81,7 +69,7 @@ class Utubs(db.Model):
                 url_in_utub.serialized(current_user_id, self.utub_creator)
                 for url_in_utub in self.utub_urls
             ],
-            MODEL_STRS.TAGS: utub_tags,
+            MODEL_STRS.TAGS: [tag.serialized for tag in self.utub_tags],
             MODEL_STRS.IS_CREATOR: self.utub_creator == current_user_id,
         }
 

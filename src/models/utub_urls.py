@@ -21,9 +21,16 @@ class Utub_Urls(db.Model):
     __tablename__ = "UtubUrls"
 
     id: int = Column(Integer, primary_key=True)
-    utub_id: int = Column(Integer, ForeignKey("Utubs.id"), name="utubID")
-    url_id: int = Column(Integer, ForeignKey("Urls.id"), name="urlID")
-    user_id: int = Column(Integer, ForeignKey("Users.id"), name="userID")
+    utub_id: int = Column(
+        Integer,
+        ForeignKey("Utubs.id", onupdate="CASCADE", ondelete="CASCADE"),
+        nullable=False,
+        name="utubID",
+    )
+    url_id: int = Column(Integer, ForeignKey("Urls.id"), nullable=False, name="urlID")
+    user_id: int = Column(
+        Integer, ForeignKey("Users.id"), nullable=False, name="userID"
+    )
     url_title: str = Column(String(140), default="", name="urlTitle")
     added_at: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="addedAt"
@@ -57,7 +64,7 @@ class Utub_Urls(db.Model):
         url_tags = []
         for tag_in_utub in self.url_tags:
             if int(tag_in_utub.utub_id) == int(self.utub_id):
-                url_tags.append(tag_in_utub.tag_id)
+                url_tags.append(tag_in_utub.utub_tag_id)
 
         return sorted(url_tags)
 
@@ -68,8 +75,8 @@ class Utub_Urls(db.Model):
             if tag_in_utub.utub_id == self.utub_id:
                 url_tags.append(
                     {
-                        MODEL_STRS.TAG_ID: tag_in_utub.tag_id,
-                        MODEL_STRS.TAG_STRING: tag_in_utub.tag_item.tag_string,
+                        MODEL_STRS.UTUB_TAG_ID: tag_in_utub.utub_tag_id,
+                        MODEL_STRS.TAG_STRING: tag_in_utub.utub_tag_item.tag_string,
                     }
                 )
         return url_tags

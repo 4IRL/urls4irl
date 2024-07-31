@@ -334,14 +334,14 @@ function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
 
   const currentURLTags = urlCard.find(".tagBadge");
   const currentURLTagIDs = $.map(currentURLTags, (tag) =>
-    parseInt($(tag).attr("tagid")),
+    parseInt($(tag).attr("data-utub-tag-id")),
   );
 
   // Find tag IDs that are in old and not in new and remove them
   for (let i = 0; i < currentURLTagIDs.length; i++) {
-    if (!newUrl.urlTagIDs.includes(currentURLTagIDs[i])) {
+    if (!newUrl.utubUrlTagIDs.includes(currentURLTagIDs[i])) {
       currentURLTags.each(function (_, tag) {
-        if (parseInt($(tag).attr("tagid")) === currentURLTagIDs[i]) {
+        if (parseInt($(tag).attr("data-utub-tag-id")) === currentURLTagIDs[i]) {
           $(tag).remove();
           return false;
         }
@@ -352,9 +352,11 @@ function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
   // Find tag IDs that are in new and not old and add them
   const urlTagContainer = urlCard.find(".urlTagsContainer");
   let tagToAdd;
-  for (let i = 0; i < newUrl.urlTagIDs.length; i++) {
-    if (!currentURLTagIDs.includes(newUrl.urlTagIDs[i])) {
-      tagToAdd = updatedUTubTags.find((tag) => tag.id === newUrl.urlTagIDs[i]);
+  for (let i = 0; i < newUrl.utubUrlTagIDs.length; i++) {
+    if (!currentURLTagIDs.includes(newUrl.utubUrlTagIDs[i])) {
+      tagToAdd = updatedUTubTags.find(
+        (tag) => tag.id === newUrl.utubUrlTagIDs[i],
+      );
       urlTagContainer.append(
         createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString, urlCard),
       );
@@ -390,7 +392,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
 
 // Create a URL block to add to current UTub/URLDeck
 function createURLBlock(url, tagArray) {
-  const outerUrlCard = $(document.createElement("div"))
+  const urlCard = $(document.createElement("div"))
     .addClass("urlRow flex-column full-width pad-in-15p pointerable")
     .enableTab(); // Holds everything in the URL
 
@@ -401,13 +403,13 @@ function createURLBlock(url, tagArray) {
   // Append update URL title form if user can edit the URL
   url.canDelete
     ? urlTitleGoToURLWrap.append(
-        createURLTitleAndUpdateBlock(url.urlTitle, outerUrlCard),
+        createURLTitleAndUpdateBlock(url.urlTitle, urlCard),
       )
     : urlTitleGoToURLWrap.append(createURLTitle(url.urlTitle));
 
   urlTitleGoToURLWrap.append(createGoToURLIcon(url.urlString));
 
-  outerUrlCard.append(urlTitleGoToURLWrap).attr({
+  urlCard.append(urlTitleGoToURLWrap).attr({
     urlID: url.utubUrlID,
     urlSelected: false,
     filterable: true,
@@ -415,19 +417,15 @@ function createURLBlock(url, tagArray) {
 
   // Append update URL form if user can edit the URL
   url.canDelete
-    ? outerUrlCard.append(
-        createURLStringAndUpdateBlock(url.urlString, outerUrlCard),
-      )
-    : outerUrlCard.append(createURLString(url.urlString));
+    ? urlCard.append(createURLStringAndUpdateBlock(url.urlString, urlCard))
+    : urlCard.append(createURLString(url.urlString));
 
-  outerUrlCard.append(
-    createTagsAndOptionsForUrlBlock(url, tagArray, outerUrlCard),
-  );
+  urlCard.append(createTagsAndOptionsForUrlBlock(url, tagArray, urlCard));
 
-  setURLCardSelectionEventListener(outerUrlCard);
-  setFocusEventListenersOnURLCard(outerUrlCard);
+  setURLCardSelectionEventListener(urlCard);
+  setFocusEventListenersOnURLCard(urlCard);
 
-  return outerUrlCard;
+  return urlCard;
 }
 
 // Add focus and blur on URL card when tabbing through URLs
@@ -767,7 +765,7 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard) {
   );
   const tagBadgesWrap = createTagBadgesAndWrap(
     tagArray,
-    url.urlTagIDs,
+    url.utubUrlTagIDs,
     urlCard,
   );
 
@@ -1032,7 +1030,7 @@ function unbindCreateURLFocusEventListeners() {
 }
 
 // Handle URL deck display changes related to creating a new tag
-function createTagBadgeInURL(tagID, tagString, urlCard) {
+function createTagBadgeInURL(utubTagID, tagString, urlCard) {
   const tagSpan = $(document.createElement("span"));
   const removeButton = $(document.createElement("div"));
   const tagText = $(document.createElement("span"))
@@ -1043,17 +1041,17 @@ function createTagBadgeInURL(tagID, tagString, urlCard) {
     .addClass(
       "tagBadge tagBadgeHoverable flex-row-reverse align-center justify-flex-end",
     )
-    .attr({ tagid: tagID });
+    .attr({ "data-utub-tag-id": utubTagID });
 
   removeButton
     .addClass("urlTagBtnDelete flex-row align-center pointerable tabbable")
     .on("click", function (e) {
       e.stopPropagation();
-      deleteURLTag(tagID, tagSpan, urlCard);
+      deleteURLTag(utubTagID, tagSpan, urlCard);
     })
     .offAndOn("focus.removeURLTag", function () {
       $(document).on("keyup.removeURLTag", function (e) {
-        if (e.which === 13) deleteURLTag(tagID, tagSpan, urlCard);
+        if (e.which === 13) deleteURLTag(utubTagID, tagSpan, urlCard);
       });
     })
     .offAndOn("blur.removeURLTag", function () {

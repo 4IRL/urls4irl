@@ -7,7 +7,7 @@ from flask_session import Session
 from flask_wtf.csrf import CSRFProtect
 
 from src.db import db
-from src.config import Config, ConfigProd
+from src.config import Config, ConfigProd, ConfigTest
 from src.mocks.mock_options import register_mocks_db_cli
 from src.utils.email_sender import EmailSender
 from src.utils.error_handler import (
@@ -30,6 +30,10 @@ email_sender = EmailSender()
 def create_app(config_class: Config = Config):
     testing = config_class.TESTING
     production = config_class.PRODUCTION
+    if testing and production:
+        print("ERROR: Cannot be both production and testing environment")
+        return
+    config_class = ConfigTest if testing else config_class
     config_class = ConfigProd if production else config_class
     app = Flask(__name__)
     app.config.from_object(config_class)
@@ -60,14 +64,14 @@ def create_app(config_class: Config = Config):
     from src.users.routes import users
     from src.members.routes import members
     from src.urls.routes import urls
-    from src.tags.routes import tags
+    from src.tags.url_tag_routes import utub_url_tags
 
     app.register_blueprint(splash)
     app.register_blueprint(utubs)
     app.register_blueprint(users)
     app.register_blueprint(members)
     app.register_blueprint(urls)
-    app.register_blueprint(tags)
+    app.register_blueprint(utub_url_tags)
     register_mocks_db_cli(app)
 
     app.register_error_handler(404, handle_404_response)
@@ -75,7 +79,7 @@ def create_app(config_class: Config = Config):
     if not testing:
         migrate.init_app(app)
 
-    with app.app_context():
-        db.create_all(bind_key="prod") if production else db.create_all()
+    # with app.app_context():
+    #     db.create_all(bind_key="prod") if production else db.create_all()
 
     return app

@@ -1,5 +1,5 @@
 from src.utils.strings.json_strs import FAILURE_GENERAL
-from src.utils.strings.model_strs import TAG
+from src.utils.strings.model_strs import UTUB_TAG
 from src.utils.strings.url_strs import URL_GENERAL
 from src.utils.strings.utub_strs import UTUB_GENERAL
 
@@ -14,7 +14,7 @@ PREVIOUS_TAG = "previousTag"
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     TAG_ADDED_TO_URL = TAG_ADDED_TO_URL
     TAG_REMOVED_FROM_URL = TAG_REMOVED_FROM_URL
-    TAG = TAG
+    UTUB_TAG = UTUB_TAG
     TAG_STILL_IN_UTUB = TAG_STILL_IN_UTUB
     TAG_MODIFIED_ON_URL = TAG_MODIFIED_ON_URL
     PREVIOUS_TAG = PREVIOUS_TAG

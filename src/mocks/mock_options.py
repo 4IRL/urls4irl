@@ -129,6 +129,24 @@ def clear_db(db_type: str):
     print(f"\n--- Finished emptying each table in {db_type} database ---\n\n")
 
 
+@db_manage_cli.command(
+    "create", help="Create the tables in the database. Only for dev database"
+)
+@click.argument(
+    "db_type",
+    type=click.Choice(
+        ("dev",),
+        case_sensitive=False,
+    ),
+    default="dev",
+)
+@with_appcontext
+def create_db(db_type: str):
+    print(f"\n\n--- Creating each table in {db_type} database ---\n")
+    db.create_all()
+    print(f"\n--- Finished creating each table in {db_type} database ---\n\n")
+
+
 @db_manage_cli.command("drop", help="Drop the tables from the database.")
 @click.argument(
     "db_type",

@@ -6,6 +6,7 @@ from src import db
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
+from src.models.utub_tags import Utub_Tags
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
@@ -295,7 +296,10 @@ def test_delete_existing_utub_with_urls_and_tags(
         num_of_urls_in_utub = len(utub_user_is_creator_of.utub_urls)
         initial_num_of_url_utubs_associations = Utub_Urls.query.count()
 
-        num_of_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
+        num_of_tags_in_utub = len(utub_user_is_creator_of.utub_tags)
+        initial_num_of_utub_tags = Utub_Tags.query.count()
+
+        num_of_url_tags_in_utub = len(utub_user_is_creator_of.utub_url_tags)
         initial_num_of_url_tag_associations = Utub_Url_Tags.query.count()
 
         initial_num_utubs = Utubs.query.count()
@@ -338,9 +342,11 @@ def test_delete_existing_utub_with_urls_and_tags(
             Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id_to_delete).count() == 0
         )
 
+        assert Utub_Tags.query.count() == initial_num_of_utub_tags - num_of_tags_in_utub
+
         assert (
             Utub_Url_Tags.query.count()
-            == initial_num_of_url_tag_associations - num_of_tags_in_utub
+            == initial_num_of_url_tag_associations - num_of_url_tags_in_utub
         )
         assert (
             Utub_Url_Tags.query.filter(

@@ -3,7 +3,7 @@ from flask_login import current_user
 import pytest
 
 from src import db
-from src.models.tags import Tags
+from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -13,6 +13,8 @@ from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from src.utils.strings.url_validation_strs import URL_VALIDATION
+from tests.utils_for_test import build_get_utub_route
 
 pytestmark = pytest.mark.tags
 
@@ -23,10 +25,10 @@ def test_delete_tag_from_url_as_utub_creator(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a tag from a URL as the creator of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
         that the tag still exists, and that the association between URL, UTub, and Tag is recorded properly
@@ -57,8 +59,8 @@ def test_delete_tag_from_url_as_utub_creator(
         tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_this_user_creator_of
         ).first()
-        tag_id_to_delete = tag_url_utub_association.tag_id
-        tag_string_to_delete: str = tag_url_utub_association.tag_item.tag_string
+        tag_id_to_delete = tag_url_utub_association.utub_tag_id
+        tag_string_to_delete: str = tag_url_utub_association.utub_tag_item.tag_string
         url_id_to_delete_tag_from = tag_url_utub_association.utub_url_id
 
         # Get URL serialization for checking
@@ -70,12 +72,6 @@ def test_delete_tag_from_url_as_utub_creator(
         # Get all Url-Tag associations count
         initial_url_tag_count = Utub_Url_Tags.query.count()
 
-        # Get tag count for this UTub and tag
-        tag_count = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id_this_user_creator_of,
-            Utub_Url_Tags.tag_id == tag_id_to_delete,
-        ).count()
-
     # delete tag from this URL
     delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
@@ -86,7 +82,7 @@ def test_delete_tag_from_url_as_utub_creator(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_creator_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -98,31 +94,28 @@ def test_delete_tag_from_url_as_utub_creator(
     assert (
         delete_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_REMOVED_FROM_URL
     )
-    assert int(delete_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
-        tag_count - 1 > 0
-    )
     assert (
-        int(delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        int(delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.UTUB_TAG_ID])
         == tag_id_to_delete
     )
     assert (
-        delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.TAG_STRING]
         == tag_string_to_delete
     )
-    assert sorted(delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
+    assert sorted(delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
         [val for val in associated_tags if val != tag_id_to_delete]
     )
 
     with app.app_context():
         # Ensure tag still exists
-        assert Tags.query.get(tag_id_to_delete) is not None
+        assert Utub_Tags.query.get(tag_id_to_delete) is not None
 
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_this_user_creator_of,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
             == 0
         )
@@ -132,7 +125,7 @@ def test_delete_tag_from_url_as_utub_creator(
             Utub_Urls.id == url_id_to_delete_tag_from,
         ).first()
         assert sorted(final_utub_url_association.associated_tag_ids) == sorted(
-            delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
+            delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]
         )
 
         # Ensure proper number of Url-Tag associations in db
@@ -145,10 +138,10 @@ def test_delete_tag_from_url_as_utub_member(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a tag from a URL as a member of a UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
         that the tag still exists, and that the association between URL, UTub, and Tag is recorded properly
@@ -179,8 +172,8 @@ def test_delete_tag_from_url_as_utub_member(
         tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_this_user_member_of
         ).first()
-        tag_id_to_delete = tag_url_utub_association.tag_id
-        tag_string_to_delete: str = tag_url_utub_association.tag_item.tag_string
+        tag_id_to_delete = tag_url_utub_association.utub_tag_id
+        tag_string_to_delete: str = tag_url_utub_association.utub_tag_item.tag_string
         url_id_to_delete_tag_from = tag_url_utub_association.utub_url_id
 
         # Get URL serialization for checking
@@ -193,12 +186,6 @@ def test_delete_tag_from_url_as_utub_member(
         # Get all Url-Tag associations count
         initial_url_tag_count = Utub_Url_Tags.query.count()
 
-        # Get tag count for this UTub and tag
-        tag_count = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
-            Utub_Url_Tags.tag_id == tag_id_to_delete,
-        ).count()
-
     # delete tag from this URL
     delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
@@ -209,7 +196,7 @@ def test_delete_tag_from_url_as_utub_member(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -221,31 +208,28 @@ def test_delete_tag_from_url_as_utub_member(
     assert (
         delete_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_REMOVED_FROM_URL
     )
-    assert int(delete_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
-        tag_count - 1 > 0
-    )
     assert (
-        int(delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        int(delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.UTUB_TAG_ID])
         == tag_id_to_delete
     )
     assert (
-        delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.TAG_STRING]
         == tag_string_to_delete
     )
-    assert sorted(delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
+    assert sorted(delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
         [val for val in associated_tags if val != tag_id_to_delete]
     )
 
     with app.app_context():
         # Ensure tag still exists
-        assert Tags.query.get(tag_id_to_delete) is not None
+        assert Utub_Tags.query.get(tag_id_to_delete) is not None
 
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
             == 0
         )
@@ -255,7 +239,7 @@ def test_delete_tag_from_url_as_utub_member(
             Utub_Urls.id == url_id_to_delete_tag_from,
         ).first()
         assert sorted(final_utub_url_association.associated_tag_ids) == sorted(
-            delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
+            delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]
         )
 
         # Ensure proper number of Url-Tag associations in db
@@ -268,10 +252,10 @@ def test_delete_tag_from_url_with_one_tag(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 1 tag associated
     WHEN the user tries to delete a tag from a URL as a member of a UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
         that the tag still exists, and that the association between URL, UTub, and Tag is recorded properly
@@ -302,8 +286,8 @@ def test_delete_tag_from_url_with_one_tag(
         tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_this_user_member_of
         ).first()
-        tag_id_to_delete = tag_url_utub_association.tag_id
-        tag_string_to_delete = tag_url_utub_association.tag_item.tag_string
+        tag_id_to_delete = tag_url_utub_association.utub_tag_id
+        tag_string_to_delete = tag_url_utub_association.utub_tag_item.tag_string
         url_id_to_delete_tag_from = tag_url_utub_association.utub_url_id
 
         # Get URL serialization for checking
@@ -317,12 +301,6 @@ def test_delete_tag_from_url_with_one_tag(
         # Get all Url-Tag associations count
         initial_url_tag_count = Utub_Url_Tags.query.count()
 
-        # Get tag count for this UTub and tag
-        tag_count = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
-            Utub_Url_Tags.tag_id == tag_id_to_delete,
-        ).count()
-
     # delete tag from this URL
     delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
@@ -333,7 +311,7 @@ def test_delete_tag_from_url_with_one_tag(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -345,31 +323,28 @@ def test_delete_tag_from_url_with_one_tag(
     assert (
         delete_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_REMOVED_FROM_URL
     )
-    assert int(delete_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
-        tag_count - 1 > 0
-    )
     assert (
-        int(delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        int(delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.UTUB_TAG_ID])
         == tag_id_to_delete
     )
     assert (
-        delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.TAG_STRING]
         == tag_string_to_delete
     )
-    assert sorted(delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
+    assert sorted(delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
         [val for val in associated_tags if val != tag_id_to_delete]
     )
 
     with app.app_context():
         # Ensure tag still exists
-        assert Tags.query.get(tag_id_to_delete) is not None
+        assert Utub_Tags.query.get(tag_id_to_delete) is not None
 
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
             == 0
         )
@@ -380,24 +355,25 @@ def test_delete_tag_from_url_with_one_tag(
         ).first()
 
         assert sorted(final_utub_url_association.associated_tag_ids) == sorted(
-            delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
+            delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]
         )
 
         # Ensure proper number of Url-Tag associations in db
         assert Utub_Url_Tags.query.count() == initial_url_tag_count - 1
 
 
-def test_delete_last_tag_from_utub(
-    add_one_url_to_each_utub_one_tag, login_first_user_without_register
+def test_delete_last_url_tag_in_utub(
+    add_one_url_to_each_utub_one_tag_to_each_url_all_tags_in_utub,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 1 tag associated
     WHEN the user tries to delete a tag from a URL as a member of a UTub, and the tag is not associated with any other
         URLs in that UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
         that the tag still exists, and that the association between URL, UTub, and Tag is recorded properly,
@@ -429,8 +405,8 @@ def test_delete_last_tag_from_utub(
         tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_this_user_member_of
         ).first()
-        tag_id_to_delete = tag_url_utub_association.tag_id
-        tag_string_to_delete = tag_url_utub_association.tag_item.tag_string
+        tag_id_to_delete = tag_url_utub_association.utub_tag_id
+        tag_string_to_delete = tag_url_utub_association.utub_tag_item.tag_string
         url_id_to_delete_tag_from = tag_url_utub_association.utub_url_id
 
         # Get URL serialization for checking
@@ -443,12 +419,6 @@ def test_delete_last_tag_from_utub(
         # Get all Url-Tag associations count
         initial_url_tag_count = Utub_Url_Tags.query.count()
 
-        # Get tag count for this UTub and tag
-        tag_count = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
-            Utub_Url_Tags.tag_id == tag_id_to_delete,
-        ).count()
-
     # delete tag from this URL
     delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
@@ -459,7 +429,7 @@ def test_delete_last_tag_from_utub(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -471,31 +441,28 @@ def test_delete_last_tag_from_utub(
     assert (
         delete_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_REMOVED_FROM_URL
     )
-    assert int(delete_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
-        tag_count - 1 > 0
-    )
     assert (
-        int(delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        int(delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.UTUB_TAG_ID])
         == tag_id_to_delete
     )
     assert (
-        delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.TAG_STRING]
         == tag_string_to_delete
     )
-    assert sorted(delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
+    assert sorted(delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
         [val for val in associated_tags if val != tag_id_to_delete]
     )
 
     with app.app_context():
         # Ensure tag still exists
-        assert Tags.query.get(tag_id_to_delete) is not None
+        assert Utub_Tags.query.get(tag_id_to_delete) is not None
 
         # Ensure the Tag-URL-UTub association does not exist any longer
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
             == 0
         )
@@ -514,23 +481,34 @@ def test_delete_last_tag_from_utub(
         ).first()
 
         assert sorted(final_utub_url_association.associated_tag_ids) == sorted(
-            delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
+            delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]
         )
 
         # Ensure proper number of Url-Tag associations in db
         assert Utub_Url_Tags.query.count() == initial_url_tag_count - 1
 
+    # Ensure getting the UTub indicates the UTubTag still exists even if no UTubUrlTags exist
+    response = client.get(
+        build_get_utub_route(utub_id_this_user_member_of),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+    assert response.status_code == 200
+    response_tags = [tag[MODELS.ID] for tag in response.json[MODELS.TAGS]]
+    assert tag_id_to_delete in response_tags
+
 
 def test_delete_tag_from_url_with_five_tags(
-    add_five_tags_to_db_from_same_user, login_first_user_without_register
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    add_tags_to_utubs,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 1 URL in each UTub, and each URL has 5 tag associated
     WHEN the user tries to delete a tag from a URL as a member of a UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
         that the tag still exists, and that the association between URL, UTub, and Tag is recorded properly
@@ -559,7 +537,7 @@ def test_delete_tag_from_url_with_five_tags(
         utub_id_this_user_member_of = utub_this_user_member_of.id
 
         # Get all tags
-        all_tags = Tags.query.all()
+        all_tags = Utub_Tags.query.all()
         num_of_tags_in_db = len(all_tags)
 
         # Get a URL in this UTub that this user did not add
@@ -573,7 +551,7 @@ def test_delete_tag_from_url_with_five_tags(
         for idx in range(MAX_NUM_TAGS):
             previously_added_tag_to_add = all_tags[idx]
             new_url_tag_association = Utub_Url_Tags()
-            new_url_tag_association.tag_id = previously_added_tag_to_add.id
+            new_url_tag_association.utub_tag_id = previously_added_tag_to_add.id
             new_url_tag_association.utub_url_id = url_id_to_delete_tag_from
             new_url_tag_association.utub_id = utub_id_this_user_member_of
 
@@ -586,8 +564,8 @@ def test_delete_tag_from_url_with_five_tags(
             Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
             Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
         ).first()
-        tag_string_to_delete: str = tag_to_delete.tag_item.tag_string
-        tag_id_to_delete = tag_to_delete.tag_id
+        tag_string_to_delete: str = tag_to_delete.utub_tag_item.tag_string
+        tag_id_to_delete = tag_to_delete.utub_tag_id
 
         # Get initial URL serialization
         url_utub_association: Utub_Urls = Utub_Urls.query.filter(
@@ -599,12 +577,6 @@ def test_delete_tag_from_url_with_five_tags(
         # Get all Url-Tag associations count
         initial_url_tag_count = Utub_Url_Tags.query.count()
 
-        # Get tag count for this UTub and tag
-        tag_count: int = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
-            Utub_Url_Tags.tag_id == tag_id_to_delete,
-        ).count()
-
     # delete tag from this URL
     delete_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
@@ -615,7 +587,7 @@ def test_delete_tag_from_url_with_five_tags(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -627,25 +599,22 @@ def test_delete_tag_from_url_with_five_tags(
     assert (
         delete_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_REMOVED_FROM_URL
     )
-    assert int(delete_tag_response_json[TAGS_SUCCESS.TAG_STILL_IN_UTUB]) == (
-        tag_count - 1 > 0
-    )
     assert (
-        int(delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_ID])
+        int(delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.UTUB_TAG_ID])
         == tag_id_to_delete
     )
     assert (
-        delete_tag_response_json[TAGS_SUCCESS.TAG][MODELS.TAG_STRING]
+        delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODELS.TAG_STRING]
         == tag_string_to_delete
     )
-    assert sorted(delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]) == sorted(
+    assert sorted(delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
         [val for val in associated_tags if val != tag_id_to_delete]
     )
 
     with app.app_context():
         # Ensure tag still exists
-        assert Tags.query.get(tag_id_to_delete) is not None
-        assert Tags.query.count() == num_of_tags_in_db
+        assert Utub_Tags.query.get(tag_id_to_delete) is not None
+        assert Utub_Tags.query.count() == num_of_tags_in_db
 
         # Ensure 4 tags on this URL
         assert (
@@ -661,7 +630,7 @@ def test_delete_tag_from_url_with_five_tags(
             Utub_Urls.id == url_id_to_delete_tag_from,
         ).first()
         assert sorted(final_utub_url_association.associated_tag_ids) == sorted(
-            delete_tag_response_json[TAGS_SUCCESS.URL_TAG_IDS]
+            delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]
         )
 
         # Ensure proper number of Url-Tag associations in db
@@ -674,10 +643,10 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a nonexistent tag from a URL as the creator of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 400 HTTP status code, and that the Tag-URL-UTub association still does not exist,
         that the tag does not exist exists, and that the association between URL, UTub, and Tag is recorded properly
     """
@@ -713,7 +682,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_creator_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=NONEXISTENT_TAG_ID,
+            utub_url_tag_id=NONEXISTENT_TAG_ID,
         ),
         data=delete_tag_form,
     )
@@ -726,7 +695,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_this_user_creator_of,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
-                Utub_Url_Tags.tag_id == NONEXISTENT_TAG_ID,
+                Utub_Url_Tags.utub_tag_id == NONEXISTENT_TAG_ID,
             ).first()
             is None
         )
@@ -748,10 +717,10 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a nonexistent tag from a URL as the member of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 400 HTTP status code, and that the Tag-URL-UTub association still does not exist,
         that the tag does not exist exists, and that the association between URL, UTub, and Tag is recorded properly
     """
@@ -790,7 +759,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=NONEXISTENT_TAG_ID,
+            utub_url_tag_id=NONEXISTENT_TAG_ID,
         ),
         data=delete_tag_form,
     )
@@ -803,7 +772,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_this_user_member_of,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete_tag_from,
-                Utub_Url_Tags.tag_id == NONEXISTENT_TAG_ID,
+                Utub_Url_Tags.utub_tag_id == NONEXISTENT_TAG_ID,
             ).count()
             == 0
         )
@@ -823,16 +792,16 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
 
 def test_delete_tag_from_url_but_not_member_of_utub(
     add_one_url_to_each_utub_no_tags,
-    add_tags_to_database,
+    add_tags_to_utubs,
     login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to delete a newly added tag from a URL as not a member of the UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 403 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association still exists,
         that the tag still exists, and that the association between URL, UTub, and Tag is recorded properly
@@ -855,7 +824,7 @@ def test_delete_tag_from_url_but_not_member_of_utub(
         creator_of_utub_id = utub_user_association_not_member_of.to_utub.utub_creator
 
         # Grab a tag from db
-        tag_to_delete: Tags = Tags.query.first()
+        tag_to_delete: Utub_Tags = Utub_Tags.query.first()
         tag_id_to_delete = tag_to_delete.id
 
         # Find a URL in the database associated with this UTub
@@ -868,7 +837,7 @@ def test_delete_tag_from_url_but_not_member_of_utub(
         new_tag_url_association = Utub_Url_Tags()
         new_tag_url_association.utub_id = utub_id_not_member_of
         new_tag_url_association.utub_url_id = url_id_in_utub
-        new_tag_url_association.tag_id = tag_id_to_delete
+        new_tag_url_association.utub_tag_id = tag_id_to_delete
 
         db.session.add(new_tag_url_association)
         db.session.commit()
@@ -892,7 +861,7 @@ def test_delete_tag_from_url_but_not_member_of_utub(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_not_member_of,
             utub_url_id=url_id_in_utub,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -908,13 +877,13 @@ def test_delete_tag_from_url_but_not_member_of_utub(
 
     with app.app_context():
         # Ensure tag exists
-        assert Tags.query.get(tag_id_to_delete) is not None
+        assert Utub_Tags.query.get(tag_id_to_delete) is not None
 
         # Ensure tag exists on URL in UTub
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_not_member_of,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
             == 1
         )
@@ -934,10 +903,10 @@ def test_delete_tag_from_url_from_nonexistent_utub(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to delete a a tag from a URL within a nonexistent UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 404 HTTP status code, that the tag still exists,
         and that all associations between the URL and tags are still valid
     """
@@ -949,16 +918,16 @@ def test_delete_tag_from_url_from_nonexistent_utub(
         # Grab a valid URL and tag association
         valid_url_tag_association: Utub_Url_Tags = Utub_Url_Tags.query.first()
 
-        tag_id_to_delete = valid_url_tag_association.tag_id
+        tag_id_to_delete = valid_url_tag_association.utub_tag_id
         url_id_to_delete = valid_url_tag_association.utub_url_id
         existing_utub_id = valid_url_tag_association.utub_id
         creator_of_existing_utub_id = (
-            valid_url_tag_association.utub_containing_this_tag.utub_creator
+            valid_url_tag_association.utub_containing_this_url_tag.utub_creator
         )
 
         num_of_url_tag_associations = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_url_id == url_id_to_delete,
-            Utub_Url_Tags.tag_id == tag_id_to_delete,
+            Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
         ).count()
 
         # Grab initial UTub-URL serialization
@@ -982,7 +951,7 @@ def test_delete_tag_from_url_from_nonexistent_utub(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=NONEXISTENT_UTUB_ID,
             utub_url_id=url_id_to_delete,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -995,13 +964,13 @@ def test_delete_tag_from_url_from_nonexistent_utub(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == existing_utub_id,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
             == 1
         )
 
         # Ensure Tag still exists
-        assert Tags.query.get(tag_id_to_delete) is not None
+        assert Utub_Tags.query.get(tag_id_to_delete) is not None
 
         # Ensure URL-UTub association still exists
         final_utub_url_association: Utub_Urls = Utub_Urls.query.get(url_id_to_delete)
@@ -1016,7 +985,7 @@ def test_delete_tag_from_url_from_nonexistent_utub(
             num_of_url_tag_associations
             == Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_url_id == url_id_to_delete,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
         )
 
@@ -1029,10 +998,10 @@ def test_delete_tag_from_nonexistent_url_utub(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with it
     WHEN the user tries to delete a a tag from a nonexistent URL within a UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 404 HTTP status code, that the tag still exists, and the UTub
         still has proper associations with the valid tag
     """
@@ -1044,7 +1013,7 @@ def test_delete_tag_from_nonexistent_url_utub(
         # Grab a valid URL and tag association
         valid_url_tag_association: Utub_Url_Tags = Utub_Url_Tags.query.first()
 
-        tag_id_to_delete = valid_url_tag_association.tag_id
+        tag_id_to_delete = valid_url_tag_association.utub_tag_id
         url_id_to_delete = valid_url_tag_association.utub_url_id
         existing_utub_id = valid_url_tag_association.utub_id
 
@@ -1061,7 +1030,7 @@ def test_delete_tag_from_nonexistent_url_utub(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=existing_utub_id,
             utub_url_id=NONEXISTENT_URL_ID,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -1074,20 +1043,20 @@ def test_delete_tag_from_nonexistent_url_utub(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == existing_utub_id,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
             == 1
         )
 
         # Ensure Tag still exists
-        assert Tags.query.get(tag_id_to_delete) is not None
+        assert Utub_Tags.query.get(tag_id_to_delete) is not None
 
         # Ensure nonexistent URL does not have URL-Tag association in valid UTub
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == existing_utub_id,
                 Utub_Url_Tags.utub_url_id == NONEXISTENT_URL_ID,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).first()
             is None
         )
@@ -1101,10 +1070,10 @@ def test_delete_tag_with_no_csrf_token(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to delete a tag from a URL without including the CSRF token
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 400 HTTP status code, that the server sends back the proper
         HTML element indicating a missing CSRF token, and that all valid associations still exist for the tags
 
@@ -1121,7 +1090,7 @@ def test_delete_tag_with_no_csrf_token(
         # Grab a valid URL and tag association
         valid_url_tag_association: Utub_Url_Tags = Utub_Url_Tags.query.first()
 
-        tag_id_to_delete = valid_url_tag_association.tag_id
+        tag_id_to_delete = valid_url_tag_association.utub_tag_id
         url_id_to_delete = valid_url_tag_association.utub_url_id
         existing_utub_id = valid_url_tag_association.utub_id
 
@@ -1136,7 +1105,7 @@ def test_delete_tag_with_no_csrf_token(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=existing_utub_id,
             utub_url_id=url_id_to_delete,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -1151,7 +1120,7 @@ def test_delete_tag_with_no_csrf_token(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == existing_utub_id,
                 Utub_Url_Tags.utub_url_id == url_id_to_delete,
-                Utub_Url_Tags.tag_id == tag_id_to_delete,
+                Utub_Url_Tags.utub_tag_id == tag_id_to_delete,
             ).count()
             == 1
         )
@@ -1165,10 +1134,10 @@ def test_delete_tag_from_url_updates_utub_last_updated(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a tag from a URL as the creator of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, and the UTub's last updated
         field is updated
     """
@@ -1186,7 +1155,7 @@ def test_delete_tag_from_url_updates_utub_last_updated(
         tag_url_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_this_user_creator_of
         ).first()
-        tag_id_to_delete = tag_url_utub_association.tag_id
+        tag_id_to_delete = tag_url_utub_association.utub_tag_id
         url_id_to_delete_tag_from = tag_url_utub_association.utub_url_id
 
     # delete tag from this URL
@@ -1199,7 +1168,7 @@ def test_delete_tag_from_url_updates_utub_last_updated(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_creator_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=tag_id_to_delete,
+            utub_url_tag_id=tag_id_to_delete,
         ),
         data=delete_tag_form,
     )
@@ -1217,10 +1186,10 @@ def test_delete_nonexistent_tag_from_url_does_not_update_utub_last_updated(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a nonexistent tag from a URL as the creator of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to delete tag from,
-            "tag_id": An integer representing Tag ID to delete from the URL
+            "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 400 HTTP status code, and that the UTub's last updated field
         is not updated
     """
@@ -1251,7 +1220,7 @@ def test_delete_nonexistent_tag_from_url_does_not_update_utub_last_updated(
             ROUTES.TAGS.DELETE_TAG,
             utub_id=utub_id_this_user_creator_of,
             utub_url_id=url_id_to_delete_tag_from,
-            tag_id=NONEXISTENT_TAG_ID,
+            utub_url_tag_id=NONEXISTENT_TAG_ID,
         ),
         data=delete_tag_form,
     )

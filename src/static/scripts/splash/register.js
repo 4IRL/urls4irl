@@ -60,6 +60,5 @@ function handleRegisterFailure(xhr, _, error) {
   } else {
     // TODO: Handle other errors here.
     showSplashModalAlertBanner("Unable to process request...", "danger");
-    console.log("You need to handle other errors!");
   }
 }
