@@ -2,7 +2,11 @@
 from typing import List
 
 # External libraries
-from selenium.common.exceptions import NoSuchElementException, TimeoutException
+from selenium.common.exceptions import (
+    ElementNotInteractableException,
+    NoSuchElementException,
+    TimeoutException,
+)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -60,6 +64,9 @@ def wait_then_get_element(browser: WebDriver, css_selector: str, time: float = 2
         )
 
         return element
+    except ElementNotInteractableException:
+        print("ElementNotInteractableException")
+        return None
     except NoSuchElementException:
         return None
     except TimeoutException:
@@ -91,6 +98,9 @@ def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 
         )
 
         return elements
+    except ElementNotInteractableException:
+        print("ElementNotInteractableException")
+        return None
     except NoSuchElementException:
         return None
     except TimeoutException:
@@ -413,7 +423,6 @@ def url_row_unfiltered(url_rows: List[WebElement]):
     unfiltered = []
     for url_row in url_rows:
         unfiltered.append(url_row.get_attribute("filterable") == "true")
-
     return unfiltered
 
 
@@ -428,6 +437,7 @@ def get_num_url_unfiltered_rows(browser: WebDriver):
         Integer length of visible URL rows in UTub available to user
     """
     url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+
     if url_rows:
         visible_url_rows = [
             url_row
@@ -489,7 +499,6 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement:
         tag_filter_name = tag_filter.find_element(By.TAG_NAME, "span").get_attribute(
             "innerText"
         )
-        print(tag_filter_name)
         if tag_filter_name == tag_name:
             return tag_filter
 
