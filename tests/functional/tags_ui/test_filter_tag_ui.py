@@ -37,7 +37,6 @@ def test_filter_tag(browser: WebDriver, create_test_tags):
     first_tag_badge_name = first_tag_badge.find_element(
         By.TAG_NAME, "span"
     ).get_attribute("innerText")
-    print(first_tag_badge_name)
     delete_tag(browser, first_tag_badge)
 
     # Assert appropriate behavior of unselectAll button
