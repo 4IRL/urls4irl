@@ -55,6 +55,24 @@ def add_one_tag_to_each_utub_after_one_url_added(
         app (Flask): The Flask client providing an app context
         add_one_url_to_each_utub_no_tags (pytest fixture): Adds one url to each UTub with same ID as creator
     """
+    _add_one_tag_to_each_utub(app)
+
+
+@pytest.fixture
+def add_one_tag_to_each_utub_after_all_users_added(
+    app: Flask, every_user_in_every_utub
+):
+    """
+    Adds one tag to each UTub, generating a single UtubTag entry for each UTub.
+
+    Args:
+        app (Flask): The Flask client providing the app context
+        every_user_in_every_utub (pytest fixture): Adds every user to every UTub
+    """
+    _add_one_tag_to_each_utub(app)
+
+
+def _add_one_tag_to_each_utub(app: Flask):
     with app.app_context():
         all_utubs: list[Utubs] = Utubs.query.all()
 

@@ -86,7 +86,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -185,7 +185,7 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -294,7 +294,7 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -398,7 +398,7 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -505,7 +505,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -620,7 +620,7 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -707,7 +707,7 @@ def test_add_duplicate_tag_not_in_utub_to_existing_url_in_utub(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_user_is_creator.id,
             utub_url_id=url_id_to_add_to,
         ),
@@ -770,7 +770,7 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
@@ -856,7 +856,7 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
@@ -932,7 +932,7 @@ def test_add_tag_to_url_in_nonexistent_utub(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=NONEXISTENT_UTUB_ID,
             utub_url_id=NONEXISTENT_UTUB_ID,
         ),
@@ -1018,7 +1018,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_that_user_not_member_of,
             utub_url_id=url_id_for_url_in_utub,
         ),
@@ -1128,7 +1128,7 @@ def test_add_tag_to_url_not_in_utub(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_for_url_not_in_utub,
         ),
@@ -1257,7 +1257,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_in_this_utub,
         ),
@@ -1389,7 +1389,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_in_this_utub,
         ),
@@ -1495,7 +1495,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -1552,19 +1552,9 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
             "urlID": An integer representing URL ID to add tag to
-    THEN ensure that the server responds with a 404 HTTP status code, that the proper JSON response
+    THEN ensure that the server responds with a 400 HTTP status code, that the proper HTML response
         is sent by the server, and that no new Tag-URL-UTub association exists where it didn't before,
         that no new Tag exists, and that the association between URL and Tag is recorded properly
-
-    Proper JSON response is as follows:
-    {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-        STD_JSON.ERROR_CODE : 4,
-        STD_JSON.ERRORS: {
-            TAG_FORM.TAG_STRING: ["This field is required."]
-        }
-    }
     """
     client, _, _, app = login_first_user_without_register
     tag_to_add = all_tag_strings[0]
@@ -1597,7 +1587,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -1673,7 +1663,7 @@ def test_add_fresh_tag_to_url_updates_utub_last_updated(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -1729,7 +1719,7 @@ def test_add_existing_tag_to_url_updates_utub_last_updated(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
@@ -1789,7 +1779,7 @@ def test_add_duplicate_tag_to_url_does_not_update_utub_last_updated(
 
     add_tag_response = client.post(
         url_for(
-            ROUTES.TAGS.CREATE_TAG,
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),

@@ -79,7 +79,7 @@ def test_delete_tag_from_url_as_utub_creator(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_creator_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=tag_id_to_delete,
@@ -193,7 +193,7 @@ def test_delete_tag_from_url_as_utub_member(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=tag_id_to_delete,
@@ -308,7 +308,7 @@ def test_delete_tag_from_url_with_one_tag(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=tag_id_to_delete,
@@ -426,7 +426,7 @@ def test_delete_last_url_tag_in_utub(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=tag_id_to_delete,
@@ -584,7 +584,7 @@ def test_delete_tag_from_url_with_five_tags(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=tag_id_to_delete,
@@ -679,7 +679,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_creator_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=NONEXISTENT_TAG_ID,
@@ -756,7 +756,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_member_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=NONEXISTENT_TAG_ID,
@@ -858,7 +858,7 @@ def test_delete_tag_from_url_but_not_member_of_utub(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_not_member_of,
             utub_url_id=url_id_in_utub,
             utub_url_tag_id=tag_id_to_delete,
@@ -948,7 +948,7 @@ def test_delete_tag_from_url_from_nonexistent_utub(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=NONEXISTENT_UTUB_ID,
             utub_url_id=url_id_to_delete,
             utub_url_tag_id=tag_id_to_delete,
@@ -1027,7 +1027,7 @@ def test_delete_tag_from_nonexistent_url_utub(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=existing_utub_id,
             utub_url_id=NONEXISTENT_URL_ID,
             utub_url_tag_id=tag_id_to_delete,
@@ -1102,7 +1102,7 @@ def test_delete_tag_with_no_csrf_token(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=existing_utub_id,
             utub_url_id=url_id_to_delete,
             utub_url_tag_id=tag_id_to_delete,
@@ -1165,7 +1165,7 @@ def test_delete_tag_from_url_updates_utub_last_updated(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_creator_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=tag_id_to_delete,
@@ -1217,7 +1217,7 @@ def test_delete_nonexistent_tag_from_url_does_not_update_utub_last_updated(
 
     delete_tag_response = client.delete(
         url_for(
-            ROUTES.TAGS.DELETE_TAG,
+            ROUTES.URL_TAGS.DELETE_URL_TAG,
             utub_id=utub_id_this_user_creator_of,
             utub_url_id=url_id_to_delete_tag_from,
             utub_url_tag_id=NONEXISTENT_TAG_ID,
