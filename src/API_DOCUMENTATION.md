@@ -1756,6 +1756,167 @@ Indicates invalid form data sent in the request.
 
 ------------------------------------------------------------------------------------------
 
+#### UTub Tags
+
+<details>
+ <summary><code>POST</code> <code><b>/utubs/{UTubID}/tags</b></code> <code>(add a tag to a UTub)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to add tag to |
+
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+
+Required form data:
+> ```
+> tagString: %Tag Here%
+> csrf_token: %csrf_token%
+> ```
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully added a tag to UTub. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `400`         | `application/json`                | `See below.` | Form errors on creation of new string. |
+> | `403`         | `application/json`                | `See below.` | Requesting user not in the UTub. |
+> | `404`         | `application/json`                | `See below.` | Unable to process the request. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success",
+>     "message": "Tag added to this UTub.",
+>     "utubTag": {
+>         "utubTagID": 1,
+>         "tagString": "Hello",
+>     }
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "UTub already contains this tag.",
+>     "errorCode": 2,
+> }
+> ```
+
+###### 400 HTTP Code Response Body
+
+Indicates form errors with adding this tag to this UTub.
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to add tag to UTub.",
+>     "errorCode": 3,
+>     "errors": {
+>         "tagString": ["This field is required."],
+>     }
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to add tag to UTub.",
+>     "errorCode": 1,
+> }
+> ```
+
+###### 404 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Unable to add tag to UTub.",
+>     "errorCode": 4,
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X POST \
+>  https://urls4irl.app/utubs/1/tags \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  --data-urlencode 'tagString=Hello'
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
+> ```
+
+</details>
+<details>
+ <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/tags/{utubTagID}</b></code> <code>(delete a tag from a UTub)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub to delete tag from |
+> | `utubTagID` |  required  | int ($int64) | The unique ID of the utubTag to delete tag from |
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Successfully deleted a tag from UTub, and removed all URL associations with this tag in this UTub. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `403`         | `application/json`                | `See below.` | Requesting user not in the UTub. |
+> | `404`         | `application/json`                | `See below.` | Unable to process the request. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested utubTag. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success",
+>     "message": "Tag deleted from this UTub.",
+>     "utubTag": {
+>         "utubTagID": 1,
+>         "tagString": "Hello",
+>     }
+>     "urlIDs": [1, 2, 3]       // IDs of UTubURLs this tag was removed from, can be empty
+> }
+> ```
+
+###### 403 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Failure",
+>     "message": "Only UTub members can delete tags.",
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X DELETE \
+>  https://urls4irl.app/utubs/1/tags/1 \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Cookie: YOUR_COOKIE' \
+> ```
+
+</details>
+
+------------------------------------------------------------------------------------------
+
 #### UTub URL Tags
 
 <details>
@@ -2045,4 +2206,3 @@ Possible messages include: `Tag on this URL modified.`, `Tag was not modified on
 </details>
 
 ------------------------------------------------------------------------------------------
-

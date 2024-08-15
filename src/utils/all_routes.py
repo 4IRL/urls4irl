@@ -22,10 +22,16 @@ class SPLASH_ROUTES:
     RESET_PASSWORD = _SPLASH + "reset_password"
 
 
-class UTUB_URL_TAG_ROUTES:
-    _UTUB_URL_TAGS = "utub_url_tags."
-    CREATE_TAG = _UTUB_URL_TAGS + "create_utub_url_tag"
-    DELETE_TAG = _UTUB_URL_TAGS + "delete_utub_url_tag"
+class URL_TAG_ROUTES:
+    _URL_TAGS = "utub_url_tags."
+    CREATE_URL_TAG = _URL_TAGS + "create_utub_url_tag"
+    DELETE_URL_TAG = _URL_TAGS + "delete_utub_url_tag"
+
+
+class UTUB_TAG_ROUTES:
+    _UTUB_TAGS = "utub_tags."
+    CREATE_UTUB_TAG = _UTUB_TAGS + "create_utub_tag"
+    DELETE_UTUB_TAG = _UTUB_TAGS + "delete_utub_tag"
 
 
 class URL_ROUTES:
@@ -56,7 +62,8 @@ class UTUB_ROUTES:
 class ROUTES:
     MEMBERS = MEMBER_ROUTES
     SPLASH = SPLASH_ROUTES
-    TAGS = UTUB_URL_TAG_ROUTES
+    URL_TAGS = URL_TAG_ROUTES
+    UTUB_TAGS = UTUB_TAG_ROUTES
     URLS = URL_ROUTES
     USERS = USER_ROUTES
     UTUBS = UTUB_ROUTES

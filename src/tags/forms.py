@@ -6,7 +6,7 @@ from src.utils.constants import TAG_CONSTANTS
 from src.utils.strings import model_strs as MODEL_STRS
 
 
-class UTubNewUrlTagForm(FlaskForm):
+class NewTagForm(FlaskForm):
     """
     Form to add a tag to a URL in a Utub.
 

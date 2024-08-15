@@ -7,7 +7,7 @@ from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.models.utub_url_tags import Utub_Url_Tags
-from src.tags.forms import UTubNewUrlTagForm
+from src.tags.forms import NewTagForm
 from src.utils.constants import TAG_CONSTANTS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
@@ -53,7 +53,7 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
             403,
         )
 
-    url_tag_form: UTubNewUrlTagForm = UTubNewUrlTagForm()
+    url_tag_form: NewTagForm = NewTagForm()
 
     if url_tag_form.validate_on_submit():
         tag_to_add = url_tag_form.tag_string.data
@@ -169,7 +169,7 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
 @email_validation_required
 def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_url_tag_id: int):
     """
-    User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
+    User wants to delete a tag from a URL contained in a UTub.
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted
