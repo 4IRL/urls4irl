@@ -3,6 +3,7 @@ name: u4i-dev
 services:
   web:
     image: ghcr.io/4irl/u4i-dev:latest
+    container_name: u4i-dev-flask
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
@@ -28,6 +29,7 @@ services:
 
   db:
     image: postgres:16.3-bookworm
+    container_name: u4i-dev-postgres
     env_file:
      - .env
     environment:
@@ -39,6 +41,7 @@ services:
 
   redis:
     image: redis:6.2
+    container_name: u4i-dev-redis
     volumes:
       - redisdata:/data
 
