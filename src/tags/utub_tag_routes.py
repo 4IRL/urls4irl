@@ -5,6 +5,7 @@ from src import db
 from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.tags.forms import NewTagForm
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
@@ -111,57 +112,55 @@ def create_utub_tag(utub_id: int):
     )
 
 
-# @utub_url_tags.route(
-#     "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id>",
-#     methods=["DELETE"],
-# )
-# @email_validation_required
-# def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_url_tag_id: int):
-#     """
-#     User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
+@utub_tags.route(
+    "/utubs/<int:utub_id>/tags/<int:utub_tag_id>",
+    methods=["DELETE"],
+)
+@email_validation_required
+def delete_utub_tag(utub_id: int, utub_tag_id: int):
+    """
+    User wants to delete a tag from a UTub. This will remove all instances of this tag
+    associated with URLs (Utub_Url_Tags) in this UTub.
 
-#     Args:
-#         utub_id (int): The ID of the UTub that contains the URL to be deleted
-#         url_id (int): The ID of the URL containing tag to be deleted
-#         utub_url_tag_id (int): The ID of the tag to be deleted
-#     """
-#     utub: Utubs = Utubs.query.get_or_404(utub_id)
-#     user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
+    Args:
+        utub_id (int): The ID of the UTub that contains the URL to be deleted
+        utub_tag_id (int): The ID of the tag to be deleted
+    """
+    utub: Utubs = Utubs.query.get_or_404(utub_id)
+    user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
 
-#     if not user_in_utub:
-#         return (
-#             jsonify(
-#                 {
-#                     STD_JSON.STATUS: STD_JSON.FAILURE,
-#                     STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_DELETE_TAGS,
-#                 }
-#             ),
-#             403,
-#         )
+    if not user_in_utub:
+        return (
+            jsonify(
+                {
+                    STD_JSON.STATUS: STD_JSON.FAILURE,
+                    STD_JSON.MESSAGE: TAGS_FAILURE.ONLY_UTUB_MEMBERS_DELETE_TAGS,
+                }
+            ),
+            403,
+        )
 
-#     # User is member of this UTub
-#     tag_for_url_in_utub: Utub_Url_Tags = Utub_Url_Tags.query.filter(
-#         Utub_Url_Tags.utub_id == utub_id,
-#         Utub_Url_Tags.utub_url_id == utub_url_id,
-#         Utub_Url_Tags.utub_tag_id == utub_url_tag_id,
-#     ).first_or_404()
-#     url_id_to_remove_tag = tag_for_url_in_utub.utub_url_id
-#     tag_to_remove: Utub_Tags = tag_for_url_in_utub.utub_tag_item
+    utub_tag: Utub_Tags = Utub_Tags.query.get_or_404(utub_tag_id)
 
-#     db.session.delete(tag_for_url_in_utub)
-#     utub.set_last_updated()
-#     db.session.commit()
+    urls_with_utub_tag: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+        Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_tag_id == utub_tag_id
+    ).all()
 
-#     url_utub_association: Utub_Urls = Utub_Urls.query.get_or_404(url_id_to_remove_tag)
+    url_ids_with_utub_tag: list[int] = [url.utub_url_id for url in urls_with_utub_tag]
+    serialized_tag = utub_tag.serialized_on_add_delete
 
-#     return (
-#         jsonify(
-#             {
-#                 STD_JSON.STATUS: STD_JSON.SUCCESS,
-#                 STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
-#                 TAGS_SUCCESS.UTUB_URL_TAG_IDS: url_utub_association.associated_tag_ids,
-#                 TAGS_SUCCESS.UTUB_TAG: tag_to_remove.serialized_on_add_delete,
-#             }
-#         ),
-#         200,
-#     )
+    db.session.delete(utub_tag)
+    utub.set_last_updated()
+    db.session.commit()
+
+    return (
+        jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.SUCCESS,
+                STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_UTUB,
+                TAGS_SUCCESS.UTUB_TAG: serialized_tag,
+                TAGS_SUCCESS.URL_IDS: url_ids_with_utub_tag,
+            }
+        ),
+        200,
+    )

@@ -169,7 +169,7 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
 @email_validation_required
 def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_url_tag_id: int):
     """
-    User wants to delete a tag from a URL contained in a UTub. Only available to owner of that utub.
+    User wants to delete a tag from a URL contained in a UTub.
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted

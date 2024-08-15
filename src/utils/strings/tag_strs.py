@@ -7,19 +7,23 @@ from src.utils.strings.utub_strs import UTUB_GENERAL
 TAG_ADDED_TO_URL = "Tag added to this URL."
 TAG_ADDED_TO_UTUB = "Tag added to this UTub."
 TAG_REMOVED_FROM_URL = "Tag removed from this URL."
+TAG_REMOVED_FROM_UTUB = "Tag removed from UTub and associated URLs."
 TAG_MODIFIED_ON_URL = "Tag on this URL modified."
 TAG_STILL_IN_UTUB = "tagInUTub"
 PREVIOUS_TAG = "previousTag"
+URL_IDS = "urlIDs"
 
 
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     TAG_ADDED_TO_URL = TAG_ADDED_TO_URL
     TAG_ADDED_TO_UTUB = TAG_ADDED_TO_UTUB
     TAG_REMOVED_FROM_URL = TAG_REMOVED_FROM_URL
+    TAG_REMOVED_FROM_UTUB = TAG_REMOVED_FROM_UTUB
     UTUB_TAG = UTUB_TAG
     TAG_STILL_IN_UTUB = TAG_STILL_IN_UTUB
     TAG_MODIFIED_ON_URL = TAG_MODIFIED_ON_URL
     PREVIOUS_TAG = PREVIOUS_TAG
+    URL_IDS = URL_IDS
 
 
 # Strings for tags failure
