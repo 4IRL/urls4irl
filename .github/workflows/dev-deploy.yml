@@ -89,6 +89,7 @@ jobs:
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
               docker compose -f compose-dev.yaml pull;
+              docker cp u4i-dev-flask:/code/src/static ~/static;
               docker compose -f compose-dev.yaml up --force-recreate --build -d;
               docker image prune -f;
               ';
