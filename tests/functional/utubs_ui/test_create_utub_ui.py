@@ -1,6 +1,9 @@
+# Standard library
+from time import sleep
+
 # External libraries
 import pytest
-from time import sleep
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.mocks.mock_constants import MOCK_UTUB_DESCRIPTION
@@ -15,7 +18,7 @@ from utils_for_test_utub_ui import create_utub
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_utub(browser, create_test_users):
+def test_create_utub(browser: WebDriver, create_test_users):
     """
     Tests a user's ability to create a UTub
 
@@ -47,7 +50,7 @@ def test_create_utub(browser, create_test_users):
 @pytest.mark.skip(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
-def test_create_utub_name_length_exceeded(browser, create_test_users):
+def test_create_utub_name_length_exceeded(browser: WebDriver, create_test_users):
     """
     Tests the site error response to a user's attempt to create a new UTub with a name that exceeds the maximum character length limit.
 
@@ -67,7 +70,7 @@ def test_create_utub_name_length_exceeded(browser, create_test_users):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_utub_name_similar(browser, create_test_utubs):
+def test_create_utub_name_similar(browser: WebDriver, create_test_utubs):
     """
     Tests the site warning response to a user's attempt to create a new UTub with a name that is similar to one already in their UTub Deck.
 

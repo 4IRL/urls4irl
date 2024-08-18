@@ -1,6 +1,5 @@
 # Standard library
 
-
 # External libraries
 # import pytest
 from selenium.webdriver.common.by import By

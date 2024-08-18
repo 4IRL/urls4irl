@@ -1,5 +1,8 @@
-# External libraries
+# Standard library
 from time import sleep
+
+# External libraries
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from locators import MainPageLocators as MPL
@@ -18,7 +21,7 @@ from tests.functional.utils_for_test import (
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_delete_member(browser, create_test_utubmembers):
+def test_delete_member(browser: WebDriver, create_test_utubmembers):
     """
     Tests a UTub owner's ability to delete a member from the UTub.
 

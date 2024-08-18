@@ -252,6 +252,23 @@ def get_num_utubs(browser: WebDriver):
         return 0
 
 
+def get_all_utub_selector_names(browser: WebDriver):
+    """
+    Find all UTub selectors the current user has access to.
+
+    Args:
+        WebDriver open to U4I Home Page
+
+    Returns:
+        Array of strings corresponding to UTub selectors available to user
+    """
+    utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    if utub_selectors:
+        return len(utub_selectors)
+    else:
+        return 0
+
+
 def get_selected_utub_name(browser: WebDriver):
     """
     Extracts name of selected UTub.
@@ -261,6 +278,26 @@ def get_selected_utub_name(browser: WebDriver):
 
     Returns:
         String containing the selected UTub name.
+    """
+
+    selected_utub_selector = browser.find_element(
+        By.CSS_SELECTOR, MPL.SELECTOR_SELECTED_UTUB
+    )
+
+    utub_name = selected_utub_selector.get_attribute("innerText")
+
+    return utub_name
+
+
+def get_selected_utub_decsription(browser: WebDriver):
+    """
+    Extracts description of selected UTub.
+
+    Args:
+        WebDriver open to a selected UTub
+
+    Returns:
+        String containing the selected UTub description.
     """
 
     selected_utub_selector = browser.find_element(

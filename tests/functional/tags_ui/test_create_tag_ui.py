@@ -58,7 +58,7 @@ def test_create_tag(browser: WebDriver, create_test_urls):
 
 
 @pytest.mark.skip(reason="Not on happy path. Not yet implemented")
-def test_create_existing_tag(browser, create_test_tags):
+def test_create_existing_tag(browser: WebDriver, create_test_tags):
     """
     Tests the site error response to a user's attempt to create a tag with the same name as another already on the selected URL.
 
@@ -80,7 +80,7 @@ def test_create_existing_tag(browser, create_test_tags):
 # @pytest.mark.skip(
 #     reason="Not on happy path."
 # )
-def test_create_sixth_tag(browser, create_test_tags):
+def test_create_sixth_tag(browser: WebDriver, create_test_tags):
     """
     Tests the site error response to a user's attempt to create an additional unique tag once a URL already has the maximum number of tags applied
 
@@ -106,7 +106,7 @@ def test_create_sixth_tag(browser, create_test_tags):
 
 
 @pytest.mark.skip(reason="Not on happy path. Not yet implemented")
-def test_create_tag_text_length_exceeded(browser, create_test_urls):
+def test_create_tag_text_length_exceeded(browser: WebDriver, create_test_urls):
     """
     Tests the site error response to a user's attempt to create a tag with name that exceeds the character limit.
 

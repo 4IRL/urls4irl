@@ -1,5 +1,8 @@
+# Standard library
+
 # External libraries
 import pytest
+from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 
 # Internal libraries
@@ -11,7 +14,7 @@ from tests.functional.utils_for_test import (
 
 
 @pytest.mark.skip(reason="Test not yet implemented")
-def test_access_url_by_button(browser, create_test_urls):
+def test_access_url_by_button(browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
 
@@ -30,7 +33,7 @@ def test_access_url_by_button(browser, create_test_urls):
 
 
 @pytest.mark.skip(reason="Test not yet implemented")
-def test_access_url_by_text(browser, create_test_urls):
+def test_access_url_by_text(browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to navigate to a URL using the displayed URL string.
 

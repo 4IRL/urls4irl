@@ -11,7 +11,7 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
 from selenium import webdriver
-from selenium.webdriver.chrome.webdriver import WebDriver
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from selenium.webdriver.chrome.options import Options
 

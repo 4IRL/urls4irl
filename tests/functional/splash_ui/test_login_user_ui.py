@@ -1,5 +1,5 @@
 # External libraries
-# from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
@@ -7,7 +7,7 @@ from tests.functional.utils_for_test import login_user, wait_then_get_element
 from tests.functional.locators import MainPageLocators as MPL
 
 
-def test_example(browser):
+def test_example(browser: WebDriver):
     """
     The one test that will always work to make me feel good
     """
@@ -15,7 +15,7 @@ def test_example(browser):
     assert "URLS4IRL" in browser.title
 
 
-def test_login_test_user(browser, create_test_users):
+def test_login_test_user(browser: WebDriver, create_test_users):
     """
     Tests a user's ability to login using the splash page login modal
 
