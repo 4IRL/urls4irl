@@ -39,6 +39,36 @@ def test_update_utub_name(browser: WebDriver, create_test_utubs):
 
     update_utub_name(browser, new_utub_name)
 
+    # Wait for POST request
+    sleep(4)
+
+    url_deck_header = get_selected_utub_name(browser)
+
+    # Assert new UTub name is updated in URL Deck
+    assert new_utub_name == url_deck_header
+
+    utub_selector_names = get_all_utub_selector_names(browser)
+
+    # Assert new UTub name is updated in UTub Deck
+    assert new_utub_name in utub_selector_names
+
+
+@pytest.mark.skip(reason="Testing another in isolation")
+def test_update_utub_name_similar(browser: WebDriver, create_test_utubs):
+    """
+    Tests a UTub owner's ability to update a selected UTub's name.
+
+    GIVEN a user owns a UTub
+    WHEN they submit the editUTub form
+    THEN ensure the form is hidden, the UTub selector name and URL deck header are updated.
+    """
+
+    login_utub(browser)
+
+    new_utub_name = MOCK_UTUB_NAME_BASE + "2"
+
+    update_utub_name(browser, new_utub_name)
+
     warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 

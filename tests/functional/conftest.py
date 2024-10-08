@@ -170,12 +170,14 @@ def build_driver(
     """
     open_port = provide_port
     options = Options()
+    options.add_argument("--disable-notifications")
 
     if turn_off_headless:
         # Disable Chrome browser pop-up notifications
         # prefs = {"profile.default_content_setting_values.notifications" : 2}
         # options.add_experimental_option("prefs",prefs)
-        options.add_argument("--disable-notifications")
+        # options.add_argument("--disable-notifications")
+        print("Browser incoming")
     else:
         options.add_argument("--headless")
 

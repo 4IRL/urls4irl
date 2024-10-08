@@ -37,8 +37,7 @@ def test_delete_url(browser: WebDriver, create_test_urls):
     url_row = get_selected_url(browser)
     delete_url(browser, url_row)
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL, 10)
-    print(warning_modal_body)
+    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
     # Assert warning modal appears with appropriate text

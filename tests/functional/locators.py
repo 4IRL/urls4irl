@@ -25,8 +25,11 @@ class MainPageLocators:
     SELECTOR_UNSELECT_ALL = "#unselectAll"
 
     # URL Deck
+    WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"
     HEADER_URL_DECK = "#URLDeckHeader"
     BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
+    INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
+    BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     SUBHEADER_NO_URLS = "#NoURLsSubheader"
     BUTTON_UTUB_DESCRIPTION_UPDATE = "#updateUTubDescriptionBtn"

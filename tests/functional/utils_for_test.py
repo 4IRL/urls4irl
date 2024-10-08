@@ -54,13 +54,9 @@ def wait_then_get_element(browser: WebDriver, css_selector: str, time: float = 2
     """
 
     try:
-        element = WebDriverWait(browser, time).until(
-            EC.presence_of_element_located(
-                (
-                    By.CSS_SELECTOR,
-                    css_selector,
-                )
-            )
+        wait = WebDriverWait(browser, time)
+        element = wait.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, css_selector))
         )
 
         return element
@@ -263,10 +259,14 @@ def get_all_utub_selector_names(browser: WebDriver):
         Array of strings corresponding to UTub selectors available to user
     """
     utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+
     if utub_selectors:
-        return len(utub_selectors)
+        utub_names = []
+        for utub_selector in utub_selectors:
+            utub_names.append(utub_selector.text)
+        return utub_names
     else:
-        return 0
+        return False
 
 
 def get_selected_utub_name(browser: WebDriver):
