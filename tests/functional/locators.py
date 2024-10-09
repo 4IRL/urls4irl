@@ -25,11 +25,19 @@ class MainPageLocators:
     SELECTOR_UNSELECT_ALL = "#unselectAll"
 
     # URL Deck
+    WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"
     HEADER_URL_DECK = "#URLDeckHeader"
     BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
+    INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
+    BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
+
+    WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
     SUBHEADER_NO_URLS = "#NoURLsSubheader"
     BUTTON_UTUB_DESCRIPTION_UPDATE = "#updateUTubDescriptionBtn"
+    INPUT_UTUB_DESCRIPTION_UPDATE = "#utubDescriptionUpdate"
+    BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE = "#utubDescriptionSubmitBtnUpdate"
+
     LIST_URL = "#listURLs"
     ROWS_URLS = ".urlRow"
     ROW_SELECTED_URL = ".urlRow[urlselected='true']"

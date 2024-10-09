@@ -3,6 +3,7 @@ from time import sleep
 
 # External libraries
 import pytest
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from locators import MainPageLocators as MPL
@@ -22,7 +23,7 @@ from tests.functional.utils_for_test import (
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_leave_utub(browser, create_test_utubmembers):
+def test_leave_utub(browser: WebDriver, create_test_utubmembers):
     """
     Tests a UTub user's ability to leave a UTub.
 
@@ -58,7 +59,7 @@ def test_leave_utub(browser, create_test_utubmembers):
 
 
 @pytest.mark.skip(reason="Test complete. Frontend functionality incomplete.")
-def test_leave_all_utubs(browser, create_test_utubmembers):
+def test_leave_all_utubs(browser: WebDriver, create_test_utubmembers):
     """
     Tests the site response to a user leaving the final instance of membership to UTubs. (Current addmocks require deletion of the user's own UTub first.)
 

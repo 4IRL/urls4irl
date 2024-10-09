@@ -3,8 +3,7 @@ import time
 
 # External libraries
 import pytest
-
-# from webdriver_manager.chrome import ChromeDriverManager
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -21,7 +20,7 @@ from tests.functional.utils_for_test import (
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_register_new_user(browser):
+def test_register_new_user(browser: WebDriver):
     """
     Tests a user's ability to register as a new user.
 
@@ -43,7 +42,7 @@ def test_register_new_user(browser):
 
 
 @pytest.mark.skip(reason="Not happy path. PASSES")
-def test_register_existing_username(browser, add_test_users):
+def test_register_existing_username(browser: WebDriver, add_test_users):
     """
     Tests the site error response to a user's attempt to register with a username that is already registered in the database.
 
@@ -69,7 +68,7 @@ def test_register_existing_username(browser, add_test_users):
 
 
 @pytest.mark.skip(reason="Not happy path. FAILS")
-def test_register_existing_email(browser, add_test_users):
+def test_register_existing_email(browser: WebDriver, add_test_users):
     """
     Tests the site error response to a user's attempt to register with an email that is already registered in the database.
 
@@ -92,7 +91,7 @@ def test_register_existing_email(browser, add_test_users):
 
 
 @pytest.mark.skip(reason="Not happy path. FAILS")
-def test_register_existing_username_and_email(browser, add_test_users):
+def test_register_existing_username_and_email(browser: WebDriver, add_test_users):
     """
     Tests the site error response to a user's attempt to register with a username and email that is already registered in the database.
 
@@ -118,7 +117,7 @@ def test_register_existing_username_and_email(browser, add_test_users):
 
 
 @pytest.mark.skip(reason="Not on happy path.")
-def test_register_failed_email_confirmation(browser):
+def test_register_failed_email_confirmation(browser: WebDriver):
     """
     Tests the site error response to a user submitting a register form with mismatched email inputs.
 
@@ -133,7 +132,7 @@ def test_register_failed_email_confirmation(browser):
 
 
 @pytest.mark.skip(reason="Not on happy path.")
-def test_register_failed_password_confirmation(browser):
+def test_register_failed_password_confirmation(browser: WebDriver):
     """
     Tests the site error response to a user submitting a register form with mismatched password inputs.
 

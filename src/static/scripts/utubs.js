@@ -672,8 +672,8 @@ function sameUTubNameOnNewUTubWarningShowModal() {
 }
 
 function sameUTubNameOnUpdateUTubNameWarningShowModal() {
-  const modalTitle = "Edit this UTub name?";
-  const modalBody = "You're already in a UTub with an identical name.";
+  const modalTitle = "Continue with this UTub name?";
+  const modalBody = "You are a member of a UTub with an identical name.";
   const buttonTextDismiss = "Go Back to Editing";
   const buttonTextSubmit = "Edit Name";
 

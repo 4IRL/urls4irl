@@ -1,6 +1,8 @@
 # External libraries
-import pytest
 from time import sleep
+
+# External libraries
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 

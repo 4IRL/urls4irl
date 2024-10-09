@@ -11,7 +11,7 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
 from selenium import webdriver
-from selenium.webdriver.chrome.webdriver import WebDriver
+from selenium.webdriver.remote.webdriver import WebDriver
 
 from selenium.webdriver.chrome.options import Options
 
@@ -170,12 +170,14 @@ def build_driver(
     """
     open_port = provide_port
     options = Options()
+    options.add_argument("--disable-notifications")
 
     if turn_off_headless:
         # Disable Chrome browser pop-up notifications
         # prefs = {"profile.default_content_setting_values.notifications" : 2}
         # options.add_experimental_option("prefs",prefs)
-        options.add_argument("--disable-notifications")
+        # options.add_argument("--disable-notifications")
+        print("Browser incoming")
     else:
         options.add_argument("--headless")
 

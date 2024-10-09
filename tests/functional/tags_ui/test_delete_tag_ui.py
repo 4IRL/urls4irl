@@ -4,6 +4,7 @@ from time import sleep
 # External libraries
 import pytest
 from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.mocks.mock_constants import MOCK_URL_TITLES
@@ -28,7 +29,7 @@ from locators import MainPageLocators as MPL
 @pytest.mark.skip(
     reason="Test not yet implemented. No discernable indicator of functionality beyond visual confirmation...for now."
 )
-def test_show_delete_tag_button_on_hover(browser, create_test_tags):
+def test_show_delete_tag_button_on_hover(browser: WebDriver, create_test_tags):
     """
     Tests a user's ability to create a new URL in a selected UTub
 

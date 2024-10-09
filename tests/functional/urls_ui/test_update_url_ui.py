@@ -1,8 +1,8 @@
 # Standard library
-import pytest
 from time import sleep
 
 # External libraries
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -83,7 +83,7 @@ def test_update_url_title(browser: WebDriver, create_test_urls):
 @pytest.mark.skip(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
-def test_update_url_title_length_exceeded(browser, create_test_urls):
+def test_update_url_title_length_exceeded(browser: WebDriver, create_test_urls):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
@@ -103,7 +103,7 @@ def test_update_url_title_length_exceeded(browser, create_test_urls):
 @pytest.mark.skip(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
-def test_update_url_string_length_exceeded(browser, create_test_urls):
+def test_update_url_string_length_exceeded(browser: WebDriver, create_test_urls):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
