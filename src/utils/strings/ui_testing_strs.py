@@ -28,7 +28,10 @@ class UI_TEST_STRINGS:
 
     # UTubs
     TEST_UTUB_NAME_1 = MOCK_UTUB_NAME_BASE + "1"
-    BODY_MODAL_UTUB_SAME_NAME = "You already have a UTub with a similar name."
+    BODY_MODAL_UTUB_CREATE_SAME_NAME = "You already have a UTub with a similar name."
+    BODY_MODAL_UTUB_UPDATE_SAME_NAME = (
+        "You are a member of a UTub with an identical name."
+    )
     BODY_MODAL_UTUB_DELETE = "This action is irreverisible!"
 
     MAX_CHAR_LIM_UTUB_NAME = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
