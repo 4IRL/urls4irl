@@ -73,10 +73,11 @@ function createURLSuccess(response) {
   url.canDelete = true;
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before createURL is completed
+  const currentNumOfURLs = getNumOfVisibleURLs();
   const newUrlCard = createURLBlock(
     url,
     [], // Mimics an empty array of tags to match against
-  );
+  ).addClass(currentNumOfURLs % 2 === 0 ? "even" : "odd");
 
   newUrlCard.insertAfter($("#createURLWrap"));
 }

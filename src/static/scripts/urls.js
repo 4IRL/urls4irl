@@ -128,6 +128,7 @@ function deselectURL(urlCard) {
   disableTabbingOnURLCardElements(urlCard);
   setURLCardSelectionEventListener(urlCard);
   setFocusEventListenersOnURLCard(urlCard);
+  urlCard.blur(); // Remove focus after deselecting the URL
 }
 
 function deselectAllURLs() {
@@ -241,6 +242,12 @@ function resetURLDeck() {
   resetNewURLForm();
   newURLInputRemoveEventListeners();
   $(".urlRow").remove();
+  hideIfShown($("#urlBtnCreate"));
+}
+
+function resetURLDeckOnDeleteUTub() {
+  hideIfShown($("#urlBtnCreate"));
+  hideIfShown($("#NoURLsSubheader"));
 }
 
 // Prevent editing URL title when needed
@@ -375,7 +382,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
     for (let i = 0; i < dictURLs.length; i++) {
       parent.append(
         createURLBlock(dictURLs[i], dictTags).addClass(
-          i % 2 == 0 ? "even" : "odd",
+          i % 2 === 0 ? "even" : "odd",
         ),
       );
     }
@@ -713,7 +720,8 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
 
   urlStringCancelBtnUpdate
     .find(".cancelButton")
-    .on("click.updateUrlString", function () {
+    .on("click.updateUrlString", function (e) {
+      e.stopPropagation();
       hideAndResetUpdateURLStringForm(urlCard);
     })
     .offAndOn("focus.updateUrlString", function () {
@@ -845,7 +853,8 @@ function createTagInputBlock(urlCard) {
 
   urlTagCancelBtnCreate
     .find(".cancelButton")
-    .on("click.createURLTag", function () {
+    .on("click.createURLTag", function (e) {
+      e.stopPropagation();
       hideAndResetCreateURLTagForm(urlCard);
     })
     .offAndOn("focus.createURLTag", function () {
