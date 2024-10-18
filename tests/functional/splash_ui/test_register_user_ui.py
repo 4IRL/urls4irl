@@ -4,6 +4,7 @@ import time
 # External libraries
 import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.common.by import By
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -17,6 +18,52 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_then_get_elements,
 )
+
+
+def test_register_modal_center_btn(browser: WebDriver):
+    """
+    Tests a user's ability to open the Register modal using the center button.
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user clicks the center register button
+    THEN ensure the modal opens
+    """
+
+    # Find and click login button to open modal
+    register_btn = wait_then_get_element(browser, SPL.BUTTON_REGISTER)
+    register_btn.click()
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    assert modal_element.is_displayed()
+
+    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
+
+    assert modal_title.text == "Register"
+
+
+def test_register_modal_RHS_btn(browser: WebDriver):
+    """
+    Tests a user's ability to open the Register modal using the RHS corner button
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user clicks the RHS register button
+    THEN ensure the modal opens
+    """
+
+    # Find and click login button to open modal
+    navbar = wait_then_get_element(browser, SPL.SPLASH_NAVBAR)
+
+    register_btn = navbar.find_element(By.CSS_SELECTOR, SPL.BUTTON_REGISTER)
+    register_btn.click()
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    assert modal_element.is_displayed()
+
+    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
+
+    assert modal_title.text == "Register"
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
