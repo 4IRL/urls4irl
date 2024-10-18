@@ -65,6 +65,43 @@ def pytest_collection_modifyitems(
         items[:] = selected_items
 
 
+def pytest_addoption(parser):
+    """
+    Option 1:
+    Adds CLI option for headless operation.
+    Default runs tests headless; option to observe UI interactions when debugging by assigning False.
+
+    Option 2:
+    Adds CLI option for display of pytest debug strings.
+    Default keeps all strings hidden from CLI.
+
+    Option 3:
+    Adds CLI option for display of Flask logs.
+    Default keeps all strings hidden from CLI.
+    """
+
+    # Option 1: Headless
+    parser.addoption(
+        "--show_browser",
+        default=False,
+        action="store_true",
+        help="Show browser when included",
+    )
+
+    # Option 2: Show Pytest debug strings
+    parser.addoption(
+        "--DS",
+        default=False,
+        action="store_true",
+        help="Show debug strings when included",
+    )
+
+    # Option 3: Show Flask logs
+    parser.addoption(
+        "--FL", default=False, action="store_true", help="Show Flask logs when included"
+    )
+
+
 warnings.filterwarnings(
     "ignore", category=DeprecationWarning
 )  # , message="'flask.Markup' is deprecated and will be removed in Flask 2.4. Import 'markupsafe.Markup' instead.")
