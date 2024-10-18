@@ -597,6 +597,7 @@ function deleteUTubSuccess() {
   setUIWhenNoUTubSelected();
 
   hideInputsAndSetUTubDeckSubheader();
+  resetURLDeckOnDeleteUTub();
 
   if (getNumOfUTubs() === 0) {
     resetUTubDeckIfNoUTubs();
