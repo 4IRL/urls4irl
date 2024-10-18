@@ -1,4 +1,5 @@
 # External libraries
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -7,6 +8,8 @@ from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.utils_for_test import login_user, wait_then_get_element
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.locators import SplashPageLocators as SPL
+
+pytestmark = pytest.mark.splash_ui
 
 
 def test_example(browser: WebDriver):
