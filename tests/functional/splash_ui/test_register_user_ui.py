@@ -15,6 +15,7 @@ from tests.functional.splash_ui.utils_for_test_splash_ui import (
     register_user_unconfirmed_password,
 )
 from tests.functional.utils_for_test import (
+    wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
 )
@@ -64,6 +65,24 @@ def test_register_modal_RHS_btn(browser: WebDriver):
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
     assert modal_title.text == "Register"
+
+
+def test_register_to_login_modal_btn(browser: WebDriver):
+    """
+    Tests a user's ability to change view from the Register modal to the Login modal
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens Register modal and wants to change to Login
+    THEN ensure the modal view changes
+    """
+    # Find and click login button to open modal
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_REGISTER)
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
+
+    assert modal_title.text == "Login!"
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
