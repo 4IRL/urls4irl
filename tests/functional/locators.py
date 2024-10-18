@@ -91,6 +91,7 @@ class MainPageLocators:
     BADGE_OWNER = "#UTubOwner > .member"
 
     # Modal
+    HOME_MODAL = "#confirmModal"
     HEADER_MODAL = "#confirmModalTitle"
     BODY_MODAL = "#confirmModalBody"
     BUTTON_MODAL_DISMISS = "#modalDismiss"
@@ -102,6 +103,7 @@ class SplashPageLocators:
     """A class for main page locators. All main page locators should come here"""
 
     # Options
+    SPLASH_NAVBAR = "#NavbarDropdownsSplash"
     BUTTON_REGISTER = ".to-register"
     BUTTON_LOGIN = ".to-login"
 
@@ -122,4 +124,5 @@ class SplashPageLocators:
     BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"
 
     # Modal
+    SPLASH_MODAL = "#SplashModal"
     HEADER_MODAL = "#SplashModalAlertBanner"

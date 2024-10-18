@@ -18,6 +18,8 @@ from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
 
+# General
+
 
 def get_all_attributes(driver: WebDriver, element: WebElement):
     """
@@ -56,7 +58,7 @@ def wait_then_get_element(browser: WebDriver, css_selector: str, time: float = 2
     try:
         wait = WebDriverWait(browser, time)
         element = wait.until(
-            EC.presence_of_element_located((By.CSS_SELECTOR, css_selector))
+            EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector))
         )
 
         return element
@@ -85,7 +87,7 @@ def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 
 
     try:
         elements = WebDriverWait(browser, time).until(
-            EC.presence_of_all_elements_located(
+            EC.visibility_of_all_elements_located(
                 (
                     By.CSS_SELECTOR,
                     css_selector,
