@@ -29,6 +29,7 @@ from tests.models_for_test import (
     all_tags,
 )
 
+# Order matters!
 TEST_SPLIT = (
     "unit",
     "splash",
@@ -37,6 +38,9 @@ TEST_SPLIT = (
     "urls",
     "tags",
     "cli",
+    "splash_ui",
+    # "utubs_ui",
+    # "tags_ui",
 )
 
 

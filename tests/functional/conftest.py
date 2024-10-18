@@ -49,7 +49,9 @@ def pytest_addoption(parser):
     )
 
     # Option 3: Show Flask logs
-    parser.addoption("--FL", action="store_true", help="Show Flask logs when included")
+    parser.addoption(
+        "--FL", action="store_true", help="Show Flask logs when included", default=False
+    )
 
 
 @pytest.fixture(scope="session")

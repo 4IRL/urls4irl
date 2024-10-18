@@ -23,6 +23,8 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 
+pytestmark = pytest.mark.splash_ui
+
 
 def test_register_modal_center_btn(browser: WebDriver):
     """
