@@ -1,8 +1,5 @@
 # Standard library
-import logging
 import multiprocessing
-import requests
-import socket
 from time import sleep
 from typing import Generator, Tuple
 
@@ -16,44 +13,11 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
 # Internal libraries
-from src import create_app
-from src.config import ConfigTest
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.ui_test_utils import clear_db, find_open_port, ping_server, run_app
+
 
 # CLI commands
-
-
-def pytest_addoption(parser):
-    """
-    Option 1:
-    Adds CLI option for headless operation.
-    Default runs tests headless; option to observe UI interactions when debugging by assigning False.
-
-    Option 2:
-    Adds CLI option for display of pytest debug strings.
-    Default keeps all strings hidden from CLI.
-
-    Option 3:
-    Adds CLI option for display of Flask logs.
-    Default keeps all strings hidden from CLI.
-    """
-
-    # Option 1: Headless
-    parser.addoption(
-        "--show_browser", action="store_true", help="Show browser when included"
-    )
-
-    # Option 2: Show Pytest debug strings
-    parser.addoption(
-        "--DS", action="store_true", help="Show debug strings when included"
-    )
-
-    # Option 3: Show Flask logs
-    parser.addoption(
-        "--FL", action="store_true", help="Show Flask logs when included", default=False
-    )
-
-
 @pytest.fixture(scope="session")
 def turn_off_headless(request):
     return request.config.getoption("--show_browser")
@@ -67,63 +31,6 @@ def debug_strings(request):
 @pytest.fixture(scope="session")
 def flask_logs(request):
     return request.config.getoption("--FL")
-
-
-def run_app(port: int, show_flask_logs: bool):
-    """
-    Runs app
-    """
-    config = ConfigTest()
-    app_for_test = create_app(config)
-    if not show_flask_logs:
-        log = logging.getLogger("werkzeug")
-        log.disabled = True
-    app_for_test.run(debug=False, port=port)
-
-
-def clear_db(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
-    # Clear db
-    _, cli_runner = runner
-    cli_runner.invoke(args=["managedb", "clear", "test"])
-    if debug_strings:
-        print("\ndb cleared")
-
-
-def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
-    for port in range(start_port, end_port + 1):
-        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
-            try:
-                s.bind(("127.0.0.1", port))
-                return port
-            except OSError:
-                continue
-    raise RuntimeError("No available port found in the specified range.")
-
-
-def ping_server(url: str, timeout: float = 2) -> bool:
-    total_time = 0
-    max_time = 10
-    is_server_ready = False
-
-    # Keep pinging server until status code 200 or time limit is reached
-    while not is_server_ready and total_time < max_time:
-        try:
-            status_code = requests.get(url, timeout=timeout).status_code
-        except requests.ConnectTimeout:
-            sleep(timeout)
-            total_time += timeout
-        else:
-            is_server_ready = status_code == 200
-
-    return is_server_ready
-
-
-@pytest.fixture(scope="session")
-def provide_config() -> ConfigTest:
-
-    config = ConfigTest()
-
-    return config
 
 
 @pytest.fixture(scope="session")
