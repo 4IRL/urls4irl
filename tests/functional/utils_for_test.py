@@ -17,6 +17,7 @@ from selenium.webdriver.support import expected_conditions as EC
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import ModalLocators as ML
 
 # General
 
@@ -148,6 +149,29 @@ def clear_then_send_keys(element: WebElement, input_text: str):
     input_field = element
     input_field.clear()
     input_field.send_keys(input_text)
+
+
+# Modal
+def open_splash_page_modal(browser: WebDriver, locator: str):
+    # Find and click login button to open modal
+    btn = wait_then_get_element(browser, locator)
+    btn.click()
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    return modal_element
+
+
+def dismiss_modal_with_btn(browser: WebDriver):
+    wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
+
+
+def dismiss_modal_with_click_out(browser: WebDriver):
+    modal = wait_then_get_element(browser, ML.ELEMENT_MODAL)
+    action = WebDriver.common.action_chains.ActionChains(browser)
+    action.move_to_element_with_offset(modal, -5, -5)
+    action.click()
+    action.perform()
 
 
 # Splash Page

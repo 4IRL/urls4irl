@@ -15,6 +15,9 @@ from tests.functional.splash_ui.utils_for_test_splash_ui import (
     register_user_unconfirmed_password,
 )
 from tests.functional.utils_for_test import (
+    dismiss_modal_with_btn,
+    dismiss_modal_with_click_out,
+    open_splash_page_modal,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -31,10 +34,7 @@ def test_register_modal_center_btn(browser: WebDriver):
     """
 
     # Find and click login button to open modal
-    register_btn = wait_then_get_element(browser, SPL.BUTTON_REGISTER)
-    register_btn.click()
-
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = open_splash_page_modal(browser, SPL.BUTTON_REGISTER)
 
     assert modal_element.is_displayed()
 
@@ -69,15 +69,14 @@ def test_register_modal_RHS_btn(browser: WebDriver):
 
 def test_login_to_register_modal_btn(browser: WebDriver):
     """
-    Tests a user's ability to change view from the Register modal to the Login modal
+    Tests a user's ability to change view from the Login modal to the Register modal
 
     GIVEN a fresh load of the U4I Splash page
-    WHEN user opens Register modal and wants to change to Login
+    WHEN user opens Login modal and wants to change to Register
     THEN ensure the modal view changes
     """
     # Find and click login button to open modal
-    login_btn = wait_then_get_element(browser, SPL.BUTTON_LOGIN)
-    login_btn.click()
+    open_splash_page_modal(browser, SPL.BUTTON_LOGIN)
     wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
@@ -85,6 +84,38 @@ def test_login_to_register_modal_btn(browser: WebDriver):
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
     assert modal_title.text == "Register"
+
+
+def test_dismiss_register_modal_btn(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page register modal by clicking the upper RHS 'x' button
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the register, then clicks the 'x'
+    THEN the modal is closed
+    """
+    # Find and click register button to open modal
+    modal_element = open_splash_page_modal(browser, SPL.BUTTON_REGISTER)
+
+    dismiss_modal_with_btn(browser)
+
+    assert not modal_element.is_displayed()
+
+
+def test_dismiss_register_modal_click(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page register modal by clicking outside of the modal
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the register, then clicks anywhere outside of the modal
+    THEN the modal is closed
+    """
+    # Find and click register button to open modal
+    modal_element = open_splash_page_modal(browser, SPL.BUTTON_REGISTER)
+
+    dismiss_modal_with_click_out(browser)
+
+    assert not modal_element.is_displayed()
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
