@@ -67,7 +67,7 @@ def test_register_modal_RHS_btn(browser: WebDriver):
     assert modal_title.text == "Register"
 
 
-def test_register_to_login_modal_btn(browser: WebDriver):
+def test_login_to_register_modal_btn(browser: WebDriver):
     """
     Tests a user's ability to change view from the Register modal to the Login modal
 
@@ -76,13 +76,15 @@ def test_register_to_login_modal_btn(browser: WebDriver):
     THEN ensure the modal view changes
     """
     # Find and click login button to open modal
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_REGISTER)
+    login_btn = wait_then_get_element(browser, SPL.BUTTON_LOGIN)
+    login_btn.click()
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
-    assert modal_title.text == "Login!"
+    assert modal_title.text == "Register"
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")

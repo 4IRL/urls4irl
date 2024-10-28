@@ -4,7 +4,11 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.functional.utils_for_test import login_user, wait_then_get_element
+from tests.functional.utils_for_test import (
+    login_user,
+    wait_then_click_element,
+    wait_then_get_element,
+)
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.locators import SplashPageLocators as SPL
 
@@ -57,6 +61,26 @@ def test_login_modal_RHS_btn(browser: WebDriver):
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
 
     assert modal_element.is_displayed()
+
+    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
+
+    assert modal_title.text == "Login!"
+
+
+def test_register_to_login_modal_btn(browser: WebDriver):
+    """
+    Tests a user's ability to change view from the Register modal to the Login modal
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens Register modal and wants to change to Login
+    THEN ensure the modal view changes
+    """
+    # Find and click register button to open modal
+    register_btn = wait_then_get_element(browser, SPL.BUTTON_REGISTER)
+    register_btn.click()
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_REGISTER)
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
