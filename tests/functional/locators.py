@@ -126,6 +126,7 @@ class SplashPageLocators:
     # Modal
     SPLASH_MODAL = "#SplashModal"
     HEADER_MODAL = "#SplashModalAlertBanner"
+    BUTTON_X_MODAL_DISMISS = ".close-register-login-modal"
 
 
 class ModalLocators:
@@ -133,3 +134,4 @@ class ModalLocators:
 
     ELEMENT_MODAL = ".modal"
     BUTTON_MODAL_DISMISS = ".btn-close"
+    BUTTON_X_MODAL_DISMISS = ".btn-close"

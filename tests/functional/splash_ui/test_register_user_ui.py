@@ -9,18 +9,18 @@ from selenium.webdriver.common.by import By
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
+from tests.functional.locators import ModalLocators as ML
 from tests.functional.splash_ui.utils_for_test_splash_ui import (
     register_user,
     register_user_unconfirmed_email,
     register_user_unconfirmed_password,
 )
 from tests.functional.utils_for_test import (
-    dismiss_modal_with_btn,
     dismiss_modal_with_click_out,
-    open_splash_page_modal,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
+    wait_until_hidden,
 )
 
 
@@ -32,9 +32,8 @@ def test_register_modal_center_btn(browser: WebDriver):
     WHEN user clicks the center register button
     THEN ensure the modal opens
     """
-
-    # Find and click login button to open modal
-    modal_element = open_splash_page_modal(browser, SPL.BUTTON_REGISTER)
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
 
     assert modal_element.is_displayed()
 
@@ -75,8 +74,7 @@ def test_login_to_register_modal_btn(browser: WebDriver):
     WHEN user opens Login modal and wants to change to Register
     THEN ensure the modal view changes
     """
-    # Find and click login button to open modal
-    open_splash_page_modal(browser, SPL.BUTTON_LOGIN)
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
     wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
@@ -94,10 +92,11 @@ def test_dismiss_register_modal_btn(browser: WebDriver):
     WHEN user opens the register, then clicks the 'x'
     THEN the modal is closed
     """
-    # Find and click register button to open modal
-    modal_element = open_splash_page_modal(browser, SPL.BUTTON_REGISTER)
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
 
-    dismiss_modal_with_btn(browser)
+    wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -110,10 +109,11 @@ def test_dismiss_register_modal_click(browser: WebDriver):
     WHEN user opens the register, then clicks anywhere outside of the modal
     THEN the modal is closed
     """
-    # Find and click register button to open modal
-    modal_element = open_splash_page_modal(browser, SPL.BUTTON_REGISTER)
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
 
     dismiss_modal_with_click_out(browser)
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
     assert not modal_element.is_displayed()
 
