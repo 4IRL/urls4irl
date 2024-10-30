@@ -26,6 +26,12 @@ on:
         required: true
       DEV_DB_PASSWORD:
         required: true
+      MAILJET_API_KEY:
+        required: true
+      MAILJET_SECRET_KEY:
+        required: true
+      BASE_EMAIL:
+        required: true
 
 jobs:
     DevDeploy:
@@ -76,6 +82,9 @@ jobs:
               POSTGRES_USER=${{ secrets.DEV_DB_USER }}
               POSTGRES_DB=${{ secrets.DEV_DB_NAME }}
               POSTGRES_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
+              MAILJET_API_KEY=${{ secrets.MAILJET_API_KEY }}
+              MAILJET_SECRET_KEY=${{ secrets.MAILJET_SECRET_KEY }}
+              BASE_EMAIL=${{ secrets.BASE_EMAIL }}
               SECRET_KEY=$KEY
               EOF
 
