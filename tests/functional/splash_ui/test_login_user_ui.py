@@ -1,4 +1,5 @@
 # External libraries
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -14,6 +15,8 @@ from tests.functional.utils_for_test import (
     dismiss_modal_with_click_out,
     wait_until_hidden,
 )
+
+pytestmark = pytest.mark.splash_ui
 
 
 def test_example(browser: WebDriver):

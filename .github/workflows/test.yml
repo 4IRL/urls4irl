@@ -45,6 +45,12 @@ jobs:
           - [5, 'UTub URL Integration Tests']
           - [6, 'UTub Tags Integration Tests']
           - [7, 'CLI Integration Tests']
+          - [8, 'UI Splash Functional Tests']
+          # - [9, 'UI Home Functional Tests']
+          # - [10, 'UI UTub Functional Tests']
+          # - [11, 'UI Member Functional Tests']
+          # - [12, 'UI UTub URL Functional Tests']
+          # - [13, 'UI UTub Tags Functional Tests']
 
     name: ${{ format('{0}', matrix.worker[1]) }}
 

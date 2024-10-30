@@ -29,6 +29,7 @@ from tests.models_for_test import (
     all_tags,
 )
 
+# Order matters!
 TEST_SPLIT = (
     "unit",
     "splash",
@@ -37,6 +38,9 @@ TEST_SPLIT = (
     "urls",
     "tags",
     "cli",
+    "splash_ui",
+    # "utubs_ui",
+    # "tags_ui",
 )
 
 
@@ -59,6 +63,43 @@ def pytest_collection_modifyitems(
         print(f"Running marker: {TEST_SPLIT[current_worker]}")
         config.hook.pytest_deselected(items=deselected_items)
         items[:] = selected_items
+
+
+def pytest_addoption(parser):
+    """
+    Option 1:
+    Adds CLI option for headless operation.
+    Default runs tests headless; option to observe UI interactions when debugging by assigning False.
+
+    Option 2:
+    Adds CLI option for display of pytest debug strings.
+    Default keeps all strings hidden from CLI.
+
+    Option 3:
+    Adds CLI option for display of Flask logs.
+    Default keeps all strings hidden from CLI.
+    """
+
+    # Option 1: Headless
+    parser.addoption(
+        "--show_browser",
+        default=False,
+        action="store_true",
+        help="Show browser when included",
+    )
+
+    # Option 2: Show Pytest debug strings
+    parser.addoption(
+        "--DS",
+        default=False,
+        action="store_true",
+        help="Show debug strings when included",
+    )
+
+    # Option 3: Show Flask logs
+    parser.addoption(
+        "--FL", default=False, action="store_true", help="Show Flask logs when included"
+    )
 
 
 warnings.filterwarnings(
