@@ -1,5 +1,5 @@
 class MainPageLocators:
-    """A class for main page locators. All main page locators should come here"""
+    """A collector class for main page locators"""
 
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
@@ -100,7 +100,7 @@ class MainPageLocators:
 
 
 class SplashPageLocators:
-    """A class for main page locators. All main page locators should come here"""
+    """A collector class for splash page locators"""
 
     # Options
     SPLASH_NAVBAR = "#NavbarDropdownsSplash"
@@ -126,3 +126,12 @@ class SplashPageLocators:
     # Modal
     SPLASH_MODAL = "#SplashModal"
     HEADER_MODAL = "#SplashModalAlertBanner"
+    BUTTON_X_MODAL_DISMISS = ".close-register-login-modal"
+
+
+class ModalLocators:
+    """A collector class for general modal locators"""
+
+    ELEMENT_MODAL = ".modal"
+    BUTTON_MODAL_DISMISS = ".btn-close"
+    BUTTON_X_MODAL_DISMISS = ".btn-close"

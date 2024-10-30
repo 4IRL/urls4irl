@@ -7,6 +7,7 @@ from selenium.common.exceptions import (
     NoSuchElementException,
     TimeoutException,
 )
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -106,7 +107,9 @@ def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 
         return None
 
 
-def wait_then_click_element(browser: WebDriver, css_selector: str, time: float = 2):
+def wait_then_click_element(
+    browser: WebDriver, css_selector: str, time: float = 2
+) -> WebElement:
     """
     Streamlines waiting for load and clicking a single element after user interaction.
 
@@ -116,7 +119,7 @@ def wait_then_click_element(browser: WebDriver, css_selector: str, time: float =
         (Optional) Time to wait, default 2s
 
     Returns:
-        Yields WebDriver
+        Returns clicked WebElement
     """
 
     try:
@@ -130,6 +133,7 @@ def wait_then_click_element(browser: WebDriver, css_selector: str, time: float =
         )
 
         element.click()
+        return element
     except NoSuchElementException:
         return None
 
@@ -148,6 +152,29 @@ def clear_then_send_keys(element: WebElement, input_text: str):
     input_field = element
     input_field.clear()
     input_field.send_keys(input_text)
+
+
+def wait_until_hidden(browser: WebDriver, css_selector: str):
+    element = browser.find_element(By.CSS_SELECTOR, css_selector)
+
+    wait = WebDriverWait(browser, timeout=2)
+    wait.until(lambda _: not element.is_displayed())
+
+    return element
+
+
+# Modal
+def dismiss_modal_with_click_out(browser: WebDriver):
+    action = ActionChains(browser)
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    width = modal_element.rect["width"]
+    height = modal_element.rect["height"]
+    offset = 15
+    action.move_to_element_with_offset(
+        modal_element, -width / 2 + offset, -height / 2 + offset
+    )
+    action.click()
+    action.perform()
 
 
 # Splash Page
