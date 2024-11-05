@@ -27,7 +27,7 @@ login_manager = LoginManager()
 email_sender = EmailSender()
 
 
-def create_app(config_class: Config = Config):
+def create_app(config_class: Config = Config) -> Flask | None:
     testing = config_class.TESTING
     production = config_class.PRODUCTION
     if testing and production:
@@ -79,6 +79,9 @@ def create_app(config_class: Config = Config):
     app.register_error_handler(404, handle_404_response)
 
     if not testing:
+        # Import models to initialize migration scripts
+        from src import models  # noqa: F401
+
         migrate.init_app(app)
 
     # with app.app_context():
