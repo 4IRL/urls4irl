@@ -4,6 +4,7 @@ from typing import Generator, Tuple
 from flask import Flask
 from flask.testing import FlaskCliRunner, FlaskClient
 from flask_login import FlaskLoginClient
+from flask_session.redis import RedisSessionInterface
 import pytest
 import warnings
 
@@ -120,6 +121,9 @@ def build_app(
 ) -> Generator[Tuple[Flask, ConfigTest], None, None]:
     config = ConfigTest()
     app_for_test = create_app(config)
+    if app_for_test is None:
+        return
+
     with app_for_test.app_context():
         db.init_app(app_for_test)
         db.create_all()
@@ -135,7 +139,8 @@ def app(build_app: Tuple[Flask, ConfigTest]) -> Generator[Flask, None, None]:
     app, testing_config = build_app
     yield app
     clear_database(testing_config, app, sess)
-    app.session_interface.cache.clear()
+    if isinstance(app.session_interface, RedisSessionInterface):
+        app.session_interface.client.flushdb()
 
 
 @pytest.fixture

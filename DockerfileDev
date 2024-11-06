@@ -9,7 +9,8 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PIP_NO_CACHE_DIR=1
 
 # Use code as working directory
-WORKDIR /code
+WORKDIR /code/u4i
+RUN chmod -R 775 /code
 
 # Create non-root user, update packages, clean up
 RUN set -ex \
@@ -27,6 +28,7 @@ COPY run.py ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY tests/ ./tests/
+COPY pytest.ini ./
 
 # Copy requirements files
 COPY requirements-dev.txt ./
@@ -40,8 +42,8 @@ RUN chown -R u4i-host:u4i-host-group /code
 USER u4i-host
 
 # Install development level requirements
-RUN python3 -m venv venv \
-	&& . venv/bin/activate \
+RUN python3 -m venv /code/venv \
+	&& . /code/venv/bin/activate \
 	&& pip install -r requirements-dev.txt --no-cache-dir
 
 
