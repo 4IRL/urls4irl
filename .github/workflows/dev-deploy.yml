@@ -100,7 +100,7 @@ jobs:
               docker compose -f compose-dev.yaml pull;
               docker compose -f compose-dev.yaml up --force-recreate --build -d;
               docker image prune -f;
-              docker cp u4i-dev-flask:/code/src/static ~/static;
+              docker cp u4i-dev-flask:/code/u4i/src/static ~/static;
               ';
               sleep 30;
           

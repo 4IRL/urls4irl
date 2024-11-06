@@ -1,7 +1,7 @@
 from __future__ import annotations
 from datetime import datetime
 
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from sqlalchemy import Column, DateTime, ForeignKey, Integer, String, UniqueConstraint
 
 from src import db
 from src.models.urls import Urls
@@ -42,6 +42,8 @@ class Utub_Urls(db.Model):
     standalone_url: Urls = db.relationship("Urls")
     utub = db.relationship("Utubs", back_populates="utub_urls")
     url_tags = db.relationship("Utub_Url_Tags", back_populates="tagged_url")
+
+    UniqueConstraint(utub_id, url_id, name="unique_url_per_utub")
 
     def serialized(
         self, current_user_id: int, utub_creator: int
