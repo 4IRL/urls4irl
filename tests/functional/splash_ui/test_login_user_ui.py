@@ -2,14 +2,18 @@
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.support.wait import WebDriverWait
+from selenium.webdriver.support import expected_conditions as EC
 
 # Internal libraries
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.utils_for_test import (
+    clear_then_send_keys,
     login_user,
+    open_forgot_password_modal,
     wait_then_click_element,
     wait_then_get_element,
     dismiss_modal_with_click_out,
@@ -121,6 +125,23 @@ def test_dismiss_login_modal_click(browser: WebDriver):
     assert not modal_element.is_displayed()
 
 
+def test_dismiss_login_modal_x(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page login modal by clicking the 'x' button in the upper right hand corner
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, then clicks the 'x' of the modal
+    THEN the modal is closed
+    """
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+
+    wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
 def test_login_test_user(browser: WebDriver, create_test_users):
     """
     Tests a user's ability to login using the splash page login modal
@@ -139,6 +160,119 @@ def test_login_test_user(browser: WebDriver, create_test_users):
 
     # Correct user logged in
     user_logged_in = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
-    userLoggedInText = "Logged in as " + UI_TEST_STRINGS.TEST_USERNAME_1
+    userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
     assert user_logged_in.text == userLoggedInText
+
+
+def test_forgot_password(browser: WebDriver):
+    """
+    Tests a user's ability to request a password reminder
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, clicks the 'Forgot Password' link, and enters their email
+    THEN the modal responds with an affirmation of reminder sent
+    """
+    open_forgot_password_modal(browser)
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    assert modal_element.is_displayed()
+
+    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
+
+    assert modal_title.text == "Forgot your password?"
+
+    email_input = wait_then_get_element(browser, SPL.INPUT_EMAIL)
+    clear_then_send_keys(email_input, UTS.TEST_PASSWORD_1)
+
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
+
+    assert (
+        modal_alert.text
+        == "If you entered a valid email, you should receive a reset password link soon."
+    )
+
+    submit_btn = wait_then_get_element(browser, SPL.BUTTON_SUBMIT)
+
+    assert submit_btn.get_attribute("disabled")
+
+
+def test_dismiss_forgot_password_modal_click(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page login modal by clicking outside of the modal
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, then clicks anywhere outside of the modal
+    THEN the modal is closed
+    """
+    open_forgot_password_modal(browser)
+
+    dismiss_modal_with_click_out(browser)
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
+def test_dismiss_forgot_password_modal_x(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page login modal by clicking the 'x' button in the upper right hand corner
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, then clicks the 'x' of the modal
+    THEN the modal is closed
+    """
+    open_forgot_password_modal(browser)
+
+    close_btn = browser.find_element(By.CSS_SELECTOR, ML.BUTTON_X_MODAL_DISMISS)
+    WebDriverWait(browser, 10).until(EC.staleness_of(close_btn))
+    # Now re-find the element
+    close_btn = browser.find_element(By.CSS_SELECTOR, ML.BUTTON_X_MODAL_DISMISS)
+    close_btn.click()
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
+@pytest.mark.skip(reason="Not happy path.")
+def test_forgot_password_empty_field(browser: WebDriver):
+    """
+    Tests site response to an empty submission of the email field in the Forgot Password modal
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, clicks the 'Forgot Password' link, clicks submit
+    THEN the modal responds with a suggestion to try again
+    """
+    open_forgot_password_modal(browser)
+
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 5)
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    error = modal_element.find_element(By.CLASS_NAME, "invalid-feedback")
+
+    assert error.text == "This field is required."
+
+
+@pytest.mark.skip(reason="Not happy path.")
+def test_forgot_password_invalid_email(browser: WebDriver):
+    """
+    Tests site response to a non-email submission of the email field in the Forgot Password modal
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, clicks the 'Forgot Password' link, types a non-email format string and clicks submit
+    THEN the modal responds with a suggestion to try again
+    """
+    open_forgot_password_modal(browser)
+
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 5)
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    error = modal_element.find_element(By.CLASS_NAME, "invalid-feedback")
+
+    assert error.text == "Invalid email address."
