@@ -12,7 +12,6 @@ services:
       - .env
     environment:
       - PRODUCTION=false
-      - DATABASE_URL_DEV=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - REDIS_URI=redis://redis:6379/0
       - FLASK_DEBUG=true
       - BASE_EMAIL=u4i@urls4irl.app
@@ -22,7 +21,7 @@ services:
     command: >
       sh -c "
       sleep 5 &&
-      . venv/bin/activate &&
+      . /code/venv/bin/activate &&
       flask db upgrade &&
       gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
       "
