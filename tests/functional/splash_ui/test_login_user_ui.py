@@ -1,6 +1,7 @@
 # External libraries
 import pytest
 from selenium.webdriver.common.by import By
+from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
@@ -227,11 +228,18 @@ def test_dismiss_forgot_password_modal_x(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    close_btn = browser.find_element(By.CSS_SELECTOR, ML.BUTTON_X_MODAL_DISMISS)
-    WebDriverWait(browser, 10).until(EC.staleness_of(close_btn))
-    # Now re-find the element
-    close_btn = browser.find_element(By.CSS_SELECTOR, ML.BUTTON_X_MODAL_DISMISS)
-    close_btn.click()
+    try:
+        close_btn = browser.find_element(By.CSS_SELECTOR, ML.BUTTON_X_MODAL_DISMISS)
+        close_btn.click()
+
+    except TimeoutException:
+        print("Timeout")
+    except StaleElementReferenceException:
+        print("Stale")
+        WebDriverWait(browser, 10).until(EC.staleness_of(close_btn))
+        # Now re-find the element
+        close_btn = browser.find_element(By.CSS_SELECTOR, ML.BUTTON_X_MODAL_DISMISS)
+        close_btn.click()
 
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
