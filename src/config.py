@@ -14,6 +14,11 @@ load_dotenv(path.join(path.dirname(basedir), ".env"))
 IS_DOCKER = environ.get(ENV.DOCKER, default="false").lower() == "true"
 IS_PRODUCTION = environ.get(ENV.PRODUCTION, default="false").lower() == "true"
 
+POSTGRES_USER = environ.get(ENV.POSTGRES_USER)
+POSTGRES_PASSWORD = environ.get(ENV.POSTGRES_PASSWORD)
+POSTGRES_DB = environ.get(ENV.POSTGRES_DB)
+POSTGRES_TEST_DB = environ.get(ENV.POSTGRES_TEST_DB, default=None)
+
 
 def _build_db_uri(
     username: str | None, password: str | None, database: str | None, database_host: str
@@ -28,11 +33,6 @@ def _build_db_uri(
         return None
     return f"postgresql://{username}:{password}@{database_host}:5432/{database}"
 
-
-POSTGRES_USER = environ.get(ENV.POSTGRES_USER)
-POSTGRES_PASSWORD = environ.get(ENV.POSTGRES_PASSWORD)
-POSTGRES_DB = environ.get(ENV.POSTGRES_DB)
-POSTGRES_TEST_DB = environ.get(ENV.POSTGRES_TEST_DB, default=None)
 
 PROD_DB_URI = (
     None
@@ -49,7 +49,7 @@ TEST_DB_URI = _build_db_uri(
     username=POSTGRES_USER,
     password=POSTGRES_PASSWORD,
     database=POSTGRES_TEST_DB,
-    database_host="localhost",
+    database_host="test-db" if IS_DOCKER else "localhost",
 )
 
 DEV_DB_URI = _build_db_uri(
@@ -72,17 +72,18 @@ class Config:
     FLASK_DEBUG = environ.get("FLASK_DEBUG")
     SECRET_KEY = environ.get(ENV.SECRET_KEY)
     SESSION_PERMANENT = "False"
-    SESSION_TYPE = (
-        "cachelib" if environ.get(ENV.REDIS_URI, default=None) is None else "redis"
-    )
-    SESSION_CACHELIB = FileSystemCache(
-        threshold=500, cache_dir=f"{path.dirname(__file__)}/sessions"
-    )
-    SESSION_REDIS = (
-        Redis.from_url(environ.get(ENV.REDIS_URI))
-        if environ.get(ENV.REDIS_URI, default=None) is not None
-        else None
-    )
+    if environ.get(ENV.REDIS_URI, default=None) is None:
+        SESSION_TYPE = "cachelib"
+        SESSION_CACHELIB = FileSystemCache(
+            threshold=500, cache_dir=f"{path.dirname(__file__)}/sessions"
+        )
+    else:
+        SESSION_TYPE = "redis"
+        SESSION_REDIS = (
+            Redis.from_url(environ.get(ENV.REDIS_URI, ""))
+            if environ.get(ENV.REDIS_URI, default=None) is not None
+            else None
+        )
     SESSION_SERIALIZATION_FORMAT = "json"
     WTF_CSRF_TIME_LIMIT = (
         CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS
