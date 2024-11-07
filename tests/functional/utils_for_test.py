@@ -6,6 +6,7 @@ from selenium.common.exceptions import (
     ElementNotInteractableException,
     NoSuchElementException,
     TimeoutException,
+    StaleElementReferenceException,
 )
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
@@ -13,6 +14,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
+
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -43,7 +45,9 @@ def get_all_attributes(driver: WebDriver, element: WebElement):
     )
 
 
-def wait_then_get_element(browser: WebDriver, css_selector: str, time: float = 2):
+def wait_then_get_element(
+    browser: WebDriver, css_selector: str, time: float = 2
+) -> WebElement:
     """
     Streamlines waiting for single element load after user interaction.
 
@@ -67,9 +71,13 @@ def wait_then_get_element(browser: WebDriver, css_selector: str, time: float = 2
         print("ElementNotInteractableException")
         return None
     except NoSuchElementException:
+        print("NoSuchElementException")
         return None
     except TimeoutException:
         print("Timeout")
+        return None
+    except StaleElementReferenceException:
+        print("Stale")
         return None
 
 
@@ -178,6 +186,11 @@ def dismiss_modal_with_click_out(browser: WebDriver):
 
 
 # Splash Page
+def open_forgot_password_modal(browser: WebDriver):
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+    wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
+
+
 def login_user(
     browser: WebDriver,
     username: str = UTS.TEST_USERNAME_1,

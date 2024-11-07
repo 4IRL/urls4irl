@@ -94,7 +94,7 @@ def test_dismiss_register_modal_btn(browser: WebDriver):
     WHEN user opens the register, then clicks the 'x'
     THEN the modal is closed
     """
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
 
     wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
 
@@ -111,9 +111,26 @@ def test_dismiss_register_modal_click(browser: WebDriver):
     WHEN user opens the register, then clicks anywhere outside of the modal
     THEN the modal is closed
     """
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
 
     dismiss_modal_with_click_out(browser)
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
+def test_dismiss_register_modal_x(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page login modal by clicking the 'x' button in the upper right hand corner
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, then clicks the 'x' of the modal
+    THEN the modal is closed
+    """
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
+
+    wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
 
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
