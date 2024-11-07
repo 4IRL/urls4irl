@@ -1,5 +1,7 @@
 import pytest
 from tests.integration.cli.utils import (
+    verify_custom_url_added_to_all_utubs,
+    verify_custom_url_in_database,
     verify_users_added,
     verify_utubs_added_no_duplicates,
     verify_utubs_added_duplicates,
@@ -109,6 +111,112 @@ def test_add_mock_utub_members_no_utub_duplicates(runner):
             verify_users_added()
             verify_utubs_added_no_duplicates()
             verify_utubmembers_added()
+
+
+def test_add_custom_mock_urls_with_utub_duplicates_one_by_one(runner):
+    """
+    GIVEN a developer wanting to add custom mock URLs to UTubs, including duplicate UTubs
+    WHEN the developer provides the following CLI command:
+        `flask addmock url foo bar baz`
+    THEN verify that mock users are added, that UTubs are added to the database with duplicates,
+        that UTub members are added to all created UTubs, and that all URLs are added
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+    URLS = ["google.com", "macro macro macro", "facebook.com"]
+
+    for count in range(DUPLICATE_COUNT):
+        cli_runner.invoke(args=["addmock", "url", URLS[0]])
+        with app.app_context():
+            verify_users_added()
+            verify_utubs_added_duplicates(count + 1)
+            verify_custom_url_in_database(URLS[0])
+            verify_custom_url_added_to_all_utubs(URLS[0])
+
+    # Add additional URLs
+    for url in URLS[1:]:
+        cli_runner.invoke(args=["addmock", "url", url])
+        with app.app_context():
+            verify_custom_url_in_database(url)
+            verify_custom_url_added_to_all_utubs(url)
+
+
+def test_add_custom_mock_urls_with_utub_duplicates_all_at_once(runner):
+    """
+    GIVEN a developer wanting to add custom mock URLs to UTubs, including duplicate UTubs
+    WHEN the developer provides the following CLI command:
+        `flask addmock url foo bar baz`
+    THEN verify that mock users are added, that UTubs are added to the database with duplicates,
+        that UTub members are added to all created UTubs, and that all URLs are added
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+    URLS = ["google.com", "macro macro macro", "facebook.com"]
+
+    for count in range(DUPLICATE_COUNT):
+        cli_runner.invoke(args=["addmock", "url", URLS[0], URLS[1], URLS[2]])
+        with app.app_context():
+            verify_users_added()
+            verify_utubs_added_duplicates(count + 1)
+            for url in URLS:
+                verify_custom_url_in_database(url)
+                verify_custom_url_added_to_all_utubs(url)
+
+
+def test_add_custom_mock_urls_no_utub_duplicates_one_by_one(runner):
+    """
+    GIVEN a developer wanting to add custom mock URLs to UTubs, including duplicate UTubs
+    WHEN the developer provides the following CLI command:
+        `flask addmock url foo bar baz`
+    THEN verify that mock users are added, that UTubs are added to the database with duplicates,
+        that UTub members are added to all created UTubs, and that all URLs are added
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+    URLS = ["google.com", "macro macro macro", "facebook.com"]
+
+    cli_runner.invoke(args=["addmock", "url", "--no-dupes", URLS[0]])
+    with app.app_context():
+        verify_users_added()
+        verify_utubs_added_no_duplicates()
+        verify_custom_url_in_database(URLS[0])
+        verify_custom_url_added_to_all_utubs(URLS[0])
+
+    # Add additional URLs
+    for url in URLS[1:]:
+        cli_runner.invoke(args=["addmock", "url", url])
+        with app.app_context():
+            verify_custom_url_in_database(url)
+            verify_custom_url_added_to_all_utubs(url)
+
+
+def test_add_custom_mock_urls_no_utub_duplicates_all_at_once(runner):
+    """
+    GIVEN a developer wanting to add custom mock URLs to UTubs, including duplicate UTubs
+    WHEN the developer provides the following CLI command:
+        `flask addmock url foo bar baz`
+    THEN verify that mock users are added, that UTubs are added to the database with duplicates,
+        that UTub members are added to all created UTubs, and that all URLs are added
+
+    Args:
+        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
+    """
+    app, cli_runner = runner
+    URLS = ["google.com", "macro macro macro", "facebook.com"]
+
+    cli_runner.invoke(args=["addmock", "url", "--no-dupes", URLS[0], URLS[1], URLS[2]])
+    with app.app_context():
+        verify_users_added()
+        verify_utubs_added_no_duplicates()
+        for url in URLS:
+            verify_custom_url_in_database(url)
+            verify_custom_url_added_to_all_utubs(url)
 
 
 def test_add_mock_urls_with_utub_duplicates(runner):
