@@ -40,6 +40,7 @@ TEST_SPLIT = (
     "tags",
     "cli",
     "splash_ui",
+    "home_ui",
     # "utubs_ui",
     # "tags_ui",
 )
