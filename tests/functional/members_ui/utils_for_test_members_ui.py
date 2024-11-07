@@ -74,9 +74,6 @@ def create_member_active_utub(browser: WebDriver, member_name: str):
         create_member_input = wait_then_get_element(browser, MPL.INPUT_MEMBER_CREATE)
         clear_then_send_keys(create_member_input, member_name)
 
-        # Submits new member form
-        wait_then_click_element(browser, MPL.BUTTON_MEMBER_SUBMIT_CREATE)
-
         return True
     else:
         return False
