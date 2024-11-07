@@ -25,7 +25,6 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 
 from datetime import datetime
 import random
-import re
 import requests
 from typing import Union
 from url_normalize import url_normalize
@@ -171,9 +170,9 @@ def perform_get_request(url: str, headers: dict[str, str]) -> requests.Response:
                 """
                 This generally indicates a Cloudflare challenge - bypass by checking archive records for the requested URL
                 If a given response is valid, the "url" value of the response object is replaced with the requested URL from the user.
-                This is because, if Google cache or Wayback Archive are able to find the URL, we can consider it valid
+                This is because, if Wayback Archive is able to find the URL, we can consider it valid
                 """
-                internet_cache_response = perform_google_or_wayback_check(url, headers)
+                internet_cache_response = perform_wayback_check(url, headers)
                 if internet_cache_response is not None:
                     return internet_cache_response
 
@@ -202,25 +201,17 @@ def perform_both_all_user_agent_and_google_or_wayback_check(
             except InvalidURLError:
                 continue
         else:
-            response = perform_google_or_wayback_check(url, headers)
+            response = perform_wayback_check(url, headers)
             if response is not None:
                 return response
 
     raise InvalidURLError("Unable to connect to and validate the URL.")
 
 
-def perform_google_or_wayback_check(
+def perform_wayback_check(
     url: str, headers: dict[str, str]
 ) -> Union[None, requests.Response]:
     """
-    Google Cache performs best with no explicit headers except user agent needed.
-    A GET request is needed, as the standard domain is contained within the HTML response of the
-        Google Cache request.
-
-    Typical HTML response will include the following lines to be parsed:
-        <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
-        <base href="https://urls4irl.app/">
-
     Wayback archive responds with a found URL in the `links` property of the Response object.
     The Wayback archive is searched from 2020 onwards.
     The response contains an `original` property in the `links` property, which finally contains `url` property
@@ -235,37 +226,6 @@ def perform_google_or_wayback_check(
     Returns:
         Union[None, requests.Response]: A Response object if successful found in either internet cache, else None
     """
-
-    # Google cache just needs the User-Agent header to respond succesfully
-    user_agent_header = {
-        VALIDATION_STRS.USER_AGENT: headers.get(VALIDATION_STRS.USER_AGENT)
-    }
-
-    # GET request needed for google as the HTML needs to be parsed from the response to read final URL
-    google_cache_response = perform_get_request(
-        VALIDATION_STRS.GOOGLE_CACHE + url, user_agent_header
-    )
-    if google_cache_response.status_code < 400:
-        if google_cache_response.status_code >= 300:
-            google_cache_response = perform_get_request(
-                google_cache_response.headers.get(VALIDATION_STRS.LOCATION), headers
-            )
-
-        google_headers = google_cache_response.headers
-        if (
-            VALIDATION_STRS.CONTENT_TYPE in google_headers
-            and VALIDATION_STRS.HTML_CONTENT
-            in google_headers.get(VALIDATION_STRS.CONTENT_TYPE)
-        ):
-            # REGEX to find the <base> element in the HTML code, containing the relevant HREF to the final URL
-            match = re.search(r'<base[^>]href="([^"]*)"', google_cache_response.text)
-            url = match.group(1) if match else url
-
-        google_cache_response.status_code = 200
-        google_cache_response.url = url
-        print(f"Google cached, {url=}")
-        return google_cache_response
-
     # Iterate from year 2020 onwards for WayBack Archive
     current_year = datetime.now().year
 
@@ -389,3 +349,4 @@ def filter_out_common_redirect(url: str) -> str:
 if __name__ == "__main__":
     print(find_common_url("https://regex101.com/https://regex101.com/"))
     # print(find_common_url("www.stackoverflow.com"))
+    # print(perform_wayback_check("www.stackoverflow.com", headers=generate_headers("www.stackoverflow.com")))
