@@ -26,7 +26,7 @@ from tests.functional.utils_for_test import (
 pytestmark = pytest.mark.splash_ui
 
 
-def test_register_modal_center_btn(browser: WebDriver):
+def test_open_register_modal_center_btn(browser: WebDriver):
     """
     Tests a user's ability to open the Register modal using the center button.
 
@@ -44,7 +44,7 @@ def test_register_modal_center_btn(browser: WebDriver):
     assert modal_title.text == "Register"
 
 
-def test_register_modal_RHS_btn(browser: WebDriver):
+def test_open_register_modal_RHS_btn(browser: WebDriver):
     """
     Tests a user's ability to open the Register modal using the RHS corner button
 
