@@ -67,6 +67,11 @@ def verify_urls_in_database():
         assert Urls.query.filter(Urls.url_string == url).count() == 1
 
 
+def verify_custom_url_in_database(url: str):
+    """Verifies custom URL is stored in the database"""
+    assert Urls.query.filter(Urls.url_string == url).count() == 1
+
+
 def verify_urls_added_to_all_utubs():
     """Verifies all mock URLs are added to each UTub"""
     all_utubs: list[Utubs] = Utubs.query.all()
@@ -75,6 +80,14 @@ def verify_urls_added_to_all_utubs():
         assert sorted(
             [url.standalone_url.url_string for url in urls_in_utub]
         ) == sorted(MOCK_URL_STRINGS)
+
+
+def verify_custom_url_added_to_all_utubs(url: str):
+    """Verifies all mock URLs are added to each UTub"""
+    all_utubs: list[Utubs] = Utubs.query.all()
+    for utub in all_utubs:
+        urls_in_utub: list[Utub_Urls] = utub.utub_urls
+        assert url in [url.standalone_url.url_string for url in urls_in_utub]
 
 
 def verify_tags_in_utubs():

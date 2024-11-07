@@ -106,19 +106,21 @@ All tests are included in the _tests_ directory
 From this directory, with the virtual environment enabled, the following commands are enabled:
 
 ```
-`flask addmock users`                   Adds 5 mock users with their emails validated
-`flask addmock utubs`                   Adds 5 UTubs, this can be repeated to create multiple duplicate UTubs with same name. Runs users command first.
-`flask addmock utubs --no-dupes`        Creates 5 UTubs but won't if UTub with name already exists. Runs users command first.
-`flask addmock utubmembers`             Adds all users to all UTubs, even duplicates. Runs utubs commmand first.
-`flask addmock utubmembers --no-dupes`  Adds all users to all UTubs, even duplicates. Does not create duplicate UTubs.
-`flask addmock urls`                    Adds 5 URLs to all UTubs, runs utubmembers command first
-`flask addmock urls --no-dupes`         Adds 5 URLs to all UTubs, without creating duplicate UTubs.
-`flask addmock tags`                    Adds 5 tags to each URL in each UTub, runs urls command first. 
-`flask addmock tags --no-dupes`         Adds 5 tags to each URL in each UTub, without creating duplicate UTubs.
-`flask addmock all`                     Equivalent to `flask addmock tags`
-`flask addmock all --no-dupes`          Equivalent to `flask addmock tags --no-dupes`
-`flask managedb clear [test|dev]`       Clears each table, can specify either test or dev database
-`flask managedb drop [test|dev]`        Drops all tables in the datbase, can specify either test or dev database
+`flask addmock users`                       Adds 5 mock users with their emails validated
+`flask addmock utubs`                       Adds 5 UTubs, this can be repeated to create multiple duplicate UTubs with same name. Runs users command first.
+`flask addmock utubs --no-dupes`            Creates 5 UTubs but won't if UTub with name already exists. Runs users command first.
+`flask addmock utubmembers`                 Adds all users to all UTubs, even duplicates. Runs utubs commmand first.
+`flask addmock utubmembers --no-dupes`      Adds all users to all UTubs, even duplicates. Does not create duplicate UTubs.
+`flask addmock url foo bar baz`             Adds "foo", "bar", and "baz" as URLs to all UTubs, runs utubmembers command first
+`flask addmock url --no-dupes foo bar baz`  Adds "foo", "bar", and "baz" as URLs to all UTubs, runs utubmembers command first. Does not create duplicate UTubs.
+`flask addmock urls`                        Adds 5 URLs to all UTubs, runs utubmembers command first
+`flask addmock urls --no-dupes`             Adds 5 URLs to all UTubs, without creating duplicate UTubs.
+`flask addmock tags`                        Adds 5 tags to each URL in each UTub, runs urls command first. 
+`flask addmock tags --no-dupes`             Adds 5 tags to each URL in each UTub, without creating duplicate UTubs.
+`flask addmock all`                         Equivalent to `flask addmock tags`
+`flask addmock all --no-dupes`              Equivalent to `flask addmock tags --no-dupes`
+`flask managedb clear [test|dev]`           Clears each table, can specify either test or dev database
+`flask managedb drop [test|dev]`            Drops all tables in the datbase, can specify either test or dev database
 ```
 
 Note that some of these commands assume a predefined set of environment variables defining the database URI for either test or development.

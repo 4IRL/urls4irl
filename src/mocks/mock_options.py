@@ -6,7 +6,7 @@ from sqlalchemy import MetaData
 
 from src.db import db
 from src.mocks.mock_data.tags import generate_mock_tags
-from src.mocks.mock_data.urls import generate_mock_urls
+from src.mocks.mock_data.urls import generate_mock_urls, generate_custom_mock_url
 from src.mocks.mock_data.users import generate_mock_users
 from src.mocks.mock_data.utubmembers import generate_mock_utubmembers
 from src.mocks.mock_data.utubs import generate_mock_utubs
@@ -56,6 +56,23 @@ def mock_members(no_dupes: bool):
     generate_mock_utubs(db, no_dupes)
     generate_mock_utubmembers(db)
     print("\n--- Finished adding mock UTub members ---\n\n")
+
+
+@mocks_cli.command(
+    "url",
+    help="Adds a URL to each UTub, added by UTub creator. Does all of users/utubs/utubmembers.",
+)
+@click.argument("urls", nargs=-1, required=True)
+@click.option(
+    "--no-dupes", is_flag=True, help="Prevent UTubs being created with the same name"
+)
+def mock_url(urls: list[str], no_dupes: bool):
+    print(f"\n\n--- Adding mock URLs: {urls} to each UTub  ---\n")
+    generate_mock_users(db)
+    generate_mock_utubs(db, no_dupes)
+    generate_mock_utubmembers(db)
+    generate_custom_mock_url(db, urls)
+    print("\n--- Finished adding mock URLs to each UTub ---\n\n")
 
 
 @mocks_cli.command(
