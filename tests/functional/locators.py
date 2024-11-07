@@ -82,6 +82,7 @@ class MainPageLocators:
     SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"
     BUTTON_MEMBER_CREATE = "#memberBtnCreate"
     INPUT_MEMBER_CREATE = "#memberCreate"
+    BUTTON_MEMBER_CANCEL_CREATE = "#memberCancelBtnCreate"
     BUTTON_MEMBER_SUBMIT_CREATE = "#memberSubmitBtnCreate"
     BUTTON_UTUB_LEAVE = "#memberSelfBtnDelete"
     BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"

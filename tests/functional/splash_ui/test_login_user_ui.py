@@ -35,7 +35,7 @@ def test_example(browser: WebDriver):
     assert "URLS4IRL" in browser.title
 
 
-def test_login_modal_center_btn(browser: WebDriver):
+def test_open_login_modal_center_btn(browser: WebDriver):
     """
     Tests a user's ability to open the Login modal using the center button.
 
@@ -53,7 +53,7 @@ def test_login_modal_center_btn(browser: WebDriver):
     assert modal_title.text == "Login!"
 
 
-def test_login_modal_RHS_btn(browser: WebDriver):
+def test_open_login_modal_RHS_btn(browser: WebDriver):
     """
     Tests a user's ability to open the Login modal using the RHS corner button
 
@@ -160,7 +160,7 @@ def test_login_test_user(browser: WebDriver, create_test_users):
     assert_login(browser)
 
 
-def test_forgot_password(browser: WebDriver):
+def test_open_forgot_password_modal(browser: WebDriver):
     """
     Tests a user's ability to request a password reminder
 
@@ -223,22 +223,8 @@ def test_dismiss_forgot_password_modal_x(browser: WebDriver):
     open_forgot_password_modal(browser)
 
     time.sleep(2)
-    # WebDriverWait(browser, 10)
 
     wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS)
-
-    # try:
-    #     close_btn = browser.find_element(By.CSS_SELECTOR, ML.BUTTON_X_MODAL_DISMISS)
-    #     close_btn.click()
-
-    # except TimeoutException:
-    #     print("Timeout")
-    # except StaleElementReferenceException:
-    #     print("Stale")
-    #     WebDriverWait(browser, 10).until(EC.staleness_of(close_btn))
-    #     # Now re-find the element
-    #     close_btn = browser.find_element(By.CSS_SELECTOR, ML.BUTTON_X_MODAL_DISMISS)
-    #     close_btn.click()
 
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
