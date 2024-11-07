@@ -222,6 +222,31 @@ def login_user(
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
 
+def assert_login(browser: WebDriver):
+    """
+    Streamlines actions needed to login a user.
+
+    Args:
+        WebDriver open to U4I Splash Page
+        (Optional) Username of user to login as, defaults to u4i_test1
+        (Optional) Password, defaults to u4i_test1@urls4irl.app
+
+    Returns:
+        N/A
+    """
+
+    # Confirm user logged in
+    # Logout button visible
+    btn_logout = wait_then_get_element(browser, MPL.BUTTON_LOGOUT)
+    assert btn_logout.text == "Logout"
+
+    # Correct user logged in
+    user_logged_in = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
+
+    assert user_logged_in.text == userLoggedInText
+
+
 # UTub Deck
 def select_utub_by_name(browser: WebDriver, utub_name: str):
     """

@@ -11,10 +11,10 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.utils_for_test import (
+    assert_login,
     clear_then_send_keys,
     login_user,
     open_forgot_password_modal,
@@ -157,16 +157,7 @@ def test_login_test_user(browser: WebDriver, create_test_users):
 
     login_user(browser)
 
-    # Confirm user logged in
-    # Logout button visible
-    btn_logout = wait_then_get_element(browser, MPL.BUTTON_LOGOUT)
-    assert btn_logout.text == "Logout"
-
-    # Correct user logged in
-    user_logged_in = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
-    userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
-
-    assert user_logged_in.text == userLoggedInText
+    assert_login(browser)
 
 
 def test_forgot_password(browser: WebDriver):

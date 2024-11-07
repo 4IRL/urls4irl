@@ -4,6 +4,7 @@ class MainPageLocators:
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"
+    U4I_LOGO = ".navbar-brand"
 
     # UTub Deck
     SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
@@ -128,6 +129,9 @@ class SplashPageLocators:
     SPLASH_MODAL_ALERT = "#SplashModalAlertBanner"
     BUTTON_X_MODAL_DISMISS = ".close-register-login-modal"
     BUTTON_FORGOT_PASSWORD_MODAL = ".to-forgot-password"
+
+    # Jumbotron
+    WELCOME_TEXT = "#splash-major-text"
 
 
 class ModalLocators:
