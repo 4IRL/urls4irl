@@ -547,6 +547,16 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                 key=lambda test_user: test_user[MODEL_STRS.ID],
             )
 
+            # Array of URLs in both need to be sorted by UTUB_URL_ID
+            test_utub[MODEL_STRS.URLS] = sorted(
+                test_utub[MODEL_STRS.URLS],
+                key=lambda utub_url: utub_url[MODEL_STRS.UTUB_URL_ID],
+            )
+
+            utub_in_data_serialized["urls"].sort(
+                key=lambda utub_url: utub_url[MODEL_STRS.UTUB_URL_ID]
+            )
+
             # Array of Tags needs to be sorted by ID to match
             utub_in_data_serialized[MODEL_STRS.TAGS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.TAGS],
