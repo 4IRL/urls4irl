@@ -162,10 +162,10 @@ def clear_then_send_keys(element: WebElement, input_text: str):
     input_field.send_keys(input_text)
 
 
-def wait_until_hidden(browser: WebDriver, css_selector: str):
+def wait_until_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
     element = browser.find_element(By.CSS_SELECTOR, css_selector)
 
-    wait = WebDriverWait(browser, timeout=2)
+    wait = WebDriverWait(browser, timeout)
     wait.until(lambda _: not element.is_displayed())
 
     return element

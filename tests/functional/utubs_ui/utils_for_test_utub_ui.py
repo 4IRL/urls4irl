@@ -40,9 +40,6 @@ def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
     )
     clear_then_send_keys(create_utub_description_input, utub_description)
 
-    # Submits new UTub
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_SUBMIT_CREATE)
-
 
 def update_utub_name(browser: WebDriver, utub_name: str):
     """
