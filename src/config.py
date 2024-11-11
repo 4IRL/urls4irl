@@ -103,6 +103,7 @@ class Config:
         ),  # Currently, not testing in local docker containers
     }
     REDIS_URI = environ.get(ENV.REDIS_URI, default="memory://")
+    DOCKER = IS_DOCKER
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:

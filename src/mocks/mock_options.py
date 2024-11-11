@@ -1,7 +1,8 @@
 import click
-from flask import Flask
+from flask import Flask, current_app, session
 from flask.cli import AppGroup, with_appcontext
 from flask_sqlalchemy import SQLAlchemy
+from flask_login import login_user
 from sqlalchemy import MetaData
 
 from src.db import db
@@ -10,6 +11,7 @@ from src.mocks.mock_data.urls import generate_mock_urls, generate_custom_mock_ur
 from src.mocks.mock_data.users import generate_mock_users
 from src.mocks.mock_data.utubmembers import generate_mock_utubmembers
 from src.mocks.mock_data.utubs import generate_mock_utubs
+from src.models.users import Users
 
 HELP_SUMMARY_MOCKS = """Add mock data to the dev database."""
 
@@ -118,6 +120,31 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
     print(
         "\n--- Finished adding all mock users, UTubs, members, urls, and tags ---\n\n"
     )
+
+
+@mocks_cli.command(
+    "login",
+    help="Logs in user with user_id. Adds all mock users first. Default ID is 1.",
+)
+@click.argument("user_id", nargs=1, required=True, default=1, type=int)
+@with_appcontext
+def login_mock_user(user_id: int):
+    generate_mock_users(db, silent=True)
+    user: Users = Users.query.get(user_id)
+    if not user:
+        click.echo("User not found to login", err=True)
+        return
+
+    with current_app.test_request_context("/"):
+        if login_user(user):
+            session.modified = True
+            click.echo(f"{session.sid}")
+            current_app.session_interface.save_session(
+                current_app, session, response=current_app.make_response("Testing")
+            )
+
+        else:
+            click.echo("N/A")
 
 
 @db_manage_cli.command(

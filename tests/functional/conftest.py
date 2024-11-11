@@ -13,6 +13,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
 # Internal libraries
+from src.config import ConfigTest
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.ui_test_utils import clear_db, find_open_port, ping_server, run_app
 
@@ -77,9 +78,13 @@ def build_driver(
     """
     Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
     """
+    config = ConfigTest()
     open_port = provide_port
     options = Options()
     options.add_argument("--disable-notifications")
+    if config.DOCKER:
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
 
     if turn_off_headless:
         # Disable Chrome browser pop-up notifications
@@ -188,6 +193,38 @@ def create_test_users(runner, debug_strings):
 
     if debug_strings:
         print("\nusers created")
+
+
+@pytest.fixture
+def login_first_user(
+    browser: WebDriver, runner: Tuple[Flask, FlaskCliRunner], debug_strings
+) -> Generator[WebDriver, None, None]:
+    """
+    Creates users and logs in user with ID = 1
+    Username: u4i_test1
+    """
+    _, cli_runner = runner
+
+    response = cli_runner.invoke(args=["addmock", "login", "1"])
+    if "N/A" == response.output:
+        raise ValueError("Unable to login user")
+
+    user_session = response.output
+
+    if debug_strings:
+        print("\nUser with ID=1 logged in")
+
+    # Login test user and select first test UTub
+    cookie = {
+        "name": "session",
+        "value": user_session.strip(),
+        "path": "/",
+        "httpOnly": True,
+    }
+
+    browser.add_cookie(cookie)
+    yield browser
+    browser.delete_all_cookies()
 
 
 @pytest.fixture

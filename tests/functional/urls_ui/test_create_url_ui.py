@@ -17,6 +17,7 @@ from tests.functional.utils_for_test import (
     get_selected_url,
     login_utub,
     login_utub_url,
+    select_utub_by_name,
     wait_then_get_element,
     wait_then_get_elements,
 )
@@ -24,7 +25,7 @@ from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_url(browser: WebDriver, create_test_utubs):
+def test_create_url(login_first_user: WebDriver, create_test_utubs):
     """
     Tests a user's ability to create a new URL in a selected UTub
 
@@ -32,9 +33,12 @@ def test_create_url(browser: WebDriver, create_test_utubs):
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
+    browser = login_first_user
 
-    # Login test user and select first test UTub
-    login_utub(browser)
+    # Refresh to allow the newly added UTubs to show
+    browser.refresh()
+
+    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
 
     url_title = MOCK_URL_TITLES[0]
     url_string = MOCK_URL_STRINGS[0]
@@ -44,7 +48,11 @@ def test_create_url(browser: WebDriver, create_test_utubs):
     sleep(4)
 
     # Extract URL title and string from new row in URL deck
-    url_row = wait_then_get_elements(browser, MPL.ROWS_URLS)[0]
+    url_row = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_row is None:
+        assert False
+    url_row = url_row[0]
+
     url_row_title = url_row.find_elements(By.CLASS_NAME, "urlTitle")[0].get_attribute(
         "innerText"
     )
