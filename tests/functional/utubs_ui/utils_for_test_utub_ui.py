@@ -41,6 +41,42 @@ def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
     clear_then_send_keys(create_utub_description_input, utub_description)
 
 
+def assert_create_utub(browser: WebDriver, utub_name: str):
+    """
+    Streamlines actions needed to confirm a new UTub was created.
+
+    Args:
+        WebDriver open to U4I Home Page
+
+    Returns:
+        Boolean True, if new UTub was created
+    """
+
+    # Extract new UTub selector. Selector should be active.
+    selector_UTub = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
+
+    # Assert new UTub is now active and displayed to user
+    assert "active" in selector_UTub.get_attribute("class")
+
+    # Assert new UTub selector was created with input UTub Name
+    assert selector_UTub.text == utub_name
+
+
+def open_update_input(
+    browser: WebDriver,
+):
+    """
+    Once logged in and UTub selected, this function conducts the actions for editing the selected UTub name. First hover over the UTub name to display the edit button. Then clicks the edit button, interacts with the input field and submits it.
+
+    Args:
+        WebDriver open to U4I Home Page
+        New UTub name
+
+    Returns:
+        WebDriver handoff to UTub tests
+    """
+
+
 def update_utub_name(browser: WebDriver, utub_name: str):
     """
     Once logged in and UTub selected, this function conducts the actions for editing the selected UTub name. First hover over the UTub name to display the edit button. Then clicks the edit button, interacts with the input field and submits it.

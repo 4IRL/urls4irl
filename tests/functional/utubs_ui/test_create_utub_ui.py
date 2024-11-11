@@ -17,7 +17,7 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 from tests.functional.locators import MainPageLocators as MPL
-from utils_for_test_utub_ui import create_utub
+from utils_for_test_utub_ui import assert_create_utub, create_utub
 
 
 def test_open_create_utub_input(browser: WebDriver, create_test_users):
@@ -105,15 +105,7 @@ def test_create_utub_btn(browser: WebDriver, create_test_users):
     # Wait for POST request
     sleep(4)
 
-    # Extract new UTub selector. Selector should be active.
-    selector_UTub = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
-
-    # Assert new UTub selector was created with input UTub Name
-    assert selector_UTub.text == utub_name
-
-    selector_UTub.click()
-    # Assert new UTub is now active and displayed to user
-    assert "active" in selector_UTub.get_attribute("class")
+    assert_create_utub(browser, utub_name)
 
 
 def test_create_utub_key(browser: WebDriver, create_test_users):
@@ -136,15 +128,7 @@ def test_create_utub_key(browser: WebDriver, create_test_users):
     # Wait for POST request
     sleep(4)
 
-    # Extract new UTub selector. Selector should be active.
-    selector_UTub = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
-
-    # Assert new UTub selector was created with input UTub Name
-    assert selector_UTub.text == utub_name
-
-    selector_UTub.click()
-    # Assert new UTub is now active and displayed to user
-    assert "active" in selector_UTub.get_attribute("class")
+    assert_create_utub(browser, utub_name)
 
 
 @pytest.mark.skip(

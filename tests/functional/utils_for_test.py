@@ -224,15 +224,13 @@ def login_user(
 
 def assert_login(browser: WebDriver):
     """
-    Streamlines actions needed to login a user.
+    Streamlines actions needed to confirm a user is logged in.
 
     Args:
-        WebDriver open to U4I Splash Page
-        (Optional) Username of user to login as, defaults to u4i_test1
-        (Optional) Password, defaults to u4i_test1@urls4irl.app
+        WebDriver open to U4I Home Page
 
     Returns:
-        N/A
+        Boolean True, if logged in
     """
 
     # Confirm user logged in

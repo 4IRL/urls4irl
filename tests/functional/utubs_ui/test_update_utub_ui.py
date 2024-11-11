@@ -23,6 +23,29 @@ from tests.functional.utubs_ui.utils_for_test_utub_ui import (
 )
 
 
+def test_open_update_utub_name_input(browser: WebDriver, create_test_utubs):
+    """
+    Tests a user's ability to open the updateUTubName input using the plus button.
+
+    GIVEN a fresh load of the U4I Home page
+    WHEN user clicks the UTub module plus button
+    THEN ensure the createUTub input opens
+    """
+    login_utub(browser)
+
+    # Click createUTub button to show input
+    wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
+
+    create_utub_name_input = wait_then_get_element(browser, MPL.INPUT_UTUB_NAME_CREATE)
+
+    assert create_utub_name_input.is_displayed()
+    assert wait_then_get_element(
+        browser, MPL.INPUT_UTUB_DESCRIPTION_CREATE
+    ).is_displayed()
+
+    assert create_utub_name_input == browser.switch_to.active_element
+
+
 # @pytest.mark.skip(reason="Testing another in isolation")
 def test_update_utub_name(browser: WebDriver, create_test_utubs):
     """
