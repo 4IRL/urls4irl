@@ -56,7 +56,7 @@ def test_close_create_utub_input_btn(browser: WebDriver, create_test_users):
     # Click createUTub button to show input
     wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
 
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_CANCEL)
+    wait_then_click_element(browser, MPL.BUTTON_UTUB_CANCEL_CREATE)
 
     create_utub_name_input = wait_until_hidden(browser, MPL.INPUT_UTUB_NAME_CREATE, 5)
 
@@ -65,7 +65,7 @@ def test_close_create_utub_input_btn(browser: WebDriver, create_test_users):
 
 def test_close_create_utub_input_key(browser: WebDriver, create_test_users):
     """
-    Tests a user's ability to close the createUTub input by pressing the  Escape key
+    Tests a user's ability to close the createUTub input by pressing the Escape key
 
     GIVEN a fresh load of the U4I Home page
     WHEN user opens the createUTub input, then presses 'Esc'

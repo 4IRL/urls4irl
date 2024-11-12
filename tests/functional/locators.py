@@ -17,7 +17,7 @@ class MainPageLocators:
     INPUT_UTUB_NAME_CREATE = "#utubNameCreate"
     INPUT_UTUB_DESCRIPTION_CREATE = "#utubDescriptionCreate"
     BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
-    BUTTON_UTUB_CANCEL = "#utubCancelBtnCreate"
+    BUTTON_UTUB_CANCEL_CREATE = "#utubCancelBtnCreate"
 
     # Tag Deck
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
@@ -31,6 +31,7 @@ class MainPageLocators:
     BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
     INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
+    BUTTON_UTUB_NAME_CANCEL_UPDATE = "#utubNameCancelBtnUpdate"
 
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
@@ -38,6 +39,7 @@ class MainPageLocators:
     BUTTON_UTUB_DESCRIPTION_UPDATE = "#updateUTubDescriptionBtn"
     INPUT_UTUB_DESCRIPTION_UPDATE = "#utubDescriptionUpdate"
     BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE = "#utubDescriptionSubmitBtnUpdate"
+    BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE = "#utubDescriptionCancelBtnUpdate"
 
     LIST_URL = "#listURLs"
     ROWS_URLS = ".urlRow"
