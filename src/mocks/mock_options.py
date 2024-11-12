@@ -1,8 +1,9 @@
+import secrets
+
 import click
 from flask import Flask, current_app, session
 from flask.cli import AppGroup, with_appcontext
 from flask_sqlalchemy import SQLAlchemy
-from flask_login import login_user
 from sqlalchemy import MetaData
 
 from src.db import db
@@ -18,6 +19,8 @@ HELP_SUMMARY_MOCKS = """Add mock data to the dev database."""
 
 HELP_SUMMARY_DB = """Clear or drop the dev database. Pass `test` as an argument to perform actions on the test database.\nFor example:\n\n`flask managedb clear test`
     """
+
+USER_ID_INVALID_TO_LOGIN_WITH = "User ID not found, cannot login"
 
 mocks_cli = AppGroup(
     "addmock",
@@ -131,8 +134,9 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
 @with_appcontext
 def login_mock_user(user_id: int):
     if not isinstance(user_id, int) or (user_id > TEST_USER_COUNT or user_id <= 0):
-        click.echo("User ID not found to login", err=True)
-        return
+        click.echo(message=USER_ID_INVALID_TO_LOGIN_WITH, err=True)
+        exception = click.ClickException(message=USER_ID_INVALID_TO_LOGIN_WITH)
+        exception.exit_code = 1
 
     user: Users = Users.query.get(user_id)
     if not user:
@@ -140,15 +144,24 @@ def login_mock_user(user_id: int):
         user: Users = Users.query.get(user_id)
 
     with current_app.test_request_context("/"):
-        if login_user(user):
-            session.modified = True
-            click.echo(f"{session.sid}")
-            current_app.session_interface.save_session(
-                current_app, session, response=current_app.make_response("Testing")
-            )
+        session["_user_id"] = user.get_id()
+        session["_fresh"] = True
+        session["_id"] = _create_random_identifier()
+        session.sid = _create_random_sid()
+        session.modified = True
 
-        else:
-            click.echo("N/A")
+        click.echo(f"{session.sid}")
+        current_app.session_interface.save_session(
+            current_app, session, response=current_app.make_response("Testing")
+        )
+
+
+def _create_random_identifier() -> str:
+    return secrets.token_hex(64)
+
+
+def _create_random_sid() -> str:
+    return secrets.token_urlsafe(32)
 
 
 @db_manage_cli.command(

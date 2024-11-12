@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -14,7 +15,9 @@ from src.mocks.mock_constants import (
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
+    create_user_session_and_provide_session_id,
     get_selected_url,
+    login_user_with_cookie_from_session,
     login_utub,
     select_url_by_title,
     select_utub_by_name,
@@ -25,7 +28,9 @@ from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_url(login_first_user_and_get_browser: WebDriver, create_test_utubs):
+def test_create_url(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to create a new URL in a selected UTub
 
@@ -33,7 +38,9 @@ def test_create_url(login_first_user_and_get_browser: WebDriver, create_test_utu
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    browser = login_first_user_and_get_browser
+    app = provide_app_for_session_generation
+    session_id = create_user_session_and_provide_session_id(app, 1)
+    browser = login_user_with_cookie_from_session(browser, session_id)
 
     # Refresh to allow the newly added UTubs to show
     browser.refresh()
@@ -90,7 +97,9 @@ def test_create_url_title_length_exceeded(browser: WebDriver, create_test_utubs)
     assert warning_modal_body.text == "Try shortening your UTub name"
 
 
-def test_select_url(login_first_user_and_get_browser: WebDriver, create_test_urls):
+def test_select_url(
+    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to select a URL and see more details
 
@@ -98,9 +107,10 @@ def test_select_url(login_first_user_and_get_browser: WebDriver, create_test_url
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-
-    # Login test user, select first test UTub, and select first test URL
-    browser = login_first_user_and_get_browser
+    user_id_to_login_as = 1
+    app = provide_app_for_session_generation
+    session_id = create_user_session_and_provide_session_id(app, user_id_to_login_as)
+    browser = login_user_with_cookie_from_session(browser, session_id)
 
     browser.refresh()
     select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
