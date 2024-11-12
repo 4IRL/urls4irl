@@ -42,9 +42,6 @@ def test_create_url(
     session_id = create_user_session_and_provide_session_id(app, 1)
     browser = login_user_with_cookie_from_session(browser, session_id)
 
-    # Refresh to allow the newly added UTubs to show
-    browser.refresh()
-
     select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
 
     url_title = MOCK_URL_TITLES[0]
@@ -112,7 +109,6 @@ def test_select_url(
     session_id = create_user_session_and_provide_session_id(app, user_id_to_login_as)
     browser = login_user_with_cookie_from_session(browser, session_id)
 
-    browser.refresh()
     select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
     select_url_by_title(browser, UTS.TEST_URL_TITLE_1)
 
