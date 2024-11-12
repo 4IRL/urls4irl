@@ -196,7 +196,7 @@ def create_test_users(runner, debug_strings):
 
 
 @pytest.fixture
-def login_first_user(
+def login_first_user_and_get_browser(
     browser: WebDriver, runner: Tuple[Flask, FlaskCliRunner], debug_strings
 ) -> Generator[WebDriver, None, None]:
     """
@@ -228,7 +228,7 @@ def login_first_user(
 
 
 @pytest.fixture
-def create_test_utubs(runner, debug_strings):
+def create_test_utubs(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
     """
     Assumes users created. Creates sample UTubs, each user owns one.
     """

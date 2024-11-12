@@ -16,7 +16,7 @@ from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     get_selected_url,
     login_utub,
-    login_utub_url,
+    select_url_by_title,
     select_utub_by_name,
     wait_then_get_element,
     wait_then_get_elements,
@@ -25,7 +25,7 @@ from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_url(login_first_user: WebDriver, create_test_utubs):
+def test_create_url(login_first_user_and_get_browser: WebDriver, create_test_utubs):
     """
     Tests a user's ability to create a new URL in a selected UTub
 
@@ -33,7 +33,7 @@ def test_create_url(login_first_user: WebDriver, create_test_utubs):
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    browser = login_first_user
+    browser = login_first_user_and_get_browser
 
     # Refresh to allow the newly added UTubs to show
     browser.refresh()
@@ -90,8 +90,7 @@ def test_create_url_title_length_exceeded(browser: WebDriver, create_test_utubs)
     assert warning_modal_body.text == "Try shortening your UTub name"
 
 
-# @pytest.mark.skip(reason="Testing another in isolation")
-def test_select_url(browser: WebDriver, create_test_urls):
+def test_select_url(login_first_user_and_get_browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to select a URL and see more details
 
@@ -101,7 +100,11 @@ def test_select_url(browser: WebDriver, create_test_urls):
     """
 
     # Login test user, select first test UTub, and select first test URL
-    login_utub_url(browser)
+    browser = login_first_user_and_get_browser
+
+    browser.refresh()
+    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
+    select_url_by_title(browser, UTS.TEST_URL_TITLE_1)
 
     url_row = get_selected_url(browser)
 
@@ -110,3 +113,5 @@ def test_select_url(browser: WebDriver, create_test_urls):
     assert url_row.find_element(
         By.CSS_SELECTOR, MPL.URL_BUTTONS_OPTIONS_READ
     ).is_displayed
+    url_string = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    assert url_string.get_attribute(MPL.URL_STRING_IN_DATA) in MOCK_URL_STRINGS

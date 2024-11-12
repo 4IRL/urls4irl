@@ -6,6 +6,7 @@ from flask_login import login_user
 from sqlalchemy import MetaData
 
 from src.db import db
+from src.mocks.mock_constants import TEST_USER_COUNT
 from src.mocks.mock_data.tags import generate_mock_tags
 from src.mocks.mock_data.urls import generate_mock_urls, generate_custom_mock_url
 from src.mocks.mock_data.users import generate_mock_users
@@ -129,11 +130,14 @@ def _add_all(db: SQLAlchemy, no_dupes: bool):
 @click.argument("user_id", nargs=1, required=True, default=1, type=int)
 @with_appcontext
 def login_mock_user(user_id: int):
-    generate_mock_users(db, silent=True)
+    if not isinstance(user_id, int) or (user_id > TEST_USER_COUNT or user_id <= 0):
+        click.echo("User ID not found to login", err=True)
+        return
+
     user: Users = Users.query.get(user_id)
     if not user:
-        click.echo("User not found to login", err=True)
-        return
+        generate_mock_users(db, silent=True)
+        user: Users = Users.query.get(user_id)
 
     with current_app.test_request_context("/"):
         if login_user(user):
