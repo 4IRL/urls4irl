@@ -241,6 +241,9 @@ def login_user_with_cookie_from_session(
     }
 
     browser.add_cookie(cookie)
+
+    # Refresh to redirect user to their home page since they're logged in
+    browser.refresh()
     return browser
 
 
