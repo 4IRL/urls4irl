@@ -31,6 +31,7 @@ class MainPageLocators:
     BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
     INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
+    WRAP_URL_CREATE = "#createURLWrap"
 
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
@@ -47,6 +48,7 @@ class MainPageLocators:
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
+    BUTTON_URL_CANCEL_CREATE = "#urlCancelBtnCreate"
 
     BUTTON_ACCESS_ALL_URLS = "#accessAllURLsBtn"
 

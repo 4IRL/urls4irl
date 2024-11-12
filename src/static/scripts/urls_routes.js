@@ -79,6 +79,8 @@ function createURLSuccess(response) {
     [], // Mimics an empty array of tags to match against
   ).addClass(currentNumOfURLs % 2 === 0 ? "even" : "odd");
 
+  showIfHidden($("#accessAllURLsBtn"));
+
   newUrlCard.insertAfter($("#createURLWrap"));
 }
 

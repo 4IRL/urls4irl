@@ -4,6 +4,7 @@ from typing import List
 
 # External libraries
 from flask import Flask, session
+from flask.testing import FlaskCliRunner
 from selenium.common.exceptions import (
     ElementNotInteractableException,
     NoSuchElementException,
@@ -229,10 +230,7 @@ def _create_random_sid() -> str:
     return secrets.token_urlsafe(32)
 
 
-def login_user_with_cookie_from_session(
-    browser: WebDriver, session_id: str
-) -> WebDriver:
-    # Login test user and select first test UTub
+def login_user_with_cookie_from_session(browser: WebDriver, session_id: str):
     cookie = {
         "name": "session",
         "value": session_id,
@@ -244,7 +242,21 @@ def login_user_with_cookie_from_session(
 
     # Refresh to redirect user to their home page since they're logged in
     browser.refresh()
-    return browser
+
+
+def login_user_and_select_utub_by_name(
+    app: Flask, browser: WebDriver, user_id: int, utub_name: str
+):
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+    select_utub_by_name(browser, utub_name)
+
+
+def login_user_select_utub_by_name_and_url_by_title(
+    app: Flask, browser: WebDriver, user_id: int, utub_name: str, url_title: str
+):
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_name)
+    select_url_by_title(browser, url_title)
 
 
 def login_user(
@@ -639,6 +651,10 @@ def get_selected_url_title(browser: WebDriver):
     return selected_url_row.find_element(
         By.CSS_SELECTOR, MPL.URL_TITLE_READ
     ).get_attribute("innerText")
+
+
+def add_mock_url(runner: FlaskCliRunner, url: str):
+    runner.invoke(args=["addmock", "url", url])
 
 
 # Tag Deck
