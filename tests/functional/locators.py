@@ -81,6 +81,7 @@ class MainPageLocators:
     BUTTON_URL_DELETE = ".urlBtnDelete"
 
     URL_STRING_IN_DATA = "data-url"
+    GO_TO_URL_ICON = ".goToUrlIcon"
 
     # Members Deck
     SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"

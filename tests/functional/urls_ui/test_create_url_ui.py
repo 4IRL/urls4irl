@@ -98,6 +98,14 @@ def test_create_url_open_input_with_added_urls(
 def test_create_url_cancel_input_click_button(
     browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
 ):
+    """
+    Tests a user's ability to escape URL creation input by clicking the cancel button
+
+    GIVEN a user attempting to create a URL
+    WHEN they are focused on the input  boxes in the URL creation elements and click the cancel button
+    THEN ensure the input is closed
+
+    """
     app = provide_app_for_session_generation
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
@@ -121,6 +129,14 @@ def test_create_url_cancel_input_click_button(
 def test_create_url_cancel_input_escape(
     browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
 ):
+    """
+    Tests a user's ability to escape URL creation input by using escape key
+
+    GIVEN a user attempting to create a URL
+    WHEN they are focused on the input  boxes in the URL creation elements and use the escape key
+    THEN ensure the input is closed
+
+    """
     app = provide_app_for_session_generation
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
