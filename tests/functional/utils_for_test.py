@@ -364,14 +364,7 @@ def get_selected_utub_decsription(browser: WebDriver):
     Returns:
         String containing the selected UTub description.
     """
-
-    selected_utub_selector = browser.find_element(
-        By.CSS_SELECTOR, MPL.SELECTOR_SELECTED_UTUB
-    )
-
-    utub_name = selected_utub_selector.get_attribute("innerText")
-
-    return utub_name
+    return browser.find_element(By.CSS_SELECTOR, MPL.SUBHEADER_URL_DECK).text
 
 
 # Members Deck

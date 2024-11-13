@@ -89,7 +89,7 @@ def open_update_input(browser: WebDriver, update_UTub_name_or_desc: int):
     update_button_locator = (
         MPL.BUTTON_UTUB_NAME_UPDATE
         if update_UTub_name_or_desc
-        else MPL.BUTTON_UTUB_NAME_UPDATE
+        else MPL.BUTTON_UTUB_DESCRIPTION_UPDATE
     )
 
     update_wrap_element = wait_then_get_element(browser, wrap_locators)
@@ -161,9 +161,6 @@ def update_utub_description(browser: WebDriver, utub_description: str):
             browser, MPL.INPUT_UTUB_DESCRIPTION_UPDATE
         )
         clear_then_send_keys(utub_description_update_input, utub_description)
-
-        # Submits new UTub name
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
 
         return True
     else:
