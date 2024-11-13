@@ -17,7 +17,7 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 from tests.functional.locators import MainPageLocators as MPL
-from utils_for_test_utub_ui import create_utub
+from utils_for_test_utub_ui import assert_create_utub, create_utub
 
 
 def test_open_create_utub_input(browser: WebDriver, create_test_users):
@@ -56,7 +56,7 @@ def test_close_create_utub_input_btn(browser: WebDriver, create_test_users):
     # Click createUTub button to show input
     wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
 
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_CANCEL)
+    wait_then_click_element(browser, MPL.BUTTON_UTUB_CANCEL_CREATE)
 
     create_utub_name_input = wait_until_hidden(browser, MPL.INPUT_UTUB_NAME_CREATE, 5)
 
@@ -65,7 +65,7 @@ def test_close_create_utub_input_btn(browser: WebDriver, create_test_users):
 
 def test_close_create_utub_input_key(browser: WebDriver, create_test_users):
     """
-    Tests a user's ability to close the createUTub input by pressing the  Escape key
+    Tests a user's ability to close the createUTub input by pressing the Escape key
 
     GIVEN a fresh load of the U4I Home page
     WHEN user opens the createUTub input, then presses 'Esc'
@@ -105,15 +105,7 @@ def test_create_utub_btn(browser: WebDriver, create_test_users):
     # Wait for POST request
     sleep(4)
 
-    # Extract new UTub selector. Selector should be active.
-    selector_UTub = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
-
-    # Assert new UTub selector was created with input UTub Name
-    assert selector_UTub.text == utub_name
-
-    selector_UTub.click()
-    # Assert new UTub is now active and displayed to user
-    assert "active" in selector_UTub.get_attribute("class")
+    assert_create_utub(browser, utub_name)
 
 
 def test_create_utub_key(browser: WebDriver, create_test_users):
@@ -136,15 +128,7 @@ def test_create_utub_key(browser: WebDriver, create_test_users):
     # Wait for POST request
     sleep(4)
 
-    # Extract new UTub selector. Selector should be active.
-    selector_UTub = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
-
-    # Assert new UTub selector was created with input UTub Name
-    assert selector_UTub.text == utub_name
-
-    selector_UTub.click()
-    # Assert new UTub is now active and displayed to user
-    assert "active" in selector_UTub.get_attribute("class")
+    assert_create_utub(browser, utub_name)
 
 
 @pytest.mark.skip(
