@@ -5,7 +5,7 @@ from src.models.email_validations import Email_Validations
 from src.models.users import Users
 
 
-def generate_mock_users(db: SQLAlchemy):
+def generate_mock_users(db: SQLAlchemy, silent: bool = False):
     """
     Generates mock Users, adds them to database if not already added.
 
@@ -19,10 +19,12 @@ def generate_mock_users(db: SQLAlchemy):
         new_user = Users(username=username, email=email, plaintext_password=email)
 
         if Users.query.filter(Users.username == username).first() is not None:
-            print(f"Already added user with username: {username} | email: {email} ")
+            if not silent:
+                print(f"Already added user with username: {username} | email: {email} ")
 
         else:
-            print(f"Adding test user with username: {username} | email: {email} ")
+            if not silent:
+                print(f"Adding test user with username: {username} | email: {email} ")
 
             db.session.add(new_user)
 

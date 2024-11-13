@@ -71,7 +71,7 @@ class Config:
     FLASK_RUN_HOST = environ.get("FLASK_RUN_HOST", default=None)
     FLASK_DEBUG = environ.get("FLASK_DEBUG")
     SECRET_KEY = environ.get(ENV.SECRET_KEY)
-    SESSION_PERMANENT = "False"
+    SESSION_PERMANENT = False
     if environ.get(ENV.REDIS_URI, default=None) is None:
         SESSION_TYPE = "cachelib"
         SESSION_CACHELIB = FileSystemCache(
@@ -103,6 +103,7 @@ class Config:
         ),  # Currently, not testing in local docker containers
     }
     REDIS_URI = environ.get(ENV.REDIS_URI, default="memory://")
+    DOCKER = IS_DOCKER
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:

@@ -13,6 +13,8 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
 # Internal libraries
+from src import create_app
+from src.config import ConfigTest
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.ui_test_utils import clear_db, find_open_port, ping_server, run_app
 
@@ -71,15 +73,24 @@ def parallelize_app(provide_port, init_multiprocessing, flask_logs):
 
 
 @pytest.fixture(scope="session")
+def provide_app_for_session_generation() -> Generator[Flask | None, None, None]:
+    yield create_app(ConfigTest())
+
+
+@pytest.fixture(scope="session")
 def build_driver(
     provide_port: int, parallelize_app, turn_off_headless
 ) -> Generator[WebDriver, None, None]:
     """
     Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
     """
+    config = ConfigTest()
     open_port = provide_port
     options = Options()
     options.add_argument("--disable-notifications")
+    if config.DOCKER:
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
 
     if turn_off_headless:
         # Disable Chrome browser pop-up notifications
@@ -191,7 +202,7 @@ def create_test_users(runner, debug_strings):
 
 
 @pytest.fixture
-def create_test_utubs(runner, debug_strings):
+def create_test_utubs(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
     """
     Assumes users created. Creates sample UTubs, each user owns one.
     """

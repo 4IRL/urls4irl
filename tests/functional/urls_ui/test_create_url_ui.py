@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -14,9 +15,12 @@ from src.mocks.mock_constants import (
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
+    create_user_session_and_provide_session_id,
     get_selected_url,
+    login_user_with_cookie_from_session,
     login_utub,
-    login_utub_url,
+    select_url_by_title,
+    select_utub_by_name,
     wait_then_get_element,
     wait_then_get_elements,
 )
@@ -24,7 +28,9 @@ from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_create_url(browser: WebDriver, create_test_utubs):
+def test_create_url(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to create a new URL in a selected UTub
 
@@ -32,9 +38,11 @@ def test_create_url(browser: WebDriver, create_test_utubs):
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
+    app = provide_app_for_session_generation
+    session_id = create_user_session_and_provide_session_id(app, 1)
+    browser = login_user_with_cookie_from_session(browser, session_id)
 
-    # Login test user and select first test UTub
-    login_utub(browser)
+    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
 
     url_title = MOCK_URL_TITLES[0]
     url_string = MOCK_URL_STRINGS[0]
@@ -44,7 +52,11 @@ def test_create_url(browser: WebDriver, create_test_utubs):
     sleep(4)
 
     # Extract URL title and string from new row in URL deck
-    url_row = wait_then_get_elements(browser, MPL.ROWS_URLS)[0]
+    url_row = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_row is None:
+        assert False
+    url_row = url_row[0]
+
     url_row_title = url_row.find_elements(By.CLASS_NAME, "urlTitle")[0].get_attribute(
         "innerText"
     )
@@ -82,8 +94,9 @@ def test_create_url_title_length_exceeded(browser: WebDriver, create_test_utubs)
     assert warning_modal_body.text == "Try shortening your UTub name"
 
 
-# @pytest.mark.skip(reason="Testing another in isolation")
-def test_select_url(browser: WebDriver, create_test_urls):
+def test_select_url(
+    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to select a URL and see more details
 
@@ -91,9 +104,13 @@ def test_select_url(browser: WebDriver, create_test_urls):
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
+    user_id_to_login_as = 1
+    app = provide_app_for_session_generation
+    session_id = create_user_session_and_provide_session_id(app, user_id_to_login_as)
+    browser = login_user_with_cookie_from_session(browser, session_id)
 
-    # Login test user, select first test UTub, and select first test URL
-    login_utub_url(browser)
+    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
+    select_url_by_title(browser, UTS.TEST_URL_TITLE_1)
 
     url_row = get_selected_url(browser)
 
@@ -102,3 +119,5 @@ def test_select_url(browser: WebDriver, create_test_urls):
     assert url_row.find_element(
         By.CSS_SELECTOR, MPL.URL_BUTTONS_OPTIONS_READ
     ).is_displayed
+    url_string = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    assert url_string.get_attribute(MPL.URL_STRING_IN_DATA) in MOCK_URL_STRINGS

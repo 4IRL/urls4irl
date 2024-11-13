@@ -1,7 +1,9 @@
 # Standard library
+import secrets
 from typing import List
 
 # External libraries
+from flask import Flask, session
 from selenium.common.exceptions import (
     ElementNotInteractableException,
     NoSuchElementException,
@@ -17,6 +19,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 # Internal libraries
+from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
@@ -189,6 +192,59 @@ def dismiss_modal_with_click_out(browser: WebDriver):
 def open_forgot_password_modal(browser: WebDriver):
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
     wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
+
+
+def create_user_session_and_provide_session_id(app: Flask, user_id: int) -> str:
+    """
+    Manually creates a user session to allow user to be logged in
+    without needing UI interaction.
+
+    Args:
+        app (Flask): The Flask application is necessary to generate a request context in order to insert the session into the appropriate session engine
+        user_id (int): The user ID wanting to be logged in as
+
+    Returns:
+        (str): The session ID of the user that can be used to log the user in
+    """
+    random_sid = _create_random_sid()
+    with app.test_request_context("/"):
+        user: Users = Users.query.get(user_id)
+        session["_user_id"] = user.get_id()
+        session["_fresh"] = True
+        session["_id"] = _create_random_identifier()
+        session.sid = random_sid
+        session.modified = True
+
+        app.session_interface.save_session(
+            app, session, response=app.make_response("Testing")
+        )
+    return random_sid
+
+
+def _create_random_identifier() -> str:
+    return secrets.token_hex(64)
+
+
+def _create_random_sid() -> str:
+    return secrets.token_urlsafe(32)
+
+
+def login_user_with_cookie_from_session(
+    browser: WebDriver, session_id: str
+) -> WebDriver:
+    # Login test user and select first test UTub
+    cookie = {
+        "name": "session",
+        "value": session_id,
+        "path": "/",
+        "httpOnly": True,
+    }
+
+    browser.add_cookie(cookie)
+
+    # Refresh to redirect user to their home page since they're logged in
+    browser.refresh()
+    return browser
 
 
 def login_user(
