@@ -1,5 +1,5 @@
 # Standard library
-from time import sleep
+
 
 # External libraries
 from selenium.common.exceptions import NoSuchElementException
@@ -15,9 +15,6 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
-)
-from tests.functional.utubs_ui.utils_for_test_utub_ui import (
-    delete_active_utub_confirmed,
 )
 
 
@@ -137,30 +134,3 @@ def leave_active_utub(browser: WebDriver):
         wait_then_click_element(browser, MPL.BUTTON_UTUB_LEAVE)
     except NoSuchElementException:
         return False
-
-
-def leave_all_utubs(browser: WebDriver):
-    """
-    Args:
-        WebDriver open to U4I Home Page
-
-    Returns:
-        WebDriver handoff to member tests
-
-    Cycles through all user's UTubs and leaves or deletes them.
-    """
-
-    UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
-
-    # Cycle through all UTubs and leave or delete, as appropriate.
-    for selector in UTub_selectors:
-        selector.click()
-
-        if user_is_selected_utub_owner(browser):
-            delete_active_utub_confirmed(browser)
-        else:
-            leave_active_utub(browser)
-            wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
-
-        # Wait for POST request
-        sleep(4)
