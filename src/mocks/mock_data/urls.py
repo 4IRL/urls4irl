@@ -32,14 +32,11 @@ def generate_mock_urls(db: SQLAlchemy):
             if (
                 Utub_Urls.query.filter(
                     Utub_Urls.utub_id == utub.id,
-                    Utub_Urls.user_id == member.user_id,
                     Utub_Urls.url_id == url_to_add.id,
                 ).first()
                 is not None
             ):
-                print(
-                    f"Already added {url} to {utub.name}, ID={utub.id}, by {member.to_user.username}"
-                )
+                print(f"Already added {url} to {utub.name}, ID={utub.id}")
                 continue
 
             new_utub_url: Utub_Urls = Utub_Urls()

@@ -176,9 +176,11 @@ def wait_until_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
 
 
 # Modal
-def dismiss_modal_with_click_out(browser: WebDriver):
+def dismiss_modal_with_click_out(
+    browser: WebDriver, css_selector: str = SPL.SPLASH_MODAL
+):
     action = ActionChains(browser)
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, css_selector)
     width = modal_element.rect["width"]
     height = modal_element.rect["height"]
     offset = 15
@@ -653,8 +655,9 @@ def get_selected_url_title(browser: WebDriver):
     ).get_attribute("innerText")
 
 
-def add_mock_url(runner: FlaskCliRunner, url: str):
-    runner.invoke(args=["addmock", "url", url])
+def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
+    args = ["addmock", "url"] + urls
+    runner.invoke(args=args)
 
 
 # Tag Deck

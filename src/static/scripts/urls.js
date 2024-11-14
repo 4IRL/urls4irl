@@ -25,7 +25,7 @@ $(document).ready(function () {
   $("#accessAllURLsBtn").on("click", function (e) {
     // e.stopPropagation();
     // e.preventDefault();
-    const ACCESS_ALL_URLS_LIMIT_WARNING = 3;
+    const ACCESS_ALL_URLS_LIMIT_WARNING = CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS;
     if (getNumOfVisibleURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
       accessAllWarningShowModal();
     } else {
@@ -175,6 +175,11 @@ function accessLink(urlString) {
   }
 }
 
+function hideAccessAllWarningShowModal() {
+  $("#confirmModal").removeClass("accessAllUrlModal");
+  console.log("Testing hide functionality");
+}
+
 // Show confirmation modal for opening all URLs in UTub
 function accessAllWarningShowModal() {
   const modalTitle =
@@ -202,10 +207,15 @@ function accessAllWarningShowModal() {
     .on("click", function (e) {
       e.preventDefault();
       accessAllURLsInUTub();
+      $("#confirmModal").modal("hide");
     })
     .text("Open all URLs");
 
-  $("#confirmModal").modal("show");
+  $("#confirmModal")
+    .modal("show")
+    .addClass("accessAllUrlModal")
+    .on("hidden.bs.modal", hideAccessAllWarningShowModal);
+
   $("#modalRedirect").hide();
   hideIfShown($("#modalRedirect"));
 }
