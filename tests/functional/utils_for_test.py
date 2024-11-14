@@ -294,15 +294,13 @@ def login_user(
 
 def assert_login(browser: WebDriver):
     """
-    Streamlines actions needed to login a user.
+    Streamlines actions needed to confirm a user is logged in.
 
     Args:
-        WebDriver open to U4I Splash Page
-        (Optional) Username of user to login as, defaults to u4i_test1
-        (Optional) Password, defaults to u4i_test1@urls4irl.app
+        WebDriver open to U4I Home Page
 
     Returns:
-        N/A
+        Boolean True, if logged in
     """
 
     # Confirm user logged in
@@ -436,14 +434,7 @@ def get_selected_utub_decsription(browser: WebDriver):
     Returns:
         String containing the selected UTub description.
     """
-
-    selected_utub_selector = browser.find_element(
-        By.CSS_SELECTOR, MPL.SELECTOR_SELECTED_UTUB
-    )
-
-    utub_name = selected_utub_selector.get_attribute("innerText")
-
-    return utub_name
+    return browser.find_element(By.CSS_SELECTOR, MPL.SUBHEADER_URL_DECK).text
 
 
 # Members Deck
