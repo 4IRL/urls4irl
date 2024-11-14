@@ -5,6 +5,7 @@ from typing import List
 # External libraries
 from flask import Flask, session
 from flask.testing import FlaskCliRunner
+import pytest
 from selenium.common.exceptions import (
     ElementNotInteractableException,
     NoSuchElementException,
@@ -688,8 +689,68 @@ def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
     runner.invoke(args=args)
 
 
+def verify_update_url_state_is_shown(url_row: WebElement):
+    hidden_btns = (
+        MPL.BUTTON_URL_DELETE,
+        MPL.BUTTON_TAG_CREATE,
+        MPL.BUTTON_URL_ACCESS,
+    )
+
+    for btn in hidden_btns:
+        assert not url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
+
+    with pytest.raises(NoSuchElementException):
+        url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE)
+
+    visible_btns = (
+        MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE,
+        MPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
+        MPL.BUTTON_URL_STRING_CANCEL_UPDATE,
+    )
+
+    for btn in visible_btns:
+        assert url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
+
+    assert url_row.find_element(
+        By.CSS_SELECTOR, MPL.INPUT_URL_STRING_UPDATE
+    ).is_displayed()
+
+    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ).is_displayed()
+    assert not url_row.find_element(By.CSS_SELECTOR, MPL.GO_TO_URL_ICON).is_displayed()
+
+
+def verify_update_url_state_is_hidden(url_row: WebElement):
+    visible_btns = (
+        MPL.BUTTON_URL_DELETE,
+        MPL.BUTTON_TAG_CREATE,
+        MPL.BUTTON_URL_ACCESS,
+        MPL.BUTTON_URL_STRING_UPDATE,
+    )
+
+    for btn in visible_btns:
+        assert url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
+
+    with pytest.raises(NoSuchElementException):
+        url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+
+    hidden_btns = (
+        MPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
+        MPL.BUTTON_URL_STRING_CANCEL_UPDATE,
+    )
+
+    for btn in hidden_btns:
+        assert not url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
+
+    assert not url_row.find_element(
+        By.CSS_SELECTOR, MPL.INPUT_URL_STRING_UPDATE
+    ).is_displayed()
+
+    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ).is_displayed()
+    assert url_row.find_element(By.CSS_SELECTOR, MPL.GO_TO_URL_ICON).is_displayed()
+
+
 # Tag Deck
-def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement:
+def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | None:
     """
     Simplifies extraction of a tag filter WebElement by its name.
 
@@ -700,6 +761,8 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement:
         Tag filter WebElement
     """
     tag_filters = get_selected_utub_tags(browser)
+    if tag_filters is None:
+        return None
 
     for tag_filter in tag_filters:
 
