@@ -1,4 +1,4 @@
-# External libraries
+# Standard libraries
 from time import sleep
 
 # External libraries
@@ -26,6 +26,8 @@ from tests.functional.utils_for_test import (
     wait_then_get_elements,
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import create_url
+
+pytestmark = pytest.mark.urls_ui
 
 
 def test_create_url_open_input_no_urls(

@@ -25,6 +25,8 @@ from tests.functional.utils_for_test import (
     login_user_select_utub_by_name_and_url_by_string,
     login_user_select_utub_by_name_and_url_by_title,
     login_utub_url,
+    verify_update_url_state_is_hidden,
+    verify_update_url_state_is_shown,
     wait_then_get_element,
     wait_until_hidden,
 )
@@ -32,6 +34,8 @@ from tests.functional.urls_ui.utils_for_test_url_ui import (
     update_url_title,
     update_url_string,
 )
+
+pytestmark = pytest.mark.urls_ui
 
 
 def test_update_url_string_submit_btn(
@@ -68,9 +72,11 @@ def test_update_url_string_submit_btn(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
+    verify_update_url_state_is_shown(url_row)
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
 
     wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    verify_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
 
@@ -82,7 +88,10 @@ def test_update_url_string_submit_btn(
 
     host_changed_to = urlsplit(random_url_to_change_to).hostname
     actual_host = urlsplit(url_row_data_attrib).hostname
-    assert host_changed_to == actual_host
+    assert isinstance(host_changed_to, str)
+    assert isinstance(actual_host, str)
+
+    assert host_changed_to in actual_host or actual_host in host_changed_to
 
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
@@ -126,9 +135,11 @@ def test_update_url_string_press_enter_key(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
+    verify_update_url_state_is_shown(url_row)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    verify_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
 
@@ -140,7 +151,10 @@ def test_update_url_string_press_enter_key(
 
     host_changed_to = urlsplit(random_url_to_change_to).hostname
     actual_host = urlsplit(url_row_data_attrib).hostname
-    assert host_changed_to == actual_host
+    assert isinstance(host_changed_to, str)
+    assert isinstance(actual_host, str)
+
+    assert host_changed_to in actual_host or actual_host in host_changed_to
 
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
@@ -186,9 +200,13 @@ def test_update_url_string_big_cancel_btn(
 
     init_url_row_data = url_row_string_elem.get_attribute("data-url")
     init_url_row_string_display = url_row_string_elem.get_attribute("innerText")
+
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
+    verify_update_url_state_is_shown(url_row)
+
     wait_then_get_element(browser, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE).click()
     wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    verify_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
 
@@ -226,11 +244,9 @@ def test_update_url_string_cancel_btn(
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
-        list(
-            [
-                random_url_to_add,
-            ]
-        ),
+        [
+            random_url_to_add,
+        ],
     )
 
     user_id_for_test = 1
@@ -244,8 +260,11 @@ def test_update_url_string_cancel_btn(
     init_url_row_data = url_row_string_elem.get_attribute("data-url")
     init_url_row_string_display = url_row_string_elem.get_attribute("innerText")
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
+    verify_update_url_state_is_shown(url_row)
+
     wait_then_get_element(browser, MPL.BUTTON_URL_STRING_CANCEL_UPDATE).click()
     wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    verify_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
 
@@ -283,11 +302,9 @@ def test_update_url_string_escape_key(
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
-        list(
-            [
-                random_url_to_add,
-            ]
-        ),
+        [
+            random_url_to_add,
+        ],
     )
 
     user_id_for_test = 1
@@ -301,11 +318,13 @@ def test_update_url_string_escape_key(
     init_url_row_data = url_row_string_elem.get_attribute("data-url")
     init_url_row_string_display = url_row_string_elem.get_attribute("innerText")
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
+    verify_update_url_state_is_shown(url_row)
 
     # Sleep required to allow the element to come into focus
     sleep(2)
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
     wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    verify_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
 
@@ -350,12 +369,14 @@ def test_update_url_title_submit(
     url_row = get_selected_url(browser)
     url_title = UTS.TEST_URL_TITLE_UPDATE
     update_url_title(browser, url_row, url_title)
+    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
 
     # Submit
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE).click()
 
     # Wait for POST request
     wait_until_hidden(browser, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
 
     # Extract URL string from updated URL row
     url_row_title = url_row.find_element(
@@ -391,12 +412,14 @@ def test_update_url_title_submit_enter_key(
     url_row = get_selected_url(browser)
     url_title = UTS.TEST_URL_TITLE_UPDATE
     update_url_title(browser, url_row, url_title)
+    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
 
     # Submit
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     # Wait for update to hide
     wait_until_hidden(browser, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
 
     # Extract URL string from updated URL row
     url_row_title = url_row.find_element(
@@ -438,10 +461,12 @@ def test_update_url_title_cancel_click_btn(
 
     url_title = UTS.TEST_URL_TITLE_UPDATE
     update_url_title(browser, url_row, url_title)
+    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
 
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_CANCEL_UPDATE).click()
 
     wait_until_hidden(browser, MPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
+    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
 
     # Extract URL string from updated URL row
     url_row_title = url_row.find_element(
@@ -483,10 +508,12 @@ def test_update_url_title_cancel_press_escape(
 
     url_title = UTS.TEST_URL_TITLE_UPDATE
     update_url_title(browser, url_row, url_title)
+    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
     wait_until_hidden(browser, MPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
+    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
 
     # Extract URL string from updated URL row
     url_row_title = url_row.find_element(

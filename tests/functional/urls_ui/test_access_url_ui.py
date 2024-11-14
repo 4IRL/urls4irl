@@ -29,6 +29,8 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 
+pytestmark = pytest.mark.urls_ui
+
 
 def test_access_url_by_access_btn_while_selected(
     browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
