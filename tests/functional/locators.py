@@ -66,6 +66,7 @@ class MainPageLocators:
     BUTTON_URL_TITLE_UPDATE = ".urlTitleBtnUpdate"
     INPUT_URL_TITLE_UPDATE = ".urlTitleUpdate"
     BUTTON_URL_TITLE_SUBMIT_UPDATE = ".urlTitleSubmitBtnUpdate"
+    BUTTON_URL_TITLE_CANCEL_UPDATE = ".urlTitleCancelBtnUpdate"
 
     BUTTON_URL_ACCESS = ".urlBtnAccess"
 
@@ -76,9 +77,12 @@ class MainPageLocators:
 
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"
 
+    UPDATE_URL_STRING_WRAP = ".updateUrlStringWrap"
     BUTTON_URL_STRING_UPDATE = ".urlStringBtnUpdate"
     INPUT_URL_STRING_UPDATE = ".urlStringUpdate"
     BUTTON_URL_STRING_SUBMIT_UPDATE = ".urlStringSubmitBtnUpdate"
+    BUTTON_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBtnUpdate"
+    BUTTON_BIG_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBigBtnUpdate"
 
     BUTTON_URL_DELETE = ".urlBtnDelete"
 

@@ -172,8 +172,8 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
 
   // Update URL Button text to exit editing
   urlStringBtnUpdate
-    .removeClass("btn-light")
-    .addClass("btn-warning")
+    .removeClass("btn-light urlStringBtnUpdate")
+    .addClass("btn-warning urlStringCancelBigBtnUpdate")
     .text("Cancel")
     .offAndOn("click", function (e) {
       e.stopPropagation();
@@ -203,10 +203,10 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   urlCard.find(".urlStringUpdate").val(urlStringElem.attr("data-url"));
 
   // Make the Update URL button now allow updating again
-  const urlStringBtnUpdate = urlCard.find(".urlStringBtnUpdate");
+  const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
   urlStringBtnUpdate
-    .removeClass("btn-warning")
-    .addClass("btn-light")
+    .removeClass("btn-warning urlStringCancelBigBtnUpdate")
+    .addClass("btn-light urlStringBtnUpdate")
     .text("Edit URL")
     .offAndOn("click", function (e) {
       e.stopPropagation();
