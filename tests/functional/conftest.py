@@ -159,11 +159,21 @@ def browser(
     driver.delete_all_cookies()
 
     driver.get(UI_TEST_STRINGS.BASE_URL + str(open_port))
+    init_handle = driver.current_window_handle
 
     clear_db(runner, debug_strings)
 
     # Return the driver object to be used in the test functions
     yield driver
+
+    # Clean up any additional tabs that may have been opened during tests
+    for handle in driver.window_handles:
+        if handle != init_handle:
+            driver.switch_to.window(handle)
+            driver.close()
+
+    # Return to the initial tab for further tests
+    driver.switch_to.window(init_handle)
 
 
 @pytest.fixture

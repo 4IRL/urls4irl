@@ -524,16 +524,17 @@ function deleteUTubHideModal() {
 
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal() {
-  let modalTitle = "Are you sure you want to delete this UTub?";
-  let modalBody = "This action is irreverisible!";
-  let buttonTextDismiss = "Nevermind...";
-  let buttonTextSubmit = "Delete this sucka!";
+  const modalTitle = "Are you sure you want to delete this UTub?";
+  const modalBody = "This action is irreversible!";
+  const buttonTextDismiss = "Nevermind...";
+  const buttonTextSubmit = "Delete this sucka!";
 
   $("#confirmModalTitle").text(modalTitle);
 
   $("#confirmModalBody").text(modalBody);
 
   $("#modalDismiss")
+    .removeClass()
     .addClass("btn btn-secondary")
     .offAndOn("click", function (e) {
       e.preventDefault();

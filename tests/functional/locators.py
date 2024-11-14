@@ -31,6 +31,7 @@ class MainPageLocators:
     BUTTON_UTUB_NAME_UPDATE = "#utubNameBtnUpdate"
     INPUT_UTUB_NAME_UPDATE = "#utubNameUpdate"
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
+    WRAP_URL_CREATE = "#createURLWrap"
     BUTTON_UTUB_NAME_CANCEL_UPDATE = "#utubNameCancelBtnUpdate"
 
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
@@ -49,6 +50,7 @@ class MainPageLocators:
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
+    BUTTON_URL_CANCEL_CREATE = "#urlCancelBtnCreate"
 
     BUTTON_ACCESS_ALL_URLS = "#accessAllURLsBtn"
 
@@ -81,6 +83,7 @@ class MainPageLocators:
     BUTTON_URL_DELETE = ".urlBtnDelete"
 
     URL_STRING_IN_DATA = "data-url"
+    GO_TO_URL_ICON = ".goToUrlIcon"
 
     # Members Deck
     SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"
@@ -103,6 +106,8 @@ class MainPageLocators:
     BUTTON_MODAL_DISMISS = "#modalDismiss"
     BUTTON_MODAL_REDIRECT = "#modalRedirect"
     BUTTON_MODAL_SUBMIT = "#modalSubmit"
+    BUTTON_X_CLOSE = ".btn-close"
+    ACCESS_ALL_URL_MODAL = ".accessAllUrlModal"
 
 
 class SplashPageLocators:

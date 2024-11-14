@@ -4,6 +4,7 @@ from typing import List
 
 # External libraries
 from flask import Flask, session
+from flask.testing import FlaskCliRunner
 from selenium.common.exceptions import (
     ElementNotInteractableException,
     NoSuchElementException,
@@ -175,9 +176,11 @@ def wait_until_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
 
 
 # Modal
-def dismiss_modal_with_click_out(browser: WebDriver):
+def dismiss_modal_with_click_out(
+    browser: WebDriver, css_selector: str = SPL.SPLASH_MODAL
+):
     action = ActionChains(browser)
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, css_selector)
     width = modal_element.rect["width"]
     height = modal_element.rect["height"]
     offset = 15
@@ -229,10 +232,7 @@ def _create_random_sid() -> str:
     return secrets.token_urlsafe(32)
 
 
-def login_user_with_cookie_from_session(
-    browser: WebDriver, session_id: str
-) -> WebDriver:
-    # Login test user and select first test UTub
+def login_user_with_cookie_from_session(browser: WebDriver, session_id: str):
     cookie = {
         "name": "session",
         "value": session_id,
@@ -244,7 +244,21 @@ def login_user_with_cookie_from_session(
 
     # Refresh to redirect user to their home page since they're logged in
     browser.refresh()
-    return browser
+
+
+def login_user_and_select_utub_by_name(
+    app: Flask, browser: WebDriver, user_id: int, utub_name: str
+):
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+    select_utub_by_name(browser, utub_name)
+
+
+def login_user_select_utub_by_name_and_url_by_title(
+    app: Flask, browser: WebDriver, user_id: int, utub_name: str, url_title: str
+):
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_name)
+    select_url_by_title(browser, url_title)
 
 
 def login_user(
@@ -630,6 +644,11 @@ def get_selected_url_title(browser: WebDriver):
     return selected_url_row.find_element(
         By.CSS_SELECTOR, MPL.URL_TITLE_READ
     ).get_attribute("innerText")
+
+
+def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
+    args = ["addmock", "url"] + urls
+    runner.invoke(args=args)
 
 
 # Tag Deck

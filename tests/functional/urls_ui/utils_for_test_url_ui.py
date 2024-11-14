@@ -24,9 +24,6 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
         WebDriver open to a selected UTub
         URL title
         URL
-
-    Returns:
-        Yields WebDriver to tests
     """
 
     # Select createURL button
