@@ -1,18 +1,16 @@
+# Standard libraries
+from time import sleep
+
 # External libraries
-import time
 import pytest
 from selenium.webdriver.common.by import By
-
-# from selenium.common.exceptions import TimeoutException, StaleElementReferenceException
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
-
-# from selenium.webdriver.support.wait import WebDriverWait
-# from selenium.webdriver.support import expected_conditions as EC
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import ModalLocators as ML
+from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.utils_for_test import (
     assert_login,
     clear_then_send_keys,
@@ -146,6 +144,23 @@ def test_dismiss_login_modal_x(browser: WebDriver):
     assert not modal_element.is_displayed()
 
 
+def test_dismiss_login_modal_key(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page login modal by pressing the Esc key
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, then presses 'Esc'
+    THEN the modal is closed
+    """
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+
+    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
 def test_login_test_user(browser: WebDriver, create_test_users):
     """
     Tests a user's ability to login using the splash page login modal
@@ -222,7 +237,7 @@ def test_dismiss_forgot_password_modal_x(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    time.sleep(2)
+    sleep(2)
 
     wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS)
 

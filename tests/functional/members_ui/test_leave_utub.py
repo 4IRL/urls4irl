@@ -2,7 +2,6 @@
 from time import sleep
 
 # External libraries
-import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
@@ -11,7 +10,6 @@ from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.members_ui.utils_for_test_members_ui import (
     leave_active_utub,
-    leave_all_utubs,
 )
 from tests.functional.utils_for_test import (
     get_num_utubs,
@@ -56,26 +54,3 @@ def test_leave_utub(browser: WebDriver, create_test_utubmembers):
 
     # Assert UTub count is one less than before
     assert get_num_utubs(browser) == num_utubs - 1
-
-
-@pytest.mark.skip(reason="Test complete. Frontend functionality incomplete.")
-def test_leave_all_utubs(browser: WebDriver, create_test_utubmembers):
-    """
-    Tests the site response to a user leaving the final instance of membership to UTubs. (Current addmocks require deletion of the user's own UTub first.)
-
-    GIVEN a user has access to UTubs
-    WHEN user clicks the memberSelfBtnDelete button on the last instance of accessible UTubs
-    THEN ensure the user is supplied a prompt to create a UTub.
-    """
-
-    login_user(browser)
-
-    leave_all_utubs(browser)
-
-    subheader_utub_deck = wait_then_get_element(browser, MPL.SUBHEADER_UTUB_DECK)
-    subheader_utub_deck_text = subheader_utub_deck.get_attribute("innerText")
-
-    # Assert U4I prompts user to Create UTub
-    assert subheader_utub_deck_text == UTS.MESSAGE_NO_UTUBS
-    # Assert UTub count is one less than before
-    assert get_num_utubs(browser) == 0

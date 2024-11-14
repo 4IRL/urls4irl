@@ -25,6 +25,7 @@ from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import ModalLocators as ML
 
 # General
 
@@ -181,7 +182,7 @@ def dismiss_modal_with_click_out(
     browser: WebDriver, css_selector: str = SPL.SPLASH_MODAL
 ):
     action = ActionChains(browser)
-    modal_element = wait_then_get_element(browser, css_selector)
+    modal_element = wait_then_get_element(browser, ML.ELEMENT_MODAL)
     width = modal_element.rect["width"]
     height = modal_element.rect["height"]
     offset = 15
@@ -336,18 +337,19 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
         Boolean confirmation of UTub selection
     """
 
-    utub_list = wait_then_get_element(browser, MPL.LIST_UTUB)
+    try:
+        utub_list = wait_then_get_element(browser, MPL.LIST_UTUB)
 
-    utub_selectors = utub_list.find_elements(By.CSS_SELECTOR, "*")
+        utub_selectors = utub_list.find_elements(By.CSS_SELECTOR, "*")
 
-    for selector in utub_selectors:
-        utub_selector_name = selector.get_attribute("innerText")
+        for selector in utub_selectors:
+            utub_selector_name = selector.get_attribute("innerText")
 
-        if utub_selector_name == utub_name:
-            selector.click()
-            return True
-
-    return False
+            if utub_selector_name == utub_name:
+                selector.click()
+                return True
+    except NoSuchElementException:
+        return False
 
 
 def login_utub(

@@ -3,23 +3,144 @@ from time import sleep
 
 # External libraries
 import pytest
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.locators import ModalLocators as ML
+from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
+    dismiss_modal_with_click_out,
     login_user,
     select_utub_by_name,
+    user_is_selected_utub_owner,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_hidden,
 )
-from locators import MainPageLocators as MPL
-from tests.functional.utubs_ui.utils_for_test_utub_ui import delete_active_utub
+
+
+def test_open_delete_utub_modal(browser: WebDriver, create_test_utubs):
+    """
+    GIVEN a user on their Home page
+    WHEN they select a UTub and click the Trash can icon
+    THEN ensure the warning modal is shown
+    """
+
+    login_user(browser)
+
+    utub_name = UTS.TEST_UTUB_NAME_1
+
+    select_utub_by_name(browser, utub_name)
+
+    if user_is_selected_utub_owner(browser):
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+
+    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
+
+    utub_delete_check_text = UTS.BODY_MODAL_UTUB_DELETE
+
+    # Assert warning modal appears with appropriate text
+    assert confirmation_modal_body_text == utub_delete_check_text
+
+
+def test_dismiss_delete_utub_modal_x(browser: WebDriver, create_test_utubs):
+    """
+    GIVEN a user on their Home page
+    WHEN they select a UTub, click the Trash can icon, then clicks the 'x'
+    THEN ensure the warning modal is hidden
+    """
+
+    login_user(browser)
+
+    utub_name = UTS.TEST_UTUB_NAME_1
+
+    select_utub_by_name(browser, utub_name)
+
+    if user_is_selected_utub_owner(browser):
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+
+    wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS)
+
+    modal_element = wait_until_hidden(browser, MPL.HOME_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
+def test_dismiss_delete_utub_modal_btn(browser: WebDriver, create_test_utubs):
+    """
+    GIVEN a user on their Home page
+    WHEN they select a UTub, click the Trash can icon, then clicks the 'Nevermind...' button
+    THEN ensure the warning modal is hidden
+    """
+
+    login_user(browser)
+
+    utub_name = UTS.TEST_UTUB_NAME_1
+
+    select_utub_by_name(browser, utub_name)
+
+    if user_is_selected_utub_owner(browser):
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+
+    wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
+
+    modal_element = wait_until_hidden(browser, MPL.HOME_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
+def test_dismiss_delete_utub_modal_key(browser: WebDriver, create_test_utubs):
+    """
+    GIVEN a user on their Home page
+    WHEN they select a UTub, click the Trash can icon, then presses 'Esc'
+    THEN ensure the warning modal is hidden
+    """
+
+    login_user(browser)
+
+    utub_name = UTS.TEST_UTUB_NAME_1
+
+    select_utub_by_name(browser, utub_name)
+
+    if user_is_selected_utub_owner(browser):
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+
+    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+
+    modal_element = wait_until_hidden(browser, MPL.HOME_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
+def test_dismiss_delete_utub_modal_click(browser: WebDriver, create_test_utubs):
+    """
+    GIVEN a user on their Home page
+    WHEN they select a UTub, click the Trash can icon, then clicks anywhere outside of the modal
+    THEN ensure the warning modal is hidden
+    """
+
+    login_user(browser)
+
+    utub_name = UTS.TEST_UTUB_NAME_1
+
+    select_utub_by_name(browser, utub_name)
+
+    if user_is_selected_utub_owner(browser):
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+
+    dismiss_modal_with_click_out(browser)
+
+    modal_element = wait_until_hidden(browser, MPL.HOME_MODAL)
+
+    assert not modal_element.is_displayed()
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_delete_utub(browser: WebDriver, create_test_utubs):
+def test_delete_utub_btn(browser: WebDriver, create_test_utubs):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
@@ -31,17 +152,36 @@ def test_delete_utub(browser: WebDriver, create_test_utubs):
     utub_name = UTS.TEST_UTUB_NAME_1
 
     select_utub_by_name(browser, utub_name)
-    delete_active_utub(browser)
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
-    confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
-
-    utub_delete_check_text = UTS.BODY_MODAL_UTUB_DELETE
-
-    # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == utub_delete_check_text
+    if user_is_selected_utub_owner(browser):
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
 
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+
+    # Wait for DELETE request
+    sleep(4)
+
+    # Assert UTub selector no longer exists
+    assert not select_utub_by_name(browser, utub_name)
+
+
+def test_delete_utub_key(browser: WebDriver, create_test_utubs):
+    """
+    GIVEN a user trying to add a new UTub
+    WHEN they submit the addUTub form
+    THEN ensure the appropriate input field is shown and in focus
+    """
+
+    login_user(browser)
+
+    utub_name = UTS.TEST_UTUB_NAME_1
+
+    select_utub_by_name(browser, utub_name)
+
+    if user_is_selected_utub_owner(browser):
+        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+
+    browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     # Wait for DELETE request
     sleep(4)
@@ -59,8 +199,6 @@ def test_delete_last_utub(browser: WebDriver, create_test_utubs):
     """
 
     login_user(browser)
-
-    delete_active_utub(browser)
 
     # Extract confirming result
     selector_UTub1 = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)

@@ -14,15 +14,36 @@ from tests.functional.utils_for_test import (
     get_selected_utub_decsription,
     get_selected_utub_name,
     login_utub,
+    select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
 )
 from tests.functional.utubs_ui.utils_for_test_utub_ui import (
+    assert_active_utub,
     open_update_input,
     update_utub_name,
     update_utub_description,
 )
+
+
+def test_select_utub(browser: WebDriver, create_test_urls):
+    """
+    Tests a user's ability to select a specific UTub and observe the changes in display.
+
+    GIVEN a fresh load of the U4I Home page
+    WHEN user selects a UTub, then selects another UTub
+    THEN ensure the URL deck header changes and TODO: displayed URLs change (currently addmock adds same URLs to all UTubs))
+    """
+    login_utub(browser)
+
+    utub_selector_names = get_all_utub_selector_names(browser)
+
+    next_utub_name = utub_selector_names[1]
+
+    select_utub_by_name(browser, next_utub_name)
+
+    assert_active_utub(browser, next_utub_name)
 
 
 def test_open_update_utub_name_input(browser: WebDriver, create_test_utubs):

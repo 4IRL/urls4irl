@@ -17,7 +17,7 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 from tests.functional.locators import MainPageLocators as MPL
-from utils_for_test_utub_ui import assert_create_utub, create_utub
+from utils_for_test_utub_ui import assert_active_utub, create_utub
 
 
 def test_open_create_utub_input(browser: WebDriver, create_test_users):
@@ -105,7 +105,7 @@ def test_create_utub_btn(browser: WebDriver, create_test_users):
     # Wait for POST request
     sleep(4)
 
-    assert_create_utub(browser, utub_name)
+    assert_active_utub(browser, utub_name)
 
 
 def test_create_utub_key(browser: WebDriver, create_test_users):
@@ -128,7 +128,7 @@ def test_create_utub_key(browser: WebDriver, create_test_users):
     # Wait for POST request
     sleep(4)
 
-    assert_create_utub(browser, utub_name)
+    assert_active_utub(browser, utub_name)
 
 
 @pytest.mark.skip(

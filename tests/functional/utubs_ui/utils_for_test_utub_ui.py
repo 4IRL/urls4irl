@@ -41,9 +41,9 @@ def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
     clear_then_send_keys(create_utub_description_input, utub_description)
 
 
-def assert_create_utub(browser: WebDriver, utub_name: str):
+def assert_active_utub(browser: WebDriver, utub_name: str):
     """
-    Streamlines actions needed to confirm a new UTub was created.
+    Streamlines actions needed to confirm the UTub named utub_name is active.
 
     Args:
         WebDriver open to U4I Home Page
@@ -60,6 +60,11 @@ def assert_create_utub(browser: WebDriver, utub_name: str):
 
     # Assert new UTub selector was created with input UTub Name
     assert selector_UTub.text == utub_name
+
+    current_URL_deck_header = wait_then_get_element(browser, MPL.HEADER_URL_DECK)
+
+    # Assert new UTub name is displayed as the URL Deck header
+    assert current_URL_deck_header.text == utub_name
 
 
 def open_update_input(browser: WebDriver, update_UTub_name_or_desc: int):
@@ -165,39 +170,3 @@ def update_utub_description(browser: WebDriver, utub_description: str):
         return True
     else:
         return False
-
-
-def delete_active_utub(browser: WebDriver):
-    """
-    Once logged in, this function adds new UTub by selecting the option to open the input field, fills in the fields with the specified values for utub_name and utub_description, and submits the form.
-
-    Args:
-        WebDriver open to a selected UTub to be deleted
-
-    Returns:
-        Boolean confirmation of successful deletion of UTub
-        WebDriver handoff to UTub tests
-    """
-
-    if user_is_selected_utub_owner(browser):
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
-        return True
-    else:
-        return False
-
-
-def delete_active_utub_confirmed(browser: WebDriver):
-    """
-    Simplifies interaction with UTub WebElement to initiate and confirm deletion request.
-
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        Yields WebDriver to tests
-    """
-
-    # Select deleteUTub button
-    delete_active_utub(browser)
-    # Confirm warning modal
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
