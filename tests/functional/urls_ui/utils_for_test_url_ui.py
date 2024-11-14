@@ -62,9 +62,6 @@ def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
     )
     clear_then_send_keys(url_string_input_field, url_string)
 
-    # Submit
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
-
 
 def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title: str):
     """
@@ -104,11 +101,6 @@ def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title
         By.CSS_SELECTOR, MPL.INPUT_URL_TITLE_UPDATE
     )
     clear_then_send_keys(url_title_input_field, url_title)
-
-    # Submit
-    selected_url_row.find_element(
-        By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE
-    ).click()
 
 
 def delete_url(browser: WebDriver, url_row: WebElement):

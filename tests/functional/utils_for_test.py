@@ -261,6 +261,13 @@ def login_user_select_utub_by_name_and_url_by_title(
     select_url_by_title(browser, url_title)
 
 
+def login_user_select_utub_by_name_and_url_by_string(
+    app: Flask, browser: WebDriver, user_id: int, utub_name: str, url_string: str
+):
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_name)
+    select_url_by_url_string(browser, url_string)
+
+
 def login_user(
     browser: WebDriver,
     username: str = UTS.TEST_USERNAME_1,
@@ -519,6 +526,8 @@ def select_url_by_title(browser: WebDriver, url_title: str):
     """
 
     url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_rows is None:
+        return False
 
     for url_row in url_rows:
 
@@ -526,6 +535,34 @@ def select_url_by_title(browser: WebDriver, url_title: str):
             By.CSS_SELECTOR, MPL.URL_TITLE_READ
         ).get_attribute("innerText")
         if url_row_title == url_title:
+            url_row.click()
+            return True
+
+    return False
+
+
+def select_url_by_url_string(browser: WebDriver, url_string: str):
+    """
+    If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL url string.
+
+    Args:
+        WebDriver open to a selected UTub
+        URL String
+
+    Returns:
+        Boolean indicating a successful click of the indicated URL row with the provided URL title
+    """
+
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_rows is None:
+        return False
+
+    for url_row in url_rows:
+
+        url_row_title = url_row.find_element(
+            By.CSS_SELECTOR, MPL.URL_STRING_READ
+        ).get_attribute("data-url")
+        if url_row_title == url_string:
             url_row.click()
             return True
 
