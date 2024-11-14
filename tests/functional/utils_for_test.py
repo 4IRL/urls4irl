@@ -348,7 +348,7 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
             if utub_selector_name == utub_name:
                 selector.click()
                 return True
-    except NoSuchElementException:
+    except AttributeError:
         return False
 
 

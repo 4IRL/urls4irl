@@ -32,7 +32,7 @@ class UI_TEST_STRINGS:
     BODY_MODAL_UTUB_UPDATE_SAME_NAME = (
         "You are a member of a UTub with an identical name."
     )
-    BODY_MODAL_UTUB_DELETE = "This action is irreverisible!"
+    BODY_MODAL_UTUB_DELETE = "This action is irreversible!"
 
     MAX_CHAR_LIM_UTUB_NAME = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
 
