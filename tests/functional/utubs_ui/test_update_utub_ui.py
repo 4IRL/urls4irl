@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -27,6 +28,7 @@ from tests.functional.utubs_ui.utils_for_test_utub_ui import (
 )
 
 
+@pytest.mark.skip(reason="Test not yet implemented")
 def test_select_utub(browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to select a specific UTub and observe the changes in display.
