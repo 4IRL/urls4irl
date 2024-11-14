@@ -615,6 +615,30 @@ def get_num_url_rows(browser: WebDriver):
         return 0
 
 
+def get_all_url_ids_in_selected_utub(browser: WebDriver):
+    """
+    Find all URL IDs in the active UTub.
+
+    Args:
+        WebDriver open to U4I Home Page and active UTub selected.
+
+    Returns:
+        Array of ints corresponding to URL IDs in the UTub
+    """
+
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+
+    if url_rows:
+        url_ids = []
+        for row in url_rows:
+            url_id = row.get_attribute("urlid")
+            url_ids.append(int(url_id))
+
+        return url_ids
+    else:
+        return False
+
+
 def url_row_unfiltered(url_rows: List[WebElement]):
     """
     Checks if each URL row is unfiltered.

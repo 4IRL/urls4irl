@@ -2,7 +2,6 @@
 from time import sleep
 
 # External libraries
-import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -11,6 +10,7 @@ from locators import MainPageLocators as MPL
 from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE, MOCK_UTUB_DESCRIPTION
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.utils_for_test import (
+    get_all_url_ids_in_selected_utub,
     get_all_utub_selector_names,
     get_selected_utub_decsription,
     get_selected_utub_name,
@@ -28,7 +28,6 @@ from tests.functional.utubs_ui.utils_for_test_utub_ui import (
 )
 
 
-@pytest.mark.skip(reason="Test not yet implemented")
 def test_select_utub(browser: WebDriver, create_test_urls):
     """
     Tests a user's ability to select a specific UTub and observe the changes in display.
@@ -39,13 +38,20 @@ def test_select_utub(browser: WebDriver, create_test_urls):
     """
     login_utub(browser)
 
+    current_utub_url_ids = get_all_url_ids_in_selected_utub(browser)
+
     utub_selector_names = get_all_utub_selector_names(browser)
 
     next_utub_name = utub_selector_names[1]
 
     select_utub_by_name(browser, next_utub_name)
 
+    next_utub_url_ids = get_all_url_ids_in_selected_utub(browser)
+
     assert_active_utub(browser, next_utub_name)
+
+    for id in current_utub_url_ids:
+        assert id not in next_utub_url_ids
 
 
 def test_open_update_utub_name_input(browser: WebDriver, create_test_utubs):
