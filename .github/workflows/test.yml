@@ -47,9 +47,9 @@ jobs:
           - [7, 'CLI Integration Tests']
           - [8, 'UI Splash Functional Tests']
           - [9, 'UI Home Functional Tests']
-          - [10, 'UI UTub URL Functional Tests']
-          # - [11, 'UI UTub Functional Tests']
-          # - [12, 'UI Member Functional Tests']
+          - [10, 'UI UTub Functional Tests']
+          - [11, 'UI Member Functional Tests']
+          - [12, 'UI UTub URL Functional Tests']
           # - [13, 'UI UTub Tags Functional Tests']
 
     name: ${{ format('{0}', matrix.worker[1]) }}

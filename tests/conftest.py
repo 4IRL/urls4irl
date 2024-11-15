@@ -41,8 +41,9 @@ TEST_SPLIT = (
     "cli",
     "splash_ui",
     "home_ui",
+    "utubs_ui",
+    "members_ui",
     "urls_ui",
-    # "utubs_ui",
     # "tags_ui",
 )
 
