@@ -1,7 +1,9 @@
 # Standard library
 from time import sleep
+from typing import Tuple
 
 # External libraries
+from flask import Flask
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -11,6 +13,8 @@ from selenium.webdriver.remote.webelement import WebElement
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
+    get_selected_url,
+    login_user_select_utub_by_name_and_url_by_string,
     wait_then_click_element,
     wait_then_get_element,
 )
@@ -41,7 +45,7 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
     wait_then_click_element(browser, MPL.BUTTON_URL_SUBMIT_CREATE)
 
 
-def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
+def update_url_string(url_row: WebElement, url_string: str):
     """
     Streamlines actions required to updated a URL in the selected URL.
 
@@ -103,7 +107,7 @@ def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title
     clear_then_send_keys(url_title_input_field, url_title)
 
 
-def delete_url(browser: WebDriver, url_row: WebElement):
+def delete_url(url_row: WebElement):
     """
     Simplifies interaction with URL WebElement to initiate deletion request.
 
@@ -118,6 +122,17 @@ def delete_url(browser: WebDriver, url_row: WebElement):
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_DELETE).click()
 
 
+def login_select_utub_select_url_click_delete_get_modal_url(
+    browser: WebDriver, app: Flask, user_id: int, utub_name: str, url_string: str
+) -> Tuple[WebElement, WebElement]:
+    login_user_select_utub_by_name_and_url_by_string(
+        app, browser, user_id, utub_name, url_string
+    )
+    url_row = get_selected_url(browser)
+    delete_url(url_row)
+    return wait_then_get_element(browser, MPL.BODY_MODAL), url_row
+
+
 def delete_url_confirmed(browser: WebDriver, url_row: WebElement):
     """
     Simplifies interaction with URL WebElement to initiate and confirm deletion request.
@@ -130,7 +145,7 @@ def delete_url_confirmed(browser: WebDriver, url_row: WebElement):
     """
 
     # Select deleteURL button
-    delete_url(browser, url_row)
+    delete_url(url_row)
     # Confirm warning modal
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
     # Wait for DELETE request

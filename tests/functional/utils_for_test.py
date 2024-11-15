@@ -152,6 +152,27 @@ def wait_then_click_element(
         return None
 
 
+def wait_for_element_to_be_removed(
+    browser: WebDriver, elem: WebElement, timeout=10
+) -> bool:
+    """
+    Waits for an element to be removed from the DOM after an animation completes.
+
+    Args:
+        browser (WebDriver): The Selenium WebDriver instance.
+        elem (WebElement): The element to check if removed
+        timeout (int): Maximum time to wait (in seconds).
+
+    Returns:
+        (bool): True if the element is removed within the timeout period, False otherwise
+    """
+    try:
+        WebDriverWait(browser, timeout).until(EC.staleness_of(elem))
+        return True
+    except (TimeoutException, NoSuchElementException):
+        return False
+
+
 def clear_then_send_keys(element: WebElement, input_text: str):
     """
     Streamlines clearing an input field and sending keys provided.
@@ -544,7 +565,7 @@ def select_url_by_title(browser: WebDriver, url_title: str):
     return False
 
 
-def select_url_by_url_string(browser: WebDriver, url_string: str):
+def select_url_by_url_string(browser: WebDriver, url_string: str) -> bool:
     """
     If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL url string.
 
@@ -562,11 +583,38 @@ def select_url_by_url_string(browser: WebDriver, url_string: str):
 
     for url_row in url_rows:
 
-        url_row_title = url_row.find_element(
+        url_row_string = url_row.find_element(
             By.CSS_SELECTOR, MPL.URL_STRING_READ
         ).get_attribute("data-url")
-        if url_row_title == url_string:
+        if url_row_string == url_string:
             url_row.click()
+            return True
+
+    return False
+
+
+def verify_elem_with_url_string_exists(browser: WebDriver, url_string: str) -> bool:
+    """
+    If a UTub is selected and the UTub contains URLs, find a URL containing a given string.
+
+    Args:
+        browser (WebDriver): The browser driver open to a selected UTub
+        url_string (str): URL String
+
+    Returns:
+        (bool): True if element exists, False otherwise
+
+    """
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_rows is None:
+        return False
+
+    for url_row in url_rows:
+        url_row_string = url_row.find_element(
+            By.CSS_SELECTOR, MPL.URL_STRING_READ
+        ).get_attribute("data-url")
+
+        if url_row_string == url_string:
             return True
 
     return False
