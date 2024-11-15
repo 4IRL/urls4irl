@@ -24,6 +24,8 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 
+pytestmark = pytest.mark.utubs_ui
+
 
 def test_open_delete_utub_modal(browser: WebDriver, create_test_utubs):
     """
