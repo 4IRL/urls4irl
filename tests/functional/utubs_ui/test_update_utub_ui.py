@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -26,6 +27,8 @@ from tests.functional.utubs_ui.utils_for_test_utub_ui import (
     update_utub_name,
     update_utub_description,
 )
+
+pytestmark = pytest.mark.utubs_ui
 
 
 def test_select_utub(browser: WebDriver, create_test_urls):

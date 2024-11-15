@@ -19,6 +19,8 @@ from tests.functional.utils_for_test import (
 from tests.functional.locators import MainPageLocators as MPL
 from utils_for_test_utub_ui import assert_active_utub, create_utub
 
+pytestmark = pytest.mark.utubs_ui
+
 
 def test_open_create_utub_input(browser: WebDriver, create_test_users):
     """

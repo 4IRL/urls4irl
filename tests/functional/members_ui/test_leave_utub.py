@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
@@ -18,6 +19,8 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
     wait_then_get_element,
 )
+
+pytestmark = pytest.mark.members_ui
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")

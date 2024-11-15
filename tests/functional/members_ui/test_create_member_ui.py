@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -19,6 +20,8 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_until_hidden,
 )
+
+pytestmark = pytest.mark.members_ui
 
 
 def test_open_input_create_member(browser: WebDriver, create_test_utubs):
