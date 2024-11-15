@@ -73,6 +73,7 @@ class MainPageLocators:
     BUTTON_TAG_CREATE = ".urlTagBtnCreate"
     INPUT_TAG_CREATE = ".urlTagCreate"
     BUTTON_TAG_SUBMIT_CREATE = ".urlTagSubmitBtnCreate"
+    BUTTON_TAG_CANCEL_CREATE = ".urlTagCancelBtnCreate"
     ERROR_TAG_CREATE = ".urlTagCreate-error"
 
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"
