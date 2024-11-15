@@ -22,6 +22,7 @@ from tests.functional.utils_for_test import (
     login_utub_url,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_hidden,
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
@@ -38,6 +39,46 @@ def test_open_input_create_tag(browser: WebDriver, create_test_urls):
 
     selected_url_row = get_selected_url(browser)
     create_tag(browser, selected_url_row)
+
+
+def test_cancel_input_create_tag_btn(browser: WebDriver, create_test_urls):
+    """
+    Tests a UTub owner's ability to close the create tag input field.
+
+    GIVEN a user is the UTub owner with the UTub selected
+    WHEN the user clicks the createMember plus button, then clicks the x button
+    THEN ensure the createMember form is not shown.
+    """
+    login_utub_url(browser)
+
+    selected_url_row = get_selected_url(browser)
+    create_tag(browser, selected_url_row)
+
+    wait_then_click_element(browser, MPL.BUTTON_TAG_CANCEL_CREATE)
+
+    create_tag_input = wait_until_hidden(browser, MPL.INPUT_MEMBER_CREATE)
+
+    assert not create_tag_input.is_displayed()
+
+
+def test_cancel_input_create_tag_key(browser: WebDriver, create_test_urls):
+    """
+    Tests a UTub owner's ability to close the create member input field.
+
+    GIVEN a user is the UTub owner with the UTub selected
+    WHEN the user clicks the createMember plus button, then presses the esc key
+    THEN ensure the createMember form is not shown.
+    """
+    login_utub_url(browser)
+
+    selected_url_row = get_selected_url(browser)
+    create_tag(browser, selected_url_row)
+
+    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+
+    create_tag_input = wait_until_hidden(browser, MPL.INPUT_MEMBER_CREATE)
+
+    assert not create_tag_input.is_displayed()
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
@@ -132,9 +173,7 @@ def test_create_existing_tag(browser: WebDriver, create_test_tags):
     assert warning_modal_body.text == "Try shortening your UTub name"
 
 
-# @pytest.mark.skip(
-#     reason="Not on happy path."
-# )
+@pytest.mark.skip(reason="Not on happy path.")
 def test_create_sixth_tag(browser: WebDriver, create_test_tags):
     """
     Tests the site error response to a user's attempt to create an additional unique tag once a URL already has the maximum number of tags applied
@@ -145,10 +184,10 @@ def test_create_sixth_tag(browser: WebDriver, create_test_tags):
     """
     login_utub_url(browser)
 
-    url_row = get_selected_url(browser)
-
+    selected_url_row = get_selected_url(browser)
     tag_text = UTS.TEST_TAG_NAME_1
-    create_tag(browser, url_row, tag_text)
+
+    create_tag(browser, selected_url_row, tag_text)
 
     # Submit
     wait_then_click_element(browser, MPL.BUTTON_TAG_SUBMIT_CREATE)

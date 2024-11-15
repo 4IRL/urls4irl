@@ -32,9 +32,9 @@ def test_filter_tag(browser: WebDriver, create_test_tags):
 
     # Delete first tag badge from first URL row
     first_url_row = get_selected_url(browser)
-    first_url_title = first_url_row.find_element(By.CLASS_NAME, "urlTitle")[
-        0
-    ].get_attribute("innerText")
+    first_url_title = first_url_row.find_element(
+        By.CLASS_NAME, "urlTitle"
+    ).get_attribute("innerText")
     print(first_url_title)
 
     # Delete first tag badge from first URL row

@@ -69,9 +69,9 @@ def test_cancel_input_create_member_key(browser: WebDriver, create_test_utubs):
 
     wait_then_click_element(browser, MPL.BUTTON_MEMBER_CREATE)
 
-    create_member_input = wait_then_get_element(browser, MPL.INPUT_MEMBER_CREATE)
-
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+
+    create_member_input = wait_until_hidden(browser, MPL.INPUT_MEMBER_CREATE)
 
     assert not create_member_input.is_displayed()
 
