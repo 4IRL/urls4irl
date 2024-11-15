@@ -14,9 +14,7 @@ from tests.functional.utils_for_test import (
 )
 
 
-def open_create_tag_input(
-    browser: WebDriver, selected_url_row: WebElement, tag_string: str
-):
+def create_tag(browser: WebDriver, selected_url_row: WebElement, tag_string: str = ""):
     """
     Once logged in, with users, UTub, and URLs this function initiates the action to create one tag applied to the selected URL in the selected UTub.
     """
@@ -24,9 +22,16 @@ def open_create_tag_input(
     # Select createTag button
     selected_url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_CREATE).click()
 
-    # Input new tag
-    tag_input_field = wait_then_get_element(browser, MPL.INPUT_TAG_CREATE)
-    clear_then_send_keys(tag_input_field, tag_string)
+    create_tag_input = selected_url_row.find_element(
+        By.CSS_SELECTOR, MPL.INPUT_TAG_CREATE
+    )
+
+    assert create_tag_input.is_displayed()
+
+    if tag_string:
+        # Input new tag
+        tag_input_field = wait_then_get_element(browser, MPL.INPUT_TAG_CREATE)
+        clear_then_send_keys(tag_input_field, tag_string)
 
 
 def delete_tag(browser: WebDriver, tag_badge: WebElement):

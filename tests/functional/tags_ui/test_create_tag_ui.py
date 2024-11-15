@@ -3,7 +3,6 @@ from time import sleep
 
 # External libraries
 import pytest
-from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -15,7 +14,7 @@ from src.mocks.mock_constants import (
 from src.utils.strings.tag_strs import FIVE_TAGS_MAX
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
-from tests.functional.tags_ui.utils_for_test_tag_ui import open_create_tag_input
+from tests.functional.tags_ui.utils_for_test_tag_ui import create_tag
 from tests.functional.utils_for_test import (
     get_selected_url,
     get_tag_badge_by_name,
@@ -38,15 +37,7 @@ def test_open_input_create_tag(browser: WebDriver, create_test_urls):
     login_utub_url(browser)
 
     selected_url_row = get_selected_url(browser)
-
-    # Select createTag button
-    selected_url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_CREATE).click()
-
-    create_tag_input = selected_url_row.find_element(
-        By.CSS_SELECTOR, MPL.INPUT_TAG_CREATE
-    )
-
-    assert create_tag_input.is_displayed()
+    create_tag(browser, selected_url_row)
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
@@ -62,9 +53,9 @@ def test_create_tag_btn(browser: WebDriver, create_test_urls):
     login_utub_url(browser)
 
     selected_url_row = get_selected_url(browser)
-
     tag_text = UTS.TEST_TAG_NAME_1
-    open_create_tag_input(browser, selected_url_row, tag_text)
+
+    create_tag(browser, selected_url_row, tag_text)
 
     # Submit
     wait_then_click_element(browser, MPL.BUTTON_TAG_SUBMIT_CREATE)
@@ -98,9 +89,9 @@ def test_create_tag_key(browser: WebDriver, create_test_urls):
     login_utub_url(browser)
 
     selected_url_row = get_selected_url(browser)
-
     tag_text = UTS.TEST_TAG_NAME_1
-    open_create_tag_input(browser, selected_url_row, tag_text)
+
+    create_tag(browser, selected_url_row, tag_text)
 
     # Submit
     browser.switch_to.active_element.send_keys(Keys.ENTER)
@@ -157,7 +148,7 @@ def test_create_sixth_tag(browser: WebDriver, create_test_tags):
     url_row = get_selected_url(browser)
 
     tag_text = UTS.TEST_TAG_NAME_1
-    open_create_tag_input(browser, url_row, tag_text)
+    create_tag(browser, url_row, tag_text)
 
     # Submit
     wait_then_click_element(browser, MPL.BUTTON_TAG_SUBMIT_CREATE)
