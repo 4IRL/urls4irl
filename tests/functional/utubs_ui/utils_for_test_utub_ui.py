@@ -67,7 +67,7 @@ def assert_active_utub(browser: WebDriver, utub_name: str):
     assert current_URL_deck_header.text == utub_name
 
 
-def open_update_input(browser: WebDriver, update_UTub_name_or_desc: int):
+def open_update_utub_input(browser: WebDriver, update_UTub_name_or_desc: int):
     """
     Once logged in and UTub selected, this function conducts the actions for opening either the update UTub name or description input field. First hover over the UTub name or description to display the edit button. Then clicks the edit button.
 
@@ -133,7 +133,7 @@ def update_utub_name(browser: WebDriver, utub_name: str):
     """
 
     if user_is_selected_utub_owner(browser):
-        open_update_input(browser, 1)
+        open_update_utub_input(browser, 1)
 
         # Types new UTub name
         utub_name_update_input = wait_then_get_element(
@@ -159,7 +159,7 @@ def update_utub_description(browser: WebDriver, utub_description: str):
     """
 
     if user_is_selected_utub_owner(browser):
-        open_update_input(browser, 0)
+        open_update_utub_input(browser, 0)
 
         # Types new UTub description
         utub_description_update_input = wait_then_get_element(

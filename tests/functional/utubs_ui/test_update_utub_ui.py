@@ -22,7 +22,7 @@ from tests.functional.utils_for_test import (
 )
 from tests.functional.utubs_ui.utils_for_test_utub_ui import (
     assert_active_utub,
-    open_update_input,
+    open_update_utub_input,
     update_utub_name,
     update_utub_description,
 )
@@ -66,7 +66,7 @@ def test_open_update_utub_name_input(browser: WebDriver, create_test_utubs):
 
     utub_name = wait_then_get_element(browser, MPL.HEADER_URL_DECK).text
 
-    open_update_input(browser, 1)
+    open_update_utub_input(browser, 1)
 
     utub_name_update_input = wait_then_get_element(browser, MPL.INPUT_UTUB_NAME_UPDATE)
 
@@ -85,7 +85,7 @@ def test_close_update_utub_name_input_btn(browser: WebDriver, create_test_utubs)
     """
     login_utub(browser)
 
-    open_update_input(browser, 1)
+    open_update_utub_input(browser, 1)
 
     wait_then_click_element(browser, MPL.BUTTON_UTUB_NAME_CANCEL_UPDATE)
 
@@ -104,7 +104,7 @@ def test_close_update_utub_name_input_key(browser: WebDriver, create_test_utubs)
     """
     login_utub(browser)
 
-    open_update_input(browser, 1)
+    open_update_utub_input(browser, 1)
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
@@ -240,7 +240,7 @@ def test_open_update_utub_description_input(browser: WebDriver, create_test_utub
 
     utub_description = wait_then_get_element(browser, MPL.SUBHEADER_URL_DECK).text
 
-    open_update_input(browser, 0)
+    open_update_utub_input(browser, 0)
 
     utub_description_update_input = wait_then_get_element(
         browser, MPL.INPUT_UTUB_DESCRIPTION_UPDATE
@@ -261,7 +261,7 @@ def test_close_update_utub_description_input_btn(browser: WebDriver, create_test
     """
     login_utub(browser)
 
-    open_update_input(browser, 0)
+    open_update_utub_input(browser, 0)
 
     wait_then_click_element(browser, MPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE)
 
@@ -280,7 +280,7 @@ def test_close_update_utub_description_input_key(browser: WebDriver, create_test
     """
     login_utub(browser)
 
-    open_update_input(browser, 0)
+    open_update_utub_input(browser, 0)
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 

@@ -1,23 +1,24 @@
 # Standard library
 
 # External libraries
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
-from selenium.webdriver.common.action_chains import ActionChains
 
 # Internal libraries
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
-    wait_then_click_element,
     wait_then_get_element,
 )
 
 
-def create_tag(browser: WebDriver, selected_url_row: WebElement, tag_string: str):
+def open_create_tag_input(
+    browser: WebDriver, selected_url_row: WebElement, tag_string: str
+):
     """
-    Once logged in, with users, UTub, and URLs this function initiates the action to create one tag applied to the selected URL in the UTub.
+    Once logged in, with users, UTub, and URLs this function initiates the action to create one tag applied to the selected URL in the selected UTub.
     """
 
     # Select createTag button
@@ -26,9 +27,6 @@ def create_tag(browser: WebDriver, selected_url_row: WebElement, tag_string: str
     # Input new tag
     tag_input_field = wait_then_get_element(browser, MPL.INPUT_TAG_CREATE)
     clear_then_send_keys(tag_input_field, tag_string)
-
-    # Submit
-    wait_then_click_element(browser, MPL.BUTTON_TAG_SUBMIT_CREATE)
 
 
 def delete_tag(browser: WebDriver, tag_badge: WebElement):
