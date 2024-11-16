@@ -53,7 +53,7 @@ def get_all_attributes(driver: WebDriver, element: WebElement):
 
 def wait_then_get_element(
     browser: WebDriver, css_selector: str, time: float = 2
-) -> WebElement:
+) -> WebElement | None:
     """
     Streamlines waiting for single element load after user interaction.
 
@@ -123,7 +123,7 @@ def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 
 
 def wait_then_click_element(
     browser: WebDriver, css_selector: str, time: float = 2
-) -> WebElement:
+) -> WebElement | None:
     """
     Streamlines waiting for load and clicking a single element after user interaction.
 
@@ -204,6 +204,7 @@ def dismiss_modal_with_click_out(
 ):
     action = ActionChains(browser)
     modal_element = wait_then_get_element(browser, ML.ELEMENT_MODAL)
+    assert modal_element is not None
     width = modal_element.rect["width"]
     height = modal_element.rect["height"]
     offset = 15
@@ -313,9 +314,11 @@ def login_user(
 
     # Input login details
     username_input = wait_then_get_element(browser, SPL.INPUT_USERNAME)
+    assert username_input is not None
     clear_then_send_keys(username_input, username)
 
     password_input = wait_then_get_element(browser, SPL.INPUT_PASSWORD)
+    assert password_input is not None
     clear_then_send_keys(password_input, password)
 
     # Find submit button to login
@@ -336,17 +339,19 @@ def assert_login(browser: WebDriver):
     # Confirm user logged in
     # Logout button visible
     btn_logout = wait_then_get_element(browser, MPL.BUTTON_LOGOUT)
+    assert btn_logout is not None
     assert btn_logout.text == "Logout"
 
     # Correct user logged in
     user_logged_in = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    assert user_logged_in is not None
     userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
     assert user_logged_in.text == userLoggedInText
 
 
 # UTub Deck
-def select_utub_by_name(browser: WebDriver, utub_name: str):
+def select_utub_by_name(browser: WebDriver, utub_name: str) -> bool:
     """
     Selects the first UTub selector matching the supplied UTub name
 
@@ -360,6 +365,7 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
 
     try:
         utub_list = wait_then_get_element(browser, MPL.LIST_UTUB)
+        assert utub_list is not None
 
         utub_selectors = utub_list.find_elements(By.CSS_SELECTOR, "*")
 
@@ -371,6 +377,7 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
                 return True
     except AttributeError:
         return False
+    return False
 
 
 def login_utub(
@@ -481,7 +488,9 @@ def get_selected_utub_owner_id(browser: WebDriver):
     """
 
     owner_badge = wait_then_get_element(browser, MPL.BADGE_OWNER)
+    assert owner_badge is not None
     owner_id = owner_badge.get_attribute("memberid")
+    assert owner_id is not None
     return int(owner_id)
 
 
@@ -497,7 +506,9 @@ def get_current_user_name(browser: WebDriver):
     """
 
     logged_in_user = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    assert logged_in_user is not None
     logged_in_user_string = logged_in_user.get_attribute("innerText")
+    assert logged_in_user_string is not None
     user_name = logged_in_user_string.split("as ")
 
     return user_name[1]
@@ -514,10 +525,13 @@ def get_current_user_id(browser: WebDriver):
         Integer user ID
     """
     logged_in_user = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    assert logged_in_user is not None
 
     parent_element = logged_in_user.find_element(By.XPATH, "..")
+    assert parent_element is not None
 
     user_id = parent_element.get_attribute("userid")
+    assert user_id is not None
 
     return int(user_id)
 
@@ -680,6 +694,7 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver):
         url_ids = []
         for row in url_rows:
             url_id = row.get_attribute("urlid")
+            assert url_id is not None
             url_ids.append(int(url_id))
 
         return url_ids
@@ -849,7 +864,7 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | No
     return None
 
 
-def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement:
+def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | None:
     """
     Simplifies extraction of a tag badge WebElement by its name in a selected URL.
 
