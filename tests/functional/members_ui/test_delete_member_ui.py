@@ -16,8 +16,7 @@ from tests.functional.members_ui.utils_for_test_members_ui import (
     get_all_member_usernames,
 )
 from tests.functional.utils_for_test import (
-    login_user,
-    select_utub_by_name,
+    login_utub,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -35,11 +34,10 @@ def test_open_delete_member_modal(browser: WebDriver, create_test_utubmembers):
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    login_user(browser)
+    login_utub(browser)
 
     member_name = USERNAME_BASE + "2"
 
-    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
     delete_member_active_utub(browser, member_name)
 
     warning_modal = wait_then_get_element(browser, MPL.HOME_MODAL)
@@ -64,11 +62,10 @@ def test_dismiss_delete_member_modal_btn(browser: WebDriver, create_test_utubmem
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    login_user(browser)
+    login_utub(browser)
 
     member_name = USERNAME_BASE + "2"
 
-    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
     delete_member_active_utub(browser, member_name)
 
     wait_then_click_element(browser, MPL.BUTTON_MODAL_DISMISS)
@@ -88,11 +85,10 @@ def test_dismiss_delete_member_modal_key(browser: WebDriver, create_test_utubmem
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    login_user(browser)
+    login_utub(browser)
 
     member_name = USERNAME_BASE + "2"
 
-    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
     delete_member_active_utub(browser, member_name)
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
@@ -112,11 +108,10 @@ def test_delete_member_btn(browser: WebDriver, create_test_utubmembers):
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    login_user(browser)
+    login_utub(browser)
 
     member_name = USERNAME_BASE + "2"
 
-    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
     delete_member_active_utub(browser, member_name)
 
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)

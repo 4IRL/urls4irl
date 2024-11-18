@@ -9,7 +9,10 @@ from selenium.webdriver.remote.webdriver import WebDriver
 # Internal libraries
 from src.mocks.mock_constants import MOCK_URL_TITLES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.tags_ui.utils_for_test_tag_ui import delete_tag
+from tests.functional.tags_ui.utils_for_test_tag_ui import (
+    delete_tag,
+    show_delete_tag_button_on_hover,
+)
 from tests.functional.urls_ui.utils_for_test_url_ui import delete_url
 from tests.functional.utils_for_test import (
     get_selected_url,
@@ -21,14 +24,10 @@ from tests.functional.utils_for_test import (
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
-    wait_then_get_elements,
 )
 from locators import MainPageLocators as MPL
 
 
-@pytest.mark.skip(
-    reason="Test not yet implemented. No discernable indicator of functionality beyond visual confirmation...for now."
-)
 def test_show_delete_tag_button_on_hover(browser: WebDriver, create_test_tags):
     """
     Tests a user's ability to create a new URL in a selected UTub
@@ -38,14 +37,19 @@ def test_show_delete_tag_button_on_hover(browser: WebDriver, create_test_tags):
     THEN ensure the deleteTag button is displayed
     """
 
-    login_user(browser)
+    login_utub_url(browser)
 
-    select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
+    url_row = get_selected_url(browser)
 
-    # Select first URL
-    url_row = wait_then_get_elements(browser, MPL.ROWS_URLS)[0]
-    url_row.click()
-    assert "true" == url_row.get_attribute("urlselected")
+    url_tags = get_selected_url_tags(url_row)
+    tag_name = (
+        url_tags[0].find_element(By.CLASS_NAME, "tagText").get_attribute("innerText")
+    )
+    print(tag_name)
+
+    delete_tag_button = show_delete_tag_button_on_hover(browser, url_tags[0])
+
+    assert delete_tag_button.is_displayed()
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")

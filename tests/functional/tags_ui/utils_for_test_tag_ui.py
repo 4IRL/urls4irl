@@ -34,14 +34,19 @@ def create_tag(browser: WebDriver, selected_url_row: WebElement, tag_string: str
         clear_then_send_keys(tag_input_field, tag_string)
 
 
-def delete_tag(browser: WebDriver, tag_badge: WebElement):
+def show_delete_tag_button_on_hover(browser: WebDriver, tag_badge: WebElement):
     """
-    Once logged in, with users, UTubs, URLs, and tags this function initiates the action to delete the first tag in the tagList in the selected URL. Modal confirmation handled in test.
+    Args:
+        WebDriver open to a selected URL
+        Tag badge element to remove from the selected URL
+
+    Returns:
+        Boolean confirmation of successful deletion of tag
+        WebDriver handoff to member tests
     """
 
     actions = ActionChains(browser)
 
-    # Hover over tag to display deleteTag button
     actions.move_to_element(tag_badge)
 
     # Pause to make sure deleteTag button is visible
@@ -49,8 +54,21 @@ def delete_tag(browser: WebDriver, tag_badge: WebElement):
 
     delete_tag_button = tag_badge.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_DELETE)
 
+    return delete_tag_button
+
+
+def delete_tag(browser: WebDriver, url_tag_to_delete: WebElement):
+    """
+    Once logged in, with users, UTubs, URLs, and tags this function initiates the action to delete the first tag in the tagList in the selected URL.
+    """
+    delete_tag_button = show_delete_tag_button_on_hover(browser, url_tag_to_delete)
+
+    actions = ActionChains(browser)
+
     actions.move_to_element(delete_tag_button).pause(2)
 
     actions.click(delete_tag_button)
 
     actions.perform()
+
+    return True
