@@ -36,6 +36,7 @@ def test_open_register_modal_center_btn(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     assert modal_element.is_displayed()
 
@@ -55,11 +56,13 @@ def test_open_register_modal_RHS_btn(browser: WebDriver):
 
     # Find and click login button to open modal
     navbar = wait_then_get_element(browser, SPL.SPLASH_NAVBAR)
+    assert navbar is not None
 
     register_btn = navbar.find_element(By.CSS_SELECTOR, SPL.BUTTON_REGISTER)
     register_btn.click()
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     assert modal_element.is_displayed()
 
@@ -80,6 +83,7 @@ def test_login_to_register_modal_btn(browser: WebDriver):
     wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
@@ -155,6 +159,7 @@ def test_register_new_user(browser: WebDriver):
     time.sleep(3)
 
     modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL)
+    assert modal_title is not None
 
     assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
 
@@ -181,6 +186,7 @@ def test_register_existing_username(browser: WebDriver, add_test_users):
     invalid_feedback_username_message = wait_then_get_element(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK
     )
+    assert invalid_feedback_username_message is not None
 
     assert invalid_feedback_username_message.text == UTS.MESSAGE_USERNAME_TAKEN
 
@@ -197,13 +203,14 @@ def test_register_existing_email(browser: WebDriver, add_test_users):
 
     # register_user(browser, username, email, password)
     register_user(
-        browser, UTS.TEST_USER_UNLISTED, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+        browser, UTS.TEST_USERNAME_UNLISTED, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )
 
     # Extract error message text
     invalid_feedback_email_message = wait_then_get_element(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK
     )
+    assert invalid_feedback_email_message is not None
 
     assert invalid_feedback_email_message.text == UTS.MESSAGE_EMAIL_TAKEN
 

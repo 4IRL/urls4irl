@@ -25,7 +25,7 @@ from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
-from tests.functional.locators import ModalLocators as ML
+from tests.functional.locators import ModalLocators as MP
 
 # General
 
@@ -87,7 +87,9 @@ def wait_then_get_element(
         return None
 
 
-def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 2):
+def wait_then_get_elements(
+    browser: WebDriver, css_selector: str, time: float = 2
+) -> list:
     """
     Streamlines waiting for multiple elements load after user interaction.
 
@@ -113,12 +115,12 @@ def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 
         return elements
     except ElementNotInteractableException:
         print("ElementNotInteractableException")
-        return None
+        return []
     except NoSuchElementException:
-        return None
+        return []
     except TimeoutException:
         print("Timeout")
-        return None
+        return []
 
 
 def wait_then_click_element(
@@ -126,6 +128,7 @@ def wait_then_click_element(
 ) -> WebElement | None:
     """
     Streamlines waiting for load and clicking a single element after user interaction.
+    Uses CSS Selector to locate element.
 
     Args:
         WebDriver open to U4I
@@ -150,6 +153,24 @@ def wait_then_click_element(
         return element
     except NoSuchElementException:
         return None
+
+
+def wait_for_web_element_and_click(browser: WebDriver, element: WebElement, timeout=10):
+    """
+    Waits for an already located WebElement to be clickable and clicks it.
+
+    Args:
+        driver: The WebDriver instance.
+        element: The WebElement that you want to click.
+        timeout: The maximum number of seconds to wait for the element to become clickable.
+
+    Returns:
+        None
+    """
+    WebDriverWait(browser, timeout).until(
+        lambda _: element.is_enabled() and element.is_displayed()
+    )
+    element.click()
 
 
 def wait_for_element_to_be_removed(
@@ -198,12 +219,17 @@ def wait_until_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
     return element
 
 
+def wait_until_visible(browser: WebDriver, element: WebElement, timeout: int = 2):
+    wait = WebDriverWait(browser, timeout)
+    wait.until(lambda _: element.is_displayed())
+
+    return element
+
+
 # Modal
-def dismiss_modal_with_click_out(
-    browser: WebDriver, css_selector: str = SPL.SPLASH_MODAL
-):
+def dismiss_modal_with_click_out(browser: WebDriver):
     action = ActionChains(browser)
-    modal_element = wait_then_get_element(browser, ML.ELEMENT_MODAL)
+    modal_element = wait_then_get_element(browser, MP.ELEMENT_MODAL)
     assert modal_element is not None
     width = modal_element.rect["width"]
     height = modal_element.rect["height"]
@@ -404,7 +430,7 @@ def login_utub(
     select_utub_by_name(browser, utub_name)
 
 
-def get_num_utubs(browser: WebDriver):
+def get_num_utubs(browser: WebDriver) -> int:
     """
     Count number of UTub selectors
 
@@ -417,11 +443,10 @@ def get_num_utubs(browser: WebDriver):
     utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
     if utub_selectors:
         return len(utub_selectors)
-    else:
-        return 0
+    return 0
 
 
-def get_all_utub_selector_names(browser: WebDriver):
+def get_all_utub_selector_names(browser: WebDriver) -> list[str]:
     """
     Find all UTub selectors the current user has access to.
 
@@ -433,16 +458,14 @@ def get_all_utub_selector_names(browser: WebDriver):
     """
     utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
 
+    utub_names = []
     if utub_selectors:
-        utub_names = []
         for utub_selector in utub_selectors:
             utub_names.append(utub_selector.text)
-        return utub_names
-    else:
-        return False
+    return utub_names
 
 
-def get_selected_utub_name(browser: WebDriver):
+def get_selected_utub_name(browser: WebDriver) -> str:
     """
     Extracts name of selected UTub.
 
@@ -458,6 +481,7 @@ def get_selected_utub_name(browser: WebDriver):
     )
 
     utub_name = selected_utub_selector.get_attribute("innerText")
+    assert isinstance(utub_name, str)
 
     return utub_name
 
@@ -489,12 +513,14 @@ def get_selected_utub_owner_id(browser: WebDriver):
 
     owner_badge = wait_then_get_element(browser, MPL.BADGE_OWNER)
     assert owner_badge is not None
+
     owner_id = owner_badge.get_attribute("memberid")
     assert owner_id is not None
+    assert isinstance(owner_id, str)
     return int(owner_id)
 
 
-def get_current_user_name(browser: WebDriver):
+def get_current_user_name(browser: WebDriver) -> str:
     """
     Extracts the user ID associated with the logged in user.
 
@@ -509,12 +535,13 @@ def get_current_user_name(browser: WebDriver):
     assert logged_in_user is not None
     logged_in_user_string = logged_in_user.get_attribute("innerText")
     assert logged_in_user_string is not None
+    assert isinstance(logged_in_user_string, str)
     user_name = logged_in_user_string.split("as ")
 
     return user_name[1]
 
 
-def get_current_user_id(browser: WebDriver):
+def get_current_user_id(browser: WebDriver) -> int:
     """
     Extracts the user ID associated with the logged in user.
 
@@ -532,6 +559,7 @@ def get_current_user_id(browser: WebDriver):
 
     user_id = parent_element.get_attribute("userid")
     assert user_id is not None
+    assert isinstance(user_id, str)
 
     return int(user_id)
 
@@ -673,11 +701,10 @@ def get_num_url_rows(browser: WebDriver):
     url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
     if url_rows:
         return len(url_rows)
-    else:
-        return 0
+    return 0
 
 
-def get_all_url_ids_in_selected_utub(browser: WebDriver):
+def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
     """
     Find all URL IDs in the active UTub.
 
@@ -690,16 +717,15 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver):
 
     url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
 
+    url_ids = []
     if url_rows:
-        url_ids = []
         for row in url_rows:
             url_id = row.get_attribute("urlid")
             assert url_id is not None
+            assert isinstance(url_id, str)
             url_ids.append(int(url_id))
 
-        return url_ids
-    else:
-        return False
+    return url_ids
 
 
 def url_row_unfiltered(url_rows: List[WebElement]):
@@ -738,8 +764,7 @@ def get_num_url_unfiltered_rows(browser: WebDriver):
         ]
 
         return len(visible_url_rows)
-    else:
-        return 0
+    return 0
 
 
 def get_selected_url(browser: WebDriver) -> WebElement:

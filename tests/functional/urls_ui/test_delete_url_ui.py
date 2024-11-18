@@ -216,7 +216,7 @@ def test_delete_url_cancel_click_outside_modal(
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
 
-    dismiss_modal_with_click_out(browser, MPL.DELETE_URL_MODAL)
+    dismiss_modal_with_click_out(browser)
     wait_until_hidden(browser, MPL.BUTTON_X_CLOSE)
 
     # Assert URL no longer exists in UTub
