@@ -3,6 +3,7 @@ from time import sleep
 
 # External libraries
 import pytest
+from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -12,6 +13,7 @@ from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.urls_ui.utils_for_test_url_ui import get_selected_utub_id
 from tests.functional.utils_for_test import (
     dismiss_modal_with_click_out,
     get_all_utub_selector_names,
@@ -137,8 +139,11 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs):
 
     login_utub(browser)
 
-    if user_is_selected_utub_owner(browser):
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+    assert user_is_selected_utub_owner(browser)
+    utub_id = get_selected_utub_id(browser)
+    css_selector = f'{MPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
+    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+    wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
 
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
 
@@ -146,7 +151,9 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs):
     sleep(4)
 
     # Assert UTub selector no longer exists
-    assert not select_utub_by_name(browser, UTS.TEST_UTUB_NAME_1)
+    with pytest.raises(NoSuchElementException):
+        css_selector = f'{MPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
+        assert browser.find_element(By.CSS_SELECTOR, css_selector)
 
 
 @pytest.mark.skip(reason="Test not yet implemented")
