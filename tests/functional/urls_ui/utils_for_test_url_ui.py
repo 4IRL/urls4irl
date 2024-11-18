@@ -140,6 +140,7 @@ def login_select_utub_select_url_click_delete_get_modal_url(
         app, browser, user_id, utub_name, url_string
     )
     url_row = get_selected_url(browser)
+    wait_until_visible_css_selector(browser, MPL.BUTTON_URL_DELETE, timeout)
     delete_url(url_row)
     wait_until_visible_css_selector(browser, ML.ELEMENT_MODAL, timeout)
     modal = wait_then_get_element(browser, MPL.BODY_MODAL)
