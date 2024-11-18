@@ -219,11 +219,25 @@ def wait_until_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
     return element
 
 
+def wait_until_all_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
+    wait = WebDriverWait(browser, timeout)
+    wait.until_not(
+        EC.visibility_of_all_elements_located((By.CSS_SELECTOR, css_selector))
+    )
+
+
 def wait_until_visible(browser: WebDriver, element: WebElement, timeout: int = 2):
     wait = WebDriverWait(browser, timeout)
     wait.until(lambda _: element.is_displayed())
 
     return element
+
+
+def wait_until_visible_css_selector(
+    browser: WebDriver, css_selector: str, timeout: int
+):
+    wait = WebDriverWait(browser, timeout)
+    wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
 
 
 # Modal

@@ -15,6 +15,7 @@ from selenium.webdriver.remote.webelement import WebElement
 # Internal libraries
 from src.models.utub_urls import Utub_Urls
 from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import ModalLocators as ML
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
     get_selected_url,
@@ -22,6 +23,7 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
     wait_then_get_element,
     wait_until_visible,
+    wait_until_visible_css_selector,
 )
 
 
@@ -120,9 +122,6 @@ def delete_url(url_row: WebElement):
 
     Args:
         WebDriver open to a selected URL
-
-    Returns:
-        Yields WebDriver to tests
     """
 
     # Select deleteURL button
@@ -130,13 +129,19 @@ def delete_url(url_row: WebElement):
 
 
 def login_select_utub_select_url_click_delete_get_modal_url(
-    browser: WebDriver, app: Flask, user_id: int, utub_name: str, url_string: str
+    browser: WebDriver,
+    app: Flask,
+    user_id: int,
+    utub_name: str,
+    url_string: str,
+    timeout: int = 5,
 ) -> Tuple[WebElement, WebElement]:
     login_user_select_utub_by_name_and_url_by_string(
         app, browser, user_id, utub_name, url_string
     )
     url_row = get_selected_url(browser)
     delete_url(url_row)
+    wait_until_visible_css_selector(browser, ML.ELEMENT_MODAL, timeout)
     modal = wait_then_get_element(browser, MPL.BODY_MODAL)
     assert modal is not None
 

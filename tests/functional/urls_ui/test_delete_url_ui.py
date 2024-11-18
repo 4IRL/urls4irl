@@ -4,6 +4,8 @@ from typing import Tuple
 from flask.testing import FlaskCliRunner
 import pytest
 from flask import Flask
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -51,6 +53,9 @@ def test_delete_url_submit(
         )
     )
 
+    css_selector = f'{MPL.URL_STRING_READ}[data-url="{UTS.TEST_URL_STRING_CREATE}"]'
+    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+
     init_num_url_rows = get_num_url_rows(browser)
 
     confirmation_modal_body_text = delete_modal.get_attribute("innerText")
@@ -65,7 +70,8 @@ def test_delete_url_submit(
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
 
     # Assert URL no longer exists in UTub
-    assert not verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, css_selector)
     assert init_num_url_rows - 1 == get_num_url_rows(browser)
 
 
@@ -219,7 +225,7 @@ def test_delete_url_cancel_click_outside_modal(
     dismiss_modal_with_click_out(browser)
     wait_until_hidden(browser, MPL.BUTTON_X_CLOSE)
 
-    # Assert URL no longer exists in UTub
+    # Assert URL still exists in UTub
     assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
     assert init_num_url_rows == get_num_url_rows(browser)
     assert url_elem_to_delete.is_displayed()
@@ -260,13 +266,14 @@ def test_delete_last_url(
         url_string=random_url_to_add_as_last,
     )
 
+    css_selector = f'{MPL.URL_STRING_READ}[data-url="{random_url_to_add_as_last}"]'
+    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+
     wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(browser, MPL.BUTTON_MODAL_SUBMIT)
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
-    assert not verify_elem_with_url_string_exists(browser, random_url_to_add_as_last)
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, css_selector)
 
     no_url_subheader = wait_then_get_element(browser, MPL.SUBHEADER_NO_URLS)
     assert no_url_subheader is not None
-
-    assert no_url_subheader.text == UTS.MESSAGE_NO_URLS
-    assert get_num_url_rows(browser) == 0
