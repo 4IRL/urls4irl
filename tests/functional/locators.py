@@ -113,6 +113,7 @@ class MainPageLocators:
     BUTTON_MODAL_SUBMIT = "#modalSubmit"
     BUTTON_X_CLOSE = ".btn-close"
     ACCESS_ALL_URL_MODAL = ".accessAllUrlModal"
+    DELETE_URL_MODAL = ".deleteUrlModal"
 
 
 class SplashPageLocators:

@@ -521,7 +521,7 @@ function resetUpdateURLTitleFailErrors(urlCard) {
 
 // Hide confirmation modal for removal of the selected URL
 function deleteURLHideModal() {
-  $("#confirmModal").modal("hide");
+  $("#confirmModal").modal("hide").removeClass("deleteUrlModal");
 }
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
@@ -548,7 +548,12 @@ function deleteURLShowModal(urlID, urlCard) {
     })
     .text(buttonTextSubmit);
 
-  $("#confirmModal").modal("show");
+  $("#confirmModal")
+    .addClass("deleteUrlModal")
+    .modal("show")
+    .on("hidden.bs.modal", () => {
+      $("#confirmModal").removeClass("deleteUrlModal");
+    });
   $("#modalRedirect").hide();
   hideIfShown($("#modalRedirect"));
 }

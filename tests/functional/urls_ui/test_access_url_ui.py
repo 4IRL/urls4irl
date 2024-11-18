@@ -17,13 +17,21 @@ from src.mocks.mock_constants import MOCK_URL_STRINGS
 from src.utils.constants import URL_CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.urls_ui.utils_for_test_url_ui import (
+    get_selected_utub_id,
+    get_utub_url_id_for_added_url_in_utub_as_member,
+    verify_select_url_as_non_utub_owner_and_non_url_adder,
+    verify_select_url_as_utub_owner_or_url_creator,
+)
 from tests.functional.utils_for_test import (
     add_mock_urls,
     dismiss_modal_with_click_out,
+    get_current_user_id,
     get_num_url_rows,
     get_selected_url,
     login_user_and_select_utub_by_name,
     login_user_select_utub_by_name_and_url_by_title,
+    wait_for_web_element_and_click,
     wait_then_get_element,
     wait_then_get_elements,
     wait_until_hidden,
@@ -258,6 +266,7 @@ def test_access_all_urls_above_limit(
 
     # Modal will now show since number of URLs is equal to max number of URLs
     access_modal = wait_then_get_element(browser, MPL.ACCESS_ALL_URL_MODAL)
+    assert access_modal is not None
     assert access_modal.is_displayed()
     access_modal.find_element(By.CSS_SELECTOR, MPL.BUTTON_MODAL_SUBMIT).click()
 
@@ -313,6 +322,7 @@ def test_access_all_urls_above_limit_cancel_modal_dismiss_btn(
 
     # Modal will now show since number of URLs is equal to max number of URLs
     access_modal = wait_then_get_element(browser, MPL.ACCESS_ALL_URL_MODAL)
+    assert access_modal is not None
     assert access_modal.is_displayed()
     access_modal.find_element(By.CSS_SELECTOR, MPL.BUTTON_MODAL_DISMISS).click()
 
@@ -359,6 +369,7 @@ def test_access_all_urls_above_limit_cancel_modal_x_btn(
 
     # Modal will now show since number of URLs is equal to max number of URLs
     access_modal = wait_then_get_element(browser, MPL.ACCESS_ALL_URL_MODAL)
+    assert access_modal is not None
     assert access_modal.is_displayed()
     access_modal.find_element(By.CSS_SELECTOR, MPL.BUTTON_X_CLOSE).click()
 
@@ -405,8 +416,9 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
 
     # Modal will now show since number of URLs is equal to max number of URLs
     access_modal = wait_then_get_element(browser, MPL.ACCESS_ALL_URL_MODAL)
+    assert access_modal is not None
     assert access_modal.is_displayed()
-    dismiss_modal_with_click_out(browser, MPL.ACCESS_ALL_URL_MODAL)
+    dismiss_modal_with_click_out(browser)
 
     curr_tabs = browser.window_handles
 
@@ -414,3 +426,120 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
 
     wait_until_hidden(browser, MPL.ACCESS_ALL_URL_MODAL)
     assert not access_modal.is_displayed()
+
+
+def test_access_to_urls_as_utub_owner(
+    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+):
+    """
+    Tests a UTub owner's ability to have all capabilities available when selecting a URL
+
+    GIVEN access to UTubs and URLs as a UTub owner
+    WHEN the UTub owner selects any URL
+    THEN verify that all capabilities are available, including:
+        Edit URL
+        Add Tag
+        Access URL
+        Delete URL
+        Edit URL Title
+    """
+
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    )
+
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    assert url_rows is not None
+
+    for url_row in url_rows:
+        wait_for_web_element_and_click(browser, url_row)
+        assert get_selected_url(browser) == url_row
+        verify_select_url_as_utub_owner_or_url_creator(browser, url_row)
+
+
+def test_access_to_non_added_urls_as_utub_member(
+    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+):
+    """
+    Tests a UTub member's ability to have limited capability when selecting a URL they did not make
+
+    GIVEN access to UTubs and URLs as a UTub owner
+    WHEN the UTub member selects any URL that they didn't add
+    THEN:
+     Verify that not all capabilities are available for URLs they did not add, including:
+        Edit URL
+        Delete URL
+        Edit URL Title
+     Verify that only the following capabilities are available for URLs they did not add:
+        Add Tag
+        Access URL
+    """
+
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_2
+    )
+
+    utub_id = get_selected_utub_id(browser)
+    user_id = get_current_user_id(browser)
+    utub_url_id_user_added = get_utub_url_id_for_added_url_in_utub_as_member(
+        app, utub_id, user_id
+    )
+
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    assert url_rows is not None
+
+    for url_row in url_rows:
+        wait_for_web_element_and_click(browser, url_row)
+        assert get_selected_url(browser) == url_row
+
+        current_utub_url_id = url_row.get_attribute("urlid")
+        if int(current_utub_url_id) != utub_url_id_user_added:
+            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_row)
+
+
+def test_access_to_urls_as_url_creator_and_utub_member(
+    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+):
+    """
+    Tests a UTub member's ability to have limited capability when selecting a URL they did not make
+
+    GIVEN access to UTubs and URLs as a UTub owner
+    WHEN the UTub member selects any URL that they didn't add
+    THEN:
+     Verify that the following capabilities are available when they added the URL:
+        Edit URL
+        Delete URL
+        Edit URL Title
+        Add Tag
+        Access URL
+    """
+
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_2
+    )
+
+    utub_id = get_selected_utub_id(browser)
+    user_id = get_current_user_id(browser)
+    utub_url_id_user_added = get_utub_url_id_for_added_url_in_utub_as_member(
+        app, utub_id, user_id
+    )
+
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    assert url_rows is not None
+
+    for url_row in url_rows:
+        wait_for_web_element_and_click(browser, url_row)
+        assert get_selected_url(browser) == url_row
+
+        current_utub_url_id = url_row.get_attribute("urlid")
+        if int(current_utub_url_id) == utub_url_id_user_added:
+            verify_select_url_as_utub_owner_or_url_creator(browser, url_row)

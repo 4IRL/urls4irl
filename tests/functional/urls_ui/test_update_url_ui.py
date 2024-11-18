@@ -57,11 +57,9 @@ def test_update_url_string_submit_btn(
     random_url_to_add, random_url_to_change_to = random.sample(MOCK_URL_STRINGS, 2)
     add_mock_urls(
         cli_runner,
-        list(
-            [
-                random_url_to_add,
-            ]
-        ),
+        [
+            random_url_to_add,
+        ],
     )
 
     user_id_for_test = 1
@@ -71,7 +69,7 @@ def test_update_url_string_submit_btn(
 
     url_row = get_selected_url(browser)
 
-    update_url_string(browser, url_row, random_url_to_change_to)
+    update_url_string(url_row, random_url_to_change_to)
     verify_update_url_state_is_shown(url_row)
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
 
@@ -120,11 +118,9 @@ def test_update_url_string_press_enter_key(
     random_url_to_add, random_url_to_change_to = random.sample(MOCK_URL_STRINGS, 2)
     add_mock_urls(
         cli_runner,
-        list(
-            [
-                random_url_to_add,
-            ]
-        ),
+        [
+            random_url_to_add,
+        ],
     )
 
     user_id_for_test = 1
@@ -134,7 +130,7 @@ def test_update_url_string_press_enter_key(
 
     url_row = get_selected_url(browser)
 
-    update_url_string(browser, url_row, random_url_to_change_to)
+    update_url_string(url_row, random_url_to_change_to)
     verify_update_url_state_is_shown(url_row)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
@@ -183,11 +179,9 @@ def test_update_url_string_big_cancel_btn(
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
-        list(
-            [
-                random_url_to_add,
-            ]
-        ),
+        [
+            random_url_to_add,
+        ],
     )
 
     user_id_for_test = 1
@@ -204,7 +198,11 @@ def test_update_url_string_big_cancel_btn(
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
     verify_update_url_state_is_shown(url_row)
 
-    wait_then_get_element(browser, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE).click()
+    cancel_update_btn = wait_then_get_element(
+        browser, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
+    )
+    assert cancel_update_btn is not None
+    cancel_update_btn.click()
     wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
     verify_update_url_state_is_hidden(url_row)
 
@@ -262,7 +260,11 @@ def test_update_url_string_cancel_btn(
     url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
     verify_update_url_state_is_shown(url_row)
 
-    wait_then_get_element(browser, MPL.BUTTON_URL_STRING_CANCEL_UPDATE).click()
+    cancel_update_btn = wait_then_get_element(
+        browser, MPL.BUTTON_URL_STRING_CANCEL_UPDATE
+    )
+    assert cancel_update_btn is not None
+    cancel_update_btn.click()
     wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
     verify_update_url_state_is_hidden(url_row)
 
@@ -538,6 +540,7 @@ def test_update_url_title_length_exceeded(browser: WebDriver, create_test_urls):
     update_url_title(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
 
     warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    assert warning_modal_body is not None
 
     # Assert new UTub is now active and displayed to user
     assert warning_modal_body.text == "Try shortening your UTub name"
@@ -558,6 +561,7 @@ def test_update_url_string_length_exceeded(browser: WebDriver, create_test_urls)
     update_url_string(browser, MOCK_URL_STRINGS[0], UTS.MAX_CHAR_LIM_URL_STRING)
 
     warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    assert warning_modal_body is not None
 
     # Assert new UTub is now active and displayed to user
     assert warning_modal_body.text == "Try shortening your UTub name"

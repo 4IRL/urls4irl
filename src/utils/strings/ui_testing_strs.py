@@ -28,6 +28,7 @@ class UI_TEST_STRINGS:
 
     # UTubs
     TEST_UTUB_NAME_1 = MOCK_UTUB_NAME_BASE + "1"
+    TEST_UTUB_NAME_2 = MOCK_UTUB_NAME_BASE + "2"
     BODY_MODAL_UTUB_CREATE_SAME_NAME = "You already have a UTub with a similar name."
     BODY_MODAL_UTUB_UPDATE_SAME_NAME = (
         "You are a member of a UTub with an identical name."

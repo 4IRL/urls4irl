@@ -25,7 +25,7 @@ from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
-from tests.functional.locators import ModalLocators as ML
+from tests.functional.locators import ModalLocators as MP
 
 # General
 
@@ -53,7 +53,7 @@ def get_all_attributes(driver: WebDriver, element: WebElement):
 
 def wait_then_get_element(
     browser: WebDriver, css_selector: str, time: float = 2
-) -> WebElement:
+) -> WebElement | None:
     """
     Streamlines waiting for single element load after user interaction.
 
@@ -87,7 +87,9 @@ def wait_then_get_element(
         return None
 
 
-def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 2):
+def wait_then_get_elements(
+    browser: WebDriver, css_selector: str, time: float = 2
+) -> list:
     """
     Streamlines waiting for multiple elements load after user interaction.
 
@@ -113,19 +115,20 @@ def wait_then_get_elements(browser: WebDriver, css_selector: str, time: float = 
         return elements
     except ElementNotInteractableException:
         print("ElementNotInteractableException")
-        return None
+        return []
     except NoSuchElementException:
-        return None
+        return []
     except TimeoutException:
         print("Timeout")
-        return None
+        return []
 
 
 def wait_then_click_element(
     browser: WebDriver, css_selector: str, time: float = 2
-) -> WebElement:
+) -> WebElement | None:
     """
     Streamlines waiting for load and clicking a single element after user interaction.
+    Uses CSS Selector to locate element.
 
     Args:
         WebDriver open to U4I
@@ -150,6 +153,45 @@ def wait_then_click_element(
         return element
     except NoSuchElementException:
         return None
+
+
+def wait_for_web_element_and_click(browser: WebDriver, element: WebElement, timeout=10):
+    """
+    Waits for an already located WebElement to be clickable and clicks it.
+
+    Args:
+        driver: The WebDriver instance.
+        element: The WebElement that you want to click.
+        timeout: The maximum number of seconds to wait for the element to become clickable.
+
+    Returns:
+        None
+    """
+    WebDriverWait(browser, timeout).until(
+        lambda _: element.is_enabled() and element.is_displayed()
+    )
+    element.click()
+
+
+def wait_for_element_to_be_removed(
+    browser: WebDriver, elem: WebElement, timeout=10
+) -> bool:
+    """
+    Waits for an element to be removed from the DOM after an animation completes.
+
+    Args:
+        browser (WebDriver): The Selenium WebDriver instance.
+        elem (WebElement): The element to check if removed
+        timeout (int): Maximum time to wait (in seconds).
+
+    Returns:
+        (bool): True if the element is removed within the timeout period, False otherwise
+    """
+    try:
+        WebDriverWait(browser, timeout).until(EC.staleness_of(elem))
+        return True
+    except (TimeoutException, NoSuchElementException):
+        return False
 
 
 def clear_then_send_keys(element: WebElement, input_text: str):
@@ -177,12 +219,32 @@ def wait_until_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
     return element
 
 
-# Modal
-def dismiss_modal_with_click_out(
-    browser: WebDriver, css_selector: str = SPL.SPLASH_MODAL
+def wait_until_all_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
+    wait = WebDriverWait(browser, timeout)
+    wait.until_not(
+        EC.visibility_of_all_elements_located((By.CSS_SELECTOR, css_selector))
+    )
+
+
+def wait_until_visible(browser: WebDriver, element: WebElement, timeout: int = 2):
+    wait = WebDriverWait(browser, timeout)
+    wait.until(lambda _: element.is_displayed())
+
+    return element
+
+
+def wait_until_visible_css_selector(
+    browser: WebDriver, css_selector: str, timeout: int
 ):
+    wait = WebDriverWait(browser, timeout)
+    wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
+
+
+# Modal
+def dismiss_modal_with_click_out(browser: WebDriver):
     action = ActionChains(browser)
-    modal_element = wait_then_get_element(browser, ML.ELEMENT_MODAL)
+    modal_element = wait_then_get_element(browser, MP.ELEMENT_MODAL)
+    assert modal_element is not None
     width = modal_element.rect["width"]
     height = modal_element.rect["height"]
     offset = 15
@@ -292,9 +354,11 @@ def login_user(
 
     # Input login details
     username_input = wait_then_get_element(browser, SPL.INPUT_USERNAME)
+    assert username_input is not None
     clear_then_send_keys(username_input, username)
 
     password_input = wait_then_get_element(browser, SPL.INPUT_PASSWORD)
+    assert password_input is not None
     clear_then_send_keys(password_input, password)
 
     # Find submit button to login
@@ -315,17 +379,19 @@ def assert_login(browser: WebDriver):
     # Confirm user logged in
     # Logout button visible
     btn_logout = wait_then_get_element(browser, MPL.BUTTON_LOGOUT)
+    assert btn_logout is not None
     assert btn_logout.text == "Logout"
 
     # Correct user logged in
     user_logged_in = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    assert user_logged_in is not None
     userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
     assert user_logged_in.text == userLoggedInText
 
 
 # UTub Deck
-def select_utub_by_name(browser: WebDriver, utub_name: str):
+def select_utub_by_name(browser: WebDriver, utub_name: str) -> bool:
     """
     Selects the first UTub selector matching the supplied UTub name
 
@@ -339,6 +405,7 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
 
     try:
         utub_list = wait_then_get_element(browser, MPL.LIST_UTUB)
+        assert utub_list is not None
 
         utub_selectors = utub_list.find_elements(By.CSS_SELECTOR, "*")
 
@@ -350,6 +417,7 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
                 return True
     except AttributeError:
         return False
+    return False
 
 
 def login_utub(
@@ -376,7 +444,7 @@ def login_utub(
     select_utub_by_name(browser, utub_name)
 
 
-def get_num_utubs(browser: WebDriver):
+def get_num_utubs(browser: WebDriver) -> int:
     """
     Count number of UTub selectors
 
@@ -389,11 +457,10 @@ def get_num_utubs(browser: WebDriver):
     utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
     if utub_selectors:
         return len(utub_selectors)
-    else:
-        return 0
+    return 0
 
 
-def get_all_utub_selector_names(browser: WebDriver):
+def get_all_utub_selector_names(browser: WebDriver) -> list[str]:
     """
     Find all UTub selectors the current user has access to.
 
@@ -405,16 +472,14 @@ def get_all_utub_selector_names(browser: WebDriver):
     """
     utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
 
+    utub_names = []
     if utub_selectors:
-        utub_names = []
         for utub_selector in utub_selectors:
             utub_names.append(utub_selector.text)
-        return utub_names
-    else:
-        return False
+    return utub_names
 
 
-def get_selected_utub_name(browser: WebDriver):
+def get_selected_utub_name(browser: WebDriver) -> str:
     """
     Extracts name of selected UTub.
 
@@ -430,6 +495,7 @@ def get_selected_utub_name(browser: WebDriver):
     )
 
     utub_name = selected_utub_selector.get_attribute("innerText")
+    assert isinstance(utub_name, str)
 
     return utub_name
 
@@ -460,11 +526,15 @@ def get_selected_utub_owner_id(browser: WebDriver):
     """
 
     owner_badge = wait_then_get_element(browser, MPL.BADGE_OWNER)
+    assert owner_badge is not None
+
     owner_id = owner_badge.get_attribute("memberid")
+    assert owner_id is not None
+    assert isinstance(owner_id, str)
     return int(owner_id)
 
 
-def get_current_user_name(browser: WebDriver):
+def get_current_user_name(browser: WebDriver) -> str:
     """
     Extracts the user ID associated with the logged in user.
 
@@ -476,13 +546,16 @@ def get_current_user_name(browser: WebDriver):
     """
 
     logged_in_user = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    assert logged_in_user is not None
     logged_in_user_string = logged_in_user.get_attribute("innerText")
+    assert logged_in_user_string is not None
+    assert isinstance(logged_in_user_string, str)
     user_name = logged_in_user_string.split("as ")
 
     return user_name[1]
 
 
-def get_current_user_id(browser: WebDriver):
+def get_current_user_id(browser: WebDriver) -> int:
     """
     Extracts the user ID associated with the logged in user.
 
@@ -493,10 +566,14 @@ def get_current_user_id(browser: WebDriver):
         Integer user ID
     """
     logged_in_user = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    assert logged_in_user is not None
 
     parent_element = logged_in_user.find_element(By.XPATH, "..")
+    assert parent_element is not None
 
     user_id = parent_element.get_attribute("userid")
+    assert user_id is not None
+    assert isinstance(user_id, str)
 
     return int(user_id)
 
@@ -544,7 +621,7 @@ def select_url_by_title(browser: WebDriver, url_title: str):
     return False
 
 
-def select_url_by_url_string(browser: WebDriver, url_string: str):
+def select_url_by_url_string(browser: WebDriver, url_string: str) -> bool:
     """
     If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL url string.
 
@@ -562,11 +639,38 @@ def select_url_by_url_string(browser: WebDriver, url_string: str):
 
     for url_row in url_rows:
 
-        url_row_title = url_row.find_element(
+        url_row_string = url_row.find_element(
             By.CSS_SELECTOR, MPL.URL_STRING_READ
         ).get_attribute("data-url")
-        if url_row_title == url_string:
+        if url_row_string == url_string:
             url_row.click()
+            return True
+
+    return False
+
+
+def verify_elem_with_url_string_exists(browser: WebDriver, url_string: str) -> bool:
+    """
+    If a UTub is selected and the UTub contains URLs, find a URL containing a given string.
+
+    Args:
+        browser (WebDriver): The browser driver open to a selected UTub
+        url_string (str): URL String
+
+    Returns:
+        (bool): True if element exists, False otherwise
+
+    """
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_rows is None:
+        return False
+
+    for url_row in url_rows:
+        url_row_string = url_row.find_element(
+            By.CSS_SELECTOR, MPL.URL_STRING_READ
+        ).get_attribute("data-url")
+
+        if url_row_string == url_string:
             return True
 
     return False
@@ -611,11 +715,10 @@ def get_num_url_rows(browser: WebDriver):
     url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
     if url_rows:
         return len(url_rows)
-    else:
-        return 0
+    return 0
 
 
-def get_all_url_ids_in_selected_utub(browser: WebDriver):
+def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
     """
     Find all URL IDs in the active UTub.
 
@@ -628,15 +731,15 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver):
 
     url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
 
+    url_ids = []
     if url_rows:
-        url_ids = []
         for row in url_rows:
             url_id = row.get_attribute("urlid")
+            assert url_id is not None
+            assert isinstance(url_id, str)
             url_ids.append(int(url_id))
 
-        return url_ids
-    else:
-        return False
+    return url_ids
 
 
 def url_row_unfiltered(url_rows: List[WebElement]):
@@ -675,8 +778,7 @@ def get_num_url_unfiltered_rows(browser: WebDriver):
         ]
 
         return len(visible_url_rows)
-    else:
-        return 0
+    return 0
 
 
 def get_selected_url(browser: WebDriver) -> WebElement:
@@ -801,7 +903,7 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | No
     return None
 
 
-def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement:
+def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | None:
     """
     Simplifies extraction of a tag badge WebElement by its name in a selected URL.
 
