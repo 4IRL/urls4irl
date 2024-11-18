@@ -54,21 +54,6 @@ def show_delete_tag_button_on_hover(browser: WebDriver, tag_badge: WebElement):
 
     delete_tag_button = tag_badge.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_DELETE)
 
+    actions.move_to_element(delete_tag_button).pause(2).perform()
+
     return delete_tag_button
-
-
-def delete_tag(browser: WebDriver, url_tag_to_delete: WebElement):
-    """
-    Once logged in, with users, UTubs, URLs, and tags this function initiates the action to delete the first tag in the tagList in the selected URL.
-    """
-    delete_tag_button = show_delete_tag_button_on_hover(browser, url_tag_to_delete)
-
-    actions = ActionChains(browser)
-
-    actions.move_to_element(delete_tag_button).pause(2)
-
-    actions.click(delete_tag_button)
-
-    actions.perform()
-
-    return True
