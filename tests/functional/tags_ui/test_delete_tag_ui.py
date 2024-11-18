@@ -10,7 +10,6 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from src.mocks.mock_constants import MOCK_URL_TITLES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    delete_tag,
     show_delete_tag_button_on_hover,
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import delete_url
@@ -42,10 +41,6 @@ def test_show_delete_tag_button_on_hover(browser: WebDriver, create_test_tags):
     url_row = get_selected_url(browser)
 
     url_tags = get_selected_url_tags(url_row)
-    tag_name = (
-        url_tags[0].find_element(By.CLASS_NAME, "tagText").get_attribute("innerText")
-    )
-    print(tag_name)
 
     delete_tag_button = show_delete_tag_button_on_hover(browser, url_tags[0])
 
@@ -71,7 +66,8 @@ def test_delete_tag(browser, create_test_tags):
         "innerText"
     )
 
-    delete_tag(browser, tag_to_delete)
+    delete_tag_button = show_delete_tag_button_on_hover(browser, tag_to_delete)
+    delete_tag_button.click()
 
     # Wait for DELETE request
     sleep(4)
