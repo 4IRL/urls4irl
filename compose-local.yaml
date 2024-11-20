@@ -5,7 +5,7 @@ services:
     container_name: u4i-local-web
     build:
       context: .
-      dockerfile: DockerfileDev
+      dockerfile: DockerfileLocal
     ports: 
       - "127.0.0.1:8659:5000"
     user: u4i-host
