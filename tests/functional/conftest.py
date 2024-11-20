@@ -1,5 +1,6 @@
 # Standard library
 import multiprocessing
+from os import environ
 from time import sleep
 from typing import Generator, Tuple
 
@@ -101,7 +102,12 @@ def build_driver(
     else:
         options.add_argument("--headless")
 
-    driver = webdriver.Chrome(options=options)
+    if config.DOCKER:
+        driver_path = environ.get("CHROMEDRIVER_PATH", "")
+        service = webdriver.ChromeService(executable_path=driver_path)
+        driver = webdriver.Chrome(service=service, options=options)
+    else:
+        driver = webdriver.Chrome(options=options)
     driver.set_window_size(width=1400, height=1000)
 
     # driver.maximize_window()
