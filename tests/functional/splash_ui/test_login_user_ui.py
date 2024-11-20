@@ -20,6 +20,7 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     dismiss_modal_with_click_out,
     wait_until_hidden,
+    wait_until_visible_css_selector,
 )
 
 pytestmark = pytest.mark.splash_ui
@@ -43,6 +44,7 @@ def test_open_login_modal_center_btn(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     assert modal_element.is_displayed()
 
@@ -62,11 +64,13 @@ def test_open_login_modal_RHS_btn(browser: WebDriver):
 
     # Find and click login button to open modal
     navbar = wait_then_get_element(browser, SPL.SPLASH_NAVBAR)
+    assert navbar is not None
 
     login_btn = navbar.find_element(By.CSS_SELECTOR, SPL.BUTTON_LOGIN)
     login_btn.click()
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     assert modal_element.is_displayed()
 
@@ -85,8 +89,10 @@ def test_register_to_login_modal_btn(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
     wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_REGISTER)
+    wait_until_visible_css_selector(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
@@ -186,6 +192,7 @@ def test_open_forgot_password_modal(browser: WebDriver):
     open_forgot_password_modal(browser)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     assert modal_element.is_displayed()
 
@@ -194,11 +201,13 @@ def test_open_forgot_password_modal(browser: WebDriver):
     assert modal_title.text == "Forgot your password?"
 
     email_input = wait_then_get_element(browser, SPL.INPUT_EMAIL)
+    assert email_input is not None
     clear_then_send_keys(email_input, UTS.TEST_PASSWORD_1)
 
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
+    assert modal_alert is not None
 
     assert (
         modal_alert.text
@@ -206,6 +215,7 @@ def test_open_forgot_password_modal(browser: WebDriver):
     )
 
     submit_btn = wait_then_get_element(browser, SPL.BUTTON_SUBMIT)
+    assert submit_btn is not None
 
     assert submit_btn.get_attribute("disabled")
 
@@ -260,6 +270,7 @@ def test_forgot_password_empty_field(browser: WebDriver):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 5)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     error = modal_element.find_element(By.CLASS_NAME, "invalid-feedback")
 
@@ -280,6 +291,7 @@ def test_forgot_password_invalid_email(browser: WebDriver):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 5)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     error = modal_element.find_element(By.CLASS_NAME, "invalid-feedback")
 

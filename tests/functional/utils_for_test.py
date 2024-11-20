@@ -234,7 +234,7 @@ def wait_until_visible(browser: WebDriver, element: WebElement, timeout: int = 2
 
 
 def wait_until_visible_css_selector(
-    browser: WebDriver, css_selector: str, timeout: int
+    browser: WebDriver, css_selector: str, timeout: int = 2
 ):
     wait = WebDriverWait(browser, timeout)
     wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
