@@ -89,7 +89,7 @@ def wait_then_get_element(
 
 def wait_then_get_elements(
     browser: WebDriver, css_selector: str, time: float = 2
-) -> list:
+) -> list[WebElement]:
     """
     Streamlines waiting for multiple elements load after user interaction.
 
@@ -234,7 +234,7 @@ def wait_until_visible(browser: WebDriver, element: WebElement, timeout: int = 2
 
 
 def wait_until_visible_css_selector(
-    browser: WebDriver, css_selector: str, timeout: int
+    browser: WebDriver, css_selector: str, timeout: int = 2
 ):
     wait = WebDriverWait(browser, timeout)
     wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))

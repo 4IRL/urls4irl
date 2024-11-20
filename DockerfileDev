@@ -7,10 +7,17 @@ ENV FLASK_APP=run
 ENV PYTHONUNBEFFERED=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PIP_NO_CACHE_DIR=1
+ENV PATH="/usr/local/bin/chrome-linux64:$PATH"
+ENV PATH="/usr/local/bin/chromedriver-linux64:$PATH"
+
+# Set environment variables for selenium
+ENV SE_CACHE_PATH=/tmp/.cache/selenium
+ENV SE_BROWSER_PATH=/usr/local/bin/chrome64-linux/chrome
 
 # Use code as working directory
 WORKDIR /code/u4i
 RUN chmod -R 775 /code
+
 
 # Create non-root user, update packages, clean up
 RUN set -ex \
@@ -22,24 +29,16 @@ RUN set -ex \
 	&& apt-get upgrade -y \
 	&& apt-get autoremove -y \
 	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
-
-# Install chrome
-RUN wget https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.116/linux64/chrome-linux64.zip && \
-	unzip chrome-linux64.zip -d /usr/local/bin/ && \
-	chmod +x /usr/local/bin/chrome-linux64
-ENV PATH="/usr/local/bin/chrome-linux64:$PATH"
-
-# Install ChromeDriver
-RUN wget https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.116/linux64/chromedriver-linux64.zip && \
-    unzip chromedriver-linux64.zip -d /usr/local/bin/ && \
-    chmod +x /usr/local/bin/chromedriver-linux64
-ENV PATH="/usr/local/bin/chromedriver-linux64:$PATH"
-
-# Set environment variables for selenium
-ENV SE_CACHE_PATH=/tmp/.cache/selenium
-ENV SE_BROWSER_PATH=/usr/local/bin/chrome64-linux/chrome
-RUN mkdir -p /tmp/.cache/selenium && chmod -R 777 /tmp/.cache/selenium
+	&& rm -rf /var/lib/apt/lists/* \
+	&& wget https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.116/linux64/chrome-linux64.zip \
+	&& unzip chrome-linux64.zip -d /usr/local/bin/ \
+	&& chmod +x /usr/local/bin/chrome-linux64 \
+	&& wget https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.116/linux64/chromedriver-linux64.zip \
+	&& unzip chromedriver-linux64.zip -d /usr/local/bin/ \
+	&& chmod +x /usr/local/bin/chromedriver-linux64 \
+	&& mkdir -p /tmp/.cache/selenium \
+	&& chmod -R 777 /tmp/.cache/selenium \
+	&& chown -R u4i-host:u4i-host-group /code
 
 # Copy files needed
 COPY run.py ./
@@ -52,9 +51,6 @@ COPY pytest.ini ./
 COPY requirements-dev.txt ./
 COPY requirements-test.txt ./
 COPY requirements-prod.txt ./
-
-# Change ownership to u4i-host user
-RUN chown -R u4i-host:u4i-host-group /code
 
 # Create a non-root user
 USER u4i-host
