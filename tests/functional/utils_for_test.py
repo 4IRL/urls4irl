@@ -593,6 +593,33 @@ def user_is_selected_utub_owner(browser: WebDriver):
 
 
 # URL Deck
+def get_url_by_title(browser: WebDriver, url_title: str):
+    """
+    If a UTub is selected and the UTub contains URLs, this function shall return the URL row associated with the supplied URL title.
+
+    Args:
+        WebDriver open to a selected UTub
+        URL Title
+
+    Returns:
+        URL row with the provided URL title
+    """
+
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_rows is None:
+        return None
+
+    for url_row in url_rows:
+
+        url_row_title = url_row.find_element(
+            By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        ).get_attribute("innerText")
+        if url_row_title == url_title:
+            return url_row
+
+    return None
+
+
 def select_url_by_title(browser: WebDriver, url_title: str):
     """
     If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL title.

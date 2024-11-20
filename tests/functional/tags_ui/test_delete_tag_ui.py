@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -17,6 +18,7 @@ from tests.functional.utils_for_test import (
     get_selected_url,
     get_selected_url_tags,
     get_tag_badge_by_name,
+    login_user_select_utub_by_name_and_url_by_title,
     login_utub_url,
     select_url_by_title,
     login_user,
@@ -27,7 +29,9 @@ from tests.functional.utils_for_test import (
 from locators import MainPageLocators as MPL
 
 
-def test_show_delete_tag_button_on_hover(browser: WebDriver, create_test_tags):
+def test_show_delete_tag_button_on_hover(
+    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to create a new URL in a selected UTub
 
@@ -35,8 +39,11 @@ def test_show_delete_tag_button_on_hover(browser: WebDriver, create_test_tags):
     WHEN user hovers over tag badge
     THEN ensure the deleteTag button is displayed
     """
-
-    login_utub_url(browser)
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    )
 
     url_row = get_selected_url(browser)
 
