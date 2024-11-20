@@ -89,7 +89,7 @@ def wait_then_get_element(
 
 def wait_then_get_elements(
     browser: WebDriver, css_selector: str, time: float = 2
-) -> list:
+) -> list[WebElement]:
     """
     Streamlines waiting for multiple elements load after user interaction.
 

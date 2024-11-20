@@ -284,3 +284,14 @@ def get_utub_url_id_for_added_url_in_utub_as_member(
             Utub_Urls.utub_id == utub_id, Utub_Urls.user_id == user_id
         ).first()
         return url_in_utub.id
+
+
+def verify_keyed_url_is_selected(browser: WebDriver, url_row: WebElement):
+    """
+    Verifies whether a URL that is switched to via key pressed is open by checking
+    if the Access URL button is visible
+    """
+    access_url_btn = url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_ACCESS)
+    access_url_btn = wait_until_visible(browser, access_url_btn)
+    assert access_url_btn.is_enabled()
+    assert access_url_btn.is_displayed()
