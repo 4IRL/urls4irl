@@ -95,7 +95,8 @@ jobs:
               echo "${{ secrets.MAILJET_SECRET_KEY }}" > ./secrets/MAILJET_SECRET_KEY;
               echo "${{ secrets.BASE_EMAIL }}" > ./secrets/BASE_EMAIL;
               echo "$(openssl rand 64 | base64 --wrap=0 | tr -d '+')" > ./secrets/SECRET_KEY;
-              docker compose -f compose.yaml up --force-recreate --build -d;
+              docker compose -f compose.yaml up --build -d;
+              rm -rf ./secrets/;
               docker image prune -f;
               docker cp u4i-prod-flask:/code/u4i/src/static ~/static;
               ';
@@ -105,6 +106,7 @@ jobs:
           - name: Verify Docker Network
             run: >
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              cd /home/u4i/;
               hasRedis=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep redis);
               hasDB=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep db);
               hasWeb=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep web);
