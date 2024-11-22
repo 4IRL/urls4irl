@@ -41,9 +41,6 @@ jobs:
     ProdDeploy:
         name: Deploy docker image to production server
         runs-on: ubuntu-latest
-        permissions:
-          contents: read
-          packages: read
 
         steps:
           - name: Install SSH
@@ -90,9 +87,9 @@ jobs:
               docker compose -f compose.yaml pull;
               mkdir -p ./secrets/;
               chmod 700 ./secrets/;
-              echo "${{ secrets.PROD_DB_USER }}" > ./secrets/PROD_DB_USER;
-              echo "${{ secrets.PROD_DB_NAME }}" > ./secrets/PROD_DB_NAME;
-              echo "${{ secrets.PROD_DB_PASSWORD }}" > ./secrets/PROD_DB_PASSWORD;
+              echo "${{ secrets.PROD_DB_USER }}" > ./secrets/POSTGRES_USER;
+              echo "${{ secrets.PROD_DB_NAME }}" > ./secrets/POSTGRES_DB;
+              echo "${{ secrets.PROD_DB_PASSWORD }}" > ./secrets/POSTGRES_PASSWORD;
               echo "${{ secrets.REDIS_PASSWORD }}" > ./secrets/REDIS_PASSWORD;
               echo "${{ secrets.MAILJET_API_KEY }}" > ./secrets/MAILJET_API_KEY;
               echo "${{ secrets.MAILJET_SECRET_KEY }}" > ./secrets/MAILJET_SECRET_KEY;

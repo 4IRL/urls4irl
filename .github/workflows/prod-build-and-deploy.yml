@@ -21,9 +21,6 @@ jobs:
         needs: 'build-prod'
         name: 'CD Prod - Deploy'
         uses: ./.github/workflows/prod-deploy.yml
-        permissions:
-            packages: read
-            contents: read
         with:
             branch_ref: ${{ github.ref }}
         secrets:
