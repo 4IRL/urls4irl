@@ -41,6 +41,9 @@ jobs:
     ProdDeploy:
         name: Deploy docker image to production server
         runs-on: ubuntu-latest
+        permissions:
+          contents: read
+          packages: read
 
         steps:
           - name: Install SSH
