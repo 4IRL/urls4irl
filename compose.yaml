@@ -24,7 +24,7 @@ services:
       - SECRET_KEY
     command: >
       sh -c "
-      . venv/bin/activate &&
+      . /code/venv/bin/activate &&
       flask db upgrade &&
       gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
       "
