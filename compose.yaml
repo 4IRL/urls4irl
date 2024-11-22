@@ -7,20 +7,14 @@ services:
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
-      u4i-prod-postgres:
+      db:
         condition: service_healthy
-      u4i-prod-redis
+      redis:
+        condition: service_healthy
     environment:
       - PRODUCTION=true
       - REDIS_URI=redis://redis:6379/0
       - FLASK_DEBUG=false
-      - MAILJET_API_KEY=/run/secrets/MAILJET_API_KEY
-      - MAILJET_SECRET_KEY=/run/secrets/MAILJET_SECRET_KEY
-      - BASE_EMAIL=/run/secrets/BASE_EMAIL
-      - SECRET_KEY=/run/secrets/SECRET_KEY
-      - POSTGRES_DB=/run/secrets/POSTGRES_DB
-      - POSTGRES_USER=/run/secrets/POSTGRES_USER
-      - POSTGRES_PASSWORD=/run/secrets/POSTGRES_PASSWORD
     secrets:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
@@ -31,6 +25,13 @@ services:
       - POSTGRES_PASSWORD
     command: >
       sh -c "
+      export MAILJET_API_KEY=$(cat /run/secrets/MAILJET_API_KEY) &&
+      export MAILJET_SECRET_KEY=$(cat /run/secrets/MAILJET_SECRET_KEY) &&
+      export POSTGRES_USER=$(cat /run/secrets/POSTGRES_USER) &&
+      export POSTGRES_DB=$(cat /run/secrets/POSTGRES_DB) &&
+      export POSTGRES_PASSWORD=$(cat /run/secrets/POSTGRES_PASSWORD) &&
+      export SECRET_KEY=$(cat /run/secrets/SECRET_KEY) &&
+      export BASE_EMAIL=$(cat /run/secrets/BASE_EMAIL) &&
       . /code/venv/bin/activate &&
       flask db upgrade &&
       gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
@@ -52,11 +53,10 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U myuser"]
+        test: ["CMD-SHELL", "pg_isready -U $(cat /run/secrets/POSTGRES_USER) -d $(cat /run/secrets/POSTGRES_DB)"]
         interval: 5s
         timeout: 5s
         retries: 5
-
   redis:
     image: redis:6.2
     container_name: u4i-prod-redis
@@ -67,6 +67,11 @@ services:
     command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
 secrets:
   POSTGRES_DB:
