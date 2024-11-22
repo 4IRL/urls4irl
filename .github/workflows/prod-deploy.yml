@@ -81,7 +81,7 @@ jobs:
           # Allow environment file to be defined by GitHub secrets
           - name: Generate Environment File
             run: |
-              export KEY="$(openssl rand 64 | base64 --wrap=0 | tr -d '+')";\
+              export KEY=;\
               cat <<EOF > ~/.env
               POSTGRES_USER=${{ secrets.PROD_DB_USER }}
               POSTGRES_DB=${{ secrets.PROD_DB_NAME }}
@@ -96,3 +96,45 @@ jobs:
             run: |
               scp -T -q -o StrictHostKeyChecking=no ~/.env ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
 
+          # Pull updated images, recreate if needed, run as daemon, and prune old images
+          - name: Build Docker Network
+            run: |
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              docker compose -f compose-dev.yaml pull;
+              mkdir ./secrets/;
+              chmod 600 ./secrets/;
+              echo "${{ secrets.PROD_DB_USER }} > ./secrets/PROD_DB_USER
+              echo "${{ secrets.PROD_DB_NAME }} > ./secrets/PROD_DB_NAME
+              echo "${{ secrets.PROD_DB_PASSWORD }} > ./secrets/PROD_DB_PASSWORD
+              echo "${{ secrets.REDIS_PASSWORD }} > ./secrets/REDIS_PASSWORD
+              echo "${{ secrets.MAILJET_API_KEY }} > ./secrets/MAILJET_API_KEY
+              echo "${{ secrets.MAILJET_SECRET_KEY }} > ./secrets/MAILJET_SECRET_KEY
+              echo "${{ secrets.BASE_EMAIL }} > ./secrets/BASE_EMAIL
+              echo "$(openssl rand 64 | base64 --wrap=0 | tr -d '+')" > ./secrets/SECRET_KEY
+              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
+              docker compose -f compose-dev.yaml up --force-recreate --build -d;
+              rm -rf ./secrets
+              docker image prune -f;
+              docker cp u4i-dev-flask:/code/u4i/src/static ~/static;
+              ';
+              sleep 30;
+          
+          # Verify the three services are up and running after any updates
+          - name: Verify Docker Network
+            run: >
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              hasRedis=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep redis);
+              hasDB=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep db);
+              hasWeb=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep web);
+
+              if [ -n "${hasRedis}" ] && [ -n "${hasDB}" ] && [ -n "${hasWeb}" ]; then
+                echo "After 30 seconds, all of the services are up!";
+                exit 0; 
+              else
+                echo "After 30 seconds, one or more of the services is not up: ";
+                [ "redis" != "${hasRedis}" ] && echo "Redis not operational"; 
+                [ "db" != "${hasDB}" ] && echo "Database not operational"; 
+                [ "web" != "${hasWeb}" ] && echo "Web service not operational";
+                exit 1;
+              fi; 
+              '

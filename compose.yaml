@@ -16,10 +16,12 @@ services:
       - MAILJET_API_KEY=/run/secrets/MAILJET_API_KEY
       - MAILJET_SECRET_KEY=/run/secrets/MAILJET_SECRET_KEY
       - BASE_EMAIL=/run/secrets/BASE_EMAIL
+      - SECRET_KEY=/run/secrets/SECRET_KEY
     secrets:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
       - BASE_EMAIL
+      - SECRET_KEY
     command: >
       sh -c "
       . venv/bin/activate &&
@@ -69,6 +71,8 @@ secrets:
     file: ./secrets/BASE_EMAIL
   REDIS_PASSWORD:
     file: ./secrets/REDIS_PASSWORD
+  SECRET_KEY:
+    file: ./secrets/SECRET_KEY
 
 volumes:
   pgdata:
