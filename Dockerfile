@@ -20,9 +20,7 @@ RUN set -ex \
 	&& apt-get upgrade -y \
 	&& apt-get autoremove -y \
 	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& chmod -R 775 /code \
-	&& chown -R u4i-host:u4i-host-group /code
+	&& rm -rf /var/lib/apt/lists/*
 
 # Copy over required files
 COPY requirements-prod.txt ./
@@ -30,13 +28,15 @@ COPY run.py ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/
 
-# Create a non-root user
-USER u4i-host
-
 # Install production level requirements
-RUN python3 -m venv /code/venv \
+RUN chmod -R 775 /code \
+	&& chown -R u4i-host:u4i-host-group /code \ 
+	&& python3 -m venv /code/venv \
 	&& . /code/venv/bin/activate \
 	&& pip install -r requirements-prod.txt --no-cache-dir
+
+# Create a non-root user
+USER u4i-host
 
 # Expose a port to access the container
 EXPOSE 5000
