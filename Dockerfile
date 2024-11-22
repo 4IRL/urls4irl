@@ -11,9 +11,6 @@ ENV PIP_NO_CACHE_DIR=1
 # Use code as working directory
 WORKDIR /code/u4i
 
-# Create a non-root user
-USER u4i-host
-
 # Create non-root user, update packages, clean up, change ownership to newly created user
 RUN set -ex \
 	&& addgroup --system --gid 1001 u4i-host-group \
@@ -32,6 +29,9 @@ COPY requirements-prod.txt ./
 COPY run.py ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/
+
+# Create a non-root user
+USER u4i-host
 
 # Install production level requirements
 RUN python3 -m venv /code/venv \
