@@ -23,6 +23,7 @@ jobs:
         uses: ./.github/workflows/prod-deploy.yml
         permissions:
             packages: read
+            contents: read
         with:
             branch_ref: ${{ github.ref }}
         secrets:
