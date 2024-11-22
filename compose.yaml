@@ -3,18 +3,23 @@ name: u4i-prod
 services:
   web:
     image: ghcr.io/4irl/u4i-prod:latest
+    container_name: u4i-prod-flask
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
       - db
-    env_file:
-      - .env
+      - redis
     environment:
       - PRODUCTION=true
-      - DATABASE_URL_PROD=postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db:5432/${POSTGRES_DB}
       - REDIS_URI=redis://redis:6379/0
       - FLASK_DEBUG=false
-      - BASE_EMAIL=u4i@urls4irl.app
+      - MAILJET_API_KEY=/run/secrets/MAILJET_API_KEY
+      - MAILJET_SECRET_KEY=/run/secrets/MAILJET_SECRET_KEY
+      - BASE_EMAIL=/run/secrets/BASE_EMAIL
+    secrets:
+      - MAILJET_API_KEY
+      - MAILJET_SECRET_KEY
+      - BASE_EMAIL
     command: >
       sh -c "
       . venv/bin/activate &&
@@ -24,22 +29,46 @@ services:
 
   db:
     image: postgres:16.3-bookworm
-    env_file:
-     - .env
+    container_name: u4i-prod-postgres
     environment:
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - MAILJET_API_KEY=${MAILJET_API_KEY}
-      - MAILJET_SECRET_KEY=${MAILJET_SECRET_KEY}
-      - BASE_EMAIL=${BASE_EMAIL}
+      - POSTGRES_DB_FILE=/run/secrets/POSTGRES_DB
+      - POSTGRES_USER_FILE=/run/secrets/POSTGRES_USER
+      - POSTGRES_PASSWORD_FILE=/run/secrets/POSTGRES_PASSWORD
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+      - POSTGRES_INITDB_ARGS=--auth=scram-sha-256
+    secrets:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
     volumes:
       - pgdata:/var/lib/postgresql/data
 
   redis:
     image: redis:6.2
+    container_name: u4i-prod-redis
+    environment:
+      - REDIS_PASSWORD=/run/secrets/REDIS_PASSWORD
+    secrets:
+      - REDIS_PASSWORD
+    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     volumes:
       - redisdata:/data
+
+secrets:
+  POSTGRES_DB:
+    file: ./secrets/POSTGRES_DB
+  POSTGRES_USER:
+    file: ./secrets/POSTGRES_USER
+  POSTGRES_PASSWORD:
+    file: ./secrets/POSTGRES_PASSWORD
+  MAILJET_API_KEY:
+    file: ./secrets/MAILJET_API_KEY
+  MAILJET_SECRET_KEY:
+    file: ./secrets/MAILJET_SECRET_KEY
+  BASE_EMAIL:
+    file: ./secrets/BASE_EMAIL
+  REDIS_PASSWORD:
+    file: ./secrets/REDIS_PASSWORD
 
 volumes:
   pgdata:

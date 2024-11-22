@@ -9,9 +9,12 @@ ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PIP_NO_CACHE_DIR=1
 
 # Use code as working directory
-WORKDIR /code
+WORKDIR /code/u4i
 
-# Create non-root user, update packages, clean up
+# Create a non-root user
+USER u4i-host
+
+# Create non-root user, update packages, clean up, change ownership to newly created user
 RUN set -ex \
 	&& addgroup --system --gid 1001 u4i-host-group \
 	&& adduser --system --uid 1001 --gid 1001 --no-create-home u4i-host \
@@ -20,11 +23,9 @@ RUN set -ex \
 	&& apt-get upgrade -y \
 	&& apt-get autoremove -y \
 	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
-
-
-# Create a non-root user
-USER u4i-host
+	&& rm -rf /var/lib/apt/lists/* \
+	&& chmod -R 775 /code \
+	&& chown -R u4i-host:u4i-host-group /code
 
 # Copy over required files
 COPY requirements-prod.txt ./
@@ -32,12 +33,9 @@ COPY run.py ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/
 
-# Change ownership to newly created user
-RUN chown -R u4i-host:u4i-host-group /code
-
 # Install production level requirements
-RUN python3 -m venv venv \
-	&& . venv/bin/activate \
+RUN python3 -m venv /code/venv \
+	&& . /code/venv/bin/activate \
 	&& pip install -r requirements-prod.txt --no-cache-dir
 
 # Expose a port to access the container

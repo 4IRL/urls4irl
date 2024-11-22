@@ -31,6 +31,6 @@ jobs:
             DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
             DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
             DEV_DB_PASSWORD: ${{ secrets.DEV_DB_PASSWORD }}
-            MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
-            MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
-            BASE_EMAIL: ${{ secrets.BASE_EMAIL }}
+            MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY_INF }}
+            MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY_INF }}
+            BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}
