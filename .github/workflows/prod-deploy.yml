@@ -86,6 +86,7 @@ jobs:
             run: |
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
               cd /home/u4i/;
+              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
               docker compose -f compose.yaml pull;
               mkdir -p ./secrets/;
               chmod 700 ./secrets/;
@@ -97,7 +98,6 @@ jobs:
               echo "${{ secrets.MAILJET_SECRET_KEY }}" > ./secrets/MAILJET_SECRET_KEY;
               echo "${{ secrets.BASE_EMAIL }}" > ./secrets/BASE_EMAIL;
               echo "$(openssl rand 64 | base64 --wrap=0 | tr -d '+')" > ./secrets/SECRET_KEY;
-              echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
               docker compose -f compose.yaml up --force-recreate --build -d;
               rm -rf ./secrets;
               docker image prune -f;
