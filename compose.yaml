@@ -60,11 +60,8 @@ services:
   redis:
     image: redis:6.2
     container_name: u4i-prod-redis
-    environment:
-      - REDIS_PASSWORD=/run/secrets/REDIS_PASSWORD
     secrets:
       - REDIS_PASSWORD
-    command: /bin/sh -c 'redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}'
     volumes:
       - redisdata:/data
     healthcheck:
@@ -72,6 +69,11 @@ services:
       interval: 10s
       timeout: 5s
       retries: 3
+    command: >
+      /bin/sh -c "
+      export REDIS_PASSWORD=$(cat /run/secrets/REDIS_PASSWORD) &&
+      redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}
+      "
 
 secrets:
   POSTGRES_DB:
