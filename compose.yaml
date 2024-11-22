@@ -7,8 +7,9 @@ services:
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
-      - db
-      - redis
+      u4i-prod-postgres:
+        condition: service_healthy
+      u4i-prod-redis
     environment:
       - PRODUCTION=true
       - REDIS_URI=redis://redis:6379/0
@@ -50,6 +51,11 @@ services:
       - POSTGRES_PASSWORD
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U myuser"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
 
   redis:
     image: redis:6.2
