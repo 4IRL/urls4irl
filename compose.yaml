@@ -17,11 +17,17 @@ services:
       - MAILJET_SECRET_KEY=/run/secrets/MAILJET_SECRET_KEY
       - BASE_EMAIL=/run/secrets/BASE_EMAIL
       - SECRET_KEY=/run/secrets/SECRET_KEY
+      - POSTGRES_DB=/run/secrets/POSTGRES_DB
+      - POSTGRES_USER=/run/secrets/POSTGRES_USER
+      - POSTGRES_PASSWORD=/run/secrets/POSTGRES_PASSWORD
     secrets:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
       - BASE_EMAIL
       - SECRET_KEY
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
     command: >
       sh -c "
       . /code/venv/bin/activate &&
