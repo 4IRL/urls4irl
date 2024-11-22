@@ -1,15 +1,15 @@
-name: Build development docker image
+name: Build production docker image
 
 on:
   workflow_call:
 
 env:
   # Name of docker image
-  IMAGE_NAME: u4i-dev
+  IMAGE_NAME: u4i-prod
 
 jobs:
-    DevBuild:
-        name: Build development docker image
+    ProdBuild:
+        name: Build production docker image
         runs-on: ubuntu-latest
 
         steps:

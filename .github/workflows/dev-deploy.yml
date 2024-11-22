@@ -82,9 +82,6 @@ jobs:
               POSTGRES_USER=${{ secrets.DEV_DB_USER }}
               POSTGRES_DB=${{ secrets.DEV_DB_NAME }}
               POSTGRES_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
-              MAILJET_API_KEY=${{ secrets.MAILJET_API_KEY }}
-              MAILJET_SECRET_KEY=${{ secrets.MAILJET_SECRET_KEY }}
-              BASE_EMAIL=${{ secrets.BASE_EMAIL }}
               SECRET_KEY=$KEY
               EOF
 
@@ -96,6 +93,11 @@ jobs:
           - name: Build Docker Network
             run: |
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              mkdir ./secrets/;
+              chmod 700 ./secrets/;
+              echo "${{ secrets.MAILJET_API_KEY }} > ./secrets/MAILJET_API_KEY
+              echo "${{ secrets.MAILJET_SECRET_KEY }} > ./secrets/MAILJET_SECRET_KEY
+              echo "${{ secrets.BASE_EMAIL }} > ./secrets/BASE_EMAIL
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
               docker compose -f compose-dev.yaml pull;
               docker compose -f compose-dev.yaml up --force-recreate --build -d;

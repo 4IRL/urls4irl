@@ -1,0 +1,39 @@
+# Making this the name so badge shows something understandable
+name: Build and Deploy Production Server
+
+# Remove push when ready for production
+on:
+    pull_request:
+        branches:
+            - main
+        types:
+            - closed
+
+jobs:
+    build-prod:
+        name: 'CD Prod - Build'
+        uses: ./.github/workflows/prod-build.yml
+        permissions:
+            packages: write
+
+    deploy-prod:
+        needs: 'build-prod'
+        name: 'CD Prod - Deploy'
+        uses: ./.github/workflows/prod-deploy.yml
+        with:
+            branch_ref: ${{ github.ref }}
+        secrets:
+            PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
+            PROD_SSH_USERNAME: ${{ secrets.PROD_SSH_USERNAME }}
+            PROD_SSH_PRIVATE_KEY_FILENAME: ${{ secrets.PROD_SSH_PRIVATE_KEY_FILENAME }}
+            PROD_SSH_PRIVATE_KEY_VALUE: ${{ secrets.PROD_SSH_PRIVATE_KEY_VALUE }}
+            PROD_SERVICE_TOKEN_ID: ${{ secrets.PROD_SERVICE_TOKEN_ID }}
+            PROD_SERVICE_TOKEN_SECRET: ${{ secrets.PROD_SERVICE_TOKEN_SECRET }}
+            PROD_DB_NAME: ${{ secrets.PROD_DB_NAME_INF }}
+            PROD_DB_USER: ${{ secrets.PROD_DB_USER_INF }}
+            PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD_INF }}
+            REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD_INF }}
+            MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY_INF }}
+            MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY_INF }}
+            BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}
+            SECRET_KEY: ${{ secrets.PROD_SECRET_KEY }}

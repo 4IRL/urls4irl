@@ -8,6 +8,7 @@ services:
       - "127.0.0.1:8659:5000"
     depends_on:
       - db
+      - redis
     env_file:
       - .env
     environment:
@@ -16,6 +17,14 @@ services:
       - FLASK_DEBUG=true
       - BASE_EMAIL=u4i@urls4irl.app
       - DOCKER=true
+      - MAILJET_API_KEY=/run/secrets/MAILJET_API_KEY
+      - MAILJET_SECRET_KEY=/run/secrets/MAILJET_SECRET_KEY
+      - BASE_EMAIL=/run/secrets/BASE_EMAIL
+
+    secrets:
+      - MAILJET_API_KEY
+      - MAILJET_SECRET_KEY
+      - BASE_EMAIL
 
     # Sleep for 5 seconds to allow postgres image to start if necessary
     command: >
@@ -35,9 +44,6 @@ services:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - MAILJET_API_KEY=${MAILJET_API_KEY}
-      - MAILJET_SECRET_KEY=${MAILJET_SECRET_KEY}
-      - BASE_EMAIL=${BASE_EMAIL}
     volumes:
       - pgdata:/var/lib/postgresql/data
 
@@ -46,6 +52,14 @@ services:
     container_name: u4i-dev-redis
     volumes:
       - redisdata:/data
+
+secrets:
+  MAILJET_API_KEY:
+    file: ./secrets/MAILJET_API_KEY
+  MAILJET_SECRET_KEY:
+    file: ./secrets/MAILJET_SECRET_KEY
+  BASE_EMAIL:
+    file: ./secrets/BASE_EMAIL
 
 volumes:
   pgdata:
