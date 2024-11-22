@@ -78,29 +78,11 @@ jobs:
             run: |
               scp -T -q -o StrictHostKeyChecking=no compose.yaml ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
 
-          # Allow environment file to be defined by GitHub secrets
-          - name: Generate Environment File
-            run: |
-              export KEY=;\
-              cat <<EOF > ~/.env
-              POSTGRES_USER=${{ secrets.PROD_DB_USER }}
-              POSTGRES_DB=${{ secrets.PROD_DB_NAME }}
-              POSTGRES_PASSWORD=${{ secrets.PROD_DB_PASSWORD }}
-              MAILJET_API_KEY=${{ secrets.MAILJET_API_KEY }}
-              MAILJET_SECRET_KEY=${{ secrets.MAILJET_SECRET_KEY }}
-              BASE_EMAIL=${{ secrets.BASE_EMAIL }}
-              SECRET_KEY=$KEY
-              EOF
-
-          - name: SCP Environment File
-            run: |
-              scp -T -q -o StrictHostKeyChecking=no ~/.env ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
-
           # Pull updated images, recreate if needed, run as daemon, and prune old images
           - name: Build Docker Network
             run: |
-              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
-              docker compose -f compose-dev.yaml pull;
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              docker compose -f compose.yaml pull;
               mkdir ./secrets/;
               chmod 600 ./secrets/;
               echo "${{ secrets.PROD_DB_USER }} > ./secrets/PROD_DB_USER
@@ -112,20 +94,20 @@ jobs:
               echo "${{ secrets.BASE_EMAIL }} > ./secrets/BASE_EMAIL
               echo "$(openssl rand 64 | base64 --wrap=0 | tr -d '+')" > ./secrets/SECRET_KEY
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
-              docker compose -f compose-dev.yaml up --force-recreate --build -d;
-              rm -rf ./secrets
+              docker compose -f compose.yaml up --force-recreate --build -d;
+              rm -rf ./secrets;
               docker image prune -f;
-              docker cp u4i-dev-flask:/code/u4i/src/static ~/static;
+              docker cp u4i-prod-flask:/code/u4i/src/static ~/static;
               ';
               sleep 30;
           
           # Verify the three services are up and running after any updates
           - name: Verify Docker Network
             run: >
-              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
-              hasRedis=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep redis);
-              hasDB=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep db);
-              hasWeb=$(docker compose -f compose-dev.yaml ps --services --filter "status=running" | grep web);
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              hasRedis=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep redis);
+              hasDB=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep db);
+              hasWeb=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep web);
 
               if [ -n "${hasRedis}" ] && [ -n "${hasDB}" ] && [ -n "${hasWeb}" ]; then
                 echo "After 30 seconds, all of the services are up!";
