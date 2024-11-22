@@ -82,6 +82,7 @@ jobs:
           - name: Build Docker Network
             run: |
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
+              cd /home/u4i/;
               docker compose -f compose.yaml pull;
               mkdir ./secrets/;
               chmod 600 ./secrets/;
