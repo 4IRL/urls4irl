@@ -95,14 +95,15 @@ jobs:
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
               mkdir ./secrets/;
               chmod 700 ./secrets/;
-              echo "${{ secrets.MAILJET_API_KEY }} > ./secrets/MAILJET_API_KEY
-              echo "${{ secrets.MAILJET_SECRET_KEY }} > ./secrets/MAILJET_SECRET_KEY
-              echo "${{ secrets.BASE_EMAIL }} > ./secrets/BASE_EMAIL
+              echo "${{ secrets.MAILJET_API_KEY }}" > ./secrets/MAILJET_API_KEY;
+              echo "${{ secrets.MAILJET_SECRET_KEY }}" > ./secrets/MAILJET_SECRET_KEY;
+              echo "${{ secrets.BASE_EMAIL }}" > ./secrets/BASE_EMAIL;
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
               docker compose -f compose-dev.yaml pull;
               docker compose -f compose-dev.yaml up --force-recreate --build -d;
+              rm -rf ./secrets;
               docker image prune -f;
-              docker cp u4i-dev-flask:/code/u4i/src/static ~/static;
+              docker exec u4i-dev-flask tar -cf - -C /code/u4i/src static | tar -xf - -C ~/static;
               ';
               sleep 30;
           
