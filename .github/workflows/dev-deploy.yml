@@ -94,7 +94,7 @@ jobs:
             run: |
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
               mkdir ./secrets/;
-              chmod 600 ./secrets/;
+              chmod 700 ./secrets/;
               echo "${{ secrets.MAILJET_API_KEY }} > ./secrets/MAILJET_API_KEY
               echo "${{ secrets.MAILJET_SECRET_KEY }} > ./secrets/MAILJET_SECRET_KEY
               echo "${{ secrets.BASE_EMAIL }} > ./secrets/BASE_EMAIL
