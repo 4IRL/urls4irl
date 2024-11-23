@@ -76,6 +76,40 @@ def update_url_string(url_row: WebElement, url_string: str):
     clear_then_send_keys(url_string_input_field, url_string)
 
 
+def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
+    """
+    Streamlines actions required to updated a URL in the selected URL.
+
+    Args:
+        WebDriver open to a selected URL
+        New URL title
+
+    Returns:
+        Yields WebDriver to tests
+    """
+
+    # Select editURL button
+    url_title_text = selected_url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ)
+
+    actions = ActionChains(browser)
+
+    # Hover over URL title to display editURLTitle button
+    actions.move_to_element(url_title_text)
+
+    # Pause to make sure editURLTitle button is visible
+    actions.pause(3).perform()
+
+    update_url_title_button = selected_url_row.find_element(
+        By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_UPDATE
+    )
+
+    actions.move_to_element(update_url_title_button).pause(2)
+
+    actions.click(update_url_title_button)
+
+    actions.perform()
+
+
 def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title: str):
     """
     Streamlines actions required to updated a URL in the selected URL.
@@ -87,6 +121,7 @@ def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title
     Returns:
         Yields WebDriver to tests
     """
+    open_update_url_title(browser, selected_url_row)
 
     # Select editURL button
     url_title_text = selected_url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ)

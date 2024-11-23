@@ -34,6 +34,17 @@ def create_tag(browser: WebDriver, selected_url_row: WebElement, tag_string: str
         clear_then_send_keys(tag_input_field, tag_string)
 
 
+def hover_tag_badge(browser: WebDriver, tag_badge: WebElement):
+
+    actions = ActionChains(browser)
+
+    actions.move_to_element(tag_badge)
+
+    # Pause to make sure deleteTag button is visible
+    actions.pause(3).perform()
+    return actions
+
+
 def show_delete_tag_button_on_hover(browser: WebDriver, tag_badge: WebElement):
     """
     Args:
@@ -44,13 +55,7 @@ def show_delete_tag_button_on_hover(browser: WebDriver, tag_badge: WebElement):
         Boolean confirmation of successful deletion of tag
         WebDriver handoff to member tests
     """
-
-    actions = ActionChains(browser)
-
-    actions.move_to_element(tag_badge)
-
-    # Pause to make sure deleteTag button is visible
-    actions.pause(3).perform()
+    actions = hover_tag_badge(browser, tag_badge)
 
     delete_tag_button = tag_badge.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_DELETE)
 
