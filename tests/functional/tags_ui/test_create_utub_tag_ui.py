@@ -13,11 +13,11 @@ from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
     login_user_select_utub_by_name_open_create_utub_tag,
     verify_create_utub_tag_input_form_is_hidden,
+    verify_new_utub_tag_created,
 )
 from tests.functional.utils_for_test import (
     login_user_and_select_utub_by_name,
     wait_then_click_element,
-    wait_then_get_element,
     wait_until_hidden,
     wait_until_visible,
 )
@@ -134,7 +134,7 @@ def test_open_input_create_utub_tag_click_submit_btn(
 
     with app.app_context():
         utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
-        num_of_utub_tags = len(utub.utub_tags)
+        init_num_of_utub_tags = len(utub.utub_tags)
 
     login_user_select_utub_by_name_open_create_utub_tag(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -142,13 +142,39 @@ def test_open_input_create_utub_tag_click_submit_btn(
 
     # Ensure input is focused
     browser.switch_to.active_element.send_keys(new_tag)
-    wait_until_hidden(browser, MPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
+    wait_then_click_element(browser, MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+    wait_until_hidden(browser, MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+
     verify_create_utub_tag_input_form_is_hidden(browser)
+    verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
 
-    utub_tag_container = wait_then_get_element(browser, MPL.LIST_TAGS)
-    assert utub_tag_container is not None
 
-    utub_tags = utub_tag_container.find_elements(By.CSS_SELECTOR, MPL.TAG_FILTERS)
-    assert len(utub_tags) == num_of_utub_tags + 1
+def test_open_input_create_utub_tag_press_enter_key(
+    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+):
+    """
+    Tests ability to add a new tag to the UTub
 
-    # TODO: Verify the text of the new tag
+    GIVEN a user is a UTub member, has selected the UTub, and opens the create UTub tag form
+    WHEN the user presses the enter key after typing in a new UTub tag and focused on input
+    THEN ensure the createUTubTag form is closed and the new UTub tag is added
+    """
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    new_tag = "WOWZA123"
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
+        init_num_of_utub_tags = len(utub.utub_tags)
+
+    login_user_select_utub_by_name_open_create_utub_tag(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    )
+
+    # Ensure input is focused
+    browser.switch_to.active_element.send_keys(new_tag)
+    browser.switch_to.active_element.send_keys(Keys.ENTER)
+    wait_until_hidden(browser, MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+
+    verify_create_utub_tag_input_form_is_hidden(browser)
+    verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)

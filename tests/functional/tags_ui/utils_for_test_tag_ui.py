@@ -155,3 +155,21 @@ def verify_create_utub_tag_input_form_is_hidden(browser: WebDriver):
         visible_elem = browser.find_element(By.CSS_SELECTOR, visible_elem_selector)
         assert visible_elem.is_displayed()
         assert visible_elem.is_enabled()
+
+
+def verify_new_utub_tag_created(
+    browser: WebDriver, new_tag_str: str, init_utub_tag_count: int
+):
+    verify_create_utub_tag_input_form_is_hidden(browser)
+
+    utub_tag_container = wait_then_get_element(browser, MPL.LIST_TAGS)
+    assert utub_tag_container is not None
+
+    utub_tags = utub_tag_container.find_elements(By.CSS_SELECTOR, MPL.TAG_FILTERS)
+    assert len(utub_tags) == init_utub_tag_count + 1
+
+    # Verify the text of the new tag is found in a tag element
+    utub_tag_spans = utub_tag_container.find_elements(
+        By.CSS_SELECTOR, MPL.TAG_FILTERS + " span"
+    )
+    assert new_tag_str in [tag.text for tag in utub_tag_spans]
