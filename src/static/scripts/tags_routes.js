@@ -19,6 +19,36 @@ function createUTubTagHideInput() {
   resetNewUTubTagForm();
 }
 
+function createUTubTagSetup() {
+  const postURL = routes.createUTubTag(getActiveUTubID());
+
+  const newUTubTag = $("#utubTagCreate").val();
+  const data = {
+    tagString: newUTubTag,
+  };
+
+  return [postURL, data];
+}
+
+function createUTubTag() {
+  // Extract data to submit in POST request
+  [postURL, data] = createUTubTagSetup();
+  resetCreateUTubTagFailErrors();
+
+  const request = ajaxCall("post", postURL, data);
+
+  // Handle response
+  request.done(function (response, _, xhr) {
+    if (xhr.status === 200) {
+      createUTubTagSuccess(response);
+    }
+  });
+
+  request.fail(function (xhr, _, textStatus) {
+    createUTubTagFail(xhr);
+  });
+}
+
 function setupCreateUTubTagEventListeners() {
   const utubTagSubmitBtnCreate = $("#utubTagSubmitBtnCreate");
   const utubTagCancelBtnCreate = $("#utubTagCancelBtnCreate");
@@ -86,6 +116,58 @@ function bindCreateUTubTagFocusEventListeners() {
 
 function unbindCreateUTubTagFocusEventListeners() {
   $(document).off(".createUTubTagSubmitEscape");
+}
+
+function createUTubTagSuccess(response) {
+  resetNewUTubTagForm();
+
+  // Create and append the new tag in the tag deck
+  $("#listTags").append(
+    createTagFilterInDeck(
+      response.utubTag.utubTagID,
+      response.utubTag.tagString,
+    ),
+  );
+
+  createUTubTagHideInput();
+}
+
+function createUTubTagFail(xhr) {
+  switch (xhr.status) {
+    case 400:
+      const responseJSON = xhr.responseJSON;
+      const hasErrors = responseJSON.hasOwnProperty("errors");
+      const hasMessage = responseJSON.hasOwnProperty("message");
+      if (hasErrors) {
+        // Show form errors
+        createUTubTagFailErrors(responseJSON.errors);
+        break;
+      } else if (hasMessage) {
+        // Show message
+        displayCreateUTubTagFailErrors("utubTag", responseJSON.message);
+        break;
+      }
+    case 403:
+    case 404:
+    default:
+      window.location.assign(routes.errorPage);
+  }
+}
+
+function createUTubTagFailErrors(errors) {
+  for (let key in errors) {
+    switch (key) {
+      case "tagString":
+        let errorMessage = errors[key][0];
+        displayCreateUTubTagFailErrors(key, errorMessage);
+        return;
+    }
+  }
+}
+
+function displayCreateUTubTagFailErrors(_, errorMessage) {
+  $("#utubTagCreate-error").addClass("visible").text(errorMessage);
+  $("#utubTagCreate").addClass("invalid-field");
 }
 
 function resetCreateUTubTagFailErrors() {
