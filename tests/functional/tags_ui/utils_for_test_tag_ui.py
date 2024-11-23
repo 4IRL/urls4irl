@@ -17,6 +17,8 @@ from src.models.utub_url_tags import Utub_Url_Tags
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
+    login_user_and_select_utub_by_name,
+    wait_then_click_element,
     wait_then_get_element,
 )
 
@@ -38,6 +40,7 @@ def create_tag(browser: WebDriver, selected_url_row: WebElement, tag_string: str
     if tag_string:
         # Input new tag
         tag_input_field = wait_then_get_element(browser, MPL.INPUT_TAG_CREATE)
+        assert tag_input_field is not None
         clear_then_send_keys(tag_input_field, tag_string)
 
 
@@ -122,3 +125,33 @@ def delete_each_tag_from_one_url_in_utub(app: Flask, utub_title: str):
 
             # Tag has been removed from one URL. Remove the tag from the tracker list.
             tags.remove(first_tag)
+
+
+def login_user_select_utub_by_name_open_create_utub_tag(
+    app: Flask, browser: WebDriver, user_id: int, utub_name: str
+):
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_name)
+    wait_then_click_element(browser, MPL.BUTTON_UTUB_TAG_CREATE)
+
+
+def verify_create_utub_tag_input_form_is_hidden(browser: WebDriver):
+    non_visible_elems = (
+        MPL.INPUT_UTUB_TAG_CREATE,
+        MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
+        MPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
+    )
+    for non_visible_elem_selector in non_visible_elems:
+        non_visible_elem = browser.find_element(
+            By.CSS_SELECTOR, non_visible_elem_selector
+        )
+        assert not non_visible_elem.is_displayed()
+
+    visible_elems = (
+        MPL.BUTTON_UTUB_TAG_CREATE,
+        MPL.LIST_TAGS,
+        MPL.SELECTOR_UNSELECT_ALL,
+    )
+    for visible_elem_selector in visible_elems:
+        visible_elem = browser.find_element(By.CSS_SELECTOR, visible_elem_selector)
+        assert visible_elem.is_displayed()
+        assert visible_elem.is_enabled()

@@ -1,6 +1,102 @@
 /* Add tag to URL */
 
-// DP 09/17 do we need the ability to createURLTagtoURL interstitially before addURL is completed?
+// Shows new UTub Tag input fields
+function createUTubTagShowInput() {
+  showIfHidden($("#createUTubTagWrap"));
+  hideIfShown($("#listTags"));
+  hideIfShown($("#utubTagBtnCreate"));
+  setupCreateUTubTagEventListeners();
+  $("#utubTagCreate").trigger("focus");
+}
+
+// Hides new UTubTag input fields
+function createUTubTagHideInput() {
+  hideIfShown($("#createUTubTagWrap"));
+  showIfHidden($("#listTags"));
+  showIfHidden($("#utubTagBtnCreate"));
+  removeCreateUTubTagEventListeners();
+  resetCreateUTubTagFailErrors();
+  resetNewUTubTagForm();
+}
+
+function setupCreateUTubTagEventListeners() {
+  const utubTagSubmitBtnCreate = $("#utubTagSubmitBtnCreate");
+  const utubTagCancelBtnCreate = $("#utubTagCancelBtnCreate");
+
+  utubTagSubmitBtnCreate.offAndOn("click.createUTubTagSubmit", function (e) {
+    if ($(e.target).closest("#utubTagSubmitBtnCreate").length > 0)
+      createUTubTag();
+  });
+
+  utubTagSubmitBtnCreate.offAndOn("focus.createUTubTagSubmit", function () {
+    $(document).on("keyup.createUTubTagSubmit", function (e) {
+      if (e.which === 13) createUTubTag();
+    });
+  });
+
+  utubTagSubmitBtnCreate.offAndOn("blur.createUTubTagSubmit", function () {
+    $(document).off("keyup.createUTubTagSubmit");
+  });
+
+  utubTagCancelBtnCreate.offAndOn("click.createUTubTagEscape", function (e) {
+    if ($(e.target).closest("#utubTagCancelBtnCreate").length > 0)
+      createUTubTagHideInput();
+  });
+
+  utubTagCancelBtnCreate.offAndOn("focus.createUTubTagEscape", function () {
+    $(document).on("keyup.createUTubTagEscape", function (e) {
+      if (e.which === 13) createUTubTagHideInput();
+    });
+  });
+
+  utubTagCancelBtnCreate.offAndOn("blur.createUTubTagEscape", function () {
+    $(document).off("keyup.createUTubTagEscape");
+  });
+
+  const utubTagInput = $("#utubTagCreate");
+  utubTagInput.on("focus.createUTubTagSubmitEscape", function () {
+    bindCreateUTubTagFocusEventListeners();
+  });
+  utubTagInput.on("blur.createUTubTagSubmitSubmitEscape", function () {
+    unbindCreateUTubTagFocusEventListeners();
+  });
+}
+
+function removeCreateUTubTagEventListeners() {
+  $("#memberCreate").off(".createUTubTagSubmitEscape");
+}
+
+function bindCreateUTubTagFocusEventListeners() {
+  // Allow closing by pressing escape key
+  $(document).on("keyup.createUTubTagSubmitEscape", function (e) {
+    switch (e.which) {
+      case 13:
+        // Handle enter key pressed
+        createUTubTag();
+        break;
+      case 27:
+        // Handle escape  key pressed
+        createUTubTagHideInput();
+        break;
+      default:
+      /* no-op */
+    }
+  });
+}
+
+function unbindCreateUTubTagFocusEventListeners() {
+  $(document).off(".createUTubTagSubmitEscape");
+}
+
+function resetCreateUTubTagFailErrors() {
+  const createUTubTagFields = ["utubTag"];
+  createUTubTagFields.forEach((fieldName) => {
+    $("#" + fieldName + "Create-error").removeClass("visible");
+    $("#" + fieldName + "Create").removeClass("invalid-field");
+  });
+}
+
+/* Add tag to URL */
 
 // Displays new Tag input prompt on selected URL
 function showCreateURLTagForm(urlCard, urlTagBtnCreate) {

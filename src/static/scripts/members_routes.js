@@ -152,8 +152,6 @@ function createMemberFail(xhr) {
     default:
       window.location.assign(routes.errorPage);
   }
-  // DP 09/17 could we maybe have a more descriptive reason for failure sent from backend to display to member?
-  // Currently STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL is too generic. the # * comments are ideal
 }
 
 function createMemberFailErrors(errors) {
