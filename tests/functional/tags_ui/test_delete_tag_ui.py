@@ -89,7 +89,7 @@ def test_delete_tag(browser, create_test_tags):
     assert not get_tag_badge_by_name(url_row, tag_name)
 
 
-@pytest.mark.skip(reason="Bug. Currently FAILS")
+# @pytest.mark.skip(reason="Bug. Currently FAILS")
 def test_no_show_delete_tag_button_on_hover_update_url_title(
     browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
 ):

@@ -392,6 +392,10 @@ function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard) {
   );
   showIfHidden(updateTitleForm);
   updateTitleForm.find("input").trigger("focus");
+
+  // Prevent hovering on tags from adding padding
+  urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
+
   disableClickOnSelectedURLCardToHide(urlCard);
 }
 
@@ -400,6 +404,10 @@ function hideAndResetUpdateURLTitleForm(urlCard) {
   hideIfShown(urlCard.find(".updateUrlTitleWrap"));
   showIfHidden(urlCard.find(".urlTitleAndUpdateIconWrap"));
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
+
+  // Enable hovering on tags for deletion
+  urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
+
   resetUpdateURLTitleFailErrors(urlCard);
   enableClickOnSelectedURLCardToHide(urlCard);
 }
