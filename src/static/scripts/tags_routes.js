@@ -12,6 +12,7 @@ function createUTubTagShowInput() {
 // Hides new UTubTag input fields
 function createUTubTagHideInput() {
   hideIfShown($("#createUTubTagWrap"));
+  $("#createUTubTagWrap").hide();
   showIfHidden($("#listTags"));
   showIfHidden($("#utubTagBtnCreate"));
   removeCreateUTubTagEventListeners();

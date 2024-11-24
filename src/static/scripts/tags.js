@@ -63,6 +63,7 @@ function resetTagDeck() {
   resetCountOfTagFiltersApplied();
   disableUnselectAllButtonAfterTagFilterRemoved();
   hideIfShown($("#utubTagBtnCreate"));
+  createUTubTagHideInput();
 }
 
 // Alphasort tags

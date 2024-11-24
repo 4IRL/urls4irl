@@ -12,6 +12,7 @@ function createMemberShowInput() {
 // Hides new Member input fields
 function createMemberHideInput() {
   hideIfShown($("#createMemberWrap"));
+  $("#createMemberWrap").hide();
   showIfHidden($("#displayMemberWrap"));
   showIfHidden($("#memberBtnCreate"));
   removeCreateMemberEventListeners();
