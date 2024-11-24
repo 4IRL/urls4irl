@@ -1,5 +1,4 @@
 # Standard library
-import random
 import secrets
 from typing import List
 
@@ -22,11 +21,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 # Internal libraries
-from src import db
 from src.models.users import Users
-from src.models.utubs import Utubs
-from src.models.utub_urls import Utub_Urls
-from src.models.utub_url_tags import Utub_Url_Tags
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
@@ -845,8 +840,37 @@ def get_selected_url_title(browser: WebDriver):
 
 
 def get_url_row_by_id(browser: WebDriver, urlid: int):
-    breakpoint()
     return browser.find_element(By.CSS_SELECTOR, MPL.ROWS_URLS + f'[urlid="{urlid}"]')
+
+
+def get_tag_badge_by_id(browser: WebDriver, urlid: int, tagid: int):
+    url_row = get_url_row_by_id(browser, urlid)
+    return url_row.find_element(
+        By.CSS_SELECTOR, MPL.TAG_BADGES + f'[data-utub-tag-id="{tagid}"]'
+    )
+
+
+def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | None:
+    """
+    Simplifies extraction of a tag badge WebElement by its name in a selected URL.
+
+    Args:
+        WebDriver open to a selected URL
+
+    Returns:
+        Tag badge WebElement
+    """
+    tag_badges = get_selected_url_tags(url_row)
+
+    for tag_badge in tag_badges:
+
+        tag_text = tag_badge.find_element(By.CLASS_NAME, "tagText").get_attribute(
+            "innerText"
+        )
+        if tag_text == tag_name:
+            return tag_badge
+
+    return None
 
 
 def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
@@ -915,6 +939,34 @@ def verify_update_url_state_is_hidden(url_row: WebElement):
 
 
 # Tag Deck
+def get_tag_filter_name_by_id(browser: WebDriver, tag_id: int) -> str | None:
+    """
+    Simplifies extraction of a tag filter name by its id.
+
+    Args:
+        WebDriver open to a selected UTub
+
+    Returns:
+        Tag filter name string
+    """
+    tag_filter = get_tag_filter_by_id(browser, tag_id)
+
+    if tag_filter is None:
+        return None
+
+    tag_filter_name = tag_filter.find_element(By.TAG_NAME, "span").get_attribute(
+        "innerText"
+    )
+
+    return tag_filter_name
+
+
+def get_tag_filter_by_id(browser: WebDriver, tag_id: int) -> WebElement | None:
+    return browser.find_element(
+        By.CSS_SELECTOR, MPL.TAG_FILTERS + '[data-utub-tag-id="' + str(tag_id) + '"]'
+    )
+
+
 def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | None:
     """
     Simplifies extraction of a tag filter WebElement by its name.
@@ -940,58 +992,9 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | No
     return None
 
 
-def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | None:
-    """
-    Simplifies extraction of a tag badge WebElement by its name in a selected URL.
-
-    Args:
-        WebDriver open to a selected URL
-
-    Returns:
-        Tag badge WebElement
-    """
-    tag_badges = get_selected_url_tags(url_row)
-
-    for tag_badge in tag_badges:
-
-        tag_text = tag_badge.find_element(By.CLASS_NAME, "tagText").get_attribute(
-            "innerText"
-        )
-        if tag_text == tag_name:
-            return tag_badge
-
-    return None
-
-
-def get_tag_badge_by_id(browser: WebDriver, urlid: int, tagid: int):
-    url_row = get_url_row_by_id(browser, urlid)
-    return url_row.find_element(
-        By.CSS_SELECTOR, MPL.TAG_BADGES + f'[data-utub-tag-id="{tagid}"]'
-    )
-
-
-def get_selected_utub_tags(browser: WebDriver):
+def get_selected_utub_tags(browser: WebDriver) -> list[WebElement]:
     return wait_then_get_elements(browser, MPL.TAG_FILTERS, 0)
 
 
-def get_selected_url_tags(url_row: WebElement):
+def get_selected_url_tags(url_row: WebElement) -> list[WebElement]:
     return url_row.find_elements(By.CSS_SELECTOR, MPL.TAG_BADGES)
-
-
-def delete_tag_from_url_in_utub(app: Flask, utub_title: str):
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == utub_title).first()
-        utub_urls: list[Utub_Urls] = utub.utub_urls
-
-        utub_url = random.choice(utub_urls)
-        utub_url_id = utub_url.id
-
-        utub_tag: Utub_Url_Tags = random.choice(utub_url.url_tags)
-        utub_tag_id = utub_tag.utub_tag_id
-
-        utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.get(utub_tag.id)
-
-        db.session.delete(utub_url_tag)
-        db.session.commit()
-
-        return utub_url_id, utub_tag_id

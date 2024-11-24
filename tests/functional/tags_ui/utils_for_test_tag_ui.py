@@ -1,12 +1,18 @@
 # Standard library
+import random
 
 # External libraries
+from flask import Flask
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
 # Internal libraries
+from src import db
+from src.models.utubs import Utubs
+from src.models.utub_urls import Utub_Urls
+from src.models.utub_url_tags import Utub_Url_Tags
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
@@ -62,3 +68,41 @@ def show_delete_tag_button_on_hover(browser: WebDriver, tag_badge: WebElement):
     actions.move_to_element(delete_tag_button).pause(2).perform()
 
     return delete_tag_button
+
+
+def delete_tag_from_url_in_utub_random(app: Flask, utub_title: str):
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.name == utub_title).first()
+        utub_urls: list[Utub_Urls] = utub.utub_urls
+
+        utub_url = random.choice(utub_urls)
+        utub_url_id = utub_url.id
+
+        utub_tag: Utub_Url_Tags = random.choice(utub_url.url_tags)
+        utub_tag_id = utub_tag.utub_tag_id
+
+        utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.get(utub_tag.id)
+
+        db.session.delete(utub_url_tag)
+        db.session.commit()
+
+        return utub_url_id, utub_tag_id
+
+
+def delete_one_tag_from_each_url_in_utub(app: Flask, utub_title: str):
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.name == utub_title).first()
+        utub_urls: list[Utub_Urls] = utub.utub_urls
+
+        utub_url = random.choice(utub_urls)
+        utub_url_id = utub_url.id
+
+        utub_tag: Utub_Url_Tags = random.choice(utub_url.url_tags)
+        utub_tag_id = utub_tag.utub_tag_id
+
+        utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.get(utub_tag.id)
+
+        db.session.delete(utub_url_tag)
+        db.session.commit()
+
+        return utub_url_id, utub_tag_id
