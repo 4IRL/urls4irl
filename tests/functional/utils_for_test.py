@@ -1,6 +1,5 @@
 # Standard library
 import secrets
-from typing import List
 
 # External libraries
 from flask import Flask, session
@@ -593,7 +592,7 @@ def user_is_selected_utub_owner(browser: WebDriver):
 
 
 # URL Deck
-def get_url_by_title(browser: WebDriver, url_title: str):
+def get_url_by_title(browser: WebDriver, url_title: str) -> WebElement | None:
     """
     If a UTub is selected and the UTub contains URLs, this function shall return the URL row associated with the supplied URL title.
 
@@ -769,7 +768,19 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
     return url_ids
 
 
-def url_row_unfiltered(url_rows: List[WebElement]):
+def get_all_tag_ids_in_url_row(url_row: WebElement) -> list[int] | None:
+    tag_badges: list[WebElement] = url_row.find_elements(
+        By.CSS_SELECTOR, MPL.TAG_BADGES
+    )
+    if tag_badges:
+        tag_ids = [
+            int(tag_badge.get_attribute("data-utub-tag-id")) for tag_badge in tag_badges
+        ]
+        return tag_ids
+    return None
+
+
+def url_row_unfiltered(url_rows: list[WebElement]):
     """
     Checks if each URL row is unfiltered.
 
@@ -967,6 +978,10 @@ def get_tag_filter_by_id(browser: WebDriver, tag_id: int) -> WebElement | None:
     )
 
 
+def get_tag_filter_id(tag_filter: WebElement) -> int | None:
+    return int(tag_filter.get_attribute("data-utub-tag-id"))
+
+
 def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | None:
     """
     Simplifies extraction of a tag filter WebElement by its name.
@@ -977,7 +992,7 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | No
     Returns:
         Tag filter WebElement
     """
-    tag_filters = get_selected_utub_tags(browser)
+    tag_filters = get_utub_tag_filters(browser)
     if tag_filters is None:
         return None
 
@@ -992,7 +1007,7 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | No
     return None
 
 
-def get_selected_utub_tags(browser: WebDriver) -> list[WebElement]:
+def get_utub_tag_filters(browser: WebDriver) -> list[WebElement]:
     return wait_then_get_elements(browser, MPL.TAG_FILTERS, 0)
 
 

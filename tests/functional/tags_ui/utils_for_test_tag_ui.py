@@ -10,6 +10,7 @@ from selenium.webdriver.remote.webelement import WebElement
 
 # Internal libraries
 from src import db
+from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.models.utub_url_tags import Utub_Url_Tags
@@ -89,20 +90,35 @@ def delete_tag_from_url_in_utub_random(app: Flask, utub_title: str):
         return utub_url_id, utub_tag_id
 
 
-def delete_one_tag_from_each_url_in_utub(app: Flask, utub_title: str):
+def delete_each_tag_from_one_url_in_utub(app: Flask, utub_title: str):
     with app.app_context():
         utub: Utubs = Utubs.query.filter(Utubs.name == utub_title).first()
+        utub_tags: list[Utub_Tags] = utub.utub_tags
         utub_urls: list[Utub_Urls] = utub.utub_urls
 
-        utub_url = random.choice(utub_urls)
-        utub_url_id = utub_url.id
+        # Make mutable copies
+        urls = utub_urls
+        tags = utub_tags
 
-        utub_tag: Utub_Url_Tags = random.choice(utub_url.url_tags)
-        utub_tag_id = utub_tag.utub_tag_id
+        while len(tags) > 0:
+            # Extract the first of the remaining tags to be removed from some URL
+            first_tag = tags[0]
+            first_tag_id = first_tag.id
 
-        utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.get(utub_tag.id)
+            # Loop through the remaining urls until the first URL that has first_tag associated with it is found.
+            for url in urls:
+                tag_ids = [url_tag.id for url_tag in url.url_tags]
 
-        db.session.delete(utub_url_tag)
-        db.session.commit()
+                if first_tag_id in tag_ids:
+                    # Find the tag association to the URL
+                    utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.get(first_tag_id)
+                    # Remove the tag from the URL
+                    db.session.delete(utub_url_tag)
+                    db.session.commit()
+                    # One tag has been removed from the URL. Remove the URL from the tracker list
+                    urls.remove(url)
+                    # Continue to next tag
+                    break
 
-        return utub_url_id, utub_tag_id
+            # Tag has been removed from one URL. Remove the tag from the tracker list.
+            tags.remove(first_tag)

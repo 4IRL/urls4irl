@@ -5,22 +5,28 @@
 from flask import Flask
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    delete_one_tag_from_each_url_in_utub,
+    delete_each_tag_from_one_url_in_utub,
     delete_tag_from_url_in_utub_random,
 )
 from tests.functional.utils_for_test import (
+    get_all_tag_ids_in_url_row,
+    get_num_url_unfiltered_rows,
     get_tag_filter_by_id,
     get_tag_filter_by_name,
+    get_tag_filter_id,
     get_tag_filter_name_by_id,
     get_url_row_by_id,
     get_url_by_title,
+    get_utub_tag_filters,
     login_user_select_utub_by_name_and_url_by_title,
     wait_then_get_element,
+    wait_then_get_elements,
 )
 
 
@@ -121,15 +127,14 @@ def test_unfilter_tag(
     # Assert filtered URL is now no longer visible to user
     assert not get_url_by_title(browser, url_title)
 
-    # Unselect all tag filters
-    unselect_all_button = wait_then_get_element(browser, MPL.SELECTOR_UNSELECT_ALL)
-    unselect_all_button.click()
+    # Unselect tag filter
+    corresponding_tag_filter.click()
 
     # Assert unfiltered URL is now visible to user
     assert get_url_by_title(browser, url_title)
 
 
-def test_unselect_all_filter(
+def test_unselect_all_filters(
     browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
 ):
     """
@@ -145,7 +150,7 @@ def test_unselect_all_filter(
     utub_title = UTS.TEST_UTUB_NAME_1
 
     # From the db, delete a different tag from each URL in the current UTub
-    utub_url_id, utub_tag_id = delete_one_tag_from_each_url_in_utub(app, utub_title)
+    delete_each_tag_from_one_url_in_utub(app, utub_title)
 
     # Load page
     user_id_for_test = 1
@@ -153,24 +158,44 @@ def test_unselect_all_filter(
         app, browser, user_id_for_test, utub_title, UTS.TEST_URL_TITLE_1
     )
 
-    # Find URL row to be filtered
-    url_row = get_url_row_by_id(browser, utub_url_id)
-
-    # Save the URL title for assertion after filtering it out
-    url_title = url_row.find_element(By.CLASS_NAME, "urlTitle").get_attribute(
-        "innerText"
+    # Save the number of visible URLs
+    num_visible_url_rows = get_num_url_unfiltered_rows(browser)
+    unfiltered_url_rows: list[WebElement] = wait_then_get_elements(
+        browser, MPL.ROWS_URLS
     )
 
-    # Select tag filter associated with the id of the tag badge deleted above
-    corresponding_tag_filter = get_tag_filter_by_id(browser, utub_tag_id)
-    corresponding_tag_filter.click()
+    tag_filters = get_utub_tag_filters(browser)
 
-    # Assert filtered URL is now no longer visible to user
-    assert not get_url_by_title(browser, url_title)
+    # Apply each tag filter. Assert URLs without the associated tagBadge are hidden
+    for tag_filter in tag_filters:
+        tag_id = get_tag_filter_id(tag_filter)
+
+        # Find all URLs that don't have this tag. Save the titles for check
+        filtered_url_row_titles: list[str] = []
+        for i, url_row in enumerate(unfiltered_url_rows):
+            url_tag_ids = get_all_tag_ids_in_url_row(url_row)
+            if tag_id in url_tag_ids:
+                filtered_url_row = unfiltered_url_rows.pop(i)
+
+                # Save the URL title for assertion after filtering it out
+                url_title = filtered_url_row.find_element(
+                    By.CLASS_NAME, "urlTitle"
+                ).get_attribute("innerText")
+                filtered_url_row_titles.append(url_title)
+
+        # Apply the tag filter
+        corresponding_tag_filter = get_tag_filter_by_id(browser, tag_id)
+        corresponding_tag_filter.click()
+
+        # Assert all URLs that didn't have the tag are now hidden
+        for url_title in filtered_url_row_titles:
+            assert not get_url_by_title(browser, url_title)
+
+    # All URLs with tags are filtered
 
     # Unselect all tag filters
     unselect_all_button = wait_then_get_element(browser, MPL.SELECTOR_UNSELECT_ALL)
     unselect_all_button.click()
 
-    # Assert unfiltered URL is now visible to user
-    assert get_url_by_title(browser, url_title)
+    # Assert all URLs are unfiltered and are now visible to user
+    assert num_visible_url_rows == get_num_url_unfiltered_rows(browser)
