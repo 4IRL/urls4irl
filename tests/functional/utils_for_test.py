@@ -360,9 +360,6 @@ def login_user(
     assert password_input is not None
     clear_then_send_keys(password_input, password)
 
-    # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
-
 
 def assert_login(browser: WebDriver):
     """
@@ -387,6 +384,22 @@ def assert_login(browser: WebDriver):
     userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
     assert user_logged_in.text == userLoggedInText
+
+
+def assert_register(browser: WebDriver):
+    """
+    Streamlines actions needed to confirm a new user is registered.
+
+    Args:
+        WebDriver open to U4I Home Page
+
+    Returns:
+        Boolean True, if registered
+    """
+    modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL)
+    assert modal_title is not None
+
+    assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
 
 
 # UTub Deck

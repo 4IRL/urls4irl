@@ -155,7 +155,7 @@ def test_dismiss_login_modal_key(browser: WebDriver):
     Tests a user's ability to close the splash page login modal by pressing the Esc key
 
     GIVEN a fresh load of the U4I Splash page
-    WHEN user opens the login, then presses 'Esc'
+    WHEN user opens the login modal, then presses 'Esc'
     THEN the modal is closed
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
@@ -167,7 +167,7 @@ def test_dismiss_login_modal_key(browser: WebDriver):
     assert not modal_element.is_displayed()
 
 
-def test_login_test_user(browser: WebDriver, create_test_users):
+def test_login_test_user_btn(browser: WebDriver, create_test_users):
     """
     Tests a user's ability to login using the splash page login modal
 
@@ -177,6 +177,26 @@ def test_login_test_user(browser: WebDriver, create_test_users):
     """
 
     login_user(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    assert_login(browser)
+
+
+def test_login_test_user_key(browser: WebDriver, create_test_users):
+    """
+    Tests a user's ability to login using the splash page login modal
+
+    GIVEN a fresh load of the U4I Splash page and validated user
+    WHEN user initiates login sequence
+    THEN U4I will login user and display the home page
+    """
+
+    login_user(browser)
+
+    # Submit form
+    browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     assert_login(browser)
 
@@ -254,6 +274,48 @@ def test_dismiss_forgot_password_modal_x(browser: WebDriver):
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
     assert not modal_element.is_displayed()
+
+
+def test_dismiss_forgot_password_modal_key(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page login modal by pressing the Esc key
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, then presses the Esc key
+    THEN the modal is closed
+    """
+    open_forgot_password_modal(browser)
+
+    sleep(2)
+
+    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
+@pytest.mark.skip(reason="Not yet implemented on frontend.")
+def test_forgot_password_to_login_modal_btn(browser: WebDriver):
+    """
+    Tests a user's ability to change view from the Register modal to the Login modal
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens Register modal and wants to change to Login
+    THEN ensure the modal view changes
+    """
+    open_forgot_password_modal(browser)
+
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_REGISTER)
+    wait_until_visible_css_selector(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
+
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
+
+    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
+
+    assert modal_title.text == "Login!"
 
 
 @pytest.mark.skip(reason="Not happy path.")

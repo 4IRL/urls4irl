@@ -39,9 +39,6 @@ def register_user(browser, username, email, password):
     confirm_password_input = wait_then_get_element(browser, SPL.INPUT_PASSWORD_CONFIRM)
     clear_then_send_keys(confirm_password_input, password)
 
-    # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
-
 
 def register_user_unconfirmed_email(browser, username, email, password):
     """
