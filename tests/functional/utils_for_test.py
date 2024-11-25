@@ -1,5 +1,6 @@
 # Standard library
 import secrets
+from time import sleep
 
 # External libraries
 from flask import Flask, session
@@ -360,8 +361,7 @@ def login_user(
     assert password_input is not None
     clear_then_send_keys(password_input, password)
 
-    # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    return password_input
 
 
 def assert_login(browser: WebDriver):
@@ -387,6 +387,22 @@ def assert_login(browser: WebDriver):
     userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
     assert user_logged_in.text == userLoggedInText
+
+
+def assert_register(browser: WebDriver):
+    """
+    Streamlines actions needed to confirm a new user is registered.
+
+    Args:
+        WebDriver open to U4I Home Page
+
+    Returns:
+        Boolean True, if registered
+    """
+    modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL)
+    assert modal_title is not None
+
+    assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
 
 
 # UTub Deck
@@ -439,6 +455,11 @@ def login_utub(
     """
 
     login_user(browser, username, password)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    sleep(3)
 
     select_utub_by_name(browser, utub_name)
 

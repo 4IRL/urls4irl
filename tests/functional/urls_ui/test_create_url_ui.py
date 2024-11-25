@@ -20,7 +20,6 @@ from tests.functional.utils_for_test import (
     get_selected_url,
     login_user_and_select_utub_by_name,
     login_user_select_utub_by_name_and_url_by_title,
-    login_utub,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -287,7 +286,9 @@ def test_create_url_using_enter_key(
 @pytest.mark.skip(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
-def test_create_url_title_length_exceeded(browser: WebDriver, create_test_utubs):
+def test_create_url_title_length_exceeded(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests the site error response to a user's attempt to create a new URL with a title that exceeds the maximum character length limit.
 
@@ -297,7 +298,10 @@ def test_create_url_title_length_exceeded(browser: WebDriver, create_test_utubs)
     """
 
     # Login test user and select first test UTub
-    login_utub(browser)
+    app = provide_app_for_session_generation
+
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     create_url(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
 

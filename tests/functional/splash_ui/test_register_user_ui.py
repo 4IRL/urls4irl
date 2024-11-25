@@ -5,6 +5,7 @@ import time
 import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -16,6 +17,7 @@ from tests.functional.splash_ui.utils_for_test_splash_ui import (
     register_user_unconfirmed_password,
 )
 from tests.functional.utils_for_test import (
+    assert_register,
     dismiss_modal_with_click_out,
     wait_then_click_element,
     wait_then_get_element,
@@ -107,6 +109,23 @@ def test_dismiss_register_modal_btn(browser: WebDriver):
     assert not modal_element.is_displayed()
 
 
+def test_dismiss_register_modal_key(browser: WebDriver):
+    """
+    Tests a user's ability to close the splash page register modal by pressing the Esc key
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the register modal, then presses 'Esc'
+    THEN the modal is closed
+    """
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
+
+    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+
+    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+
+    assert not modal_element.is_displayed()
+
+
 def test_dismiss_register_modal_click(browser: WebDriver):
     """
     Tests a user's ability to close the splash page register modal by clicking outside of the modal
@@ -142,7 +161,7 @@ def test_dismiss_register_modal_x(browser: WebDriver):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_register_new_user(browser: WebDriver):
+def test_register_new_user_btn(browser: WebDriver):
     """
     Tests a user's ability to register as a new user.
 
@@ -155,13 +174,35 @@ def test_register_new_user(browser: WebDriver):
         browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )
 
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     # Await response
     time.sleep(3)
 
-    modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL)
-    assert modal_title is not None
+    assert_register(browser)
 
-    assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
+
+def test_register_new_user_key(browser: WebDriver):
+    """
+    Tests a user's ability to register as a new user.
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN initiates registration modal and inputs desired login information
+    THEN U4I responds with a success modal prompting user to 'Validate Your Email!'
+    """
+
+    register_user(
+        browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+    )
+
+    # Submit form
+    browser.switch_to.active_element.send_keys(Keys.ENTER)
+
+    # Await response
+    time.sleep(3)
+
+    assert_register(browser)
 
 
 @pytest.mark.skip(reason="Not happy path. PASSES")

@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+from flask import Flask
 import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -11,11 +12,13 @@ from locators import MainPageLocators as MPL
 from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE, MOCK_UTUB_DESCRIPTION
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.utils_for_test import (
+    create_user_session_and_provide_session_id,
     get_all_url_ids_in_selected_utub,
     get_all_utub_selector_names,
     get_selected_utub_decsription,
     get_selected_utub_name,
-    login_utub,
+    login_user_and_select_utub_by_name,
+    login_user_with_cookie_from_session,
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
@@ -31,7 +34,9 @@ from tests.functional.utubs_ui.utils_for_test_utub_ui import (
 pytestmark = pytest.mark.utubs_ui
 
 
-def test_select_utub(browser: WebDriver, create_test_urls):
+def test_select_utub(
+    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to select a specific UTub and observe the changes in display.
 
@@ -39,7 +44,10 @@ def test_select_utub(browser: WebDriver, create_test_urls):
     WHEN user selects a UTub, then selects another UTub
     THEN ensure the URL deck header changes and TODO: displayed URLs change (currently addmock adds same URLs to all UTubs))
     """
-    login_utub(browser)
+    app = provide_app_for_session_generation
+    user_id = 1
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
 
     current_utub_url_ids = get_all_url_ids_in_selected_utub(browser)
 
@@ -57,7 +65,9 @@ def test_select_utub(browser: WebDriver, create_test_urls):
         assert id not in next_utub_url_ids
 
 
-def test_open_update_utub_name_input(browser: WebDriver, create_test_utubs):
+def test_open_update_utub_name_input(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to open the updateUTubName input using the pencil button.
 
@@ -65,7 +75,10 @@ def test_open_update_utub_name_input(browser: WebDriver, create_test_utubs):
     WHEN user selects a UTub, then clicks the edit UTub name button
     THEN ensure the updateUTubName input opens
     """
-    login_utub(browser)
+    app = provide_app_for_session_generation
+
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     utub_name = wait_then_get_element(browser, MPL.HEADER_URL_DECK).text
 
@@ -78,7 +91,9 @@ def test_open_update_utub_name_input(browser: WebDriver, create_test_utubs):
     assert utub_name == utub_name_update_input.get_attribute("value")
 
 
-def test_close_update_utub_name_input_btn(browser: WebDriver, create_test_utubs):
+def test_close_update_utub_name_input_btn(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to close the createUTub input by clicking the 'x' button
 
@@ -86,7 +101,11 @@ def test_close_update_utub_name_input_btn(browser: WebDriver, create_test_utubs)
     WHEN user opens the createUTub input, then clicks the 'x'
     THEN ensure the createUTub input is closed
     """
-    login_utub(browser)
+
+    app = provide_app_for_session_generation
+
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     open_update_utub_input(browser, 1)
 
@@ -97,7 +116,9 @@ def test_close_update_utub_name_input_btn(browser: WebDriver, create_test_utubs)
     assert not update_utub_name_input.is_displayed()
 
 
-def test_close_update_utub_name_input_key(browser: WebDriver, create_test_utubs):
+def test_close_update_utub_name_input_key(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to close the createUTub input by pressing the Escape key
 
@@ -105,7 +126,10 @@ def test_close_update_utub_name_input_key(browser: WebDriver, create_test_utubs)
     WHEN user opens the createUTub input, then presses 'Esc'
     THEN ensure the createUTub input is closed
     """
-    login_utub(browser)
+    app = provide_app_for_session_generation
+
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     open_update_utub_input(browser, 1)
 
@@ -117,7 +141,9 @@ def test_close_update_utub_name_input_key(browser: WebDriver, create_test_utubs)
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_update_utub_name_btn(browser: WebDriver, create_test_utubs):
+def test_update_utub_name_btn(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a UTub owner's ability to update a selected UTub's name.
 
@@ -125,8 +151,10 @@ def test_update_utub_name_btn(browser: WebDriver, create_test_utubs):
     WHEN they submit the editUTub form
     THEN ensure the form is hidden, the UTub selector name and URL deck header are updated.
     """
+    app = provide_app_for_session_generation
 
-    login_utub(browser)
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     new_utub_name = MOCK_UTUB_NAME_BASE + "2"
 
@@ -150,7 +178,9 @@ def test_update_utub_name_btn(browser: WebDriver, create_test_utubs):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_update_utub_name_key(browser: WebDriver, create_test_utubs):
+def test_update_utub_name_key(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a UTub owner's ability to update a selected UTub's name.
 
@@ -158,8 +188,10 @@ def test_update_utub_name_key(browser: WebDriver, create_test_utubs):
     WHEN they submit the editUTub form
     THEN ensure the form is hidden, the UTub selector name and URL deck header are updated.
     """
+    app = provide_app_for_session_generation
 
-    login_utub(browser)
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     new_utub_name = MOCK_UTUB_NAME_BASE + "2"
 
@@ -183,7 +215,11 @@ def test_update_utub_name_key(browser: WebDriver, create_test_utubs):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_update_utub_name_similar(browser: WebDriver, create_test_utubmembers):
+def test_update_utub_name_similar(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app_for_session_generation: Flask,
+):
     """
     Tests a UTub owner's ability to update a selected UTub's name to a name similar to another UTub in their collection.
 
@@ -194,7 +230,10 @@ def test_update_utub_name_similar(browser: WebDriver, create_test_utubmembers):
     THEN the form is hidden, the UTub selector name and URL deck header are updated.
     """
 
-    login_utub(browser)
+    app = provide_app_for_session_generation
+
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     utub_selector_names = get_all_utub_selector_names(browser)
 
@@ -231,7 +270,9 @@ def test_update_utub_name_similar(browser: WebDriver, create_test_utubmembers):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_open_update_utub_description_input(browser: WebDriver, create_test_utubs):
+def test_open_update_utub_description_input(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to open the updateUTubDescription input using the pencil button.
 
@@ -239,8 +280,10 @@ def test_open_update_utub_description_input(browser: WebDriver, create_test_utub
     WHEN user selects a UTub, then clicks the edit UTub description button
     THEN ensure the updateUTubDescription input opens
     """
-    login_utub(browser)
+    app = provide_app_for_session_generation
 
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
     utub_description = wait_then_get_element(browser, MPL.SUBHEADER_URL_DECK).text
 
     open_update_utub_input(browser, 0)
@@ -254,7 +297,9 @@ def test_open_update_utub_description_input(browser: WebDriver, create_test_utub
     assert utub_description == utub_description_update_input.get_attribute("value")
 
 
-def test_close_update_utub_description_input_btn(browser: WebDriver, create_test_utubs):
+def test_close_update_utub_description_input_btn(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to close the updateUTubDescription input by clicking the 'x' button
 
@@ -262,7 +307,10 @@ def test_close_update_utub_description_input_btn(browser: WebDriver, create_test
     WHEN user opens the updateUTubDescription input, then clicks the 'x'
     THEN ensure the updateUTubDescription input is closed
     """
-    login_utub(browser)
+    app = provide_app_for_session_generation
+
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     open_update_utub_input(browser, 0)
 
@@ -273,7 +321,9 @@ def test_close_update_utub_description_input_btn(browser: WebDriver, create_test
     assert not update_utub_name_input.is_displayed()
 
 
-def test_close_update_utub_description_input_key(browser: WebDriver, create_test_utubs):
+def test_close_update_utub_description_input_key(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a user's ability to close the updateUTubDescription input by pressing the Escape key
 
@@ -281,7 +331,10 @@ def test_close_update_utub_description_input_key(browser: WebDriver, create_test
     WHEN user opens the updateUTubDescription input, then presses 'Esc'
     THEN ensure the updateUTubDescription input is closed
     """
-    login_utub(browser)
+    app = provide_app_for_session_generation
+
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     open_update_utub_input(browser, 0)
 
@@ -293,7 +346,9 @@ def test_close_update_utub_description_input_key(browser: WebDriver, create_test
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_update_utub_description_btn(browser: WebDriver, create_test_utubs):
+def test_update_utub_description_btn(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a UTub owner's ability to update the selected UTub description.
 
@@ -301,8 +356,10 @@ def test_update_utub_description_btn(browser: WebDriver, create_test_utubs):
     WHEN the utubDescriptionUpdate form is populated and submitted
     THEN ensure the new description is successfully added to the UTub.
     """
+    app = provide_app_for_session_generation
 
-    login_utub(browser)
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
 
@@ -319,7 +376,9 @@ def test_update_utub_description_btn(browser: WebDriver, create_test_utubs):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_update_utub_description_key(browser: WebDriver, create_test_utubs):
+def test_update_utub_description_key(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     Tests a UTub owner's ability to update the selected UTub description.
 
@@ -327,8 +386,10 @@ def test_update_utub_description_key(browser: WebDriver, create_test_utubs):
     WHEN the utubDescriptionUpdate form is populated and submitted
     THEN ensure the new description is successfully added to the UTub.
     """
+    app = provide_app_for_session_generation
 
-    login_utub(browser)
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
 

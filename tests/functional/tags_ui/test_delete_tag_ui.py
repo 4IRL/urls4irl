@@ -10,6 +10,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 # Internal libraries
 from src.mocks.mock_constants import MOCK_URL_TITLES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
     hover_tag_badge,
     show_delete_tag_button_on_hover,
@@ -203,6 +204,9 @@ def test_delete_last_tag(browser, create_test_tags):
     """
 
     login_user(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     utub_name = UTS.TEST_UTUB_NAME_1
     select_utub_by_name(browser, utub_name)
