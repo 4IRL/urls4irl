@@ -453,6 +453,9 @@ def login_utub(
 
     login_user(browser, username, password)
 
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     select_utub_by_name(browser, utub_name)
 
 

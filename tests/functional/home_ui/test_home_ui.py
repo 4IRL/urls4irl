@@ -61,12 +61,6 @@ def test_refresh_logo(browser: WebDriver, create_test_utubs):
 
     login_utub(browser)
 
-    # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
-
-    # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
-
     wait_then_click_element(browser, MPL.U4I_LOGO)
 
     assert_login(browser)
