@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+from flask import Flask
 import pytest
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
@@ -13,12 +14,13 @@ from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.urls_ui.utils_for_test_url_ui import get_selected_utub_id
 from tests.functional.utils_for_test import (
     dismiss_modal_with_click_out,
     get_all_utub_selector_names,
     login_user,
-    login_utub,
+    login_user_select_utub_by_name_and_url_by_title,
     select_utub_by_name,
     user_is_selected_utub_owner,
     wait_then_click_element,
@@ -29,14 +31,20 @@ from tests.functional.utils_for_test import (
 pytestmark = pytest.mark.utubs_ui
 
 
-def test_open_delete_utub_modal(browser: WebDriver, create_test_utubs):
+def test_open_delete_utub_modal(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     GIVEN a user on their Home page
     WHEN they select a UTub and click the Trash can icon
     THEN ensure the warning modal is shown
     """
 
-    login_utub(browser)
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    )
 
     if user_is_selected_utub_owner(browser):
         wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
@@ -48,14 +56,20 @@ def test_open_delete_utub_modal(browser: WebDriver, create_test_utubs):
     assert confirmation_modal_body_text == UTS.BODY_MODAL_UTUB_DELETE
 
 
-def test_dismiss_delete_utub_modal_x(browser: WebDriver, create_test_utubs):
+def test_dismiss_delete_utub_modal_x(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     GIVEN a user on their Home page
     WHEN they select a UTub, click the Trash can icon, then clicks the 'x'
     THEN ensure the warning modal is hidden
     """
 
-    login_utub(browser)
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    )
 
     if user_is_selected_utub_owner(browser):
         wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
@@ -67,14 +81,20 @@ def test_dismiss_delete_utub_modal_x(browser: WebDriver, create_test_utubs):
     assert not modal_element.is_displayed()
 
 
-def test_dismiss_delete_utub_modal_btn(browser: WebDriver, create_test_utubs):
+def test_dismiss_delete_utub_modal_btn(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     GIVEN a user on their Home page
     WHEN they select a UTub, click the Trash can icon, then clicks the 'Nevermind...' button
     THEN ensure the warning modal is hidden
     """
 
-    login_utub(browser)
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    )
 
     if user_is_selected_utub_owner(browser):
         wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
@@ -86,14 +106,20 @@ def test_dismiss_delete_utub_modal_btn(browser: WebDriver, create_test_utubs):
     assert not modal_element.is_displayed()
 
 
-def test_dismiss_delete_utub_modal_key(browser: WebDriver, create_test_utubs):
+def test_dismiss_delete_utub_modal_key(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     GIVEN a user on their Home page
     WHEN they select a UTub, click the Trash can icon, then presses 'Esc'
     THEN ensure the warning modal is hidden
     """
 
-    login_utub(browser)
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    )
 
     if not user_is_selected_utub_owner(browser):
         utub_selector_names = get_all_utub_selector_names(browser)
@@ -110,14 +136,20 @@ def test_dismiss_delete_utub_modal_key(browser: WebDriver, create_test_utubs):
     assert not modal_element.is_displayed()
 
 
-def test_dismiss_delete_utub_modal_click(browser: WebDriver, create_test_utubs):
+def test_dismiss_delete_utub_modal_click(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     GIVEN a user on their Home page
     WHEN they select a UTub, click the Trash can icon, then clicks anywhere outside of the modal
     THEN ensure the warning modal is hidden
     """
 
-    login_utub(browser)
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    )
 
     if user_is_selected_utub_owner(browser):
         wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
@@ -130,14 +162,20 @@ def test_dismiss_delete_utub_modal_click(browser: WebDriver, create_test_utubs):
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_delete_utub_btn(browser: WebDriver, create_test_utubs):
+def test_delete_utub_btn(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    login_utub(browser)
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    )
 
     assert user_is_selected_utub_owner(browser)
     utub_id = get_selected_utub_id(browser)
@@ -165,6 +203,9 @@ def test_delete_last_utub(browser: WebDriver, create_test_utubs):
     """
 
     login_user(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Extract confirming result
     selector_UTub1 = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)

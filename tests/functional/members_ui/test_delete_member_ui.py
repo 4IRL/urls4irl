@@ -2,6 +2,7 @@
 from time import sleep
 
 # External libraries
+from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -16,7 +17,7 @@ from tests.functional.members_ui.utils_for_test_members_ui import (
     get_all_member_usernames,
 )
 from tests.functional.utils_for_test import (
-    login_utub,
+    login_user_and_select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -25,7 +26,11 @@ from tests.functional.utils_for_test import (
 pytestmark = pytest.mark.members_ui
 
 
-def test_open_delete_member_modal(browser: WebDriver, create_test_utubmembers):
+def test_open_delete_member_modal(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app_for_session_generation: Flask,
+):
     """
     Tests a UTub owner's ability to open the delete member modal.
 
@@ -33,8 +38,10 @@ def test_open_delete_member_modal(browser: WebDriver, create_test_utubmembers):
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
+    app = provide_app_for_session_generation
 
-    login_utub(browser)
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     member_name = USERNAME_BASE + "2"
 
@@ -53,7 +60,11 @@ def test_open_delete_member_modal(browser: WebDriver, create_test_utubmembers):
     assert confirmation_modal_body_text == member_delete_check_text
 
 
-def test_dismiss_delete_member_modal_btn(browser: WebDriver, create_test_utubmembers):
+def test_dismiss_delete_member_modal_btn(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app_for_session_generation: Flask,
+):
     """
     Tests a UTub owner's ability to close the delete member modal.
 
@@ -61,8 +72,10 @@ def test_dismiss_delete_member_modal_btn(browser: WebDriver, create_test_utubmem
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
+    app = provide_app_for_session_generation
 
-    login_utub(browser)
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     member_name = USERNAME_BASE + "2"
 
@@ -76,7 +89,11 @@ def test_dismiss_delete_member_modal_btn(browser: WebDriver, create_test_utubmem
     assert not create_member_input.is_displayed()
 
 
-def test_dismiss_delete_member_modal_key(browser: WebDriver, create_test_utubmembers):
+def test_dismiss_delete_member_modal_key(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app_for_session_generation: Flask,
+):
     """
     Tests a UTub owner's ability to delete a member from the UTub.
 
@@ -84,14 +101,18 @@ def test_dismiss_delete_member_modal_key(browser: WebDriver, create_test_utubmem
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
+    app = provide_app_for_session_generation
 
-    login_utub(browser)
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     member_name = USERNAME_BASE + "2"
 
     delete_member_active_utub(browser, member_name)
 
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    home_modal = wait_then_get_element(browser, MPL.HOME_MODAL)
+
+    home_modal.send_keys(Keys.ESCAPE)
 
     create_member_input = wait_until_hidden(browser, MPL.HOME_MODAL)
 
@@ -99,7 +120,11 @@ def test_dismiss_delete_member_modal_key(browser: WebDriver, create_test_utubmem
     assert not create_member_input.is_displayed()
 
 
-def test_delete_member_btn(browser: WebDriver, create_test_utubmembers):
+def test_delete_member_btn(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app_for_session_generation: Flask,
+):
     """
     Tests a UTub owner's ability to delete a member from the UTub.
 
@@ -107,8 +132,10 @@ def test_delete_member_btn(browser: WebDriver, create_test_utubmembers):
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
+    app = provide_app_for_session_generation
 
-    login_utub(browser)
+    user_id = 1
+    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
     member_name = USERNAME_BASE + "2"
 

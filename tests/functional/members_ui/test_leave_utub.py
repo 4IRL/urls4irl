@@ -9,6 +9,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from locators import MainPageLocators as MPL
 from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.members_ui.utils_for_test_members_ui import (
     leave_active_utub,
 )
@@ -34,6 +35,9 @@ def test_leave_utub(browser: WebDriver, create_test_utubmembers):
     """
 
     login_user(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     utub_name = MOCK_UTUB_NAME_BASE + "2"
     num_utubs = get_num_utubs(browser)

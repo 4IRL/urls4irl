@@ -9,6 +9,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 # Internal libraries
 from src.mocks.mock_constants import MOCK_UTUB_DESCRIPTION
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.utils_for_test import (
     login_user,
     wait_then_click_element,
@@ -31,6 +32,9 @@ def test_open_create_utub_input(browser: WebDriver, create_test_users):
     THEN ensure the createUTub input opens
     """
     login_user(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Click createUTub button to show input
     wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
@@ -55,6 +59,9 @@ def test_close_create_utub_input_btn(browser: WebDriver, create_test_users):
     """
     login_user(browser)
 
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     # Click createUTub button to show input
     wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
 
@@ -74,6 +81,9 @@ def test_close_create_utub_input_key(browser: WebDriver, create_test_users):
     THEN ensure the createUTub input is closed
     """
     login_user(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Click createUTub button to show input
     wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
@@ -96,6 +106,9 @@ def test_create_utub_btn(browser: WebDriver, create_test_users):
     """
 
     login_user(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     utub_name = UTS.TEST_UTUB_NAME_1
 
@@ -147,6 +160,9 @@ def test_create_utub_name_length_exceeded(browser: WebDriver, create_test_users)
 
     login_user(browser)
 
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     create_utub(browser, UTS.MAX_CHAR_LIM_UTUB_NAME)
 
     warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
@@ -166,6 +182,9 @@ def test_create_utub_name_similar(browser: WebDriver, create_test_utubs):
     """
 
     login_user(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Extract name of a pre-existing UTub
     UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
