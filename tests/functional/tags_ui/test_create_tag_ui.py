@@ -26,6 +26,8 @@ from tests.functional.utils_for_test import (
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 
+pytestmark = pytest.mark.tags_ui
+
 
 def test_open_input_create_tag(browser: WebDriver, create_test_urls):
     """

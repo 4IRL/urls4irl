@@ -1,6 +1,5 @@
 # Standard library
 import secrets
-from typing import List
 
 # External libraries
 from flask import Flask, session
@@ -593,6 +592,33 @@ def user_is_selected_utub_owner(browser: WebDriver):
 
 
 # URL Deck
+def get_url_by_title(browser: WebDriver, url_title: str) -> WebElement | None:
+    """
+    If a UTub is selected and the UTub contains URLs, this function shall return the URL row associated with the supplied URL title.
+
+    Args:
+        WebDriver open to a selected UTub
+        URL Title
+
+    Returns:
+        URL row with the provided URL title
+    """
+
+    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    if url_rows is None:
+        return None
+
+    for url_row in url_rows:
+
+        url_row_title = url_row.find_element(
+            By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        ).get_attribute("innerText")
+        if url_row_title == url_title:
+            return url_row
+
+    return None
+
+
 def select_url_by_title(browser: WebDriver, url_title: str):
     """
     If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL title.
@@ -742,7 +768,19 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
     return url_ids
 
 
-def url_row_unfiltered(url_rows: List[WebElement]):
+def get_all_tag_ids_in_url_row(url_row: WebElement) -> list[int] | None:
+    tag_badges: list[WebElement] = url_row.find_elements(
+        By.CSS_SELECTOR, MPL.TAG_BADGES
+    )
+    if tag_badges:
+        tag_ids = [
+            int(tag_badge.get_attribute("data-utub-tag-id")) for tag_badge in tag_badges
+        ]
+        return tag_ids
+    return None
+
+
+def url_row_unfiltered(url_rows: list[WebElement]):
     """
     Checks if each URL row is unfiltered.
 
@@ -812,6 +850,40 @@ def get_selected_url_title(browser: WebDriver):
     ).get_attribute("innerText")
 
 
+def get_url_row_by_id(browser: WebDriver, urlid: int):
+    return browser.find_element(By.CSS_SELECTOR, MPL.ROWS_URLS + f'[urlid="{urlid}"]')
+
+
+def get_tag_badge_by_id(browser: WebDriver, urlid: int, tagid: int):
+    url_row = get_url_row_by_id(browser, urlid)
+    return url_row.find_element(
+        By.CSS_SELECTOR, MPL.TAG_BADGES + f'[data-utub-tag-id="{tagid}"]'
+    )
+
+
+def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | None:
+    """
+    Simplifies extraction of a tag badge WebElement by its name in a selected URL.
+
+    Args:
+        WebDriver open to a selected URL
+
+    Returns:
+        Tag badge WebElement
+    """
+    tag_badges = get_selected_url_tags(url_row)
+
+    for tag_badge in tag_badges:
+
+        tag_text = tag_badge.find_element(By.CLASS_NAME, "tagText").get_attribute(
+            "innerText"
+        )
+        if tag_text == tag_name:
+            return tag_badge
+
+    return None
+
+
 def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
     args = ["addmock", "url"] + urls
     runner.invoke(args=args)
@@ -878,6 +950,38 @@ def verify_update_url_state_is_hidden(url_row: WebElement):
 
 
 # Tag Deck
+def get_tag_filter_name_by_id(browser: WebDriver, tag_id: int) -> str | None:
+    """
+    Simplifies extraction of a tag filter name by its id.
+
+    Args:
+        WebDriver open to a selected UTub
+
+    Returns:
+        Tag filter name string
+    """
+    tag_filter = get_tag_filter_by_id(browser, tag_id)
+
+    if tag_filter is None:
+        return None
+
+    tag_filter_name = tag_filter.find_element(By.TAG_NAME, "span").get_attribute(
+        "innerText"
+    )
+
+    return tag_filter_name
+
+
+def get_tag_filter_by_id(browser: WebDriver, tag_id: int) -> WebElement | None:
+    return browser.find_element(
+        By.CSS_SELECTOR, MPL.TAG_FILTERS + '[data-utub-tag-id="' + str(tag_id) + '"]'
+    )
+
+
+def get_tag_filter_id(tag_filter: WebElement) -> int | None:
+    return int(tag_filter.get_attribute("data-utub-tag-id"))
+
+
 def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | None:
     """
     Simplifies extraction of a tag filter WebElement by its name.
@@ -888,7 +992,7 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | No
     Returns:
         Tag filter WebElement
     """
-    tag_filters = get_selected_utub_tags(browser)
+    tag_filters = get_utub_tag_filters(browser)
     if tag_filters is None:
         return None
 
@@ -903,32 +1007,9 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | No
     return None
 
 
-def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | None:
-    """
-    Simplifies extraction of a tag badge WebElement by its name in a selected URL.
-
-    Args:
-        WebDriver open to a selected URL
-
-    Returns:
-        Tag badge WebElement
-    """
-    tag_badges = get_selected_url_tags(url_row)
-
-    for tag_badge in tag_badges:
-
-        tag_text = tag_badge.find_element(By.CLASS_NAME, "tagText").get_attribute(
-            "innerText"
-        )
-        if tag_text == tag_name:
-            return tag_badge
-
-    return None
-
-
-def get_selected_utub_tags(browser: WebDriver):
+def get_utub_tag_filters(browser: WebDriver) -> list[WebElement]:
     return wait_then_get_elements(browser, MPL.TAG_FILTERS, 0)
 
 
-def get_selected_url_tags(url_row: WebElement):
+def get_selected_url_tags(url_row: WebElement) -> list[WebElement]:
     return url_row.find_elements(By.CSS_SELECTOR, MPL.TAG_BADGES)

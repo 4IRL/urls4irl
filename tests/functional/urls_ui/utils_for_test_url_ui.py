@@ -76,7 +76,7 @@ def update_url_string(url_row: WebElement, url_string: str):
     clear_then_send_keys(url_string_input_field, url_string)
 
 
-def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title: str):
+def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
     """
     Streamlines actions required to updated a URL in the selected URL.
 
@@ -108,6 +108,20 @@ def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title
     actions.click(update_url_title_button)
 
     actions.perform()
+
+
+def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title: str):
+    """
+    Streamlines actions required to updated a URL in the selected URL.
+
+    Args:
+        WebDriver open to a selected URL
+        New URL title
+
+    Returns:
+        Yields WebDriver to tests
+    """
+    open_update_url_title(browser, selected_url_row)
 
     # Input new URL Title
     url_title_input_field = selected_url_row.find_element(
