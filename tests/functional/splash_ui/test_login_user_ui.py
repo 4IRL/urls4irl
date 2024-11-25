@@ -197,8 +197,6 @@ def test_login_test_user_key(browser: WebDriver, create_test_users):
 
     password_input = login_user(browser)
 
-    # splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
-
     # Submit form
     password_input.send_keys(Keys.ENTER)
 

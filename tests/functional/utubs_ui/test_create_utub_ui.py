@@ -134,6 +134,9 @@ def test_create_utub_key(browser: WebDriver, create_test_users):
 
     login_user(browser)
 
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     utub_name = UTS.TEST_UTUB_NAME_1
 
     create_utub(browser, utub_name, MOCK_UTUB_DESCRIPTION)
