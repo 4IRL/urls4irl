@@ -97,8 +97,8 @@ def delete_each_tag_from_one_url_in_utub(app: Flask, utub_title: str):
         utub_urls: list[Utub_Urls] = utub.utub_urls
 
         # Make mutable copies
-        urls = utub_urls
-        tags = utub_tags
+        urls = list(utub_urls)
+        tags = list(utub_tags)
 
         while len(tags) > 0:
             # Extract the first of the remaining tags to be removed from some URL
