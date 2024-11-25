@@ -361,6 +361,8 @@ def login_user(
     assert password_input is not None
     clear_then_send_keys(password_input, password)
 
+    return password_input
+
 
 def assert_login(browser: WebDriver):
     """

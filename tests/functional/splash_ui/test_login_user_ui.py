@@ -195,13 +195,12 @@ def test_login_test_user_key(browser: WebDriver, create_test_users):
     THEN U4I will login user and display the home page
     """
 
-    login_user(browser)
+    password_input = login_user(browser)
 
-    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
-    splash_modal.click()
+    # splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
 
     # Submit form
-    splash_modal.send_keys(Keys.ENTER)
+    password_input.send_keys(Keys.ENTER)
 
     assert_login(browser)
 
