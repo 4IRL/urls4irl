@@ -1,8 +1,8 @@
 # Standard library
 
 # External libraries
-# import pytest
 from flask import Flask
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
@@ -28,6 +28,8 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_then_get_elements,
 )
+
+pytestmark = pytest.mark.tags_ui
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")

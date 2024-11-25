@@ -34,6 +34,8 @@ from tests.functional.utils_for_test import (
 )
 from locators import MainPageLocators as MPL
 
+pytestmark = pytest.mark.tags_ui
+
 
 def test_show_delete_tag_button_on_hover(
     browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask

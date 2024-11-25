@@ -123,27 +123,6 @@ def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title
     """
     open_update_url_title(browser, selected_url_row)
 
-    # Select editURL button
-    url_title_text = selected_url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ)
-
-    actions = ActionChains(browser)
-
-    # Hover over URL title to display editURLTitle button
-    actions.move_to_element(url_title_text)
-
-    # Pause to make sure editURLTitle button is visible
-    actions.pause(3).perform()
-
-    update_url_title_button = selected_url_row.find_element(
-        By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_UPDATE
-    )
-
-    actions.move_to_element(update_url_title_button).pause(2)
-
-    actions.click(update_url_title_button)
-
-    actions.perform()
-
     # Input new URL Title
     url_title_input_field = selected_url_row.find_element(
         By.CSS_SELECTOR, MPL.INPUT_URL_TITLE_UPDATE

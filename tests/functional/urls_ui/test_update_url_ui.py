@@ -345,7 +345,7 @@ def test_update_url_string_escape_key(
     ).is_displayed()
 
 
-def test_update_url_title_submit(
+def test_update_url_title_submit_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],

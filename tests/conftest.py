@@ -44,7 +44,7 @@ TEST_SPLIT = (
     "utubs_ui",
     "members_ui",
     "urls_ui",
-    # "tags_ui",
+    "tags_ui",
 )
 
 
