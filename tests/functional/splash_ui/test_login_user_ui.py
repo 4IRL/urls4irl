@@ -160,7 +160,9 @@ def test_dismiss_login_modal_key(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
 
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    splash_modal.send_keys(Keys.ESCAPE)
 
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
@@ -288,7 +290,9 @@ def test_dismiss_forgot_password_modal_key(browser: WebDriver):
 
     sleep(2)
 
-    browser.switch_to.active_element.send_keys(Keys.ESCAPE)
+    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+
+    splash_modal.send_keys(Keys.ESCAPE)
 
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 

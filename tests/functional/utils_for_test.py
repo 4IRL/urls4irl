@@ -1,5 +1,6 @@
 # Standard library
 import secrets
+from time import sleep
 
 # External libraries
 from flask import Flask, session
@@ -455,6 +456,8 @@ def login_utub(
 
     # Find submit button to login
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    sleep(3)
 
     select_utub_by_name(browser, utub_name)
 
