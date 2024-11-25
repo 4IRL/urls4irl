@@ -30,6 +30,9 @@ def test_logout(browser: WebDriver, create_test_users):
     """
     login_user(browser)
 
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     logout_btn = wait_then_get_element(browser, MPL.BUTTON_LOGOUT)
     logout_btn.click()
 
@@ -57,6 +60,9 @@ def test_refresh_logo(browser: WebDriver, create_test_utubs):
     # TODO: test async addition of component by 2nd test user in a shared UTub, then confirm 1st test user can see the update upon refresh
 
     login_utub(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     wait_then_click_element(browser, MPL.U4I_LOGO)
 
