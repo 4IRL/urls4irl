@@ -1,4 +1,4 @@
-# ndard library
+# Standard library
 from time import sleep
 
 # External libraries

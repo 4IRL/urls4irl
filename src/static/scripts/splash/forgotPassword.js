@@ -1,7 +1,7 @@
 "use strict";
 
 $("#ToLoginFromForgotPassword").offAndOn("click", function () {
-  loginModalOpenerFromRegister();
+  loginModalOpener();
 });
 
 $("#submit").click((event) => handleForgotPassword(event));

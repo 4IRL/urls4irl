@@ -11,9 +11,13 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
+from tests.functional.splash_ui.utils_for_test_splash_ui import (
+    assert_forgot_password_modal_open,
+    assert_forgot_password_submission,
+    open_forgot_password_modal,
+)
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
-    open_forgot_password_modal,
     wait_then_click_element,
     wait_then_get_element,
     dismiss_modal_with_click_out,
@@ -33,14 +37,7 @@ def test_open_forgot_password_modal(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
-    assert modal_element is not None
-
-    assert modal_element.is_displayed()
-
-    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
-
-    assert modal_title.text == "Forgot your password?"
+    assert_forgot_password_modal_open(browser)
 
     email_input = wait_then_get_element(browser, SPL.INPUT_EMAIL)
     assert email_input is not None
@@ -117,6 +114,44 @@ def test_dismiss_forgot_password_modal_key(browser: WebDriver):
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
     assert not modal_element.is_displayed()
+
+
+def test_submit_forgot_password_modal_btn(browser: WebDriver):
+    """
+    Tests a user's ability to request a password reminder
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, clicks the 'Forgot Password' link, and enters their email
+    THEN the modal responds with an affirmation of reminder sent
+    """
+    open_forgot_password_modal(browser)
+
+    email_input = wait_then_get_element(browser, SPL.INPUT_EMAIL)
+    assert email_input is not None
+    clear_then_send_keys(email_input, UTS.TEST_PASSWORD_1)
+
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    assert_forgot_password_submission(browser)
+
+
+def test_submit_forgot_password_modal_key(browser: WebDriver):
+    """
+    Tests a user's ability to request a password reminder
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, clicks the 'Forgot Password' link, and enters their email
+    THEN the modal responds with an affirmation of reminder sent
+    """
+    open_forgot_password_modal(browser)
+
+    email_input = wait_then_get_element(browser, SPL.INPUT_EMAIL)
+    assert email_input is not None
+    clear_then_send_keys(email_input, UTS.TEST_PASSWORD_1)
+
+    browser.switch_to.active_element.send_keys(Keys.ENTER)
+
+    assert_forgot_password_submission(browser)
 
 
 # @pytest.mark.skip(reason="Not yet implemented on frontend.")
