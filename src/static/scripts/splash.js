@@ -17,7 +17,7 @@ function setToLoginButton() {
   });
 }
 
-function loginModalOpener() {
+function loginModalOpenerFromModal() {
   const modalOpener = $.get(routes.login);
 
   modalOpener.done((data, _, xhr) => {
@@ -32,18 +32,6 @@ function loginModalOpener() {
     $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
   });
 }
-
-// function loginModalOpener() {
-//   const modalOpener = $.get(routes.login);
-
-//   modalOpener.done((data, _, xhr) => {
-//     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
-//   });
-
-//   modalOpener.fail(() => {
-//     showSplashModalAlertBanner("Unable to load login form...", "danger");
-//   });
-// }
 
 function registerModalOpener() {
   const modalOpener = $.get(routes.register);
