@@ -2,24 +2,26 @@
 
 $(document).ready(function () {
   /* Bind click functions */
-  const urlBtnCreate = $("#urlBtnCreate");
+  const urlBtnCreateSelector = "#urlBtnCreate";
+  const urlBtnDeckCreateSelector = "#urlBtnDeckCreate";
+  const urlBtnCreate = $(urlBtnCreateSelector);
+  const urlBtnDeckCreate = $(urlBtnDeckCreateSelector);
 
   // Add new URL to current UTub
   urlBtnCreate.on("click", function (e) {
     if ($(e.target).closest("#urlBtnCreate").length > 0) createURLShowInput();
   });
-
-  urlBtnCreate.on("focus", function () {
-    $(document).on("keyup.createURL", function (e) {
-      if (e.which === 13) {
-        createURLShowInput();
-      }
-    });
+  urlBtnDeckCreate.on("click", function (e) {
+    if ($(e.target).closest("#urlBtnDeckCreate").length > 0)
+      createURLShowInput();
   });
 
-  urlBtnCreate.on("blur", function () {
-    $(document).off(".createURL");
-  });
+  // Bind enter key
+  urlBtnCreate.on("focus", bindCreateURLSubmissionEnterKeyEventListener());
+  urlBtnDeckCreate.on("focus", bindCreateURLSubmissionEnterKeyEventListener());
+
+  urlBtnCreate.on("blur", unbindCreateURLFocusEventListeners());
+  urlBtnDeckCreate.on("blur", unbindCreateURLFocusEventListeners());
 
   // Open all URLs in UTub in separate tabs
   $("#accessAllURLsBtn").on("click", function (e) {
@@ -33,6 +35,44 @@ $(document).ready(function () {
     }
   });
 });
+
+function bindCreateURLShowInputEventListener(selector) {
+  if ($(e.target).closest(selector).length > 0) createURLShowInput();
+}
+
+function bindCreateURLSubmissionEnterKeyEventListener() {
+  $(document).on("keyup.createURL", function (e) {
+    if (e.which === 13) {
+      createURLShowInput();
+    }
+  });
+}
+
+function bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput) {
+  $(document).on("keyup.createURL", function (e) {
+    switch (e.which) {
+      case 13:
+        // Handle enter key pressed
+        createURL(createURLTitleInput, createURLInput);
+        break;
+      case 27:
+        // Handle escape key pressed
+        createURLHideInput();
+        break;
+      default:
+      /* no-op */
+    }
+  });
+}
+
+function unbindCreateURLFocusEventListeners() {
+  $(document).off(".createURL");
+}
+
+// Prevent deselection of URL while modifying its values (e.g. adding a tag, updating URL string or title)
+function unbindSelectURLBehavior() {
+  getSelectedURLCard().off(".urlSelected");
+}
 
 /** URL Utility Functions **/
 
@@ -56,11 +96,6 @@ function getSelectedURLCard() {
 function getSelectedURLID() {
   const selectedUrlCard = getSelectedURLCard();
   return selectedUrlCard === null ? NaN : selectedUrlCard.attr("urlid");
-}
-
-// Prevent deselection of URL while modifying its values (e.g. adding a tag, updating URL string or title)
-function unbindSelectURLBehavior() {
-  getSelectedURLCard().off(".urlSelected");
 }
 
 function isURLCurrentlyVisibleInURLDeck(urlString) {
@@ -258,6 +293,7 @@ function resetURLDeck() {
 function resetURLDeckOnDeleteUTub() {
   hideIfShown($("#urlBtnCreate"));
   hideIfShown($("#NoURLsSubheader"));
+  hideIfShown($("#urlBtnDeckCreate"));
 }
 
 // Prevent editing URL title when needed
@@ -400,8 +436,10 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
     // Show access all URLs button
     $("#accessAllURLsBtn").show();
     $("#NoURLsSubheader").hide();
+    $("#urlBtnDeckCreate").hide();
   } else {
     $("#NoURLsSubheader").show();
+    $("#urlBtnDeckCreate").show();
     $("#accessAllURLsBtn").hide();
   }
   setUTubNameAndDescription(UTubName);
@@ -1025,27 +1063,6 @@ function newURLInputRemoveEventListeners() {
   $(document).off(".createURL");
   $("#urlTitleCreate").off(".createURL");
   $("#urlStringCreate").off(".createURL");
-}
-
-function bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput) {
-  $(document).on("keyup.createURL", function (e) {
-    switch (e.which) {
-      case 13:
-        // Handle enter key pressed
-        createURL(createURLTitleInput, createURLInput);
-        break;
-      case 27:
-        // Handle escape key pressed
-        createURLHideInput();
-        break;
-      default:
-      /* no-op */
-    }
-  });
-}
-
-function unbindCreateURLFocusEventListeners() {
-  $(document).off(".createURL");
 }
 
 // Handle URL deck display changes related to creating a new tag

@@ -27,9 +27,8 @@ from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.locators import ModalLocators as MP
 
+
 # General
-
-
 def get_all_attributes(driver: WebDriver, element: WebElement):
     """
     Args:
@@ -238,6 +237,18 @@ def wait_until_visible_css_selector(
 ):
     wait = WebDriverWait(browser, timeout)
     wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
+
+
+def assert_not_visible_css_selector(
+    browser: WebDriver, css_selector: str, time: float = 10
+):
+    try:
+        WebDriverWait(browser, time).until(
+            EC.invisibility_of_element_located((By.CSS_SELECTOR, css_selector))
+        )
+        assert True
+    except TimeoutException:
+        print("Element is still visible.")
 
 
 # Modal

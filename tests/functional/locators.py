@@ -46,7 +46,8 @@ class MainPageLocators:
     ROWS_URLS = ".urlRow"
     ROW_SELECTED_URL = ".urlRow[urlselected='true']"
 
-    BUTTON_URL_CREATE = "#urlBtnCreate"
+    BUTTON_CORNER_URL_CREATE = "#urlBtnCreate"
+    BUTTON_DECK_URL_CREATE = "#urlBtnDeckCreate"
     INPUT_URL_TITLE_CREATE = "#urlTitleCreate"
     INPUT_URL_STRING_CREATE = "#urlStringCreate"
     BUTTON_URL_SUBMIT_CREATE = "#urlSubmitBtnCreate"
