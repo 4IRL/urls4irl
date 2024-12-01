@@ -1,7 +1,7 @@
 "use strict";
 
 $("#ToLoginFromRegister").offAndOn("click", function () {
-  loginModalOpener();
+  loginModalOpenerFromModal();
 });
 
 $("#submit").click((event) => handleRegister(event));
