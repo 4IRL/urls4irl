@@ -92,7 +92,7 @@ def test_valid_urls():
     for valid_url in valid_urls:
         urls_to_check = valid_urls[valid_url]
         for url in urls_to_check:
-            commonized_url = url_validator.find_full_path_normalized_url(url)(url)
+            commonized_url = url_validator.find_full_path_normalized_url(url)
             assert valid_url == commonized_url
 
 
