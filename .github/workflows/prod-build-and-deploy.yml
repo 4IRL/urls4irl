@@ -11,12 +11,14 @@ on:
 
 jobs:
     build-prod:
+        if: github.event.pull_request.merged == true
         name: 'CD Prod - Build'
         uses: ./.github/workflows/prod-build.yml
         permissions:
             packages: write
 
     deploy-prod:
+        if: github.event.pull_request.merged == true
         needs: 'build-prod'
         name: 'CD Prod - Deploy'
         uses: ./.github/workflows/prod-deploy.yml

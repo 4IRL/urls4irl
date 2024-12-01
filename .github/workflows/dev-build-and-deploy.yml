@@ -10,12 +10,14 @@ on:
 
 jobs:
     build-dev:
+        if: github.event.pull_request.merged == true
         name: 'CD Dev - Build'
         uses: ./.github/workflows/dev-build.yml
         permissions:
             packages: write
 
     deploy-dev:
+        if: github.event.pull_request.merged == true
         needs: 'build-dev'
         name: 'CD Dev - Deploy'
         uses: ./.github/workflows/dev-deploy.yml
