@@ -2,7 +2,11 @@ from time import sleep
 
 import pytest
 
-from src.utils import url_validation as url_valid
+from src.extensions.url_validation.url_validator import (
+    InvalidURLError,
+    UrlValidator,
+)
+from src.extensions.url_validation import constants as url_constants
 
 pytestmark = pytest.mark.unit
 
@@ -84,10 +88,11 @@ def test_valid_urls():
     WHEN the url validation functions checks these URLs
     THEN ensure each variant of the URL outputs the identical and correct URL to use
     """
+    url_validator = UrlValidator()
     for valid_url in valid_urls:
         urls_to_check = valid_urls[valid_url]
         for url in urls_to_check:
-            commonized_url = url_valid.find_common_url(url)
+            commonized_url = url_validator.find_full_path_normalized_url(url)
             assert valid_url == commonized_url
 
 
@@ -97,9 +102,10 @@ def test_invalid_urls():
     WHEN the url validation functions checks these invalid URLs
     THEN ensure the InvalidURLError exception is raised
     """
+    url_validator = UrlValidator()
     for invalid_url in invalid_urls:
-        with pytest.raises(url_valid.InvalidURLError):
-            url_valid.find_common_url(invalid_url)
+        with pytest.raises(InvalidURLError):
+            url_validator.find_full_path_normalized_url(invalid_url)
 
 
 def test_urls_requiring_valid_user_agent():
@@ -110,12 +116,13 @@ def test_urls_requiring_valid_user_agent():
     WHEN the url validation function checks these URLs
     THEN ensure that these urls are now validated properly
     """
+    url_validator = UrlValidator()
     for unknown_url in urls_needing_valid_user_agent:
         validated_url = False
         for _ in range(3):
             try:
-                url_valid.find_common_url(unknown_url)
-            except url_valid.InvalidURLError:
+                url_validator.find_full_path_normalized_url(unknown_url)
+            except InvalidURLError:
                 continue
             else:
                 validated_url = True
@@ -129,12 +136,13 @@ def test_random_user_agents():
     WHEN the User-Agent is iterated through random values
     THEN ensure that these urls are now validated properly
     """
+    url_validator = UrlValidator()
     valid_agent_used = 0
     for unknown_url in urls_needing_valid_user_agent:
-        for user_agent in set(url_valid.USER_AGENTS):
+        for user_agent in set(url_constants.USER_AGENTS):
             try:
-                url_valid.find_common_url(unknown_url, user_agent)
-            except url_valid.InvalidURLError:
+                url_validator.find_full_path_normalized_url(unknown_url, user_agent)
+            except InvalidURLError:
                 # Avoid any kind of rate limiting or semblance of being a bot
                 sleep(0.1)
             else:

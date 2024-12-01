@@ -1,7 +1,10 @@
+from unittest import mock
+
 from flask import url_for
 from flask_login import current_user
 import pytest
 
+from src.extensions.url_validation.url_validator import InvalidURLError
 from src.models.urls import Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -16,8 +19,14 @@ from tests.models_for_test import valid_url_strings
 pytestmark = pytest.mark.urls
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_valid_url_as_utub_member(
-    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -53,6 +62,7 @@ def test_add_valid_url_as_utub_member(
         number_of_urls_in_db = Urls.query.count()
         url_id_to_add = url_to_add.id
         url_string_to_add = url_to_add.url_string
+        mock_validate_url.return_value = url_string_to_add
         url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
 
@@ -111,8 +121,14 @@ def test_add_valid_url_as_utub_member(
         assert Utub_Urls.query.count() == initial_utub_urls + 1
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_valid_url_as_utub_creator(
-    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -147,6 +163,7 @@ def test_add_valid_url_as_utub_creator(
         number_of_urls_in_db = Urls.query.count()
         url_id_to_add = url_to_add.id
         url_string_to_add = url_to_add.url_string
+        mock_validate_url.return_value = url_string_to_add
         url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
 
@@ -204,8 +221,14 @@ def test_add_valid_url_as_utub_creator(
         assert Utub_Urls.query.count() == initial_utub_urls + 1
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_invalid_url_as_utub_member(
-    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -222,6 +245,7 @@ def test_add_invalid_url_as_utub_member(
         "Error_code": 2
     }
     """
+    mock_validate_url.side_effect = InvalidURLError
     client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -281,8 +305,14 @@ def test_add_invalid_url_as_utub_member(
         assert Utub_Urls.query.count() == initial_utub_urls
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_invalid_url_as_utub_creator(
-    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -299,6 +329,7 @@ def test_add_invalid_url_as_utub_creator(
         "Error_code": 2
     }
     """
+    mock_validate_url.side_effect = InvalidURLError
     client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -467,8 +498,11 @@ def test_add_valid_url_to_utub_not_a_member_of(
         assert Utub_Urls.query.count() == initial_utub_urls
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_fresh_url_to_utub(
-    every_user_makes_a_unique_utub, login_first_user_without_register
+    mock_validate_url, every_user_makes_a_unique_utub, login_first_user_without_register
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and no URLs
@@ -492,6 +526,7 @@ def test_add_fresh_url_to_utub(
     """
     client, csrf_token, _, app = login_first_user_without_register
     valid_url_to_add = valid_url_strings[0]
+    mock_validate_url.return_value = valid_url_to_add
 
     with app.app_context():
         # Get this user's UTub
@@ -534,6 +569,10 @@ def test_add_fresh_url_to_utub(
     assert int(add_url_json_response[URL_SUCCESS.ADDED_BY]) == current_user.id
 
     url_id_added = int(add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.UTUB_URL_ID])
+    assert (
+        add_url_json_response[MODEL_STRS.URL][URL_SUCCESS.URL_STRING]
+        == valid_url_to_add
+    )
 
     with app.app_context():
         # Ensure new URL exists
@@ -561,8 +600,13 @@ def test_add_fresh_url_to_utub(
         assert Utub_Urls.query.count() == initial_utub_urls + 1
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
-    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+    mock_validate_url,
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -598,6 +642,7 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         url_that_user_added: Urls = url_association_that_user_added.standalone_url
         url_id = url_that_user_added.id
         url_string_to_add = url_that_user_added.url_string
+        mock_validate_url.return_value = url_string_to_add
         url_title_to_add = url_association_that_user_added.url_title
 
         number_of_urls_in_utub = Utub_Urls.query.filter(
@@ -649,8 +694,13 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
         assert Utub_Urls.query.count() == initial_utub_urls
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
-    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+    mock_validate_url,
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -688,6 +738,7 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
         )
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
+        mock_validate_url.return_value = url_string_to_add
         url_title_to_add = url_association_that_user_did_not_add.url_title
 
         number_of_urls_in_utub = Utub_Urls.query.filter(
@@ -739,8 +790,13 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
         assert Utub_Urls.query.count() == initial_utub_urls
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
-    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+    mock_validate_url,
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -778,6 +834,7 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         )
         url_id = url_that_user_did_not_add.id
         url_string_to_add = url_that_user_did_not_add.url_string
+        mock_validate_url.return_value = url_string_to_add
         url_title_to_add = url_association_that_user_did_not_add.url_title
 
         number_of_urls_in_utub = Utub_Urls.query.filter(
@@ -1040,8 +1097,14 @@ def test_add_url_missing_csrf_token(
         assert Utub_Urls.query.count() == initial_utub_urls
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_valid_url_updates_utub_last_updated(
-    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -1064,6 +1127,7 @@ def test_add_valid_url_updates_utub_last_updated(
         # Grab a URL to add
         url_to_add: Urls = Urls.query.first()
         url_string_to_add = url_to_add.url_string
+        mock_validate_url.return_value = url_string_to_add
         url_title_to_add = f"This is {url_string_to_add}"
         utub_id_to_add_to = current_utub_member_of.id
 
@@ -1089,8 +1153,13 @@ def test_add_valid_url_updates_utub_last_updated(
         ).total_seconds() > 0
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_add_duplicate_url_to_utub_does_not_update_utub_last_updated(
-    add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
+    mock_validate_url,
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
@@ -1124,6 +1193,7 @@ def test_add_duplicate_url_to_utub_does_not_update_utub_last_updated(
             url_association_that_user_did_not_add.standalone_url
         )
         url_string_to_add = url_that_user_did_not_add.url_string
+        mock_validate_url.return_value = url_string_to_add
         url_title_to_add = url_association_that_user_did_not_add.url_title
 
     # Add the URL to the UTub

@@ -5,6 +5,7 @@ from dotenv import load_dotenv
 from redis import Redis
 
 from src.utils.constants import CONFIG_CONSTANTS
+from src.utils.db_uri_builder import build_db_uri
 from src.utils.strings.config_strs import CONFIG_ENVS as ENV
 
 # Must store .env file in base folder of project
@@ -20,24 +21,10 @@ POSTGRES_DB = environ.get(ENV.POSTGRES_DB)
 POSTGRES_TEST_DB = environ.get(ENV.POSTGRES_TEST_DB, default=None)
 
 
-def _build_db_uri(
-    username: str | None, password: str | None, database: str | None, database_host: str
-) -> str | None:
-    if not all(
-        (
-            username,
-            password,
-            database,
-        )
-    ):
-        return None
-    return f"postgresql://{username}:{password}@{database_host}:5432/{database}"
-
-
 PROD_DB_URI = (
     None
     if not IS_PRODUCTION
-    else _build_db_uri(
+    else build_db_uri(
         username=POSTGRES_USER,
         password=POSTGRES_PASSWORD,
         database=POSTGRES_DB,
@@ -45,14 +32,14 @@ PROD_DB_URI = (
     )
 )
 
-TEST_DB_URI = _build_db_uri(
+TEST_DB_URI = build_db_uri(
     username=POSTGRES_USER,
     password=POSTGRES_PASSWORD,
     database=POSTGRES_TEST_DB,
     database_host="test-db" if IS_DOCKER else "localhost",
 )
 
-DEV_DB_URI = _build_db_uri(
+DEV_DB_URI = build_db_uri(
     username=POSTGRES_USER,
     password=POSTGRES_PASSWORD,
     database=POSTGRES_DB,
@@ -139,8 +126,13 @@ class ConfigTest(Config):
     TESTING = True
     SQLALCHEMY_BINDS = {"test": TEST_DB_URI}
     SQLALCHEMY_DATABASE_URI = TEST_DB_URI
+    UI_TESTING = False
 
     def __init__(self) -> None:
         super().__init__()
         if environ.get(ENV.POSTGRES_TEST_DB, default=None) is None:
             raise ValueError("Missing POSTGRES_TEST_DB database name for test")
+
+
+class ConfigTestUI(ConfigTest):
+    UI_TESTING = True

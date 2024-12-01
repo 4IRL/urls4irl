@@ -8,15 +8,16 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 
 from src import create_app
-from src.config import ConfigTest
+from src.config import ConfigTestUI
 
 
 def run_app(port: int, show_flask_logs: bool):
     """
     Runs app
     """
-    config = ConfigTest()
+    config = ConfigTestUI()
     app_for_test = create_app(config)
+    assert app_for_test is not None
     if not show_flask_logs:
         log = logging.getLogger("werkzeug")
         log.disabled = True
