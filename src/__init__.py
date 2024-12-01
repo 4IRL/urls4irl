@@ -7,9 +7,10 @@ from flask_session import Session
 from flask_wtf.csrf import CSRFProtect
 
 from src.db import db
-from src.config import Config, ConfigProd, ConfigTest
+from src.config import Config, ConfigProd
+from src.extensions.email_sender.email_sender import EmailSender
+from src.extensions.url_validation.url_validator import UrlValidator
 from src.mocks.mock_options import register_mocks_db_cli
-from src.utils.email_sender import EmailSender
 from src.utils.error_handler import (
     handle_404_response,
     handle_429_response_default_ratelimit,
@@ -26,6 +27,8 @@ login_manager = LoginManager()
 
 email_sender = EmailSender()
 
+url_validator = UrlValidator()
+
 
 def create_app(config_class: Config = Config) -> Flask | None:
     testing = config_class.TESTING
@@ -33,10 +36,8 @@ def create_app(config_class: Config = Config) -> Flask | None:
     if testing and production:
         print("ERROR: Cannot be both production and testing environment")
         return
-    config_class = ConfigTest if testing else config_class
-    config_class = ConfigProd if production else config_class
     app = Flask(__name__)
-    app.config.from_object(config_class)
+    app.config.from_object(ConfigProd if production else config_class)
 
     sess.init_app(app)
     db.init_app(app)
@@ -58,6 +59,8 @@ def create_app(config_class: Config = Config) -> Flask | None:
     email_sender.init_app(app)
     if production:
         email_sender.in_production()
+
+    url_validator.init_app(app)
 
     from src.splash.routes import splash
     from src.utubs.routes import utubs
