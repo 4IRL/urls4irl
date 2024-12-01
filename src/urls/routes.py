@@ -1,7 +1,8 @@
 from flask import abort, Blueprint, current_app, jsonify, request
 from flask_login import current_user
 
-from src import db
+from src import db, url_validator
+from src.extensions.url_validation.url_validator import InvalidURLError
 from src.models.urls import Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -17,7 +18,6 @@ from src.utils.email_validation import email_validation_required
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
 from src.utils.strings.url_validation_strs import URL_VALIDATION
-from src.utils.url_validation import InvalidURLError, find_common_url
 
 urls = Blueprint("urls", __name__)
 
@@ -128,7 +128,9 @@ def create_url(utub_id: int):
             user_agent = (
                 None if headers is None else headers.get(URL_VALIDATION.USER_AGENT)
             )
-            normalized_url = find_common_url(url_string, user_agent)
+            normalized_url = url_validator.find_full_path_normalized_url(
+                url_string, user_agent
+            )
         except InvalidURLError as e:
             # URL was unable to be verified as a valid URL
             return (
@@ -367,7 +369,9 @@ def update_url(utub_id: int, utub_url_id: int):
             user_agent = (
                 None if headers is None else headers.get(URL_VALIDATION.USER_AGENT)
             )
-            normalized_url = find_common_url(url_to_change_to, user_agent)
+            normalized_url = url_validator.find_full_path_normalized_url(
+                url_to_change_to, user_agent
+            )
         except InvalidURLError as e:
             # URL was unable to be verified as a valid URL
             return (
