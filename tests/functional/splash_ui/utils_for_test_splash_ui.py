@@ -1,6 +1,8 @@
 # Standard library
 
 # External libraries
+from selenium.webdriver.common.by import By
+from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from tests.functional.locators import SplashPageLocators as SPL
@@ -11,7 +13,7 @@ from tests.functional.utils_for_test import (
 )
 
 
-def register_user(browser, username, email, password):
+def register_user(browser: WebDriver, username, email, password):
     """
     Args:
         WebDriver open to U4I Splash Page
@@ -40,7 +42,7 @@ def register_user(browser, username, email, password):
     clear_then_send_keys(confirm_password_input, password)
 
 
-def register_user_unconfirmed_email(browser, username, email, password):
+def register_user_unconfirmed_email(browser: WebDriver, username, email, password):
     """
     Args:
         WebDriver open to U4I Splash Page
@@ -74,7 +76,7 @@ def register_user_unconfirmed_email(browser, username, email, password):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
 
-def register_user_unconfirmed_password(browser, username, email, password):
+def register_user_unconfirmed_password(browser: WebDriver, username, email, password):
     """
     Args:
         WebDriver open to U4I Splash Page
@@ -106,3 +108,34 @@ def register_user_unconfirmed_password(browser, username, email, password):
 
     # Submit form
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+
+def open_forgot_password_modal(browser: WebDriver):
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+    wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
+
+
+def assert_forgot_password_modal_open(browser: WebDriver):
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
+
+    assert modal_element.is_displayed()
+
+    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
+
+    assert modal_title.text == "Forgot your password?"
+
+
+def assert_forgot_password_submission(browser: WebDriver):
+    modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
+    assert modal_alert is not None
+
+    assert (
+        modal_alert.text
+        == "If you entered a valid email, you should receive a reset password link soon."
+    )
+
+    submit_btn = wait_then_get_element(browser, SPL.BUTTON_SUBMIT)
+    assert submit_btn is not None
+
+    assert submit_btn.get_attribute("disabled")

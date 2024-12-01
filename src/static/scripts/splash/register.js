@@ -1,22 +1,10 @@
 "use strict";
 
 $("#ToLoginFromRegister").offAndOn("click", function () {
-  loginModalOpenerFromRegister();
+  loginModalOpenerFromModal();
 });
 
 $("#submit").click((event) => handleRegister(event));
-
-function loginModalOpenerFromRegister() {
-  const modalOpener = $.get(routes.login);
-
-  modalOpener.done((data, _, xhr) => {
-    xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
-  });
-
-  modalOpener.fail(() => {
-    showSplashModalAlertBanner("Unable to load login form...", "danger");
-  });
-}
 
 function handleRegister(event) {
   event.preventDefault();

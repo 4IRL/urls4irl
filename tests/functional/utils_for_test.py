@@ -256,11 +256,6 @@ def dismiss_modal_with_click_out(browser: WebDriver):
 
 
 # Splash Page
-def open_forgot_password_modal(browser: WebDriver):
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
-    wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
-
-
 def create_user_session_and_provide_session_id(app: Flask, user_id: int) -> str:
     """
     Manually creates a user session to allow user to be logged in

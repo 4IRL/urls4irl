@@ -140,6 +140,8 @@ class SplashPageLocators:
     # Login
     BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"
 
+    BUTTON_LOGIN_FROM_FORGOT_PASSWORD = "#ToLoginFromForgotPassword"
+
     # Modal
     SPLASH_MODAL = "#SplashModal"
     SPLASH_MODAL_ALERT = "#SplashModalAlertBanner"

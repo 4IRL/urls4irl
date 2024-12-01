@@ -1,5 +1,5 @@
 # Standard library
-import time
+from time import sleep
 
 # External libraries
 import pytest
@@ -119,6 +119,8 @@ def test_dismiss_register_modal_key(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
 
+    sleep(3)
+
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
@@ -178,7 +180,7 @@ def test_register_new_user_btn(browser: WebDriver):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Await response
-    time.sleep(3)
+    sleep(3)
 
     assert_register(browser)
 
@@ -200,7 +202,7 @@ def test_register_new_user_key(browser: WebDriver):
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     # Await response
-    time.sleep(3)
+    sleep(3)
 
     assert_register(browser)
 
