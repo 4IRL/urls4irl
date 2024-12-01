@@ -38,7 +38,7 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
     """
 
     # Select createURL button
-    wait_then_click_element(browser, MPL.BUTTON_URL_CREATE)
+    wait_then_click_element(browser, MPL.BUTTON_CORNER_URL_CREATE)
 
     # Input new URL Title
     url_title_input_field = wait_then_get_element(browser, MPL.INPUT_URL_TITLE_CREATE)

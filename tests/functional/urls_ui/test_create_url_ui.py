@@ -16,6 +16,7 @@ from src.mocks.mock_constants import (
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.utils_for_test import (
+    assert_not_visible_css_selector,
     clear_then_send_keys,
     get_selected_url,
     login_user_and_select_utub_by_name,
@@ -29,7 +30,7 @@ from tests.functional.urls_ui.utils_for_test_url_ui import create_url
 pytestmark = pytest.mark.urls_ui
 
 
-def test_create_url_open_input_no_urls(
+def test_create_url_open_input_no_urls_corner_btn(
     browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
 ):
     """
@@ -49,10 +50,46 @@ def test_create_url_open_input_no_urls(
     url_creation_row = browser.find_element(By.CSS_SELECTOR, MPL.WRAP_URL_CREATE)
     assert not url_creation_row.is_displayed()
 
-    wait_then_click_element(browser, MPL.BUTTON_URL_CREATE)
+    wait_then_click_element(browser, MPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, MPL.WRAP_URL_CREATE)
     assert url_creation_row.is_displayed()
+
+    assert_not_visible_css_selector(browser, MPL.BUTTON_DECK_URL_CREATE)
+
+    url_title_create_elemnent = browser.find_element(
+        By.CSS_SELECTOR, MPL.INPUT_URL_TITLE_CREATE
+    )
+
+    assert browser.switch_to.active_element == url_title_create_elemnent
+
+
+def test_create_url_open_input_no_urls_deck_btn(
+    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+):
+    """
+    Test that clicking on the 'Add One!' button in the URL Deck opens up the new URL input when
+    there are no URLs previously generated
+
+    GIVEN a user and selected UTub
+    WHEN they submit the addUTub form
+    THEN ensure the appropriate input field is shown and in focus
+    """
+    app = provide_app_for_session_generation
+    user_id_for_test = 1
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    )
+
+    url_creation_row = browser.find_element(By.CSS_SELECTOR, MPL.WRAP_URL_CREATE)
+    assert not url_creation_row.is_displayed()
+
+    wait_then_click_element(browser, MPL.BUTTON_DECK_URL_CREATE)
+
+    url_creation_row = wait_then_get_element(browser, MPL.WRAP_URL_CREATE)
+    assert url_creation_row.is_displayed()
+
+    assert_not_visible_css_selector(browser, MPL.BUTTON_DECK_URL_CREATE)
 
     url_title_create_elemnent = browser.find_element(
         By.CSS_SELECTOR, MPL.INPUT_URL_TITLE_CREATE
@@ -84,7 +121,7 @@ def test_create_url_open_input_with_added_urls(
     url_creation_row = browser.find_element(By.CSS_SELECTOR, MPL.WRAP_URL_CREATE)
     assert not url_creation_row.is_displayed()
 
-    wait_then_click_element(browser, MPL.BUTTON_URL_CREATE)
+    wait_then_click_element(browser, MPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, MPL.WRAP_URL_CREATE)
     assert url_creation_row.is_displayed()
@@ -116,7 +153,7 @@ def test_create_url_cancel_input_click_button(
     url_creation_row = browser.find_element(By.CSS_SELECTOR, MPL.WRAP_URL_CREATE)
     assert not url_creation_row.is_displayed()
 
-    wait_then_click_element(browser, MPL.BUTTON_URL_CREATE)
+    wait_then_click_element(browser, MPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, MPL.WRAP_URL_CREATE)
     assert url_creation_row.is_displayed()
@@ -147,7 +184,7 @@ def test_create_url_cancel_input_escape(
     url_creation_row = browser.find_element(By.CSS_SELECTOR, MPL.WRAP_URL_CREATE)
     assert not url_creation_row.is_displayed()
 
-    wait_then_click_element(browser, MPL.BUTTON_URL_CREATE)
+    wait_then_click_element(browser, MPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, MPL.WRAP_URL_CREATE)
     assert url_creation_row.is_displayed()
@@ -177,7 +214,7 @@ def test_create_url_submit_btn(
     url_title = MOCK_URL_TITLES[0]
     url_string = MOCK_URL_STRINGS[0]
 
-    wait_then_click_element(browser, MPL.BUTTON_URL_CREATE)
+    wait_then_click_element(browser, MPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, MPL.WRAP_URL_CREATE)
     assert url_creation_row.is_displayed()
@@ -240,7 +277,7 @@ def test_create_url_using_enter_key(
     url_title = MOCK_URL_TITLES[0]
     url_string = MOCK_URL_STRINGS[0]
 
-    wait_then_click_element(browser, MPL.BUTTON_URL_CREATE)
+    wait_then_click_element(browser, MPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, MPL.WRAP_URL_CREATE)
     assert url_creation_row.is_displayed()
