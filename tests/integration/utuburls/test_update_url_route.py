@@ -1,7 +1,10 @@
+from unittest import mock
+
 from flask import url_for
 from flask_login import current_user
 import pytest
 
+from src.extensions.url_validation.url_validator import InvalidURLError
 from src.models.urls import Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
@@ -12,12 +15,15 @@ from src.utils.strings.form_strs import URL_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
-from src.utils.url_validation import find_common_url
 
 pytestmark = pytest.mark.urls
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
+    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -44,20 +50,17 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         }
     }
     """
+    UPDATED_URL = "https://www.yahoo.com/"
+    mock_validate_url.return_value = UPDATED_URL
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "yahoo.com"
     with app.app_context():
         utub_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
-        assert (
-            Urls.query.filter(Urls.url_string == validated_new_fresh_url).first()
-            is None
-        )
+        assert Urls.query.filter(Urls.url_string == UPDATED_URL).first() is None
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -85,7 +88,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: validated_new_fresh_url,
+        URL_FORM.URL_STRING: "yahoo.com",
     }
 
     update_url_string_form = client.patch(
@@ -107,9 +110,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         == url_in_this_utub.id
     )
-    assert (
-        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
-    )
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == UPDATED_URL
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
 
@@ -131,9 +132,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         )
 
         # Assert newest entity exist
-        new_url_object: Urls = Urls.query.filter(
-            Urls.url_string == validated_new_fresh_url
-        ).first()
+        new_url_object: Urls = Urls.query.filter(Urls.url_string == UPDATED_URL).first()
         new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         assert (
             Utub_Urls.query.filter(
@@ -152,8 +151,13 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
-    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+    mock_validate_url,
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN a valid member of a UTub that has members, URLs added by each member, and tags associated with each URL
@@ -178,9 +182,11 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         }
     }
     """
+    NEW_FINAL_URL = "https://www.yahoo.com/"
     client, csrf_token_string, _, app = login_first_user_without_register
+    mock_validate_url.return_value = NEW_FINAL_URL
 
-    NEW_FRESH_URL = "yahoo.com"
+    NEW_RAW_URL = "yahoo.com"
     with app.app_context():
         # Get UTub this user is only a member of
         utub_member_of: Utubs = Utubs.query.filter(
@@ -188,7 +194,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         ).first()
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
+        assert Urls.query.filter(Urls.url_string == NEW_FINAL_URL).first() is None
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -216,7 +222,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: validated_new_fresh_url,
+        URL_FORM.URL_STRING: NEW_RAW_URL,
     }
 
     update_url_string_form = client.patch(
@@ -238,9 +244,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         == url_in_this_utub.id
     )
-    assert (
-        json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == validated_new_fresh_url
-    )
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == NEW_FINAL_URL
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
 
     with app.app_context():
@@ -262,7 +266,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
 
         # Assert newest entity exist
         new_url_object: Urls = Urls.query.filter(
-            Urls.url_string == validated_new_fresh_url
+            Urls.url_string == NEW_FINAL_URL
         ).first()
         new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         assert (
@@ -282,7 +286,11 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         ).count() == len(associated_tags)
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_valid_url_with_previously_added_url_as_utub_creator(
+    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -319,7 +327,10 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         url_not_in_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id != utub_creator_of.id
         ).first()
+
         url_string_of_url_not_in_utub = url_not_in_utub.standalone_url.url_string
+        mock_validate_url.return_value = url_string_of_url_not_in_utub
+
         url_id_of_url_not_in_utub = url_not_in_utub.id
 
         # Grab URL that already exists in this UTub
@@ -412,7 +423,11 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_valid_url_with_previously_added_url_as_url_adder(
+    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -457,6 +472,8 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
             Utub_Urls.url_id != current_url_id, Utub_Urls.utub_id != utub_id
         ).first()
         url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
+        mock_validate_url.return_value = url_string_of_url_not_in_utub
+
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
 
         # Find associated tags with this url
@@ -759,7 +776,11 @@ def test_update_valid_url_with_same_url_as_url_adder(
         ).count() == len(associated_tags)
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_valid_url_with_invalid_url_as_utub_creator(
+    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -779,6 +800,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         STD_JSON.ERROR_CODE: 3
     }
     """
+    mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -851,8 +873,13 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_valid_url_with_invalid_url_as_url_adder(
-    add_two_url_and_all_users_to_each_utub_no_tags, login_first_user_without_register
+    mock_validate_url,
+    add_two_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
@@ -870,6 +897,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         STD_JSON.ERROR_CODE: 3
     }
     """
+    mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
     INVALID_URL = "AAAAA"
@@ -1067,7 +1095,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "yahoo.com"
+    NEW_FRESH_URL = "https://www.yahoo.com"
     with app.app_context():
         # Get UTub this user is only a member of
         utub_member_of: Utubs = Utubs.query.filter(
@@ -1075,7 +1103,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
         ).first()
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
+        assert Urls.query.filter(Urls.url_string == NEW_FRESH_URL).first() is None
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1098,7 +1126,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: validated_new_fresh_url,
+        URL_FORM.URL_STRING: NEW_FRESH_URL,
     }
 
     update_url_string_form = client.patch(
@@ -1170,13 +1198,13 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "yahoo.com"
+    NEW_FRESH_URL = "https://www.yahoo.com"
     with app.app_context():
         # Get UTub this user is not a member of
         utub_user_not_member_of: Utubs = Utubs.query.get(3)
 
         # Verify URL to modify to is not already in database
-        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
+        assert Urls.query.filter(Urls.url_string == NEW_FRESH_URL).first() is None
 
         # Get the URL not in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1203,7 +1231,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: validated_new_fresh_url,
+        URL_FORM.URL_STRING: NEW_FRESH_URL,
     }
 
     update_url_string_form = client.patch(
@@ -1278,7 +1306,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    NEW_FRESH_URL = "yahoo.com"
+    NEW_FRESH_URL = "https://www.yahoo.com"
     with app.app_context():
         # Get UTub this user is not a member of
         utub_member_user_not_member_of: Utub_Members = Utub_Members.query.filter(
@@ -1287,7 +1315,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         utub_user_not_member_of: Utubs = utub_member_user_not_member_of.to_utub
 
         # Use URL not already in database
-        validated_new_fresh_url = find_common_url(NEW_FRESH_URL)
+        assert Urls.query.filter(Urls.url_string == NEW_FRESH_URL).first() is None
 
         # Get the URL not in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1315,7 +1343,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: validated_new_fresh_url,
+        URL_FORM.URL_STRING: NEW_FRESH_URL,
     }
 
     update_url_string_form = client.patch(
@@ -1550,7 +1578,11 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         ).count() == len(associated_tags)
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_valid_url_updates_utub_last_updated(
+    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -1576,6 +1608,7 @@ def test_update_valid_url_updates_utub_last_updated(
             Utub_Urls.utub_id != utub_creator_of.id
         ).first()
         url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
+        mock_validate_url.return_value = url_string_of_url_not_in_utub
 
         # Grab URL that already exists in this UTub
         url_in_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1605,8 +1638,13 @@ def test_update_valid_url_updates_utub_last_updated(
         assert (current_utub.last_updated - initial_last_updated).total_seconds() > 0
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
-    add_two_url_and_all_users_to_each_utub_no_tags, login_first_user_without_register
+    mock_validate_url,
+    add_two_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
@@ -1616,7 +1654,7 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
             URL_FORM.URL_STRING: String of URL to add
     THEN the server sends back a 400 HTTP status code, and the UTub last updated field is not modified
     """
-
+    mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
     INVALID_URL = "AAAAA"
@@ -1653,8 +1691,13 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
         assert current_utub.last_updated == initial_last_updated
 
 
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
+)
 def test_update_utub_url_with_url_already_in_utub(
-    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+    mock_validate_url,
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
 ):
     """
     GIVEN a valid member of a UTub that has members, URLs added by each member, and tags associated with each URL
@@ -1686,6 +1729,7 @@ def test_update_utub_url_with_url_already_in_utub(
         ).first()
         current_url_id = url_in_this_utub.url_id
         current_url_string = url_in_this_utub.standalone_url.url_string
+        mock_validate_url.return_value = current_url_string
 
         # Find another URL in this UTub that doesn't match given URL
         other_url_in_utub: Utub_Urls = Utub_Urls.query.filter(
