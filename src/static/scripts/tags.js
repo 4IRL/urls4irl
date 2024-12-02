@@ -2,12 +2,21 @@
 
 $(document).ready(function () {
   /* Bind click functions */
+  const utubTagBtnCreate = $("#utubTagBtnCreate");
 
-  // Complete update tags
-  $("#submitTagButton").on("click", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
-    updateTags();
+  // Add member to UTub
+  utubTagBtnCreate.on("click.createUTubTag", function () {
+    createUTubTagShowInput();
+  });
+
+  utubTagBtnCreate.on("focus", function () {
+    $(document).on("keyup.createUTubTag", function (e) {
+      if (e.which === 13) createMemberShowInput();
+    });
+  });
+
+  utubTagBtnCreate.on("blur", function () {
+    $(document).off(".createUTubTag");
   });
 });
 
@@ -18,6 +27,11 @@ function currentTagDeckIDs() {
   return $.map($(".tagFilter"), (tag) =>
     parseInt($(tag).attr("data-utub-tag-id")),
   );
+}
+
+// Clear member selection
+function resetNewUTubTagForm() {
+  $("#utubTagCreate").val(null);
 }
 
 // 11/25/23 need to figure out how to map tagids to Array so I can evaluate whether the tag already exists in Deck before adding it
@@ -48,6 +62,8 @@ function resetTagDeck() {
   $("#listTags").empty();
   resetCountOfTagFiltersApplied();
   disableUnselectAllButtonAfterTagFilterRemoved();
+  hideIfShown($("#utubTagBtnCreate"));
+  createUTubTagHideInput();
 }
 
 // Alphasort tags
@@ -137,6 +153,8 @@ function buildTagDeck(dictTags) {
   for (let i in dictTags) {
     parent.append(createTagFilterInDeck(dictTags[i].id, dictTags[i].tagString));
   }
+
+  showIfHidden($("#utubTagBtnCreate"));
 }
 
 // Creates Select All tag filter for addition to Tag deck

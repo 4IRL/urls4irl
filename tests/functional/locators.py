@@ -24,6 +24,10 @@ class MainPageLocators:
     LIST_TAGS = "#listTags"
     TAG_FILTERS = ".tagFilter"
     SELECTOR_UNSELECT_ALL = "#unselectAll"
+    BUTTON_UTUB_TAG_CREATE = "#utubTagBtnCreate"
+    INPUT_UTUB_TAG_CREATE = "#utubTagCreate"
+    BUTTON_UTUB_TAG_SUBMIT_CREATE = "#utubTagSubmitBtnCreate"
+    BUTTON_UTUB_TAG_CANCEL_CREATE = "#utubTagCancelBtnCreate"
 
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"

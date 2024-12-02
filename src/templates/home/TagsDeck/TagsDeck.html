@@ -1,40 +1,29 @@
 <div id="TagDeck" class="deck flex-column">
-	<div class="titleElement pad-in-15p">
-		<h2 id="TagDeckHeader">Tags</h2>
-	</div>
-	<div class="titleElement pad-in-15p">
-		<div class="d-flex justify-content-center flex-row">
-			<!-- Creating disassociated tags is not yet implemented as of 12/21/2023. Not considered MVP functionality. -->
-			<!-- Create Tag button -->
-			<!-- <i id="createTagButton" class="green-clickable mx-1" style="display:none">
+	<div class="titleElement sidePanelTitle pad-in-15p">
+		<div class="col-6 col-lg-6">
+			<h2 id="TagDeckHeader">Tags</h2>
+		</div>
+		<div class="col-6 col-lg-6 d-flex flex-row icon-holder">
+			<!-- Add tag button -->
+			<i id="utubTagBtnCreate" class="green-clickable ms-1" tabindex="0" style="display: none">
 				<svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill"
-					viewBox="0 0 16 16">
+					width="30" height="30" viewBox="0 0 16 16">
 					<path
 						d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
 				</svg>
-			</i> -->
-
-			<!-- Update Tag button -->
-			<!-- <i id="updateTagButton" class="mx-1" style="display: none; color: #545454">
-				<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="currentColor"
-					class="bi bi-pencil-square" viewBox="0 0 16 16">
-					<path
-						d="M15.502 1.94a.5.5 0 0 1 0 .706L14.459 3.69l-2-2L13.502.646a.5.5 0 0 1 .707 0l1.293 1.293zm-1.75 2.456-2-2L4.939 9.21a.5.5 0 0 0-.121.196l-.805 2.414a.25.25 0 0 0 .316.316l2.414-.805a.5.5 0 0 0 .196-.12l6.813-6.814z" />
-					<path fill-rule="evenodd"
-						d="M1 13.5A1.5 1.5 0 0 0 2.5 15h11a1.5 1.5 0 0 0 1.5-1.5v-6a.5.5 0 0 0-1 0v6a.5.5 0 0 1-.5.5h-11a.5.5 0 0 1-.5-.5v-11a.5.5 0 0 1 .5-.5H9a.5.5 0 0 0 0-1H2.5A1.5 1.5 0 0 0 1 2.5z" />
-				</svg>
-			</i> -->
+			</i>
 		</div>
 	</div>
-
 	<div class="titleElement pad-in-15p">
 		<!-- Subheader -->
-		<h5 id="TagDeckSubheader">
-			</h2>
+		<h5 id="TagDeckSubheader"></h5>
 	</div>
 
-	<div class="flex-column content pad-in-15p">
-		<div class="flex-column flex-start" id="listTags">
+	<div class="flex-column content">
+		<!-- Create UTub Tag Form -->
+		{% include 'home/TagsDeck/CreateUTubTagForm.html' %}
+
+		<div class="flex-column flex-start pad-in-15p" id="listTags">
 			<!-- Tags -->
 		</div>
 	</div>

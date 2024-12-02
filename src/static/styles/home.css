@@ -816,6 +816,7 @@
     display: flex !important;
 }
 
+#createUTubTagWrap,
 #createMemberWrap,
 #createUTubWrap {
     height: 100%;

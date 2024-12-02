@@ -275,6 +275,7 @@ function resetNewURLForm() {
   $("#urlTitleCreate").val(null);
   $("#urlStringCreate").val(null);
   hideIfShown($("#createURLWrap"));
+  $("#createURLWrap").hide();
   newURLInputRemoveEventListeners();
   showIfHidden($("#urlBtnCreate"));
 }
