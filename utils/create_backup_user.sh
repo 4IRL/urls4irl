@@ -12,7 +12,7 @@ command_exists() {
 }
 
 # Check for required commands
-REQUIRED_COMMANDS=("useradd" "passwd")
+REQUIRED_COMMANDS=("useradd" "passwd" "curl")
 for cmd in "${REQUIRED_COMMANDS[@]}"; do
   if ! command_exists "$cmd"; then
     echo "Error: Required command '$cmd' is not available. Please install it and try again."
@@ -22,19 +22,27 @@ done
 
 # Detect OS
 OS=$(lsb_release -is 2>/dev/null || grep '^ID=' /etc/os-release | cut -d'=' -f2 | tr -d '"')
-if [[ "$OS" != "Debian" && "$OS" != "Ubuntu" ]]; then
+OS="${OS,,}"
+if [[ "$OS" != "debian" && "$OS" != "ubuntu" ]]; then
   echo "Error: Unsupported OS. This script supports only Debian or Ubuntu."
   exit 1
 fi
 
 # Input validation
-if [[ $# -ne 1 ]]; then
-  echo "Usage: $0 <username>"
-  echo "Pass the password securely using the USER_PASSWORD environment variable."
+if [[ $# -ne 2 ]]; then
+  echo "Usage: $0 <username> <password_file>"
   exit 1
 fi
 
 USERNAME="$1"
+PASSWORD_FILE="$2"
+
+if [ ! -f $PASSWORD_FILE ]; then
+  echo "File containing user password not found."
+  exit 1
+fi
+
+USER_PASSWORD=$(< $PASSWORD_FILE)
 
 # Check if the password is provided via the USER_PASSWORD environment variable
 if [[ -z "$USER_PASSWORD" ]]; then
@@ -45,6 +53,7 @@ fi
 # Check if user already exists
 if id "$USERNAME" &>/dev/null; then
   echo "Error: User '$USERNAME' already exists."
+  rm $PASSWORD_FILE
   exit 1
 fi
 
@@ -66,4 +75,5 @@ fi
 
 # Final message
 echo "User '$USERNAME' created successfully with no shell."
+rm $PASSWORD_FILE
 
