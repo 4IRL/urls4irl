@@ -198,6 +198,7 @@ crontab -u "$USERNAME" -l 2>/dev/null > "$CURRENT_CRON" || echo "" > "$CURRENT_C
 
 # Check if the cron job already exists
 if ! grep -Fxq "$CRON_JOB" "$CURRENT_CRON"; then
+    echo "PATH=$USER_BIN" >> "$CURRENT_CRON"
     echo "$CRON_JOB" >> "$CURRENT_CRON"
     crontab -u "$USERNAME" "$CURRENT_CRON"
     echo "Cron job added for user $USERNAME."
