@@ -14,3 +14,4 @@ bootstrap*.js*
 bootstrap*.css*
 *.code-workspace
 secrets/
+backups/

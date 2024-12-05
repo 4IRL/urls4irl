@@ -37,14 +37,14 @@ RUN set -ex \
 	&& unzip chromedriver-linux64.zip -d /usr/local/bin/ \
 	&& chmod +x /usr/local/bin/chromedriver-linux64 \
 	&& mkdir -p /tmp/.cache/selenium \
-	&& chmod -R 777 /tmp/.cache/selenium \
-	&& chown -R u4i-host:u4i-host-group /code
+	&& chmod -R 777 /tmp/.cache/selenium
 
 # Copy files needed
 COPY run.py ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/
 COPY tests/ ./tests/
+COPY utils/ ./utils/
 COPY pytest.ini ./
 
 # Copy requirements files
@@ -52,14 +52,15 @@ COPY requirements-dev.txt ./
 COPY requirements-test.txt ./
 COPY requirements-prod.txt ./
 
-# Create a non-root user
-USER u4i-host
-
 # Install development level requirements
-RUN python3 -m venv /code/venv \
+RUN chmod -R 775 /code \ 
+	&& chown -R u4i-host:u4i-host-group /code \
+	&& python3 -m venv /code/venv \
 	&& . /code/venv/bin/activate \
 	&& pip install -r requirements-dev.txt --no-cache-dir
 
+# Create a non-root user
+USER u4i-host
 
 # Expose a port to access the container
 EXPOSE 5000
