@@ -1,4 +1,10 @@
 #!/bin/bash
+set +x # Disable command echoing
+
+echo "----------------------------------------------------"
+echo -e "\n\n START BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
+
+USERNAME=$(< ./secrets/username)
 
 # ------- GET SECRETS ------- #
 
@@ -10,10 +16,7 @@ ENVIRONMENT_WORKSPACE="?environment=prod&workspaceSlug=u4-i-fv-ya"
 
 # Make cURL request to get the access token
 echo "Fetching access token..."
-response=$(curl -s --location --request POST 'https://app.infisical.com/api/v1/auth/universal-auth/login' \
-  --header 'Content-Type: application/x-www-form-urlencoded' \
-  --data-urlencode "clientId=$ID" \
-  --data-urlencode "clientSecret=$SECRET")
+response=$(restricted_curl POST "https://app.infisical.com/api/v1/auth/universal-auth/login" "$ID" "$SECRET")
 
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in fetching access token"
@@ -34,21 +37,17 @@ if [[ ! $ACCESS_TOKEN ]]; then
 fi
 echo "Success: Parsed access token"
 
-# Get DB Password
-echo "Fetching DB Password..."
-response=$(curl -s --request GET \
-  --url "${INFISICAL_URL}PROD_DB_PASSWORD${ENVIRONMENT_WORKSPACE}" \
-  --header "Authorization: Bearer $ACCESS_TOKEN")
-
+# Get all credentials
+response=$(restricted_curl GET "https://us.infisical.com/api/v3/secrets/raw?environment=prod&workspaceSlug=u4-i-fv-ya&tagSlugs=prod-pull" "${ACCESS_TOKEN}")
 if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in fetching DB Password"
+  echo "Error: Failure in fetching credentials"
   exit 1
 fi
-echo "Success: Fetched DB Password"
+echo "Success: Fetched credentials"
 
 # Parse for DB PASSWORD
 echo "Parsing DB Password..."
-DB_PASS=$(echo $response | jq -r '.secret.secretValue')
+DB_PASS=$(echo $response | jq -r --arg key "PROD_DB_PASSWORD" '.secrets[] | select(.secretKey == $key) | .secretValue')
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in parsing for DB Pass"
   exit 1
@@ -59,21 +58,9 @@ if [[ ! $DB_PASS ]]; then
 fi
 echo "Success: Parsed DB Pass"
 
-# Get DB User
-echo "Fetching DB User..."
-response=$(curl -s --request GET \
-  --url "${INFISICAL_URL}PROD_DB_USER${ENVIRONMENT_WORKSPACE}" \
-  --header "Authorization: Bearer $ACCESS_TOKEN")
-
-if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in fetching DB User"
-  exit 1
-fi
-echo "Success: Fetched DB User"
-
 # Parse for DB USER
 echo "Parsing DB User..."
-DB_USER=$(echo $response | jq -r '.secret.secretValue')
+DB_USER=$(echo $response | jq -r --arg key "PROD_DB_USER" '.secrets[] | select(.secretKey == $key) | .secretValue')
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in parsing for DB User"
   exit 1
@@ -84,21 +71,9 @@ if [[ ! $DB_USER ]]; then
 fi
 echo "Success: Parsed DB User"
 
-# Get DB Name
-echo "Fetching DB Name..."
-response=$(curl -s --request GET \
-  --url "${INFISICAL_URL}PROD_DB_NAME${ENVIRONMENT_WORKSPACE}" \
-  --header "Authorization: Bearer $ACCESS_TOKEN")
-
-if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in fetching DB Name"
-  exit 1
-fi
-echo "Success: Fetched DB Name"
-
 # Parse for DB USER
 echo "Parsing DB Name..."
-DB_NAME=$(echo $response | jq -r '.secret.secretValue')
+DB_NAME=$(echo $response | jq -r --arg key "PROD_DB_NAME" '.secrets[] | select(.secretKey == $key) | .secretValue')
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in parsing for DB Name"
   exit 1
@@ -109,21 +84,9 @@ if [[ ! $DB_NAME ]]; then
 fi
 echo "Success: Parsed DB Name"
 
-# Get R2 Access Key
-echo "Fetching Access Key..."
-response=$(curl -s --request GET \
-  --url "${INFISICAL_URL}CF_ACCESS_KEY_ID${ENVIRONMENT_WORKSPACE}" \
-  --header "Authorization: Bearer $ACCESS_TOKEN")
-
-if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in fetching Access Key"
-  exit 1
-fi
-echo "Success: Fetched Access Key"
-
 # Parse for R2 Access Key
 echo "Parsing Access Key..."
-ACCESS_KEY=$(echo $response | jq -r '.secret.secretValue')
+ACCESS_KEY=$(echo $response | jq -r --arg key "CF_ACCESS_KEY_ID" '.secrets[] | select(.secretKey == $key) | .secretValue')
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in parsing for Access Key"
   exit 1
@@ -134,21 +97,9 @@ if [[ ! $ACCESS_KEY ]]; then
 fi
 echo "Success: Parsed Access Key"
 
-# Get R2 Secret Access Key
-echo "Fetching Secret Access Key..."
-response=$(curl -s --request GET \
-  --url "${INFISICAL_URL}CF_SECRET_ACCESS_KEY${ENVIRONMENT_WORKSPACE}" \
-  --header "Authorization: Bearer $ACCESS_TOKEN")
-
-if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in fetching Secret Access Key"
-  exit 1
-fi
-echo "Success: Fetched Secret Access Key"
-
 # Parse for R2 Access Key
 echo "Parsing Secret Access Key..."
-SECRET_ACCESS_KEY=$(echo $response | jq -r '.secret.secretValue')
+SECRET_ACCESS_KEY=$(echo $response | jq -r --arg key "CF_SECRET_ACCESS_KEY" '.secrets[] | select(.secretKey == $key) | .secretValue')
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in parsing for Secret Access Key"
   exit 1
@@ -159,21 +110,9 @@ if [[ ! $SECRET_ACCESS_KEY ]]; then
 fi
 echo "Success: Parsed Secret Access Key"
 
-# Get R2 Endpoint 
-echo "Fetching R2 Endpoint..."
-response=$(curl -s --request GET \
-  --url "${INFISICAL_URL}S3_ENDPOINT${ENVIRONMENT_WORKSPACE}" \
-  --header "Authorization: Bearer $ACCESS_TOKEN")
-
-if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in fetching R2 Endpoint"
-  exit 1
-fi
-echo "Success: Fetched R2 Endpoint"
-
 # Parse for R2 Endpoint
 echo "Parsing R2 Endpoint..."
-R2_ENDPOINT=$(echo $response | jq -r '.secret.secretValue')
+R2_ENDPOINT=$(echo $response | jq -r --arg key "S3_ENDPOINT" '.secrets[] | select(.secretKey == $key) | .secretValue')
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in parsing for R2 Endpoint"
   exit 1
@@ -187,28 +126,23 @@ echo "Success: Parsed R2 Endpoint"
 
 # ------- BACKUP DATABASE, STORE AND COMPRESS ON HOST ------- #
 
-BACKUP_DIR="./backups/"
-
+BACKUP_DIR="/home/$USERNAME/backups/"
 BACKUP_FILE="${DB_NAME}_$(date +%Y%m%d_%H%M%S).sql"
-COMPRESSED_BACKUP_FILE="${BACKUP_FILE}.gz"
+COMPRESSED_BACKUP_FILE="${BACKUP_FILE}"
 
 # Create backup and store on host
 echo "Generating backup and storing on the host..."
-export PGPASSWORD="$DB_PASS"
-docker exec -i u4i-prod-postgres pg_dump -U "$DB_USER" "$DB_NAME" > "${BACKUP_DIR}${BACKUP_FILE}"
+docker exec -i --env PGPASSWORD="$DB_PASS" u4i-prod-postgres pg_dump -U "$DB_USER" "$DB_NAME" > "${BACKUP_DIR}${BACKUP_FILE}"
 if [ "$?" -ne 0 ]; then
-  unset PGPASSWORD
   echo "Error: Failure in generating backup in docker container"
   exit 1
 fi
-unset PGPASSWORD
 echo "Success: Generated backup and stored on host"
 
-# Compress backup on host
+# Compress daily backup on host
 echo "Compressing backup on host..."
-gzip -c "${BACKUP_DIR}${BACKUP_FILE}" > "${BACKUP_DIR}${COMPRESSED_BACKUP_FILE}"
+gzip -c "${BACKUP_DIR}${BACKUP_FILE}" > "${BACKUP_DIR}${COMPRESSED_BACKUP_FILE}_daily.gz"
 if [ "$?" -ne 0 ]; then
-  unset PGPASSWORD
   echo "Error: Failure in compressing the backup"
   exit 1
 fi
@@ -220,7 +154,7 @@ rm "${BACKUP_DIR}${BACKUP_FILE}"
 # ------- SEND DATABASE BACKUP TO R2 ------- #
 
 # Create rclone config file
-CONFIG_FILE="./secrets/rclone-config.txt"
+CONFIG_FILE="/home/$USERNAME/secrets/rclone-config.txt"
 cat > "$CONFIG_FILE" <<EOF
 [remote]
 type = s3
@@ -234,15 +168,28 @@ EOF
 
 # Send using rclone
 echo "Copying daily backup to Cloudflare R2..."
-rclone --config="$CONFIG_FILE" copy "${BACKUP_DIR}${COMPRESSED_BACKUP_FILE}" "remote:u4i-backups/" --progress --s3-no-check-bucket
+rclone --config="$CONFIG_FILE" copy "${BACKUP_DIR}${COMPRESSED_BACKUP_FILE}_daily.gz" "remote:u4i-backups/" --progress --s3-no-check-bucket
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in sending daily backup to Cloudflare R2"
+else
+  echo "Success: Sent daily backup to Cloudflare R2"
 fi
-echo "Success: Sent daily backup to Cloudflare R2"
-
 
 # ------- IF FIRST OF MONTH, SEND A FIRST-OF-MONTH BACKUP  ------- #
-#
+
+CURRENT_DAY=$(date +%d)
+if [ "$CURRENT_DAY" -eq 1 ]; then
+  # First day of the month, send a monthly backup
+  cp "${BACKUP_DIR}${COMPRESSED_BACKUP_FILE}_daily.gz" "${BACKUP_DIR}${COMPRESSED_BACKUP_FILE}_monthly.gz"
+  rclone --config="$CONFIG_FILE" copy "${BACKUP_DIR}${COMPRESSED_BACKUP_FILE}_monthly.gz" "remote:u4i-backups/" --progress --s3-no-check-bucket
+  if [ "$?" -ne 0 ]; then
+    echo "Error: Failure in sending monthly backup to Cloudflare R2"
+  else
+  echo "Success: Sent monthly backup to Cloudflare R2"
+  fi
+  rm "${BACKUP_DIR}${COMPRESSED_BACKUP_FILE}_monthly.gz"
+fi
+
 rm "$CONFIG_FILE"
 
 # ------- UNSET  ------- #
@@ -256,5 +203,23 @@ unset RCLONE_CONFIG_R2_ENDPOINT
 
 
 # ------- ROTATE LOCAL DB's - ONLY STORE PAST 90 DAYS  ------- #
+MAX_BACKUP_FILES=90
+NUM_BACKUPS=$(find ${BACKUP_DIR} -maxdepth 1 -type f | wc -l)
+    if [ "$NUM_BACKUPS" -gt "$MAX_BACKUP_FILES" ]; then
+        OLDEST_FILE=$(find ${BACKUP_DIR} -maxdepth 1 -type f -printf '%T+ %p\n' | sort | head -n 1 | cut -d ' ' -f2-)
+        echo "Oldest file is ${OLDEST_FILE}, removing..."
+        rm "${OLDEST_FILE}"
+        unset OLDEST_FILE
+    else
+        echo "No local backup files to prune ..."
+    fi
 
+unset NUM_BACKUPS
+
+
+#TODO:
 # ------- ROTATE REMOTE DB's - ONLY STORE PAST 90 DAYS AND FIRST OF EVERY MONTH  ------- #
+
+
+echo -e "\n\n FINISH BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
+echo "----------------------------------------------------"
