@@ -109,7 +109,5 @@ jobs:
           pip install -r requirements-test.txt;
 
       - name: Run tests
-        env:
-          DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
         run: |
           python3.11 -m pytest 
