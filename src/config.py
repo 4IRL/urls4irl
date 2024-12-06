@@ -1,4 +1,5 @@
 from os import environ, path
+from urllib.parse import quote
 
 from cachelib import FileSystemCache
 from dotenv import load_dotenv
@@ -46,6 +47,13 @@ DEV_DB_URI = build_db_uri(
     database_host="db" if IS_DOCKER else "localhost",
 )
 
+if IS_PRODUCTION:
+    redis_password = environ.get("REDIS_PASSWORD", "")
+    encoded_password = quote(redis_password)
+    REDIS_URI = "redis://:" + encoded_password + "@redis:6379/0"
+else:
+    REDIS_URI = environ.get(ENV.REDIS_URI, default=None)
+
 
 class Config:
     """Set Flask config variables."""
@@ -59,18 +67,14 @@ class Config:
     FLASK_DEBUG = environ.get("FLASK_DEBUG")
     SECRET_KEY = environ.get(ENV.SECRET_KEY)
     SESSION_PERMANENT = "False"
-    if environ.get(ENV.REDIS_URI, default=None) is None:
+    if REDIS_URI is None:
         SESSION_TYPE = "cachelib"
         SESSION_CACHELIB = FileSystemCache(
             threshold=500, cache_dir=f"{path.dirname(__file__)}/sessions"
         )
     else:
         SESSION_TYPE = "redis"
-        SESSION_REDIS = (
-            Redis.from_url(environ.get(ENV.REDIS_URI, ""))
-            if environ.get(ENV.REDIS_URI, default=None) is not None
-            else None
-        )
+        SESSION_REDIS = Redis.from_url(REDIS_URI)
     SESSION_SERIALIZATION_FORMAT = "json"
     WTF_CSRF_TIME_LIMIT = (
         CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS
@@ -89,7 +93,6 @@ class Config:
             "sqlite://" if IS_DOCKER else TEST_DB_URI
         ),  # Currently, not testing in local docker containers
     }
-    REDIS_URI = environ.get(ENV.REDIS_URI, default="memory://")
     DOCKER = IS_DOCKER
 
     def __init__(self) -> None:
@@ -119,9 +122,7 @@ class ConfigProd(Config):
         "prod": PROD_DB_URI,
     }
     SQLALCHEMY_DATABASE_URI = PROD_DB_URI
-    SESSION_REDIS = Redis.from_url(
-        f"redis://:{environ.get('REDIS_PASSWORD', '')}@redis:6379/0"
-    )
+    SESSION_REDIS = REDIS_URI
 
 
 class ConfigTest(Config):
