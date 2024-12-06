@@ -124,7 +124,11 @@ class ConfigProd(Config):
     }
     SQLALCHEMY_DATABASE_URI = PROD_DB_URI
     SESSION_TYPE = "redis"
-    SESSION_REDIS = Redis.from_url(REDIS_URI if REDIS_URI is not None else "")
+    SESSION_REDIS = (
+        Redis.from_url(REDIS_URI if REDIS_URI is not None else "")
+        if REDIS_URI is not None
+        else ""
+    )
 
 
 class ConfigTest(Config):
