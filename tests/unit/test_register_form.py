@@ -1,9 +1,12 @@
 from flask import url_for, request
-from urls4irl.utils import strings as U4I_STRINGS
+import pytest
 
-REGISTER_FORM = U4I_STRINGS.REGISTER_FORM
-STD_JSON = U4I_STRINGS.STD_JSON_RESPONSE
-REGISTER_FAILURE = U4I_STRINGS.USER_FAILURE
+from src.utils.all_routes import ROUTES
+from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.splash_form_strs import REGISTER_FORM
+from src.utils.strings.user_strs import USER_FAILURE as REGISTER_FAILURE
+
+pytestmark = pytest.mark.unit
 
 
 def test_register_user_form_only_username_csrf(load_register_page):
@@ -15,7 +18,7 @@ def test_register_user_form_only_username_csrf(load_register_page):
 
     client, csrf_token_string = load_register_page
     response = client.post(
-        url_for("users.register_user"),
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "FakeUserName123",
@@ -26,11 +29,11 @@ def test_register_user_form_only_username_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("users.register_user")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
@@ -53,7 +56,7 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     INVALID_EMAIL_ADDRESS = ["Invalid email address."]
     client, csrf_token_string = load_register_page
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -64,11 +67,11 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("users.register_user")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
@@ -94,7 +97,7 @@ def test_register_user_form_only_valid_email_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only email and valid email
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -105,11 +108,11 @@ def test_register_user_form_only_valid_email_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("users.register_user")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
@@ -132,7 +135,7 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only confirm email and no email
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -143,11 +146,11 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("users.register_user")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
@@ -174,7 +177,7 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only password, short password
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -185,11 +188,11 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("users.register_user")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
@@ -216,7 +219,7 @@ def test_register_user_form_only_valid_password_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only password, valid password
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -227,11 +230,11 @@ def test_register_user_form_only_valid_password_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("users.register_user")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 4
@@ -254,7 +257,7 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
     client, csrf_token_string = load_register_page
     # Only password confirm
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
             REGISTER_FORM.USERNAME: "",
@@ -265,11 +268,11 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 401
-    assert request.path == url_for("users.register_user")
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     response_json = response.json
 
-    assert int(response_json[STD_JSON.ERROR_CODE]) == 1
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 5
@@ -296,7 +299,7 @@ def test_register_user_form_no_csrf(load_register_page):
     client, _ = load_register_page
     # Only password confirm
     response = client.post(
-        "/register",
+        url_for(ROUTES.SPLASH.REGISTER),
         data={
             REGISTER_FORM.CSRF_TOKEN: "",
             REGISTER_FORM.USERNAME: "",
@@ -308,5 +311,5 @@ def test_register_user_form_no_csrf(load_register_page):
     )
 
     assert response.status_code == 400
-    assert request.path == url_for("users.register_user")
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     assert b"<p>The CSRF token is missing.</p>" in response.data

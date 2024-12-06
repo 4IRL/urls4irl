@@ -1,6 +1,12 @@
+# Standard library
 import re
+
+from flask import Flask, url_for
+from flask_session import Session
 import sqlalchemy
-from urls4irl.config import TestingConfig
+
+from src.config import ConfigTest
+from src.utils.all_routes import ROUTES
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
@@ -31,8 +37,13 @@ def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
     return result.group(1)
 
 
-def drop_database(test_config: TestingConfig):
+def build_get_utub_route(utub_id: int) -> str:
+    return url_for(ROUTES.UTUBS.HOME, UTubID=utub_id)
+
+
+def clear_database(test_config: ConfigTest, app: Flask, sess: Session):
     engine = sqlalchemy.create_engine(test_config.SQLALCHEMY_DATABASE_URI)
     meta = sqlalchemy.MetaData(engine)
     meta.reflect()
     meta.drop_all()
+    meta.create_all()

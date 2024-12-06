@@ -1,0 +1,32 @@
+<div id="createUTubWrap" class="input-text-holder flex-column createDiv pad-in-15p" style="display: none;">
+    <div class="text-input-container">
+        <div class="text-input-inner-container">
+            <input class="text-input" type="text" id="utubNameCreate" name="utubName" minlength={{CONSTANTS.UTUBS.MIN_NAME_LENGTH}} maxlength={{CONSTANTS.UTUBS.MAX_NAME_LENGTH}} required tabindex="0">
+            <label class="text-input-label" for="utubNameCreate">UTub Name</label>
+        </div>
+        <span class="text-input-error-message" id="utubNameCreate-error"></span>
+    </div>
+    <div class="text-input-container">
+        <div class="text-input-inner-container">
+            <input class="text-input" type="text" id="utubDescriptionCreate" name="utubDescription" maxlength={{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}} tabindex="0">
+            <label class="text-input-label" for="utubDescriptionCreate">UTub Description</label>
+        </div>
+        <span class="text-input-error-message" id="utubDescriptionCreate-error"></span>
+    </div>
+    <div class="flex-row justify-center" style="gap: 8px; flex: 1 1 auto; align-items: flex-end;">
+        <!-- Checkbox to accept UTub creation -->
+        <i class="green-clickable-wide half-width flex-column align-center justify-center border-radius-5px" id="utubSubmitBtnCreate" tabindex="0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="30px" height="30px">
+                <!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
+                <path d="M438.6 105.4c12.5 12.5 12.5 32.8 0 45.3l-256 256c-12.5 12.5-32.8 12.5-45.3 0l-128-128c-12.5-12.5-12.5-32.8 0-45.3s32.8-12.5 45.3 0L160 338.7 393.4 105.4c12.5-12.5 32.8-12.5 45.3 0z"/>
+            </svg>
+        </i>
+        <!-- X to cancel UTub creation -->
+        <i class="cancelButton-wide half-width flex-column align-center justify-center border-radius-5px" id="utubCancelBtnCreate" tabindex="0">
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 384 512" width="30px" height="30px">
+                <!--!Font Awesome Free 6.5.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2024 Fonticons, Inc.-->
+                <path d="M342.6 150.6c12.5-12.5 12.5-32.8 0-45.3s-32.8-12.5-45.3 0L192 210.7 86.6 105.4c-12.5-12.5-32.8-12.5-45.3 0s-12.5 32.8 0 45.3L146.7 256 41.4 361.4c-12.5 12.5-12.5 32.8 0 45.3s32.8 12.5 45.3 0L192 301.3 297.4 406.6c12.5 12.5 32.8 12.5 45.3 0s12.5-32.8 0-45.3L237.3 256 342.6 150.6z"/>
+            </svg>
+        </i>
+    </div>
+</div>

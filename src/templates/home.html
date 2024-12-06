@@ -1,0 +1,48 @@
+{% extends "layout.html" %}
+{% block utubhome %}
+
+<!-- Backend load of UTub JSON data -->
+<script type="text/javascript">
+    const UTubs = JSON.parse('{{utubs_for_this_user|tojson|safe}}');
+</script>
+<!-- 12/17 DP this is visible to the user? Ok? -->
+
+<!-- Left Panel -->
+<div id="leftPanel" class="panel">
+    <!-- UTubs -->
+    {% include 'home/UTubDeck/UTubDeck.html' %}
+    <!-- End UTubs -->
+
+    <!-- Members -->
+    {% include 'home/MemberDeck/MemberDeck.html' %}
+    <!-- End Members -->
+
+    <!-- Tags -->
+    {% include 'home/TagsDeck/TagsDeck.html' %}
+    <!-- End Tags -->
+</div>
+
+<!-- End Left Panel -->
+
+<!-- Center Panel -->
+<div id="centerPanel" class="panel">
+    {% include 'home/URLDeck/URLDeck.html' %}
+</div>
+<!-- End Center Panel -->
+
+<!-- Home Page JS -->
+<script src="{{ url_for('static', filename='scripts/utils.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/utubs.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/utubs_routes.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/tags.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/tags_routes.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/urls.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/urls_routes.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/members.js') }}"></script>
+<script src="{{ url_for('static', filename='scripts/members_routes.js') }}"></script>
+
+{% endblock %}
+
+{% block modal_extender %}
+{{ super() }}
+{% endblock %}

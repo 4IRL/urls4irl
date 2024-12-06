@@ -1,0 +1,267 @@
+/** Colors and themes **/
+
+:root {
+    --splashGreen: rgba(36, 167, 69, 1.0);
+    --darkSplashGreen: rgba(36, 167, 69, 0.75);
+    --splashLabelGreen: rgba(46, 204, 113, 1.0);
+    --darkSplashLabelGreen: rgba(30, 133, 73, 1.0);
+
+    --navbarTextHover: rgba(29, 33, 36, 1.0); /*1d2124*/
+    --navbarBackground: rgba(33, 37, 41, 1.0); /* #212529 */
+    --navbarBackgroundHover: rgba(77, 80, 83, 1.0); /* #4d5053 */
+    --navbarBackgroundFocus: rgba(121, 124, 126, 1.0); /* #797c7e */
+
+    --pageBackgroundColor: rgba(31, 36, 36, 0.81);
+    --panelBackgroundColor: rgba(31, 36, 36, 1.0);
+    --borderColor: #343c3d;
+    --deckHeaderGreen: rgba(36, 167, 69, 1.0);
+    --deckSelectionGreen: rgba(96, 218, 170, 1.0);
+    --deckSelectionGreenHover: rgba(67, 152, 118, 1.0);
+    --offWhiteSplashBackgroundBanner: rgba(248, 248, 248, 0.74);
+    --blueLinkOnHover: rgba(5, 34, 77, 1.0);
+    --darkGrayTextColor: rgba(51, 51, 51, 1.0);
+    --selectedUTubColor: rgba(244, 94, 97, 1.0);
+    --selectedUTubColorBackground: rgba(61, 67, 67, 1.0); /* #3D4343 */
+    --selectedUTubColorBackgroundFocus: rgba(82, 88, 88, 1.0); /* #525858 */
+    --removeMemberColor: rgba(170, 65, 67, 1.0);
+    --removeMemberColorLighter: rgba(170, 65, 67, 0.1);
+
+    --cardBackgroundColor: rgba(40, 47, 47, 1.0);
+    --cardBackgroundColorHover: rgba(40, 47, 47, 0.8);
+    --UTubDescriptionColor: white;
+
+    --spanRemoveColor: rgb(254, 115, 1);
+    --removeIconColor: rgba(220, 53, 69, 1.0);
+    --removeIconColorHover: rgba(154, 37, 48, 1.0);
+
+    --tagBackgroundColor: var(--cardBackgroundColor);
+    --tagBorderColor: var(--cardBackgroundColorHover);
+    --tagBackgroundColorHover: rgba(126, 130, 130, 0.5);
+    --tagBackgroundColorSelected: rgba(126, 130, 130, 1.0);
+    --tagSelectedTextColor: rgba(14, 66, 27, 1.0);
+
+    --tagBadgeDeleteBtnColor: rgba(136, 136, 136, 0.85);
+    --tagBadgeDeleteBtnColorHover: var(--removeMemberColor);
+
+    --contentTopBorder: rgba(126, 130, 130, 0.25);
+
+    --cardURLTextColor: rgba(140, 155, 157, 1.0);
+    --selectedUrlBorder: rgba(13, 255, 0, 1.0);
+    --focusedUrlBorder: rgba(13, 255, 0, 0.75);
+
+    --oddUrlCardsBackgroundColor: rgba(61, 71, 71, 1.0);
+    --evenUrlCardsBackgroundColor: rgba(51, 61, 61, 1.0);
+
+    --grayBadgeSelection: rgba(170, 170, 170, 1.0); /* #aaaaaa */
+    --grayBadgeSelectionFocus: rgba(187, 187, 187, 1.0); /* #bbbbbb */
+}
+
+/** HTML DOM Elements **/
+
+html,
+body {
+    height: 100dvh;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    /* overflow-y: hidden; */
+    display: flex;
+    background-color: var(--pageBackgroundColor);
+}
+
+main {
+    flex: 1 1 auto;
+    overflow-y: auto;
+    height: calc(100dvh - 50px);
+}
+
+h1 {
+    font-weight: 300;
+    font-size: 2.5em;
+}
+
+h2 {
+    color: var(--deckHeaderGreen);
+}
+
+p {
+    color: var(--UTubDescriptionColor);
+}
+
+a {
+    color: aqua
+}
+
+/* Navbar */
+
+.navbar-start {
+    margin-inline: 20px;
+    height: inherit;
+}
+
+.navbar-start {
+    display: flex;
+    align-items: center;
+}
+
+.navbar-toggler {
+    margin-inline-end: 5px;
+}
+
+.nav-item {
+    display: flex;
+    flex-direction:row;
+    justify-content: center;
+    align-items: center;
+    width: 100%;
+}
+
+.nav-bar-inner-item {
+    display: flex;
+    flex-direction: row;
+    justify-content: center;
+    align-items: center;
+    gap: 10px;
+    height: 100%;
+    width: 100%;
+    color: var(--grayBadgeSelection);
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.nav-bar-inner-item.home,
+.nav-bar-inner-item.splash {
+    padding: 10px;
+}
+
+#mainNavbar {
+    height: 50px;
+}
+
+.nav-bar-inner-item:hover {
+    cursor: pointer;
+    background-color: var(--navbarBackgroundHover);
+}
+
+.nav-bar-inner-item.splash:hover {
+    color: var(--navbarTextHover);
+}
+
+.nav-bar-inner-item#userLoggedIn:hover {
+    cursor: inherit;
+    background-color: inherit;
+    color: var(--grayBadgeSelection);
+}
+
+
+#iconContainer {
+    height: inherit;
+    display: flex;
+    padding-top: initial !important;
+    padding-inline: 10px;
+    align-items: center;
+}
+
+#u4iFavicon {
+    height: 90%;
+    width: auto;
+    max-width: initial;
+}
+
+#loggedInAsHeader {
+    text-wrap: nowrap;
+    font-style: italic;
+}
+
+
+/* Modals */
+
+.modal-content {
+    padding: 1%;
+}
+
+/** ID specific **/
+
+.splash#NavbarNavDropdown,
+.home#NavbarNavDropdown {
+    justify-content: flex-end;
+}
+
+#logoutIcon {
+    transform: rotate(90deg);
+}
+
+@media (min-width: 768px) {
+    .nav-bar-inner-item.home {
+        padding-inline: 10px;
+    }
+
+    #NavbarDropdownsSplash,
+    .splash#NavbarNavDropdown {
+        height: 100%;
+    }
+}
+
+@media (min-width: 992px) {
+    #NavbarDropdownsHome {
+        height: 100%;
+    }
+
+    .home#NavbarNavDropdown {
+        height: 100%;
+    }
+
+    .nav-bar-inner-item.home {
+        border-radius: 25px;
+    }
+}
+
+@media (max-width: 991.98px) {
+    #NavbarDropdownsHome {
+        display: flex;
+        flex-direction: column;
+        padding-top: 10px;
+    }
+
+    .nav-bar-inner-item.home {
+        justify-content: flex-start;
+    }
+
+    .nav-item.home {
+        border-top: 2px solid var(--grayBadgeSelectionFocus);
+    }
+
+    .nav-item.home:last-of-type {
+        border-bottom: 2px solid var(--grayBadgeSelectionFocus);
+    }
+
+    .nav-bar-inner-item.home:hover {
+        background-color: var(--navbarBackgroundHover);
+        color: var(--navbarTextHover);
+    }
+
+}
+
+@media (max-width: 767.98px) {
+    #NavbarDropdownsSplash {
+        display: flex;
+        flex-direction: column;
+        padding-top: 10px;
+    }
+
+    .nav-bar-inner-item.splash {
+        justify-content: flex-start;
+    }
+
+    .nav-item.splash {
+        border-top: 2px solid var(--grayBadgeSelectionFocus);
+    }
+
+    .nav-item.splash:last-of-type {
+        border-bottom: 2px solid var(--grayBadgeSelectionFocus);
+    }
+
+    .nav-bar-inner-item.splash:hover {
+        background-color: var(--navbarBackgroundHover);
+        color: var(--navbarTextHover);
+    }
+}

@@ -1,0 +1,54 @@
+# Strings for standardizing the model serialization
+ADDED_BY = "addedByUserID"
+CAN_DELETE = "canDelete"
+CREATED_BY = "createdByUserID"
+CREATED_AT = "createdAt"
+DESCRIPTION = "description"
+EMAIL = "email"
+ID = "id"
+IS_CREATOR = "isCreator"
+MEMBERS = "members"
+NAME = "name"
+PASSWORD = "password"
+TAG_STRING = "tagString"
+TAGGED_URL = "tagged_url"
+UTUB_TAG = "utubTag"
+TAGS = "tags"
+UTUB_TAG_ID = "utubTagID"
+URLS = "urls"
+URL = "URL"
+UTUB_URL_TAG_IDS = "utubUrlTagIDs"
+URL_TAGS = "urlTags"
+URL_STRING = "urlString"
+URL_ID = "urlID"
+URL_TITLE = "urlTitle"
+USERNAME = "username"
+UTUB_DESCRIPTION = "utubDescription"
+UTUB_URL_ID = "utubUrlID"
+
+
+class MODELS:
+    ID = ID
+    NAME = NAME
+    URL_ID = URL_ID
+    URL_TAG_IDS = UTUB_URL_TAG_IDS
+    URL_TAGS = URL_TAGS
+    URL_STRING = URL_STRING
+    ADDED_BY = ADDED_BY
+    URL_TITLE = URL_TITLE
+    TAGGED_URL = TAGGED_URL
+    USERNAME = USERNAME
+    TAG = UTUB_TAG
+    UTUB_TAG_ID = UTUB_TAG_ID
+    CREATED_AT = CREATED_AT
+    CREATED_BY = CREATED_BY
+    DESCRIPTION = DESCRIPTION
+    MEMBERS = MEMBERS
+    URLS = URLS
+    TAGS = TAGS
+    URL = URL
+    TAG_STRING = TAG_STRING
+    UTUB_DESCRIPTION = UTUB_DESCRIPTION
+    IS_CREATOR = IS_CREATOR
+    CAN_DELETE = CAN_DELETE
+    UTUB_URL_ID = UTUB_URL_ID

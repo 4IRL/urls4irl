@@ -1,0 +1,38 @@
+# Making this the name so badge shows something understandable
+name: Build and Deploy Development Server
+
+on:
+    pull_request:
+        branches:
+            - dev
+        types:
+            - closed
+
+jobs:
+    build-dev:
+        if: github.event.pull_request.merged == true
+        name: 'CD Dev - Build'
+        uses: ./.github/workflows/dev-build.yml
+        permissions:
+            packages: write
+
+    deploy-dev:
+        if: github.event.pull_request.merged == true
+        needs: 'build-dev'
+        name: 'CD Dev - Deploy'
+        uses: ./.github/workflows/dev-deploy.yml
+        with:
+            branch_ref: ${{ github.ref }}
+        secrets:
+            DEV_SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
+            DEV_SSH_USERNAME: ${{ secrets.DEV_SSH_USERNAME }}
+            DEV_SSH_PRIVATE_KEY_FILENAME: ${{ secrets.DEV_SSH_PRIVATE_KEY_FILENAME }}
+            DEV_SSH_PRIVATE_KEY_VALUE: ${{ secrets.DEV_SSH_PRIVATE_KEY_VALUE }}
+            DEV_SERVICE_TOKEN_ID: ${{ secrets.DEV_SERVICE_TOKEN_ID }}
+            DEV_SERVICE_TOKEN_SECRET: ${{ secrets.DEV_SERVICE_TOKEN_SECRET }}
+            DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
+            DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
+            DEV_DB_PASSWORD: ${{ secrets.DEV_DB_PASSWORD }}
+            MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY_INF }}
+            MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY_INF }}
+            BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}

@@ -1,0 +1,51 @@
+name: Build production docker image
+
+on:
+  workflow_call:
+
+env:
+  # Name of docker image
+  IMAGE_NAME: u4i-prod
+
+jobs:
+    ProdBuild:
+        name: Build production docker image
+        runs-on: ubuntu-latest
+
+        steps:
+        - uses: actions/checkout@v4
+        - name: Build image
+          run: |
+            DATE=$(date +%Y%m%d) # Generate current date in YYYYMMDD format
+            SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
+            FULL_TAG="$DATE-$SHORT_SHA"
+
+            docker build . --file Dockerfile --tag $IMAGE_NAME --tag $FULL_TAG --label "runnumber=${GITHUB_RUN_ID}"
+
+        - name: Log in to registry
+          run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+
+        - name: Push image
+          run: |
+            IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+
+            IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
+
+            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
+            [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
+
+            [ "$VERSION" == "main" ] && VERSION=latest
+
+            DATE=$(date +%Y%m%d) # Generate current date in YYYYMMDD format
+            SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
+            FULL_TAG="$DATE-$SHORT_SHA"
+
+            echo IMAGE_ID=$IMAGE_ID
+            echo VERSION=$VERSION
+            docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
+            docker tag $IMAGE_NAME $IMAGE_ID:$FULL_TAG
+            docker tag $IMAGE_NAME $IMAGE_ID:latest
+            docker push $IMAGE_ID:$VERSION
+            docker push $IMAGE_ID:$FULL_TAG
+            docker push $IMAGE_ID:latest
+

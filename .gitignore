@@ -4,7 +4,14 @@ venv/
 __pycache__/
 .vscode/
 flask_session/
+sessions/
 *.db
 miscellaneous/
 *.DS_Store
 .pytest_cache/
+jquery*.js
+bootstrap*.js*
+bootstrap*.css*
+*.code-workspace
+secrets/
+backups/

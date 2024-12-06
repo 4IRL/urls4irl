@@ -1,0 +1,65 @@
+name: u4i-dev
+
+services:
+  web:
+    image: ghcr.io/4irl/u4i-dev:latest
+    container_name: u4i-dev-flask
+    ports: 
+      - "127.0.0.1:8659:5000"
+    depends_on:
+      - db
+      - redis
+    env_file:
+      - .env
+    environment:
+      - PRODUCTION=false
+      - REDIS_URI=redis://redis:6379/0
+      - FLASK_DEBUG=true
+      - DOCKER=true
+    secrets:
+      - MAILJET_API_KEY
+      - MAILJET_SECRET_KEY
+      - BASE_EMAIL
+
+    # Sleep for 5 seconds to allow postgres image to start if necessary
+    command: >
+      sh -c "
+      export MAILJET_API_KEY=$(cat /run/secrets/MAILJET_API_KEY) &&
+      export MAILJET_SECRET_KEY=$(cat /run/secrets/MAILJET_SECRET_KEY) &&
+      export BASE_EMAIL=$(cat /run/secrets/BASE_EMAIL) &&
+      sleep 5 &&
+      . /code/venv/bin/activate &&
+      flask db upgrade &&
+      gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
+      "
+
+  db:
+    image: postgres:16.3-bookworm
+    container_name: u4i-dev-postgres
+    env_file:
+     - .env
+    environment:
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+
+  redis:
+    image: redis:6.2
+    container_name: u4i-dev-redis
+    volumes:
+      - redisdata:/data
+
+secrets:
+  MAILJET_API_KEY:
+    file: ./secrets/MAILJET_API_KEY
+  MAILJET_SECRET_KEY:
+    file: ./secrets/MAILJET_SECRET_KEY
+  BASE_EMAIL:
+    file: ./secrets/BASE_EMAIL
+
+volumes:
+  pgdata:
+  redisdata:
+

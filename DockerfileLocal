@@ -1,0 +1,67 @@
+# syntax=docker/dockerfile:1
+FROM python:3.11-slim-bookworm
+LABEL org.opencontainers.image.source="https://github.com/4IRL/urls4irl"
+
+# Some environment variable handling
+ENV FLASK_APP=run
+ENV PYTHONUNBEFFERED=1
+ENV PIP_DISABLE_PIP_VERSION_CHECK=1
+ENV PIP_NO_CACHE_DIR=1
+ENV PATH="/usr/local/bin/chrome-linux64:$PATH"
+ENV PATH="/usr/local/bin/chromedriver-linux64:$PATH"
+ENV CHROMEDRIVER_PATH="/usr/local/bin/chromedriver-linux64/chromedriver"
+
+# Set environment variables for selenium
+ENV SE_CACHE_PATH=/tmp/.cache/selenium
+ENV SE_BROWSER_PATH=/usr/local/bin/chrome64-linux/chrome
+
+# Use code as working directory
+WORKDIR /code/u4i
+RUN chmod -R 775 /code
+
+
+# Create non-root user, update packages, clean up
+RUN set -ex \
+	&& addgroup --system --gid 1001 u4i-host-group \
+	&& adduser --system --uid 1001 --gid 1001 --no-create-home u4i-host \
+	&& apt-get update \
+	&& apt-get -y install libpq-dev gcc wget unzip xvfb libglib2.0-dev libnss3-dev libdbus-1-dev  libatk1.0-0 libatk-bridge2.0-0 libcups2 libxkbcommon-dev libxcomposite-dev libxdamage-dev libgbm-dev libpangocairo-1.0-0 libasound2 \
+	&& apt-get upgrade -y \
+	&& apt-get autoremove -y \
+	&& apt-get clean -y \
+	&& rm -rf /var/lib/apt/lists/* \
+	&& wget https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.116/linux64/chrome-linux64.zip \
+	&& unzip chrome-linux64.zip -d /usr/local/bin/ \
+	&& chmod +x /usr/local/bin/chrome-linux64 \
+	&& wget https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.116/linux64/chromedriver-linux64.zip \
+	&& unzip chromedriver-linux64.zip -d /usr/local/bin/ \
+	&& chmod +x /usr/local/bin/chromedriver-linux64 \
+	&& mkdir -p /tmp/.cache/selenium \
+	&& chmod -R 777 /tmp/.cache/selenium
+
+# Copy files needed
+COPY run.py ./
+COPY src/ ./src/
+COPY migrations/ ./migrations/
+COPY tests/ ./tests/
+COPY utils/ ./utils/
+COPY pytest.ini ./
+
+# Copy requirements files
+COPY requirements-dev.txt ./
+COPY requirements-test.txt ./
+COPY requirements-prod.txt ./
+
+# Install development level requirements
+RUN chmod -R 775 /code \ 
+	&& chown -R u4i-host:u4i-host-group /code \
+	&& python3 -m venv /code/venv \
+	&& . /code/venv/bin/activate \
+	&& pip install -r requirements-dev.txt --no-cache-dir
+
+# Create a non-root user
+USER u4i-host
+
+# Expose a port to access the container
+EXPOSE 5000
+

@@ -1,0 +1,100 @@
+name: u4i-prod
+
+services:
+  web:
+    image: ghcr.io/4irl/u4i-prod:latest
+    container_name: u4i-prod-flask
+    ports: 
+      - "127.0.0.1:8659:5000"
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    environment:
+      - PRODUCTION=true
+      - FLASK_DEBUG=false
+    secrets:
+      - MAILJET_API_KEY
+      - MAILJET_SECRET_KEY
+      - BASE_EMAIL
+      - SECRET_KEY
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - REDIS_PASSWORD
+    command: >
+      sh -c "
+      export MAILJET_API_KEY=$(cat /run/secrets/MAILJET_API_KEY) &&
+      export MAILJET_SECRET_KEY=$(cat /run/secrets/MAILJET_SECRET_KEY) &&
+      export POSTGRES_USER=$(cat /run/secrets/POSTGRES_USER) &&
+      export POSTGRES_DB=$(cat /run/secrets/POSTGRES_DB) &&
+      export POSTGRES_PASSWORD=$(cat /run/secrets/POSTGRES_PASSWORD) &&
+      export SECRET_KEY=$(cat /run/secrets/SECRET_KEY) &&
+      export BASE_EMAIL=$(cat /run/secrets/BASE_EMAIL) &&
+      export REDIS_PASSWORD=$(cat /run/secrets/REDIS_PASSWORD) &&
+      . /code/venv/bin/activate &&
+      flask db upgrade &&
+      gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
+      "
+
+  db:
+    image: postgres:16.3-bookworm
+    container_name: u4i-prod-postgres
+    environment:
+      - POSTGRES_DB_FILE=/run/secrets/POSTGRES_DB
+      - POSTGRES_USER_FILE=/run/secrets/POSTGRES_USER
+      - POSTGRES_PASSWORD_FILE=/run/secrets/POSTGRES_PASSWORD
+      - POSTGRES_HOST_AUTH_METHOD=scram-sha-256
+      - POSTGRES_INITDB_ARGS=--auth=scram-sha-256
+    secrets:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U $(cat /run/secrets/POSTGRES_USER) -d $(cat /run/secrets/POSTGRES_DB)"]
+        interval: 5s
+        timeout: 5s
+        retries: 5
+  redis:
+    image: redis:6.2
+    container_name: u4i-prod-redis
+    secrets:
+      - REDIS_PASSWORD
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    command: >
+      /bin/sh -c "
+      export REDIS_PASSWORD=$(cat /run/secrets/REDIS_PASSWORD) &&
+      redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}
+      "
+
+secrets:
+  POSTGRES_DB:
+    file: ./secrets/POSTGRES_DB
+  POSTGRES_USER:
+    file: ./secrets/POSTGRES_USER
+  POSTGRES_PASSWORD:
+    file: ./secrets/POSTGRES_PASSWORD
+  MAILJET_API_KEY:
+    file: ./secrets/MAILJET_API_KEY
+  MAILJET_SECRET_KEY:
+    file: ./secrets/MAILJET_SECRET_KEY
+  BASE_EMAIL:
+    file: ./secrets/BASE_EMAIL
+  REDIS_PASSWORD:
+    file: ./secrets/REDIS_PASSWORD
+  SECRET_KEY:
+    file: ./secrets/SECRET_KEY
+
+volumes:
+  pgdata:
+  redisdata:
+

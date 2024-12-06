@@ -1,0 +1,23 @@
+{% extends "layout.html" %}
+{% block mainbody %}
+
+<!-- SPLASH PAGE INTRO -->
+{% if not current_user.is_authenticated or not current_user.email_confirm.is_validated %}
+<main class="bg-img">
+    <div class="container-fluid bg-cover">
+        <div class="container-fluid jumbotron-holder">
+            <div class="jumbotron jumbotron-fluid">
+                <h1 class="display-4" id="splash-major-text">Welcome to URLS4IRL</h1>
+                <p id="splash-mini-text">A simple, clean way to permanently save and share URLs.</p>
+                <button type="button" class="btn btn-success to-register btn-block splash-button">Register</button>
+                <button type="button" class="btn btn-success to-login btn-block splash-button">Login</button>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script src="{{ url_for('static', filename='scripts/splash.js') }}"></script>
+
+{% endif %}
+
+{% endblock %}

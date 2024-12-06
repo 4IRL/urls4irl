@@ -1,0 +1,58 @@
+<script type="text/javascript">
+    if (document.querySelector('head').childElementCount === 1) {
+        window.location.href = '/';
+    };
+</script>
+
+
+<form id="ModalForm" method="POST" class="login-register-form" action="/login" novalidate>
+    <div class="modal-header">
+        <h4 class="modal-title">Login!</h4>
+        <button type="button" class="btn-close close-register-login-modal" data-bs-dismiss="modal" aria-label="close">
+        </button>
+    </div>
+    <div class="modal-body">
+        {{ login_form.hidden_tag() }}
+        <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
+        <fieldset class="form-group">
+            <div class="form-group first-in-register-login-form">
+                {{ login_form.username.label(class="form-control-label login-register-label")}}
+                {% if login_form.username.errors %}
+                {{ login_form.username(class="form-control login-register-form-group is-invalid") }}
+                <div class="invalid-feedback">
+                    {% for error in login_form.username.errors %}
+                    <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                {{ login_form.username(class="form-control login-register-form-group")}}
+                {% endif %}
+            </div>
+            <div class="form-group">
+                {{ login_form.password.label(class="form-control-label login-register-label")}}
+                {% if login_form.password.errors %}
+                {{ login_form.password(class="form-control login-register-form-group is-invalid") }}
+                <div class="invalid-feedback">
+                    {% for error in login_form.password.errors %}
+                    <span>{{ error }}</span>
+                    {% endfor %}
+                </div>
+                {% else %}
+                {{ login_form.password(class="form-control login-register-form-group")}}
+                {% endif %}
+            </div>
+            <div class="form-group" id="ForgotPasswordLink">
+                <small class="text-muted">
+                    <a class="splash-page-links to-forgot-password" href="javascript:;">Forgot your password?</a>
+                </small>
+            </div>
+        </fieldset>
+    </div>
+    <div class="modal-footer register-login-modal-footer">
+        {{ login_form.submit(class="btn btn-success login-register-form-group login-register-buttons center-block col-4 mr-4")}}
+        <a id="ToRegisterFromLogin" class="btn btn-secondary col-7 login-register-form-group center-block"
+            href="javascript:;">Register</a>
+    </div>
+</form>
+
+<script src="{{ url_for('static', filename='scripts/splash/login.js') }}"></script>
