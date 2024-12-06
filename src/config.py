@@ -119,7 +119,9 @@ class ConfigProd(Config):
         "prod": PROD_DB_URI,
     }
     SQLALCHEMY_DATABASE_URI = PROD_DB_URI
-    REDIS_URI = environ.get(ENV.REDIS_URI)
+    SESSION_REDIS = Redis.from_url(
+        f"redis://:{environ.get('REDIS_PASSWORD', '')}@redis:6379/0"
+    )
 
 
 class ConfigTest(Config):
