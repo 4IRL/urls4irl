@@ -93,6 +93,7 @@ class Config:
             "sqlite://" if IS_DOCKER else TEST_DB_URI
         ),  # Currently, not testing in local docker containers
     }
+    REDIS_URI = REDIS_URI
     DOCKER = IS_DOCKER
 
     def __init__(self) -> None:
@@ -122,6 +123,7 @@ class ConfigProd(Config):
         "prod": PROD_DB_URI,
     }
     SQLALCHEMY_DATABASE_URI = PROD_DB_URI
+    SESSION_TYPE = "redis"
     SESSION_REDIS = REDIS_URI
 
 
