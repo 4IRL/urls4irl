@@ -1,7 +1,14 @@
-from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
+from enum import Enum
+from sqlalchemy import Column, DateTime, Enum as SQLEnum, ForeignKey, Integer, String
 
 from src import db
 from src.utils.datetime_utils import utc_now
+
+
+class Possible_Url_Validation(Enum):
+    VALIDATED = "valid"
+    INVALIDATED = "invalid"
+    UNKNOWN = "unknown"
 
 
 class Urls(db.Model):
@@ -13,6 +20,12 @@ class Urls(db.Model):
     url_string: str = Column(
         String(8000), nullable=False, unique=True, name="urlString"
     )  # Note that multiple UTubs can have the same URL
+    is_validated: str = Column(
+        SQLEnum(Possible_Url_Validation),
+        nullable=False,
+        default=Possible_Url_Validation.UNKNOWN,
+        name="isValidated",
+    )
     created_by: int = Column(
         Integer, ForeignKey("Users.id"), nullable=False, name="createdBy"
     )
