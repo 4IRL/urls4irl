@@ -6,9 +6,9 @@ from src.utils.datetime_utils import utc_now
 
 
 class Possible_Url_Validation(Enum):
-    VALIDATED = "valid"
-    INVALIDATED = "invalid"
-    UNKNOWN = "unknown"
+    VALIDATED = "VALIDATED"
+    INVALIDATED = "INVALIDATED"
+    UNKNOWN = "UNKNOWN"
 
 
 class Urls(db.Model):
@@ -33,6 +33,7 @@ class Urls(db.Model):
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
 
-    def __init__(self, normalized_url: str, current_user_id: int):
+    def __init__(self, normalized_url: str, current_user_id: int, is_validated: str):
         self.url_string = normalized_url
         self.created_by = int(current_user_id)
+        self.is_validated = is_validated

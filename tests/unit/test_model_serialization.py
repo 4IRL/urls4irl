@@ -5,7 +5,7 @@ import pytest
 
 from src import db
 from src.models.utub_tags import Utub_Tags
-from src.models.urls import Urls
+from src.models.urls import Possible_Url_Validation, Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
@@ -93,7 +93,9 @@ def test_url_serialization_without_tags():
 
     for v_url in valid_urls:
         new_url = Urls(
-            normalized_url=v_url[MODEL_STRS.URL_STRING], current_user_id=current_user_id
+            normalized_url=v_url[MODEL_STRS.URL_STRING],
+            current_user_id=current_user_id,
+            is_validated=Possible_Url_Validation.UNKNOWN.value,
         )
 
         new_utub_url = Utub_Urls()
