@@ -7,7 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from src.mocks.mock_constants import MOCK_UTUB_DESCRIPTION
+from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.utils_for_test import (

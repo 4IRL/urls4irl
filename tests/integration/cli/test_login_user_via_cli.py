@@ -5,8 +5,8 @@ from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
 
-from src.mocks.mock_constants import TEST_USER_COUNT
-from src.mocks.mock_options import USER_ID_INVALID_TO_LOGIN_WITH
+from src.cli.mock_constants import TEST_USER_COUNT
+from src.cli.mock_options import USER_ID_INVALID_TO_LOGIN_WITH
 
 pytestmark = pytest.mark.cli
 

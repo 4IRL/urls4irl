@@ -7,12 +7,12 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 
 from src.db import db
-from src.mocks.mock_constants import TEST_USER_COUNT
-from src.mocks.mock_data.tags import generate_mock_tags
-from src.mocks.mock_data.urls import generate_mock_urls, generate_custom_mock_url
-from src.mocks.mock_data.users import generate_mock_users
-from src.mocks.mock_data.utubmembers import generate_mock_utubmembers
-from src.mocks.mock_data.utubs import generate_mock_utubs
+from src.cli.mock_constants import TEST_USER_COUNT
+from src.cli.mock_data.tags import generate_mock_tags
+from src.cli.mock_data.urls import generate_mock_urls, generate_custom_mock_url
+from src.cli.mock_data.users import generate_mock_users
+from src.cli.mock_data.utubmembers import generate_mock_utubmembers
+from src.cli.mock_data.utubs import generate_mock_utubs
 from src.models.users import Users
 
 HELP_SUMMARY_MOCKS = """Add mock data to the dev database."""

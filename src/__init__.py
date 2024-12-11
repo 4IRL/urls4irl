@@ -10,7 +10,8 @@ from src.db import db
 from src.config import Config, ConfigProd
 from src.extensions.email_sender.email_sender import EmailSender
 from src.extensions.url_validation.url_validator import UrlValidator
-from src.mocks.mock_options import register_mocks_db_cli
+from src.cli.cli_options import register_short_urls_cli
+from src.cli.mock_options import register_mocks_db_cli
 from src.utils.error_handler import (
     handle_404_response,
     handle_429_response_default_ratelimit,
@@ -78,6 +79,7 @@ def create_app(config_class: Config = Config) -> Flask | None:
     app.register_blueprint(utub_url_tags)
     app.register_blueprint(utub_tags)
     register_mocks_db_cli(app)
+    register_short_urls_cli(app)
 
     app.register_error_handler(404, handle_404_response)
 

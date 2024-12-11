@@ -19,9 +19,7 @@ from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 pytestmark = pytest.mark.urls
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
@@ -51,7 +49,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     }
     """
     UPDATED_URL = "https://www.yahoo.com/"
-    mock_validate_url.return_value = UPDATED_URL
+    mock_validate_url.return_value = UPDATED_URL, True
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -151,9 +149,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     mock_validate_url,
     add_all_urls_and_users_to_each_utub_with_all_tags,
@@ -184,7 +180,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
     """
     NEW_FINAL_URL = "https://www.yahoo.com/"
     client, csrf_token_string, _, app = login_first_user_without_register
-    mock_validate_url.return_value = NEW_FINAL_URL
+    mock_validate_url.return_value = NEW_FINAL_URL, True
 
     NEW_RAW_URL = "yahoo.com"
     with app.app_context():
@@ -286,9 +282,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         ).count() == len(associated_tags)
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_previously_added_url_as_utub_creator(
     mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
@@ -329,7 +323,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         ).first()
 
         url_string_of_url_not_in_utub = url_not_in_utub.standalone_url.url_string
-        mock_validate_url.return_value = url_string_of_url_not_in_utub
+        mock_validate_url.return_value = url_string_of_url_not_in_utub, True
 
         url_id_of_url_not_in_utub = url_not_in_utub.id
 
@@ -423,9 +417,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_previously_added_url_as_url_adder(
     mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
@@ -472,7 +464,7 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
             Utub_Urls.url_id != current_url_id, Utub_Urls.utub_id != utub_id
         ).first()
         url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
-        mock_validate_url.return_value = url_string_of_url_not_in_utub
+        mock_validate_url.return_value = url_string_of_url_not_in_utub, True
 
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
 
@@ -776,9 +768,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
         ).count() == len(associated_tags)
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_invalid_url_as_utub_creator(
     mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
@@ -873,9 +863,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_invalid_url_as_url_adder(
     mock_validate_url,
     add_two_url_and_all_users_to_each_utub_no_tags,
@@ -1578,9 +1566,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         ).count() == len(associated_tags)
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_updates_utub_last_updated(
     mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
@@ -1608,7 +1594,7 @@ def test_update_valid_url_updates_utub_last_updated(
             Utub_Urls.utub_id != utub_creator_of.id
         ).first()
         url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
-        mock_validate_url.return_value = url_string_of_url_not_in_utub
+        mock_validate_url.return_value = url_string_of_url_not_in_utub, True
 
         # Grab URL that already exists in this UTub
         url_in_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1638,9 +1624,7 @@ def test_update_valid_url_updates_utub_last_updated(
         assert (current_utub.last_updated - initial_last_updated).total_seconds() > 0
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
     mock_validate_url,
     add_two_url_and_all_users_to_each_utub_no_tags,
@@ -1691,9 +1675,7 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
         assert current_utub.last_updated == initial_last_updated
 
 
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator.find_full_path_normalized_url"
-)
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_utub_url_with_url_already_in_utub(
     mock_validate_url,
     add_all_urls_and_users_to_each_utub_with_all_tags,
@@ -1729,7 +1711,7 @@ def test_update_utub_url_with_url_already_in_utub(
         ).first()
         current_url_id = url_in_this_utub.url_id
         current_url_string = url_in_this_utub.standalone_url.url_string
-        mock_validate_url.return_value = current_url_string
+        mock_validate_url.return_value = current_url_string, True
 
         # Find another URL in this UTub that doesn't match given URL
         other_url_in_utub: Utub_Urls = Utub_Urls.query.filter(

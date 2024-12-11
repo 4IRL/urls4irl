@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from src.mocks.mock_constants import EMAIL_SUFFIX, TEST_USER_COUNT, USERNAME_BASE
+from src.cli.mock_constants import EMAIL_SUFFIX, TEST_USER_COUNT, USERNAME_BASE
 from src.models.email_validations import Email_Validations
 from src.models.users import Users
 

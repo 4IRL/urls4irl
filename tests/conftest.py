@@ -17,7 +17,7 @@ from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
-from src.models.urls import Urls
+from src.models.urls import Possible_Url_Validation, Urls
 from src.utils.strings import model_strs
 from tests.utils_for_test import clear_database, get_csrf_token
 from tests.models_for_test import (
@@ -551,7 +551,11 @@ def add_urls_to_database(app: Flask, every_user_makes_a_unique_utub):
     """
     with app.app_context():
         for idx, url in enumerate(valid_url_strings):
-            new_url = Urls(normalized_url=url, current_user_id=idx + 1)
+            new_url = Urls(
+                normalized_url=url,
+                current_user_id=idx + 1,
+                is_validated=Possible_Url_Validation.VALIDATED.value,
+            )
             db.session.add(new_url)
         db.session.commit()
 

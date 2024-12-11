@@ -3,7 +3,7 @@ from flask_login import current_user
 
 from src import db, url_validator
 from src.extensions.url_validation.url_validator import InvalidURLError
-from src.models.urls import Urls
+from src.models.urls import Possible_Url_Validation, Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_url_tags import Utub_Url_Tags
@@ -128,9 +128,10 @@ def create_url(utub_id: int):
             user_agent = (
                 None if headers is None else headers.get(URL_VALIDATION.USER_AGENT)
             )
-            normalized_url = url_validator.find_full_path_normalized_url(
+            normalized_url, is_validated = url_validator.validate_url(
                 url_string, user_agent
             )
+
         except InvalidURLError as e:
             # URL was unable to be verified as a valid URL
             return (
@@ -152,8 +153,15 @@ def create_url(utub_id: int):
 
         if not already_created_url:
             # If URL does not exist, add it and then associate it with the UTub
+            validated_str = (
+                Possible_Url_Validation.VALIDATED.value
+                if is_validated
+                else Possible_Url_Validation.UNKNOWN.value
+            )
             new_url = Urls(
-                normalized_url=normalized_url, current_user_id=current_user.id
+                normalized_url=normalized_url,
+                current_user_id=current_user.id,
+                is_validated=validated_str,
             )
 
             # Commit new URL to the database
@@ -369,7 +377,7 @@ def update_url(utub_id: int, utub_url_id: int):
             user_agent = (
                 None if headers is None else headers.get(URL_VALIDATION.USER_AGENT)
             )
-            normalized_url = url_validator.find_full_path_normalized_url(
+            normalized_url, is_validated = url_validator.validate_url(
                 url_to_change_to, user_agent
             )
         except InvalidURLError as e:
@@ -393,8 +401,15 @@ def update_url(utub_id: int, utub_url_id: int):
 
         if url_already_in_database is None:
             # Make a new URL since URL is not already in the database
+            validated_str = (
+                Possible_Url_Validation.VALIDATED.value
+                if is_validated
+                else Possible_Url_Validation.UNKNOWN.value
+            )
             new_url = Urls(
-                normalized_url=normalized_url, current_user_id=current_user.id
+                normalized_url=normalized_url,
+                current_user_id=current_user.id,
+                is_validated=validated_str,
             )
             db.session.add(new_url)
             db.session.commit()

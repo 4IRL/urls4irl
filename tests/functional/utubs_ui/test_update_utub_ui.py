@@ -9,7 +9,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from locators import MainPageLocators as MPL
-from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE, MOCK_UTUB_DESCRIPTION
+from src.cli.mock_constants import MOCK_UTUB_NAME_BASE, MOCK_UTUB_DESCRIPTION
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.utils_for_test import (
     create_user_session_and_provide_session_id,

@@ -10,7 +10,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from src.mocks.mock_constants import MOCK_URL_STRINGS
+from src.cli.mock_constants import MOCK_URL_STRINGS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.urls_ui.utils_for_test_url_ui import (
     login_select_utub_select_url_click_delete_get_modal_url,

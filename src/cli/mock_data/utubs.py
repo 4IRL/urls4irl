@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from src.mocks.mock_constants import TEST_USER_COUNT, MOCK_UTUB_NAME_BASE
+from src.cli.mock_constants import TEST_USER_COUNT, MOCK_UTUB_NAME_BASE
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.models.utub_members import Member_Role, Utub_Members

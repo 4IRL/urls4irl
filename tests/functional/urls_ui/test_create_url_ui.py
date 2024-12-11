@@ -9,7 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from src.mocks.mock_constants import (
+from src.cli.mock_constants import (
     MOCK_URL_TITLES,
     MOCK_URL_STRINGS,
 )
