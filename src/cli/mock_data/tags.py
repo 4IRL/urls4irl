@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from src.mocks.mock_constants import MOCK_TAGS
+from src.cli.mock_constants import MOCK_TAGS
 from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.models.utub_url_tags import Utub_Url_Tags

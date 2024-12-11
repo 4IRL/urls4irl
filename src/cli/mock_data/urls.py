@@ -1,6 +1,6 @@
 from flask_sqlalchemy import SQLAlchemy
 
-from src.mocks.mock_constants import MOCK_URL_STRINGS
+from src.cli.mock_constants import MOCK_URL_STRINGS
 from src.models.urls import Possible_Url_Validation, Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members

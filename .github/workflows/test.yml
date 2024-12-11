@@ -19,6 +19,7 @@ env:
   POSTGRES_PASSWORD: 'postgres'
   POSTGRES_DB: 'postgres'
   POSTGRES_TEST_DB: 'postgres'
+  REDIS_URI: 'redis://redis:6379'
 
 jobs:
   Tests:
@@ -71,6 +72,17 @@ jobs:
         # Set health checks to wait until postgres has started
         options: >-
           --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+    
+      # Redis service configuration
+      redis:
+        image: 'redis:alpine'
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping | grep PONG || exit 1"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5

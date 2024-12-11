@@ -1,4 +1,4 @@
-from src.mocks.mock_constants import (
+from src.cli.mock_constants import (
     MOCK_TAGS,
     MOCK_URL_STRINGS,
     TEST_USER_COUNT,

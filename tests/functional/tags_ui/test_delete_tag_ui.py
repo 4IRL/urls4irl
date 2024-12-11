@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from src.mocks.mock_constants import MOCK_URL_TITLES
+from src.cli.mock_constants import MOCK_URL_TITLES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (

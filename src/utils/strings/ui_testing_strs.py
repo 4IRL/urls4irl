@@ -1,5 +1,5 @@
 # Internal libraries
-from src.mocks.mock_constants import (
+from src.cli.mock_constants import (
     USERNAME_BASE,
     MOCK_UTUB_NAME_BASE,
     EMAIL_SUFFIX,
