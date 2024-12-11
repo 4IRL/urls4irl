@@ -13,7 +13,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 
 # Internal libraries
-from src.mocks.mock_constants import MOCK_URL_STRINGS
+from src.cli.mock_constants import MOCK_URL_STRINGS
 from src.utils.constants import URL_CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
