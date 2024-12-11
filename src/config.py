@@ -52,7 +52,7 @@ if IS_PRODUCTION:
     encoded_password = quote(redis_password)
     REDIS_URI = "redis://:" + encoded_password + "@redis:6379/0"
 else:
-    REDIS_URI = environ.get(ENV.REDIS_URI, default=None)
+    REDIS_URI = environ.get(ENV.REDIS_URI, default="memory://")
 
 
 class Config:
@@ -67,7 +67,7 @@ class Config:
     FLASK_DEBUG = environ.get("FLASK_DEBUG")
     SECRET_KEY = environ.get(ENV.SECRET_KEY)
     SESSION_PERMANENT = "False"
-    if REDIS_URI is None:
+    if REDIS_URI == "memory://" or REDIS_URI is None:
         SESSION_TYPE = "cachelib"
         SESSION_CACHELIB = FileSystemCache(
             threshold=500, cache_dir=f"{path.dirname(__file__)}/sessions"
@@ -125,8 +125,10 @@ class ConfigProd(Config):
     SQLALCHEMY_DATABASE_URI = PROD_DB_URI
     SESSION_TYPE = "redis"
     SESSION_REDIS = (
-        Redis.from_url(REDIS_URI if REDIS_URI is not None else "")
-        if REDIS_URI is not None
+        Redis.from_url(
+            REDIS_URI if (REDIS_URI is not None and REDIS_URI != "memory://") else ""
+        )
+        if (REDIS_URI is not None and REDIS_URI != "memory://")
         else ""
     )
 

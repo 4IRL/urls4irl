@@ -66,6 +66,21 @@ valid_urls = {
         "www.stackoverflow.com",
         "stackoverflow.com",
     ],
+    "https://www.lowes.com/pd/ReliaBilt-ReliaBilt-3-1-2-in-Zinc-Plated-Flat-Corner-Brace-4-Pack/5003415919": [
+        "https://www.lowes.com/pd/ReliaBilt-ReliaBilt-3-1-2-in-Zinc-Plated-Flat-Corner-Brace-4-Pack/5003415919",
+        "www.lowes.com/pd/ReliaBilt-ReliaBilt-3-1-2-in-Zinc-Plated-Flat-Corner-Brace-4-Pack/5003415919",
+        "lowes.com/pd/ReliaBilt-ReliaBilt-3-1-2-in-Zinc-Plated-Flat-Corner-Brace-4-Pack/5003415919",
+    ],
+    "https://www.fnb-online.com/": [
+        "https://www.fnb-online.com/",
+        "www.fnb-online.com/",
+        "fnb-online.com/",
+    ],
+    "https://www.upgrad.com/blog/top-artificial-intelligence-project-ideas-topics-for-beginners/": [
+        "https://www.upgrad.com/blog/top-artificial-intelligence-project-ideas-topics-for-beginners/",
+        "www.upgrad.com/blog/top-artificial-intelligence-project-ideas-topics-for-beginners/",
+        "upgrad.com/blog/top-artificial-intelligence-project-ideas-topics-for-beginners/",
+    ],
 }
 
 invalid_urls = (
@@ -92,8 +107,13 @@ def test_valid_urls():
     for valid_url in valid_urls:
         urls_to_check = valid_urls[valid_url]
         for url in urls_to_check:
-            commonized_url = url_validator.find_full_path_normalized_url(url)
-            assert valid_url == commonized_url
+            commonized_url = url_validator.validate_url(url)[0]
+            if "www." in commonized_url:
+                assert valid_url == commonized_url
+            else:
+                valid_url_no_www = valid_url.replace("www.", "")
+                assert valid_url_no_www == commonized_url
+            sleep(0.1)
 
 
 def test_invalid_urls():
@@ -105,7 +125,7 @@ def test_invalid_urls():
     url_validator = UrlValidator()
     for invalid_url in invalid_urls:
         with pytest.raises(InvalidURLError):
-            url_validator.find_full_path_normalized_url(invalid_url)
+            url_validator.validate_url(invalid_url)
 
 
 def test_urls_requiring_valid_user_agent():
@@ -121,7 +141,7 @@ def test_urls_requiring_valid_user_agent():
         validated_url = False
         for _ in range(3):
             try:
-                url_validator.find_full_path_normalized_url(unknown_url)
+                url_validator.validate_url(unknown_url)
             except InvalidURLError:
                 continue
             else:
@@ -141,7 +161,7 @@ def test_random_user_agents():
     for unknown_url in urls_needing_valid_user_agent:
         for user_agent in set(url_constants.USER_AGENTS):
             try:
-                url_validator.find_full_path_normalized_url(unknown_url, user_agent)
+                url_validator.validate_url(unknown_url, user_agent)
             except InvalidURLError:
                 # Avoid any kind of rate limiting or semblance of being a bot
                 sleep(0.1)
