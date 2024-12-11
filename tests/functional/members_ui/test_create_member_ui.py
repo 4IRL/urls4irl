@@ -8,7 +8,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from src.mocks.mock_constants import MOCK_UTUB_NAME_BASE, USERNAME_BASE
+from src.cli.mock_constants import MOCK_UTUB_NAME_BASE, USERNAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import MainPageLocators as MPL
 from tests.functional.members_ui.utils_for_test_members_ui import (
