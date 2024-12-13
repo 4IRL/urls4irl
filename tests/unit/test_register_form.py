@@ -2,8 +2,10 @@ from flask import url_for, request
 import pytest
 
 from src.utils.all_routes import ROUTES
+from src.utils.constants import USER_CONSTANTS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.splash_form_strs import REGISTER_FORM
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from src.utils.strings.user_strs import USER_FAILURE as REGISTER_FAILURE
 
 pytestmark = pytest.mark.unit
@@ -158,7 +160,7 @@ def test_register_user_form_only_confirm_email_csrf(load_register_page):
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.CONFIRM_EMAIL:
             assert response_json[STD_JSON.ERRORS][input_key] == [
-                "Field must be equal to email."
+                UI_TEST_STRINGS.EMAIL_EQUALITY_FAILED
             ]
         else:
             assert (
@@ -200,7 +202,7 @@ def test_register_user_form_invalid_password_csrf(load_register_page):
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.PASSWORD:
             assert response_json[STD_JSON.ERRORS][input_key] == [
-                "Field must be between 12 and 64 characters long."
+                f"Field must be between {USER_CONSTANTS.MIN_PASSWORD_LENGTH} and {USER_CONSTANTS.MAX_PASSWORD_LENGTH} characters long."
             ]
         else:
             assert (
@@ -280,13 +282,151 @@ def test_register_user_form_only_confirm_password_csrf(load_register_page):
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         if input_key == REGISTER_FORM.CONFIRM_PASSWORD:
             assert response_json[STD_JSON.ERRORS][input_key] == [
-                "Field must be equal to password."
+                UI_TEST_STRINGS.PASSWORD_EQUALITY_FAILED
             ]
         else:
             assert (
                 response_json[STD_JSON.ERRORS][input_key]
                 == REGISTER_FAILURE.FIELD_REQUIRED
             )
+
+
+def test_register_user_form_long_password_csrf(load_register_page):
+    """
+    GIVEN an unregistered user
+    WHEN "/register" is POST'd with a too long password
+    THEN ensure registration does not occur
+    """
+
+    client, csrf_token_string = load_register_page
+    # Only password confirm
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        data={
+            REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
+            REGISTER_FORM.USERNAME: "FakeUserName123",
+            REGISTER_FORM.EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.CONFIRM_EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.PASSWORD: "a" * (USER_CONSTANTS.MAX_PASSWORD_LENGTH + 1),
+            REGISTER_FORM.CONFIRM_PASSWORD: "a"
+            * (USER_CONSTANTS.MAX_PASSWORD_LENGTH + 1),
+        },
+    )
+
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+    response_json = response.json
+
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
+    assert len(response_json[STD_JSON.ERRORS]) == 1
+    assert response_json[STD_JSON.ERRORS][REGISTER_FORM.PASSWORD] == [
+        f"Field must be between {USER_CONSTANTS.MIN_PASSWORD_LENGTH} and {USER_CONSTANTS.MAX_PASSWORD_LENGTH} characters long."
+    ]
+
+
+def test_register_user_form_short_password_csrf(load_register_page):
+    """
+    GIVEN an unregistered user
+    WHEN "/register" is POST'd with a too short password
+    THEN ensure registration does not occur
+    """
+
+    client, csrf_token_string = load_register_page
+    # Only password confirm
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        data={
+            REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
+            REGISTER_FORM.USERNAME: "FakeUserName123",
+            REGISTER_FORM.EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.CONFIRM_EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.PASSWORD: "a" * (USER_CONSTANTS.MIN_PASSWORD_LENGTH - 1),
+            REGISTER_FORM.CONFIRM_PASSWORD: "a"
+            * (USER_CONSTANTS.MIN_PASSWORD_LENGTH - 1),
+        },
+    )
+
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+    response_json = response.json
+
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
+    assert len(response_json[STD_JSON.ERRORS]) == 1
+    assert response_json[STD_JSON.ERRORS][REGISTER_FORM.PASSWORD] == [
+        f"Field must be between {USER_CONSTANTS.MIN_PASSWORD_LENGTH} and {USER_CONSTANTS.MAX_PASSWORD_LENGTH} characters long."
+    ]
+
+
+def test_register_user_form_long_username_csrf(load_register_page):
+    """
+    GIVEN an unregistered user
+    WHEN "/register" is POST'd with a too long username
+    THEN ensure registration does not occur
+    """
+
+    client, csrf_token_string = load_register_page
+    # Only password confirm
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        data={
+            REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
+            REGISTER_FORM.USERNAME: "a" * (USER_CONSTANTS.MAX_USERNAME_LENGTH + 1),
+            REGISTER_FORM.EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.CONFIRM_EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.PASSWORD: "FakeUser@Name123.com",
+            REGISTER_FORM.CONFIRM_PASSWORD: "FakeUser@Name123.com",
+        },
+    )
+
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+    response_json = response.json
+
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
+    assert len(response_json[STD_JSON.ERRORS]) == 1
+    assert response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME] == [
+        f"Field must be between {USER_CONSTANTS.MIN_USERNAME_LENGTH} and {USER_CONSTANTS.MAX_USERNAME_LENGTH} characters long."
+    ]
+
+
+def test_register_user_form_short_username_csrf(load_register_page):
+    """
+    GIVEN an unregistered user
+    WHEN "/register" is POST'd with a too short username
+    THEN ensure registration does not occur
+    """
+
+    client, csrf_token_string = load_register_page
+    # Only password confirm
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        data={
+            REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
+            REGISTER_FORM.USERNAME: "a" * (USER_CONSTANTS.MIN_USERNAME_LENGTH - 1),
+            REGISTER_FORM.EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.CONFIRM_EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.PASSWORD: "FakeUser@Name123.com",
+            REGISTER_FORM.CONFIRM_PASSWORD: "FakeUser@Name123.com",
+        },
+    )
+
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+    response_json = response.json
+
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
+    assert len(response_json[STD_JSON.ERRORS]) == 1
+    assert response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME] == [
+        f"Field must be between {USER_CONSTANTS.MIN_USERNAME_LENGTH} and {USER_CONSTANTS.MAX_USERNAME_LENGTH} characters long."
+    ]
 
 
 def test_register_user_form_no_csrf(load_register_page):

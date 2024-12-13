@@ -19,12 +19,8 @@ class UI_TEST_STRINGS:
 
     # Register
     HEADER_MODAL_EMAIL_VALIDATION = "Validate Your Email!"
-
-    MESSAGE_USERNAME_TAKEN = "That username is already taken. Please choose another."
-    MESSAGE_EMAIL_UNVALIDATED = "An account already exists with that information but the email has not been validated."
-    MESSAGE_EMAIL_TAKEN = (
-        "That email is already associated with a username. Forgot password?"
-    )
+    PASSWORD_EQUALITY_FAILED = "Field must be equal to password."
+    EMAIL_EQUALITY_FAILED = "Field must be equal to email."
 
     # UTubs
     TEST_UTUB_NAME_1 = MOCK_UTUB_NAME_BASE + "1"

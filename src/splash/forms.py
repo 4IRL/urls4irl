@@ -43,7 +43,13 @@ class UserRegistrationForm(FlaskForm):
     )
     password = PasswordField(
         REGISTER_LOGIN_FORM.PASSWORD_TEXT,
-        validators=[InputRequired(), Length(min=12, max=64)],
+        validators=[
+            InputRequired(),
+            Length(
+                min=USER_CONSTANTS.MIN_PASSWORD_LENGTH,
+                max=USER_CONSTANTS.MAX_PASSWORD_LENGTH,
+            ),
+        ],
     )
     confirm_password = PasswordField(
         REGISTER_LOGIN_FORM.CONFIRM_PASSWORD_TEXT,

@@ -73,16 +73,12 @@ def wait_then_get_element(
 
         return element
     except ElementNotInteractableException:
-        print("ElementNotInteractableException")
         return None
     except NoSuchElementException:
-        print("NoSuchElementException")
         return None
     except TimeoutException:
-        print("Timeout")
         return None
     except StaleElementReferenceException:
-        print("Stale")
         return None
 
 
@@ -393,22 +389,6 @@ def assert_login(browser: WebDriver):
     userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
     assert user_logged_in.text == userLoggedInText
-
-
-def assert_register(browser: WebDriver):
-    """
-    Streamlines actions needed to confirm a new user is registered.
-
-    Args:
-        WebDriver open to U4I Home Page
-
-    Returns:
-        Boolean True, if registered
-    """
-    modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL)
-    assert modal_title is not None
-
-    assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
 
 
 # UTub Deck

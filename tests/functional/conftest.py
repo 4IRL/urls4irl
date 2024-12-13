@@ -13,8 +13,10 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
 # Internal libraries
-from src import create_app
+from src import create_app, db
 from src.config import ConfigTest
+from src.models.email_validations import Email_Validations
+from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.ui_test_utils import clear_db, find_open_port, ping_server, run_app
 
@@ -214,6 +216,30 @@ def create_test_users(runner, debug_strings):
 
     if debug_strings:
         print("\nusers created")
+
+
+@pytest.fixture
+def create_user_unconfirmed_email(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
+    """
+    Assumes nothing created. Creates users
+    """
+    app, _ = runner
+
+    with app.app_context():
+        new_user = Users(
+            username=UI_TEST_STRINGS.TEST_USERNAME_1,
+            email=UI_TEST_STRINGS.TEST_PASSWORD_1,
+            plaintext_password=UI_TEST_STRINGS.TEST_PASSWORD_1,
+        )
+
+        new_email_validation = Email_Validations(
+            validation_token=new_user.get_email_validation_token()
+        )
+        new_email_validation.is_validated = False
+        new_user.email_confirm = new_email_validation
+
+        db.session.add(new_user)
+        db.session.commit()
 
 
 @pytest.fixture
