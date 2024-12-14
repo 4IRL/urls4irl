@@ -32,7 +32,7 @@ pytestmark = pytest.mark.utubs_ui
 
 
 def test_open_delete_utub_modal(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a user on their Home page
@@ -40,7 +40,7 @@ def test_open_delete_utub_modal(
     THEN ensure the warning modal is shown
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -57,7 +57,7 @@ def test_open_delete_utub_modal(
 
 
 def test_dismiss_delete_utub_modal_x(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a user on their Home page
@@ -65,7 +65,7 @@ def test_dismiss_delete_utub_modal_x(
     THEN ensure the warning modal is hidden
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -82,7 +82,7 @@ def test_dismiss_delete_utub_modal_x(
 
 
 def test_dismiss_delete_utub_modal_btn(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a user on their Home page
@@ -90,7 +90,7 @@ def test_dismiss_delete_utub_modal_btn(
     THEN ensure the warning modal is hidden
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -107,7 +107,7 @@ def test_dismiss_delete_utub_modal_btn(
 
 
 def test_dismiss_delete_utub_modal_key(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a user on their Home page
@@ -115,7 +115,7 @@ def test_dismiss_delete_utub_modal_key(
     THEN ensure the warning modal is hidden
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -137,7 +137,7 @@ def test_dismiss_delete_utub_modal_key(
 
 
 def test_dismiss_delete_utub_modal_click(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     GIVEN a user on their Home page
@@ -145,7 +145,7 @@ def test_dismiss_delete_utub_modal_click(
     THEN ensure the warning modal is hidden
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -162,16 +162,14 @@ def test_dismiss_delete_utub_modal_click(
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_delete_utub_btn(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
-):
+def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Flask):
     """
     GIVEN a user trying to add a new UTub
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1

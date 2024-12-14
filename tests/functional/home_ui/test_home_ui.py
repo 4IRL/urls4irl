@@ -23,9 +23,7 @@ from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 pytestmark = pytest.mark.home_ui
 
 
-def test_logout(
-    browser: WebDriver, create_test_users, provide_app_for_session_generation: Flask
-):
+def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     """
     Tests a user's ability to logout.
 
@@ -33,7 +31,7 @@ def test_logout(
     WHEN user clicks the upper RHS logout button
     THEN ensure the U4I Splash page is displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id = 1
     session_id = create_user_session_and_provide_session_id(app, user_id)
     login_user_with_cookie_from_session(browser, session_id)
@@ -54,9 +52,7 @@ def test_logout(
     assert login_btn.is_displayed()
 
 
-def test_refresh_logo(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
-):
+def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask):
     """
     Tests a user's ability to refresh the U4I Home page by clicking the upper LHS logo.
 
@@ -66,7 +62,7 @@ def test_refresh_logo(
     """
     # TODO: test async addition of component by 2nd test user in a shared UTub, then confirm 1st test user can see the update upon refresh
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 

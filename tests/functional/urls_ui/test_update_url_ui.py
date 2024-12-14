@@ -42,7 +42,7 @@ def test_update_url_string_submit_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL string of the selected URL.
@@ -53,7 +53,7 @@ def test_update_url_string_submit_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add, random_url_to_change_to = random.sample(MOCK_URL_STRINGS, 2)
     add_mock_urls(
         cli_runner,
@@ -103,7 +103,7 @@ def test_update_url_string_press_enter_key(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL string of the selected URL.
@@ -114,7 +114,7 @@ def test_update_url_string_press_enter_key(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add, random_url_to_change_to = random.sample(MOCK_URL_STRINGS, 2)
     add_mock_urls(
         cli_runner,
@@ -164,7 +164,7 @@ def test_update_url_string_big_cancel_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to close the update URL input box by pressing cancel btn
@@ -175,7 +175,7 @@ def test_update_url_string_big_cancel_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
@@ -227,7 +227,7 @@ def test_update_url_string_cancel_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to close the update URL input box by pressing cancel btn
@@ -238,7 +238,7 @@ def test_update_url_string_cancel_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
@@ -289,7 +289,7 @@ def test_update_url_string_escape_key(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to close the update URL input box by pressing escape key
@@ -300,7 +300,7 @@ def test_update_url_string_escape_key(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
@@ -349,7 +349,7 @@ def test_update_url_title_submit_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL title of a selected URL.
@@ -360,7 +360,7 @@ def test_update_url_title_submit_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     add_mock_urls(cli_runner, list([UTS.TEST_URL_STRING_CREATE]))
 
     user_id_for_test = 1
@@ -392,7 +392,7 @@ def test_update_url_title_submit_enter_key(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL title of a selected URL.
@@ -403,7 +403,7 @@ def test_update_url_title_submit_enter_key(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     add_mock_urls(cli_runner, list([UTS.TEST_URL_STRING_CREATE]))
 
     user_id_for_test = 1
@@ -435,7 +435,7 @@ def test_update_url_title_cancel_click_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL title of a selected URL.
@@ -446,7 +446,7 @@ def test_update_url_title_cancel_click_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     add_mock_urls(cli_runner, list([UTS.TEST_URL_STRING_CREATE]))
 
     user_id_for_test = 1
@@ -482,7 +482,7 @@ def test_update_url_title_cancel_press_escape(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL title of a selected URL.
@@ -493,7 +493,7 @@ def test_update_url_title_cancel_press_escape(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     add_mock_urls(cli_runner, list([UTS.TEST_URL_STRING_CREATE]))
 
     user_id_for_test = 1

@@ -41,7 +41,7 @@ pytestmark = pytest.mark.urls_ui
 
 
 def test_access_url_by_access_btn_while_selected(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -50,7 +50,7 @@ def test_access_url_by_access_btn_while_selected(
     WHEN a user selects a URL and clicks 'Access URL' button
     THEN ensure the URL opens in a new tab
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -74,7 +74,7 @@ def test_access_url_by_access_btn_while_selected(
 
 
 def test_access_url_by_goto_btn_while_selected(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -83,7 +83,7 @@ def test_access_url_by_goto_btn_while_selected(
     WHEN a user selects a URL and clicks the URL Go-To button
     THEN ensure the URL opens in a new tab
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -107,7 +107,7 @@ def test_access_url_by_goto_btn_while_selected(
 
 
 def test_access_url_by_goto_btn_while_hover(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -116,7 +116,7 @@ def test_access_url_by_goto_btn_while_hover(
     WHEN a user hovers over a URL and clicks the URL Go-To button
     THEN ensure the URL opens in a new tab
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -144,7 +144,7 @@ def test_access_url_by_goto_btn_while_hover(
 
 
 def test_access_url_by_clicking_url_string(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the displayed URL string.
@@ -154,7 +154,7 @@ def test_access_url_by_clicking_url_string(
     THEN ensure the URL opens in a new tab
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -184,7 +184,7 @@ def test_access_all_urls_at_limit(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but accessing when at the maximum number of URLs before a warning is shown
@@ -200,7 +200,7 @@ def test_access_all_urls_at_limit(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -234,7 +234,7 @@ def test_access_all_urls_above_limit(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but accessing when above the maximum number of URLs before a warning is shown
@@ -250,7 +250,7 @@ def test_access_all_urls_above_limit(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -291,7 +291,7 @@ def test_access_all_urls_above_limit_cancel_modal_dismiss_btn(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but access all modal warning shows, and user decides to cancel by pressing the dismiss button
@@ -307,7 +307,7 @@ def test_access_all_urls_above_limit_cancel_modal_dismiss_btn(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -338,7 +338,7 @@ def test_access_all_urls_above_limit_cancel_modal_x_btn(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but access all modal warning shows, and user decides to cancel by pressing the dismiss button
@@ -354,7 +354,7 @@ def test_access_all_urls_above_limit_cancel_modal_x_btn(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -385,7 +385,7 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but access all modal warning shows, and user decides to cancel by pressing the dismiss button
@@ -401,7 +401,7 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -429,7 +429,7 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
 
 
 def test_access_to_urls_as_utub_owner(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to have all capabilities available when selecting a URL
@@ -444,7 +444,7 @@ def test_access_to_urls_as_utub_owner(
         Edit URL Title
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -461,7 +461,7 @@ def test_access_to_urls_as_utub_owner(
 
 
 def test_access_to_non_added_urls_as_utub_member(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a UTub member's ability to have limited capability when selecting a URL they did not make
@@ -478,7 +478,7 @@ def test_access_to_non_added_urls_as_utub_member(
         Access URL
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -504,7 +504,7 @@ def test_access_to_non_added_urls_as_utub_member(
 
 
 def test_access_to_urls_as_url_creator_and_utub_member(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a UTub member's ability to have limited capability when selecting a URL they did not make
@@ -520,7 +520,7 @@ def test_access_to_urls_as_url_creator_and_utub_member(
         Access URL
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
