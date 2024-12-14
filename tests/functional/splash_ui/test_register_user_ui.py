@@ -4,6 +4,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
+from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
 from tests.functional.locators import SplashPageLocators as SPL
@@ -13,6 +14,7 @@ from tests.functional.splash_ui.utils_for_test_splash_ui import (
 )
 from tests.functional.utils_for_test import (
     dismiss_modal_with_click_out,
+    wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -282,15 +284,15 @@ def test_register_existing_username_and_email(browser: WebDriver, create_test_us
     )
 
 
-def test_register_user_unconfirmed_email(
+def test_register_user_unconfirmed_email_shows_alert(
     browser: WebDriver, create_user_unconfirmed_email
 ):
     """
     Tests the site error response to a user submitting a register form with unconfirmed email.
 
     GIVEN a fresh load of the U4I Splash page
-    WHEN user attempts to register with mismatched email addresses
-    THEN U4I responds with a failure message and prompts user to double check inputs
+    WHEN user attempts to register with unconfirmed email address
+    THEN U4I responds with a failure message and prompts user to confirm email
     """
 
     register_user_ui(
@@ -301,14 +303,48 @@ def test_register_user_unconfirmed_email(
         browser, SPL.SPLASH_MODAL_ALERT, time=3
     )
     assert unconfirmed_email_feedback is not None
-    child_elements = unconfirmed_email_feedback.find_elements(By.CSS_SELECTOR, "div")
 
-    assert any(
-        [
-            elem.text == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
-            for elem in child_elements
-        ]
+    assert unconfirmed_email_feedback.is_displayed()
+    assert (
+        unconfirmed_email_feedback.find_element(By.CSS_SELECTOR, "div").text
+        == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
     )
+    assert (
+        unconfirmed_email_feedback.find_element(By.CSS_SELECTOR, "button").text
+        == "Validate My Email"
+    )
+
+
+def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
+    browser: WebDriver, create_user_unconfirmed_email
+):
+    """
+    Tests the site error response to a user submitting a register form with unconfirmed email, and then clicking on the "Validate My Email" button.
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user attempts to register with unconfirmed email address, and then clicks on the "Validate My Email" button
+    THEN U4I responds with the Validate My Email modal, alert shows with "Email Sent!"
+    """
+
+    register_user_ui(
+        browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+    )
+    # Extract error message text
+    unconfirmed_email_feedback = wait_then_get_element(
+        browser, SPL.SPLASH_MODAL_ALERT, time=3
+    )
+    assert unconfirmed_email_feedback is not None
+
+    assert unconfirmed_email_feedback.is_displayed()
+    validate_email_btn = unconfirmed_email_feedback.find_element(
+        By.CSS_SELECTOR, "button"
+    )
+    wait_for_web_element_and_click(browser, validate_email_btn)
+    wait_until_visible_css_selector(browser, SPL.HEADER_VALIDATE_EMAIL)
+
+    email_sent = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
+    assert email_sent is not None
+    assert email_sent.text == EMAILS.EMAIL_SENT
 
 
 def test_register_failed_password_equality(browser: WebDriver):

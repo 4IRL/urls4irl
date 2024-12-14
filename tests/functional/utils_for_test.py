@@ -109,12 +109,10 @@ def wait_then_get_elements(
 
         return elements
     except ElementNotInteractableException:
-        print("ElementNotInteractableException")
         return []
     except NoSuchElementException:
         return []
     except TimeoutException:
-        print("Timeout")
         return []
 
 

@@ -88,7 +88,14 @@ class LoginForm(FlaskForm):
     """
 
     username = StringField(
-        REGISTER_LOGIN_FORM.USERNAME_TEXT, validators=[InputRequired()]
+        REGISTER_LOGIN_FORM.USERNAME_TEXT,
+        validators=[
+            InputRequired(),
+            Length(
+                min=USER_CONSTANTS.MIN_USERNAME_LENGTH,
+                max=USER_CONSTANTS.MAX_USERNAME_LENGTH,
+            ),
+        ],
     )
     password = PasswordField(
         REGISTER_LOGIN_FORM.PASSWORD_TEXT, validators=[InputRequired()]
