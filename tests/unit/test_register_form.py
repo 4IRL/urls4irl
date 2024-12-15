@@ -3,6 +3,7 @@ import pytest
 
 from src.utils.all_routes import ROUTES
 from src.utils.constants import USER_CONSTANTS
+from src.utils.strings.email_validation_strs import EMAILS_FAILURE
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
@@ -55,7 +56,6 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     THEN ensure registration does not occur due to missing fields and invalid email
     """
 
-    INVALID_EMAIL_ADDRESS = ["Invalid email address."]
     client, csrf_token_string = load_register_page
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
@@ -81,7 +81,7 @@ def test_register_user_form_only_invalid_email_csrf(load_register_page):
     for input_key in REGISTER_FORM.REGISTER_FORM_KEYS:
         form_error = response_json[STD_JSON.ERRORS][input_key]
         if input_key == REGISTER_FORM.EMAIL:
-            assert form_error == INVALID_EMAIL_ADDRESS
+            assert form_error == [EMAILS_FAILURE.INVALID_EMAIL_INPUT]
         else:
             assert (
                 response_json[STD_JSON.ERRORS][input_key]
