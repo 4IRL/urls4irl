@@ -22,6 +22,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # Internal libraries
 from src.models.users import Users
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
@@ -73,16 +74,12 @@ def wait_then_get_element(
 
         return element
     except ElementNotInteractableException:
-        print("ElementNotInteractableException")
         return None
     except NoSuchElementException:
-        print("NoSuchElementException")
         return None
     except TimeoutException:
-        print("Timeout")
         return None
     except StaleElementReferenceException:
-        print("Stale")
         return None
 
 
@@ -113,12 +110,10 @@ def wait_then_get_elements(
 
         return elements
     except ElementNotInteractableException:
-        print("ElementNotInteractableException")
         return []
     except NoSuchElementException:
         return []
     except TimeoutException:
-        print("Timeout")
         return []
 
 
@@ -249,6 +244,13 @@ def assert_not_visible_css_selector(
         assert True
     except TimeoutException:
         print("Element is still visible.")
+
+
+def assert_on_404_page(browser: WebDriver):
+    error_header = wait_then_get_element(browser, css_selector="h2", time=3)
+    assert error_header is not None
+    assert error_header.text == IDENTIFIERS.HTML_404
+    assert "Invalid Request - URLS4IRL" == browser.title
 
 
 # Modal
@@ -393,22 +395,6 @@ def assert_login(browser: WebDriver):
     userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
     assert user_logged_in.text == userLoggedInText
-
-
-def assert_register(browser: WebDriver):
-    """
-    Streamlines actions needed to confirm a new user is registered.
-
-    Args:
-        WebDriver open to U4I Home Page
-
-    Returns:
-        Boolean True, if registered
-    """
-    modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL)
-    assert modal_title is not None
-
-    assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
 
 
 # UTub Deck
@@ -1006,7 +992,12 @@ def get_tag_filter_by_id(browser: WebDriver, tag_id: int) -> WebElement | None:
 
 
 def get_tag_filter_id(tag_filter: WebElement) -> int | None:
-    return int(tag_filter.get_attribute("data-utub-tag-id"))
+    tag_filter_id = tag_filter.get_attribute("data-utub-tag-id")
+
+    if tag_filter_id is None or not tag_filter_id.isnumeric():
+        return None
+
+    return int(tag_filter_id)
 
 
 def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | None:

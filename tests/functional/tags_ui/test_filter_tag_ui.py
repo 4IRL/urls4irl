@@ -33,9 +33,7 @@ pytestmark = pytest.mark.tags_ui
 
 
 # @pytest.mark.skip(reason="Testing another in isolation")
-def test_filter_tag(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
-):
+def test_filter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     """
     Tests a user's ability to filter the URL deck by selecting a tag filter.
 
@@ -44,7 +42,7 @@ def test_filter_tag(
     THEN ensure the corresponding URL is hidden
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
 
     utub_title = UTS.TEST_UTUB_NAME_1
 
@@ -90,9 +88,7 @@ def test_filter_tag(
     assert not get_url_by_title(browser, url_title)
 
 
-def test_unfilter_tag(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
-):
+def test_unfilter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     """
     Tests a user's ability to unfilter the URL deck by deselecting tag filter.
 
@@ -101,7 +97,7 @@ def test_unfilter_tag(
     THEN ensure the corresponding URL is hidden
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
 
     utub_title = UTS.TEST_UTUB_NAME_1
 
@@ -136,9 +132,7 @@ def test_unfilter_tag(
     assert get_url_by_title(browser, url_title)
 
 
-def test_unselect_all_filters(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
-):
+def test_unselect_all_filters(browser: WebDriver, create_test_tags, provide_app: Flask):
     """
     Tests a user's ability to unfilter the URL deck by deselecting tag filter.
 
@@ -147,7 +141,7 @@ def test_unselect_all_filters(
     THEN ensure the corresponding URL is hidden
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
 
     utub_title = UTS.TEST_UTUB_NAME_1
 

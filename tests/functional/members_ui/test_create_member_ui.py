@@ -27,7 +27,7 @@ pytestmark = pytest.mark.members_ui
 
 
 def test_open_input_create_member(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to open the create member input field.
@@ -36,7 +36,7 @@ def test_open_input_create_member(
     WHEN the user clicks the createMember plus button
     THEN ensure the createMember form is opened.
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
@@ -48,7 +48,7 @@ def test_open_input_create_member(
 
 
 def test_cancel_input_create_member_x(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to close the create member input field.
@@ -57,7 +57,7 @@ def test_cancel_input_create_member_x(
     WHEN the user clicks the createMember plus button, then clicks the x button
     THEN ensure the createMember form is not shown.
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
@@ -71,7 +71,7 @@ def test_cancel_input_create_member_x(
 
 
 def test_cancel_input_create_member_key(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to close the create member input field.
@@ -80,7 +80,7 @@ def test_cancel_input_create_member_key(
     WHEN the user clicks the createMember plus button, then presses the esc key
     THEN ensure the createMember form is not shown.
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
@@ -93,9 +93,7 @@ def test_cancel_input_create_member_key(
     assert not create_member_input.is_displayed()
 
 
-def test_create_member_btn(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
-):
+def test_create_member_btn(browser: WebDriver, create_test_utubs, provide_app: Flask):
     """
     Tests a UTub owner's ability to create a member by adding another U4I user to the UTub.
 
@@ -104,7 +102,7 @@ def test_create_member_btn(
     THEN ensure the new member is successfully added to the UTub.
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
@@ -123,9 +121,7 @@ def test_create_member_btn(
     assert new_member_username in member_usernames
 
 
-def test_create_member_key(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
-):
+def test_create_member_key(browser: WebDriver, create_test_utubs, provide_app: Flask):
     """
     Tests a UTub owner's ability to create a member by adding another U4I user to the UTub.
 
@@ -134,7 +130,7 @@ def test_create_member_key(
     THEN ensure the new member is successfully added to the UTub.
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
@@ -156,7 +152,7 @@ def test_create_member_key(
 def test_create_member_denied(
     browser: WebDriver,
     create_test_utubmembers,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a UTub member's inability to create a member in the UTub.
@@ -164,7 +160,7 @@ def test_create_member_denied(
     GIVEN a user is a UTub member
     THEN the user does not have access to the createMember plus button
     """
-    app = provide_app_for_session_generation
+    app = provide_app
 
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)

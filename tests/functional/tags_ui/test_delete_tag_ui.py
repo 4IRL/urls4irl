@@ -39,7 +39,7 @@ pytestmark = pytest.mark.tags_ui
 
 
 def test_show_delete_tag_button_on_hover(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests a user's ability to create a new URL in a selected UTub
@@ -48,7 +48,7 @@ def test_show_delete_tag_button_on_hover(
     WHEN user hovers over tag badge
     THEN ensure the deleteTag button is displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -94,7 +94,7 @@ def test_delete_tag(browser, create_test_tags):
 
 # @pytest.mark.skip(reason="Bug. Currently FAILS")
 def test_no_show_delete_tag_button_on_hover_update_url_title(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests the limitation on users, preventing deletion of tags while updating URL titles
@@ -103,7 +103,7 @@ def test_no_show_delete_tag_button_on_hover_update_url_title(
     WHEN user clicks the editURLTitle button, and subsequently hovers over a tag
     THEN ensure the deleteTag button is not displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     url_title = UTS.TEST_URL_TITLE_1
     login_user_select_utub_by_name_and_url_by_title(
@@ -124,7 +124,7 @@ def test_no_show_delete_tag_button_on_hover_update_url_title(
 
 
 def test_no_show_delete_tag_button_on_hover_update_url_string(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests the limitation on users, preventing deletion of tags while updating URL strings
@@ -133,7 +133,7 @@ def test_no_show_delete_tag_button_on_hover_update_url_string(
     WHEN user clicks the editURLTitle button, and subsequently hovers over a tag
     THEN ensure the deleteTag button is not displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     url_title = UTS.TEST_URL_TITLE_1
     login_user_select_utub_by_name_and_url_by_title(
@@ -159,7 +159,7 @@ def test_no_show_delete_tag_button_on_hover_update_url_string(
 
 
 def test_no_show_delete_tag_button_on_hover_add_tag(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests the limitation on users, preventing deletion of tags while adding tags
@@ -168,7 +168,7 @@ def test_no_show_delete_tag_button_on_hover_add_tag(
     WHEN user clicks the addTag button, and subsequently hovers over a tag
     THEN ensure the deleteTag button is not displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     url_title = UTS.TEST_URL_TITLE_1
     login_user_select_utub_by_name_and_url_by_title(

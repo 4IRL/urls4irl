@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from flask import url_for
 import pytest
 
+from src.utils.strings.email_validation_strs import EMAILS_FAILURE
 from tests.models_for_test import valid_user_1
 from src import db
 from src.models.forgot_passwords import Forgot_Passwords
@@ -153,7 +154,7 @@ def test_forgot_password_with_invalid_email_fails(load_login_page):
     assert int(response_json[STD_JSON.ERROR_CODE]) == 1
     assert response_json[STD_JSON.MESSAGE] == FORGOT_PASSWORD.INVALID_EMAIL
     assert (
-        "Invalid email address."
+        EMAILS_FAILURE.INVALID_EMAIL_INPUT
         in response_json[STD_JSON.ERRORS][FORGOT_PASSWORD.EMAIL][-1]
     )
 

@@ -28,7 +28,7 @@ pytestmark = pytest.mark.members_ui
 def test_leave_utub(
     browser: WebDriver,
     create_test_utubmembers,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a UTub user's ability to leave a UTub.
@@ -38,7 +38,7 @@ def test_leave_utub(
     THEN ensure the user is successfully removed from the UTub.
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     utub_name = MOCK_UTUB_NAME_BASE + "2"
     login_user_and_select_utub_by_name(app, browser, user_id_for_test, utub_name)

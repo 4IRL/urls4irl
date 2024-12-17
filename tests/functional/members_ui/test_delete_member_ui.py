@@ -29,7 +29,7 @@ pytestmark = pytest.mark.members_ui
 def test_open_delete_member_modal(
     browser: WebDriver,
     create_test_utubmembers,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a UTub owner's ability to open the delete member modal.
@@ -38,7 +38,7 @@ def test_open_delete_member_modal(
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    app = provide_app_for_session_generation
+    app = provide_app
 
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
@@ -63,7 +63,7 @@ def test_open_delete_member_modal(
 def test_dismiss_delete_member_modal_btn(
     browser: WebDriver,
     create_test_utubmembers,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a UTub owner's ability to close the delete member modal.
@@ -72,7 +72,7 @@ def test_dismiss_delete_member_modal_btn(
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    app = provide_app_for_session_generation
+    app = provide_app
 
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
@@ -92,7 +92,7 @@ def test_dismiss_delete_member_modal_btn(
 def test_dismiss_delete_member_modal_key(
     browser: WebDriver,
     create_test_utubmembers,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a UTub owner's ability to delete a member from the UTub.
@@ -101,7 +101,7 @@ def test_dismiss_delete_member_modal_key(
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    app = provide_app_for_session_generation
+    app = provide_app
 
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
@@ -123,7 +123,7 @@ def test_dismiss_delete_member_modal_key(
 def test_delete_member_btn(
     browser: WebDriver,
     create_test_utubmembers,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a UTub owner's ability to delete a member from the UTub.
@@ -132,7 +132,7 @@ def test_delete_member_btn(
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    app = provide_app_for_session_generation
+    app = provide_app
 
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
