@@ -31,7 +31,7 @@ pytestmark = pytest.mark.urls_ui
 
 
 def test_create_url_open_input_no_urls_corner_btn(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Test that clicking on the + in the URL Deck opens up the new URL input when
@@ -41,7 +41,7 @@ def test_create_url_open_input_no_urls_corner_btn(
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -65,7 +65,7 @@ def test_create_url_open_input_no_urls_corner_btn(
 
 
 def test_create_url_open_input_no_urls_deck_btn(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Test that clicking on the 'Add One!' button in the URL Deck opens up the new URL input when
@@ -75,7 +75,7 @@ def test_create_url_open_input_no_urls_deck_btn(
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -102,7 +102,7 @@ def test_create_url_open_input_with_added_urls(
     browser: WebDriver,
     create_test_utubs,
     create_test_urls,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Test that clicking on the + in the URL Deck opens up the new URL input when
@@ -112,7 +112,7 @@ def test_create_url_open_input_with_added_urls(
     WHEN click on the + to add a new URL after URLs have already been added
     THEN ensure the appropriate input field is shown and in focus
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -134,7 +134,7 @@ def test_create_url_open_input_with_added_urls(
 
 
 def test_create_url_cancel_input_click_button(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to escape URL creation input by clicking the cancel button
@@ -144,7 +144,7 @@ def test_create_url_cancel_input_click_button(
     THEN ensure the input is closed
 
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -165,7 +165,7 @@ def test_create_url_cancel_input_click_button(
 
 
 def test_create_url_cancel_input_escape(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to escape URL creation input by using escape key
@@ -175,7 +175,7 @@ def test_create_url_cancel_input_escape(
     THEN ensure the input is closed
 
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -196,7 +196,7 @@ def test_create_url_cancel_input_escape(
 
 
 def test_create_url_submit_btn(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to create a new URL in a selected UTub
@@ -205,7 +205,7 @@ def test_create_url_submit_btn(
     WHEN they submit a new URL using the submit button
     THEN ensure the URL is added, input is hidden, and access all URLs button is shown
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -259,7 +259,7 @@ def test_create_url_submit_btn(
 
 
 def test_create_url_using_enter_key(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Tests a user's ability to create a new URL in a selected UTub
@@ -268,7 +268,7 @@ def test_create_url_using_enter_key(
     WHEN they submit a new URL using the submit button
     THEN ensure the URL is added, input is hidden, and access all URLs button is shown
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -324,7 +324,7 @@ def test_create_url_using_enter_key(
     reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
 )
 def test_create_url_title_length_exceeded(
-    browser: WebDriver, create_test_utubs, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
     Tests the site error response to a user's attempt to create a new URL with a title that exceeds the maximum character length limit.
@@ -335,7 +335,7 @@ def test_create_url_title_length_exceeded(
     """
 
     # Login test user and select first test UTub
-    app = provide_app_for_session_generation
+    app = provide_app
 
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
@@ -348,9 +348,7 @@ def test_create_url_title_length_exceeded(
     assert warning_modal_body.text == "Try shortening your UTub name"
 
 
-def test_select_url(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
-):
+def test_select_url(browser: WebDriver, create_test_urls, provide_app: Flask):
     """
     Tests a user's ability to select a URL and see more details
 
@@ -358,7 +356,7 @@ def test_select_url(
     WHEN they submit the addUTub form
     THEN ensure the appropriate input field is shown and in focus
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1

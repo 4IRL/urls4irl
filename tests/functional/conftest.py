@@ -5,7 +5,7 @@ from time import sleep
 from typing import Generator, Tuple
 
 # External libraries
-from flask import Flask
+from flask import Flask, url_for
 from flask.testing import FlaskCliRunner
 import pytest
 from selenium import webdriver
@@ -13,8 +13,12 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
 # Internal libraries
-from src import create_app
+from src import create_app, db
 from src.config import ConfigTest
+from src.models.email_validations import Email_Validations
+from src.models.forgot_passwords import Forgot_Passwords
+from src.models.users import Users
+from src.utils.all_routes import ROUTES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.ui_test_utils import clear_db, find_open_port, ping_server, run_app
 
@@ -73,7 +77,7 @@ def parallelize_app(provide_port, init_multiprocessing, flask_logs):
 
 
 @pytest.fixture(scope="session")
-def provide_app_for_session_generation() -> Generator[Flask | None, None, None]:
+def provide_app() -> Generator[Flask | None, None, None]:
     yield create_app(ConfigTest())
 
 
@@ -214,6 +218,81 @@ def create_test_users(runner, debug_strings):
 
     if debug_strings:
         print("\nusers created")
+
+
+@pytest.fixture
+def create_user_unconfirmed_email(
+    runner: Tuple[Flask, FlaskCliRunner], debug_strings
+) -> str:
+    """
+    Assumes nothing created. Creates an a user with an unconfirmed email
+
+    Returns:
+        (str): URL to validate the User's email
+    """
+    app, _ = runner
+
+    with app.app_context():
+        new_user = Users(
+            username=UI_TEST_STRINGS.TEST_USERNAME_1,
+            email=UI_TEST_STRINGS.TEST_PASSWORD_1,
+            plaintext_password=UI_TEST_STRINGS.TEST_PASSWORD_1,
+        )
+
+        new_email_validation = Email_Validations(
+            validation_token=new_user.get_email_validation_token()
+        )
+        new_email_validation.is_validated = False
+        new_user.email_confirm = new_email_validation
+
+        db.session.add(new_user)
+        db.session.commit()
+
+        with app.test_request_context():
+            return url_for(
+                ROUTES.SPLASH.VALIDATE_EMAIL,
+                token=new_email_validation.validation_token,
+            )
+
+
+@pytest.fixture
+def create_user_resetting_password(
+    runner: Tuple[Flask, FlaskCliRunner], debug_strings
+) -> str:
+    """
+    Assumes nothing created. Creates an a user with an unconfirmed email
+
+    Returns:
+        (str): URL to validate the User's email
+    """
+    app, _ = runner
+
+    with app.app_context():
+        new_user = Users(
+            username=UI_TEST_STRINGS.TEST_USERNAME_1,
+            email=UI_TEST_STRINGS.TEST_PASSWORD_1,
+            plaintext_password=UI_TEST_STRINGS.TEST_PASSWORD_1,
+        )
+
+        new_email_validation = Email_Validations(
+            validation_token=new_user.get_email_validation_token()
+        )
+        new_email_validation.is_validated = True
+        new_user.email_confirm = new_email_validation
+
+        new_password_reset = Forgot_Passwords(
+            reset_token=new_user.get_password_reset_token()
+        )
+
+        new_user.forgot_password = new_password_reset
+        db.session.add(new_user)
+        db.session.commit()
+
+        with app.test_request_context():
+            return url_for(
+                ROUTES.SPLASH.RESET_PASSWORD,
+                token=new_password_reset.reset_token,
+            )
 
 
 @pytest.fixture

@@ -2,6 +2,7 @@ from flask import url_for, request
 import pytest
 
 from src.utils.all_routes import ROUTES
+from src.utils.constants import USER_CONSTANTS
 
 pytestmark = pytest.mark.splash
 
@@ -55,10 +56,9 @@ def test_get_login_screen_not_logged_in(app_with_server_name, client):
 
         assert response.status_code == 200
 
-        assert (
-            b'<input class="form-control login-register-form-group" id="username" name="username" required type="text" value="">'
-            in response.data
-        )
+        login_input_html = f'<input class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
+
+        assert login_input_html.encode() in response.data
         assert (
             b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
             in response.data
@@ -95,10 +95,8 @@ def test_get_register_screen_not_logged_in(app_with_server_name, client):
             b'<input class="form-control login-register-form-group" id="confirmEmail" name="confirmEmail" required type="text" value="">'
             in response.data
         )
-        assert (
-            b'<input class="form-control login-register-form-group" id="password" maxlength="64" minlength="12" name="password" required type="password" value="">'
-            in response.data
-        )
+        password_input_html = f'<input class="form-control login-register-form-group" id="password" maxlength="{USER_CONSTANTS.MAX_PASSWORD_LENGTH}" minlength="{USER_CONSTANTS.MIN_PASSWORD_LENGTH}" name="password" required type="password" value="">'
+        assert password_input_html.encode() in response.data
         assert (
             b'<input class="form-control login-register-form-group" id="confirmPassword" name="confirmPassword" required type="password" value="">'
             in response.data

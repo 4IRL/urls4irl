@@ -13,7 +13,7 @@ class Email_Validations(db.Model):
     __tablename__ = "EmailValidations"
     id: int = Column(Integer, primary_key=True)
     user_id: int = Column(Integer, ForeignKey("Users.id"), unique=True, name="userID")
-    validation_token: int = Column(
+    validation_token: str = Column(
         String(2000), nullable=False, default="", name="validationToken"
     )
     is_validated: bool = Column(Boolean, default=False, name="isValidated")
@@ -21,7 +21,7 @@ class Email_Validations(db.Model):
     created_at: datetime = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
-    last_attempt: datetime = Column(
+    last_attempt: datetime | None = Column(
         DateTime(timezone=True), nullable=True, default=None, name="lastAttempt"
     )
 

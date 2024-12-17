@@ -156,6 +156,10 @@ class SplashPageLocators:
     # Jumbotron
     WELCOME_TEXT = "#splash-major-text"
 
+    # Reset Password
+    INPUT_NEW_PASSWORD = "#newPassword"
+    INPUT_CONFIRM_NEW_PASSWORD = "#confirmNewPassword"
+
 
 class ModalLocators:
     """A collector class for general modal locators"""

@@ -24,7 +24,7 @@ from tests.functional.utils_for_test import (
 
 
 def test_open_input_create_utub_tag(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests ability to open the create UTub tag form
@@ -33,7 +33,7 @@ def test_open_input_create_utub_tag(
     WHEN the user clicks on the create UTub tag plus button
     THEN ensure the createUTubTag form is opened
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -74,7 +74,7 @@ def test_open_input_create_utub_tag(
 
 
 def test_open_input_create_utub_tag_click_cancel_btn(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests ability to close the create UTub tag form by clicking cancel button
@@ -83,7 +83,7 @@ def test_open_input_create_utub_tag_click_cancel_btn(
     WHEN the user clicks on the cancel button
     THEN ensure the createUTubTag form is closed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_select_utub_by_name_open_create_utub_tag(
@@ -96,7 +96,7 @@ def test_open_input_create_utub_tag_click_cancel_btn(
 
 
 def test_open_input_create_utub_tag_press_esc_key(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests ability to close the create UTub tag form by clicking cancel button
@@ -105,7 +105,7 @@ def test_open_input_create_utub_tag_press_esc_key(
     WHEN the user presses the escape key while focused on the input field
     THEN ensure the createUTubTag form is closed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_select_utub_by_name_open_create_utub_tag(
@@ -119,7 +119,7 @@ def test_open_input_create_utub_tag_press_esc_key(
 
 
 def test_open_input_create_utub_tag_click_submit_btn(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests ability to add a new tag to the UTub
@@ -128,7 +128,7 @@ def test_open_input_create_utub_tag_click_submit_btn(
     WHEN the user presses the submit button after typing in a new UTub tag
     THEN ensure the createUTubTag form is closed and the new UTub tag is added
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     new_tag = "WOWZA123"
 
@@ -150,7 +150,7 @@ def test_open_input_create_utub_tag_click_submit_btn(
 
 
 def test_open_input_create_utub_tag_press_enter_key(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests ability to add a new tag to the UTub
@@ -159,7 +159,7 @@ def test_open_input_create_utub_tag_press_enter_key(
     WHEN the user presses the enter key after typing in a new UTub tag and focused on input
     THEN ensure the createUTubTag form is closed and the new UTub tag is added
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     new_tag = "WOWZA123"
 

@@ -4,6 +4,7 @@ from flask_login import current_user
 import pytest
 from werkzeug.security import check_password_hash
 
+from src.utils.constants import USER_CONSTANTS
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
 from src.models.users import Users
@@ -28,11 +29,12 @@ def test_register_new_user(app, load_register_page):
 
     # Ensure no user with this data exists in database
     with app.app_context():
-        new_db_user: Users = Users.query.filter(
-            Users.username == new_user[REGISTER_FORM.USERNAME]
-        ).first()
-
-    assert new_db_user is None
+        assert (
+            Users.query.filter(
+                Users.username == new_user[REGISTER_FORM.USERNAME]
+            ).first()
+            is None
+        )
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER), data=new_user, follow_redirects=True
@@ -243,10 +245,8 @@ def test_register_modal_is_shown(app_with_server_name, client):
             b'<input class="form-control login-register-form-group" id="confirmEmail" name="confirmEmail" required type="text" value="">'
             in response.data
         )
-        assert (
-            b'<input class="form-control login-register-form-group" id="password" maxlength="64" minlength="12" name="password" required type="password" value="">'
-            in response.data
-        )
+        password_input_html = f'<input class="form-control login-register-form-group" id="password" maxlength="{USER_CONSTANTS.MAX_PASSWORD_LENGTH}" minlength="{USER_CONSTANTS.MIN_PASSWORD_LENGTH}" name="password" required type="password" value="">'
+        assert password_input_html.encode() in response.data
         assert (
             b'<input class="form-control login-register-form-group" id="confirmPassword" name="confirmPassword" required type="password" value="">'
             in response.data
