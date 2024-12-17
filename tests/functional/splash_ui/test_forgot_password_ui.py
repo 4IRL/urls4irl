@@ -1,10 +1,15 @@
-from time import sleep
+from datetime import datetime
 
+from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
+from src import db
+from src.models.forgot_passwords import Forgot_Passwords
+from src.utils.constants import USER_CONSTANTS
+from src.utils.datetime_utils import utc_now
 from src.utils.strings.email_validation_strs import EMAILS_FAILURE
 from src.utils.strings.json_strs import FAILURE_GENERAL
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD
@@ -86,9 +91,7 @@ def test_dismiss_forgot_password_modal_x(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    sleep(2)
-
-    wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS)
+    wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS, time=3)
 
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
 
@@ -105,9 +108,7 @@ def test_dismiss_forgot_password_modal_key(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    sleep(2)
-
-    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL, time=3)
     assert splash_modal is not None
 
     splash_modal.send_keys(Keys.ESCAPE)
@@ -254,3 +255,63 @@ def test_forgot_password_nonexistent_email(browser: WebDriver):
     assert alert_banner is not None
 
     assert alert_banner.text == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
+
+
+def test_forgot_password_two_per_minute_rate_limit(
+    browser: WebDriver, create_user_resetting_password, provide_app: Flask
+):
+    """
+    Tests site response to user indicating forgot password more than twice per minute
+
+    GIVEN a valid user requesting that they forgot their password
+    WHEN user clicks the submit button on forgot password form after having done it twice already
+    THEN ensure U4I responds with appropriate error message
+    """
+    open_forgot_password_modal(browser)
+    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    assert input_elem is not None
+    input_elem.send_keys(UTS.TEST_PASSWORD_1)
+
+    app = provide_app
+    with app.app_context():
+        forgot_password: Forgot_Passwords = Forgot_Passwords.query.first()
+        forgot_password.last_attempt = datetime.fromtimestamp(
+            int(datetime.timestamp(utc_now()))
+        )
+        initial_attempts = forgot_password.attempts
+        db.session.commit()
+
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
+
+    with app.app_context():
+        forgot_password: Forgot_Passwords = Forgot_Passwords.query.first()
+        assert initial_attempts == forgot_password.attempts
+
+
+def test_forgot_password_five_per_hour_rate_limit(
+    browser: WebDriver, create_user_resetting_password, provide_app: Flask
+):
+    """
+    Tests site response to user indicating forgot password more than five times in one hour
+
+    GIVEN a valid user requesting that they forgot their password
+    WHEN user clicks the submit button on forgot password form after having done it five times in one hour
+    THEN ensure U4I responds with appropriate error message
+    """
+    open_forgot_password_modal(browser)
+    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    assert input_elem is not None
+    input_elem.send_keys(UTS.TEST_PASSWORD_1)
+
+    app = provide_app
+    with app.app_context():
+        forgot_password: Forgot_Passwords = Forgot_Passwords.query.first()
+        forgot_password.attempts = USER_CONSTANTS.PASSWORD_RESET_ATTEMPTS
+        initial_attempts = forgot_password.attempts
+        db.session.commit()
+
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
+
+    with app.app_context():
+        forgot_password: Forgot_Passwords = Forgot_Passwords.query.first()
+        assert initial_attempts == forgot_password.attempts

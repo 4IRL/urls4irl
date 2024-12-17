@@ -22,6 +22,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # Internal libraries
 from src.models.users import Users
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import MainPageLocators as MPL
@@ -243,6 +244,13 @@ def assert_not_visible_css_selector(
         assert True
     except TimeoutException:
         print("Element is still visible.")
+
+
+def assert_on_404_page(browser: WebDriver):
+    error_header = wait_then_get_element(browser, css_selector="h2", time=3)
+    assert error_header is not None
+    assert error_header.text == IDENTIFIERS.HTML_404
+    assert "Invalid Request - URLS4IRL" == browser.title
 
 
 # Modal
@@ -984,7 +992,12 @@ def get_tag_filter_by_id(browser: WebDriver, tag_id: int) -> WebElement | None:
 
 
 def get_tag_filter_id(tag_filter: WebElement) -> int | None:
-    return int(tag_filter.get_attribute("data-utub-tag-id"))
+    tag_filter_id = tag_filter.get_attribute("data-utub-tag-id")
+
+    if tag_filter_id is None or not tag_filter_id.isnumeric():
+        return None
+
+    return int(tag_filter_id)
 
 
 def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | None:
