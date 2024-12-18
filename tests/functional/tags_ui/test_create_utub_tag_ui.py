@@ -9,7 +9,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 # Internal libraries
 from src.models.utubs import Utubs
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
     login_user_select_utub_by_name_open_create_utub_tag,
     verify_create_utub_tag_input_form_is_hidden,
@@ -40,10 +40,10 @@ def test_open_input_create_utub_tag(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
     )
 
-    elem = wait_then_click_element(browser, MPL.BUTTON_UTUB_TAG_CREATE)
+    elem = wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CREATE)
     assert elem is not None
 
-    utub_tag_input = browser.find_element(By.CSS_SELECTOR, MPL.INPUT_UTUB_TAG_CREATE)
+    utub_tag_input = browser.find_element(By.CSS_SELECTOR, HPL.INPUT_UTUB_TAG_CREATE)
 
     wait_until_visible(browser, utub_tag_input)
 
@@ -51,9 +51,9 @@ def test_open_input_create_utub_tag(
     assert browser.switch_to.active_element == utub_tag_input
 
     visible_elems = (
-        MPL.INPUT_UTUB_TAG_CREATE,
-        MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
-        MPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
+        HPL.INPUT_UTUB_TAG_CREATE,
+        HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
+        HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
     )
 
     for visible_elem_selector in visible_elems:
@@ -62,9 +62,9 @@ def test_open_input_create_utub_tag(
         assert visible_elem.is_enabled()
 
     non_visible_elems = (
-        MPL.BUTTON_UTUB_TAG_CREATE,
-        MPL.LIST_TAGS,
-        MPL.SELECTOR_UNSELECT_ALL,
+        HPL.BUTTON_UTUB_TAG_CREATE,
+        HPL.LIST_TAGS,
+        HPL.SELECTOR_UNSELECT_ALL,
     )
     for non_visible_elem_selector in non_visible_elems:
         non_visible_elem = browser.find_element(
@@ -90,8 +90,8 @@ def test_open_input_create_utub_tag_click_cancel_btn(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
     )
 
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
-    wait_until_hidden(browser, MPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
+    wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
     verify_create_utub_tag_input_form_is_hidden(browser)
 
 
@@ -114,7 +114,7 @@ def test_open_input_create_utub_tag_press_esc_key(
 
     # Ensure input is focused
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
-    wait_until_hidden(browser, MPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
+    wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
     verify_create_utub_tag_input_form_is_hidden(browser)
 
 
@@ -142,8 +142,8 @@ def test_open_input_create_utub_tag_click_submit_btn(
 
     # Ensure input is focused
     browser.switch_to.active_element.send_keys(new_tag)
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
-    wait_until_hidden(browser, MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+    wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
 
     verify_create_utub_tag_input_form_is_hidden(browser)
     verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
@@ -174,7 +174,7 @@ def test_open_input_create_utub_tag_press_enter_key(
     # Ensure input is focused
     browser.switch_to.active_element.send_keys(new_tag)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
-    wait_until_hidden(browser, MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+    wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
 
     verify_create_utub_tag_input_form_is_hidden(browser)
     verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)

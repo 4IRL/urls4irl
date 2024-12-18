@@ -8,7 +8,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from locators import MainPageLocators as MPL
+from locators import HomePageLocators as HPL
 from src.cli.mock_constants import MOCK_UTUB_NAME_BASE, MOCK_UTUB_DESCRIPTION
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.utils_for_test import (
@@ -78,11 +78,11 @@ def test_open_update_utub_name_input(
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
-    utub_name = wait_then_get_element(browser, MPL.HEADER_URL_DECK).text
+    utub_name = wait_then_get_element(browser, HPL.HEADER_URL_DECK).text
 
     open_update_utub_input(browser, 1)
 
-    utub_name_update_input = wait_then_get_element(browser, MPL.INPUT_UTUB_NAME_UPDATE)
+    utub_name_update_input = wait_then_get_element(browser, HPL.INPUT_UTUB_NAME_UPDATE)
 
     assert utub_name_update_input.is_displayed()
 
@@ -107,9 +107,9 @@ def test_close_update_utub_name_input_btn(
 
     open_update_utub_input(browser, 1)
 
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_NAME_CANCEL_UPDATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_CANCEL_UPDATE)
 
-    update_utub_name_input = wait_until_hidden(browser, MPL.INPUT_UTUB_NAME_UPDATE, 5)
+    update_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_UPDATE, 5)
 
     assert not update_utub_name_input.is_displayed()
 
@@ -133,7 +133,7 @@ def test_close_update_utub_name_input_key(
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    update_utub_name_input = wait_until_hidden(browser, MPL.INPUT_UTUB_NAME_UPDATE, 5)
+    update_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_UPDATE, 5)
 
     assert not update_utub_name_input.is_displayed()
 
@@ -159,7 +159,7 @@ def test_update_utub_name_btn(
     update_utub_name(browser, new_utub_name)
 
     # Submits new UTub name
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
     # Wait for POST request
     sleep(4)
@@ -240,12 +240,12 @@ def test_update_utub_name_similar(
     update_utub_name(browser, new_utub_name)
 
     # Submits new UTub name
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
 
     # Wait for POST request
     sleep(4)
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
     utub_name_update_check_text = UTS.BODY_MODAL_UTUB_UPDATE_SAME_NAME
@@ -253,7 +253,7 @@ def test_update_utub_name_similar(
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == utub_name_update_check_text
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for POST request
     sleep(4)
@@ -282,12 +282,12 @@ def test_open_update_utub_description_input(
 
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
-    utub_description = wait_then_get_element(browser, MPL.SUBHEADER_URL_DECK).text
+    utub_description = wait_then_get_element(browser, HPL.SUBHEADER_URL_DECK).text
 
     open_update_utub_input(browser, 0)
 
     utub_description_update_input = wait_then_get_element(
-        browser, MPL.INPUT_UTUB_DESCRIPTION_UPDATE
+        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
     )
 
     assert utub_description_update_input.is_displayed()
@@ -312,9 +312,9 @@ def test_close_update_utub_description_input_btn(
 
     open_update_utub_input(browser, 0)
 
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_CANCEL_UPDATE)
 
-    update_utub_name_input = wait_until_hidden(browser, MPL.INPUT_UTUB_NAME_UPDATE, 5)
+    update_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_UPDATE, 5)
 
     assert not update_utub_name_input.is_displayed()
 
@@ -338,7 +338,7 @@ def test_close_update_utub_description_input_key(
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    update_utub_name_input = wait_until_hidden(browser, MPL.INPUT_UTUB_NAME_UPDATE, 5)
+    update_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_UPDATE, 5)
 
     assert not update_utub_name_input.is_displayed()
 
@@ -362,7 +362,7 @@ def test_update_utub_description_btn(
     update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
 
     # Submits new UTub description
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
 
     # Wait for POST request
     sleep(4)

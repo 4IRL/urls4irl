@@ -6,7 +6,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
     user_is_selected_utub_owner,
@@ -28,15 +28,15 @@ def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
     """
 
     # Click createUTub button to show input
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_CREATE)
 
     # Types new UTub name
-    create_utub_name_input = wait_then_get_element(browser, MPL.INPUT_UTUB_NAME_CREATE)
+    create_utub_name_input = wait_then_get_element(browser, HPL.INPUT_UTUB_NAME_CREATE)
     clear_then_send_keys(create_utub_name_input, utub_name)
 
     # Types new UTub description
     create_utub_description_input = wait_then_get_element(
-        browser, MPL.INPUT_UTUB_DESCRIPTION_CREATE
+        browser, HPL.INPUT_UTUB_DESCRIPTION_CREATE
     )
     clear_then_send_keys(create_utub_description_input, utub_description)
 
@@ -53,7 +53,7 @@ def assert_active_utub(browser: WebDriver, utub_name: str):
     """
 
     # Extract new UTub selector. Selector should be active.
-    selector_UTub = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
+    selector_UTub = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB)
 
     # Assert new UTub is now active and displayed to user
     assert "active" in selector_UTub.get_attribute("class")
@@ -61,7 +61,7 @@ def assert_active_utub(browser: WebDriver, utub_name: str):
     # Assert new UTub selector was created with input UTub Name
     assert selector_UTub.text == utub_name
 
-    current_URL_deck_header = wait_then_get_element(browser, MPL.HEADER_URL_DECK)
+    current_URL_deck_header = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
 
     # Assert new UTub name is displayed as the URL Deck header
     assert current_URL_deck_header.text == utub_name
@@ -82,19 +82,19 @@ def open_update_utub_input(browser: WebDriver, update_UTub_name_or_desc: int):
     actions = ActionChains(browser)
 
     wrap_locators = (
-        MPL.WRAP_UTUB_NAME_UPDATE
+        HPL.WRAP_UTUB_NAME_UPDATE
         if update_UTub_name_or_desc
-        else MPL.WRAP_UTUB_DESCRIPTION_UPDATE
+        else HPL.WRAP_UTUB_DESCRIPTION_UPDATE
     )
 
     update_element_locator = (
-        MPL.HEADER_URL_DECK if update_UTub_name_or_desc else MPL.SUBHEADER_URL_DECK
+        HPL.HEADER_URL_DECK if update_UTub_name_or_desc else HPL.SUBHEADER_URL_DECK
     )
 
     update_button_locator = (
-        MPL.BUTTON_UTUB_NAME_UPDATE
+        HPL.BUTTON_UTUB_NAME_UPDATE
         if update_UTub_name_or_desc
-        else MPL.BUTTON_UTUB_DESCRIPTION_UPDATE
+        else HPL.BUTTON_UTUB_DESCRIPTION_UPDATE
     )
 
     update_wrap_element = wait_then_get_element(browser, wrap_locators)
@@ -137,7 +137,7 @@ def update_utub_name(browser: WebDriver, utub_name: str):
 
         # Types new UTub name
         utub_name_update_input = wait_then_get_element(
-            browser, MPL.INPUT_UTUB_NAME_UPDATE
+            browser, HPL.INPUT_UTUB_NAME_UPDATE
         )
         clear_then_send_keys(utub_name_update_input, utub_name)
 
@@ -163,7 +163,7 @@ def update_utub_description(browser: WebDriver, utub_description: str):
 
         # Types new UTub description
         utub_description_update_input = wait_then_get_element(
-            browser, MPL.INPUT_UTUB_DESCRIPTION_UPDATE
+            browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
         )
         clear_then_send_keys(utub_description_update_input, utub_description)
 

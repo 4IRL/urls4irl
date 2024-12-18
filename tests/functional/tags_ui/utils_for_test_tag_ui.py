@@ -14,7 +14,7 @@ from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.models.utub_url_tags import Utub_Url_Tags
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
     login_user_and_select_utub_by_name,
@@ -29,17 +29,17 @@ def create_tag(browser: WebDriver, selected_url_row: WebElement, tag_string: str
     """
 
     # Select createTag button
-    selected_url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_CREATE).click()
+    selected_url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_TAG_CREATE).click()
 
     create_tag_input = selected_url_row.find_element(
-        By.CSS_SELECTOR, MPL.INPUT_TAG_CREATE
+        By.CSS_SELECTOR, HPL.INPUT_TAG_CREATE
     )
 
     assert create_tag_input.is_displayed()
 
     if tag_string:
         # Input new tag
-        tag_input_field = wait_then_get_element(browser, MPL.INPUT_TAG_CREATE)
+        tag_input_field = wait_then_get_element(browser, HPL.INPUT_TAG_CREATE)
         assert tag_input_field is not None
         clear_then_send_keys(tag_input_field, tag_string)
 
@@ -67,7 +67,7 @@ def show_delete_tag_button_on_hover(browser: WebDriver, tag_badge: WebElement):
     """
     actions = hover_tag_badge(browser, tag_badge)
 
-    delete_tag_button = tag_badge.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_DELETE)
+    delete_tag_button = tag_badge.find_element(By.CSS_SELECTOR, HPL.BUTTON_TAG_DELETE)
 
     actions.move_to_element(delete_tag_button).pause(2).perform()
 
@@ -131,14 +131,14 @@ def login_user_select_utub_by_name_open_create_utub_tag(
     app: Flask, browser: WebDriver, user_id: int, utub_name: str
 ):
     login_user_and_select_utub_by_name(app, browser, user_id, utub_name)
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_TAG_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CREATE)
 
 
 def verify_create_utub_tag_input_form_is_hidden(browser: WebDriver):
     non_visible_elems = (
-        MPL.INPUT_UTUB_TAG_CREATE,
-        MPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
-        MPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
+        HPL.INPUT_UTUB_TAG_CREATE,
+        HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
+        HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
     )
     for non_visible_elem_selector in non_visible_elems:
         non_visible_elem = browser.find_element(
@@ -147,9 +147,9 @@ def verify_create_utub_tag_input_form_is_hidden(browser: WebDriver):
         assert not non_visible_elem.is_displayed()
 
     visible_elems = (
-        MPL.BUTTON_UTUB_TAG_CREATE,
-        MPL.LIST_TAGS,
-        MPL.SELECTOR_UNSELECT_ALL,
+        HPL.BUTTON_UTUB_TAG_CREATE,
+        HPL.LIST_TAGS,
+        HPL.SELECTOR_UNSELECT_ALL,
     )
     for visible_elem_selector in visible_elems:
         visible_elem = browser.find_element(By.CSS_SELECTOR, visible_elem_selector)
@@ -162,14 +162,14 @@ def verify_new_utub_tag_created(
 ):
     verify_create_utub_tag_input_form_is_hidden(browser)
 
-    utub_tag_container = wait_then_get_element(browser, MPL.LIST_TAGS)
+    utub_tag_container = wait_then_get_element(browser, HPL.LIST_TAGS)
     assert utub_tag_container is not None
 
-    utub_tags = utub_tag_container.find_elements(By.CSS_SELECTOR, MPL.TAG_FILTERS)
+    utub_tags = utub_tag_container.find_elements(By.CSS_SELECTOR, HPL.TAG_FILTERS)
     assert len(utub_tags) == init_utub_tag_count + 1
 
     # Verify the text of the new tag is found in a tag element
     utub_tag_spans = utub_tag_container.find_elements(
-        By.CSS_SELECTOR, MPL.TAG_FILTERS + " span"
+        By.CSS_SELECTOR, HPL.TAG_FILTERS + " span"
     )
     assert new_tag_str in [tag.text for tag in utub_tag_spans]
