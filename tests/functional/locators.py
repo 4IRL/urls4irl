@@ -1,6 +1,8 @@
 class HomePageLocators:
     """A collector class for main page locators"""
 
+    INVALID_FIELD_SUFFIX = "-error"
+
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"

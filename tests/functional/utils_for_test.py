@@ -204,7 +204,9 @@ def clear_then_send_keys(element: WebElement, input_text: str):
     input_field.send_keys(input_text)
 
 
-def wait_until_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
+def wait_until_hidden(
+    browser: WebDriver, css_selector: str, timeout: int = 2
+) -> WebElement:
     element = browser.find_element(By.CSS_SELECTOR, css_selector)
 
     wait = WebDriverWait(browser, timeout)
@@ -316,6 +318,11 @@ def login_user_with_cookie_from_session(browser: WebDriver, session_id: str):
 
     # Refresh to redirect user to their home page since they're logged in
     browser.refresh()
+
+
+def login_user_to_home_page(app: Flask, browser: WebDriver, user_id: int):
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
 
 
 def login_user_and_select_utub_by_name(

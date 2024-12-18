@@ -32,12 +32,14 @@ def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
 
     # Types new UTub name
     create_utub_name_input = wait_then_get_element(browser, HPL.INPUT_UTUB_NAME_CREATE)
+    assert create_utub_name_input is not None
     clear_then_send_keys(create_utub_name_input, utub_name)
 
     # Types new UTub description
     create_utub_description_input = wait_then_get_element(
         browser, HPL.INPUT_UTUB_DESCRIPTION_CREATE
     )
+    assert create_utub_description_input is not None
     clear_then_send_keys(create_utub_description_input, utub_description)
 
 
@@ -53,21 +55,25 @@ def assert_active_utub(browser: WebDriver, utub_name: str):
     """
 
     # Extract new UTub selector. Selector should be active.
-    selector_UTub = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB)
+    selector_utub = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB)
+    assert selector_utub is not None
 
     # Assert new UTub is now active and displayed to user
-    assert "active" in selector_UTub.get_attribute("class")
+    class_attrib = selector_utub.get_attribute("class")
+    assert class_attrib is not None
+    assert "active" in class_attrib
 
     # Assert new UTub selector was created with input UTub Name
-    assert selector_UTub.text == utub_name
+    assert selector_utub.text == utub_name
 
-    current_URL_deck_header = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
+    current_url_deck_header = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
+    assert current_url_deck_header is not None
 
     # Assert new UTub name is displayed as the URL Deck header
-    assert current_URL_deck_header.text == utub_name
+    assert current_url_deck_header.text == utub_name
 
 
-def open_update_utub_input(browser: WebDriver, update_UTub_name_or_desc: int):
+def open_update_utub_input(browser: WebDriver, update_utub_name_or_desc: int):
     """
     Once logged in and UTub selected, this function conducts the actions for opening either the update UTub name or description input field. First hover over the UTub name or description to display the edit button. Then clicks the edit button.
 
@@ -83,21 +89,22 @@ def open_update_utub_input(browser: WebDriver, update_UTub_name_or_desc: int):
 
     wrap_locators = (
         HPL.WRAP_UTUB_NAME_UPDATE
-        if update_UTub_name_or_desc
+        if update_utub_name_or_desc
         else HPL.WRAP_UTUB_DESCRIPTION_UPDATE
     )
 
     update_element_locator = (
-        HPL.HEADER_URL_DECK if update_UTub_name_or_desc else HPL.SUBHEADER_URL_DECK
+        HPL.HEADER_URL_DECK if update_utub_name_or_desc else HPL.SUBHEADER_URL_DECK
     )
 
     update_button_locator = (
         HPL.BUTTON_UTUB_NAME_UPDATE
-        if update_UTub_name_or_desc
+        if update_utub_name_or_desc
         else HPL.BUTTON_UTUB_DESCRIPTION_UPDATE
     )
 
     update_wrap_element = wait_then_get_element(browser, wrap_locators)
+    assert update_wrap_element is not None
 
     # Hover over UTub name to display utubNameBtnUpdate button
     update_element = update_wrap_element.find_element(
@@ -120,7 +127,7 @@ def open_update_utub_input(browser: WebDriver, update_UTub_name_or_desc: int):
     # Update input field visible
 
 
-def update_utub_name(browser: WebDriver, utub_name: str):
+def update_utub_name(browser: WebDriver, utub_name: str) -> bool:
     """
     Once logged in and UTub selected, this function conducts the actions for editing the selected UTub name. First hover over the UTub name to display the edit button. Then clicks the edit button, interacts with the input field and submits it.
 
@@ -139,6 +146,7 @@ def update_utub_name(browser: WebDriver, utub_name: str):
         utub_name_update_input = wait_then_get_element(
             browser, HPL.INPUT_UTUB_NAME_UPDATE
         )
+        assert utub_name_update_input is not None
         clear_then_send_keys(utub_name_update_input, utub_name)
 
         return True
@@ -146,7 +154,7 @@ def update_utub_name(browser: WebDriver, utub_name: str):
         return False
 
 
-def update_utub_description(browser: WebDriver, utub_description: str):
+def update_utub_description(browser: WebDriver, utub_description: str) -> bool:
     """
     Once logged in and UTub selected, this function conducts the actions for editing the selected UTub description. First hover over the UTub decsription to display the edit button. Then clicks the edit button, interacts with the input field and submits it.
 
@@ -165,6 +173,7 @@ def update_utub_description(browser: WebDriver, utub_description: str):
         utub_description_update_input = wait_then_get_element(
             browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
         )
+        assert utub_description_update_input is not None
         clear_then_send_keys(utub_description_update_input, utub_description)
 
         return True
