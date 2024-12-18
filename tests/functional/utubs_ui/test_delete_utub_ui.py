@@ -13,7 +13,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from src.cli.mock_constants import MOCK_UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import ModalLocators as ML
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.urls_ui.utils_for_test_url_ui import get_selected_utub_id
 from tests.functional.utils_for_test import (
@@ -47,9 +47,9 @@ def test_open_delete_utub_modal(
     )
 
     if user_is_selected_utub_owner(browser):
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+        wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE)
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
     # Assert warning modal appears with appropriate text
@@ -72,11 +72,11 @@ def test_dismiss_delete_utub_modal_x(
     )
 
     if user_is_selected_utub_owner(browser):
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+        wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE)
 
     wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS)
 
-    modal_element = wait_until_hidden(browser, MPL.HOME_MODAL)
+    modal_element = wait_until_hidden(browser, HPL.HOME_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -97,11 +97,11 @@ def test_dismiss_delete_utub_modal_btn(
     )
 
     if user_is_selected_utub_owner(browser):
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+        wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE)
 
     wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
 
-    modal_element = wait_until_hidden(browser, MPL.HOME_MODAL)
+    modal_element = wait_until_hidden(browser, HPL.HOME_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -125,13 +125,13 @@ def test_dismiss_delete_utub_modal_key(
         utub_selector_names = get_all_utub_selector_names(browser)
         select_utub_by_name(browser, utub_selector_names[0])
 
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE)
 
     sleep(4)
 
-    browser.find_element(By.CSS_SELECTOR, MPL.HOME_MODAL).send_keys(Keys.ESCAPE)
+    browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL).send_keys(Keys.ESCAPE)
 
-    modal_element = wait_until_hidden(browser, MPL.HOME_MODAL)
+    modal_element = wait_until_hidden(browser, HPL.HOME_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -152,11 +152,11 @@ def test_dismiss_delete_utub_modal_click(
     )
 
     if user_is_selected_utub_owner(browser):
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+        wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE)
 
     dismiss_modal_with_click_out(browser)
 
-    modal_element = wait_until_hidden(browser, MPL.HOME_MODAL)
+    modal_element = wait_until_hidden(browser, HPL.HOME_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -177,18 +177,18 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Fla
 
     assert user_is_selected_utub_owner(browser)
     utub_id = get_selected_utub_id(browser)
-    css_selector = f'{MPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
+    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
     assert browser.find_element(By.CSS_SELECTOR, css_selector)
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_DELETE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE)
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for DELETE request
     sleep(4)
 
     # Assert UTub selector no longer exists
     with pytest.raises(NoSuchElementException):
-        css_selector = f'{MPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
+        css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
         assert browser.find_element(By.CSS_SELECTOR, css_selector)
 
 
@@ -206,7 +206,7 @@ def test_delete_last_utub(browser: WebDriver, create_test_utubs):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Extract confirming result
-    selector_UTub1 = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
+    selector_UTub1 = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB)
 
     # Assert new UTub selector was created with input UTub Name
     assert selector_UTub1.text == MOCK_UTUB_NAME_BASE + "1"

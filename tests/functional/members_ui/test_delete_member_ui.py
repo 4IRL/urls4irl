@@ -9,7 +9,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from locators import MainPageLocators as MPL
+from locators import HomePageLocators as HPL
 from src.cli.mock_constants import USERNAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.members_ui.utils_for_test_members_ui import (
@@ -47,11 +47,11 @@ def test_open_delete_member_modal(
 
     delete_member_active_utub(browser, member_name)
 
-    warning_modal = wait_then_get_element(browser, MPL.HOME_MODAL)
+    warning_modal = wait_then_get_element(browser, HPL.HOME_MODAL)
 
     assert warning_modal.is_displayed()
 
-    warning_modal_body = warning_modal.find_element(By.CSS_SELECTOR, MPL.BODY_MODAL)
+    warning_modal_body = warning_modal.find_element(By.CSS_SELECTOR, HPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
     member_delete_check_text = UTS.BODY_MODAL_MEMBER_DELETE
@@ -81,9 +81,9 @@ def test_dismiss_delete_member_modal_btn(
 
     delete_member_active_utub(browser, member_name)
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_DISMISS)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
 
-    create_member_input = wait_until_hidden(browser, MPL.HOME_MODAL)
+    create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
 
     # Assert warning modal appears with appropriate text
     assert not create_member_input.is_displayed()
@@ -110,11 +110,11 @@ def test_dismiss_delete_member_modal_key(
 
     delete_member_active_utub(browser, member_name)
 
-    home_modal = wait_then_get_element(browser, MPL.HOME_MODAL)
+    home_modal = wait_then_get_element(browser, HPL.HOME_MODAL)
 
     home_modal.send_keys(Keys.ESCAPE)
 
-    create_member_input = wait_until_hidden(browser, MPL.HOME_MODAL)
+    create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
 
     # Assert warning modal appears with appropriate text
     assert not create_member_input.is_displayed()
@@ -141,7 +141,7 @@ def test_delete_member_btn(
 
     delete_member_active_utub(browser, member_name)
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for DELETE request
     sleep(4)

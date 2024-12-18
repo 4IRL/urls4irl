@@ -7,7 +7,7 @@ import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from locators import MainPageLocators as MPL
+from locators import HomePageLocators as HPL
 from src.cli.mock_constants import MOCK_UTUB_NAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.members_ui.utils_for_test_members_ui import (
@@ -47,13 +47,13 @@ def test_leave_utub(
 
     leave_active_utub(browser)
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_LEAVE_UTUB
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for POST request
     sleep(4)

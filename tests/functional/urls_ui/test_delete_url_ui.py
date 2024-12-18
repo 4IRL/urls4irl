@@ -25,7 +25,7 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_until_hidden,
 )
-from locators import MainPageLocators as MPL
+from locators import HomePageLocators as HPL
 
 pytestmark = pytest.mark.urls_ui
 
@@ -51,7 +51,7 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
         )
     )
 
-    css_selector = f'{MPL.URL_STRING_READ}[data-url="{UTS.TEST_URL_STRING_CREATE}"]'
+    css_selector = f'{HPL.URL_STRING_READ}[data-url="{UTS.TEST_URL_STRING_CREATE}"]'
     assert browser.find_element(By.CSS_SELECTOR, css_selector)
 
     init_num_url_rows = get_num_url_rows(browser)
@@ -61,8 +61,8 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, MPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for animation to complete
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
@@ -103,8 +103,8 @@ def test_delete_url_cancel_click_cancel_btn(
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_DISMISS)
-    wait_until_hidden(browser, MPL.BUTTON_MODAL_DISMISS)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
+    wait_until_hidden(browser, HPL.BUTTON_MODAL_DISMISS)
 
     # Assert URL no longer exists in UTub
     assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
@@ -142,8 +142,8 @@ def test_delete_url_cancel_click_x_btn(
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
 
-    wait_then_click_element(browser, MPL.BUTTON_X_CLOSE)
-    wait_until_hidden(browser, MPL.BUTTON_X_CLOSE)
+    wait_then_click_element(browser, HPL.BUTTON_X_CLOSE)
+    wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
 
     # Assert URL no longer exists in UTub
     assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
@@ -182,7 +182,7 @@ def test_delete_url_cancel_press_esc_key(
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
-    wait_until_hidden(browser, MPL.BUTTON_X_CLOSE)
+    wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
 
     # Assert URL no longer exists in UTub
     assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
@@ -221,7 +221,7 @@ def test_delete_url_cancel_click_outside_modal(
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
 
     dismiss_modal_with_click_out(browser)
-    wait_until_hidden(browser, MPL.BUTTON_X_CLOSE)
+    wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
 
     # Assert URL still exists in UTub
     assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
@@ -264,14 +264,14 @@ def test_delete_last_url(
         url_string=random_url_to_add_as_last,
     )
 
-    css_selector = f'{MPL.URL_STRING_READ}[data-url="{random_url_to_add_as_last}"]'
+    css_selector = f'{HPL.URL_STRING_READ}[data-url="{random_url_to_add_as_last}"]'
     assert browser.find_element(By.CSS_SELECTOR, css_selector)
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
-    wait_until_hidden(browser, MPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
     assert wait_for_element_to_be_removed(browser, url_elem_to_delete)
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, css_selector)
 
-    no_url_subheader = wait_then_get_element(browser, MPL.SUBHEADER_NO_URLS)
+    no_url_subheader = wait_then_get_element(browser, HPL.SUBHEADER_NO_URLS)
     assert no_url_subheader is not None

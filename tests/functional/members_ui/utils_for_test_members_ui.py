@@ -8,7 +8,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
     user_is_selected_utub_owner,
@@ -28,7 +28,7 @@ def get_all_member_badges(browser: WebDriver):
         WebDriver handoff to member tests
     """
 
-    return wait_then_get_elements(browser, MPL.BADGES_MEMBERS)
+    return wait_then_get_elements(browser, HPL.BADGES_MEMBERS)
 
 
 def get_all_member_usernames(browser: WebDriver):
@@ -65,10 +65,10 @@ def create_member_active_utub(browser: WebDriver, member_name: str):
     if user_is_selected_utub_owner(browser):
 
         # Click createMember button to show input
-        wait_then_click_element(browser, MPL.BUTTON_MEMBER_CREATE)
+        wait_then_click_element(browser, HPL.BUTTON_MEMBER_CREATE)
 
         # Types new member name
-        create_member_input = wait_then_get_element(browser, MPL.INPUT_MEMBER_CREATE)
+        create_member_input = wait_then_get_element(browser, HPL.INPUT_MEMBER_CREATE)
         clear_then_send_keys(create_member_input, member_name)
 
         return True
@@ -105,7 +105,7 @@ def delete_member_active_utub(browser: WebDriver, member_name: str):
                 actions.pause(3).perform()
 
                 member_delete_button = member_badge_to_delete.find_element(
-                    By.CSS_SELECTOR, MPL.BUTTON_MEMBER_DELETE
+                    By.CSS_SELECTOR, HPL.BUTTON_MEMBER_DELETE
                 )
 
                 actions.move_to_element(member_delete_button).pause(2)
@@ -131,6 +131,6 @@ def leave_active_utub(browser: WebDriver):
     """
 
     try:
-        wait_then_click_element(browser, MPL.BUTTON_UTUB_LEAVE)
+        wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE)
     except NoSuchElementException:
         return False

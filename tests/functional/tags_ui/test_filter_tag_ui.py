@@ -9,7 +9,7 @@ from selenium.webdriver.remote.webelement import WebElement
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
     delete_each_tag_from_one_url_in_utub,
     delete_tag_from_url_in_utub_random,
@@ -67,7 +67,7 @@ def test_filter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     tag_name = get_tag_filter_name_by_id(browser, utub_tag_id)
 
     # Assert appropriate initial state of unselectAll button
-    unselect_all_button = wait_then_get_element(browser, MPL.SELECTOR_UNSELECT_ALL)
+    unselect_all_button = wait_then_get_element(browser, HPL.SELECTOR_UNSELECT_ALL)
     unselect_all_button_class_list = unselect_all_button.get_attribute("class")
     assert "disabled" in unselect_all_button_class_list
     assert "unselected" in unselect_all_button_class_list
@@ -157,7 +157,7 @@ def test_unselect_all_filters(browser: WebDriver, create_test_tags, provide_app:
     # Save the number of visible URLs
     num_visible_url_rows = get_num_url_unfiltered_rows(browser)
     unfiltered_url_rows: list[WebElement] = wait_then_get_elements(
-        browser, MPL.ROWS_URLS
+        browser, HPL.ROWS_URLS
     )
 
     tag_filters = get_utub_tag_filters(browser)
@@ -190,7 +190,7 @@ def test_unselect_all_filters(browser: WebDriver, create_test_tags, provide_app:
     # All URLs with tags are filtered
 
     # Unselect all tag filters
-    unselect_all_button = wait_then_get_element(browser, MPL.SELECTOR_UNSELECT_ALL)
+    unselect_all_button = wait_then_get_element(browser, HPL.SELECTOR_UNSELECT_ALL)
     unselect_all_button.click()
 
     # Assert all URLs are unfiltered and are now visible to user

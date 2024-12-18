@@ -1,4 +1,4 @@
-class MainPageLocators:
+class HomePageLocators:
     """A collector class for main page locators"""
 
     # Navbar

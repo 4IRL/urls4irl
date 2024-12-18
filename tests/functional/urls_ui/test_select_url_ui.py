@@ -6,7 +6,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 # Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.urls_ui.utils_for_test_url_ui import (
     get_selected_utub_id,
     get_utub_url_id_for_added_url_in_utub_as_member,
@@ -48,7 +48,7 @@ def test_select_urls_as_utub_owner(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
     )
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_rows is not None
 
     for url_row in url_rows:
@@ -88,7 +88,7 @@ def test_select_non_added_urls_as_utub_member(
         app, utub_id, user_id
     )
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_rows is not None
 
     for url_row in url_rows:
@@ -130,7 +130,7 @@ def test_select_urls_as_url_creator_and_utub_member(
         app, utub_id, user_id
     )
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_rows is not None
 
     for url_row in url_rows:
@@ -160,7 +160,7 @@ def test_select_urls_using_down_key(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_2
     )
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     if not url_rows:
         assert False
     num_of_urls = len(url_rows)
@@ -193,7 +193,7 @@ def test_select_urls_using_up_key(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_2
     )
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     if not url_rows:
         assert False
     num_of_urls = len(url_rows)

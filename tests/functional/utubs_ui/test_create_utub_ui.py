@@ -1,12 +1,9 @@
-# Standard library
 from time import sleep
 
-# External libraries
 import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-# Internal libraries
 from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
@@ -17,7 +14,7 @@ from tests.functional.utils_for_test import (
     wait_then_get_elements,
     wait_until_hidden,
 )
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from utils_for_test_utub_ui import assert_active_utub, create_utub
 
 pytestmark = pytest.mark.utubs_ui
@@ -37,16 +34,31 @@ def test_open_create_utub_input(browser: WebDriver, create_test_users):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Click createUTub button to show input
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_CREATE)
 
-    create_utub_name_input = wait_then_get_element(browser, MPL.INPUT_UTUB_NAME_CREATE)
-
+    create_utub_name_input = wait_then_get_element(browser, HPL.INPUT_UTUB_NAME_CREATE)
+    assert create_utub_name_input is not None
     assert create_utub_name_input.is_displayed()
-    assert wait_then_get_element(
-        browser, MPL.INPUT_UTUB_DESCRIPTION_CREATE
-    ).is_displayed()
+
+    create_utub_desc_input = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_DESCRIPTION_CREATE
+    )
+    assert create_utub_desc_input is not None
+    assert create_utub_desc_input.is_displayed()
 
     assert create_utub_name_input == browser.switch_to.active_element
+
+    create_utub_submit_btn = wait_then_get_element(
+        browser, HPL.BUTTON_UTUB_SUBMIT_CREATE
+    )
+    assert create_utub_submit_btn is not None
+    assert create_utub_submit_btn.is_displayed()
+
+    create_utub_cancel_btn = wait_then_get_element(
+        browser, HPL.BUTTON_UTUB_CANCEL_CREATE
+    )
+    assert create_utub_cancel_btn is not None
+    assert create_utub_submit_btn.is_displayed()
 
 
 def test_close_create_utub_input_btn(browser: WebDriver, create_test_users):
@@ -63,11 +75,11 @@ def test_close_create_utub_input_btn(browser: WebDriver, create_test_users):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Click createUTub button to show input
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_CREATE)
 
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_CANCEL_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_CANCEL_CREATE)
 
-    create_utub_name_input = wait_until_hidden(browser, MPL.INPUT_UTUB_NAME_CREATE, 5)
+    create_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_CREATE, 5)
 
     assert not create_utub_name_input.is_displayed()
 
@@ -86,11 +98,11 @@ def test_close_create_utub_input_key(browser: WebDriver, create_test_users):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Click createUTub button to show input
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_CREATE)
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    create_utub_name_input = wait_until_hidden(browser, MPL.INPUT_UTUB_NAME_CREATE, 5)
+    create_utub_name_input = wait_until_hidden(browser, HPL.INPUT_UTUB_NAME_CREATE, 5)
 
     assert not create_utub_name_input.is_displayed()
 
@@ -115,7 +127,7 @@ def test_create_utub_btn(browser: WebDriver, create_test_users):
     create_utub(browser, utub_name, MOCK_UTUB_DESCRIPTION)
 
     # Submits new UTub
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_SUBMIT_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
 
     # Wait for POST request
     sleep(4)
@@ -168,7 +180,7 @@ def test_create_utub_name_length_exceeded(browser: WebDriver, create_test_users)
 
     create_utub(browser, UTS.MAX_CHAR_LIM_UTUB_NAME)
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
 
     # Assert new UTub is now active and displayed to user
     assert warning_modal_body.text == "Try shortening your UTub name"
@@ -190,17 +202,17 @@ def test_create_utub_name_similar(browser: WebDriver, create_test_utubs):
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Extract name of a pre-existing UTub
-    UTub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    UTub_selectors = wait_then_get_elements(browser, HPL.SELECTORS_UTUB)
     first_UTub_selector = UTub_selectors[0]
     utub_name = first_UTub_selector.text
 
     # Attempt to add a new UTub with the same name
     create_utub(browser, utub_name, MOCK_UTUB_DESCRIPTION)
     # Submits new UTub
-    wait_then_click_element(browser, MPL.BUTTON_UTUB_SUBMIT_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
 
     # Extract modal body element
-    confirmation_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    confirmation_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     confirmation_modal_body_text = confirmation_modal_body.get_attribute("innerText")
     utub_same_name_check_text = UTS.BODY_MODAL_UTUB_CREATE_SAME_NAME
 

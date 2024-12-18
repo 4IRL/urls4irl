@@ -8,7 +8,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 
 # Internal libraries
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.utils_for_test import (
     assert_login,
@@ -36,7 +36,7 @@ def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     session_id = create_user_session_and_provide_session_id(app, user_id)
     login_user_with_cookie_from_session(browser, session_id)
 
-    logout_btn = wait_then_get_element(browser, MPL.BUTTON_LOGOUT)
+    logout_btn = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
     logout_btn.click()
 
     assert EC.staleness_of(logout_btn)
@@ -66,10 +66,10 @@ def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask)
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
-    wait_then_click_element(browser, MPL.U4I_LOGO)
+    wait_then_click_element(browser, HPL.U4I_LOGO)
 
     assert_login(browser)
 
-    active_utubs = wait_then_get_element(browser, MPL.SELECTOR_SELECTED_UTUB)
+    active_utubs = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB)
 
     assert EC.staleness_of(active_utubs)
