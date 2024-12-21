@@ -301,6 +301,40 @@ function allowUserToCreateDescriptionIfEmptyOnTitleUpdate() {
   });
 }
 
+function allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty() {
+  const utubTitle = $("#URLDeckHeader");
+  utubTitle.offAndOn("mouseenter.createUTubdescription", function () {
+    const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
+    showIfHidden(clickToCreateDesc);
+    clickToCreateDesc.offAndOn("click.createUTubdescription", function (e) {
+      e.stopPropagation();
+      hideIfShown(clickToCreateDesc);
+      updateUTubDescriptionShowInput();
+      clickToCreateDesc.off("click.createUTubdescription");
+    });
+    hideCreateUTubDescriptionButtonOnMouseExit();
+  });
+}
+
+function hideCreateUTubDescriptionButtonOnMouseExit() {
+  const urlHeaderWrap = $("#URLDeckHeaderWrap");
+  const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
+  urlHeaderWrap.offAndOn("mouseleave.createUTubdescription", function () {
+    if (!isHidden($(clickToCreateDesc))) {
+      hideIfShown(clickToCreateDesc);
+      clickToCreateDesc.off("click.createUTubdescription");
+      urlHeaderWrap.off("mouseleave.createUTubdescription");
+    }
+  });
+}
+
+function removeEventListenersForShowCreateUTubDescIfEmptyDesc() {
+  const utubTitle = $("#URLDeckHeader");
+  utubTitle.off("mouseenter.createUTubdescription");
+  const urlHeaderWrap = $("#URLDeckHeaderWrap");
+  urlHeaderWrap.off("mouseleave.createUTubdescription");
+}
+
 /** UTub Functions **/
 
 // Assembles components of the UTubDeck (top left panel)
@@ -362,7 +396,11 @@ function buildSelectedUTub(selectedUTub) {
   const utubDescriptionHeader = $("#URLDeckSubheader");
   if (utubDescription) {
     utubDescriptionHeader.text(utubDescription);
+    removeEventListenersForShowCreateUTubDescIfEmptyDesc();
   } else {
+    //const utubTitle = $("#URLDeckHeader");
+    //utubTitle.off("mouseenter.createUTubdescription");
+    allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty();
     utubDescriptionHeader.text(null);
   }
 

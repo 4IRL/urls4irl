@@ -245,7 +245,7 @@ def assert_not_visible_css_selector(
         )
         assert True
     except TimeoutException:
-        print("Element is still visible.")
+        assert False
 
 
 def assert_on_404_page(browser: WebDriver):
@@ -782,7 +782,7 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
         for row in url_rows:
             url_id = row.get_attribute("urlid")
             assert url_id is not None
-            assert isinstance(url_id, str)
+            assert isinstance(url_id, str) and url_id.isdecimal()
             url_ids.append(int(url_id))
 
     return url_ids
