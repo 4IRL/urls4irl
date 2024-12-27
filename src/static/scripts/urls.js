@@ -212,7 +212,6 @@ function accessLink(urlString) {
 
 function hideAccessAllWarningShowModal() {
   $("#confirmModal").removeClass("accessAllUrlModal");
-  console.log("Testing hide functionality");
 }
 
 // Show confirmation modal for opening all URLs in UTub
@@ -289,6 +288,7 @@ function resetURLDeck() {
   newURLInputRemoveEventListeners();
   $(".urlRow").remove();
   hideIfShown($("#urlBtnCreate"));
+  updateUTubDescriptionHideInput();
 }
 
 function resetURLDeckOnDeleteUTub() {
@@ -419,7 +419,7 @@ function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
 }
 
 // Build center panel URL list for selectedUTub
-function buildURLDeck(UTubName, dictURLs, dictTags) {
+function buildURLDeck(utubName, dictURLs, dictTags) {
   resetURLDeck();
   const parent = $("#listURLs");
   const numOfURLs = dictURLs.length ? dictURLs.length : 0;
@@ -443,7 +443,7 @@ function buildURLDeck(UTubName, dictURLs, dictTags) {
     $("#urlBtnDeckCreate").show();
     $("#accessAllURLsBtn").hide();
   }
-  setUTubNameAndDescription(UTubName);
+  setUTubNameAndDescription(utubName);
 }
 
 // Create a URL block to add to current UTub/URLDeck
@@ -1131,7 +1131,6 @@ function createTagDeleteIcon() {
 
 /** URL Display State Functions **/
 
-// Display state 0: Clean slate, no UTub selected
 function setURLDeckWhenNoUTubSelected() {
   $("#URLDeckHeader").text("URLs");
   $(".updateUTubBtn").hide();
@@ -1141,17 +1140,16 @@ function setURLDeckWhenNoUTubSelected() {
   $("#utubNameBtnUpdate").hide();
   $("#updateUTubDescriptionBtn").removeClass("visibleBtn");
 
-  const URLDeckSubheader = $("#URLDeckSubheader");
-  URLDeckSubheader.text("Select a UTub");
-  URLDeckSubheader.show();
+  const urlDeckSubheader = $("#URLDeckSubheader");
+  urlDeckSubheader.text("Select a UTub");
+  urlDeckSubheader.show();
 
   // Prevent on-hover of URL Deck Header to show update UTub name button in case of back button
   $("#utubNameBtnUpdate").removeClass("visibleBtn");
 }
 
-// Display state 1: UTub selected, URL list and subheader prompt
-function setUTubNameAndDescription(UTubName) {
-  $("#URLDeckHeader").text(UTubName);
-  $("#utubNameUpdate").val(UTubName);
+function setUTubNameAndDescription(utubName) {
+  $("#URLDeckHeader").text(utubName);
+  $("#utubNameUpdate").val(utubName);
   updateUTubNameHideInput();
 }

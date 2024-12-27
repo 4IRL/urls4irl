@@ -1,5 +1,7 @@
-class MainPageLocators:
+class HomePageLocators:
     """A collector class for main page locators"""
+
+    INVALID_FIELD_SUFFIX = "-error"
 
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
@@ -37,6 +39,7 @@ class MainPageLocators:
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
     WRAP_URL_CREATE = "#createURLWrap"
     BUTTON_UTUB_NAME_CANCEL_UPDATE = "#utubNameCancelBtnUpdate"
+    BUTTON_ADD_UTUB_DESC_ON_EMPTY = "#URLDeckSubheaderCreateDescription"
 
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"

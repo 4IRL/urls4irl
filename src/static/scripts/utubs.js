@@ -86,8 +86,8 @@ function getUTubSelectorElemFromID(id) {
 
 // Streamline the extraction of a UTub array element from its ID
 function getUTubObjFromID(id) {
-  $(".UTubSelector").forEach(function (UTub) {
-    if (UTub.attr("utubid") === id) return UTub;
+  $(".UTubSelector").forEach(function (utub) {
+    if (utub.attr("utubid") === id) return utub;
   });
 
   return -1;
@@ -95,14 +95,14 @@ function getUTubObjFromID(id) {
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
 function getUTubIDFromName(name) {
-  const UTubNames = $(".UTubName");
-  let UTub;
+  const utubNames = $(".UTubName");
+  let utub;
 
-  for (i = 0; i < UTubNames.length; i++) {
-    UTub = $(UTubNames[i]);
+  for (i = 0; i < utubNames.length; i++) {
+    utub = $(utubNames[i]);
 
-    if (UTub.text() === name) {
-      return parseInt(UTub.closest(".UTubSelector").attr("utubid"));
+    if (utub.text() === name) {
+      return parseInt(utub.closest(".UTubSelector").attr("utubid"));
     }
   }
 
@@ -116,10 +116,10 @@ function getCurrentUTubName() {
 
 // Quickly extracts all UTub names from #listUTubs and returns an array.
 function getAllAccessibleUTubNames() {
-  let UTubNames = [];
-  const UTubSelectorNames = $(".UTubName");
-  UTubSelectorNames.map((i) => UTubNames.push($(UTubSelectorNames[i]).text()));
-  return UTubNames;
+  let utubNames = [];
+  const utubSelectorNames = $(".UTubName");
+  utubSelectorNames.map((i) => utubNames.push($(utubSelectorNames[i]).text()));
+  return utubNames;
 }
 
 // Streamline the AJAX call to db for updated info
@@ -301,6 +301,40 @@ function allowUserToCreateDescriptionIfEmptyOnTitleUpdate() {
   });
 }
 
+function allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty() {
+  const utubTitle = $("#URLDeckHeader");
+  utubTitle.offAndOn("mouseenter.createUTubdescription", function () {
+    const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
+    showIfHidden(clickToCreateDesc);
+    clickToCreateDesc.offAndOn("click.createUTubdescription", function (e) {
+      e.stopPropagation();
+      hideIfShown(clickToCreateDesc);
+      updateUTubDescriptionShowInput();
+      clickToCreateDesc.off("click.createUTubdescription");
+    });
+    hideCreateUTubDescriptionButtonOnMouseExit();
+  });
+}
+
+function hideCreateUTubDescriptionButtonOnMouseExit() {
+  const urlHeaderWrap = $("#URLDeckHeaderWrap");
+  const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
+  urlHeaderWrap.offAndOn("mouseleave.createUTubdescription", function () {
+    if (!isHidden($(clickToCreateDesc))) {
+      hideIfShown(clickToCreateDesc);
+      clickToCreateDesc.off("click.createUTubdescription");
+      urlHeaderWrap.off("mouseleave.createUTubdescription");
+    }
+  });
+}
+
+function removeEventListenersForShowCreateUTubDescIfEmptyDesc() {
+  const utubTitle = $("#URLDeckHeader");
+  utubTitle.off("mouseenter.createUTubdescription");
+  const urlHeaderWrap = $("#URLDeckHeaderWrap");
+  urlHeaderWrap.off("mouseleave.createUTubdescription");
+}
+
 /** UTub Functions **/
 
 // Assembles components of the UTubDeck (top left panel)
@@ -317,7 +351,9 @@ function buildUTubDeck(utubs, timeoutID) {
 
     hideInputsAndSetUTubDeckSubheader();
     setURLDeckWhenNoUTubSelected();
-  } else resetUTubDeckIfNoUTubs();
+  } else {
+    resetUTubDeckIfNoUTubs();
+  }
 
   if (timeoutID) hideUTubLoadingIconAndClearTimeout(timeoutID);
 }
@@ -362,7 +398,11 @@ function buildSelectedUTub(selectedUTub) {
   const utubDescriptionHeader = $("#URLDeckSubheader");
   if (utubDescription) {
     utubDescriptionHeader.text(utubDescription);
+    removeEventListenersForShowCreateUTubDescIfEmptyDesc();
   } else {
+    //const utubTitle = $("#URLDeckHeader");
+    //utubTitle.off("mouseenter.createUTubdescription");
+    allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty();
     utubDescriptionHeader.text(null);
   }
 

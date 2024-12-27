@@ -261,7 +261,7 @@ function updateUTubNameShowInput() {
   }
 }
 
-// Hides input fields for updating an exiting UTub's name
+// Hides input fields for updating an existing UTub's name
 function updateUTubNameHideInput() {
   // Hide update fields
   hideInput("#utubNameUpdate");
@@ -408,6 +408,7 @@ function updateUTubDescriptionShowInput() {
 // Hides input fields for updating an exiting UTub's description
 function updateUTubDescriptionHideInput() {
   // Hide update fields
+  const utubDescriptionUpdate = $("#utubDescriptionUpdate");
   hideInput("#utubDescriptionUpdate");
   hideIfShown($("#utubDescriptionSubmitBtnUpdate"));
 
@@ -463,6 +464,13 @@ function updateUTubDescriptionSetup() {
 // Handle updateion of UTub's description
 function updateUTubDescriptionSuccess(response) {
   const utubDescription = response.utubDescription;
+  const utubDescriptionElem = $("#URLDeckSubheader");
+  const originalUTubDescriptionLength = utubDescriptionElem.text().length;
+  if (utubDescription.length === 0) {
+    allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty();
+  } else if (originalUTubDescriptionLength === 0) {
+    removeEventListenersForShowCreateUTubDescIfEmptyDesc();
+  }
 
   // Change displayed and updateable value for utub description
   $("#URLDeckSubheader").text(utubDescription);
@@ -590,9 +598,9 @@ function deleteUTubSuccess() {
 
   // Update UTub Deck
   const currentUTubID = getActiveUTubID();
-  const UTubSelector = $(".UTubSelector[utubid=" + currentUTubID + "]");
-  UTubSelector.fadeOut();
-  UTubSelector.remove();
+  const utubSelector = $(".UTubSelector[utubid=" + currentUTubID + "]");
+  utubSelector.fadeOut();
+  utubSelector.remove();
 
   // Reset all panels
   setUIWhenNoUTubSelected();
@@ -602,5 +610,6 @@ function deleteUTubSuccess() {
 
   if (getNumOfUTubs() === 0) {
     resetUTubDeckIfNoUTubs();
+    hideIfShown($("#utubTagBtnCreate"));
   }
 }
