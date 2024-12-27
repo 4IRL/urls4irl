@@ -466,7 +466,6 @@ function updateUTubDescriptionSuccess(response) {
   const utubDescription = response.utubDescription;
   const utubDescriptionElem = $("#URLDeckSubheader");
   const originalUTubDescriptionLength = utubDescriptionElem.text().length;
-  console.log(`Length of utubDescription is ${utubDescription.length}`);
   if (utubDescription.length === 0) {
     allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty();
   } else if (originalUTubDescriptionLength === 0) {

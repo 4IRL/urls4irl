@@ -288,6 +288,7 @@ function resetURLDeck() {
   newURLInputRemoveEventListeners();
   $(".urlRow").remove();
   hideIfShown($("#urlBtnCreate"));
+  updateUTubDescriptionHideInput();
 }
 
 function resetURLDeckOnDeleteUTub() {

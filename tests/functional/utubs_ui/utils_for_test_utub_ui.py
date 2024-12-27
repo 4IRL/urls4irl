@@ -5,6 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
+from src import db
 from src.models.utubs import Utubs
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
@@ -18,6 +19,18 @@ from tests.functional.utils_for_test import (
 def get_utub_this_user_created(app: Flask, user_id: int) -> Utubs:
     with app.app_context():
         return Utubs.query.filter(Utubs.utub_creator == user_id).first()
+
+
+def get_utub_this_user_did_not_create(app: Flask, user_id: int) -> Utubs:
+    with app.app_context():
+        return Utubs.query.filter(Utubs.utub_creator != user_id).first()
+
+
+def update_utub_to_empty_desc(app: Flask, utub_id: int):
+    with app.app_context():
+        utub: Utubs = Utubs.query.get(utub_id)
+        utub.utub_description = ""
+        db.session.commit()
 
 
 def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
@@ -163,28 +176,34 @@ def update_utub_name(browser: WebDriver, utub_name: str) -> bool:
         return False
 
 
-def update_utub_description(browser: WebDriver, utub_description: str) -> bool:
+def update_utub_description(browser: WebDriver, utub_description: str):
     """
     Once logged in and UTub selected, this function conducts the actions for editing the selected UTub description. First hover over the UTub decsription to display the edit button. Then clicks the edit button, interacts with the input field and submits it.
 
     Args:
         WebDriver open to U4I Home Page
         New UTub description
-
-    Returns:
-        WebDriver handoff to UTub tests
     """
 
-    if user_is_selected_utub_owner(browser):
-        open_update_utub_desc_input(browser)
+    open_update_utub_desc_input(browser)
 
-        # Types new UTub description
-        utub_description_update_input = wait_then_get_element(
-            browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
-        )
-        assert utub_description_update_input is not None
-        clear_then_send_keys(utub_description_update_input, utub_description)
+    # Types new UTub description
+    utub_description_update_input = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE
+    )
+    assert utub_description_update_input is not None
+    clear_then_send_keys(utub_description_update_input, utub_description)
 
-        return True
-    else:
-        return False
+
+def hover_over_utub_title_to_show_add_utub_description(browser: WebDriver):
+    # Hover over UTub name to display utubNameBtnUpdate button
+    actions = ActionChains(browser)
+
+    utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
+    actions.move_to_element(utub_title_elem)
+
+    # Pause to make sure utubNameBtnUpdate button is visible
+    actions.perform()
+
+    utub_desc_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK)
+    assert not utub_desc_elem.is_displayed()
