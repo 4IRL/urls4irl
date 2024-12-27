@@ -10,7 +10,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 # Internal libraries
 from src.cli.mock_constants import MOCK_UTUB_NAME_BASE, USERNAME_BASE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.members_ui.utils_for_test_members_ui import (
     create_member_active_utub,
     get_all_member_usernames,
@@ -40,9 +40,9 @@ def test_open_input_create_member(
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
-    wait_then_click_element(browser, MPL.BUTTON_MEMBER_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_CREATE)
 
-    create_member_input = wait_then_get_element(browser, MPL.INPUT_MEMBER_CREATE)
+    create_member_input = wait_then_get_element(browser, HPL.INPUT_MEMBER_CREATE)
 
     assert create_member_input.is_displayed()
 
@@ -61,11 +61,11 @@ def test_cancel_input_create_member_x(
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
-    wait_then_click_element(browser, MPL.BUTTON_MEMBER_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_CREATE)
 
-    wait_then_click_element(browser, MPL.BUTTON_MEMBER_CANCEL_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_CANCEL_CREATE)
 
-    create_member_input = wait_until_hidden(browser, MPL.INPUT_MEMBER_CREATE)
+    create_member_input = wait_until_hidden(browser, HPL.INPUT_MEMBER_CREATE)
 
     assert not create_member_input.is_displayed()
 
@@ -84,11 +84,11 @@ def test_cancel_input_create_member_key(
     user_id = 1
     login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
 
-    wait_then_click_element(browser, MPL.BUTTON_MEMBER_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_CREATE)
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    create_member_input = wait_until_hidden(browser, MPL.INPUT_MEMBER_CREATE)
+    create_member_input = wait_until_hidden(browser, HPL.INPUT_MEMBER_CREATE)
 
     assert not create_member_input.is_displayed()
 
@@ -110,7 +110,7 @@ def test_create_member_btn(browser: WebDriver, create_test_utubs, provide_app: F
     create_member_active_utub(browser, new_member_username)
 
     # Submits new member form
-    wait_then_click_element(browser, MPL.BUTTON_MEMBER_SUBMIT_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_SUBMIT_CREATE)
 
     # Wait for POST request
     sleep(4)
@@ -168,6 +168,6 @@ def test_create_member_denied(
     member_utub = MOCK_UTUB_NAME_BASE + "2"
     select_utub_by_name(browser, member_utub)
 
-    create_member_btn = wait_until_hidden(browser, MPL.BUTTON_MEMBER_CREATE)
+    create_member_btn = wait_until_hidden(browser, HPL.BUTTON_MEMBER_CREATE)
 
     assert not create_member_btn.is_displayed()

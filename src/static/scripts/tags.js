@@ -4,7 +4,7 @@ $(document).ready(function () {
   /* Bind click functions */
   const utubTagBtnCreate = $("#utubTagBtnCreate");
 
-  // Add member to UTub
+  // Add tag to UTub
   utubTagBtnCreate.on("click.createUTubTag", function () {
     createUTubTagShowInput();
   });
@@ -64,6 +64,16 @@ function resetTagDeck() {
   disableUnselectAllButtonAfterTagFilterRemoved();
   hideIfShown($("#utubTagBtnCreate"));
   createUTubTagHideInput();
+}
+
+function resetTagDeckIfNoUTubSelected() {
+  $("#listTags").empty();
+  $("#createUTubTagWrap").hide();
+  hideIfShown($("#createUTubTagWrap"));
+  hideIfShown($("#utubTagBtnCreate"));
+  removeCreateUTubTagEventListeners();
+  resetCreateUTubTagFailErrors();
+  resetNewUTubTagForm();
 }
 
 // Alphasort tags
@@ -220,11 +230,9 @@ function createTagFilterInDeck(tagID, string) {
 
 // Handle tag filtered selected - tags are filtered based on a URL having one tag AND another tag.. etc
 function toggleTagFilterSelected(activeTagFilter) {
-  console.log($(".tagFilter.selected"));
   const currentSelectedTagIDs = $.map($(".tagFilter.selected"), (tagFilter) =>
     parseInt($(tagFilter).attr("data-utub-tag-id")),
   );
-  console.log(currentSelectedTagIDs);
   if (
     currentSelectedTagIDs.length >= CONSTANTS.TAGS_MAX_ON_URLS &&
     activeTagFilter.hasClass("unselected")

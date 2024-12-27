@@ -47,7 +47,10 @@ def home():
         return render_template("home.html", utubs_for_this_user=utub_details.json)
 
     elif "UTubID" in request.args and len(request.args) == 1:
-        return get_single_utub(request.args.get("UTubID"))
+        utub_id = request.args.get("UTubID")
+        if not utub_id:
+            abort(404)
+        return get_single_utub(utub_id)
 
     abort(404)
 

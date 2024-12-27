@@ -20,7 +20,7 @@ class Utub_Members(db.Model):
     user_id: int = Column(
         Integer, ForeignKey("Users.id"), primary_key=True, name="userID"
     )
-    member_role: str = Column(
+    member_role: Member_Role = Column(
         SQLEnum(Member_Role),
         nullable=False,
         default=Member_Role.MEMBER,

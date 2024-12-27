@@ -13,7 +13,7 @@ from src.cli.mock_constants import (
 )
 from src.utils.strings.tag_strs import FIVE_TAGS_MAX
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import create_tag
 from tests.functional.utils_for_test import (
     get_selected_url,
@@ -56,9 +56,9 @@ def test_cancel_input_create_tag_btn(browser: WebDriver, create_test_urls):
     selected_url_row = get_selected_url(browser)
     create_tag(browser, selected_url_row)
 
-    wait_then_click_element(browser, MPL.BUTTON_TAG_CANCEL_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_TAG_CANCEL_CREATE)
 
-    create_tag_input = wait_until_hidden(browser, MPL.INPUT_MEMBER_CREATE)
+    create_tag_input = wait_until_hidden(browser, HPL.INPUT_MEMBER_CREATE)
 
     assert not create_tag_input.is_displayed()
 
@@ -78,7 +78,7 @@ def test_cancel_input_create_tag_key(browser: WebDriver, create_test_urls):
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    create_tag_input = wait_until_hidden(browser, MPL.INPUT_MEMBER_CREATE)
+    create_tag_input = wait_until_hidden(browser, HPL.INPUT_MEMBER_CREATE)
 
     assert not create_tag_input.is_displayed()
 
@@ -101,7 +101,7 @@ def test_create_tag_btn(browser: WebDriver, create_test_urls):
     create_tag(browser, selected_url_row, tag_text)
 
     # Submit
-    wait_then_click_element(browser, MPL.BUTTON_TAG_SUBMIT_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_TAG_SUBMIT_CREATE)
 
     # Wait for POST request
     sleep(4)
@@ -169,7 +169,7 @@ def test_create_existing_tag(browser: WebDriver, create_test_tags):
 
     create_url(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
 
     # Assert new UTub is now active and displayed to user
     assert warning_modal_body.text == "Try shortening your UTub name"
@@ -192,12 +192,12 @@ def test_create_sixth_tag(browser: WebDriver, create_test_tags):
     create_tag(browser, selected_url_row, tag_text)
 
     # Submit
-    wait_then_click_element(browser, MPL.BUTTON_TAG_SUBMIT_CREATE)
+    wait_then_click_element(browser, HPL.BUTTON_TAG_SUBMIT_CREATE)
 
     # Wait for POST request
     sleep(4)
 
-    tag_error = wait_then_get_element(browser, MPL.ERROR_TAG_CREATE)
+    tag_error = wait_then_get_element(browser, HPL.ERROR_TAG_CREATE)
 
     # Assert error text is displayed
     assert "visible" in tag_error.get_attribute("class")
