@@ -483,7 +483,7 @@ function revertMobileUIToFullScreenUI() {
 function setUIWhenNoUTubSelected() {
   hideInputs();
   setTagDeckSubheaderWhenNoUTubSelected();
-  resetTagDeck();
+  resetTagDeckIfNoUTubSelected();
   setURLDeckWhenNoUTubSelected();
   resetURLDeck();
   setMemberDeckWhenNoUTubSelected();

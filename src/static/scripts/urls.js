@@ -1140,16 +1140,16 @@ function setURLDeckWhenNoUTubSelected() {
   $("#utubNameBtnUpdate").hide();
   $("#updateUTubDescriptionBtn").removeClass("visibleBtn");
 
-  const URLDeckSubheader = $("#URLDeckSubheader");
-  URLDeckSubheader.text("Select a UTub");
-  URLDeckSubheader.show();
+  const urlDeckSubheader = $("#URLDeckSubheader");
+  urlDeckSubheader.text("Select a UTub");
+  urlDeckSubheader.show();
 
   // Prevent on-hover of URL Deck Header to show update UTub name button in case of back button
   $("#utubNameBtnUpdate").removeClass("visibleBtn");
 }
 
-function setUTubNameAndDescription(UTubName) {
-  $("#URLDeckHeader").text(UTubName);
-  $("#utubNameUpdate").val(UTubName);
+function setUTubNameAndDescription(utubName) {
+  $("#URLDeckHeader").text(utubName);
+  $("#utubNameUpdate").val(utubName);
   updateUTubNameHideInput();
 }

@@ -598,9 +598,9 @@ function deleteUTubSuccess() {
 
   // Update UTub Deck
   const currentUTubID = getActiveUTubID();
-  const UTubSelector = $(".UTubSelector[utubid=" + currentUTubID + "]");
-  UTubSelector.fadeOut();
-  UTubSelector.remove();
+  const utubSelector = $(".UTubSelector[utubid=" + currentUTubID + "]");
+  utubSelector.fadeOut();
+  utubSelector.remove();
 
   // Reset all panels
   setUIWhenNoUTubSelected();
@@ -610,5 +610,6 @@ function deleteUTubSuccess() {
 
   if (getNumOfUTubs() === 0) {
     resetUTubDeckIfNoUTubs();
+    hideIfShown($("#utubTagBtnCreate"));
   }
 }

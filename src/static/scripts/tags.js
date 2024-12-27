@@ -4,7 +4,7 @@ $(document).ready(function () {
   /* Bind click functions */
   const utubTagBtnCreate = $("#utubTagBtnCreate");
 
-  // Add member to UTub
+  // Add tag to UTub
   utubTagBtnCreate.on("click.createUTubTag", function () {
     createUTubTagShowInput();
   });
@@ -64,6 +64,16 @@ function resetTagDeck() {
   disableUnselectAllButtonAfterTagFilterRemoved();
   hideIfShown($("#utubTagBtnCreate"));
   createUTubTagHideInput();
+}
+
+function resetTagDeckIfNoUTubSelected() {
+  $("#listTags").empty();
+  $("#createUTubTagWrap").hide();
+  hideIfShown($("#createUTubTagWrap"));
+  hideIfShown($("#utubTagBtnCreate"));
+  removeCreateUTubTagEventListeners();
+  resetCreateUTubTagFailErrors();
+  resetNewUTubTagForm();
 }
 
 // Alphasort tags
