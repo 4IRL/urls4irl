@@ -106,6 +106,7 @@ class HomePageLocators:
     BUTTON_MEMBER_SUBMIT_CREATE = "#memberSubmitBtnCreate"
     BUTTON_UTUB_LEAVE = "#memberSelfBtnDelete"
     BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"
+    INPUT_MEMBER_CREATE_ERROR = INPUT_MEMBER_CREATE + INVALID_FIELD_SUFFIX
 
     SUBHEADER_UTUB = "#MemberDeckSubheader"
     LIST_MEMBERS = "#listMembers"
