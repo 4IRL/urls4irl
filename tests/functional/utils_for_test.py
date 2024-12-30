@@ -405,33 +405,23 @@ def assert_login(browser: WebDriver):
 
 
 # UTub Deck
-def select_utub_by_name(browser: WebDriver, utub_name: str) -> bool:
+def select_utub_by_name(browser: WebDriver, utub_name: str):
     """
     Selects the first UTub selector matching the supplied UTub name
 
     Args:
         WebDriver open to U4I Home Page
         Name of UTub to be selected
-
-    Returns:
-        Boolean confirmation of UTub selection
     """
 
-    try:
-        utub_list = wait_then_get_element(browser, HPL.LIST_UTUB)
-        assert utub_list is not None
+    utub_selectors = wait_then_get_elements(browser, HPL.SELECTORS_UTUB)
+    assert utub_selectors
 
-        utub_selectors = utub_list.find_elements(By.CSS_SELECTOR, "*")
+    for selector in utub_selectors:
+        utub_name_elem = selector.find_element(By.CSS_SELECTOR, HPL.SELECTORS_UTUB_NAME)
 
-        for selector in utub_selectors:
-            utub_selector_name = selector.get_attribute("innerText")
-
-            if utub_selector_name == utub_name:
-                selector.click()
-                return True
-    except AttributeError:
-        return False
-    return False
+        if utub_name_elem.text == utub_name:
+            selector.click()
 
 
 def login_utub(
@@ -513,23 +503,7 @@ def get_selected_utub_name(browser: WebDriver) -> str:
         By.CSS_SELECTOR, HPL.SELECTOR_SELECTED_UTUB
     )
 
-    utub_name = selected_utub_selector.get_attribute("innerText")
-    assert isinstance(utub_name, str)
-
-    return utub_name
-
-
-def get_selected_utub_decsription(browser: WebDriver):
-    """
-    Extracts description of selected UTub.
-
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        String containing the selected UTub description.
-    """
-    return browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK).text
+    return selected_utub_selector.text
 
 
 # Members Deck

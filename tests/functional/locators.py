@@ -12,6 +12,7 @@ class HomePageLocators:
     SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
     LIST_UTUB = "#listUTubs"
     SELECTORS_UTUB = ".UTubSelector"
+    SELECTORS_UTUB_NAME = ".UTubName"
     SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
 
     BUTTON_UTUB_CREATE = "#utubBtnCreate"

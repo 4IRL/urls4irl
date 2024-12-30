@@ -1,5 +1,4 @@
 from flask import Flask
-from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -105,18 +104,3 @@ def delete_member_active_utub(browser: WebDriver, member_name: str):
             actions.click(member_delete_button)
 
             actions.perform()
-
-
-def leave_active_utub(browser: WebDriver):
-    """
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        WebDriver handoff to member tests
-    """
-
-    try:
-        wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE)
-    except NoSuchElementException:
-        return False
