@@ -14,12 +14,13 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.urls_ui.utils_for_test_url_ui import get_selected_utub_id
 from tests.functional.utils_for_test import (
     dismiss_modal_with_click_out,
-    login_user_select_utub_by_name_and_url_by_title,
+    login_user_and_select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
+from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 pytestmark = pytest.mark.utubs_ui
 
@@ -35,13 +36,10 @@ def test_open_delete_utub_modal(
 
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
     )
-
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
-        assert utub.utub_creator == user_id_for_test
 
     utub_delete_btn = wait_then_get_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
     assert utub_delete_btn is not None
@@ -69,13 +67,10 @@ def test_dismiss_delete_utub_modal_x(
 
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
     )
-
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
-        assert utub.utub_creator == user_id_for_test
 
     delete_utub_modal = browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL)
     assert not delete_utub_modal.is_displayed()
@@ -100,13 +95,10 @@ def test_dismiss_delete_utub_modal_btn(
 
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
     )
-
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
-        assert utub.utub_creator == user_id_for_test
 
     delete_utub_modal = browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL)
     assert not delete_utub_modal.is_displayed()
@@ -131,8 +123,9 @@ def test_dismiss_delete_utub_modal_key(
 
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
     )
 
     with app.app_context():
@@ -164,13 +157,10 @@ def test_dismiss_delete_utub_modal_click(
 
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
     )
-
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
-        assert utub.utub_creator == user_id_for_test
 
     wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
 
@@ -190,13 +180,10 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Fla
 
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
     )
-
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
-        assert utub.utub_creator == user_id_for_test
 
     utub_id = get_selected_utub_id(browser)
     css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
@@ -225,13 +212,10 @@ def test_delete_last_utub_no_urls_no_tags_no_members(
     """
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
     )
-
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
-        assert utub.utub_creator == user_id_for_test
 
     wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
 
@@ -273,16 +257,17 @@ def test_delete_last_utub_with_urls_tags_members(
     app = provide_app
     user_id_for_test = 1
 
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
     with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
-        assert utub.utub_creator == user_id_for_test
         Utub_Members.query.filter(
-            Utub_Members.user_id == user_id_for_test, Utub_Members.utub_id != utub.id
+            Utub_Members.user_id == user_id_for_test,
+            Utub_Members.utub_id != utub_user_created.id,
         ).delete()
         db.session.commit()
 
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
     )
 
     wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
