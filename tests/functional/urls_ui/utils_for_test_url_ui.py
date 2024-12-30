@@ -54,7 +54,7 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
     wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE)
 
 
-def update_url_string(url_row: WebElement, url_string: str):
+def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
     """
     Streamlines actions required to updated a URL in the selected URL.
 
@@ -72,6 +72,9 @@ def update_url_string(url_row: WebElement, url_string: str):
     # Input new URL string
     url_string_input_field = url_row.find_element(
         By.CSS_SELECTOR, HPL.INPUT_URL_STRING_UPDATE
+    )
+    url_string_input_field = wait_until_visible(
+        browser, url_string_input_field, timeout=3
     )
     clear_then_send_keys(url_string_input_field, url_string)
 
