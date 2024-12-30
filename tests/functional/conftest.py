@@ -48,9 +48,10 @@ def init_multiprocessing():
 
 
 @pytest.fixture(scope="session")
-def provide_port() -> int:
+def provide_port(flask_logs: bool) -> int:
     open_port = find_open_port()
-    print(f"Found an open port: {open_port}")
+    if flask_logs:
+        print(f"\nFound an open port: {open_port}")
     sleep(2)
     return open_port
 
@@ -196,7 +197,7 @@ def browser_mobile(
     This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
     """
     open_port = provide_port
-    driver = build_driver
+    driver = build_driver_mobile
 
     driver.delete_all_cookies()
 
