@@ -405,33 +405,24 @@ def assert_login(browser: WebDriver):
 
 
 # UTub Deck
-def select_utub_by_name(browser: WebDriver, utub_name: str) -> bool:
+def select_utub_by_name(browser: WebDriver, utub_name: str):
     """
     Selects the first UTub selector matching the supplied UTub name
 
     Args:
         WebDriver open to U4I Home Page
         Name of UTub to be selected
-
-    Returns:
-        Boolean confirmation of UTub selection
     """
 
-    try:
-        utub_list = wait_then_get_element(browser, HPL.LIST_UTUB)
-        assert utub_list is not None
+    utub_selectors = wait_then_get_elements(browser, HPL.SELECTORS_UTUB)
+    assert utub_selectors
 
-        utub_selectors = utub_list.find_elements(By.CSS_SELECTOR, "*")
+    for selector in utub_selectors:
+        utub_name_elem = selector.find_element(By.CSS_SELECTOR, HPL.SELECTORS_UTUB_NAME)
 
-        for selector in utub_selectors:
-            utub_selector_name = selector.get_attribute("innerText")
-
-            if utub_selector_name == utub_name:
-                selector.click()
-                return True
-    except AttributeError:
-        return False
-    return False
+        if utub_name_elem.text == utub_name:
+            selector.click()
+            return
 
 
 def login_utub(
@@ -513,23 +504,7 @@ def get_selected_utub_name(browser: WebDriver) -> str:
         By.CSS_SELECTOR, HPL.SELECTOR_SELECTED_UTUB
     )
 
-    utub_name = selected_utub_selector.get_attribute("innerText")
-    assert isinstance(utub_name, str)
-
-    return utub_name
-
-
-def get_selected_utub_decsription(browser: WebDriver):
-    """
-    Extracts description of selected UTub.
-
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        String containing the selected UTub description.
-    """
-    return browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK).text
+    return selected_utub_selector.text
 
 
 # Members Deck
@@ -646,14 +621,10 @@ def select_url_by_title(browser: WebDriver, url_title: str):
     Args:
         WebDriver open to a selected UTub
         URL Title
-
-    Returns:
-        Boolean indicating a successful click of the indicated URL row with the provided URL title
     """
 
     url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    if url_rows is None:
-        return False
+    assert url_rows
 
     for url_row in url_rows:
 
@@ -662,12 +633,10 @@ def select_url_by_title(browser: WebDriver, url_title: str):
         ).get_attribute("innerText")
         if url_row_title == url_title:
             url_row.click()
-            return True
-
-    return False
+            return
 
 
-def select_url_by_url_string(browser: WebDriver, url_string: str) -> bool:
+def select_url_by_url_string(browser: WebDriver, url_string: str):
     """
     If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL url string.
 
@@ -680,8 +649,7 @@ def select_url_by_url_string(browser: WebDriver, url_string: str) -> bool:
     """
 
     url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    if url_rows is None:
-        return False
+    assert url_rows
 
     for url_row in url_rows:
 
@@ -690,9 +658,7 @@ def select_url_by_url_string(browser: WebDriver, url_string: str) -> bool:
         ).get_attribute("data-url")
         if url_row_string == url_string:
             url_row.click()
-            return True
-
-    return False
+            return
 
 
 def verify_elem_with_url_string_exists(browser: WebDriver, url_string: str) -> bool:
@@ -905,7 +871,13 @@ def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | No
 
 
 def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
-    args = ["addmock", "url"] + urls
+    args = (
+        ["addmock", "url"]
+        + urls
+        + [
+            "--no-dupes",
+        ]
+    )
     runner.invoke(args=args)
 
 

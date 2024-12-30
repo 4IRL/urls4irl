@@ -1,26 +1,31 @@
-# Standard library
-from time import sleep
-
-# External libraries
 from flask import Flask
 import pytest
+from selenium.common.exceptions import NoSuchElementException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-# Internal libraries
 from locators import HomePageLocators as HPL
-from src.cli.mock_constants import USERNAME_BASE
+from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.members_ui.utils_for_test_members_ui import (
     delete_member_active_utub,
     get_all_member_usernames,
+    get_other_member_in_utub,
 )
 from tests.functional.utils_for_test import (
+    dismiss_modal_with_click_out,
     login_user_and_select_utub_by_name,
+    wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_visible_css_selector,
+)
+from tests.functional.utubs_ui.utils_for_test_utub_ui import (
+    get_utub_this_user_created,
+    get_utub_this_user_did_not_create,
 )
 
 pytestmark = pytest.mark.members_ui
@@ -32,22 +37,23 @@ def test_open_delete_member_modal(
     provide_app: Flask,
 ):
     """
-    Tests a UTub owner's ability to open the delete member modal.
-
     GIVEN a user owns a UTub with members
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    WHEN they click on the delete member button after hovering over the member
+    THEN ensure the modal to confirm deleting a member is shown
     """
     app = provide_app
 
     user_id = 1
-    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
-    member_name = USERNAME_BASE + "2"
+    member_name = other_member.username
 
     delete_member_active_utub(browser, member_name)
 
     warning_modal = wait_then_get_element(browser, HPL.HOME_MODAL)
+    assert warning_modal is not None
 
     assert warning_modal.is_displayed()
 
@@ -66,22 +72,85 @@ def test_dismiss_delete_member_modal_btn(
     provide_app: Flask,
 ):
     """
-    Tests a UTub owner's ability to close the delete member modal.
-
     GIVEN a user owns a UTub with members
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    WHEN they open the delete member modal, but dismiss it by clicking the cancel button
+    THEN ensure the modal is then dismissed
     """
     app = provide_app
 
     user_id = 1
-    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
-    member_name = USERNAME_BASE + "2"
+    member_name = other_member.username
 
     delete_member_active_utub(browser, member_name)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
+
+    create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
+
+    # Assert warning modal appears with appropriate text
+    assert not create_member_input.is_displayed()
+
+
+def test_dismiss_delete_member_modal_x(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user owns a UTub with members
+    WHEN they open the delete member modal, but dismiss it by clicking the X button on the modal
+    THEN ensure the modal is then dismissed
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
+
+    member_name = other_member.username
+
+    delete_member_active_utub(browser, member_name)
+
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    home_modal = browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL)
+    x_btn = home_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_X_CLOSE)
+    assert x_btn.is_displayed()
+    x_btn.click()
+
+    create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
+
+    # Assert warning modal appears with appropriate text
+    assert not create_member_input.is_displayed()
+
+
+def test_dismiss_delete_member_modal_click_outside_modal(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user owns a UTub with members
+    WHEN they open the delete member modal, but dismiss it by clicking outside the modal
+    THEN ensure the modal is then dismissed
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
+
+    member_name = other_member.username
+
+    delete_member_active_utub(browser, member_name)
+
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
+    dismiss_modal_with_click_out(browser)
 
     create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
 
@@ -95,22 +164,24 @@ def test_dismiss_delete_member_modal_key(
     provide_app: Flask,
 ):
     """
-    Tests a UTub owner's ability to delete a member from the UTub.
-
     GIVEN a user owns a UTub with members
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    WHEN they open the delete member modal, but dismiss it by pressing the escape key
+    THEN ensure the modal is then dismissed
     """
     app = provide_app
 
     user_id = 1
-    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
-    member_name = USERNAME_BASE + "2"
+    member_name = other_member.username
+    delete_member_active_utub(browser, other_member.username)
 
     delete_member_active_utub(browser, member_name)
 
     home_modal = wait_then_get_element(browser, HPL.HOME_MODAL)
+    assert home_modal is not None
 
     home_modal.send_keys(Keys.ESCAPE)
 
@@ -126,27 +197,66 @@ def test_delete_member_btn(
     provide_app: Flask,
 ):
     """
-    Tests a UTub owner's ability to delete a member from the UTub.
-
     GIVEN a user owns a UTub with members
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    WHEN they submit the delete UTub Member modal
+    THEN ensure the member is removed from the UTub
     """
     app = provide_app
 
     user_id = 1
-    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
-    member_name = USERNAME_BASE + "2"
-
-    delete_member_active_utub(browser, member_name)
+    member_name = other_member.username
+    delete_member_active_utub(browser, other_member.username)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for DELETE request
-    sleep(4)
+    member_selector = f'{HPL.BADGES_MEMBERS}[memberid="{other_member.id}"]'
+    member_elem = browser.find_element(By.CSS_SELECTOR, member_selector)
+    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_for_element_to_be_removed(browser, member_elem)
 
     member_usernames = get_all_member_usernames(browser)
 
     # Assert member no longer exists
     assert member_name not in member_usernames
+
+
+def test_open_delete_member_modal_fails_as_member(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user who is a member of a UTub
+    WHEN they hover over another member in the UTub
+    THEN ensure delete member button is not shown to the user
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_member_of = get_utub_this_user_did_not_create(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_member_of.name)
+
+    with app.app_context():
+        other_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id != user_id,
+            Utub_Members.utub_id == utub_user_member_of.id,
+            Utub_Members.member_role == Member_Role.MEMBER,
+        ).first()
+        other_user = other_member.to_user
+
+    member_selector = f'{HPL.BADGES_MEMBERS}[memberid="{other_user.id}"]'
+
+    other_member_element = wait_then_get_element(browser, member_selector, time=3)
+    assert other_member_element is not None
+
+    actions = ActionChains(browser)
+    actions.move_to_element(other_member_element).perform()
+    actions.pause(1).perform()
+
+    with pytest.raises(NoSuchElementException):
+        other_member_element.find_element(By.CSS_SELECTOR, HPL.BUTTON_MEMBER_DELETE)

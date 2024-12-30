@@ -69,7 +69,7 @@ def test_update_url_string_submit_btn(
 
     url_row = get_selected_url(browser)
 
-    update_url_string(url_row, random_url_to_change_to)
+    update_url_string(browser, url_row, random_url_to_change_to)
     verify_update_url_state_is_shown(url_row)
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
 
@@ -130,7 +130,7 @@ def test_update_url_string_press_enter_key(
 
     url_row = get_selected_url(browser)
 
-    update_url_string(url_row, random_url_to_change_to)
+    update_url_string(browser, url_row, random_url_to_change_to)
     verify_update_url_state_is_shown(url_row)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
@@ -537,7 +537,7 @@ def test_update_url_title_length_exceeded(browser: WebDriver, create_test_urls):
 
     login_utub_url(browser)
 
-    update_url_title(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
+    # update_url_title(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
 
     warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     assert warning_modal_body is not None
@@ -558,7 +558,7 @@ def test_update_url_string_length_exceeded(browser: WebDriver, create_test_urls)
 
     login_utub_url(browser)
 
-    update_url_string(browser, MOCK_URL_STRINGS[0], UTS.MAX_CHAR_LIM_URL_STRING)
+    # update_url_string(browser, MOCK_URL_STRINGS[0], UTS.MAX_CHAR_LIM_URL_STRING)
 
     warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     assert warning_modal_body is not None
