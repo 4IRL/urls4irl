@@ -1,10 +1,14 @@
+from typing import Any, Awaitable, Union
 from unittest.mock import patch
 import time
 
 from flask import url_for
 from flask_login import current_user
 import pytest
+import redis
+from redis.client import Redis
 
+from src.utils.strings.config_strs import CONFIG_ENVS
 from tests.models_for_test import (
     valid_empty_utub_1,
     valid_empty_utub_2,
@@ -305,7 +309,7 @@ def test_csrf_expiration(app, login_first_user_with_register):
     # Mock the `time.time` method response to return a value indicating an expired token
     with patch(
         "time.time",
-        return_value=current_time + CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS + 1,
+        return_value=current_time + CONFIG_CONSTANTS.SESSION_LIFETIME + 10,
     ):
         invalid_utub_response_with_csrf = client.post(
             url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
@@ -315,6 +319,61 @@ def test_csrf_expiration(app, login_first_user_with_register):
             b"<p>The CSRF token has expired.</p>"
             in invalid_utub_response_with_csrf.data
         )
+
+
+def test_session_expiration(
+    app, provide_redis: Redis | None, login_first_user_with_register
+):
+    """
+    GIVEN a valid user on the home page
+    WHEN they make a POST request using an expired session
+    THEN ensure the response indicates session is expired
+    """
+    if provide_redis is None:
+        return
+    redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI, None)
+
+    if not redis_uri or redis_uri == "memory://":
+        return
+    redis_client: Any = redis.Redis.from_url(url=redis_uri)
+    assert isinstance(redis_client, Redis)
+
+    client, csrf_token, _, _ = login_first_user_with_register
+    new_utub_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token,
+        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
+    }
+
+    client.post(url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form)
+    redis_keys: Union[Awaitable, Any] = redis_client.keys()
+    assert (
+        isinstance(redis_keys, list) and redis_keys and isinstance(redis_keys[0], bytes)
+    )
+    session_key: list[bytes] = [
+        key for key in redis_keys if key.decode().startswith("session:")
+    ]
+    assert session_key
+    single_session_key = session_key.pop()
+
+    ttl_for_key: Union[Awaitable, Any] = redis_client.ttl(single_session_key)
+    assert isinstance(ttl_for_key, int)
+    assert (
+        ttl_for_key >= (CONFIG_CONSTANTS.SESSION_LIFETIME - 30)
+        and ttl_for_key <= CONFIG_CONSTANTS.SESSION_LIFETIME
+    )
+
+    redis_client.pexpire(single_session_key, 1)
+    time.sleep(0.2)
+    assert redis_client.get(single_session_key) is None
+    response = client.get(url_for(ROUTES.UTUBS.HOME), follow_redirects=True)
+
+    # Hits splash page due to session expiration
+    assert response.status_code == 200
+    assert (
+        bytes("A simple, clean way to permanently save and share URLs.", "utf-8")
+        in response.data
+    )
 
 
 def test_add_multiple_valid_utubs(login_first_user_with_register):
