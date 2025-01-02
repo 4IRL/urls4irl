@@ -1,3 +1,4 @@
+from typing import Any
 import pytest
 import redis
 from redis import Redis
@@ -36,7 +37,8 @@ def test_add_short_url_domains(runner):
 
     cli_runner.invoke(args=["shorturls", "add"])
 
-    redis_client: Redis = redis.Redis.from_url(url=redis_uri)
+    redis_client: Any = redis.Redis.from_url(url=redis_uri)
+    assert isinstance(redis_client, Redis)
 
     for short_domain in VALID_SHORT_DOMAINS:
         assert redis_client.sismember(name=SHORT_URLS, value=short_domain) == 1

@@ -66,20 +66,24 @@ class Config:
     FLASK_RUN_HOST = environ.get("FLASK_RUN_HOST", default=None)
     FLASK_DEBUG = environ.get("FLASK_DEBUG")
     SECRET_KEY = environ.get(ENV.SECRET_KEY)
-    SESSION_PERMANENT = "False"
+    SESSION_PERMANENT = True
+    PERMANENT_SESSION_LIFETIME = CONFIG_CONSTANTS.SESSION_LIFETIME
     if REDIS_URI == "memory://" or REDIS_URI is None:
         SESSION_TYPE = "cachelib"
         SESSION_CACHELIB = FileSystemCache(
-            threshold=500, cache_dir=f"{path.dirname(__file__)}/sessions"
+            threshold=10, cache_dir=f"{path.dirname(__file__)}/sessions"
         )
     else:
         SESSION_TYPE = "redis"
         SESSION_REDIS = Redis.from_url(REDIS_URI)
     SESSION_SERIALIZATION_FORMAT = "json"
     SESSION_COOKIE_SAMESITE = "lax"
+    SESSION_COOKIE_SECURE = (
+        True  # TODO: Implement Remember Me feature and set this to default False
+    )
     WTF_CSRF_TIME_LIMIT = (
-        CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS
-    )  # Six hours until CSRF expiration
+        CONFIG_CONSTANTS.SESSION_LIFETIME
+    )  # Same as session lifetime to avoid CSRF token expiring in middle of user's session
     BASE_EMAIL = environ.get(ENV.BASE_EMAIL)
     MAILJET_API_KEY = environ.get(ENV.MAILJET_API_KEY)
     MAILJET_SECRET_KEY = environ.get(ENV.MAILJET_SECRET_KEY)
