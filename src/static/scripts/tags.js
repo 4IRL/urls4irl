@@ -3,6 +3,7 @@
 $(document).ready(function () {
   /* Bind click functions */
   const utubTagBtnCreate = $("#utubTagBtnCreate");
+  const utubTagBtnUnselectAll = $("#unselectAllTagFilters");
 
   // Add tag to UTub
   utubTagBtnCreate.on("click.createUTubTag", function () {
@@ -17,6 +18,10 @@ $(document).ready(function () {
 
   utubTagBtnCreate.on("blur", function () {
     $(document).off(".createUTubTag");
+  });
+
+  utubTagBtnUnselectAll.on("click.unselectAllTags", function () {
+    unselectAllTags();
   });
 });
 
@@ -63,6 +68,7 @@ function resetTagDeck() {
   resetCountOfTagFiltersApplied();
   disableUnselectAllButtonAfterTagFilterRemoved();
   hideIfShown($("#utubTagBtnCreate"));
+  hideIfShown($("#unselectAllTagFilters"));
   createUTubTagHideInput();
 }
 
@@ -71,6 +77,7 @@ function resetTagDeckIfNoUTubSelected() {
   $("#createUTubTagWrap").hide();
   hideIfShown($("#createUTubTagWrap"));
   hideIfShown($("#utubTagBtnCreate"));
+  hideIfShown($("#unselectAllTagFilters"));
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();
@@ -279,6 +286,7 @@ function updateURLsAndTagSubheaderWhenTagSelected() {
     parseInt($(tagFilter).attr("data-utub-tag-id")),
   );
   const urlCards = $(".urlRow");
+  const numSelectedTagIDs = selectedTagIDs.length;
 
   let tagBadgeIDsOnURL, shouldShow;
   urlCards.each((_, urlCard) => {
@@ -298,7 +306,11 @@ function updateURLsAndTagSubheaderWhenTagSelected() {
       : $(urlCard).attr({ filterable: false });
   });
   reapplyAlternatingURLCardBackgroundAfterFilter();
-  updateCountOfTagFiltersApplied(selectedTagIDs.length);
+  updateCountOfTagFiltersApplied(numSelectedTagIDs);
+
+  numSelectedTagIDs > 0
+    ? $("#unselectAllTagFilters").show()
+    : $("#unselectAllTagFilters").hide();
 }
 
 function reapplyAlternatingURLCardBackgroundAfterFilter() {
@@ -318,6 +330,11 @@ function enableUnselectAllButtonAfterTagFilterApplied() {
       unselectAllTags();
     })
     .attr({ tabindex: 0 });
+
+  console.log("show unselect all");
+
+  // $("#utubTagBtnUnselectAll").show();
+  showIfHidden($("#utubTagBtnUnselectAll"));
 }
 
 function disableUnselectAllButtonAfterTagFilterRemoved() {
@@ -325,6 +342,10 @@ function disableUnselectAllButtonAfterTagFilterRemoved() {
     .addClass("disabled")
     .off(".unselectAllTags")
     .attr({ tabindex: -1 });
+
+  console.log("hide unselect all");
+
+  $("#utubTagBtnUnselectAll").hide();
 }
 
 function enableUnselectedTagsAfterDisabledDueToLimit() {
@@ -418,6 +439,7 @@ function updateTagFilteringOnURLOrURLTagDeletion() {
 // Subheader prompt hidden when no UTub selected
 function setTagDeckSubheaderWhenNoUTubSelected() {
   $("#TagDeckSubheader").text(null);
+  $("#unselectAllTagFilters").hide();
 }
 
 // Selected UTub, show filters applied
