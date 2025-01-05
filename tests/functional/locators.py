@@ -27,6 +27,7 @@ class HomePageLocators:
     LIST_TAGS = "#listTags"
     TAG_FILTERS = ".tagFilter"
     SELECTOR_UNSELECT_ALL = "#unselectAll"
+    BUTTON_UNSELECT_ALL = "#unselectAllTagFilters"
     BUTTON_UTUB_TAG_CREATE = "#utubTagBtnCreate"
     INPUT_UTUB_TAG_CREATE = "#utubTagCreate"
     BUTTON_UTUB_TAG_SUBMIT_CREATE = "#utubTagSubmitBtnCreate"

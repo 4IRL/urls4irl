@@ -611,5 +611,6 @@ function deleteUTubSuccess() {
   if (getNumOfUTubs() === 0) {
     resetUTubDeckIfNoUTubs();
     hideIfShown($("#utubTagBtnCreate"));
+    hideIfShown($("#unselectAllTagFilters"));
   }
 }
