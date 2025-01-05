@@ -19,12 +19,8 @@ class UI_TEST_STRINGS:
 
     # Register
     HEADER_MODAL_EMAIL_VALIDATION = "Validate Your Email!"
-
-    MESSAGE_USERNAME_TAKEN = "That username is already taken. Please choose another."
-    MESSAGE_EMAIL_UNVALIDATED = "An account already exists with that information but the email has not been validated."
-    MESSAGE_EMAIL_TAKEN = (
-        "That email is already associated with a username. Forgot password?"
-    )
+    PASSWORD_EQUALITY_FAILED = "Field must be equal to password."
+    EMAIL_EQUALITY_FAILED = "Field must be equal to email."
 
     # UTubs
     TEST_UTUB_NAME_1 = MOCK_UTUB_NAME_BASE + "1"
@@ -34,8 +30,6 @@ class UI_TEST_STRINGS:
         "You are a member of a UTub with an identical name."
     )
     BODY_MODAL_UTUB_DELETE = "This action is irreversible!"
-
-    MAX_CHAR_LIM_UTUB_NAME = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
 
     MESSAGE_NO_UTUBS = "Create a UTub"
 

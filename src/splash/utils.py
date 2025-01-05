@@ -126,7 +126,7 @@ def _handle_after_forgot_password_form_validated(
 
 
 def _create_or_reset_forgot_password_object_for_user(
-    user: Users, forgot_password: Forgot_Passwords
+    user: Users, forgot_password: Forgot_Passwords | None
 ):
     if forgot_password is None:
         new_token = user.get_password_reset_token()

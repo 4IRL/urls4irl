@@ -22,9 +22,10 @@ from selenium.webdriver.support import expected_conditions as EC
 
 # Internal libraries
 from src.models.users import Users
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as MP
 
 
@@ -73,16 +74,12 @@ def wait_then_get_element(
 
         return element
     except ElementNotInteractableException:
-        print("ElementNotInteractableException")
         return None
     except NoSuchElementException:
-        print("NoSuchElementException")
         return None
     except TimeoutException:
-        print("Timeout")
         return None
     except StaleElementReferenceException:
-        print("Stale")
         return None
 
 
@@ -113,12 +110,10 @@ def wait_then_get_elements(
 
         return elements
     except ElementNotInteractableException:
-        print("ElementNotInteractableException")
         return []
     except NoSuchElementException:
         return []
     except TimeoutException:
-        print("Timeout")
         return []
 
 
@@ -209,7 +204,9 @@ def clear_then_send_keys(element: WebElement, input_text: str):
     input_field.send_keys(input_text)
 
 
-def wait_until_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
+def wait_until_hidden(
+    browser: WebDriver, css_selector: str, timeout: int = 2
+) -> WebElement:
     element = browser.find_element(By.CSS_SELECTOR, css_selector)
 
     wait = WebDriverWait(browser, timeout)
@@ -248,7 +245,14 @@ def assert_not_visible_css_selector(
         )
         assert True
     except TimeoutException:
-        print("Element is still visible.")
+        assert False
+
+
+def assert_on_404_page(browser: WebDriver):
+    error_header = wait_then_get_element(browser, css_selector="h2", time=3)
+    assert error_header is not None
+    assert error_header.text == IDENTIFIERS.HTML_404
+    assert "Invalid Request - URLS4IRL" == browser.title
 
 
 # Modal
@@ -314,6 +318,11 @@ def login_user_with_cookie_from_session(browser: WebDriver, session_id: str):
 
     # Refresh to redirect user to their home page since they're logged in
     browser.refresh()
+
+
+def login_user_to_home_page(app: Flask, browser: WebDriver, user_id: int):
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
 
 
 def login_user_and_select_utub_by_name(
@@ -383,62 +392,37 @@ def assert_login(browser: WebDriver):
 
     # Confirm user logged in
     # Logout button visible
-    btn_logout = wait_then_get_element(browser, MPL.BUTTON_LOGOUT)
+    btn_logout = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
     assert btn_logout is not None
     assert btn_logout.text == "Logout"
 
     # Correct user logged in
-    user_logged_in = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    user_logged_in = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
     assert user_logged_in is not None
     userLoggedInText = "Logged in as " + UTS.TEST_USERNAME_1
 
     assert user_logged_in.text == userLoggedInText
 
 
-def assert_register(browser: WebDriver):
-    """
-    Streamlines actions needed to confirm a new user is registered.
-
-    Args:
-        WebDriver open to U4I Home Page
-
-    Returns:
-        Boolean True, if registered
-    """
-    modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL)
-    assert modal_title is not None
-
-    assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
-
-
 # UTub Deck
-def select_utub_by_name(browser: WebDriver, utub_name: str) -> bool:
+def select_utub_by_name(browser: WebDriver, utub_name: str):
     """
     Selects the first UTub selector matching the supplied UTub name
 
     Args:
         WebDriver open to U4I Home Page
         Name of UTub to be selected
-
-    Returns:
-        Boolean confirmation of UTub selection
     """
 
-    try:
-        utub_list = wait_then_get_element(browser, MPL.LIST_UTUB)
-        assert utub_list is not None
+    utub_selectors = wait_then_get_elements(browser, HPL.SELECTORS_UTUB)
+    assert utub_selectors
 
-        utub_selectors = utub_list.find_elements(By.CSS_SELECTOR, "*")
+    for selector in utub_selectors:
+        utub_name_elem = selector.find_element(By.CSS_SELECTOR, HPL.SELECTORS_UTUB_NAME)
 
-        for selector in utub_selectors:
-            utub_selector_name = selector.get_attribute("innerText")
-
-            if utub_selector_name == utub_name:
-                selector.click()
-                return True
-    except AttributeError:
-        return False
-    return False
+        if utub_name_elem.text == utub_name:
+            selector.click()
+            return
 
 
 def login_utub(
@@ -480,7 +464,7 @@ def get_num_utubs(browser: WebDriver) -> int:
     Returns:
         Integer length of UTub selectors available to user
     """
-    utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    utub_selectors = wait_then_get_elements(browser, HPL.SELECTORS_UTUB)
     if utub_selectors:
         return len(utub_selectors)
     return 0
@@ -496,7 +480,7 @@ def get_all_utub_selector_names(browser: WebDriver) -> list[str]:
     Returns:
         Array of strings corresponding to UTub selectors available to user
     """
-    utub_selectors = wait_then_get_elements(browser, MPL.SELECTORS_UTUB)
+    utub_selectors = wait_then_get_elements(browser, HPL.SELECTORS_UTUB)
 
     utub_names = []
     if utub_selectors:
@@ -517,26 +501,10 @@ def get_selected_utub_name(browser: WebDriver) -> str:
     """
 
     selected_utub_selector = browser.find_element(
-        By.CSS_SELECTOR, MPL.SELECTOR_SELECTED_UTUB
+        By.CSS_SELECTOR, HPL.SELECTOR_SELECTED_UTUB
     )
 
-    utub_name = selected_utub_selector.get_attribute("innerText")
-    assert isinstance(utub_name, str)
-
-    return utub_name
-
-
-def get_selected_utub_decsription(browser: WebDriver):
-    """
-    Extracts description of selected UTub.
-
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        String containing the selected UTub description.
-    """
-    return browser.find_element(By.CSS_SELECTOR, MPL.SUBHEADER_URL_DECK).text
+    return selected_utub_selector.text
 
 
 # Members Deck
@@ -551,7 +519,7 @@ def get_selected_utub_owner_id(browser: WebDriver):
         Integer user ID
     """
 
-    owner_badge = wait_then_get_element(browser, MPL.BADGE_OWNER)
+    owner_badge = wait_then_get_element(browser, HPL.BADGE_OWNER)
     assert owner_badge is not None
 
     owner_id = owner_badge.get_attribute("memberid")
@@ -571,7 +539,7 @@ def get_current_user_name(browser: WebDriver) -> str:
         String username
     """
 
-    logged_in_user = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    logged_in_user = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
     assert logged_in_user is not None
     logged_in_user_string = logged_in_user.get_attribute("innerText")
     assert logged_in_user_string is not None
@@ -591,7 +559,7 @@ def get_current_user_id(browser: WebDriver) -> int:
     Returns:
         Integer user ID
     """
-    logged_in_user = wait_then_get_element(browser, MPL.LOGGED_IN_USERNAME_READ)
+    logged_in_user = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
     assert logged_in_user is not None
 
     parent_element = logged_in_user.find_element(By.XPATH, "..")
@@ -631,14 +599,14 @@ def get_url_by_title(browser: WebDriver, url_title: str) -> WebElement | None:
         URL row with the provided URL title
     """
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     if url_rows is None:
         return None
 
     for url_row in url_rows:
 
         url_row_title = url_row.find_element(
-            By.CSS_SELECTOR, MPL.URL_TITLE_READ
+            By.CSS_SELECTOR, HPL.URL_TITLE_READ
         ).get_attribute("innerText")
         if url_row_title == url_title:
             return url_row
@@ -653,28 +621,22 @@ def select_url_by_title(browser: WebDriver, url_title: str):
     Args:
         WebDriver open to a selected UTub
         URL Title
-
-    Returns:
-        Boolean indicating a successful click of the indicated URL row with the provided URL title
     """
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
-    if url_rows is None:
-        return False
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
+    assert url_rows
 
     for url_row in url_rows:
 
         url_row_title = url_row.find_element(
-            By.CSS_SELECTOR, MPL.URL_TITLE_READ
+            By.CSS_SELECTOR, HPL.URL_TITLE_READ
         ).get_attribute("innerText")
         if url_row_title == url_title:
             url_row.click()
-            return True
-
-    return False
+            return
 
 
-def select_url_by_url_string(browser: WebDriver, url_string: str) -> bool:
+def select_url_by_url_string(browser: WebDriver, url_string: str):
     """
     If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL url string.
 
@@ -686,20 +648,17 @@ def select_url_by_url_string(browser: WebDriver, url_string: str) -> bool:
         Boolean indicating a successful click of the indicated URL row with the provided URL title
     """
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
-    if url_rows is None:
-        return False
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
+    assert url_rows
 
     for url_row in url_rows:
 
         url_row_string = url_row.find_element(
-            By.CSS_SELECTOR, MPL.URL_STRING_READ
+            By.CSS_SELECTOR, HPL.URL_STRING_READ
         ).get_attribute("data-url")
         if url_row_string == url_string:
             url_row.click()
-            return True
-
-    return False
+            return
 
 
 def verify_elem_with_url_string_exists(browser: WebDriver, url_string: str) -> bool:
@@ -714,13 +673,13 @@ def verify_elem_with_url_string_exists(browser: WebDriver, url_string: str) -> b
         (bool): True if element exists, False otherwise
 
     """
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     if url_rows is None:
         return False
 
     for url_row in url_rows:
         url_row_string = url_row.find_element(
-            By.CSS_SELECTOR, MPL.URL_STRING_READ
+            By.CSS_SELECTOR, HPL.URL_STRING_READ
         ).get_attribute("data-url")
 
         if url_row_string == url_string:
@@ -765,7 +724,7 @@ def get_num_url_rows(browser: WebDriver):
     Returns:
         Integer length of URL rows in UTub
     """
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     if url_rows:
         return len(url_rows)
     return 0
@@ -782,14 +741,14 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
         Array of ints corresponding to URL IDs in the UTub
     """
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
 
     url_ids = []
     if url_rows:
         for row in url_rows:
             url_id = row.get_attribute("urlid")
             assert url_id is not None
-            assert isinstance(url_id, str)
+            assert isinstance(url_id, str) and url_id.isdecimal()
             url_ids.append(int(url_id))
 
     return url_ids
@@ -797,7 +756,7 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
 
 def get_all_tag_ids_in_url_row(url_row: WebElement) -> list[int] | None:
     tag_badges: list[WebElement] = url_row.find_elements(
-        By.CSS_SELECTOR, MPL.TAG_BADGES
+        By.CSS_SELECTOR, HPL.TAG_BADGES
     )
     if tag_badges:
         tag_ids = [
@@ -833,7 +792,7 @@ def get_num_url_unfiltered_rows(browser: WebDriver):
     Returns:
         Integer length of visible URL rows in UTub available to user
     """
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
 
     if url_rows:
         visible_url_rows = [
@@ -856,7 +815,7 @@ def get_selected_url(browser: WebDriver) -> WebElement:
     Returns:
         Yields WebDriver to tests
     """
-    return browser.find_element(By.CSS_SELECTOR, MPL.ROW_SELECTED_URL)
+    return browser.find_element(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
 
 
 def get_selected_url_title(browser: WebDriver):
@@ -873,18 +832,18 @@ def get_selected_url_title(browser: WebDriver):
     selected_url_row = get_selected_url(browser)
 
     return selected_url_row.find_element(
-        By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        By.CSS_SELECTOR, HPL.URL_TITLE_READ
     ).get_attribute("innerText")
 
 
 def get_url_row_by_id(browser: WebDriver, urlid: int):
-    return browser.find_element(By.CSS_SELECTOR, MPL.ROWS_URLS + f'[urlid="{urlid}"]')
+    return browser.find_element(By.CSS_SELECTOR, HPL.ROWS_URLS + f'[urlid="{urlid}"]')
 
 
 def get_tag_badge_by_id(browser: WebDriver, urlid: int, tagid: int):
     url_row = get_url_row_by_id(browser, urlid)
     return url_row.find_element(
-        By.CSS_SELECTOR, MPL.TAG_BADGES + f'[data-utub-tag-id="{tagid}"]'
+        By.CSS_SELECTOR, HPL.TAG_BADGES + f'[data-utub-tag-id="{tagid}"]'
     )
 
 
@@ -912,68 +871,74 @@ def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | No
 
 
 def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
-    args = ["addmock", "url"] + urls
+    args = (
+        ["addmock", "url"]
+        + urls
+        + [
+            "--no-dupes",
+        ]
+    )
     runner.invoke(args=args)
 
 
 def verify_update_url_state_is_shown(url_row: WebElement):
     hidden_btns = (
-        MPL.BUTTON_URL_DELETE,
-        MPL.BUTTON_TAG_CREATE,
-        MPL.BUTTON_URL_ACCESS,
+        HPL.BUTTON_URL_DELETE,
+        HPL.BUTTON_TAG_CREATE,
+        HPL.BUTTON_URL_ACCESS,
     )
 
     for btn in hidden_btns:
         assert not url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
 
     with pytest.raises(NoSuchElementException):
-        url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE)
+        url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE)
 
     visible_btns = (
-        MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE,
-        MPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
-        MPL.BUTTON_URL_STRING_CANCEL_UPDATE,
+        HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE,
+        HPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
+        HPL.BUTTON_URL_STRING_CANCEL_UPDATE,
     )
 
     for btn in visible_btns:
         assert url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
 
     assert url_row.find_element(
-        By.CSS_SELECTOR, MPL.INPUT_URL_STRING_UPDATE
+        By.CSS_SELECTOR, HPL.INPUT_URL_STRING_UPDATE
     ).is_displayed()
 
-    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ).is_displayed()
-    assert not url_row.find_element(By.CSS_SELECTOR, MPL.GO_TO_URL_ICON).is_displayed()
+    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).is_displayed()
+    assert not url_row.find_element(By.CSS_SELECTOR, HPL.GO_TO_URL_ICON).is_displayed()
 
 
 def verify_update_url_state_is_hidden(url_row: WebElement):
     visible_btns = (
-        MPL.BUTTON_URL_DELETE,
-        MPL.BUTTON_TAG_CREATE,
-        MPL.BUTTON_URL_ACCESS,
-        MPL.BUTTON_URL_STRING_UPDATE,
+        HPL.BUTTON_URL_DELETE,
+        HPL.BUTTON_TAG_CREATE,
+        HPL.BUTTON_URL_ACCESS,
+        HPL.BUTTON_URL_STRING_UPDATE,
     )
 
     for btn in visible_btns:
         assert url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
 
     with pytest.raises(NoSuchElementException):
-        url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+        url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
 
     hidden_btns = (
-        MPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
-        MPL.BUTTON_URL_STRING_CANCEL_UPDATE,
+        HPL.BUTTON_URL_STRING_SUBMIT_UPDATE,
+        HPL.BUTTON_URL_STRING_CANCEL_UPDATE,
     )
 
     for btn in hidden_btns:
         assert not url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
 
     assert not url_row.find_element(
-        By.CSS_SELECTOR, MPL.INPUT_URL_STRING_UPDATE
+        By.CSS_SELECTOR, HPL.INPUT_URL_STRING_UPDATE
     ).is_displayed()
 
-    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ).is_displayed()
-    assert url_row.find_element(By.CSS_SELECTOR, MPL.GO_TO_URL_ICON).is_displayed()
+    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).is_displayed()
+    assert url_row.find_element(By.CSS_SELECTOR, HPL.GO_TO_URL_ICON).is_displayed()
 
 
 # Tag Deck
@@ -1001,12 +966,17 @@ def get_tag_filter_name_by_id(browser: WebDriver, tag_id: int) -> str | None:
 
 def get_tag_filter_by_id(browser: WebDriver, tag_id: int) -> WebElement | None:
     return browser.find_element(
-        By.CSS_SELECTOR, MPL.TAG_FILTERS + '[data-utub-tag-id="' + str(tag_id) + '"]'
+        By.CSS_SELECTOR, HPL.TAG_FILTERS + '[data-utub-tag-id="' + str(tag_id) + '"]'
     )
 
 
 def get_tag_filter_id(tag_filter: WebElement) -> int | None:
-    return int(tag_filter.get_attribute("data-utub-tag-id"))
+    tag_filter_id = tag_filter.get_attribute("data-utub-tag-id")
+
+    if tag_filter_id is None or not tag_filter_id.isnumeric():
+        return None
+
+    return int(tag_filter_id)
 
 
 def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | None:
@@ -1035,8 +1005,8 @@ def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | No
 
 
 def get_utub_tag_filters(browser: WebDriver) -> list[WebElement]:
-    return wait_then_get_elements(browser, MPL.TAG_FILTERS, 0)
+    return wait_then_get_elements(browser, HPL.TAG_FILTERS, 0)
 
 
 def get_selected_url_tags(url_row: WebElement) -> list[WebElement]:
-    return url_row.find_elements(By.CSS_SELECTOR, MPL.TAG_BADGES)
+    return url_row.find_elements(By.CSS_SELECTOR, HPL.TAG_BADGES)

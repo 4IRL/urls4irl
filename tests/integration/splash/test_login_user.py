@@ -4,6 +4,7 @@ from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
 
+from src.utils.constants import USER_CONSTANTS
 from tests.models_for_test import invalid_user_1, valid_user_1
 from tests.utils_for_test import get_csrf_token
 from src.models.users import Users
@@ -339,10 +340,10 @@ def test_user_can_login_logout_login(login_first_user_with_register):
         b'<input id="csrf_token" name="csrf_token" type="hidden" value='
         in response.data
     )
-    assert (
-        b'<input class="form-control login-register-form-group" id="username" name="username" required type="text" value="">'
-        in response.data
-    )
+
+    login_input_html = f'<input class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
+
+    assert login_input_html.encode() in response.data
     assert (
         b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
         in response.data
@@ -393,10 +394,9 @@ def test_login_modal_is_shown(app_with_server_name, client):
             b'<input id="csrf_token" name="csrf_token" type="hidden" value='
             in response.data
         )
-        assert (
-            b'<input class="form-control login-register-form-group" id="username" name="username" required type="text" value="">'
-            in response.data
-        )
+        login_input_html = f'<input class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
+
+        assert login_input_html.encode() in response.data
         assert (
             b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
             in response.data

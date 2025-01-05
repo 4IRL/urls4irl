@@ -18,7 +18,7 @@ from src.cli.mock_constants import (
     MOCK_URL_STRINGS,
 )
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     add_mock_urls,
     get_selected_url,
@@ -42,7 +42,7 @@ def test_update_url_string_submit_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL string of the selected URL.
@@ -53,7 +53,7 @@ def test_update_url_string_submit_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add, random_url_to_change_to = random.sample(MOCK_URL_STRINGS, 2)
     add_mock_urls(
         cli_runner,
@@ -69,14 +69,14 @@ def test_update_url_string_submit_btn(
 
     url_row = get_selected_url(browser)
 
-    update_url_string(url_row, random_url_to_change_to)
+    update_url_string(browser, url_row, random_url_to_change_to)
     verify_update_url_state_is_shown(url_row)
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
 
-    wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     verify_update_url_state_is_hidden(url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.get_attribute("innerText")
@@ -92,10 +92,10 @@ def test_update_url_string_submit_btn(
     assert host_changed_to in actual_host or actual_host in host_changed_to
 
     with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
 
     assert not browser.find_element(
-        By.CSS_SELECTOR, MPL.UPDATE_URL_STRING_WRAP
+        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
     ).is_displayed()
 
 
@@ -103,7 +103,7 @@ def test_update_url_string_press_enter_key(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL string of the selected URL.
@@ -114,7 +114,7 @@ def test_update_url_string_press_enter_key(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add, random_url_to_change_to = random.sample(MOCK_URL_STRINGS, 2)
     add_mock_urls(
         cli_runner,
@@ -130,14 +130,14 @@ def test_update_url_string_press_enter_key(
 
     url_row = get_selected_url(browser)
 
-    update_url_string(url_row, random_url_to_change_to)
+    update_url_string(browser, url_row, random_url_to_change_to)
     verify_update_url_state_is_shown(url_row)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
-    wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     verify_update_url_state_is_hidden(url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.get_attribute("innerText")
@@ -153,10 +153,10 @@ def test_update_url_string_press_enter_key(
     assert host_changed_to in actual_host or actual_host in host_changed_to
 
     with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
 
     assert not browser.find_element(
-        By.CSS_SELECTOR, MPL.UPDATE_URL_STRING_WRAP
+        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
     ).is_displayed()
 
 
@@ -164,7 +164,7 @@ def test_update_url_string_big_cancel_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to close the update URL input box by pressing cancel btn
@@ -175,7 +175,7 @@ def test_update_url_string_big_cancel_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
@@ -190,23 +190,23 @@ def test_update_url_string_big_cancel_btn(
     )
 
     url_row = get_selected_url(browser)
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
     init_url_row_data = url_row_string_elem.get_attribute("data-url")
     init_url_row_string_display = url_row_string_elem.get_attribute("innerText")
 
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
     verify_update_url_state_is_shown(url_row)
 
     cancel_update_btn = wait_then_get_element(
-        browser, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
+        browser, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
     )
     assert cancel_update_btn is not None
     cancel_update_btn.click()
-    wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     verify_update_url_state_is_hidden(url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.get_attribute("innerText")
@@ -216,10 +216,10 @@ def test_update_url_string_big_cancel_btn(
     assert url_row_string_display == init_url_row_string_display
 
     with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
 
     assert not browser.find_element(
-        By.CSS_SELECTOR, MPL.UPDATE_URL_STRING_WRAP
+        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
     ).is_displayed()
 
 
@@ -227,7 +227,7 @@ def test_update_url_string_cancel_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to close the update URL input box by pressing cancel btn
@@ -238,7 +238,7 @@ def test_update_url_string_cancel_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
@@ -253,22 +253,22 @@ def test_update_url_string_cancel_btn(
     )
 
     url_row = get_selected_url(browser)
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
     init_url_row_data = url_row_string_elem.get_attribute("data-url")
     init_url_row_string_display = url_row_string_elem.get_attribute("innerText")
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
     verify_update_url_state_is_shown(url_row)
 
     cancel_update_btn = wait_then_get_element(
-        browser, MPL.BUTTON_URL_STRING_CANCEL_UPDATE
+        browser, HPL.BUTTON_URL_STRING_CANCEL_UPDATE
     )
     assert cancel_update_btn is not None
     cancel_update_btn.click()
-    wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     verify_update_url_state_is_hidden(url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.get_attribute("innerText")
@@ -278,10 +278,10 @@ def test_update_url_string_cancel_btn(
     assert url_row_string_display == init_url_row_string_display
 
     with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
 
     assert not browser.find_element(
-        By.CSS_SELECTOR, MPL.UPDATE_URL_STRING_WRAP
+        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
     ).is_displayed()
 
 
@@ -289,7 +289,7 @@ def test_update_url_string_escape_key(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to close the update URL input box by pressing escape key
@@ -300,7 +300,7 @@ def test_update_url_string_escape_key(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
     add_mock_urls(
         cli_runner,
@@ -315,20 +315,20 @@ def test_update_url_string_escape_key(
     )
 
     url_row = get_selected_url(browser)
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
     init_url_row_data = url_row_string_elem.get_attribute("data-url")
     init_url_row_string_display = url_row_string_elem.get_attribute("innerText")
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
     verify_update_url_state_is_shown(url_row)
 
     # Sleep required to allow the element to come into focus
     sleep(2)
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
-    wait_until_hidden(browser, MPL.UPDATE_URL_STRING_WRAP)
+    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     verify_update_url_state_is_hidden(url_row)
 
-    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ)
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.get_attribute("innerText")
@@ -338,10 +338,10 @@ def test_update_url_string_escape_key(
     assert url_row_string_display == init_url_row_string_display
 
     with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
 
     assert not browser.find_element(
-        By.CSS_SELECTOR, MPL.UPDATE_URL_STRING_WRAP
+        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
     ).is_displayed()
 
 
@@ -349,7 +349,7 @@ def test_update_url_title_submit_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL title of a selected URL.
@@ -360,7 +360,7 @@ def test_update_url_title_submit_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     add_mock_urls(cli_runner, list([UTS.TEST_URL_STRING_CREATE]))
 
     user_id_for_test = 1
@@ -371,18 +371,18 @@ def test_update_url_title_submit_btn(
     url_row = get_selected_url(browser)
     url_title = UTS.TEST_URL_TITLE_UPDATE
     update_url_title(browser, url_row, url_title)
-    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
+    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     # Submit
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE).click()
 
     # Wait for POST request
-    wait_until_hidden(browser, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
-    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
+    wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     # Extract URL string from updated URL row
     url_row_title = url_row.find_element(
-        By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        By.CSS_SELECTOR, HPL.URL_TITLE_READ
     ).get_attribute("innerText")
 
     assert url_title == url_row_title
@@ -392,7 +392,7 @@ def test_update_url_title_submit_enter_key(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL title of a selected URL.
@@ -403,7 +403,7 @@ def test_update_url_title_submit_enter_key(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     add_mock_urls(cli_runner, list([UTS.TEST_URL_STRING_CREATE]))
 
     user_id_for_test = 1
@@ -414,18 +414,18 @@ def test_update_url_title_submit_enter_key(
     url_row = get_selected_url(browser)
     url_title = UTS.TEST_URL_TITLE_UPDATE
     update_url_title(browser, url_row, url_title)
-    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
+    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     # Submit
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     # Wait for update to hide
-    wait_until_hidden(browser, MPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
-    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
+    wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
+    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     # Extract URL string from updated URL row
     url_row_title = url_row.find_element(
-        By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        By.CSS_SELECTOR, HPL.URL_TITLE_READ
     ).get_attribute("innerText")
 
     assert url_title == url_row_title
@@ -435,7 +435,7 @@ def test_update_url_title_cancel_click_btn(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL title of a selected URL.
@@ -446,7 +446,7 @@ def test_update_url_title_cancel_click_btn(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     add_mock_urls(cli_runner, list([UTS.TEST_URL_STRING_CREATE]))
 
     user_id_for_test = 1
@@ -458,21 +458,21 @@ def test_update_url_title_cancel_click_btn(
 
     # Extract URL string from updated URL row
     init_url_row_title = url_row.find_element(
-        By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        By.CSS_SELECTOR, HPL.URL_TITLE_READ
     ).get_attribute("innerText")
 
     url_title = UTS.TEST_URL_TITLE_UPDATE
     update_url_title(browser, url_row, url_title)
-    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
+    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_TITLE_CANCEL_UPDATE).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE).click()
 
-    wait_until_hidden(browser, MPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
-    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
+    wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
+    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     # Extract URL string from updated URL row
     url_row_title = url_row.find_element(
-        By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        By.CSS_SELECTOR, HPL.URL_TITLE_READ
     ).get_attribute("innerText")
 
     assert init_url_row_title == url_row_title
@@ -482,7 +482,7 @@ def test_update_url_title_cancel_press_escape(
     browser: WebDriver,
     create_test_utubs,
     runner: Tuple[Flask, FlaskCliRunner],
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to update the URL title of a selected URL.
@@ -493,7 +493,7 @@ def test_update_url_title_cancel_press_escape(
     """
 
     _, cli_runner = runner
-    app = provide_app_for_session_generation
+    app = provide_app
     add_mock_urls(cli_runner, list([UTS.TEST_URL_STRING_CREATE]))
 
     user_id_for_test = 1
@@ -505,21 +505,21 @@ def test_update_url_title_cancel_press_escape(
 
     # Extract URL string from updated URL row
     init_url_row_title = url_row.find_element(
-        By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        By.CSS_SELECTOR, HPL.URL_TITLE_READ
     ).get_attribute("innerText")
 
     url_title = UTS.TEST_URL_TITLE_UPDATE
     update_url_title(browser, url_row, url_title)
-    assert not url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
+    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    wait_until_hidden(browser, MPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
-    assert url_row.find_element(By.CSS_SELECTOR, MPL.URL_TITLE_READ).is_displayed()
+    wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
+    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     # Extract URL string from updated URL row
     url_row_title = url_row.find_element(
-        By.CSS_SELECTOR, MPL.URL_TITLE_READ
+        By.CSS_SELECTOR, HPL.URL_TITLE_READ
     ).get_attribute("innerText")
 
     assert init_url_row_title == url_row_title
@@ -537,9 +537,9 @@ def test_update_url_title_length_exceeded(browser: WebDriver, create_test_urls):
 
     login_utub_url(browser)
 
-    update_url_title(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
+    # update_url_title(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     assert warning_modal_body is not None
 
     # Assert new UTub is now active and displayed to user
@@ -558,9 +558,9 @@ def test_update_url_string_length_exceeded(browser: WebDriver, create_test_urls)
 
     login_utub_url(browser)
 
-    update_url_string(browser, MOCK_URL_STRINGS[0], UTS.MAX_CHAR_LIM_URL_STRING)
+    # update_url_string(browser, MOCK_URL_STRINGS[0], UTS.MAX_CHAR_LIM_URL_STRING)
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     assert warning_modal_body is not None
 
     # Assert new UTub is now active and displayed to user

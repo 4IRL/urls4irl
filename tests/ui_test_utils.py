@@ -19,8 +19,15 @@ def run_app(port: int, show_flask_logs: bool):
     app_for_test = create_app(config)
     assert app_for_test is not None
     if not show_flask_logs:
+        # Hide all possible logs from showing when running tests
+        # https://stackoverflow.com/a/72145406
         log = logging.getLogger("werkzeug")
         log.disabled = True
+        app_for_test.logger.disabled = True
+
+        import flask.cli
+
+        flask.cli.show_server_banner = lambda *args: None
     app_for_test.run(debug=False, port=port)
 
 

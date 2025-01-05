@@ -16,7 +16,7 @@ from selenium.webdriver.common.by import By
 from src.cli.mock_constants import MOCK_URL_STRINGS
 from src.utils.constants import URL_CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import MainPageLocators as MPL
+from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.urls_ui.utils_for_test_url_ui import (
     get_selected_utub_id,
     get_utub_url_id_for_added_url_in_utub_as_member,
@@ -41,7 +41,7 @@ pytestmark = pytest.mark.urls_ui
 
 
 def test_access_url_by_access_btn_while_selected(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -50,7 +50,7 @@ def test_access_url_by_access_btn_while_selected(
     WHEN a user selects a URL and clicks 'Access URL' button
     THEN ensure the URL opens in a new tab
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -61,7 +61,7 @@ def test_access_url_by_access_btn_while_selected(
     init_num_of_tabs = len(browser.window_handles)
     init_tab = browser.current_window_handle
 
-    url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_ACCESS).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_ACCESS).click()
 
     curr_tabs = browser.window_handles
 
@@ -74,7 +74,7 @@ def test_access_url_by_access_btn_while_selected(
 
 
 def test_access_url_by_goto_btn_while_selected(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -83,7 +83,7 @@ def test_access_url_by_goto_btn_while_selected(
     WHEN a user selects a URL and clicks the URL Go-To button
     THEN ensure the URL opens in a new tab
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -94,7 +94,7 @@ def test_access_url_by_goto_btn_while_selected(
     init_num_of_tabs = len(browser.window_handles)
     init_tab = browser.current_window_handle
 
-    url_row.find_element(By.CSS_SELECTOR, MPL.GO_TO_URL_ICON).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.GO_TO_URL_ICON).click()
 
     curr_tabs = browser.window_handles
 
@@ -107,7 +107,7 @@ def test_access_url_by_goto_btn_while_selected(
 
 
 def test_access_url_by_goto_btn_while_hover(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -116,7 +116,7 @@ def test_access_url_by_goto_btn_while_hover(
     WHEN a user hovers over a URL and clicks the URL Go-To button
     THEN ensure the URL opens in a new tab
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
@@ -125,14 +125,14 @@ def test_access_url_by_goto_btn_while_hover(
     init_num_of_tabs = len(browser.window_handles)
     init_tab = browser.current_window_handle
 
-    url_row = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_row = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_row is not None
     url_row = url_row[0]
 
     actions = ActionChains(browser)
     actions.move_to_element(url_row).perform()
 
-    url_row.find_element(By.CSS_SELECTOR, MPL.GO_TO_URL_ICON).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.GO_TO_URL_ICON).click()
     curr_tabs = browser.window_handles
 
     assert init_num_of_tabs + 1 == len(curr_tabs)
@@ -144,7 +144,7 @@ def test_access_url_by_goto_btn_while_hover(
 
 
 def test_access_url_by_clicking_url_string(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the displayed URL string.
@@ -154,7 +154,7 @@ def test_access_url_by_clicking_url_string(
     THEN ensure the URL opens in a new tab
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -168,7 +168,7 @@ def test_access_url_by_clicking_url_string(
     init_num_of_tabs = len(browser.window_handles)
     init_tab = browser.current_window_handle
 
-    url_row.find_element(By.CSS_SELECTOR, MPL.URL_STRING_READ).click()
+    url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).click()
 
     curr_tabs = browser.window_handles
 
@@ -184,7 +184,7 @@ def test_access_all_urls_at_limit(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but accessing when at the maximum number of URLs before a warning is shown
@@ -200,7 +200,7 @@ def test_access_all_urls_at_limit(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -212,11 +212,11 @@ def test_access_all_urls_at_limit(
     init_num_of_tabs = len(browser.window_handles)
     init_tab = browser.current_window_handle
 
-    browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_ACCESS_ALL_URLS).click()
+    browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS).click()
 
     # Ensure modal is not shown to user since URLs below value
     with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, MPL.ACCESS_ALL_URL_MODAL)
+        browser.find_element(By.CSS_SELECTOR, HPL.ACCESS_ALL_URL_MODAL)
 
     curr_tabs = browser.window_handles
 
@@ -234,7 +234,7 @@ def test_access_all_urls_above_limit(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but accessing when above the maximum number of URLs before a warning is shown
@@ -250,7 +250,7 @@ def test_access_all_urls_above_limit(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -262,13 +262,13 @@ def test_access_all_urls_above_limit(
     init_num_of_tabs = len(browser.window_handles)
     init_tab = browser.current_window_handle
 
-    browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_ACCESS_ALL_URLS).click()
+    browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS).click()
 
     # Modal will now show since number of URLs is equal to max number of URLs
-    access_modal = wait_then_get_element(browser, MPL.ACCESS_ALL_URL_MODAL)
+    access_modal = wait_then_get_element(browser, HPL.ACCESS_ALL_URL_MODAL)
     assert access_modal is not None
     assert access_modal.is_displayed()
-    access_modal.find_element(By.CSS_SELECTOR, MPL.BUTTON_MODAL_SUBMIT).click()
+    access_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT).click()
 
     curr_tabs = browser.window_handles
 
@@ -284,14 +284,14 @@ def test_access_all_urls_above_limit(
     browser.switch_to.window(init_tab)
 
     with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, MPL.ACCESS_ALL_URL_MODAL)
+        browser.find_element(By.CSS_SELECTOR, HPL.ACCESS_ALL_URL_MODAL)
 
 
 def test_access_all_urls_above_limit_cancel_modal_dismiss_btn(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but access all modal warning shows, and user decides to cancel by pressing the dismiss button
@@ -307,7 +307,7 @@ def test_access_all_urls_above_limit_cancel_modal_dismiss_btn(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -318,19 +318,19 @@ def test_access_all_urls_above_limit_cancel_modal_dismiss_btn(
 
     init_num_of_tabs = len(browser.window_handles)
 
-    browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_ACCESS_ALL_URLS).click()
+    browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS).click()
 
     # Modal will now show since number of URLs is equal to max number of URLs
-    access_modal = wait_then_get_element(browser, MPL.ACCESS_ALL_URL_MODAL)
+    access_modal = wait_then_get_element(browser, HPL.ACCESS_ALL_URL_MODAL)
     assert access_modal is not None
     assert access_modal.is_displayed()
-    access_modal.find_element(By.CSS_SELECTOR, MPL.BUTTON_MODAL_DISMISS).click()
+    access_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_DISMISS).click()
 
     curr_tabs = browser.window_handles
 
     assert init_num_of_tabs == len(curr_tabs)
 
-    wait_until_hidden(browser, MPL.ACCESS_ALL_URL_MODAL)
+    wait_until_hidden(browser, HPL.ACCESS_ALL_URL_MODAL)
     assert not access_modal.is_displayed()
 
 
@@ -338,7 +338,7 @@ def test_access_all_urls_above_limit_cancel_modal_x_btn(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but access all modal warning shows, and user decides to cancel by pressing the dismiss button
@@ -354,7 +354,7 @@ def test_access_all_urls_above_limit_cancel_modal_x_btn(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -365,19 +365,19 @@ def test_access_all_urls_above_limit_cancel_modal_x_btn(
 
     init_num_of_tabs = len(browser.window_handles)
 
-    browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_ACCESS_ALL_URLS).click()
+    browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS).click()
 
     # Modal will now show since number of URLs is equal to max number of URLs
-    access_modal = wait_then_get_element(browser, MPL.ACCESS_ALL_URL_MODAL)
+    access_modal = wait_then_get_element(browser, HPL.ACCESS_ALL_URL_MODAL)
     assert access_modal is not None
     assert access_modal.is_displayed()
-    access_modal.find_element(By.CSS_SELECTOR, MPL.BUTTON_X_CLOSE).click()
+    access_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_X_CLOSE).click()
 
     curr_tabs = browser.window_handles
 
     assert init_num_of_tabs == len(curr_tabs)
 
-    wait_until_hidden(browser, MPL.ACCESS_ALL_URL_MODAL)
+    wait_until_hidden(browser, HPL.ACCESS_ALL_URL_MODAL)
     assert not access_modal.is_displayed()
 
 
@@ -385,7 +385,7 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
     browser: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     create_test_utubs,
-    provide_app_for_session_generation: Flask,
+    provide_app: Flask,
 ):
     """
     Tests a user's ability to access all URLs via access all URLs button, but access all modal warning shows, and user decides to cancel by pressing the dismiss button
@@ -401,7 +401,7 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
     urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -412,10 +412,10 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
 
     init_num_of_tabs = len(browser.window_handles)
 
-    browser.find_element(By.CSS_SELECTOR, MPL.BUTTON_ACCESS_ALL_URLS).click()
+    browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS).click()
 
     # Modal will now show since number of URLs is equal to max number of URLs
-    access_modal = wait_then_get_element(browser, MPL.ACCESS_ALL_URL_MODAL)
+    access_modal = wait_then_get_element(browser, HPL.ACCESS_ALL_URL_MODAL)
     assert access_modal is not None
     assert access_modal.is_displayed()
     dismiss_modal_with_click_out(browser)
@@ -424,12 +424,12 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
 
     assert init_num_of_tabs == len(curr_tabs)
 
-    wait_until_hidden(browser, MPL.ACCESS_ALL_URL_MODAL)
+    wait_until_hidden(browser, HPL.ACCESS_ALL_URL_MODAL)
     assert not access_modal.is_displayed()
 
 
 def test_access_to_urls_as_utub_owner(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to have all capabilities available when selecting a URL
@@ -444,14 +444,14 @@ def test_access_to_urls_as_utub_owner(
         Edit URL Title
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
     )
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_rows is not None
 
     for url_row in url_rows:
@@ -461,7 +461,7 @@ def test_access_to_urls_as_utub_owner(
 
 
 def test_access_to_non_added_urls_as_utub_member(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a UTub member's ability to have limited capability when selecting a URL they did not make
@@ -478,7 +478,7 @@ def test_access_to_non_added_urls_as_utub_member(
         Access URL
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -491,7 +491,7 @@ def test_access_to_non_added_urls_as_utub_member(
         app, utub_id, user_id
     )
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_rows is not None
 
     for url_row in url_rows:
@@ -504,7 +504,7 @@ def test_access_to_non_added_urls_as_utub_member(
 
 
 def test_access_to_urls_as_url_creator_and_utub_member(
-    browser: WebDriver, create_test_urls, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a UTub member's ability to have limited capability when selecting a URL they did not make
@@ -520,7 +520,7 @@ def test_access_to_urls_as_url_creator_and_utub_member(
         Access URL
     """
 
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
 
     login_user_and_select_utub_by_name(
@@ -533,7 +533,7 @@ def test_access_to_urls_as_url_creator_and_utub_member(
         app, utub_id, user_id
     )
 
-    url_rows = wait_then_get_elements(browser, MPL.ROWS_URLS)
+    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_rows is not None
 
     for url_row in url_rows:

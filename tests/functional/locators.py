@@ -1,5 +1,7 @@
-class MainPageLocators:
+class HomePageLocators:
     """A collector class for main page locators"""
+
+    INVALID_FIELD_SUFFIX = "-error"
 
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
@@ -10,6 +12,7 @@ class MainPageLocators:
     SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
     LIST_UTUB = "#listUTubs"
     SELECTORS_UTUB = ".UTubSelector"
+    SELECTORS_UTUB_NAME = ".UTubName"
     SELECTOR_SELECTED_UTUB = ".UTubSelector.active"
 
     BUTTON_UTUB_CREATE = "#utubBtnCreate"
@@ -37,6 +40,7 @@ class MainPageLocators:
     BUTTON_UTUB_NAME_SUBMIT_UPDATE = "#utubNameSubmitBtnUpdate"
     WRAP_URL_CREATE = "#createURLWrap"
     BUTTON_UTUB_NAME_CANCEL_UPDATE = "#utubNameCancelBtnUpdate"
+    BUTTON_ADD_UTUB_DESC_ON_EMPTY = "#URLDeckSubheaderCreateDescription"
 
     WRAP_UTUB_DESCRIPTION_UPDATE = "#UTubDescriptionSubheaderWrap"
     SUBHEADER_URL_DECK = "#URLDeckSubheader"
@@ -103,6 +107,7 @@ class MainPageLocators:
     BUTTON_MEMBER_SUBMIT_CREATE = "#memberSubmitBtnCreate"
     BUTTON_UTUB_LEAVE = "#memberSelfBtnDelete"
     BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"
+    INPUT_MEMBER_CREATE_ERROR = INPUT_MEMBER_CREATE + INVALID_FIELD_SUFFIX
 
     SUBHEADER_UTUB = "#MemberDeckSubheader"
     LIST_MEMBERS = "#listMembers"
@@ -155,6 +160,10 @@ class SplashPageLocators:
 
     # Jumbotron
     WELCOME_TEXT = "#splash-major-text"
+
+    # Reset Password
+    INPUT_NEW_PASSWORD = "#newPassword"
+    INPUT_CONFIRM_NEW_PASSWORD = "#confirmNewPassword"
 
 
 class ModalLocators:

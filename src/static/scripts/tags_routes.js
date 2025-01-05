@@ -14,7 +14,7 @@ function createUTubTagHideInput() {
   hideIfShown($("#createUTubTagWrap"));
   $("#createUTubTagWrap").hide();
   showIfHidden($("#listTags"));
-  showIfHidden($("#utubTagBtnCreate"));
+  if (getNumOfUTubs() !== 0) showIfHidden($("#utubTagBtnCreate"));
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();

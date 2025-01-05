@@ -33,13 +33,13 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_until_visible_css_selector,
 )
-from locators import MainPageLocators as MPL
+from locators import HomePageLocators as HPL
 
 pytestmark = pytest.mark.tags_ui
 
 
 def test_show_delete_tag_button_on_hover(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests a user's ability to create a new URL in a selected UTub
@@ -48,7 +48,7 @@ def test_show_delete_tag_button_on_hover(
     WHEN user hovers over tag badge
     THEN ensure the deleteTag button is displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
@@ -94,7 +94,7 @@ def test_delete_tag(browser, create_test_tags):
 
 # @pytest.mark.skip(reason="Bug. Currently FAILS")
 def test_no_show_delete_tag_button_on_hover_update_url_title(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests the limitation on users, preventing deletion of tags while updating URL titles
@@ -103,7 +103,7 @@ def test_no_show_delete_tag_button_on_hover_update_url_title(
     WHEN user clicks the editURLTitle button, and subsequently hovers over a tag
     THEN ensure the deleteTag button is not displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     url_title = UTS.TEST_URL_TITLE_1
     login_user_select_utub_by_name_and_url_by_title(
@@ -114,7 +114,7 @@ def test_no_show_delete_tag_button_on_hover_update_url_title(
 
     open_update_url_title(browser, selected_url_row)
 
-    wait_until_visible_css_selector(browser, MPL.INPUT_URL_TITLE_UPDATE)
+    wait_until_visible_css_selector(browser, HPL.INPUT_URL_TITLE_UPDATE)
 
     url_tags = get_selected_url_tags(selected_url_row)
 
@@ -124,7 +124,7 @@ def test_no_show_delete_tag_button_on_hover_update_url_title(
 
 
 def test_no_show_delete_tag_button_on_hover_update_url_string(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests the limitation on users, preventing deletion of tags while updating URL strings
@@ -133,7 +133,7 @@ def test_no_show_delete_tag_button_on_hover_update_url_string(
     WHEN user clicks the editURLTitle button, and subsequently hovers over a tag
     THEN ensure the deleteTag button is not displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     url_title = UTS.TEST_URL_TITLE_1
     login_user_select_utub_by_name_and_url_by_title(
@@ -142,9 +142,9 @@ def test_no_show_delete_tag_button_on_hover_update_url_string(
 
     selected_url_row = get_url_by_title(browser, url_title)
 
-    selected_url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_URL_STRING_UPDATE).click()
+    selected_url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
 
-    wait_until_visible_css_selector(browser, MPL.INPUT_URL_STRING_UPDATE)
+    wait_until_visible_css_selector(browser, HPL.INPUT_URL_STRING_UPDATE)
 
     url_tags = get_selected_url_tags(selected_url_row)
     first_tag_badge = url_tags[0]
@@ -152,14 +152,14 @@ def test_no_show_delete_tag_button_on_hover_update_url_string(
     hover_tag_badge(browser, first_tag_badge)
 
     delete_tag_button = first_tag_badge.find_element(
-        By.CSS_SELECTOR, MPL.BUTTON_TAG_DELETE
+        By.CSS_SELECTOR, HPL.BUTTON_TAG_DELETE
     )
 
     assert not delete_tag_button.is_displayed()
 
 
 def test_no_show_delete_tag_button_on_hover_add_tag(
-    browser: WebDriver, create_test_tags, provide_app_for_session_generation: Flask
+    browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
     Tests the limitation on users, preventing deletion of tags while adding tags
@@ -168,7 +168,7 @@ def test_no_show_delete_tag_button_on_hover_add_tag(
     WHEN user clicks the addTag button, and subsequently hovers over a tag
     THEN ensure the deleteTag button is not displayed
     """
-    app = provide_app_for_session_generation
+    app = provide_app
     user_id_for_test = 1
     url_title = UTS.TEST_URL_TITLE_1
     login_user_select_utub_by_name_and_url_by_title(
@@ -177,9 +177,9 @@ def test_no_show_delete_tag_button_on_hover_add_tag(
 
     selected_url_row = get_url_by_title(browser, url_title)
 
-    selected_url_row.find_element(By.CSS_SELECTOR, MPL.BUTTON_TAG_CREATE).click()
+    selected_url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_TAG_CREATE).click()
 
-    wait_until_visible_css_selector(browser, MPL.INPUT_TAG_CREATE)
+    wait_until_visible_css_selector(browser, HPL.INPUT_TAG_CREATE)
 
     url_tags = get_selected_url_tags(selected_url_row)
     first_tag_badge = url_tags[0]
@@ -187,7 +187,7 @@ def test_no_show_delete_tag_button_on_hover_add_tag(
     hover_tag_badge(browser, first_tag_badge)
 
     delete_tag_button = first_tag_badge.find_element(
-        By.CSS_SELECTOR, MPL.BUTTON_TAG_DELETE
+        By.CSS_SELECTOR, HPL.BUTTON_TAG_DELETE
     )
 
     assert not delete_tag_button.is_displayed()
@@ -217,7 +217,7 @@ def test_delete_last_tag(browser, create_test_tags):
 
     delete_url(browser, url_row)
 
-    warning_modal_body = wait_then_get_element(browser, MPL.BODY_MODAL)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
     url_delete_check_text = UTS.BODY_MODAL_URL_DELETE
@@ -225,7 +225,7 @@ def test_delete_last_tag(browser, create_test_tags):
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == url_delete_check_text
 
-    wait_then_click_element(browser, MPL.BUTTON_MODAL_SUBMIT)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     # Wait for DELETE request
     sleep(4)

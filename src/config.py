@@ -76,6 +76,7 @@ class Config:
         SESSION_TYPE = "redis"
         SESSION_REDIS = Redis.from_url(REDIS_URI)
     SESSION_SERIALIZATION_FORMAT = "json"
+    SESSION_COOKIE_SAMESITE = "lax"
     WTF_CSRF_TIME_LIMIT = (
         CONFIG_CONSTANTS.CSRF_EXPIRATION_SECONDS
     )  # Six hours until CSRF expiration
