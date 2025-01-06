@@ -11,6 +11,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
+    assert_clear_all_tag_filters_disabled,
     delete_each_tag_from_one_url_in_utub,
     delete_tag_from_url_in_utub_random,
 )
@@ -35,7 +36,7 @@ pytestmark = pytest.mark.tags_ui
 # @pytest.mark.skip(reason="Testing another in isolation")
 def test_filter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     """
-    Tests a user's ability to filter the URL deck by selecting a tag filter.
+    Tests a user's ability to filter a specific tag in the URL deck by selecting a tag filter.
 
     GIVEN a user has access to UTubs with URLs with tags applied, and user removes all but one
     WHEN the associated tag filter is selected in the TagDeck
@@ -90,7 +91,7 @@ def test_filter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
 
 def test_unfilter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     """
-    Tests a user's ability to unfilter the URL deck by deselecting tag filter.
+    Tests a user's ability to unfilter a specific tag in the URL deck by deselecting tag filter.
 
     GIVEN a user has access to UTubs with URLs with tags applied, and user removes all but one
     WHEN the associated tag filter is selected in the TagDeck
@@ -132,13 +133,15 @@ def test_unfilter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     assert get_url_by_title(browser, url_title)
 
 
-def test_unselect_all_filters(browser: WebDriver, create_test_tags, provide_app: Flask):
+def test_unselect_all_filters_selector(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
     """
-    Tests a user's ability to unfilter the URL deck by deselecting tag filter.
+    Tests a user's ability to unfilter all tags in the URL deck by selecting the 'Unselect All' tag filter.
 
     GIVEN a user has access to UTubs with URLs with tags applied, and user removes all but one
-    WHEN the associated tag filter is selected in the TagDeck
-    THEN ensure the corresponding URL is hidden
+    WHEN the 'Unselect All' tag filter is selected in the TagDeck
+    THEN ensure all tagged URLs are shown, and 'Unselect All' filters options are disabled.
     """
 
     app = provide_app
@@ -190,8 +193,81 @@ def test_unselect_all_filters(browser: WebDriver, create_test_tags, provide_app:
     # All URLs with tags are filtered
 
     # Unselect all tag filters
-    unselect_all_button = wait_then_get_element(browser, HPL.SELECTOR_UNSELECT_ALL)
+    unselect_all_selector = wait_then_get_element(browser, HPL.SELECTOR_UNSELECT_ALL)
+    unselect_all_selector.click()
+
+    # Assert all URLs are unfiltered and are now visible to user
+    assert num_visible_url_rows == get_num_url_unfiltered_rows(browser)
+
+    # Assert Unselect All filter options are disabled
+    assert_clear_all_tag_filters_disabled(browser, unselect_all_selector)
+
+
+def test_unselect_all_filters_btn(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests a user's ability to unfilter all tags in the URL deck by selecting the 'Clear Filters' button.
+
+    GIVEN a user has access to UTubs with URLs with tags applied, and user removes all but one
+    WHEN the filter-x button is selected in the TagDeck
+    THEN ensure all tagged URLs are shown, and 'Unselect All' filters options are disabled.
+    """
+
+    app = provide_app
+
+    utub_title = UTS.TEST_UTUB_NAME_1
+
+    # From the db, delete a different tag from each URL in the current UTub
+    delete_each_tag_from_one_url_in_utub(app, utub_title)
+
+    # Load page
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, utub_title, UTS.TEST_URL_TITLE_1
+    )
+
+    # Save the number of visible URLs
+    num_visible_url_rows = get_num_url_unfiltered_rows(browser)
+    unfiltered_url_rows: list[WebElement] = wait_then_get_elements(
+        browser, HPL.ROWS_URLS
+    )
+
+    tag_filters = get_utub_tag_filters(browser)
+
+    # Apply each tag filter. Assert URLs without the associated tagBadge are hidden
+    for tag_filter in tag_filters:
+        tag_id = get_tag_filter_id(tag_filter)
+
+        # Find all URLs that don't have this tag. Save the titles for check
+        filtered_url_row_titles: list[str] = []
+        for i, url_row in enumerate(unfiltered_url_rows):
+            url_tag_ids = get_all_tag_ids_in_url_row(url_row)
+            if tag_id in url_tag_ids:
+                filtered_url_row = unfiltered_url_rows.pop(i)
+
+                # Save the URL title for assertion after filtering it out
+                url_title = filtered_url_row.find_element(
+                    By.CLASS_NAME, "urlTitle"
+                ).get_attribute("innerText")
+                filtered_url_row_titles.append(url_title)
+
+        # Apply the tag filter
+        corresponding_tag_filter = get_tag_filter_by_id(browser, tag_id)
+        corresponding_tag_filter.click()
+
+        # Assert all URLs that didn't have the tag are now hidden
+        for url_title in filtered_url_row_titles:
+            assert not get_url_by_title(browser, url_title)
+
+    # All URLs with tags are filtered
+
+    # Unselect all tag filters
+    unselect_all_button = wait_then_get_element(browser, HPL.BUTTON_UNSELECT_ALL)
     unselect_all_button.click()
 
     # Assert all URLs are unfiltered and are now visible to user
     assert num_visible_url_rows == get_num_url_unfiltered_rows(browser)
+
+    # Assert Unselect All filter options are disabled
+    assert_clear_all_tag_filters_disabled(browser)
