@@ -8,7 +8,7 @@ function createURLHideInput() {
   resetNewURLForm();
   if (!getNumOfURLs()) {
     $("#NoURLsSubheader").show();
-    $("#urlBtnDeckCreateWrap").show();
+    $("#urlBtnDeckCreate").show();
   }
 }
 
@@ -16,14 +16,14 @@ function createURLHideInput() {
 function createURLShowInput() {
   if (!getNumOfURLs()) {
     $("#NoURLsSubheader").hide();
-    $("#urlBtnDeckCreateWrap").hide();
+    $("#urlBtnDeckCreate").hide();
   }
   const createURLInputForm = $("#createURLWrap");
   showIfHidden(createURLInputForm);
   newURLInputAddEventListeners(createURLInputForm);
   $("#urlTitleCreate").trigger("focus");
   hideIfShown($("#urlBtnCreate"));
-  hideIfShown($("#urlBtnDeckCreateWrap"));
+  hideIfShown($("#urlBtnDeckCreate"));
 }
 
 // Prepares post request inputs for addition of a new URL
@@ -615,7 +615,7 @@ function deleteURLSuccessOnDelete(response, urlCard) {
     if ($("#listURLs .urlRow").length === 0) {
       $("#accessAllURLsBtn").hide();
       $("#NoURLsSubheader").show();
-      $("#urlBtnDeckCreateWrap").show();
+      $("#urlBtnDeckCreate").show();
     } else {
       updateTagFilteringOnURLOrURLTagDeletion();
     }
