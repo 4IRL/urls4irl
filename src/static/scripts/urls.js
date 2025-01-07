@@ -294,7 +294,7 @@ function resetURLDeck() {
 function resetURLDeckOnDeleteUTub() {
   hideIfShown($("#urlBtnCreate"));
   hideIfShown($("#NoURLsSubheader"));
-  hideIfShown($("#urlBtnDeckCreate"));
+  hideIfShown($("#urlBtnDeckCreateWrap"));
 }
 
 // Prevent editing URL title when needed
@@ -437,10 +437,10 @@ function buildURLDeck(utubName, dictURLs, dictTags) {
     // Show access all URLs button
     $("#accessAllURLsBtn").show();
     $("#NoURLsSubheader").hide();
-    $("#urlBtnDeckCreate").hide();
+    $("#urlBtnDeckCreateWrap").hide();
   } else {
     $("#NoURLsSubheader").show();
-    $("#urlBtnDeckCreate").show();
+    $("#urlBtnDeckCreateWrap").show();
     $("#accessAllURLsBtn").hide();
   }
   setUTubNameAndDescription(utubName);
