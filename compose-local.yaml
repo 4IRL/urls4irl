@@ -35,6 +35,7 @@ services:
       . /code/venv/bin/activate &&
       flask db upgrade &&
       flask shorturls add &&
+      echo 'Running on 127.0.0.1:8659!' &&
       flask run --host=0.0.0.0 --port=5000
       "
 
