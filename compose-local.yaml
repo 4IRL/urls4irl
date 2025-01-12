@@ -1,4 +1,4 @@
-name: u4i-dev
+name: u4i-local
 
 services:
   web:

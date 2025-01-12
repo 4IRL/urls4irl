@@ -230,6 +230,31 @@ def test_register_existing_username(browser: WebDriver, create_test_users):
     assert invalid_feedback_username_message.text == USER_FAILURE.USERNAME_TAKEN
 
 
+def test_register_sanitized_username(browser: WebDriver, create_test_users):
+    """
+    Tests the site error response to a user's attempt to register with a username that is sanitized by the backend.
+
+    GIVEN a fresh load of the U4I Splash page, and pre-registered user
+    WHEN user attempts to register an existing username
+    THEN U4I responds with a failure on register form
+    """
+
+    register_user_ui(
+        browser=browser,
+        username='<img src="evl.jpg">',
+        email=UTS.TEST_PASSWORD_UNLISTED,
+        password=UTS.TEST_PASSWORD_UNLISTED,
+    )
+
+    # Extract error message text
+    invalid_feedback_username_message = wait_then_get_element(
+        browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
+    )
+    assert invalid_feedback_username_message is not None
+
+    assert invalid_feedback_username_message.text == USER_FAILURE.INVALID_INPUT
+
+
 def test_register_existing_email(browser: WebDriver, create_test_users):
     """
     Tests the site error response to a user's attempt to register with an email that is already registered in the database.

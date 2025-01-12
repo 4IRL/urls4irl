@@ -4,10 +4,11 @@ from wtforms.validators import Length, Email, EqualTo, InputRequired, Validation
 
 from src.models.email_validations import Email_Validations
 from src.models.users import Users
+from src.utils.constants import USER_CONSTANTS
+from src.utils.input_sanitization import sanitize_user_input
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM, REGISTER_FORM
 from src.utils.strings.user_strs import USER_FAILURE
-from src.utils.constants import USER_CONSTANTS
 
 
 class UserRegistrationForm(FlaskForm):
@@ -65,6 +66,16 @@ class UserRegistrationForm(FlaskForm):
 
         if user and user.email_confirm.is_validated:
             raise ValidationError(USER_FAILURE.USERNAME_TAKEN)
+
+        sanitized_username = sanitize_user_input(username.data)
+
+        if (
+            sanitized_username is None
+            or not isinstance(sanitized_username, str)
+            or len(sanitized_username) < USER_CONSTANTS.MIN_USERNAME_LENGTH
+            or sanitized_username != username.data
+        ):
+            raise ValidationError(USER_FAILURE.INVALID_INPUT)
 
     def validate_email(self, email):
         """Validates username is unique in the db"""

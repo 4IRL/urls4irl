@@ -395,6 +395,70 @@ def test_register_user_form_long_username_csrf(load_register_page):
     ]
 
 
+def test_register_user_with_invalid_html_input_fully_sanitized(load_register_page):
+    client, csrf_token_string = load_register_page
+
+    client, csrf_token_string = load_register_page
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        data={
+            REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
+            REGISTER_FORM.USERNAME: '<img src="evl.jpg">',
+            REGISTER_FORM.EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.CONFIRM_EMAIL: "FakeUser@Name123.com",
+            REGISTER_FORM.PASSWORD: "FakeUser@Name123.com",
+            REGISTER_FORM.CONFIRM_PASSWORD: "FakeUser@Name123.com",
+        },
+    )
+
+    # Correctly sends URL to email validation modal
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+    response_json = response.json
+
+    assert int(response_json[STD_JSON.ERROR_CODE]) == 2
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
+    assert len(response_json[STD_JSON.ERRORS]) == 1
+    assert response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME] == [
+        REGISTER_FAILURE.INVALID_INPUT
+    ]
+
+
+def test_register_user_with_invalid_html_input_partially_sanitized(load_register_page):
+    client, csrf_token_string = load_register_page
+
+    for username in (
+        "<<HELLO>>",
+        "<h1>Hello</h1>",
+    ):
+        client, csrf_token_string = load_register_page
+        response = client.post(
+            url_for(ROUTES.SPLASH.REGISTER),
+            data={
+                REGISTER_FORM.CSRF_TOKEN: csrf_token_string,
+                REGISTER_FORM.USERNAME: username,
+                REGISTER_FORM.EMAIL: "FakeUser@Name123.com",
+                REGISTER_FORM.CONFIRM_EMAIL: "FakeUser@Name123.com",
+                REGISTER_FORM.PASSWORD: "FakeUser@Name123.com",
+                REGISTER_FORM.CONFIRM_PASSWORD: "FakeUser@Name123.com",
+            },
+        )
+
+        # Correctly sends URL to email validation modal
+        assert response.status_code == 400
+        assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+        response_json = response.json
+
+        assert int(response_json[STD_JSON.ERROR_CODE]) == 2
+        assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
+        assert len(response_json[STD_JSON.ERRORS]) == 1
+        assert response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME] == [
+            REGISTER_FAILURE.INVALID_INPUT
+        ]
+
+
 def test_register_user_form_short_username_csrf(load_register_page):
     """
     GIVEN an unregistered user
@@ -424,9 +488,10 @@ def test_register_user_form_short_username_csrf(load_register_page):
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert response_json[STD_JSON.MESSAGE] == REGISTER_FAILURE.UNABLE_TO_REGISTER
     assert len(response_json[STD_JSON.ERRORS]) == 1
-    assert response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME] == [
+    assert (
         f"Field must be between {USER_CONSTANTS.MIN_USERNAME_LENGTH} and {USER_CONSTANTS.MAX_USERNAME_LENGTH} characters long."
-    ]
+        in response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
+    )
 
 
 def test_register_user_form_no_csrf(load_register_page):
