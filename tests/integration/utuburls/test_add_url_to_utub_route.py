@@ -951,7 +951,7 @@ def test_add_url_missing_url_title(
     GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
         added to the database but not associated with any UTubs
     WHEN the user tries to add a URL with an empty 'url_title' field in the form
-    THEN ensure that the server responds with a 404 HTTP status code, and that the proper JSON response
+    THEN ensure that the server responds with a 400 HTTP status code, and that the proper JSON response
         is sent by the server
 
     Proper JSON response is as follows:
@@ -1014,6 +1014,124 @@ def test_add_url_missing_url_title(
         )
 
         assert Utub_Urls.query.count() == initial_utub_urls
+
+
+def test_add_url_fully_sanitized_url_title(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database but not associated with any UTubs
+    WHEN the user tries to add a URL with an 'url_title' field that is sanitized by the backend
+    THEN ensure that the server responds with a 400 HTTP status code, and that the proper JSON response
+        is sent by the server
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
+        STD_JSON.ERROR_CODE: 4,
+        STD_JSON.ERRORS: {
+            URL_FORM.URL_TITLE: ["Invalid input, please try again."]
+        }
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a URL to add
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_TITLE: '<img src="evl.jpg">',
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 400
+
+    add_url_json_response = add_url_response.json
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
+    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
+    assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE] == [
+        URL_FAILURE.INVALID_INPUT
+    ]
+
+
+def test_add_url_partially_sanitized_url_title(
+    add_urls_to_database, every_user_in_every_utub, login_first_user_without_register
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database but not associated with any UTubs
+    WHEN the user tries to add a URL with an 'url_title' field that is sanitized by the backend
+    THEN ensure that the server responds with a 400 HTTP status code, and that the proper JSON response
+        is sent by the server
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
+        STD_JSON.ERROR_CODE: 4,
+        STD_JSON.ERRORS: {
+            URL_FORM.URL_TITLE: ["Invalid input, please try again."]
+        }
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a URL to add
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        utub_id_to_add_to = current_utub_member_of.id
+
+    for url_title in (
+        "<<HELLO>>",
+        "<h1>Hello</h1>",
+    ):
+        # Add the URL to the UTub
+        add_url_form = {
+            URL_FORM.CSRF_TOKEN: csrf_token,
+            URL_FORM.URL_STRING: url_string_to_add,
+            URL_FORM.URL_TITLE: url_title,
+        }
+
+        add_url_response = client.post(
+            url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to),
+            data=add_url_form,
+        )
+
+        assert add_url_response.status_code == 400
+
+        add_url_json_response = add_url_response.json
+        assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert (
+            add_url_json_response[STD_JSON.MESSAGE]
+            == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
+        )
+        assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
+        assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE] == [
+            URL_FAILURE.INVALID_INPUT
+        ]
 
 
 def test_add_url_missing_csrf_token(

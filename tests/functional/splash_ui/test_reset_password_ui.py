@@ -23,6 +23,7 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_then_get_elements,
     wait_until_hidden,
+    wait_until_visible_css_selector,
 )
 
 pytestmark = pytest.mark.splash_ui
@@ -416,8 +417,11 @@ def test_password_reset_missing_fields(
 
     browser.get(reset_password_url)
 
-    browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
+    wait_until_visible_css_selector(browser, SPL.BUTTON_SUBMIT, timeout=3)
+    submit_btn = wait_then_click_element(browser, SPL.BUTTON_SUBMIT, time=3)
+    assert submit_btn is not None
 
+    wait_until_visible_css_selector(browser, SPL.SUBHEADER_INVALID_FEEDBACK, timeout=3)
     invalid_fields = wait_then_get_elements(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
     )

@@ -257,3 +257,59 @@ def test_create_utub_empty_utub_name(
     )
     assert invalid_utub_name_error is not None
     assert invalid_utub_name_error.text == UTUB_FAILURE.FIELD_REQUIRED_STR
+
+
+def test_create_utub_sanitized_name(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    Tests a user's ability to create a UTub
+
+    GIVEN a user attempting to make a UTub
+    WHEN the createUTub form is sent with the UTub Name that is sanitized by the backend
+    THEN ensure U4I responds with a proper error message
+    """
+    app = provide_app
+    USER_ID = 1
+    login_user_to_home_page(app, browser, USER_ID)
+
+    create_utub(browser, utub_name='<img src="evl.jpg">', utub_description="")
+
+    # Submits new UTub
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
+
+    # Wait for POST request to fail
+    invalid_utub_name_error = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_NAME_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_utub_name_error is not None
+    assert invalid_utub_name_error.text == UTUB_FAILURE.INVALID_INPUT
+
+
+def test_create_utub_sanitized_description(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    Tests a user's ability to create a UTub
+
+    GIVEN a user attempting to make a UTub
+    WHEN the createUTub form is sent with the UTub description that is sanitized by the backend
+    THEN ensure U4I responds with a proper error message
+    """
+    app = provide_app
+    USER_ID = 1
+    login_user_to_home_page(app, browser, USER_ID)
+
+    create_utub(
+        browser, utub_name=UTS.TEST_UTUB_NAME_1, utub_description='<img src="evl.jpg">'
+    )
+
+    # Submits new UTub
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
+
+    # Wait for POST request to fail
+    invalid_utub_name_error = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_DESCRIPTION_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_utub_name_error is not None
+    assert invalid_utub_name_error.text == UTUB_FAILURE.INVALID_INPUT

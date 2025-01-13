@@ -516,7 +516,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
         "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_TITLE: Empty string
-    THEN verify that title is modified in the database, the url-utub-user associations and url-tag are
+    THEN verify that title is not modified in the database, the url-utub-user associations and url-tag are
         modified correctly, all other URL associations are kept consistent,
         the server sends back a 400 HTTP status code, and the server sends back the appropriate JSON response
 
@@ -596,6 +596,134 @@ def test_update_url_title_with_empty_title_as_utub_creator(
             Utub_Url_Tags.utub_id == utub_creator_of.id,
             Utub_Url_Tags.utub_url_id == current_url_id,
         ).count() == len(associated_tags)
+
+
+def test_update_url_title_with_fully_sanitized_title_as_utub_creator(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title to a title that is sanitized by backend, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: Title that is fully sanitized by backend
+    THEN verify the server sends back a 400 HTTP status code, and the server sends back the appropriate JSON response
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+        STD_JSON.ERROR_CODE: 3,
+        STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field
+        {
+            URL_FAILURE.URL_TITLE: [URL_FAILURE.INVALID_INPUT]
+        }
+    }
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_url_id = url_in_this_utub.id
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: '<img src="evl.jpg">',
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            utub_url_id=current_url_id,
+        ),
+        data=update_url_string_title_form,
+    )
+
+    assert update_url_string_title_form.status_code == 400
+
+    # Assert JSON response from server is valid
+    json_response = update_url_string_title_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
+    assert int(json_response[STD_JSON.ERROR_CODE]) == 3
+    assert json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE] == [
+        URL_FAILURE.INVALID_INPUT
+    ]
+
+
+def test_update_url_title_with_partially_sanitized_title_as_utub_creator(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title to a title that is sanitized by backend, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: Title that is fully sanitized by backend
+    THEN verify the server sends back a 400 HTTP status code, and the server sends back the appropriate JSON response
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+        STD_JSON.ERROR_CODE: 3,
+        STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field
+        {
+            URL_FAILURE.URL_TITLE: [URL_FAILURE.INVALID_INPUT]
+        }
+    }
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_url_id = url_in_this_utub.id
+
+    for url_title in (
+        "<<HELLO>>",
+        "<h1>Hello</h1>",
+    ):
+        update_url_string_title_form = {
+            URL_FORM.CSRF_TOKEN: csrf_token_string,
+            URL_FORM.URL_TITLE: url_title,
+        }
+
+        update_url_string_title_form = client.patch(
+            url_for(
+                ROUTES.URLS.UPDATE_URL_TITLE,
+                utub_id=utub_creator_of.id,
+                utub_url_id=current_url_id,
+            ),
+            data=update_url_string_title_form,
+        )
+
+        assert update_url_string_title_form.status_code == 400
+
+        # Assert JSON response from server is valid
+        json_response = update_url_string_title_form.json
+        assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
+        assert int(json_response[STD_JSON.ERROR_CODE]) == 3
+        assert json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE] == [
+            URL_FAILURE.INVALID_INPUT
+        ]
 
 
 def test_update_url_title_as_member_of_other_utub(

@@ -237,6 +237,102 @@ def test_add_empty_tag_to_utub(
     )
 
 
+def test_add_fully_sanitized_tag_to_utub(
+    every_user_in_every_utub, login_first_user_without_register
+):
+    """
+    GIVEN UTubs with every user in them
+    WHEN a user tries to add a tag with a tag that is sanitized by the backend
+    THEN verify that the server responds with a 400 HTTP status code, and responds with the appropriate JSON response
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : TAGS_FAILURE.INVALID_INPUT,
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+    new_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: '<img src="evl.jpg">',
+    }
+
+    add_tag_response = client.post(
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
+        data=new_tag_form,
+    )
+
+    assert add_tag_response.status_code == 400
+    add_tag_response_json = add_tag_response.json
+
+    assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        add_tag_response_json[STD_JSON.MESSAGE]
+        == TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB
+    )
+    assert STD_JSON.ERRORS in add_tag_response_json
+
+    assert add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING] == [
+        TAGS_FAILURE.INVALID_INPUT
+    ]
+
+
+def test_add_partially_sanitized_tag_to_utub(
+    every_user_in_every_utub, login_first_user_without_register
+):
+    """
+    GIVEN UTubs with every user in them
+    WHEN a user tries to add a tag with a tag that is sanitized by the backend
+    THEN verify that the server responds with a 400 HTTP status code, and responds with the appropriate JSON response
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : TAGS_FAILURE.INVALID_INPUT,
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+    for tag_string in (
+        "<<HELLO>>",
+        "<h1>Hello</h1>",
+    ):
+        new_tag_form = {
+            TAG_FORM.CSRF_TOKEN: csrf_token,
+            TAG_FORM.TAG_STRING: tag_string,
+        }
+
+        add_tag_response = client.post(
+            url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
+            data=new_tag_form,
+        )
+
+        assert add_tag_response.status_code == 400
+        add_tag_response_json = add_tag_response.json
+
+        assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert (
+            add_tag_response_json[STD_JSON.MESSAGE]
+            == TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB
+        )
+        assert STD_JSON.ERRORS in add_tag_response_json
+
+        assert add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING] == [
+            TAGS_FAILURE.INVALID_INPUT
+        ]
+
+
 def test_add_long_tag_to_utub(
     every_user_in_every_utub, login_first_user_without_register
 ):

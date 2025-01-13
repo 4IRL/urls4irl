@@ -1,5 +1,5 @@
 import os
-from typing import Generator, Tuple
+from typing import Any, Awaitable, Generator, Tuple, Union
 
 from flask import Flask
 from flask.testing import FlaskCliRunner, FlaskClient
@@ -7,6 +7,9 @@ from flask_login import FlaskLoginClient
 from flask_session.redis import RedisSessionInterface
 import pytest
 import warnings
+
+import redis
+from redis.client import Redis
 
 from src import create_app, db, sess
 from src.config import ConfigTest
@@ -19,6 +22,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.models.urls import Possible_Url_Validation, Urls
 from src.utils.strings import model_strs
+from src.utils.strings.config_strs import CONFIG_ENVS
 from tests.utils_for_test import clear_database, get_csrf_token
 from tests.models_for_test import (
     valid_user_1,
@@ -150,6 +154,29 @@ def app(build_app: Tuple[Flask, ConfigTest]) -> Generator[Flask, None, None]:
 def runner(app) -> Generator[Tuple[Flask, FlaskCliRunner], None, None]:
     flask_app: Flask = app
     yield flask_app, flask_app.test_cli_runner()
+
+
+@pytest.fixture
+def provide_redis(app: Flask) -> Generator[Redis | None, None, None]:
+    redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI, None)
+    if not redis_uri or redis_uri == "memory://":
+        return
+
+    redis_client: Any = redis.Redis.from_url(url=redis_uri)
+    assert isinstance(redis_client, Redis)
+
+    before_keys = redis_client.keys()
+    yield redis_client
+    after_keys: Union[Awaitable, Any] = redis_client.keys()
+    assert isinstance(after_keys, list)
+
+    keys_to_delete = []
+    for new_key in after_keys:
+        if new_key not in before_keys:
+            keys_to_delete.append(new_key)
+
+    for key_to_del in keys_to_delete:
+        redis_client.delete(key_to_del)
 
 
 @pytest.fixture

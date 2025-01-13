@@ -1,13 +1,9 @@
-# External libraries
 from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
-
 from selenium.webdriver.remote.webdriver import WebDriver
-
 from selenium.webdriver.support import expected_conditions as EC
 
-# Internal libraries
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.utils_for_test import (
@@ -37,15 +33,18 @@ def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     login_user_with_cookie_from_session(browser, session_id)
 
     logout_btn = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
+    assert logout_btn is not None
     logout_btn.click()
 
     assert EC.staleness_of(logout_btn)
 
     welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT)
+    assert welcome_text is not None
 
     assert welcome_text.text == "Welcome to URLS4IRL"
 
     navbar = wait_then_get_element(browser, SPL.SPLASH_NAVBAR)
+    assert navbar is not None
 
     login_btn = navbar.find_element(By.CSS_SELECTOR, SPL.BUTTON_LOGIN)
 
@@ -70,6 +69,5 @@ def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask)
 
     assert_login(browser)
 
-    active_utubs = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB)
-
-    assert EC.staleness_of(active_utubs)
+    active_utubs = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB, time=3)
+    assert active_utubs is None
