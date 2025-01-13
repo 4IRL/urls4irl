@@ -379,6 +379,126 @@ def test_update_utub_description_with_same_description_as_creator(
             )
 
 
+def test_update_utub_description_fully_sanitized(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
+    WHEN the creator attempts to modify the UTub description to invalid description that is sanitized by the backend, via a POST to
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
+            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
+    THEN verify that the UTub description is not changed in the database and server responds with appropriate error message
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESCRIPTION
+        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
+            For example, with the missing name field:
+            {
+                UTUB_FORM.UTUB_DESCRIPTION: ['Invalid input, please try again.']
+            }
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    utub_desc_form = {
+        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token,
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION: '<img src="evl.jpg">',
+    }
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+
+    update_utub_name_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        data=utub_desc_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_name_response.status_code == 400
+
+    # Ensure JSON response is correct
+    update_utub_name_json_response = update_utub_name_response.json
+
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert (
+        update_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
+    )
+    assert update_utub_name_json_response[STD_JSON.ERRORS][
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION
+    ] == [UTUB_FAILURE.INVALID_INPUT]
+
+
+def test_update_utub_description_partially_sanitized(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
+    WHEN the creator attempts to modify the UTub description to invalid description that is sanitized by the backend, via a POST to
+        "/utubs/<utub_id: int>/description" with valid form data, following this format:
+            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
+    THEN verify that the UTub description is not changed in the database and server responds with appropriate error message
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESCRIPTION
+        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
+            For example, with the missing name field:
+            {
+                UTUB_FORM.UTUB_DESCRIPTION: ['Invalid input, please try again.']
+            }
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+
+    for utub_description in (
+        "<<HELLO>>",
+        "<h1>Hello</h1>",
+    ):
+        utub_desc_form = {
+            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token,
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION: utub_description,
+        }
+
+        update_utub_name_response = client.patch(
+            url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+            data=utub_desc_form,
+        )
+
+        # Ensure valid reponse
+        assert update_utub_name_response.status_code == 400
+
+        # Ensure JSON response is correct
+        update_utub_name_json_response = update_utub_name_response.json
+
+        assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 3
+        assert (
+            update_utub_name_json_response[STD_JSON.MESSAGE]
+            == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
+        )
+        assert update_utub_name_json_response[STD_JSON.ERRORS][
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION
+        ] == [UTUB_FAILURE.INVALID_INPUT]
+
+
 def test_update_utub_description_as_member(
     add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
 ):
@@ -645,7 +765,7 @@ def test_update_utub_description_too_long(
     Proper JSON is as follows:
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: UTUB_FAILURE.UTUB_DESC_TOO_LONG,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
         STD_JSON.ERROR_CODE: 3,
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing or empty utub_description field:
@@ -700,7 +820,7 @@ def test_update_utub_description_too_long(
     assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         update_utub_desc_json_response[STD_JSON.MESSAGE]
-        == UTUB_FAILURE.UTUB_DESC_TOO_LONG
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
     )
     assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 3
     assert (
