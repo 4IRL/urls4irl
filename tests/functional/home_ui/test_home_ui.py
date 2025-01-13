@@ -69,7 +69,5 @@ def test_refresh_logo(browser: WebDriver, create_test_utubs, provide_app: Flask)
 
     assert_login(browser)
 
-    active_utubs = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB)
-    assert active_utubs is not None
-
-    assert EC.staleness_of(active_utubs)
+    active_utubs = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB, time=3)
+    assert active_utubs is None
