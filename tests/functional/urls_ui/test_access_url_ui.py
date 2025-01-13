@@ -456,7 +456,11 @@ def test_access_to_urls_as_utub_owner(
 
     for url_row in url_rows:
         wait_for_web_element_and_click(browser, url_row)
-        assert get_selected_url(browser) == url_row
+        current_utub_url_id = url_row.get_attribute("urlid")
+        assert current_utub_url_id is not None
+
+        selected_url = get_selected_url(browser)
+        assert current_utub_url_id == selected_url.get_attribute("urlid")
         verify_select_url_as_utub_owner_or_url_creator(browser, url_row)
 
 
@@ -496,9 +500,11 @@ def test_access_to_non_added_urls_as_utub_member(
 
     for url_row in url_rows:
         wait_for_web_element_and_click(browser, url_row)
-        assert get_selected_url(browser) == url_row
-
         current_utub_url_id = url_row.get_attribute("urlid")
+        assert current_utub_url_id is not None
+        selected_url = get_selected_url(browser)
+        assert current_utub_url_id == selected_url.get_attribute("urlid")
+
         if int(current_utub_url_id) != utub_url_id_user_added:
             verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_row)
 
@@ -538,8 +544,10 @@ def test_access_to_urls_as_url_creator_and_utub_member(
 
     for url_row in url_rows:
         wait_for_web_element_and_click(browser, url_row)
-        assert get_selected_url(browser) == url_row
-
         current_utub_url_id = url_row.get_attribute("urlid")
+        assert current_utub_url_id is not None
+        selected_url = get_selected_url(browser)
+        assert current_utub_url_id == selected_url.get_attribute("urlid")
+
         if int(current_utub_url_id) == utub_url_id_user_added:
             verify_select_url_as_utub_owner_or_url_creator(browser, url_row)
