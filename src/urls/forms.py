@@ -1,9 +1,11 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, SubmitField
+from wtforms import StringField, SubmitField, ValidationError
 from wtforms.validators import Length, InputRequired
 
 from src.utils.constants import URL_CONSTANTS
+from src.utils.input_sanitization import sanitize_user_input
 from src.utils.strings.model_strs import MODELS
+from src.utils.strings.url_strs import URL_FAILURE
 
 
 class NewURLForm(FlaskForm):
@@ -36,6 +38,17 @@ class NewURLForm(FlaskForm):
     )
 
     submit = SubmitField("Add URL to this UTub!")
+
+    def validate_url_title(self, url_title):
+        sanitized_url_title = sanitize_user_input(url_title.data)
+
+        if (
+            sanitized_url_title is None
+            or not isinstance(sanitized_url_title, str)
+            or len(sanitized_url_title) < URL_CONSTANTS.MIN_URL_TITLE_LENGTH
+            or sanitized_url_title != url_title.data
+        ):
+            raise ValidationError(URL_FAILURE.INVALID_INPUT)
 
 
 class UpdateURLForm(FlaskForm):
@@ -73,3 +86,14 @@ class UpdateURLTitleForm(FlaskForm):
     )
 
     submit = SubmitField("Edit URL Title!")
+
+    def validate_url_title(self, url_title):
+        sanitized_url_title = sanitize_user_input(url_title.data)
+
+        if (
+            sanitized_url_title is None
+            or not isinstance(sanitized_url_title, str)
+            or len(sanitized_url_title) < URL_CONSTANTS.MIN_URL_TITLE_LENGTH
+            or sanitized_url_title != url_title.data
+        ):
+            raise ValidationError(URL_FAILURE.INVALID_INPUT)

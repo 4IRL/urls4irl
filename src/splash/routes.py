@@ -77,9 +77,9 @@ def register_user():
         email = register_form.email.data
         plain_password = register_form.password.data
         new_user = Users(
-            username=username,
-            email=email.lower(),
-            plaintext_password=plain_password,
+            username=username,  # type: ignore
+            email=email.lower(),  # type: ignore
+            plaintext_password=plain_password,  # type: ignore
         )
         email_validation_token = new_user.get_email_validation_token()
         new_email_validation = Email_Validations(
@@ -110,7 +110,7 @@ def register_user():
             ):
                 # Do not show to user that this email has not been validated if they have other form errors
                 if USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED in email_errors:
-                    email_errors.remove(
+                    email_errors.remove(  # type: ignore
                         USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
                     )
                 return (
@@ -127,7 +127,7 @@ def register_user():
             else:
                 login_user(
                     Users.query.filter(
-                        Users.email == register_form.email.data.lower()
+                        Users.email == register_form.email.data.lower()  # type: ignore
                     ).first_or_404()
                 )
                 return (

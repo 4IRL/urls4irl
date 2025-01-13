@@ -13,6 +13,7 @@ from tests.functional.utils_for_test import (
     user_is_selected_utub_owner,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_visible_css_selector,
 )
 
 
@@ -203,7 +204,17 @@ def hover_over_utub_title_to_show_add_utub_description(browser: WebDriver):
     actions.move_to_element(utub_title_elem)
 
     # Pause to make sure utubNameBtnUpdate button is visible
+    actions.pause(2)
+    utub_desc_input_elem = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
+
+    actions.move_to_element(utub_desc_input_elem)
     actions.perform()
+
+    wait_until_visible_css_selector(
+        browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY, timeout=3
+    )
 
     utub_desc_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK)
     assert not utub_desc_elem.is_displayed()

@@ -178,3 +178,6 @@ def test_open_input_create_utub_tag_press_enter_key(
 
     verify_create_utub_tag_input_form_is_hidden(browser)
     verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
+
+
+# TODO: Check sanitized inputs in sad path tests

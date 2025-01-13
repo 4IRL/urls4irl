@@ -300,6 +300,35 @@ def test_update_utub_name_empty_field(
     assert invalid_utub_name_field.text == UTUB_FAILURE.FIELD_REQUIRED_STR
 
 
+def test_update_utub_name_sanitized(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to update a selected UTub's name.
+
+    GIVEN a user owns a UTub
+    WHEN they attempt to enter an UTub name that is sanitized by the backend
+    THEN ensure the proper error response is shown.
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    update_utub_name(browser, utub_name='<img src="evl.jpg">')
+
+    # Submits new UTub name
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+
+    # Wait for POST request
+    invalid_utub_name_field = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_NAME_UPDATE + HPL.INVALID_FIELD_SUFFIX
+    )
+    assert invalid_utub_name_field is not None
+    assert invalid_utub_name_field.text == UTUB_FAILURE.INVALID_INPUT
+
+
 def test_update_utub_name_similar(
     browser: WebDriver,
     create_test_utubmembers,

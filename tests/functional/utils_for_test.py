@@ -815,7 +815,9 @@ def get_selected_url(browser: WebDriver) -> WebElement:
     Returns:
         Yields WebDriver to tests
     """
-    return browser.find_element(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
+    selected_url = wait_then_get_element(browser, HPL.ROW_SELECTED_URL, time=3)
+    assert selected_url is not None
+    return selected_url
 
 
 def get_selected_url_title(browser: WebDriver):
