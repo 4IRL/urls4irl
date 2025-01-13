@@ -565,3 +565,6 @@ def test_update_url_string_length_exceeded(browser: WebDriver, create_test_urls)
 
     # Assert new UTub is now active and displayed to user
     assert warning_modal_body.text == "Try shortening your UTub name"
+
+
+# TODO: Check url title sanitization for sad path tests

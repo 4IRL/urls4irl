@@ -3,6 +3,7 @@ from wtforms import StringField, SubmitField, ValidationError
 from wtforms.validators import Length, InputRequired
 
 from src.utils.constants import UTUB_CONSTANTS
+from src.utils.input_sanitization import sanitize_user_input
 from src.utils.strings.form_strs import UTUB_FORM, UTUB_DESCRIPTION_FORM
 from src.utils.strings.utub_strs import UTUB_FAILURE
 
@@ -37,6 +38,27 @@ class UTubForm(FlaskForm):
         if name.data.replace(" ", "") == "":
             raise ValidationError(UTUB_FAILURE.UTUB_NAME_EMPTY)
 
+        sanitized_utub_name = sanitize_user_input(name.data)
+
+        if (
+            sanitized_utub_name is None
+            or not isinstance(sanitized_utub_name, str)
+            or len(sanitized_utub_name) < UTUB_CONSTANTS.MIN_NAME_LENGTH
+            or sanitized_utub_name != name.data
+        ):
+            raise ValidationError(UTUB_FAILURE.INVALID_INPUT)
+
+    def validate_description(self, description):
+        if description.data is None or description.data == "":
+            return
+
+        sanitized_utub_description = sanitize_user_input(description.data)
+        if sanitized_utub_description is None:
+            sanitized_utub_description = ""
+
+        if sanitized_utub_description != description.data:
+            raise ValidationError(UTUB_FAILURE.INVALID_INPUT)
+
 
 class UTubNewNameForm(FlaskForm):
     """
@@ -62,6 +84,16 @@ class UTubNewNameForm(FlaskForm):
     def validate_name(self, name):
         if name.data.replace(" ", "") == "":
             raise ValidationError(UTUB_FAILURE.UTUB_NAME_EMPTY)
+
+        sanitized_utub_name = sanitize_user_input(name.data)
+
+        if (
+            sanitized_utub_name is None
+            or not isinstance(sanitized_utub_name, str)
+            or len(sanitized_utub_name) < UTUB_CONSTANTS.MIN_NAME_LENGTH
+            or sanitized_utub_name != name.data
+        ):
+            raise ValidationError(UTUB_FAILURE.INVALID_INPUT)
 
 
 class UTubDescriptionForm(FlaskForm):
@@ -90,3 +122,11 @@ class UTubDescriptionForm(FlaskForm):
 
         if description.data.replace(" ", "") == "":
             description.data = ""
+            return
+
+        sanitized_utub_description = sanitize_user_input(description.data)
+        if sanitized_utub_description is None:
+            sanitized_utub_description = ""
+
+        if sanitized_utub_description != description.data:
+            raise ValidationError(UTUB_FAILURE.INVALID_INPUT)

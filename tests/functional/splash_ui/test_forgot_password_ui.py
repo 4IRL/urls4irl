@@ -27,6 +27,7 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     dismiss_modal_with_click_out,
     wait_until_hidden,
+    wait_until_visible_css_selector,
 )
 
 pytestmark = pytest.mark.splash_ui
@@ -165,8 +166,11 @@ def test_forgot_password_to_login_modal_btn(browser: WebDriver):
     THEN ensure the modal view changes appropriately
     """
     open_forgot_password_modal(browser)
+    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    assert modal_element is not None
 
     wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_FORGOT_PASSWORD)
+    wait_until_visible_css_selector(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
     assert modal_element is not None

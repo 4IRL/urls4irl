@@ -786,7 +786,7 @@ Required form data:
 > }
 > ```
 
-###### 400/404 HTTP Code Response Body
+###### 400 HTTP Code Response Body - Example
 
 Invalid form data sent with the request.
 
@@ -914,7 +914,7 @@ Required form data:
 > }
 > ```
 
-###### 400 HTTP Code Response Body
+###### 400 HTTP Code Response Body - Example
 
 Invalid form data sent with the request.
 
@@ -1002,7 +1002,7 @@ Required form data:
 > }
 > ```
 
-###### 400 HTTP Code Response Body
+###### 400 HTTP Code Response Body - Example
 
 Indicates a missing form field in the payload content.
 

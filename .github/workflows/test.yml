@@ -123,5 +123,6 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
+        timeout-minutes: 10
         run: |
           python3.11 -m pytest 

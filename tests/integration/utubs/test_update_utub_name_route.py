@@ -211,7 +211,7 @@ def test_update_utub_empty_name_as_creator(
             "utub_name": New UTub name to add
     THEN verify that the UTub name is not changed in the database, the utub-user associations are
         consistent across the change, all other UTub names are kept consistent,
-        the server sends back a 404 HTTP status code, and the server sends back the appropriate JSON response
+        the server sends back a 400 HTTP status code, and the server sends back the appropriate JSON response
 
     Proper JSON is as follows:
     {
@@ -303,6 +303,127 @@ def test_update_utub_empty_name_as_creator(
                     final_utub_names_and_descriptions[utub_desc]
                     == all_utub_names_and_descriptions[utub_desc]
                 )
+
+
+def test_update_utub_name_fully_sanitized(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
+    WHEN the creator attempts to modify the UTub name to invalid name that is sanitized by the backend, via a POST to
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            "utub_name": New UTub name to add
+    THEN verify that the UTub name is not changed in the database and server responds with appropriate error message
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
+            For example, with the missing name field:
+            {
+                UTUB_FORM.UTUB_NAME: ['Invalid input, please try again.']
+            }
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    utub_name_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token,
+        UTUB_FORM.UTUB_NAME: '<img src="evl.jpg">',
+    }
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+
+    update_utub_name_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
+        data=utub_name_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_name_response.status_code == 400
+
+    # Ensure JSON response is correct
+    update_utub_name_json_response = update_utub_name_response.json
+
+    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        update_utub_name_json_response[STD_JSON.MESSAGE]
+        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+    )
+    assert update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
+        UTUB_FAILURE.INVALID_INPUT
+    ]
+
+
+def test_update_utub_name_partially_sanitized(
+    add_all_urls_and_users_to_each_utub_with_all_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
+    WHEN the creator attempts to modify the UTub name to invalid name that is sanitized by the backend, via a POST to
+        "/utubs/<utub_id: int>/name" with valid form data, following this format:
+            UTUB_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            "utub_name": New UTub name to add
+    THEN verify that the UTub name is not changed in the database and server responds with appropriate error message
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS: STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
+            For example, with the missing name field:
+            {
+                UTUB_FORM.UTUB_NAME: ['Invalid input, please try again.']
+            }
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        current_utub_id = utub_of_user.id
+
+    for utub_name in (
+        "<<HELLO>>",
+        "<h1>Hello</h1>",
+    ):
+
+        utub_name_form = {
+            UTUB_FORM.CSRF_TOKEN: csrf_token,
+            UTUB_FORM.UTUB_NAME: utub_name,
+        }
+
+        update_utub_name_response = client.patch(
+            url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
+            data=utub_name_form,
+        )
+
+        # Ensure valid reponse
+        assert update_utub_name_response.status_code == 400
+
+        # Ensure JSON response is correct
+        update_utub_name_json_response = update_utub_name_response.json
+
+        assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
+        assert (
+            update_utub_name_json_response[STD_JSON.MESSAGE]
+            == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
+        )
+        assert update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
+            UTUB_FAILURE.INVALID_INPUT
+        ]
 
 
 def test_update_utub_name_only_spaces_as_creator(

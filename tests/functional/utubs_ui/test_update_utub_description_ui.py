@@ -8,6 +8,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from locators import HomePageLocators as HPL
 from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from src.utils.constants import CONSTANTS
+from src.utils.strings.utub_strs import UTUB_FAILURE
 from tests.functional.utils_for_test import (
     assert_not_visible_css_selector,
     clear_then_send_keys,
@@ -233,6 +234,35 @@ def test_update_utub_description_length_exceeded(
     assert new_utub_description is not None
 
     assert len(new_utub_description) == CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH
+
+
+def test_update_utub_description_sanitized(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to update a selected UTub's description.
+
+    GIVEN a user owns a UTub
+    WHEN they attempt to enter a UTub description that is sanitized by the backend
+    THEN ensure the input field retains the max number of characters allowed.
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    update_utub_description(browser, utub_description='<img src="evl.jpg">')
+
+    # Submits new UTub description
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+
+    # Wait for POST request
+    invalid_utub_desc_field = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE + HPL.INVALID_FIELD_SUFFIX
+    )
+    assert invalid_utub_desc_field is not None
+    assert invalid_utub_desc_field.text == UTUB_FAILURE.INVALID_INPUT
 
 
 def test_update_utub_description_to_empty(

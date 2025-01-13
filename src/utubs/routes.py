@@ -106,7 +106,7 @@ def create_utub():
             utub_form.description.data if utub_form.description.data is not None else ""
         )
         new_utub = Utubs(
-            name=name, utub_creator=current_user.id, utub_description=description
+            name=name, utub_creator=current_user.id, utub_description=description  # type: ignore
         )
         db.session.add(new_utub)
         db.session.commit()
@@ -240,7 +240,7 @@ def update_utub_name(utub_id: int):
         new_utub_name = utub_name_form.name.data
 
         if new_utub_name != current_utub_name:
-            current_utub.name = new_utub_name
+            current_utub.name = new_utub_name  # type: ignore
             current_utub.set_last_updated()
             db.session.commit()
 
@@ -356,7 +356,7 @@ def update_utub_desc(utub_id: int):
             jsonify(
                 {
                     STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: UTUB_FAILURE.UTUB_DESC_TOO_LONG,
+                    STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
                     STD_JSON.ERROR_CODE: 3,
                     STD_JSON.ERRORS: build_form_errors(utub_desc_form),
                 }
