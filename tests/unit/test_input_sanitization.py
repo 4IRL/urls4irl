@@ -19,7 +19,6 @@ inputs_outputs = {
     '<img src="safe.png" onerror="x">': "",
     "<script>": "",
     "<<script>>alert(1)<<script>>": "<",
-
     # Regular Inputs
     "Hello, World!": "Hello, World!",
     "<!DOCTYPE html>": "",
@@ -32,19 +31,19 @@ inputs_outputs = {
     "user@example.com": "user@example.com",
     "u4i_test1@urls4irl.app": "u4i_test1@urls4irl.app",
     "<h1>Hello</h1>": "Hello",
-
     # Invalid HTML
     '<a href="javascript:alert(1)">Click</a>': "Click",
     '<iframe src="malicious.com"></iframe>': "",
-    '<style>body { background: red; }</style>': "",
-    '<div><script>alert(1)</script></div>': "",
+    "<style>body { background: red; }</style>": "",
+    "<div><script>alert(1)</script></div>": "",
     '<svg onload="alert(1)">': "",
-    '<math><mo>&times;</mo></math>': "×",
+    "<math><mo>&times;</mo></math>": "×",
     '<a href="http://safe.com">Safe</a>': "Safe",
     '<a href="ftp://dangerous.com">Unsafe</a>': "Unsafe",
     '<img src="evil.jpg">': "",
-    '<!-- Comment -->': ""
+    "<!-- Comment -->": "",
 }
+
 
 def test_input_sanitization():
     for inpt, out in inputs_outputs.items():
