@@ -175,7 +175,7 @@ def verify_new_utub_tag_created(
     assert new_tag_str in [tag.text for tag in utub_tag_spans]
 
 
-def assert_clear_all_tag_filters_disabled(browser: WebDriver):
+def assert_unselect_all_tag_filters_disabled(browser: WebDriver):
 
     unselect_all_selector = browser.find_element(
         By.CSS_SELECTOR, HPL.SELECTOR_UNSELECT_ALL
@@ -183,7 +183,3 @@ def assert_clear_all_tag_filters_disabled(browser: WebDriver):
 
     # Assert Unselect All filter is disabled
     assert "disabled" in unselect_all_selector.get_attribute("class").split()
-
-    unselect_all_button = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_UNSELECT_ALL)
-
-    assert not unselect_all_button.is_displayed()

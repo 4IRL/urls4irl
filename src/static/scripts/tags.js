@@ -162,9 +162,10 @@ function buildTagDeck(dictTags) {
   const parent = $("#listTags");
 
   // Select all checkbox if tags in UTub
-  dictTags.length > 0
-    ? parent.append(createUnselectAllTagFilterInDeck())
-    : null;
+  if (dictTags.length > 0) {
+    parent.append(createUnselectAllTagFilterInDeck());
+    showIfHidden($("#unselectAllTagFilters"));
+  }
 
   // Loop through all tags and provide checkbox input for filtering
   for (let i in dictTags) {
@@ -307,10 +308,6 @@ function updateURLsAndTagSubheaderWhenTagSelected() {
   });
   reapplyAlternatingURLCardBackgroundAfterFilter();
   updateCountOfTagFiltersApplied(numSelectedTagIDs);
-
-  numSelectedTagIDs > 0
-    ? $("#unselectAllTagFilters").show()
-    : $("#unselectAllTagFilters").hide();
 }
 
 function reapplyAlternatingURLCardBackgroundAfterFilter() {
@@ -331,10 +328,13 @@ function enableUnselectAllButtonAfterTagFilterApplied() {
     })
     .attr({ tabindex: 0 });
 
-  console.log("show unselect all");
-
-  // $("#utubTagBtnUnselectAll").show();
-  showIfHidden($("#utubTagBtnUnselectAll"));
+  // showIfHidden($("#unselectAllTagFilters"));
+  $("#unselectAllTagFilters")
+    .removeClass("disabled")
+    .on("click.unselectAllTags", function () {
+      unselectAllTags();
+    })
+    .attr({ tabindex: 0 });
 }
 
 function disableUnselectAllButtonAfterTagFilterRemoved() {
@@ -343,9 +343,11 @@ function disableUnselectAllButtonAfterTagFilterRemoved() {
     .off(".unselectAllTags")
     .attr({ tabindex: -1 });
 
-  console.log("hide unselect all");
-
-  $("#utubTagBtnUnselectAll").hide();
+  // $("#unselectAllTagFilters").hide();
+  $("#unselectAllTagFilters")
+    .addClass("disabled")
+    .off(".unselectAllTags")
+    .attr({ tabindex: -1 });
 }
 
 function enableUnselectedTagsAfterDisabledDueToLimit() {
@@ -439,7 +441,6 @@ function updateTagFilteringOnURLOrURLTagDeletion() {
 // Subheader prompt hidden when no UTub selected
 function setTagDeckSubheaderWhenNoUTubSelected() {
   $("#TagDeckSubheader").text(null);
-  $("#unselectAllTagFilters").hide();
 }
 
 // Selected UTub, show filters applied

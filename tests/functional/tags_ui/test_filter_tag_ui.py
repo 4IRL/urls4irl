@@ -11,7 +11,7 @@ from selenium.webdriver.remote.webelement import WebElement
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    assert_clear_all_tag_filters_disabled,
+    assert_unselect_all_tag_filters_disabled,
     delete_each_tag_from_one_url_in_utub,
     delete_tag_from_url_in_utub_random,
 )
@@ -163,6 +163,10 @@ def test_unselect_all_filters_selector(
         browser, HPL.ROWS_URLS
     )
 
+    unselect_all_selector = wait_then_get_element(browser, HPL.SELECTOR_UNSELECT_ALL)
+
+    assert_unselect_all_tag_filters_disabled(browser)
+
     tag_filters = get_utub_tag_filters(browser)
 
     # Apply each tag filter. Assert URLs without the associated tagBadge are hidden
@@ -193,14 +197,13 @@ def test_unselect_all_filters_selector(
     # All URLs with tags are filtered
 
     # Unselect all tag filters
-    unselect_all_selector = wait_then_get_element(browser, HPL.SELECTOR_UNSELECT_ALL)
     unselect_all_selector.click()
 
     # Assert all URLs are unfiltered and are now visible to user
     assert num_visible_url_rows == get_num_url_unfiltered_rows(browser)
 
     # Assert Unselect All filter options are disabled
-    assert_clear_all_tag_filters_disabled(browser, unselect_all_selector)
+    assert_unselect_all_tag_filters_disabled(browser)
 
 
 def test_unselect_all_filters_btn(
@@ -232,6 +235,8 @@ def test_unselect_all_filters_btn(
     unfiltered_url_rows: list[WebElement] = wait_then_get_elements(
         browser, HPL.ROWS_URLS
     )
+
+    assert_unselect_all_tag_filters_disabled(browser)
 
     tag_filters = get_utub_tag_filters(browser)
 
@@ -270,4 +275,4 @@ def test_unselect_all_filters_btn(
     assert num_visible_url_rows == get_num_url_unfiltered_rows(browser)
 
     # Assert Unselect All filter options are disabled
-    assert_clear_all_tag_filters_disabled(browser)
+    assert_unselect_all_tag_filters_disabled(browser)
