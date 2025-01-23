@@ -3,8 +3,10 @@ from unittest import mock
 from flask import url_for
 from flask_login import current_user
 import pytest
+import redis
+import requests
 
-from src.extensions.url_validation.url_validator import InvalidURLError
+from src.extensions.url_validation.url_validator import InvalidURLError, UrlValidator
 from src.models.urls import Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -868,6 +870,95 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
         assert Urls.query.count() == number_of_urls_in_db
 
         assert Utub_Urls.query.count() == initial_utub_urls
+
+
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator", autospec=UrlValidator
+)
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator._is_wayback_rate_limited"
+)
+@mock.patch("redis.Redis.from_url")
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator._perform_get_request"
+)
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator._perform_head_request"
+)
+def test_add_url_when_wayback_ratelimited(
+    mock_head_request,
+    mock_get_request,
+    mock_redis_from_url,
+    mock_wayback_rate_limited,
+    mock_validator,
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and no URLs
+        currently in the database or associated with the UTubs
+    WHEN the user tries to add a fresh and valid URL to a UTub they are a creator of, but the HEAD and GET request fail,
+        and Wayback is locally rate limited
+    THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
+        is sent by the server, and that no new URLs are added
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : "Too many attempts, please try again in one minute.",
+        STD_JSON.ERROR_CODE : 6
+    }
+    """
+    mock_head_request.return_value = None
+    mock_get_response = mock.Mock(spec=requests.Response)
+    mock_get_response.status_code = 400
+    mock_get_request.return_value = mock_get_response
+
+    mock_redis_client = mock.MagicMock(spec=redis.Redis)
+    mock_redis_from_url.return_value = mock_redis_client
+
+    mock_wayback_rate_limited.return_value = True
+    mock_validator.return_value._redis_uri = "fake://redis_uri"
+
+    client, csrf_token, _, app = login_first_user_without_register
+    valid_url_to_add = valid_url_strings[0]
+
+    with app.app_context():
+        # Get this user's UTub
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+
+        # Get initial number of UTub-URL associations
+        initial_urls = Urls.query.count()
+
+    url_title_to_add = f"This is {valid_url_to_add}"
+
+    # Add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: valid_url_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=id_of_utub_that_is_creator_of),
+        data=add_url_form,
+    )
+
+    assert add_url_response.status_code == 400
+
+    add_url_json_response = add_url_response.json
+    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.TOO_MANY_WAYBACK_ATTEMPTS
+    )
+    assert add_url_json_response[STD_JSON.ERROR_CODE] == 6
+
+    with app.app_context():
+        # Ensure new URL exists
+        assert Urls.query.count() == initial_urls
 
 
 def test_add_url_missing_url(

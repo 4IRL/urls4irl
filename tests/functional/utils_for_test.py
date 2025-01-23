@@ -230,7 +230,7 @@ def wait_until_visible(browser: WebDriver, element: WebElement, timeout: int = 2
 
 
 def wait_until_visible_css_selector(
-    browser: WebDriver, css_selector: str, timeout: int = 2
+    browser: WebDriver, css_selector: str, timeout: int = 10
 ):
     wait = WebDriverWait(browser, timeout)
     wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
@@ -323,6 +323,17 @@ def login_user_with_cookie_from_session(browser: WebDriver, session_id: str):
 def login_user_to_home_page(app: Flask, browser: WebDriver, user_id: int):
     session_id = create_user_session_and_provide_session_id(app, user_id)
     login_user_with_cookie_from_session(browser, session_id)
+
+
+def login_user_and_select_utub_by_utubid(
+    app: Flask, browser: WebDriver, user_id: int, utub_id: int
+):
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+    browser.get_screenshot_as_file("p1.png")
+    wait_then_click_element(
+        browser, f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']", time=10
+    )
 
 
 def login_user_and_select_utub_by_name(
@@ -422,7 +433,24 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
 
         if utub_name_elem.text == utub_name:
             selector.click()
+            wait_until_utub_name_appears(browser, utub_name)
             return
+
+
+def wait_until_utub_name_appears(browser: WebDriver, utub_name: str):
+    utub_name_deck_header = wait_then_get_element(browser, HPL.HEADER_URL_DECK, time=10)
+    assert utub_name_deck_header is not None
+    if utub_name_deck_header.text != utub_name:
+        WebDriverWait(browser, 10).until(
+            lambda _: utub_name_deck_header.text == utub_name
+        )
+
+
+def wait_until_update_btn_has_hidden_class(browser: WebDriver, btn_css_selector: str):
+    btn = browser.find_element(By.CSS_SELECTOR, btn_css_selector)
+    WebDriverWait(browser, 10).until(
+        lambda _: HPL.HIDDEN_BTN_CLASS in btn.get_dom_attribute("class")
+    )
 
 
 def login_utub(

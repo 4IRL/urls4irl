@@ -2,6 +2,7 @@ class HomePageLocators:
     """A collector class for main page locators"""
 
     INVALID_FIELD_SUFFIX = "-error"
+    HIDDEN_BTN_CLASS = "hiddenBtn"
 
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
