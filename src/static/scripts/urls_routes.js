@@ -52,7 +52,7 @@ function createURL(createURLTitleInput, createURLInput) {
   const timeoutId = setTimeout(function () {
     $("#urlCreateDualLoadingRing").addClass("dual-loading-ring");
   }, SHOW_LOADING_ICON_AFTER_MS);
-  const request = ajaxCall("post", postURL, data);
+  const request = ajaxCall("post", postURL, data, 35000);
 
   request.done(function (response, _, xhr) {
     if (xhr.status === 200) {
@@ -93,6 +93,13 @@ function createURLSuccess(response) {
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
 function createURLFail(xhr, utubID) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    displayCreateUrlFailErrors(
+      "urlString",
+      "Server timed out while validating URL. Try again later.",
+    );
+    return;
+  }
   const responseJSON = xhr.responseJSON;
   const hasErrors = responseJSON.hasOwnProperty("errors");
   const hasMessage = responseJSON.hasOwnProperty("message");
@@ -274,7 +281,7 @@ async function updateURL(urlStringUpdateInput, urlCard) {
     // Extract data to submit in POST request
     [patchURL, data] = updateURLSetup(urlStringUpdateInput, utubID, urlID);
 
-    const request = ajaxCall("patch", patchURL, data);
+    const request = ajaxCall("patch", patchURL, data, 35000);
 
     request.done(function (response, _, xhr) {
       if (xhr.status === 200) {
@@ -330,6 +337,13 @@ function updateURLSuccess(response, urlCard) {
 
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLFail(xhr, urlCard, utubID) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    displayCreateUrlFailErrors(
+      "urlString",
+      "Server timed out while validating URL. Try again later.",
+    );
+    return;
+  }
   const responseJSON = xhr.responseJSON;
   const hasErrors = responseJSON.hasOwnProperty("errors");
   const hasMessage = responseJSON.hasOwnProperty("message");

@@ -3,8 +3,10 @@ from unittest import mock
 from flask import url_for
 from flask_login import current_user
 import pytest
+import redis
+import requests
 
-from src.extensions.url_validation.url_validator import InvalidURLError
+from src.extensions.url_validation.url_validator import InvalidURLError, UrlValidator
 from src.models.urls import Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
@@ -766,6 +768,100 @@ def test_update_valid_url_with_same_url_as_url_adder(
             Utub_Url_Tags.utub_id == utub_id,
             Utub_Url_Tags.utub_url_id == url_in_this_utub_id,
         ).count() == len(associated_tags)
+
+
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator", autospec=UrlValidator
+)
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator._is_wayback_rate_limited"
+)
+@mock.patch("redis.Redis.from_url")
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator._perform_get_request"
+)
+@mock.patch(
+    "src.extensions.url_validation.url_validator.UrlValidator._perform_head_request"
+)
+def test_update_url_when_wayback_ratelimited(
+    mock_head_request,
+    mock_get_request,
+    mock_redis_from_url,
+    mock_wayback_rate_limited,
+    mock_validator,
+    add_two_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and no URLs
+        currently in the database or associated with the UTubs
+    WHEN the user tries to update a URL in a UTub they are a creator of, but the HEAD and GET request fail,
+        and Wayback is locally rate limited
+    THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
+        is sent by the server, and that no new URLs are added
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE : "Too many attempts, please try again in one minute.",
+        STD_JSON.ERROR_CODE : 6
+    }
+    """
+    mock_head_request.return_value = None
+    mock_get_response = mock.Mock(spec=requests.Response)
+    mock_get_response.status_code = 400
+    mock_get_request.return_value = mock_get_response
+
+    mock_redis_client = mock.MagicMock(spec=redis.Redis)
+    mock_redis_from_url.return_value = mock_redis_client
+
+    mock_wayback_rate_limited.return_value = True
+    mock_validator.return_value._redis_uri = "fake://redis_uri"
+
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get this user's UTub
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub_that_is_creator_of = utub_creator_of.id
+        url_to_update: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == id_of_utub_that_is_creator_of
+        ).first()
+        utub_url_id = url_to_update.id
+
+        # Get initial number of UTub-URL associations
+        initial_urls = Urls.query.count()
+
+    # Add the URL to the UTub
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: "yahoo.com",
+    }
+
+    update_url_string_response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=id_of_utub_that_is_creator_of,
+            utub_url_id=utub_url_id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_response.status_code == 400
+
+    update_url_string_response_json = update_url_string_response.json
+    assert update_url_string_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        update_url_string_response_json[STD_JSON.MESSAGE]
+        == URL_FAILURE.TOO_MANY_WAYBACK_ATTEMPTS
+    )
+    assert update_url_string_response_json[STD_JSON.ERROR_CODE] == 6
+
+    with app.app_context():
+        # Ensure new URL exists
+        assert Urls.query.count() == initial_urls
 
 
 @mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
