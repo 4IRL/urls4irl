@@ -422,7 +422,13 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
 
         if utub_name_elem.text == utub_name:
             selector.click()
+            wait_until_utub_name_appears(browser, utub_name)
             return
+
+
+def wait_until_utub_name_appears(browser: WebDriver, utub_name: str):
+    utub_name_deck_header = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
+    WebDriverWait(browser, 10).until(lambda _: utub_name_deck_header.text == utub_name)
 
 
 def login_utub(
