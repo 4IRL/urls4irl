@@ -33,7 +33,7 @@ jobs:
 
     # Containers must run in Linux based operating systems
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
 
     # Splits tests into multiple workers
     strategy:

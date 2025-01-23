@@ -30,10 +30,10 @@ RUN set -ex \
 	&& apt-get autoremove -y \
 	&& apt-get clean -y \
 	&& rm -rf /var/lib/apt/lists/* \
-	&& wget https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.116/linux64/chrome-linux64.zip \
+	&& wget https://storage.googleapis.com/chrome-for-testing-public/132.0.6834.83/linux64/chrome-linux64.zip \
 	&& unzip chrome-linux64.zip -d /usr/local/bin/ \
 	&& chmod +x /usr/local/bin/chrome-linux64 \
-	&& wget https://storage.googleapis.com/chrome-for-testing-public/130.0.6723.116/linux64/chromedriver-linux64.zip \
+	&& wget https://storage.googleapis.com/chrome-for-testing-public/132.0.6834.83/linux64/chromedriver-linux64.zip \
 	&& unzip chromedriver-linux64.zip -d /usr/local/bin/ \
 	&& chmod +x /usr/local/bin/chromedriver-linux64 \
 	&& mkdir -p /tmp/.cache/selenium \

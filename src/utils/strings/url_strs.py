@@ -56,6 +56,7 @@ UNABLE_TO_MODIFY_URL_FORM = "Unable to update, please check inputs."
 UNABLE_TO_MODIFY_URL = "Unable to modify this URL."
 UNABLE_TO_RETRIEVE_URL = "Unable to retrieve this URL."
 EMPTY_URL = "URL cannot be empty."
+TOO_MANY_WAYBACK_ATTEMPTS = "Too many attempts, please try again in one minute."
 
 
 class URL_FAILURE(FAILURE_GENERAL):
@@ -70,6 +71,7 @@ class URL_FAILURE(FAILURE_GENERAL):
     UNABLE_TO_MODIFY_URL_FORM = UNABLE_TO_MODIFY_URL_FORM
     URL_TITLE = URL_TITLE
     URL_STRING = URL_STRING
+    TOO_MANY_WAYBACK_ATTEMPTS = TOO_MANY_WAYBACK_ATTEMPTS
 
 
 # Strings for URL no change

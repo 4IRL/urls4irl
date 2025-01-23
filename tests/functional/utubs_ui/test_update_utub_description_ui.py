@@ -1,6 +1,6 @@
 from flask import Flask
 import pytest
-from selenium.common.exceptions import JavascriptException
+from selenium.common.exceptions import ElementNotInteractableException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -18,6 +18,8 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_update_btn_has_hidden_class,
+    wait_until_utub_name_appears,
     wait_until_visible,
     wait_until_visible_css_selector,
 )
@@ -80,11 +82,13 @@ def test_open_update_utub_description_input_member(
     utub = get_utub_this_user_did_not_create(app, user_id)
 
     login_user_and_select_utub_by_name(app, browser, user_id, utub.name)
+    wait_until_utub_name_appears(browser, utub.name)
+    wait_until_update_btn_has_hidden_class(browser, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE)
 
-    # Javascript Exception is raised when selenium tries to hover over the UTub Name,
-    # and then click on the edit UTub name button - but as a member, the button doesn't
+    # ElementNotInteractableException is raised when selenium tries to hover over the UTub Name,
+    # and then click on the edit UTub description button - but as a member, the button doesn't
     # show on hover
-    with pytest.raises(JavascriptException):
+    with pytest.raises(ElementNotInteractableException):
         open_update_utub_desc_input(browser)
 
     assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE)
@@ -359,6 +363,7 @@ def test_update_empty_utub_description_btn_shows_after_selecting_utub(
         app, browser, user_id, utub_user_did_not_create.name
     )
     select_utub_by_name(browser, utub_user_created.name)
+    wait_until_utub_name_appears(browser, utub_user_created.name)
 
     hover_over_utub_title_to_show_add_utub_description(browser)
 

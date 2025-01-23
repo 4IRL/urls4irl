@@ -112,7 +112,7 @@ def build_driver(
         driver = webdriver.Chrome(service=service, options=options)
     else:
         driver = webdriver.Chrome(options=options)
-    driver.set_window_size(width=1400, height=1000)
+    driver.set_window_size(width=1920, height=1080)
 
     # driver.maximize_window()
     ping_server(UI_TEST_STRINGS.BASE_URL + str(open_port))
