@@ -238,11 +238,12 @@ function hideIfShown(jqueryObj) {
 }
 
 // AJAX request
-function ajaxCall(type, url, data) {
+function ajaxCall(type, url, data, timeout = 1000) {
   return (request = $.ajax({
     type: type,
     url: url,
     data: data,
+    timeout: timeout,
   }));
 }
 

@@ -24,7 +24,9 @@ returns the URL the redirect pointed to. Otherwise, uses the original URL.
 """
 
 from datetime import datetime
+import os
 import random
+import time
 import requests
 import socket
 from typing import Tuple, Union
@@ -61,10 +63,18 @@ class InvalidURLError(Exception):
     pass
 
 
+class WaybackRateLimited(Exception):
+    """Error if too many attempts for Wayback within 1 minute."""
+
+    pass
+
+
 class UrlValidator:
-    def __init__(self) -> None:
+    def __init__(self, is_testing: bool = False) -> None:
         self._ui_testing = False
-        self._redis_uri = None
+        self._is_testing = is_testing
+        self._redis_uri = os.environ.get(ENV.REDIS_URI, None)
+        self.timer = None
 
     def init_app(self, app: Flask) -> None:
         app.extensions[VALIDATION_STRS.URL_VALIDATION_MODULE] = self
@@ -76,6 +86,7 @@ class UrlValidator:
         )
         self._ui_testing: bool = is_not_production_and_is_testing_ui
         self._redis_uri = app.config.get(ENV.REDIS_URI, None)
+        self._is_testing = is_testing
 
     def _normalize_url(self, url: str) -> str:
         """
@@ -106,44 +117,75 @@ class UrlValidator:
         return return_val
 
     def _generate_headers(
-        self, url: str, user_agent: str | None = None
+        self, url: str, user_headers: dict[str, str] | None = None
     ) -> dict[str, str]:
-        return {
-            VALIDATION_STRS.USER_AGENT: (
-                self.generate_random_user_agent() if user_agent is None else user_agent
-            ),
-            VALIDATION_STRS.ACCEPT: "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7",
-            VALIDATION_STRS.ACCEPT_ENCODING: "*",
-            VALIDATION_STRS.ACCEPT_LANGUAGE: "*",
-            VALIDATION_STRS.SEC_FETCH_DEST: "document",
-            VALIDATION_STRS.SEC_FETCH_MODE: "navigate",
-            VALIDATION_STRS.SEC_FETCH_USER: "?1",
-            VALIDATION_STRS.CONNECTION: "keep-alive",
-            VALIDATION_STRS.HOST: deconstruct_url(url).host,
-        }
+        headers = (
+            {}
+            if user_headers is None
+            else {key: val for key, val in user_headers.items()}
+        )
+        if VALIDATION_STRS.USER_AGENT not in headers:
+            headers[VALIDATION_STRS.USER_AGENT] = self.generate_random_user_agent()
+
+        if VALIDATION_STRS.ACCEPT not in headers:
+            headers[VALIDATION_STRS.ACCEPT] = (
+                "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7"
+            )
+
+        if VALIDATION_STRS.ACCEPT_ENCODING not in headers:
+            headers[VALIDATION_STRS.ACCEPT_ENCODING] = "*"
+
+        if VALIDATION_STRS.ACCEPT_LANGUAGE not in headers:
+            headers[VALIDATION_STRS.ACCEPT_LANGUAGE] = (
+                "en-US, en;q=0.9" if self._is_testing else "*"
+            )
+
+        if VALIDATION_STRS.SEC_FETCH_DEST not in headers:
+            headers[VALIDATION_STRS.SEC_FETCH_DEST] = "document"
+
+        if (
+            VALIDATION_STRS.SEC_FETCH_MODE not in headers
+            or headers.get(VALIDATION_STRS.SEC_FETCH_MODE, "").lower() == "cors"
+        ):
+            headers[VALIDATION_STRS.SEC_FETCH_MODE] = "navigate"
+
+        if VALIDATION_STRS.SEC_FETCH_USER not in headers:
+            headers[VALIDATION_STRS.SEC_FETCH_USER] = "?1"
+
+        if VALIDATION_STRS.CONNECTION not in headers:
+            headers[VALIDATION_STRS.CONNECTION] = "keep-alive"
+
+        invalid_headers = (
+            VALIDATION_STRS.CONTENT_TYPE,
+            VALIDATION_STRS.X_REQUESTED_WITH,
+            VALIDATION_STRS.X_CSRF_TOKEN,
+            VALIDATION_STRS.CONTENT_LENGTH,
+            VALIDATION_STRS.COOKIE,
+            VALIDATION_STRS.ORIGIN,
+            VALIDATION_STRS.REFERER,
+        )
+
+        for invalid_header in invalid_headers:
+            if invalid_header in headers:
+                headers.pop(invalid_header)
+
+        headers[VALIDATION_STRS.HOST] = deconstruct_url(url).host
+        return headers
 
     def _perform_head_request(
-        self, url: str, headers: dict[str, str]
+        self, url: str, headers: dict[str, str], limited_redirects: bool = False
     ) -> requests.Response | None:
         try:
-            response = requests.head(
-                url,
-                timeout=(
-                    3,
-                    6,
-                ),
-                headers=headers,
-            )
-            if response.status_code in (
-                403,
-                405,
-            ):
-                # HEAD not allowed, try get
-                return None
+            if limited_redirects:
+                response = self._perform_head_with_custom_redirect(url, headers)
+            else:
+                response = self._perform_head_with_no_redirects(url, headers)
 
         except requests.exceptions.ReadTimeout:
-            # Try a get request instead
             return None
+
+        except requests.exceptions.TooManyRedirects:
+            return self._perform_head_request(url, headers, limited_redirects=False)
 
         except requests.exceptions.SSLError as e:
             if "UNSAFE_LEGACY_RENEGOTIATION_DISABLED" in str(e):
@@ -160,21 +202,78 @@ class UrlValidator:
         else:
             return response
 
+    def _perform_head_with_custom_redirect(
+        self, url: str, headers: dict[str, str]
+    ) -> requests.Response | None:
+        max_num_redirects = 10
+        num_redirects = 0
+
+        response: requests.Response = requests.head(
+            url,
+            timeout=(
+                3,
+                4,
+            ),
+            headers=headers,
+            allow_redirects=False,
+        )
+
+        while response.is_redirect or response.is_permanent_redirect:
+            if num_redirects >= max_num_redirects or response.status_code in range(
+                400, 600
+            ):
+                return None
+
+            redirect_url = response.headers.get(VALIDATION_STRS.LOCATION, "")
+            if (
+                deconstruct_url(redirect_url).scheme != "https"
+                and response.next
+                and response.next.url
+                and deconstruct_url(response.next.url).scheme == "https"
+            ):
+                redirect_url = response.next.url
+            else:
+                return None
+
+            response = requests.head(
+                redirect_url,
+                timeout=(
+                    3,
+                    4,
+                ),
+                headers=headers,
+                allow_redirects=False,
+            )
+            num_redirects += 1
+
+        return response
+
+    def _perform_head_with_no_redirects(
+        self, url: str, headers: dict[str, str]
+    ) -> requests.Response | None:
+        response = requests.head(
+            url,
+            timeout=(
+                3,
+                6,
+            ),
+            headers=headers,
+        )
+        if response.status_code in (
+            403,
+            405,
+        ):
+            return None
+        return response
+
     def _perform_get_request(
         self, url: str, headers: dict[str, str]
     ) -> requests.Response:
         try:
-            response = requests.get(
-                url,
-                timeout=(
-                    3,
-                    6,
-                ),
-                # headers=headers,
-            )
+            response = self._perform_get_with_custom_redirect(url, headers)
 
         except requests.exceptions.ReadTimeout:
-            return self._all_user_agent_sampling(url)
+            return self._all_user_agent_sampling(url, headers)
 
         except requests.exceptions.ConnectionError as e:
             raise InvalidURLError("Unable to connect to the given URL. " + str(e))
@@ -182,13 +281,54 @@ class UrlValidator:
         except requests.exceptions.MissingSchema as e:
             raise InvalidURLError("Invalid schema for this URL. " + str(e))
 
+        except requests.exceptions.TooManyRedirects as e:
+            raise InvalidURLError("Too many redirects for this URL. " + str(e))
+
         else:
             return response
 
-    def _all_user_agent_sampling(self, url: str) -> requests.Response:
+    def _perform_get_with_custom_redirect(
+        self, url: str, headers: dict[str, str]
+    ) -> requests.Response:
+        max_num_redirects = 10
+        num_redirects = 0
+
+        response: requests.Response = requests.get(
+            url,
+            timeout=(
+                3,
+                4,
+            ),
+            headers=headers,
+            allow_redirects=False,
+        )
+
+        while response.is_redirect or response.is_permanent_redirect:
+            if num_redirects >= max_num_redirects or response.status_code in range(
+                400, 600
+            ):
+                return response
+
+            redirect_url = response.headers.get(VALIDATION_STRS.LOCATION, "")
+            response = requests.get(
+                redirect_url,
+                timeout=(
+                    3,
+                    4,
+                ),
+                headers=headers,
+                allow_redirects=False,
+            )
+            num_redirects += 1
+
+        return response
+
+    def _all_user_agent_sampling(
+        self, url: str, headers: dict[str, str]
+    ) -> requests.Response:
         for agent in USER_AGENTS:
             try:
-                headers = self._generate_headers(url, user_agent=agent)
+                headers[VALIDATION_STRS.USER_AGENT] = agent
                 response = requests.get(
                     url,
                     headers=headers,
@@ -198,11 +338,15 @@ class UrlValidator:
                     ),
                 )
             except requests.exceptions.ReadTimeout:
+                if self.timer and (time.perf_counter() - self.timer) >= 30:
+                    raise InvalidURLError("Unable to validate URL within 30 seconds.")
                 continue
             except requests.exceptions.ConnectionError as e:
                 raise InvalidURLError("Unable to connect to the given URL. " + str(e))
             except requests.exceptions.MissingSchema as e:
                 raise InvalidURLError("Invalid schema for this URL. " + str(e))
+            except requests.exceptions.TooManyRedirects as e:
+                raise InvalidURLError("Too many redirects for this URL. " + str(e))
             else:
                 return response
 
@@ -226,19 +370,41 @@ class UrlValidator:
         Returns:
             Union[None, requests.Response]: A Response object if successful found in either internet cache, else None
         """
-        # Iterate from year 2020 onwards for WayBack Archive
-        current_year = datetime.now().year
+        try:
+            # Iterate from year 2020 onwards for WayBack Archive
+            current_year = datetime.now().year
 
-        for year in range(2020, current_year + 1):
-            wayback_archive_response = self._perform_head_request(
-                VALIDATION_STRS.WAYBACK_ARCHIVE + str(year) + "/" + url,
-                headers,
-            )
-            if wayback_archive_response is None:
-                continue
+            redis_client: Redis | None = None
+            if self._redis_uri and self._redis_uri != "memory://":
+                redis_client = redis.Redis.from_url(self._redis_uri)  # type: ignore
 
-            if wayback_archive_response.status_code < 400:
-                if wayback_archive_response.status_code >= 300:
+            for year in range(2020, current_year + 1):
+                is_rate_limited = redis_client and self._is_wayback_rate_limited(
+                    redis_client
+                )
+                if is_rate_limited:
+                    raise WaybackRateLimited("Too many attempts, please wait a minute.")
+
+                wayback_url = VALIDATION_STRS.WAYBACK_ARCHIVE + str(year) + "/" + url
+                wayback_archive_response = self._perform_head_request(
+                    wayback_url,
+                    headers,
+                )
+                if wayback_archive_response is None:
+                    continue
+
+                wayback_status_code = wayback_archive_response.status_code
+                if wayback_status_code not in range(200, 400):
+                    continue
+
+                if 300 <= wayback_status_code < 400:
+                    is_rate_limited = redis_client and self._is_wayback_rate_limited(
+                        redis_client
+                    )
+                    if is_rate_limited:
+                        raise WaybackRateLimited(
+                            "Too many attempts, please wait a minute."
+                        )
                     wayback_archive_response = self._perform_head_request(
                         wayback_archive_response.headers.get(
                             VALIDATION_STRS.LOCATION, ""
@@ -258,9 +424,35 @@ class UrlValidator:
                 wayback_archive_response.url = url
                 wayback_archive_response.status_code = 200
                 print(f"Waybacked: {url=}")
+
                 return wayback_archive_response
 
-        return None
+            return None
+
+        except requests.exceptions.ConnectionError:
+            raise WaybackRateLimited("Too many attempts, please wait a minute.")
+
+    def _get_current_minute_window(self) -> int:
+        return int(datetime.now().timestamp())
+
+    def _is_wayback_rate_limited(self, redis_client: Redis) -> bool:
+        time_window = 60  # Time window for rate limit is 60 seconds
+        max_requests = 10
+        current_minute_window = self._get_current_minute_window() // time_window
+        redis_key = f"wayback_ratelimit:{current_minute_window}"
+
+        request_count = redis_client.get(redis_key)
+        if request_count is None:
+            redis_client.set(redis_key, 1, ex=time_window)
+            return False
+
+        request_count = int(request_count)  # type: ignore
+
+        if request_count >= max_requests:
+            return True
+
+        redis_client.incr(redis_key)
+        return False
 
     def _validate_host(self, host: str) -> bool:
         try:
@@ -298,7 +490,14 @@ class UrlValidator:
             if location is None:
                 location = url
 
-            return location
+            if any(common_redirect in location for common_redirect in COMMON_REDIRECTS):
+                location = self._filter_out_common_redirect(url)
+
+            deconstructed = deconstruct_url(location)
+
+            # Check for proper schema
+            if deconstructed.scheme == "https":
+                return location
 
         # Check for redirects
         if status_code in range(300, 400) or status_code == 201:
@@ -306,7 +505,13 @@ class UrlValidator:
             if response.next is not None:
                 location = response.next.url if location == "/" else location
 
-        # Check for more common redirectes
+            deconstructed = deconstruct_url(location)
+
+            # Check for proper schema
+            if deconstructed.scheme != "https":
+                location = None
+
+        # Check for more common redirects
         if (
             location is not None
             and status_code == 302
@@ -319,13 +524,17 @@ class UrlValidator:
             # Forces the return of 'https://www.facebook.com', which comes after the ?next= query param
             return self._filter_out_common_redirect(url)
 
+        # Check for proper schema
+        if location is not None and deconstruct_url(location).scheme != "https":
+            return None
+
         return location
 
     def _check_if_is_short_url(self, url_domain: str) -> bool:
         if not self._redis_uri or self._redis_uri == "memory://":
             return False
 
-        redis_client: Redis = redis.Redis.from_url(self._redis_uri)
+        redis_client: Redis = redis.Redis.from_url(self._redis_uri)  # type: ignore
         return redis_client.sismember(VALIDATION_STRS.SHORT_URLS, url_domain) == 1
 
     def _validate_short_url(self, url: str) -> Tuple[str, bool]:
@@ -357,7 +566,9 @@ class UrlValidator:
         else:
             return url, False
 
-    def validate_url(self, url: str, user_agent: str | None = None) -> Tuple[str, bool]:
+    def validate_url(
+        self, url: str | None, user_headers: dict[str, str] | None = None
+    ) -> Tuple[str, bool]:
         """
         Status codes: https://developer.mozilla.org/en-US/docs/Web/HTTP/Status
 
@@ -378,6 +589,10 @@ class UrlValidator:
         Returns:
             str: Either the redirected URL, or the original URL used in the request head method
         """
+        self.timer = time.perf_counter()
+        if not url:
+            raise InvalidURLError("URL cannot be empty")
+
         if self._ui_testing:
             return self._normalize_url(url), True
 
@@ -391,17 +606,17 @@ class UrlValidator:
 
         # DNS Check to ensure valid domain and host
         if not self._validate_host(deconstructed.host):
-            raise InvalidURLError("Domain did not resolve into a valid IP address.")
+            raise InvalidURLError("Domain did not resolve into a valid IP address")
 
         # Check if contained within short URL domains
         if self._check_if_is_short_url(deconstructed.host):
             return self._validate_short_url(url)
 
         # Build headers to perform HTTP request to validate URL
-        headers = self._generate_headers(url, user_agent)
+        headers = self._generate_headers(url, user_headers)
 
         # Perform HEAD request, majority of URLs should be okay with this
-        response = self._perform_head_request(url, headers)
+        response = self._perform_head_request(url, headers, limited_redirects=True)
 
         # HEAD requests can fail for shortened URLs, try GET just in case
         if response is None or response.status_code == 404:
@@ -415,7 +630,9 @@ class UrlValidator:
         if location is not None:
             return location, True
 
-        if response.status_code >= 400 and response.status_code < 500:
+        if response is None or (
+            response.status_code >= 400 and response.status_code < 500
+        ):
             response = self._perform_wayback_check(url, headers)
 
         if response is None:
@@ -450,13 +667,18 @@ class UrlValidator:
 
 
 if __name__ == "__main__":
-    validator = UrlValidator()
+    validator = UrlValidator(is_testing=True)
     INVALID_URLS = (
         "https://www.lowes.com/pd/ReliaBilt-ReliaBilt-3-1-2-in-Zinc-Plated-Flat-Corner-Brace-4-Pack/5003415919",
         "https://www.upgrad.com/blog/top-artificial-intelligence-project-ideas-topics-for-beginners/",
+        "www.fnb-online.com/",
         "https://www.fnb-online.com/",
         "https://www.fnb-online.com/personal",
         "https://a.co/d/7jJVnzT",
+        "https://immich.app/docs/overview/introduction",
+        "https://developers.google.com/calendar/api/guides/overview",
+        "https://developers.google.com/keep/api/reference/rest",
+        "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-16-inch-amd/len101t0076#ports_slots",
     )
 
     print(validator.validate_url(INVALID_URLS[-1]))

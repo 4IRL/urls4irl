@@ -3,7 +3,6 @@ from flask import Flask
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
 
 from src import db
 from src.models.utubs import Utubs
@@ -13,6 +12,7 @@ from tests.functional.utils_for_test import (
     user_is_selected_utub_owner,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_hidden,
     wait_until_visible_css_selector,
 )
 
@@ -104,7 +104,10 @@ def open_update_utub_name_input(browser: WebDriver):
     assert update_wrap_element is not None
 
     _update_utub_input(
-        browser, update_wrap_element, HPL.HEADER_URL_DECK, HPL.BUTTON_UTUB_NAME_UPDATE
+        browser,
+        HPL.WRAP_UTUB_NAME_UPDATE,
+        HPL.HEADER_URL_DECK,
+        HPL.BUTTON_UTUB_NAME_UPDATE,
     )
 
 
@@ -116,37 +119,33 @@ def open_update_utub_desc_input(browser: WebDriver):
         WebDriver open to U4I Home Page
     """
     update_wrap_element = wait_then_get_element(
-        browser, HPL.WRAP_UTUB_DESCRIPTION_UPDATE
+        browser, HPL.WRAP_UTUB_DESCRIPTION_UPDATE, time=3
     )
     assert update_wrap_element is not None
 
     _update_utub_input(
         browser,
-        update_wrap_element,
+        HPL.WRAP_UTUB_DESCRIPTION_UPDATE,
         HPL.SUBHEADER_URL_DECK,
         HPL.BUTTON_UTUB_DESCRIPTION_UPDATE,
     )
 
 
 def _update_utub_input(
-    browser: WebDriver, wrap_elem: WebElement, elem_locator: str, btn_locator: str
+    browser: WebDriver, wrap_elem_selector: str, elem_locator: str, btn_locator: str
 ):
     # Hover over UTub name to display utubNameBtnUpdate button
     actions = ActionChains(browser)
 
+    wrap_elem = wait_then_get_element(browser, wrap_elem_selector, time=3)
+    assert wrap_elem is not None
     update_element = wrap_elem.find_element(By.CSS_SELECTOR, elem_locator)
-    actions.move_to_element(update_element)
-
-    # Pause to make sure utubNameBtnUpdate button is visible
-    actions.pause(3).perform()
-
     update_button = wrap_elem.find_element(By.CSS_SELECTOR, btn_locator)
 
-    actions.move_to_element(update_button).pause(2)
-
-    actions.click(update_button)
-
-    actions.perform()
+    # Pause to make sure utubNameBtnUpdate button is visible
+    actions.move_to_element(update_element).pause(3).move_to_element(
+        update_button
+    ).pause(2).click(update_button).perform()
     # Update input field visible
 
 
@@ -201,20 +200,19 @@ def hover_over_utub_title_to_show_add_utub_description(browser: WebDriver):
     actions = ActionChains(browser)
 
     utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
-    actions.move_to_element(utub_title_elem)
-
-    # Pause to make sure utubNameBtnUpdate button is visible
-    actions.pause(2)
     utub_desc_input_elem = browser.find_element(
         By.CSS_SELECTOR, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
     )
 
-    actions.move_to_element(utub_desc_input_elem)
-    actions.perform()
+    # Pause to make sure utubNameBtnUpdate button is visible
+    actions.move_to_element(utub_title_elem).pause(5).move_to_element(
+        utub_desc_input_elem
+    ).pause(5).perform()
 
     wait_until_visible_css_selector(
         browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY, timeout=3
     )
 
+    assert wait_until_hidden(browser, HPL.SUBHEADER_URL_DECK, timeout=3) is not None
     utub_desc_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK)
     assert not utub_desc_elem.is_displayed()
