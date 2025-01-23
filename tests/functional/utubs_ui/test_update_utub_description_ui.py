@@ -81,9 +81,10 @@ def test_open_update_utub_description_input_member(
     utub = get_utub_this_user_did_not_create(app, user_id)
 
     login_user_and_select_utub_by_name(app, browser, user_id, utub.name)
+    wait_until_utub_name_appears(browser, utub.name)
 
     # Javascript Exception is raised when selenium tries to hover over the UTub Name,
-    # and then click on the edit UTub name button - but as a member, the button doesn't
+    # and then click on the edit UTub description button - but as a member, the button doesn't
     # show on hover
     with pytest.raises(JavascriptException):
         open_update_utub_desc_input(browser)

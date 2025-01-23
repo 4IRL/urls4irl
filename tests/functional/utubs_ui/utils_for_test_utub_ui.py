@@ -140,18 +140,12 @@ def _update_utub_input(
     wrap_elem = wait_then_get_element(browser, wrap_elem_selector, time=3)
     assert wrap_elem is not None
     update_element = wrap_elem.find_element(By.CSS_SELECTOR, elem_locator)
-    actions.move_to_element(update_element)
-
-    # Pause to make sure utubNameBtnUpdate button is visible
-    actions.pause(3).perform()
-
     update_button = wrap_elem.find_element(By.CSS_SELECTOR, btn_locator)
 
-    actions.move_to_element(update_button).pause(2)
-
-    actions.click(update_button)
-
-    actions.perform()
+    # Pause to make sure utubNameBtnUpdate button is visible
+    actions.move_to_element(update_element).pause(3).move_to_element(
+        update_button
+    ).pause(2).click(update_button).perform()
     # Update input field visible
 
 

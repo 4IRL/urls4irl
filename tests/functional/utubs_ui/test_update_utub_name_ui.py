@@ -22,6 +22,7 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_utub_name_appears,
 )
 from tests.functional.utubs_ui.utils_for_test_utub_ui import (
     assert_active_utub,
@@ -108,6 +109,7 @@ def test_open_update_utub_name_input_member(
         utub: Utubs = Utubs.query.filter(Utubs.utub_creator != user_id).first()
 
     login_user_and_select_utub_by_name(app, browser, user_id, utub.name)
+    wait_until_utub_name_appears(browser, utub.name)
 
     # Javascript Exception is raised when selenium tries to hover over the UTub Name,
     # and then click on the edit UTub name button - but as a member, the button doesn't
