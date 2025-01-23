@@ -18,6 +18,7 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_update_btn_has_hidden_class,
     wait_until_utub_name_appears,
     wait_until_visible,
     wait_until_visible_css_selector,
@@ -82,6 +83,7 @@ def test_open_update_utub_description_input_member(
 
     login_user_and_select_utub_by_name(app, browser, user_id, utub.name)
     wait_until_utub_name_appears(browser, utub.name)
+    wait_until_update_btn_has_hidden_class(browser, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE)
 
     # Javascript Exception is raised when selenium tries to hover over the UTub Name,
     # and then click on the edit UTub description button - but as a member, the button doesn't

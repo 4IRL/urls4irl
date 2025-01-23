@@ -17,11 +17,13 @@ from tests.functional.utils_for_test import (
     get_all_utub_selector_names,
     get_selected_utub_name,
     login_user_and_select_utub_by_name,
+    login_user_and_select_utub_by_utubid,
     login_user_with_cookie_from_session,
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_update_btn_has_hidden_class,
     wait_until_utub_name_appears,
 )
 from tests.functional.utubs_ui.utils_for_test_utub_ui import (
@@ -94,7 +96,7 @@ def test_open_update_utub_name_input_creator(
 
 
 def test_open_update_utub_name_input_member(
-    browser: WebDriver, create_test_utubs, provide_app: Flask
+    browser: WebDriver, create_test_utubmembers, provide_app: Flask
 ):
     """
     Tests a user's ability to open the updateUTubName input using the pencil button.
@@ -108,8 +110,9 @@ def test_open_update_utub_name_input_member(
     with app.app_context():
         utub: Utubs = Utubs.query.filter(Utubs.utub_creator != user_id).first()
 
-    login_user_and_select_utub_by_name(app, browser, user_id, utub.name)
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub.id)
     wait_until_utub_name_appears(browser, utub.name)
+    wait_until_update_btn_has_hidden_class(browser, HPL.BUTTON_UTUB_NAME_UPDATE)
 
     # Javascript Exception is raised when selenium tries to hover over the UTub Name,
     # and then click on the edit UTub name button - but as a member, the button doesn't
