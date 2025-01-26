@@ -92,6 +92,32 @@ def assert_active_utub(browser: WebDriver, utub_name: str):
     assert current_url_deck_header.text == utub_name
 
 
+def assert_elems_hidden_after_utub_deleted(browser: WebDriver):
+    non_visible_elems = (
+        HPL.BUTTON_UTUB_DELETE,
+        HPL.BUTTON_MEMBER_CREATE,
+        HPL.BUTTON_UTUB_TAG_CREATE,
+        HPL.BUTTON_CORNER_URL_CREATE,
+        HPL.SUBHEADER_TAG_DECK,
+    )
+
+    for elem in non_visible_elems:
+        assert not browser.find_element(By.CSS_SELECTOR, elem).is_displayed()
+
+    update_utub_desc_btn = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE
+    )
+    assert HPL.HIDDEN_BTN_CLASS in update_utub_desc_btn.get_dom_attribute("class")
+
+    update_utub_name_btn = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_UTUB_NAME_UPDATE
+    )
+    assert (
+        HPL.HIDDEN_BTN_CLASS in update_utub_name_btn.get_dom_attribute("class")
+        or not update_utub_name_btn.is_displayed()
+    )
+
+
 def open_update_utub_name_input(browser: WebDriver):
     """
     Once logged in and UTub selected, this function conducts the actions for opening either the update UTub name or description input field. First hover over the UTub name or description to display the edit button. Then clicks the edit button.

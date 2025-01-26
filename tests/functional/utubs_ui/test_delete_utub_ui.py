@@ -20,7 +20,10 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
+from tests.functional.utubs_ui.utils_for_test_utub_ui import (
+    assert_elems_hidden_after_utub_deleted,
+    get_utub_this_user_created,
+)
 
 pytestmark = pytest.mark.utubs_ui
 
@@ -173,9 +176,9 @@ def test_dismiss_delete_utub_modal_click(
 
 def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Flask):
     """
-    GIVEN a user trying to add a new UTub
-    WHEN they submit the addUTub form
-    THEN ensure the appropriate input field is shown and in focus
+    GIVEN a user trying to delete one of the UTubs they created
+    WHEN they try to delete the UTub
+    THEN ensure the UTub selector is removed, and all relevant buttons are hidden
     """
 
     app = provide_app
@@ -201,6 +204,9 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Fla
         css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
         browser.find_element(By.CSS_SELECTOR, css_selector)
 
+    # Assert that the no utub selected UI is shown
+    assert_elems_hidden_after_utub_deleted(browser)
+
 
 def test_delete_last_utub_no_urls_no_tags_no_members(
     browser: WebDriver, create_test_utubs, provide_app: Flask
@@ -225,16 +231,7 @@ def test_delete_last_utub_no_urls_no_tags_no_members(
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
 
     # Make sure all relevant buttons and subheaders are hidden when no UTub selected
-    non_visible_elems = (
-        HPL.BUTTON_UTUB_DELETE,
-        HPL.BUTTON_MEMBER_CREATE,
-        HPL.BUTTON_UTUB_TAG_CREATE,
-        HPL.BUTTON_CORNER_URL_CREATE,
-        HPL.SUBHEADER_TAG_DECK,
-    )
-
-    for elem in non_visible_elems:
-        assert not browser.find_element(By.CSS_SELECTOR, elem).is_displayed()
+    assert_elems_hidden_after_utub_deleted(browser)
 
     assert (
         browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK).text
@@ -278,16 +275,7 @@ def test_delete_last_utub_with_urls_tags_members(
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
 
     # Make sure all relevant buttons and subheaders are hidden when no UTub selected
-    non_visible_elems = (
-        HPL.BUTTON_UTUB_DELETE,
-        HPL.BUTTON_MEMBER_CREATE,
-        HPL.BUTTON_UTUB_TAG_CREATE,
-        HPL.BUTTON_CORNER_URL_CREATE,
-        HPL.SUBHEADER_TAG_DECK,
-    )
-
-    for elem in non_visible_elems:
-        assert not browser.find_element(By.CSS_SELECTOR, elem).is_displayed()
+    assert_elems_hidden_after_utub_deleted(browser)
 
     assert (
         browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK).text
