@@ -295,6 +295,9 @@ function resetURLDeckOnDeleteUTub() {
   hideIfShown($("#urlBtnCreate"));
   hideIfShown($("#NoURLsSubheader"));
   hideIfShown($("#urlBtnDeckCreateWrap"));
+  $("#updateUTubDescriptionBtn")
+    .removeClass("visibleBtn")
+    .addClass("hiddenBtn");
 }
 
 // Prevent editing URL title when needed
