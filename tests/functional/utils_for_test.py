@@ -415,6 +415,31 @@ def assert_login(browser: WebDriver):
     assert user_logged_in.text == userLoggedInText
 
 
+def assert_login_with_username(browser: WebDriver, username: str):
+    """
+    Streamlines actions needed to confirm a user is logged in.
+
+    Args:
+        WebDriver open to U4I Home Page
+
+    Returns:
+        Boolean True, if logged in
+    """
+
+    # Confirm user logged in
+    # Logout button visible
+    btn_logout = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
+    assert btn_logout is not None
+    assert btn_logout.text == "Logout"
+
+    # Correct user logged in
+    user_logged_in = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
+    assert user_logged_in is not None
+    userLoggedInText = "Logged in as " + username
+
+    assert user_logged_in.text == userLoggedInText
+
+
 # UTub Deck
 def select_utub_by_name(browser: WebDriver, utub_name: str):
     """

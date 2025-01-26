@@ -7,9 +7,11 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from locators import HomePageLocators as HPL
 from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
+from src.models.users import Users
 from src.utils.constants import CONSTANTS
 from src.utils.strings.utub_strs import UTUB_FAILURE
 from tests.functional.utils_for_test import (
+    assert_login_with_username,
     assert_not_visible_css_selector,
     clear_then_send_keys,
     login_user_and_select_utub_by_name,
@@ -507,3 +509,30 @@ def test_update_utub_description_form_closes_when_selecting_other_utub(
     )
 
     assert not utub_desc_update_input.is_displayed()
+
+
+def test_open_update_utub_description_btn_not_visible_with_no_utub_selected(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a user's ability to not see the update UTub description button when no UTub selected.
+
+    GIVEN a fresh load of the U4I Home page
+    WHEN user selects a UTub they created, then clicks the edit UTub description button
+    THEN ensure the updateUTubDescription input opens
+    """
+    app = provide_app
+    user_id = 1
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+        username = user.username
+    selected_utub = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB, time=3)
+    assert selected_utub is None
+
+    login_user_to_home_page(app, browser, user_id)
+    assert_login_with_username(browser, username)
+
+    update_utub_desc_btn = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE
+    )
+    assert not update_utub_desc_btn.is_displayed()
