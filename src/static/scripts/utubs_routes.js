@@ -193,6 +193,10 @@ function createUTubSuccess(response) {
 
 // Handle error response display to user
 function createUTubFail(xhr) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    window.location.assign(routes.errorPage);
+    return;
+  }
   switch (xhr.status) {
     case 400:
       const responseJSON = xhr.responseJSON;
