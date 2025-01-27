@@ -10,6 +10,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import ADD_USER_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
@@ -652,8 +653,9 @@ def test_add_user_to_utub_missing_csrf_token(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=current_user_utub.id)
     )
 
-    assert add_user_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in add_user_response.data
+    assert add_user_response.status_code == 403
+    assert add_user_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in add_user_response.data
 
     with app.app_context():
         # Ensure correct count of Utub-User associations

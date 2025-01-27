@@ -9,6 +9,7 @@ import redis
 from redis.client import Redis
 
 from src.utils.strings.config_strs import CONFIG_ENVS
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import (
     valid_empty_utub_1,
     valid_empty_utub_2,
@@ -555,8 +556,9 @@ def test_add_utub_with_no_csrf_token(login_first_user_with_register):
     invalid_new_utub_response = client.post(url_for(ROUTES.UTUBS.CREATE_UTUB))
 
     # Assert invalid response code
-    assert invalid_new_utub_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in invalid_new_utub_response.data
+    assert invalid_new_utub_response.status_code == 403
+    assert invalid_new_utub_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in invalid_new_utub_response.data
 
 
 def test_csrf_expiration(app, login_first_user_with_register):
@@ -586,11 +588,11 @@ def test_csrf_expiration(app, login_first_user_with_register):
         invalid_utub_response_with_csrf = client.post(
             url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
         )
-        assert invalid_utub_response_with_csrf.status_code == 400
+        assert invalid_utub_response_with_csrf.status_code == 403
         assert (
-            b"<p>The CSRF token has expired.</p>"
-            in invalid_utub_response_with_csrf.data
+            invalid_utub_response_with_csrf.content_type == "text/html; charset=utf-8"
         )
+        assert IDENTIFIERS.HTML_403.encode() in invalid_utub_response_with_csrf.data
 
 
 def test_session_expiration(

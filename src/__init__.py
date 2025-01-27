@@ -4,7 +4,7 @@ from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_session import Session
-from flask_wtf.csrf import CSRFProtect
+from flask_wtf.csrf import CSRFError, CSRFProtect
 
 from src.db import db
 from src.config import Config, ConfigProd
@@ -13,6 +13,7 @@ from src.extensions.url_validation.url_validator import UrlValidator
 from src.cli.cli_options import register_short_urls_cli
 from src.cli.mock_options import register_mocks_db_cli
 from src.utils.error_handler import (
+    handle_403_response,
     handle_404_response,
     handle_429_response_default_ratelimit,
 )
@@ -82,6 +83,7 @@ def create_app(config_class: Config = Config) -> Flask | None:
     register_short_urls_cli(app)
 
     app.register_error_handler(404, handle_404_response)
+    app.register_error_handler(CSRFError, handle_403_response)
 
     if not testing:
         # Import models to initialize migration scripts

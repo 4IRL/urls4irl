@@ -10,6 +10,7 @@ from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import TAG_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
@@ -1111,8 +1112,9 @@ def test_delete_tag_with_no_csrf_token(
     )
 
     # Assert invalid response code
-    assert delete_tag_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in delete_tag_response.data
+    assert delete_tag_response.status_code == 403
+    assert delete_tag_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in delete_tag_response.data
 
     with app.app_context():
         # Ensure the valid Tag-URL-UTub association still exists
