@@ -6,4 +6,13 @@
         giving it another shot—this time, we promise to pay closer attention!</p>
     <p>If this keeps happening, refreshing the page or starting fresh might help. Otherwise, feel free to blame it on
         the internet gremlins. We certainly do.</p>
+
+    <button class="refresh-button" onclick="hardRefresh()">Click to Refresh</button>
+
+    <script>
+        function hardRefresh() {
+            // Force a hard reload by appending a cache-busting timestamp
+            window.location.href = window.location.href;
+        }
+    </script>
 </section>

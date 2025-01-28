@@ -31,6 +31,18 @@ function handleRegisterSuccess(response, _, xhr) {
 }
 
 function handleRegisterFailure(xhr, _, error) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      $("body").html(xhr.responseText);
+      return;
+    }
+    window.location.assign(routes.errorPage);
+    return;
+  }
+
   if (xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.status) {
       case 400: {
@@ -43,6 +55,10 @@ function handleRegisterFailure(xhr, _, error) {
         handleUserHasAccountNotEmailValidated(xhr.responseJSON.message);
         $("input").attr("disabled", true);
         break;
+      }
+      case 403: {
+        console.log(xhr.getResponseHeader("Content-Type"));
+        //if (xhr.getResponseHeader('Content-Type') == "
       }
     }
   } else {

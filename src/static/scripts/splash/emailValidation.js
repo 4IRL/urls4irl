@@ -38,25 +38,35 @@ function handleValidateEmailSuccess(response, _, xhr) {
 }
 
 function handleValidateEmailFailure(xhr, _, error) {
-  if (xhr.status === 429 && xhr.responseJSON.hasOwnProperty("errorCode")) {
-    switch (xhr.responseJSON.errorCode) {
-      case 1:
-        showSplashModalAlertBanner(xhr.responseJSON.message, "danger");
-        break;
-      case 2:
-        showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
-        break;
-    }
-  } else if (
-    xhr.status === 400 &&
-    xhr.responseJSON.hasOwnProperty("errorCode")
-  ) {
-    if (xhr.responseJSON.errorCode === 3 || xhr.responseJSON.errorCode === 4) {
-      showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
-    }
-  } else {
-    // TODO: Handle other errors here.
+  if (xhr.status !== 400 && xhr.status !== 429) {
+    window.location.assign(routes.errorPage);
+    return;
+  }
+
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    window.location.assign(routes.errorPage);
+    return;
+  }
+
+  if (!xhr.responseJSON.hasOwnProperty("errorCode")) {
+    // Handle other errors here
     showSplashModalAlertBanner("Unable to process request...", "danger");
+    return;
+  }
+
+  switch (xhr.responseJSON.errorCode) {
+    case 1:
+      showSplashModalAlertBanner(xhr.responseJSON.message, "danger");
+      break;
+    case 2:
+      showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
+      break;
+    case 3:
+    case 4:
+      showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
+      break;
+    default:
+      window.location.assign(routes.errorPage);
   }
 }
 

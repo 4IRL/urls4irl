@@ -89,11 +89,11 @@ def test_expired_email_validation_routes_user_properly(
 
 def test_email_validation_rate_limits(browser: WebDriver):
     """
-    Tests a user's ability to click a expired validation URL
+    Tests that the email validation service appropriately rate limits a user
 
     GIVEN a freshly registered but unvalidated email user
-    WHEN user clicks the URL generated for email validation but the token is expired
-    THEN ensure the splash page appears with appropriate error message
+    WHEN user clicks the validation email button twice in a row
+    THEN ensure a rate limiting message appears to the user
     """
     register_user_ui(
         browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
@@ -106,9 +106,13 @@ def test_email_validation_rate_limits(browser: WebDriver):
     modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL, time=3)
     assert modal_title is not None
 
-    browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
-
+    # 'Email sent!' is shown when the modal loads
     alert_modal_banner = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
     assert alert_modal_banner is not None
+    assert alert_modal_banner.text == EMAILS.EMAIL_SENT
 
+    # Clicking within 60 seconds will rate limit
+    browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
+    alert_modal_banner = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
+    assert alert_modal_banner is not None
     assert alert_modal_banner.text == "4" + EMAILS_FAILURE.TOO_MANY_ATTEMPTS

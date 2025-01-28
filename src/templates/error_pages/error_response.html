@@ -38,6 +38,25 @@
             text-align: center;
             padding: 20px;
         }
+
+        p {
+            color: #28a745;
+        }
+
+        .refresh-button {
+            background-color: #ff4757;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-button:hover {
+            background-color: #e84118;
+        }
     </style>
 </head>
 
@@ -46,7 +65,7 @@
         <article class="banner">
             <h1>URLS4IRL</h1>
         </article>
-        <article class="content">
+        <article class="content" id="ErrorPageHandler">
             {% if error_code == 404 %}
             {% include 'error_pages/404_response.html' %}
             {% elif error_code == 403 %}
