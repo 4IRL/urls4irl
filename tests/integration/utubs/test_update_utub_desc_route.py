@@ -9,6 +9,7 @@ from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.constants import UTUB_CONSTANTS
 from src.utils.strings.form_strs import UTUB_DESCRIPTION_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 
@@ -993,8 +994,9 @@ def test_update_utub_description_missing_csrf_token(
     )
 
     # Ensure valid reponse
-    assert update_utub_desc_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in update_utub_desc_response.data
+    assert update_utub_desc_response.status_code == 403
+    assert update_utub_desc_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in update_utub_desc_response.data
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():

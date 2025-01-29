@@ -4,10 +4,14 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
+from src.models.users import Users
 from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.utub_strs import UTUB_FAILURE
 from tests.functional.utils_for_test import (
+    assert_login_with_username,
+    assert_visited_403_on_invalid_csrf_and_reload,
+    invalidate_csrf_token_on_page,
     login_user_to_home_page,
     wait_then_click_element,
     wait_then_get_element,
@@ -313,3 +317,39 @@ def test_create_utub_sanitized_description(
     )
     assert invalid_utub_name_error is not None
     assert invalid_utub_name_error.text == UTUB_FAILURE.INVALID_INPUT
+
+
+def test_create_utub_invalid_csrf_token(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    Tests a user's ability to attempt to create a new UTub with an invalid CSRF token
+
+    GIVEN a user attempting to make a UTub
+    WHEN the createUTub form is sent with an invalid CSRF token
+    THEN ensure U4I responds with a proper error message
+    """
+    app = provide_app
+    USER_ID = 1
+    with app.app_context():
+        user: Users = Users.query.get(USER_ID)
+        username = user.username
+    login_user_to_home_page(app, browser, USER_ID)
+
+    create_utub(
+        browser, utub_name=UTS.TEST_UTUB_NAME_1, utub_description=UTS.TEST_UTUB_NAME_1
+    )
+
+    invalidate_csrf_token_on_page(browser)
+
+    # Submits new UTub
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    create_utub_name_input = wait_until_hidden(
+        browser, HPL.INPUT_UTUB_NAME_CREATE, timeout=3
+    )
+    assert not create_utub_name_input.is_displayed()
+    assert_login_with_username(browser, username)

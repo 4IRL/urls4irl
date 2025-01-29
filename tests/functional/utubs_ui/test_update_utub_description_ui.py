@@ -13,7 +13,9 @@ from src.utils.strings.utub_strs import UTUB_FAILURE
 from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_not_visible_css_selector,
+    assert_visited_403_on_invalid_csrf_and_reload,
     clear_then_send_keys,
+    invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     login_user_to_home_page,
     select_utub_by_name,
@@ -536,3 +538,38 @@ def test_open_update_utub_description_btn_not_visible_with_no_utub_selected(
         By.CSS_SELECTOR, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE
     )
     assert not update_utub_desc_btn.is_displayed()
+
+
+def test_update_utub_description_invalid_csrf_token(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to attempt to update the selected UTub description with an invalid CSRF token
+
+    GIVEN a user is the UTub owner
+    WHEN the utubDescriptionUpdate form is populated and submitted with an invalid CSRF token
+    THEN ensure U4I responds with a proper error message
+    """
+    app = provide_app
+    user_id = 1
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+        username = user.username
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
+    invalidate_csrf_token_on_page(browser)
+
+    # Submits new UTub description
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    update_utub_desc_input = wait_until_hidden(
+        browser, HPL.INPUT_UTUB_DESCRIPTION_UPDATE, timeout=3
+    )
+    assert not update_utub_desc_input.is_displayed()
+    assert_login_with_username(browser, username)

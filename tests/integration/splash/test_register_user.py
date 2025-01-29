@@ -5,6 +5,7 @@ import pytest
 from werkzeug.security import check_password_hash
 
 from src.utils.constants import USER_CONSTANTS
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token
 from src.models.users import Users
@@ -315,8 +316,9 @@ def test_register_user_missing_csrf(app, load_register_page):
     )
 
     # Correctly sends URL to email validation modal
-    assert response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in response.data
+    assert response.status_code == 403
+    assert response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in response.data
 
     # Ensure no one is logged in
     assert current_user.get_id() is None

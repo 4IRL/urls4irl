@@ -13,6 +13,7 @@ from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
@@ -1278,8 +1279,9 @@ def test_add_url_missing_csrf_token(
     )
 
     # Assert invalid response code
-    assert add_url_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in add_url_response.data
+    assert add_url_response.status_code == 403
+    assert add_url_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in add_url_response.data
 
     with app.app_context():
         assert (

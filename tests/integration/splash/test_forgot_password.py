@@ -3,6 +3,7 @@ from flask import url_for
 import pytest
 
 from src.utils.strings.email_validation_strs import EMAILS_FAILURE
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
 from src import db
 from src.models.forgot_passwords import Forgot_Passwords
@@ -115,8 +116,9 @@ def test_valid_user_posts_forgot_password_form_without_csrf(
     )
 
     # Assert invalid response code
-    assert forgot_password_post_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in forgot_password_post_response.data
+    assert forgot_password_post_response.status_code == 403
+    assert forgot_password_post_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in forgot_password_post_response.data
 
 
 def test_forgot_password_with_invalid_email_fails(load_login_page):

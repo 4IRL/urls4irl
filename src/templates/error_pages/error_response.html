@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invalid Request - URLS4IRL</title>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            background-color: #1f2424;
+            color: #28a745;
+        }
+
+        main {
+            width: 100%;
+            position: absolute;
+            top: 28%;
+        }
+
+        .banner {
+            background-color: #28a745;
+            padding: 10px;
+            color: white;
+            font-size: 24px;
+            text-align: center;
+            width: 100%;
+        }
+
+        .content {
+            text-align: center;
+            padding: 20px;
+        }
+
+        p {
+            color: #28a745;
+        }
+
+        .refresh-button {
+            background-color: #ff4757;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            font-size: 18px;
+            cursor: pointer;
+            border-radius: 8px;
+            transition: background 0.3s ease;
+        }
+
+        .refresh-button:hover {
+            background-color: #e84118;
+        }
+    </style>
+</head>
+
+<body>
+    <main>
+        <article class="banner">
+            <h1>URLS4IRL</h1>
+        </article>
+        <article class="content" id="ErrorPageHandler">
+            {% if error_code == 404 %}
+            {% include 'error_pages/404_response.html' %}
+            {% elif error_code == 403 %}
+            {% include 'error_pages/403_response.html' %}
+            {% endif %}
+        </article>
+    </main>
+</body>
+
+</html>

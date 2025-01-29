@@ -4,6 +4,7 @@ import pytest
 from src.utils.all_routes import ROUTES
 from src.utils.constants import USER_CONSTANTS
 from src.utils.strings.email_validation_strs import EMAILS_FAILURE
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
@@ -515,6 +516,6 @@ def test_register_user_form_no_csrf(load_register_page):
         },
     )
 
-    assert response.status_code == 400
-    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
-    assert b"<p>The CSRF token is missing.</p>" in response.data
+    assert response.status_code == 403
+    assert response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in response.data

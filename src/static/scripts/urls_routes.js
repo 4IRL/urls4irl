@@ -94,6 +94,14 @@ function createURLSuccess(response) {
 // Displays appropriate prompts and options to user following a failed addition of a new URL
 function createURLFail(xhr, utubID) {
   if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      // Handle invalid CSRF token error response
+      $("body").html(xhr.responseText);
+      return;
+    }
     displayCreateUrlFailErrors(
       "urlString",
       "Server timed out while validating URL. Try again later.",
@@ -338,6 +346,14 @@ function updateURLSuccess(response, urlCard) {
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLFail(xhr, urlCard, utubID) {
   if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      // Handle invalid CSRF token error response
+      $("body").html(xhr.responseText);
+      return;
+    }
     displayCreateUrlFailErrors(
       "urlString",
       "Server timed out while validating URL. Try again later.",
@@ -638,6 +654,15 @@ function deleteURLSuccessOnDelete(response, urlCard) {
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
 function deleteURLFail(xhr) {
+  if (
+    xhr.status === 403 &&
+    xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+  ) {
+    // Handle invalid CSRF token error response
+    $("body").html(xhr.responseText);
+    return;
+  }
+
   switch (xhr.status) {
     case 403:
     case 404:

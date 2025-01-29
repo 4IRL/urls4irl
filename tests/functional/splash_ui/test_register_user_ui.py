@@ -5,6 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
 from src.utils.strings.email_validation_strs import EMAILS
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
 from tests.functional.locators import SplashPageLocators as SPL
@@ -13,7 +14,9 @@ from tests.functional.splash_ui.utils_for_test_splash_ui import (
     register_user_ui,
 )
 from tests.functional.utils_for_test import (
+    assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
+    invalidate_csrf_token_in_form,
     wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
@@ -39,8 +42,10 @@ def test_open_register_modal_center_btn(browser: WebDriver):
 
     assert modal_element.is_displayed()
 
-    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
-
+    modal_title = wait_then_get_element(
+        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+    )
+    assert modal_title is not None
     assert modal_title.text == "Register"
 
 
@@ -65,8 +70,10 @@ def test_open_register_modal_RHS_btn(browser: WebDriver):
 
     assert modal_element.is_displayed()
 
-    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
-
+    modal_title = wait_then_get_element(
+        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+    )
+    assert modal_title is not None
     assert modal_title.text == "Register"
 
 
@@ -84,8 +91,10 @@ def test_login_to_register_modal_btn(browser: WebDriver):
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
     assert modal_element is not None
 
-    modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
-
+    modal_title = wait_then_get_element(
+        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+    )
+    assert modal_title is not None
     assert modal_title.text == "Register"
 
 
@@ -221,6 +230,9 @@ def test_register_existing_username(browser: WebDriver, create_test_users):
         password=UTS.TEST_PASSWORD_UNLISTED,
     )
 
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     # Extract error message text
     invalid_feedback_username_message = wait_then_get_element(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
@@ -245,6 +257,9 @@ def test_register_sanitized_username(browser: WebDriver, create_test_users):
         email=UTS.TEST_PASSWORD_UNLISTED,
         password=UTS.TEST_PASSWORD_UNLISTED,
     )
+
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_username_message = wait_then_get_element(
@@ -271,6 +286,9 @@ def test_register_existing_email(browser: WebDriver, create_test_users):
         password=UTS.TEST_PASSWORD_1,
     )
 
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     # Extract error message text
     invalid_feedback_email_message = wait_then_get_element(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK
@@ -295,6 +313,9 @@ def test_register_existing_username_and_email(browser: WebDriver, create_test_us
         email=UTS.TEST_PASSWORD_1,
         password=UTS.TEST_PASSWORD_1,
     )
+
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_messages = wait_then_get_elements(
@@ -323,6 +344,10 @@ def test_register_user_unconfirmed_email_shows_alert(
     register_user_ui(
         browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )
+
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     # Extract error message text
     unconfirmed_email_feedback = wait_then_get_element(
         browser, SPL.SPLASH_MODAL_ALERT, time=3
@@ -354,6 +379,10 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
     register_user_ui(
         browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )
+
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     # Extract error message text
     unconfirmed_email_feedback = wait_then_get_element(
         browser, SPL.SPLASH_MODAL_ALERT, time=3
@@ -364,8 +393,10 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
     validate_email_btn = unconfirmed_email_feedback.find_element(
         By.CSS_SELECTOR, "button"
     )
+    browser.get_screenshot_as_file("p1.png")
     wait_for_web_element_and_click(browser, validate_email_btn)
     wait_until_visible_css_selector(browser, SPL.HEADER_VALIDATE_EMAIL)
+    browser.get_screenshot_as_file("p2.png")
 
     email_sent = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
     assert email_sent is not None
@@ -389,6 +420,9 @@ def test_register_failed_password_equality(browser: WebDriver):
         email_confirm=UTS.TEST_PASSWORD_1,
         pass_confirm=UTS.TEST_PASSWORD_1 + "a",
     )
+
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_username_message = wait_then_get_element(
@@ -417,6 +451,9 @@ def test_register_failed_email_equality(browser: WebDriver):
         pass_confirm=UTS.TEST_PASSWORD_1,
     )
 
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     # Extract error message text
     invalid_feedback_username_message = wait_then_get_element(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
@@ -442,6 +479,9 @@ def test_register_failed_empty_fields(browser: WebDriver):
         email_confirm="",
         pass_confirm="",
     )
+
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_messages = wait_then_get_elements(
@@ -473,6 +513,9 @@ def test_register_form_resets_on_close(browser: WebDriver):
         pass_confirm="",
     )
 
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
     # Extract error message text
     invalid_feedback_messages = wait_then_get_elements(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK
@@ -493,3 +536,43 @@ def test_register_form_resets_on_close(browser: WebDriver):
 
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, SPL.SUBHEADER_INVALID_FEEDBACK)
+
+
+def test_register_new_user_invalid_csrf(browser: WebDriver):
+    """
+    Tests a user's ability to register as a new user.
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user attempts registration with an invalid CSRF token
+    THEN browser redirects user to error page, where user can refresh
+    """
+    '''
+    browser.execute_script("""
+    $.ajaxSetup({
+        beforeSend: function (xhr, settings) {
+          if (
+            !/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) &&
+            !this.crossDomain
+          ) {
+            xhr.setRequestHeader("X-CSRFToken", "invalid-csrf-token");
+          }
+          return true;
+        }
+    });
+    """)
+    '''
+    register_user_ui(
+        browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+    )
+    invalidate_csrf_token_in_form(browser)
+
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    # Visit 403 error page due to CSRF, then reload
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT, time=3)
+    assert welcome_text is not None
+
+    assert welcome_text.text == IDENTIFIERS.SPLASH_PAGE

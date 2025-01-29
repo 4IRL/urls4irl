@@ -4,14 +4,29 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 
 
-def handle_404_response(e):
+def handle_403_response(_):
     return (
-        render_template("error_pages/404_response.html", text=IDENTIFIERS.HTML_404),
+        render_template(
+            "error_pages/error_response.html",
+            error_code=403,
+            header=IDENTIFIERS.HTML_403,
+        ),
+        403,
+    )
+
+
+def handle_404_response(_):
+    return (
+        render_template(
+            "error_pages/error_response.html",
+            error_code=404,
+            header=IDENTIFIERS.HTML_404,
+        ),
         404,
     )
 
 
-def handle_429_response_default_ratelimit(e):
+def handle_429_response_default_ratelimit(_):
     return make_response(
         jsonify(
             {

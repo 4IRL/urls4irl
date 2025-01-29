@@ -14,6 +14,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
@@ -1625,7 +1626,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         URL_FORM.URL_STRING: NEW_URL,
     }
 
-    update_url_string_form = client.patch(
+    update_url_string_response = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
@@ -1635,8 +1636,9 @@ def test_update_valid_url_with_valid_url_missing_csrf(
     )
 
     # Ensure valid reponse
-    assert update_url_string_form.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in update_url_string_form.data
+    assert update_url_string_response.status_code == 403
+    assert update_url_string_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in update_url_string_response.data
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

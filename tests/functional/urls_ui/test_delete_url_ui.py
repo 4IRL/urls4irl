@@ -275,3 +275,6 @@ def test_delete_last_url(
 
     no_url_subheader = wait_then_get_element(browser, HPL.SUBHEADER_NO_URLS)
     assert no_url_subheader is not None
+
+
+# TODO: Check invalid CSRF token for sad path tests

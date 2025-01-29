@@ -58,9 +58,6 @@ def register_user_ui(
     assert confirm_password_input is not None
     clear_then_send_keys(confirm_password_input, pass_confirm)
 
-    # Click on register button
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
-
 
 def open_forgot_password_modal(browser: WebDriver):
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)

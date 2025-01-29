@@ -10,6 +10,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import GENERAL_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
@@ -380,8 +381,9 @@ def test_remove_self_from_utub_no_csrf_token_as_member(
     )
 
     # Assert invalid response code
-    assert remove_user_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in remove_user_response.data
+    assert remove_user_response.status_code == 403
+    assert remove_user_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in remove_user_response.data
 
     # Ensure database is correct
     with app.app_context():
@@ -435,8 +437,9 @@ def test_remove_valid_user_from_utub_no_csrf_token_as_creator(
     )
 
     # Assert invalid response code
-    assert remove_user_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in remove_user_response.data
+    assert remove_user_response.status_code == 403
+    assert remove_user_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in remove_user_response.data
 
     # Ensure database is correctly updated
     with app.app_context():

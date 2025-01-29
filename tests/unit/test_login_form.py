@@ -2,6 +2,7 @@ from flask import url_for, request
 import pytest
 
 from src.utils.all_routes import ROUTES
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.splash_form_strs import LOGIN_FORM
 from src.utils.strings.user_strs import USER_FAILURE as LOGIN_FAILURE
@@ -121,6 +122,6 @@ def test_login_no_csrf(load_login_page):
     # Without CSRF token
     response = client.post("/login", data={})
 
-    assert response.status_code == 400
-    assert request.path == url_for(ROUTES.SPLASH.LOGIN)
-    assert b"<p>The CSRF token is missing.</p>" in response.data
+    assert response.status_code == 403
+    assert response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in response.data
