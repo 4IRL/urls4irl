@@ -8,6 +8,7 @@ from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
@@ -616,8 +617,9 @@ def test_delete_url_from_utub_no_csrf_token(
     )
 
     # Ensure 200 HTTP status code response
-    assert delete_url_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in delete_url_response.data
+    assert delete_url_response.status_code == 403
+    assert delete_url_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in delete_url_response.data
 
     # Ensure database is not affected
     with app.app_context():

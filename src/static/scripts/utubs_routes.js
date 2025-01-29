@@ -194,6 +194,14 @@ function createUTubSuccess(response) {
 // Handle error response display to user
 function createUTubFail(xhr) {
   if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      // Handle invalid CSRF token error response
+      $("body").html(xhr.responseText);
+      return;
+    }
     window.location.assign(routes.errorPage);
     return;
   }
@@ -344,6 +352,18 @@ function updateUTubNameSuccess(response) {
 
 // Handle error response display to user
 function updateUTubNameFail(xhr) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      $("body").html(xhr.responseText);
+      return;
+    }
+    window.location.assign(routes.errorPage);
+    return;
+  }
+
   switch (xhr.status) {
     case 400:
       const responseJSON = xhr.responseJSON;
@@ -486,6 +506,18 @@ function updateUTubDescriptionSuccess(response) {
 
 // Handle error response display to user
 function updateUTubDescriptionFail(xhr) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      $("body").html(xhr.responseText);
+      return;
+    }
+    window.location.assign(routes.errorPage);
+    return;
+  }
+
   switch (xhr.status) {
     case 400:
       const responseJSON = xhr.responseJSON;
@@ -582,7 +614,7 @@ function deleteUTub() {
   });
 
   request.fail(function (xhr, textStatus, errorThrown) {
-    window.location.assign(routes.errorPage);
+    deleteUTubFail(xhr);
   });
 }
 
@@ -616,4 +648,17 @@ function deleteUTubSuccess() {
     resetUTubDeckIfNoUTubs();
     hideIfShown($("#utubTagBtnCreate"));
   }
+}
+
+function deleteUTubFail(xhr) {
+  if (
+    xhr.status === 403 &&
+    xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+  ) {
+    // Handle invalid CSRF token error response
+    $("body").html(xhr.responseText);
+    return;
+  }
+  window.location.assign(routes.errorPage);
+  return;
 }

@@ -58,6 +58,18 @@ function handleLoginSuccess(response, _, xhr) {
 }
 
 function handleLoginFailure(xhr, _, error) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      $("body").html(xhr.responseText);
+      return;
+    }
+    window.location.assign(routes.errorPage);
+    return;
+  }
+
   if (
     (xhr.status === 400 || xhr.status === 401) &&
     xhr.responseJSON.hasOwnProperty("errorCode")

@@ -337,8 +337,9 @@ def test_delete_tag_from_utub_no_csrf_token(
         data=delete_tag_form,
     )
 
-    assert delete_tag_response.status_code == 400
-    assert IDENTIFIERS.CSRF_MISSING.encode() in delete_tag_response.data
+    assert delete_tag_response.status_code == 403
+    assert delete_tag_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in delete_tag_response.data
 
     with app.app_context():
         assert Utub_Tags.query.count() == num_of_utub_tags

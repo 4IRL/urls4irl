@@ -7,6 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from locators import HomePageLocators as HPL
+from src.models.users import Users
 from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.members_ui.utils_for_test_members_ui import (
@@ -15,7 +16,10 @@ from tests.functional.members_ui.utils_for_test_members_ui import (
     get_other_member_in_utub,
 )
 from tests.functional.utils_for_test import (
+    assert_login_with_username,
+    assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
+    invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -260,3 +264,43 @@ def test_open_delete_member_modal_fails_as_member(
 
     with pytest.raises(NoSuchElementException):
         other_member_element.find_element(By.CSS_SELECTOR, HPL.BUTTON_MEMBER_DELETE)
+
+
+def test_delete_member_invalid_csrf_token(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user owns a UTub with members
+    WHEN they submit the delete UTub Member modal with an invalid CSRF token
+    THEN ensure U4I responds with a proper error message
+    """
+    app = provide_app
+
+    user_id = 1
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+        username = user.username
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
+
+    member_name = other_member.username
+    delete_member_active_utub(browser, member_name)
+
+    invalidate_csrf_token_on_page(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MEMBER_DELETE)
+
+    delete_utub_submit_btn_modal = wait_until_hidden(
+        browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
+    )
+    assert not delete_utub_submit_btn_modal.is_displayed()
+
+    assert_login_with_username(browser, username)

@@ -944,7 +944,7 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
 
     update_url_string_title_form = {URL_FORM.URL_TITLE: current_title + "AAA"}
 
-    update_url_string_title_form = client.patch(
+    update_url_string_title_response = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL_TITLE,
             utub_id=utub_creator_of.id,
@@ -953,8 +953,9 @@ def test_update_url_title_with_missing_csrf_field_utub_creator(
         data=update_url_string_title_form,
     )
 
-    assert update_url_string_title_form.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in update_url_string_title_form.data
+    assert update_url_string_title_response.status_code == 403
+    assert update_url_string_title_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in update_url_string_title_response.data
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

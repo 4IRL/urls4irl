@@ -9,6 +9,7 @@ from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import all_tag_strings
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import TAG_FORM
@@ -1738,8 +1739,9 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
     )
 
     # Assert invalid response code
-    assert add_tag_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in add_tag_response.data
+    assert add_tag_response.status_code == 403
+    assert add_tag_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in add_tag_response.data
 
     with app.app_context():
         # Ensure no tags

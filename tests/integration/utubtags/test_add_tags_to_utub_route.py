@@ -497,8 +497,9 @@ def test_add_tag_to_utub_missing_csrf_token(
         data=new_tag_form,
     )
 
-    assert add_tag_response.status_code == 400
-    assert IDENTIFIERS.CSRF_MISSING.encode() in add_tag_response.data
+    assert add_tag_response.status_code == 403
+    assert add_tag_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in add_tag_response.data
 
     with app.app_context():
         assert num_of_utub_tags == Utub_Tags.query.count()

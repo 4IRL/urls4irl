@@ -134,6 +134,18 @@ function createMemberSuccess(response) {
 }
 
 function createMemberFail(xhr) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      $("body").html(xhr.responseText);
+      return;
+    }
+    window.location.assign(routes.errorPage);
+    return;
+  }
+
   switch (xhr.status) {
     case 400:
       const responseJSON = xhr.responseJSON;
@@ -287,6 +299,15 @@ function leaveUTubSuccess() {
 }
 
 function removeMemberFail(xhr) {
+  if (
+    xhr.status === 403 &&
+    xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+  ) {
+    // Handle invalid CSRF token error response
+    $("body").html(xhr.responseText);
+    return;
+  }
+
   switch (xhr.status) {
     case 400:
     case 403:

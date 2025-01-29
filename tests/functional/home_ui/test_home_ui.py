@@ -4,6 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.utils_for_test import (
@@ -41,7 +42,7 @@ def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT)
     assert welcome_text is not None
 
-    assert welcome_text.text == "Welcome to URLS4IRL"
+    assert welcome_text.text == IDENTIFIERS.SPLASH_PAGE
 
     navbar = wait_then_get_element(browser, SPL.SPLASH_NAVBAR)
     assert navbar is not None

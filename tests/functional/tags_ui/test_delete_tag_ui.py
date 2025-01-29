@@ -232,3 +232,6 @@ def test_delete_last_tag(browser, create_test_tags):
 
     # Assert URL no longer exists in UTub
     assert not select_url_by_title(browser, url_title)
+
+
+# TODO: Check invalid CSRF token for sad path tests

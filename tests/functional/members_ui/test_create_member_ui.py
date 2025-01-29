@@ -14,6 +14,9 @@ from tests.functional.members_ui.utils_for_test_members_ui import (
     get_all_member_usernames,
 )
 from tests.functional.utils_for_test import (
+    assert_login_with_username,
+    assert_visited_403_on_invalid_csrf_and_reload,
+    invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     select_utub_by_name,
     wait_then_click_element,
@@ -309,3 +312,37 @@ def test_create_member_form_resets_on_close(
     assert member_error_elem is not None
     assert not member_error_elem.is_displayed()
     assert "" == member_error_elem.text
+
+
+def test_create_member_invalid_csrf_token(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to attempt to create a member with an invalid CSRF token.
+
+    GIVEN a user is the UTub owner
+    WHEN the createMember form is populated and submitted with an invalid CSRF token
+    THEN ensure U4I responds with a proper error message
+    """
+
+    app = provide_app
+    user_id = 1
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+        username = user.username
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    new_member_username = USERNAME_BASE + "2"
+    create_member_active_utub(browser, new_member_username)
+    invalidate_csrf_token_on_page(browser)
+
+    # Submits new member form
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_SUBMIT_CREATE)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    create_member_input = wait_until_hidden(browser, HPL.INPUT_MEMBER_CREATE, timeout=3)
+    assert not create_member_input.is_displayed()
+    assert_login_with_username(browser, username)

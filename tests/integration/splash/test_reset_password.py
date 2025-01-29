@@ -224,8 +224,9 @@ def test_password_reset_without_csrf_fails(user_attempts_reset_password):
     )
 
     # Assert invalid response code
-    assert reset_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in reset_response.data
+    assert reset_response.status_code == 403
+    assert reset_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in reset_response.data
 
 
 def test_password_reset_without_equal_passwords_fails(user_attempts_reset_password):

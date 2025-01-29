@@ -6,10 +6,14 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from locators import HomePageLocators as HPL
+from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.utils_for_test import (
+    assert_login_with_username,
+    assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
     get_num_utubs,
+    invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -243,3 +247,47 @@ def test_cannot_leave_utub_as_utub_creator(
 
     leave_utub_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_UTUB_LEAVE)
     assert not leave_utub_btn.is_displayed()
+
+
+def test_leave_utub_invalid_csrf_token(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    Tests a UTub user's ability to leave a UTub.
+
+    GIVEN a user is a UTub member
+    WHEN the memberSelfBtnDelete button is selected and user submits the confirm modal
+    THEN ensure the user is successfully removed from the UTub.
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+    with app.app_context():
+        user: Users = Users.query.get(user_id_for_test)
+        username = user.username
+    utub_user_member_of = get_utub_this_user_did_not_create(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_member_of.name
+    )
+
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
+
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
+    assert warning_modal_body is not None
+
+    invalidate_csrf_token_on_page(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_MEMBER_DELETE)
+
+    delete_utub_submit_btn_modal = wait_until_hidden(
+        browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
+    )
+    assert not delete_utub_submit_btn_modal.is_displayed()
+
+    assert_login_with_username(browser, username)
