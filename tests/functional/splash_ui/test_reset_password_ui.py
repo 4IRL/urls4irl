@@ -12,13 +12,16 @@ from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.utils.constants import CONSTANTS
 from src.utils.datetime_utils import utc_now
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import FAILURE_GENERAL
 from src.utils.strings.reset_password_strs import RESET_PASSWORD
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import ModalLocators, SplashPageLocators as SPL
 from tests.functional.utils_for_test import (
     assert_on_404_page,
+    assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
+    invalidate_csrf_token_in_form,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -430,3 +433,44 @@ def test_password_reset_missing_fields(
     assert all(
         [field.text == FAILURE_GENERAL.FIELD_REQUIRED_STR for field in invalid_fields]
     )
+
+
+def test_password_reset_invalid_csrf_token(
+    browser: WebDriver, create_user_resetting_password
+):
+    """
+    Tests a user's ability to attempt to submit password reset with invalid CSRF token
+
+    GIVEN a valid user requesting to reset their password
+    WHEN user clicks the URL generated for resetting their password and submits with an invalid CSRF token
+    THEN browser redirects user to error page, where user can refresh
+    """
+    reset_password_suffix = create_user_resetting_password
+    reset_password_suffix = (
+        reset_password_suffix[1:]
+        if reset_password_suffix[0] == "/"
+        else reset_password_suffix
+    )
+    reset_password_url = browser.current_url + reset_password_suffix
+
+    browser.get(reset_password_url)
+
+    new_password_input = wait_then_get_element(browser, SPL.INPUT_NEW_PASSWORD, time=3)
+    assert new_password_input is not None
+
+    confirm_new_password_input = wait_then_get_element(
+        browser, SPL.INPUT_CONFIRM_NEW_PASSWORD
+    )
+    assert confirm_new_password_input is not None
+
+    invalidate_csrf_token_in_form(browser)
+
+    browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
+
+    # Visit 403 error page due to CSRF, then reload
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT, time=3)
+    assert welcome_text is not None
+
+    assert welcome_text.text == IDENTIFIERS.SPLASH_PAGE

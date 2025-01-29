@@ -4,12 +4,15 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.utils.strings.email_validation_strs import EMAILS
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.utils_for_test import (
     assert_login,
+    assert_visited_403_on_invalid_csrf_and_reload,
+    invalidate_csrf_token_in_form,
     login_user,
     wait_for_web_element_and_click,
     wait_then_click_element,
@@ -377,3 +380,26 @@ def test_login_with_empty_fields(browser: WebDriver):
     error_elems = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
     assert len(error_elems) == 2
     assert all([elem.text == USER_FAILURE.FIELD_REQUIRED_STR for elem in error_elems])
+
+
+def test_login_user_invalid_csrf(browser: WebDriver):
+    """
+    Tests site response when user attempts to login with an invalid CSRF token
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user attempts login with an invalid CSRF token
+    THEN browser redirects user to error page, where user can refresh
+    """
+    login_user(browser, username="", password="")
+
+    # Find submit button to login
+    invalidate_csrf_token_in_form(browser)
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    # Visit 403 error page due to CSRF, then reload
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT, time=3)
+    assert welcome_text is not None
+
+    assert welcome_text.text == IDENTIFIERS.SPLASH_PAGE

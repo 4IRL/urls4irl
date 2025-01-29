@@ -10,6 +10,7 @@ from src.models.utub_tags import Utub_Tags
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
@@ -419,8 +420,9 @@ def test_delete_utub_with_no_csrf_token(add_single_utub_as_user_after_logging_in
     )
 
     # Ensure 400 sent back after no csrf token included
-    assert delete_utub_response.status_code == 400
-    assert b"<p>The CSRF token is missing.</p>" in delete_utub_response.data
+    assert delete_utub_response.status_code == 403
+    assert delete_utub_response.content_type == "text/html; charset=utf-8"
+    assert IDENTIFIERS.HTML_403.encode() in delete_utub_response.data
 
     # Assert 1 UTub exists after nonexistent UTub is attempted to be removed
     with app.app_context():

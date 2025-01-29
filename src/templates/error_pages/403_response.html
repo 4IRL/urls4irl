@@ -1,0 +1,18 @@
+<h2>{{ header }}</h2>
+<section>
+    <p>Well, this is awkward. You reached out, we reached out… and somehow, we just missed each other. Maybe it was a
+        high-five that turned into a fist bump? Or a secret handshake that we forgot the secret to?</p>
+    <p>Either way, something important didn't make it through, and we can't move forward without it. Try going back and
+        giving it another shot—this time, we promise to pay closer attention!</p>
+    <p>If this keeps happening, refreshing the page or starting fresh might help. Otherwise, feel free to blame it on
+        the internet gremlins. We certainly do.</p>
+
+    <button class="refresh-button" onclick="hardRefresh()">Click to Refresh</button>
+
+    <script>
+        function hardRefresh() {
+            // Force a hard reload by appending a cache-busting timestamp
+            window.location.href = window.location.href;
+        }
+    </script>
+</section>

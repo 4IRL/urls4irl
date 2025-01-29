@@ -181,3 +181,4 @@ def test_open_input_create_utub_tag_press_enter_key(
 
 
 # TODO: Check sanitized inputs in sad path tests
+# TODO Check invalid CSRF token for sad path tests

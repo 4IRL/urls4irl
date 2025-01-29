@@ -11,6 +11,7 @@ from src.models.forgot_passwords import Forgot_Passwords
 from src.utils.constants import USER_CONSTANTS
 from src.utils.datetime_utils import utc_now
 from src.utils.strings.email_validation_strs import EMAILS_FAILURE
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import FAILURE_GENERAL
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -22,7 +23,9 @@ from tests.functional.splash_ui.utils_for_test_splash_ui import (
     open_forgot_password_modal,
 )
 from tests.functional.utils_for_test import (
+    assert_visited_403_on_invalid_csrf_and_reload,
     clear_then_send_keys,
+    invalidate_csrf_token_in_form,
     wait_then_click_element,
     wait_then_get_element,
     dismiss_modal_with_click_out,
@@ -319,3 +322,28 @@ def test_forgot_password_five_per_hour_rate_limit(
     with app.app_context():
         forgot_password: Forgot_Passwords = Forgot_Passwords.query.first()
         assert initial_attempts == forgot_password.attempts
+
+
+def test_forgot_password_invalid_csrf(browser: WebDriver):
+    """
+    Tests site response to user indicating forgot password more than five times in one hour
+
+    GIVEN a valid user requesting that they forgot their password
+    WHEN user clicks the submit button on forgot password form with an invalid CSRF token
+    THEN browser redirects user to error page, where user can refresh
+    """
+    open_forgot_password_modal(browser)
+    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    assert input_elem is not None
+    assert input_elem.is_displayed()
+
+    invalidate_csrf_token_in_form(browser)
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
+
+    # Visit 403 error page due to CSRF, then reload
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT, time=3)
+    assert welcome_text is not None
+
+    assert welcome_text.text == IDENTIFIERS.SPLASH_PAGE

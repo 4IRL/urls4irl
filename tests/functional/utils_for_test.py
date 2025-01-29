@@ -396,9 +396,6 @@ def assert_login(browser: WebDriver):
 
     Args:
         WebDriver open to U4I Home Page
-
-    Returns:
-        Boolean True, if logged in
     """
 
     # Confirm user logged in
@@ -421,9 +418,6 @@ def assert_login_with_username(browser: WebDriver, username: str):
 
     Args:
         WebDriver open to U4I Home Page
-
-    Returns:
-        Boolean True, if logged in
     """
 
     # Confirm user logged in
@@ -1065,3 +1059,48 @@ def get_utub_tag_filters(browser: WebDriver) -> list[WebElement]:
 
 def get_selected_url_tags(url_row: WebElement) -> list[WebElement]:
     return url_row.find_elements(By.CSS_SELECTOR, HPL.TAG_BADGES)
+
+
+def invalidate_csrf_token_on_page(browser: WebDriver):
+    browser.execute_script(
+        """
+    $.ajaxSetup({
+        beforeSend: function (xhr, settings) {
+          if (
+            !/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) &&
+            !this.crossDomain
+          ) {
+            xhr.setRequestHeader("X-CSRFToken", "invalid-csrf-token");
+          }
+          return true;
+        }
+    });
+    """
+    )
+
+
+def invalidate_csrf_token_in_form(browser: WebDriver):
+    invalid_csrf_token = "invalid-csrf-token"
+    browser.execute_script(
+        f"document.querySelector('input[id=\"csrf_token\"]').setAttribute('value', '{invalid_csrf_token}');"
+    )
+
+    csrf_token = browser.find_element(By.CSS_SELECTOR, "input#csrf_token")
+    WebDriverWait(browser, 3).until(
+        lambda _: csrf_token.get_attribute("value") == invalid_csrf_token
+    )
+    assert csrf_token.get_attribute("value") == invalid_csrf_token
+
+
+def assert_visited_403_on_invalid_csrf_and_reload(browser: WebDriver):
+    # Await 403 response
+    error_page_subheader = wait_then_get_element(
+        browser, f"{SPL.ERROR_PAGE_HANDLER} h2", time=3
+    )
+    assert error_page_subheader is not None
+    assert error_page_subheader.text == IDENTIFIERS.HTML_403
+
+    wait_until_visible_css_selector(browser, SPL.ERROR_PAGE_REFRESH_BTN, timeout=3)
+
+    # Click button to refresh page
+    wait_then_click_element(browser, SPL.ERROR_PAGE_REFRESH_BTN, time=3)

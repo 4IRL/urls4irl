@@ -537,9 +537,13 @@ class UrlValidator:
         redis_client: Redis = redis.Redis.from_url(self._redis_uri)  # type: ignore
         return redis_client.sismember(VALIDATION_STRS.SHORT_URLS, url_domain) == 1
 
-    def _validate_short_url(self, url: str) -> Tuple[str, bool]:
+    def _validate_short_url(
+        self, url: str, headers: dict[str, str]
+    ) -> Tuple[str, bool]:
         try:
-            response = requests.get(url, allow_redirects=True, timeout=10)
+            response = requests.get(
+                url, headers=headers, allow_redirects=False, timeout=10
+            )
 
             if response.status_code == 404:
                 raise InvalidURLError("Invalid shortened URL.")
@@ -608,12 +612,12 @@ class UrlValidator:
         if not self._validate_host(deconstructed.host):
             raise InvalidURLError("Domain did not resolve into a valid IP address")
 
-        # Check if contained within short URL domains
-        if self._check_if_is_short_url(deconstructed.host):
-            return self._validate_short_url(url)
-
         # Build headers to perform HTTP request to validate URL
         headers = self._generate_headers(url, user_headers)
+
+        # Check if contained within short URL domains
+        if self._check_if_is_short_url(deconstructed.host):
+            return self._validate_short_url(url, headers)
 
         # Perform HEAD request, majority of URLs should be okay with this
         response = self._perform_head_request(url, headers, limited_redirects=True)

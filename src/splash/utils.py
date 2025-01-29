@@ -152,7 +152,7 @@ def _validate_resetting_password(
     reset_password_user: Users, reset_password_form: ResetPasswordForm
 ) -> tuple[Response, int]:
 
-    reset_password_user.change_password(reset_password_form.new_password.data)
+    reset_password_user.change_password(reset_password_form.new_password.data)  # type: ignore
     forgot_password_obj = reset_password_user.forgot_password
     db.session.delete(forgot_password_obj)
     db.session.commit()

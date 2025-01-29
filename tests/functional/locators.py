@@ -1,4 +1,9 @@
-class HomePageLocators:
+class GenericPageLocator:
+    ERROR_PAGE_HANDLER = "#ErrorPageHandler"
+    ERROR_PAGE_REFRESH_BTN = f"{ERROR_PAGE_HANDLER} .refresh-button"
+
+
+class HomePageLocators(GenericPageLocator):
     """A collector class for main page locators"""
 
     INVALID_FIELD_SUFFIX = "-error"
@@ -127,7 +132,7 @@ class HomePageLocators:
     DELETE_URL_MODAL = ".deleteUrlModal"
 
 
-class SplashPageLocators:
+class SplashPageLocators(GenericPageLocator):
     """A collector class for splash page locators"""
 
     # Options
