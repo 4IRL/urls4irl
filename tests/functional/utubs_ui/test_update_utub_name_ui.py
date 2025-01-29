@@ -6,16 +6,20 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from locators import HomePageLocators as HPL
 from src.cli.mock_constants import MOCK_UTUB_NAME_BASE
+from src.models.users import Users
 from src.models.utubs import Utubs
 from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.utub_strs import UTUB_FAILURE
 from tests.functional.utils_for_test import (
+    assert_login_with_username,
     assert_not_visible_css_selector,
+    assert_visited_403_on_invalid_csrf_and_reload,
     create_user_session_and_provide_session_id,
     get_all_url_ids_in_selected_utub,
     get_all_utub_selector_names,
     get_selected_utub_name,
+    invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
     login_user_with_cookie_from_session,
@@ -385,3 +389,41 @@ def test_update_utub_name_similar(
 
     # Assert new UTub name is updated in UTub Deck
     assert new_utub_name in utub_selector_names
+
+
+def test_update_utub_name_invalid_csrf_token(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to attempt to update a selected UTub's name with an invalid CSRF token
+
+    GIVEN a user owns a UTub
+    WHEN they submit the editUTub form with an invalid CSRF token
+    THEN ensure U4I responds with a proper error message
+    """
+    app = provide_app
+    user_id = 1
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+        username = user.username
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    new_utub_name = MOCK_UTUB_NAME_BASE + "2"
+
+    update_utub_name(browser, new_utub_name)
+
+    invalidate_csrf_token_on_page(browser)
+
+    # Submits new UTub name
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    update_utub_name_input = wait_until_hidden(
+        browser, HPL.INPUT_UTUB_NAME_UPDATE, timeout=3
+    )
+    assert not update_utub_name_input.is_displayed()
+    assert_login_with_username(browser, username)

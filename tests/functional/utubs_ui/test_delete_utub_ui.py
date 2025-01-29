@@ -6,6 +6,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src import db
+from src.models.users import Users
 from src.models.utub_members import Utub_Members
 from src.models.utubs import Utubs
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -13,7 +14,10 @@ from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.urls_ui.utils_for_test_url_ui import get_selected_utub_id
 from tests.functional.utils_for_test import (
+    assert_login_with_username,
+    assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
+    invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
@@ -290,3 +294,45 @@ def test_delete_last_utub_with_urls_tags_members(
     assert len(browser.find_elements(By.CSS_SELECTOR, HPL.BADGES_MEMBERS)) == 0
     assert len(browser.find_elements(By.CSS_SELECTOR, HPL.TAG_FILTERS)) == 0
     assert len(browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)) == 0
+
+
+def test_delete_utub_invalid_csrf_token(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user trying to delete one of the UTubs they created with an invalid CSRF token
+    WHEN they try to delete the UTub with an invalid CSRF token
+    THEN ensure U4I responds with a proper error message
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+    with app.app_context():
+        user: Users = Users.query.get(user_id_for_test)
+        username = user.username
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
+    )
+
+    utub_id = get_selected_utub_id(browser)
+    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
+
+    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
+
+    invalidate_csrf_token_on_page(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    delete_utub_btn = wait_until_hidden(browser, HPL.BUTTON_UTUB_DELETE, timeout=3)
+    assert not delete_utub_btn.is_displayed()
+
+    delete_utub_submit_btn_modal = wait_until_hidden(
+        browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
+    )
+    assert not delete_utub_submit_btn_modal.is_displayed()
+
+    assert_login_with_username(browser, username)

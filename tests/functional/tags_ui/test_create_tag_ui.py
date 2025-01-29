@@ -225,3 +225,4 @@ def test_create_tag_text_length_exceeded(browser: WebDriver, create_test_urls):
 
 
 # TODO: Check sanitized inputs in sad path tests
+# TODO Check invalid CSRF token for sad path tests

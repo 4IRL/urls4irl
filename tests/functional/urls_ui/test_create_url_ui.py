@@ -374,3 +374,4 @@ def test_select_url(browser: WebDriver, create_test_urls, provide_app: Flask):
 
 
 # TODO: Check url title sanitization for sad path tests
+# TODO Check invalid CSRF token for sad path tests

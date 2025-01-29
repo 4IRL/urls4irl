@@ -56,10 +56,6 @@ function handleRegisterFailure(xhr, _, error) {
         $("input").attr("disabled", true);
         break;
       }
-      case 403: {
-        console.log(xhr.getResponseHeader("Content-Type"));
-        //if (xhr.getResponseHeader('Content-Type') == "
-      }
     }
   } else {
     // TODO: Handle other errors here.

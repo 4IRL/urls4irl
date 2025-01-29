@@ -396,9 +396,6 @@ def assert_login(browser: WebDriver):
 
     Args:
         WebDriver open to U4I Home Page
-
-    Returns:
-        Boolean True, if logged in
     """
 
     # Confirm user logged in
@@ -421,9 +418,6 @@ def assert_login_with_username(browser: WebDriver, username: str):
 
     Args:
         WebDriver open to U4I Home Page
-
-    Returns:
-        Boolean True, if logged in
     """
 
     # Confirm user logged in
@@ -1065,6 +1059,24 @@ def get_utub_tag_filters(browser: WebDriver) -> list[WebElement]:
 
 def get_selected_url_tags(url_row: WebElement) -> list[WebElement]:
     return url_row.find_elements(By.CSS_SELECTOR, HPL.TAG_BADGES)
+
+
+def invalidate_csrf_token_on_page(browser: WebDriver):
+    browser.execute_script(
+        """
+    $.ajaxSetup({
+        beforeSend: function (xhr, settings) {
+          if (
+            !/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) &&
+            !this.crossDomain
+          ) {
+            xhr.setRequestHeader("X-CSRFToken", "invalid-csrf-token");
+          }
+          return true;
+        }
+    });
+    """
+    )
 
 
 def invalidate_csrf_token_in_form(browser: WebDriver):
