@@ -34,6 +34,7 @@ from urllib.parse import unquote
 
 import redis
 from redis.client import Redis
+from requests.structures import CaseInsensitiveDict
 from url_normalize import url_normalize
 from url_normalize.tools import deconstruct_url
 
@@ -626,8 +627,12 @@ class UrlValidator:
         if response is None or response.status_code == 404:
             response = self._perform_get_request(url, headers)
 
-        if response.status_code == 404:
-            raise InvalidURLError("Could not find the given resource at the URL")
+        if response.status_code == 404 and not self._is_cloudfront_error(
+            response.headers
+        ):
+            raise InvalidURLError(
+                f"Could not find the given resource at the URL\nurl={url}\nrequest headers={headers}\nresponse headers={response.headers}\nresponse status code={response.status_code}\n"
+            )
 
         # Validates the response from a HEAD or GET request
         location = self._check_for_valid_response_location(url, response)
@@ -655,6 +660,11 @@ class UrlValidator:
         We provide back the normalized URL and mark the URL as UNKNOWN, to be later verified by a headless automated browser.
         """
         return url, False
+
+    def _is_cloudfront_error(self, headers: CaseInsensitiveDict) -> bool:
+        x_cache = VALIDATION_STRS.X_CACHE
+        cf_error = VALIDATION_STRS.ERROR_FROM_CLOUDFRONT
+        return x_cache in headers and headers.get(x_cache, "").lower() == cf_error
 
     @staticmethod
     def _filter_out_common_redirect(url: str) -> str:
@@ -685,7 +695,7 @@ if __name__ == "__main__":
         "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-16-inch-amd/len101t0076#ports_slots",
     )
 
-    print(validator.validate_url(INVALID_URLS[-1]))
+    print(validator.validate_url(INVALID_URLS[1]))
     # for invalid_url in INVALID_URLS:
     #    print(validator.validate_url(invalid_url))
     print("Trying to run as script")
