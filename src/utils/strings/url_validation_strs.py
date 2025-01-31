@@ -15,6 +15,8 @@ COOKIE = "Cookie"
 ORIGIN = "Origin"
 REFERER = "Referer"
 CF_MITIGATED = "cf-mitigated"
+ERROR_FROM_CLOUDFRONT = "error from cloudfront"
+X_CACHE = "x-cache"
 CLOUDFLARE_SERVER = "cloudflare"
 SERVER = "server"
 GOOGLE_CACHE = "https://webcache.googleusercontent.com/search?q=cache:"
@@ -46,6 +48,8 @@ class URL_VALIDATION:
     ORIGIN = ORIGIN
     REFERER = REFERER
     CF_MITIGATED = CF_MITIGATED
+    ERROR_FROM_CLOUDFRONT = ERROR_FROM_CLOUDFRONT
+    X_CACHE = X_CACHE
     CLOUDFLARE_SERVER = CLOUDFLARE_SERVER
     SERVER = SERVER
     GOOGLE_CACHE = GOOGLE_CACHE
