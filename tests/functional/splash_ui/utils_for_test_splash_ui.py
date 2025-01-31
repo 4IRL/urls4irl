@@ -10,6 +10,7 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
     wait_then_get_element,
     clear_then_send_keys,
+    wait_until_visible_css_selector,
 )
 
 
@@ -60,8 +61,9 @@ def register_user_ui(
 
 
 def open_forgot_password_modal(browser: WebDriver):
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
-    wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN, time=5)
+    wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL, time=5)
+    wait_until_visible_css_selector(browser, SPL.INPUT_EMAIL, timeout=5)
 
 
 def assert_forgot_password_modal_open(browser: WebDriver):

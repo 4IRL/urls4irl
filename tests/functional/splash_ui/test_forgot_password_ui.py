@@ -95,6 +95,7 @@ def test_dismiss_forgot_password_modal_x(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
+    wait_until_visible_css_selector(browser, ML.BUTTON_X_MODAL_DISMISS, timeout=3)
     wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS, time=3)
 
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
