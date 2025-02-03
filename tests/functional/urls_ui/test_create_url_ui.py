@@ -1,7 +1,3 @@
-# Standard libraries
-from time import sleep
-
-# External libraries
 from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
@@ -13,19 +9,25 @@ from src.cli.mock_constants import (
     MOCK_URL_TITLES,
     MOCK_URL_STRINGS,
 )
+from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     assert_not_visible_css_selector,
     clear_then_send_keys,
     get_selected_url,
+    get_url_row_by_id,
     login_user_and_select_utub_by_name,
+    login_user_and_select_utub_by_utubid,
     login_user_select_utub_by_name_and_url_by_title,
     wait_then_click_element,
     wait_then_get_element,
-    wait_then_get_elements,
+    wait_until_hidden,
 )
-from tests.functional.urls_ui.utils_for_test_url_ui import create_url
+from tests.functional.urls_ui.utils_for_test_url_ui import (
+    get_newly_added_utub_url_id_by_url_string,
+)
+from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 pytestmark = pytest.mark.urls_ui
 
@@ -53,6 +55,7 @@ def test_create_url_open_input_no_urls_corner_btn(
     wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
     assert url_creation_row.is_displayed()
 
     assert_not_visible_css_selector(browser, HPL.BUTTON_DECK_URL_CREATE)
@@ -87,6 +90,7 @@ def test_create_url_open_input_no_urls_deck_btn(
     wait_then_click_element(browser, HPL.BUTTON_DECK_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
     assert url_creation_row.is_displayed()
 
     assert_not_visible_css_selector(browser, HPL.BUTTON_DECK_URL_CREATE)
@@ -124,6 +128,7 @@ def test_create_url_open_input_with_added_urls(
     wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
     assert url_creation_row.is_displayed()
 
     url_title_create_elemnent = browser.find_element(
@@ -156,6 +161,7 @@ def test_create_url_cancel_input_click_button(
     wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
     assert url_creation_row.is_displayed()
 
     wait_then_click_element(browser, HPL.BUTTON_URL_CANCEL_CREATE)
@@ -187,6 +193,7 @@ def test_create_url_cancel_input_escape(
     wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
     assert url_creation_row.is_displayed()
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
@@ -207,8 +214,10 @@ def test_create_url_submit_btn(
     """
     app = provide_app
     user_id_for_test = 1
-    login_user_and_select_utub_by_name(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
     )
 
     url_title = MOCK_URL_TITLES[0]
@@ -217,36 +226,35 @@ def test_create_url_submit_btn(
     wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
     assert url_creation_row.is_displayed()
 
     # Input new URL Title
     url_title_input_field = wait_then_get_element(browser, HPL.INPUT_URL_TITLE_CREATE)
+    assert url_title_input_field is not None
     clear_then_send_keys(url_title_input_field, url_title)
 
     # Input new URL String
     url_string_input_field = wait_then_get_element(browser, HPL.INPUT_URL_STRING_CREATE)
+    assert url_string_input_field is not None
     clear_then_send_keys(url_string_input_field, url_string)
 
-    submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_SUBMIT_CREATE)
-    submit_btn.click()
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE, time=3)
 
     # Wait for HTTP request to complete
-    sleep(4)
-
-    # Extract URL title and string from new row in URL deck
-    url_row = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    assert url_row is not None
-    url_row = url_row[0]
-
+    wait_until_hidden(browser, HPL.INPUT_URL_STRING_CREATE, timeout=3)
     url_creation_row = browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE)
     assert not url_creation_row.is_displayed()
 
-    url_row_title = url_row.find_elements(By.CSS_SELECTOR, HPL.URL_TITLE_READ)[
-        0
-    ].get_attribute("innerText")
-    url_row_string = url_row.find_elements(By.CSS_SELECTOR, HPL.URL_STRING_READ)[
-        0
-    ].get_attribute("innerText")
+    # Extract URL title and string from new row in URL deck
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(
+        app, utub_user_created.id, url_string
+    )
+    url_row = get_url_row_by_id(browser, utub_url_id)
+    assert url_row is not None
+
+    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_string = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
 
     assert url_title == url_row_title
     assert url_string == url_row_string
@@ -254,8 +262,6 @@ def test_create_url_submit_btn(
     assert browser.find_element(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
     ).is_displayed()
-
-    assert not browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE).is_displayed()
 
 
 def test_create_url_using_enter_key(
@@ -270,8 +276,10 @@ def test_create_url_using_enter_key(
     """
     app = provide_app
     user_id_for_test = 1
-    login_user_and_select_utub_by_name(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
     )
 
     url_title = MOCK_URL_TITLES[0]
@@ -280,35 +288,35 @@ def test_create_url_using_enter_key(
     wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
 
     url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
     assert url_creation_row.is_displayed()
 
     # Input new URL Title
     url_title_input_field = wait_then_get_element(browser, HPL.INPUT_URL_TITLE_CREATE)
+    assert url_title_input_field is not None
     clear_then_send_keys(url_title_input_field, url_title)
 
     # Input new URL String
     url_string_input_field = wait_then_get_element(browser, HPL.INPUT_URL_STRING_CREATE)
+    assert url_string_input_field is not None
     clear_then_send_keys(url_string_input_field, url_string)
 
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     # Wait for HTTP request to complete
-    sleep(4)
-
-    # Extract URL title and string from new row in URL deck
-    url_row = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    assert url_row is not None
-    url_row = url_row[0]
-
+    wait_until_hidden(browser, HPL.INPUT_URL_STRING_CREATE, timeout=3)
     url_creation_row = browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE)
     assert not url_creation_row.is_displayed()
 
-    url_row_title = url_row.find_elements(By.CSS_SELECTOR, HPL.URL_TITLE_READ)[
-        0
-    ].get_attribute("innerText")
-    url_row_string = url_row.find_elements(By.CSS_SELECTOR, HPL.URL_STRING_READ)[
-        0
-    ].get_attribute("innerText")
+    # Extract URL title and string from new row in URL deck
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(
+        app, utub_user_created.id, url_string
+    )
+    url_row = get_url_row_by_id(browser, utub_url_id)
+    assert url_row is not None
+
+    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_string = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
 
     assert url_title == url_row_title
     assert url_string == url_row_string
@@ -317,12 +325,7 @@ def test_create_url_using_enter_key(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
     ).is_displayed()
 
-    assert not browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE).is_displayed()
 
-
-@pytest.mark.skip(
-    reason="Not on happy path. This test tests functionality that is not yet captured on the frontend"
-)
 def test_create_url_title_length_exceeded(
     browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
@@ -337,15 +340,33 @@ def test_create_url_title_length_exceeded(
     # Login test user and select first test UTub
     app = provide_app
 
-    user_id = 1
-    login_user_and_select_utub_by_name(app, browser, user_id, UTS.TEST_UTUB_NAME_1)
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
 
-    create_url(browser, UTS.MAX_CHAR_LIM_URL_TITLE, MOCK_URL_STRINGS[0])
+    wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
 
-    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
+    url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
+    assert url_creation_row.is_displayed()
 
-    # Assert new UTub is now active and displayed to user
-    assert warning_modal_body.text == "Try shortening your UTub name"
+    # Input new URL Title
+    url_title_input_field = wait_then_get_element(browser, HPL.INPUT_URL_TITLE_CREATE)
+    assert url_title_input_field is not None
+    clear_then_send_keys(
+        url_title_input_field, "a" * CONSTANTS.URLS.MAX_URL_TITLE_LENGTH
+    )
+
+    create_url_title_input = wait_then_get_element(
+        browser, HPL.INPUT_URL_TITLE_CREATE, time=3
+    )
+    assert create_url_title_input is not None
+    new_url_title = create_url_title_input.get_attribute("value")
+    assert new_url_title is not None
+
+    assert len(new_url_title) == CONSTANTS.URLS.MAX_URL_TITLE_LENGTH
 
 
 def test_select_url(browser: WebDriver, create_test_urls, provide_app: Flask):
@@ -358,17 +379,18 @@ def test_select_url(browser: WebDriver, create_test_urls, provide_app: Flask):
     """
     app = provide_app
     user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
     login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+        app, browser, user_id_for_test, utub_user_created.name, UTS.TEST_URL_TITLE_1
     )
 
     url_row = get_selected_url(browser)
 
     assert "true" == url_row.get_attribute("urlselected")
-    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TAGS_READ).is_displayed
+    assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TAGS_READ).is_displayed()
     assert url_row.find_element(
         By.CSS_SELECTOR, HPL.URL_BUTTONS_OPTIONS_READ
-    ).is_displayed
+    ).is_displayed()
     url_string = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
     assert url_string.get_attribute(HPL.URL_STRING_IN_DATA) in MOCK_URL_STRINGS
 

@@ -5,7 +5,7 @@
                 // UTub routes
 
                 this.createUTub = "{{url_for('utubs.create_utub')}}";
-                this.deleteUTub = (utub_id) => 
+                this.deleteUTub = (utub_id) =>
                     "{{url_for('utubs.delete_utub', utub_id=-1)}}".replace("-1", utub_id);
                 this.updateUTubName = (utub_id) =>
                     "{{url_for('utubs.update_utub_name', utub_id=-1)}}".replace("-1", utub_id);
@@ -50,9 +50,9 @@
                         .replace("-1", utub_id)
 
                 // Member routes
-                this.createMember = (utub_id) => 
+                this.createMember = (utub_id) =>
                     "{{url_for('members.create_member', utub_id=-1)}}".replace("-1", utub_id);
-                this.removeMember = (utub_id, user_id) => 
+                this.removeMember = (utub_id, user_id) =>
                     "{{url_for('members.remove_member', utub_id=-1, user_id=-4)}}"
                         .replace("-1", utub_id)
                         .replace("-4", user_id);
@@ -63,10 +63,10 @@
                 this.confirmEmailAfterRegister = "{{url_for('splash.confirm_email_after_register')}}";
                 this.sendValidationEmail = "{{url_for('splash.send_validation_email')}}";
                 this.forgotPassword = "{{url_for('splash.forgot_password')}}";
-                
+
                 // Util routes
                 this.errorPage = "{{url_for('splash.error_page')}}";
-                
+
                 // Logout
                 this.logout = "{{url_for('users.logout')}}";
 
@@ -83,26 +83,28 @@
             if (!Constants.instance) {
 
                 // UTub constants
-                this.UTUBS_MAX_NAME_LENGTH = {{CONSTANTS.UTUBS.MAX_NAME_LENGTH}};
-                this.UTUBS_MIN_NAME_LENGTH = {{CONSTANTS.UTUBS.MIN_NAME_LENGTH}};
+                this.UTUBS_MAX_NAME_LENGTH = {{CONSTANTS.UTUBS.MAX_NAME_LENGTH}
+            };
+            this.UTUBS_MIN_NAME_LENGTH = {{CONSTANTS.UTUBS.MIN_NAME_LENGTH}
+        };
                 this.UTUBS_MAX_DESCRIPTION_LENGTH = {{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}}
 
-                // URL Constants
-                this.URLS_TITLE_MIN_LENGTH = {{CONSTANTS.URLS.MIN_URL_TITLE_LENGTH}}
-                this.URLS_TITLE_MAX_LENGTH = {{CONSTANTS.URLS.MAX_URL_TITLE_LENGTH}}
-                this.URLS_MIN_LENGTH = {{CONSTANTS.URLS.MIN_URL_LENGTH}}
-                this.URLS_MAX_LENGTH = {{CONSTANTS.URLS.MAX_URL_LENGTH}}
-                this.MAX_NUM_OF_URLS_TO_ACCESS = {{CONSTANTS.URLS.MAX_NUM_OF_URLS_TO_ACCESS}}
+    // URL Constants
+    this.URLS_TITLE_MIN_LENGTH = {{CONSTANTS.URLS.MIN_URL_TITLE_LENGTH}}
+    this.URLS_TITLE_MAX_LENGTH = {{CONSTANTS.URLS.MAX_URL_TITLE_LENGTH}}
+    this.URLS_MIN_LENGTH = {{CONSTANTS.URLS.MIN_URL_LENGTH}}
+    this.URLS_MAX_LENGTH = {{CONSTANTS.URLS.MAX_URL_LENGTH}}
+    this.MAX_NUM_OF_URLS_TO_ACCESS = {{CONSTANTS.URLS.MAX_NUM_OF_URLS_TO_ACCESS}}
 
-                // Tag Constants
-                this.TAGS_MIN_LENGTH = {{CONSTANTS.TAGS.MIN_TAG_LENGTH}}
-                this.TAGS_MAX_LENGTH = {{CONSTANTS.TAGS.MAX_TAG_LENGTH}}
-                this.TAGS_MAX_ON_URLS = {{CONSTANTS.TAGS.MAX_URL_TAGS}}
+    // Tag Constants
+    this.TAGS_MIN_LENGTH = {{CONSTANTS.TAGS.MIN_TAG_LENGTH}}
+    this.TAGS_MAX_LENGTH = {{CONSTANTS.TAGS.MAX_TAG_LENGTH}}
+    this.TAGS_MAX_ON_URLS = {{CONSTANTS.TAGS.MAX_URL_TAGS}}
 
-                Constants.instance = this;
+    Constants.instance = this;
             }
 
-            return Constants.instance;
+    return Constants.instance;
         }
     }
     const CONSTANTS = new Constants;

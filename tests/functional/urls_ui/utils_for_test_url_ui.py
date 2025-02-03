@@ -1,9 +1,7 @@
-# Standard library
 from time import sleep
 import time
 from typing import Tuple
 
-# External libraries
 from flask import Flask
 import pytest
 from selenium.common.exceptions import NoSuchElementException
@@ -12,7 +10,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
-# Internal libraries
+from src.models.urls import Urls
 from src.models.utub_urls import Utub_Urls
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as ML
@@ -312,3 +310,16 @@ def verify_keyed_url_is_selected(browser: WebDriver, url_row: WebElement):
     access_url_btn = wait_until_visible(browser, access_url_btn)
     assert access_url_btn.is_enabled()
     assert access_url_btn.is_displayed()
+
+
+def get_newly_added_utub_url_id_by_url_string(
+    app: Flask, utub_id: int, url_string: str
+) -> int:
+    with app.app_context():
+        url: Urls = Urls.query.filter(Urls.url_string == url_string).first()
+        assert url is not None
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.url_id == url.id, Utub_Urls.utub_id == utub_id
+        ).first()
+        assert utub_url is not None
+        return utub_url.id
