@@ -11,6 +11,7 @@ from src.cli.mock_constants import (
 )
 from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from src.utils.strings.url_strs import URL_FAILURE
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     assert_not_visible_css_selector,
@@ -367,6 +368,47 @@ def test_create_url_title_length_exceeded(
     assert new_url_title is not None
 
     assert len(new_url_title) == CONSTANTS.URLS.MAX_URL_TITLE_LENGTH
+
+
+def test_create_url_empty_fields(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests the site error response to a user's attempt to create a new URL with empty fields.
+
+    GIVEN a user and selected UTub
+    WHEN the createURL form is submitted empty
+    THEN ensure the appropriate error and prompt is shown to user.
+    """
+    # Login test user and select first test UTub
+    app = provide_app
+
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
+
+    url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
+    assert url_creation_row.is_displayed()
+
+    # Submit URL
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE, time=3)
+
+    invalid_url_title_error = wait_then_get_element(
+        browser, HPL.INPUT_URL_TITLE_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_url_title_error is not None
+    assert invalid_url_title_error.text == URL_FAILURE.FIELD_REQUIRED_STR
+
+    invalid_url_string_error = wait_then_get_element(
+        browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_url_string_error is not None
+    assert invalid_url_string_error.text == URL_FAILURE.FIELD_REQUIRED_STR
 
 
 def test_select_url(browser: WebDriver, create_test_urls, provide_app: Flask):
