@@ -598,9 +598,6 @@ class UrlValidator:
         if not url:
             raise InvalidURLError("URL cannot be empty")
 
-        if self._ui_testing:
-            return self._normalize_url(url), True
-
         # First normalize the URL
         url = self._normalize_url(url)
         deconstructed = deconstruct_url(url)
@@ -608,6 +605,10 @@ class UrlValidator:
         # Check for proper schema
         if deconstructed.scheme != "https":
             raise InvalidURLError("Improper scheme given for this URL")
+
+        # Return during UI testing here so we can check ill-formed URLs and behavior on frontend
+        if self._ui_testing:
+            return self._return_url_for_ui_testing(user_headers, url)
 
         # DNS Check to ensure valid domain and host
         if not self._validate_host(deconstructed.host):
@@ -665,6 +666,14 @@ class UrlValidator:
         x_cache = VALIDATION_STRS.X_CACHE
         cf_error = VALIDATION_STRS.ERROR_FROM_CLOUDFRONT
         return x_cache in headers and headers.get(x_cache, "").lower() == cf_error
+
+    def _return_url_for_ui_testing(
+        self, headers: dict[str, str] | None, url: str
+    ) -> tuple[str, bool]:
+        invalid_testing_header = "X-U4I-Testing-Invalid"
+        if headers and headers.get(invalid_testing_header, "false").lower() == "true":
+            raise InvalidURLError("Invalid URL used during test")
+        return url, True
 
     @staticmethod
     def _filter_out_common_redirect(url: str) -> str:

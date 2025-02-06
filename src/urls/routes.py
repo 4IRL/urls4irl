@@ -128,10 +128,10 @@ def create_url(utub_id: int):
 
     if utub_new_url_form.validate_on_submit():
         url_string = utub_new_url_form.url_string.data
-        start = time.perf_counter()
+        start = time.perf_counter() if not current_app.testing else None
 
         try:
-            headers = request.headers if not current_app.testing else None
+            headers = request.headers
             normalized_url, is_validated = url_validator.validate_url(
                 url_string, headers
             )
@@ -139,8 +139,17 @@ def create_url(utub_id: int):
         except InvalidURLError as e:
             # TODO: Adding logging for this failed URL validation attempts
             # URL was unable to be verified as a valid URL
-            end = time.perf_counter() - start
-            logger.error(f"Took {end} seconds to fail validating URL.")
+            end = (
+                time.perf_counter() - start
+                if not current_app.testing and start
+                else None
+            )
+            (
+                logger.error(f"Took {end} seconds to fail validating URL.")
+                if not current_app.testing
+                else None
+            )
+
             return (
                 jsonify(
                     {
@@ -153,9 +162,17 @@ def create_url(utub_id: int):
                 400,
             )
         except WaybackRateLimited as e:
-            end = time.perf_counter() - start
-            logger.error(
-                f"Took {end} seconds to fail validating URL with Wayback rate limiting."
+            end = (
+                time.perf_counter() - start
+                if not current_app.testing and start
+                else None
+            )
+            (
+                logger.error(
+                    f"Took {end} seconds to fail validating URL with Wayback rate limiting."
+                )
+                if not current_app.testing
+                else None
             )
             return (
                 jsonify(
@@ -169,8 +186,13 @@ def create_url(utub_id: int):
                 400,
             )
 
-        end = time.perf_counter() - start
-        logger.error(f"Took {end} seconds to validate URL.")
+        end = time.perf_counter() - start if not current_app.testing and start else None
+        (
+            logger.info(f"Took {end} seconds to validate URL.")
+            if not current_app.testing
+            else None
+        )
+
         # Check if URL already exists
         already_created_url: Urls = Urls.query.filter(
             Urls.url_string == normalized_url
@@ -339,7 +361,6 @@ def update_url(utub_id: int, utub_url_id: int):
         utub_id (int): The UTub ID containing the relevant URL
         utub_url_id (int): The URL ID to be modified
     """
-
     utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_creator_id = utub.utub_creator
 
@@ -397,15 +418,25 @@ def update_url(utub_id: int, utub_url_id: int):
             )
 
         # Here the user wants to try to change or modify the URL
-        start = time.perf_counter()
+        start = time.perf_counter() if not current_app.testing else None
         try:
-            headers = request.headers if not current_app.testing else None
+            headers = request.headers
             normalized_url, is_validated = url_validator.validate_url(
                 url_to_change_to, headers
             )
         except InvalidURLError as e:
             # TODO: Adding logging for this failed URL validation attempt
             # URL was unable to be verified as a valid URL
+            end = (
+                time.perf_counter() - start
+                if not current_app.testing and start
+                else None
+            )
+            (
+                logger.error(f"Took {end} seconds to fail validating URL.")
+                if not current_app.testing
+                else None
+            )
             return (
                 jsonify(
                     {
@@ -418,9 +449,17 @@ def update_url(utub_id: int, utub_url_id: int):
                 400,
             )
         except WaybackRateLimited as e:
-            end = time.perf_counter() - start
-            logger.error(
-                f"Took {end} seconds to fail validating URL with Wayback rate limiting."
+            end = (
+                time.perf_counter() - start
+                if not current_app.testing and start
+                else None
+            )
+            (
+                logger.error(
+                    f"Took {end} seconds to fail validating URL with Wayback rate limiting."
+                )
+                if not current_app.testing
+                else None
             )
             return (
                 jsonify(
@@ -433,6 +472,13 @@ def update_url(utub_id: int, utub_url_id: int):
                 ),
                 400,
             )
+
+        end = time.perf_counter() - start if not current_app.testing and start else None
+        (
+            logger.info(f"Took {end} seconds to validate URL.")
+            if not current_app.testing
+            else None
+        )
 
         # Now check if url already in database
         url_already_in_database: Urls | None = Urls.query.filter(

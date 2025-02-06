@@ -34,9 +34,27 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
         URL title
         URL
     """
+    fill_create_url_form(browser, url_title, url_string)
+
+    # Submit
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE)
+
+
+def fill_create_url_form(browser: WebDriver, url_title: str, url_string: str):
+    """
+    Streamlines actions required to create a URL in the selected UTub.
+
+    Args:
+        WebDriver open to a selected UTub
+        URL title
+        URL
+    """
 
     # Select createURL button
     wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
+    url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
+    assert url_creation_row.is_displayed()
 
     # Input new URL Title
     url_title_input_field = wait_then_get_element(browser, HPL.INPUT_URL_TITLE_CREATE)
@@ -47,9 +65,6 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
     url_string_input_field = wait_then_get_element(browser, HPL.INPUT_URL_STRING_CREATE)
     assert url_string_input_field is not None
     clear_then_send_keys(url_string_input_field, url_string)
-
-    # Submit
-    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE)
 
 
 def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
@@ -208,6 +223,8 @@ def verify_select_url_as_utub_owner_or_url_creator(
     Args:
         url_row (WebElement): URL Card with all visible elements
     """
+
+    assert "true" == url_row.get_attribute("urlselected")
 
     visible_elements = (
         HPL.BUTTON_URL_ACCESS,
