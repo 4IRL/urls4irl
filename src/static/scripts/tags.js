@@ -3,6 +3,7 @@
 $(document).ready(function () {
   /* Bind click functions */
   const utubTagBtnCreate = $("#utubTagBtnCreate");
+  const utubTagBtnUnselectAll = $("#unselectAllTagFilters");
 
   // Add tag to UTub
   utubTagBtnCreate.on("click.createUTubTag", function () {
@@ -17,6 +18,10 @@ $(document).ready(function () {
 
   utubTagBtnCreate.on("blur", function () {
     $(document).off(".createUTubTag");
+  });
+
+  utubTagBtnUnselectAll.on("click.unselectAllTags", function () {
+    unselectAllTags();
   });
 });
 
@@ -63,6 +68,7 @@ function resetTagDeck() {
   resetCountOfTagFiltersApplied();
   disableUnselectAllButtonAfterTagFilterRemoved();
   hideIfShown($("#utubTagBtnCreate"));
+  hideIfShown($("#unselectAllTagFilters"));
   createUTubTagHideInput();
 }
 
@@ -71,6 +77,7 @@ function resetTagDeckIfNoUTubSelected() {
   $("#createUTubTagWrap").hide();
   hideIfShown($("#createUTubTagWrap"));
   hideIfShown($("#utubTagBtnCreate"));
+  hideIfShown($("#unselectAllTagFilters"));
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();
@@ -155,9 +162,10 @@ function buildTagDeck(dictTags) {
   const parent = $("#listTags");
 
   // Select all checkbox if tags in UTub
-  dictTags.length > 0
-    ? parent.append(createUnselectAllTagFilterInDeck())
-    : null;
+  if (dictTags.length > 0) {
+    parent.append(createUnselectAllTagFilterInDeck());
+    showIfHidden($("#unselectAllTagFilters"));
+  }
 
   // Loop through all tags and provide checkbox input for filtering
   for (let i in dictTags) {
@@ -279,6 +287,7 @@ function updateURLsAndTagSubheaderWhenTagSelected() {
     parseInt($(tagFilter).attr("data-utub-tag-id")),
   );
   const urlCards = $(".urlRow");
+  const numSelectedTagIDs = selectedTagIDs.length;
 
   let tagBadgeIDsOnURL, shouldShow;
   urlCards.each((_, urlCard) => {
@@ -298,7 +307,7 @@ function updateURLsAndTagSubheaderWhenTagSelected() {
       : $(urlCard).attr({ filterable: false });
   });
   reapplyAlternatingURLCardBackgroundAfterFilter();
-  updateCountOfTagFiltersApplied(selectedTagIDs.length);
+  updateCountOfTagFiltersApplied(numSelectedTagIDs);
 }
 
 function reapplyAlternatingURLCardBackgroundAfterFilter() {
@@ -318,10 +327,24 @@ function enableUnselectAllButtonAfterTagFilterApplied() {
       unselectAllTags();
     })
     .attr({ tabindex: 0 });
+
+  // showIfHidden($("#unselectAllTagFilters"));
+  $("#unselectAllTagFilters")
+    .removeClass("disabled")
+    .on("click.unselectAllTags", function () {
+      unselectAllTags();
+    })
+    .attr({ tabindex: 0 });
 }
 
 function disableUnselectAllButtonAfterTagFilterRemoved() {
   $("#unselectAll")
+    .addClass("disabled")
+    .off(".unselectAllTags")
+    .attr({ tabindex: -1 });
+
+  // $("#unselectAllTagFilters").hide();
+  $("#unselectAllTagFilters")
     .addClass("disabled")
     .off(".unselectAllTags")
     .attr({ tabindex: -1 });

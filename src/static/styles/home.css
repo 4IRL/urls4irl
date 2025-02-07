@@ -76,13 +76,13 @@
     background: var(--darkSplashGreen);
 }
 
-.trash-fill {
+.trash-fill, .funnel-x {
     background: var(--removeIconColor);
     border-radius: 4px;
 }
 
 .cancelButton-wide:hover,
-.trash-fill:hover {
+.trash-fill:hover, .funnel-x:hover {
     cursor: pointer;
     background: var(--removeIconColorHover);
 }
@@ -397,7 +397,7 @@
     gap: 2rem;
 }
 
-#unselectAll.disabled,
+#unselectAll.disabled, #unselectAllTagFilters.disabled
 .unselected.disabled {
     cursor: not-allowed;
     color: gray;

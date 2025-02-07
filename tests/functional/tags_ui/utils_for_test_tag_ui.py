@@ -173,3 +173,13 @@ def verify_new_utub_tag_created(
         By.CSS_SELECTOR, HPL.TAG_FILTERS + " span"
     )
     assert new_tag_str in [tag.text for tag in utub_tag_spans]
+
+
+def assert_unselect_all_tag_filters_disabled(browser: WebDriver):
+
+    unselect_all_selector = browser.find_element(
+        By.CSS_SELECTOR, HPL.SELECTOR_UNSELECT_ALL
+    )
+
+    # Assert Unselect All filter is disabled
+    assert "disabled" in unselect_all_selector.get_attribute("class").split()
