@@ -52,6 +52,5 @@ class UI_TEST_STRINGS:
     TEST_URL_TITLE_UPDATE = "MS Support"
 
     MAX_CHAR_LIM_URL_STRING = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
-    MAX_CHAR_LIM_URL_TITLE = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
 
     MESSAGE_NO_URLS = "No URLs here - add one!"

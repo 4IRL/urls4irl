@@ -109,6 +109,7 @@ def build_driver(
     if config.DOCKER:
         driver_path = environ.get("CHROMEDRIVER_PATH", "")
         service = webdriver.ChromeService(executable_path=driver_path)
+        options.add_argument("--user-data-dir=/tmp/chrome-user-data")
         driver = webdriver.Chrome(service=service, options=options)
     else:
         driver = webdriver.Chrome(options=options)

@@ -138,6 +138,7 @@ def test_select_urls_as_url_creator_and_utub_member(
         assert get_selected_url(browser) == url_row
 
         current_utub_url_id = url_row.get_attribute("urlid")
+        assert current_utub_url_id is not None and isinstance(current_utub_url_id, str)
         if int(current_utub_url_id) == utub_url_id_user_added:
             verify_select_url_as_utub_owner_or_url_creator(browser, url_row)
 

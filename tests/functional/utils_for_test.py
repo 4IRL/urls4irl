@@ -1,8 +1,6 @@
-# Standard library
 import secrets
 from time import sleep
 
-# External libraries
 from flask import Flask, session
 from flask.testing import FlaskCliRunner
 import pytest
@@ -20,7 +18,6 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-# Internal libraries
 from src.models.users import Users
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
@@ -885,8 +882,10 @@ def get_selected_url_title(browser: WebDriver):
     ).get_attribute("innerText")
 
 
-def get_url_row_by_id(browser: WebDriver, urlid: int):
-    return browser.find_element(By.CSS_SELECTOR, HPL.ROWS_URLS + f'[urlid="{urlid}"]')
+def get_url_row_by_id(browser: WebDriver, urlid: int) -> WebElement:
+    url_row = wait_then_get_element(browser, HPL.ROWS_URLS + f'[urlid="{urlid}"]')
+    assert url_row is not None
+    return url_row
 
 
 def get_tag_badge_by_id(browser: WebDriver, urlid: int, tagid: int):

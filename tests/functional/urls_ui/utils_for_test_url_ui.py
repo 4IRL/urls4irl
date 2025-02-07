@@ -1,9 +1,7 @@
-# Standard library
 from time import sleep
 import time
 from typing import Tuple
 
-# External libraries
 from flask import Flask
 import pytest
 from selenium.common.exceptions import NoSuchElementException
@@ -12,7 +10,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
-# Internal libraries
+from src.models.urls import Urls
 from src.models.utub_urls import Utub_Urls
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as ML
@@ -36,9 +34,27 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
         URL title
         URL
     """
+    fill_create_url_form(browser, url_title, url_string)
+
+    # Submit
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE)
+
+
+def fill_create_url_form(browser: WebDriver, url_title: str, url_string: str):
+    """
+    Streamlines actions required to create a URL in the selected UTub.
+
+    Args:
+        WebDriver open to a selected UTub
+        URL title
+        URL
+    """
 
     # Select createURL button
     wait_then_click_element(browser, HPL.BUTTON_CORNER_URL_CREATE)
+    url_creation_row = wait_then_get_element(browser, HPL.WRAP_URL_CREATE)
+    assert url_creation_row is not None
+    assert url_creation_row.is_displayed()
 
     # Input new URL Title
     url_title_input_field = wait_then_get_element(browser, HPL.INPUT_URL_TITLE_CREATE)
@@ -49,9 +65,6 @@ def create_url(browser: WebDriver, url_title: str, url_string: str):
     url_string_input_field = wait_then_get_element(browser, HPL.INPUT_URL_STRING_CREATE)
     assert url_string_input_field is not None
     clear_then_send_keys(url_string_input_field, url_string)
-
-    # Submit
-    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE)
 
 
 def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
@@ -211,6 +224,8 @@ def verify_select_url_as_utub_owner_or_url_creator(
         url_row (WebElement): URL Card with all visible elements
     """
 
+    assert "true" == url_row.get_attribute("urlselected")
+
     visible_elements = (
         HPL.BUTTON_URL_ACCESS,
         HPL.BUTTON_TAG_CREATE,
@@ -312,3 +327,16 @@ def verify_keyed_url_is_selected(browser: WebDriver, url_row: WebElement):
     access_url_btn = wait_until_visible(browser, access_url_btn)
     assert access_url_btn.is_enabled()
     assert access_url_btn.is_displayed()
+
+
+def get_newly_added_utub_url_id_by_url_string(
+    app: Flask, utub_id: int, url_string: str
+) -> int:
+    with app.app_context():
+        url: Urls = Urls.query.filter(Urls.url_string == url_string).first()
+        assert url is not None
+        utub_url: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.url_id == url.id, Utub_Urls.utub_id == utub_id
+        ).first()
+        assert utub_url is not None
+        return utub_url.id

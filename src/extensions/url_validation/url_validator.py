@@ -311,6 +311,17 @@ class UrlValidator:
                 return response
 
             redirect_url = response.headers.get(VALIDATION_STRS.LOCATION, "")
+
+            # Check for proper schema, some responses include a relative URL in the LOCATION header
+            # so that needs to be checked here as well
+            if (
+                deconstruct_url(redirect_url).scheme != "https"
+                and response.next
+                and response.next.url
+                and deconstruct_url(response.next.url).scheme == "https"
+            ):
+                redirect_url = response.next.url
+
             response = requests.get(
                 redirect_url,
                 timeout=(
@@ -598,9 +609,6 @@ class UrlValidator:
         if not url:
             raise InvalidURLError("URL cannot be empty")
 
-        if self._ui_testing:
-            return self._normalize_url(url), True
-
         # First normalize the URL
         url = self._normalize_url(url)
         deconstructed = deconstruct_url(url)
@@ -608,6 +616,10 @@ class UrlValidator:
         # Check for proper schema
         if deconstructed.scheme != "https":
             raise InvalidURLError("Improper scheme given for this URL")
+
+        # Return during UI testing here so we can check ill-formed URLs and behavior on frontend
+        if self._ui_testing:
+            return self._return_url_for_ui_testing(user_headers, url)
 
         # DNS Check to ensure valid domain and host
         if not self._validate_host(deconstructed.host):
@@ -666,6 +678,14 @@ class UrlValidator:
         cf_error = VALIDATION_STRS.ERROR_FROM_CLOUDFRONT
         return x_cache in headers and headers.get(x_cache, "").lower() == cf_error
 
+    def _return_url_for_ui_testing(
+        self, headers: dict[str, str] | None, url: str
+    ) -> tuple[str, bool]:
+        invalid_testing_header = "X-U4I-Testing-Invalid"
+        if headers and headers.get(invalid_testing_header, "false").lower() == "true":
+            raise InvalidURLError("Invalid URL used during test")
+        return url, True
+
     @staticmethod
     def _filter_out_common_redirect(url: str) -> str:
         for common_redirect in COMMON_REDIRECTS:
@@ -693,9 +713,10 @@ if __name__ == "__main__":
         "https://developers.google.com/calendar/api/guides/overview",
         "https://developers.google.com/keep/api/reference/rest",
         "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-16-inch-amd/len101t0076#ports_slots",
+        "https://www.stackoverflow.com/",
     )
 
-    print(validator.validate_url(INVALID_URLS[1]))
+    print(validator.validate_url(INVALID_URLS[-1]))
     # for invalid_url in INVALID_URLS:
     #    print(validator.validate_url(invalid_url))
     print("Trying to run as script")
