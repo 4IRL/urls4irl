@@ -354,7 +354,7 @@ function updateURLFail(xhr, urlCard, utubID) {
       $("body").html(xhr.responseText);
       return;
     }
-    displayCreateUrlFailErrors(
+    displayUpdateURLErrors(
       "urlString",
       "Server timed out while validating URL. Try again later.",
     );
@@ -520,6 +520,19 @@ function updateURLTitleSuccess(response, urlCard) {
 
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLTitleFail(xhr, urlCard) {
+  if (!xhr.hasOwnProperty("responseJSON")) {
+    if (
+      xhr.status === 403 &&
+      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+    ) {
+      // Handle invalid CSRF token error response
+      $("body").html(xhr.responseText);
+      return;
+    }
+    window.location.assign(routes.errorPage);
+    return;
+  }
+
   switch (xhr.status) {
     case 400:
       const responseJSON = xhr.responseJSON;

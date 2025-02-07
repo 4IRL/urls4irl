@@ -233,6 +233,15 @@ def wait_until_visible_css_selector(
     wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector)))
 
 
+def wait_until_in_focus(browser: WebDriver, css_selector: str, timeout=10):
+    WebDriverWait(browser, timeout).until(
+        lambda driver: driver.execute_script(
+            "return document.activeElement === arguments[0];",
+            driver.find_element(By.CSS_SELECTOR, css_selector),
+        )
+    )
+
+
 def assert_not_visible_css_selector(
     browser: WebDriver, css_selector: str, time: float = 10
 ):
