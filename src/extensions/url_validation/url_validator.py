@@ -311,6 +311,17 @@ class UrlValidator:
                 return response
 
             redirect_url = response.headers.get(VALIDATION_STRS.LOCATION, "")
+
+            # Check for proper schema, some responses include a relative URL in the LOCATION header
+            # so that needs to be checked here as well
+            if (
+                deconstruct_url(redirect_url).scheme != "https"
+                and response.next
+                and response.next.url
+                and deconstruct_url(response.next.url).scheme == "https"
+            ):
+                redirect_url = response.next.url
+
             response = requests.get(
                 redirect_url,
                 timeout=(
@@ -702,9 +713,10 @@ if __name__ == "__main__":
         "https://developers.google.com/calendar/api/guides/overview",
         "https://developers.google.com/keep/api/reference/rest",
         "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-16-inch-amd/len101t0076#ports_slots",
+        "https://www.stackoverflow.com/",
     )
 
-    print(validator.validate_url(INVALID_URLS[1]))
+    print(validator.validate_url(INVALID_URLS[-1]))
     # for invalid_url in INVALID_URLS:
     #    print(validator.validate_url(invalid_url))
     print("Trying to run as script")
