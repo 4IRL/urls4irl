@@ -333,7 +333,7 @@ def test_create_url_title_length_exceeded(
     url_title_input_field = wait_then_get_element(browser, HPL.INPUT_URL_TITLE_CREATE)
     assert url_title_input_field is not None
     clear_then_send_keys(
-        url_title_input_field, "a" * CONSTANTS.URLS.MAX_URL_TITLE_LENGTH
+        url_title_input_field, "a" * (CONSTANTS.URLS.MAX_URL_TITLE_LENGTH + 1)
     )
 
     create_url_title_input = wait_then_get_element(

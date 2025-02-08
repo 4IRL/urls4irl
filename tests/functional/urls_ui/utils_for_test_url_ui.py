@@ -320,3 +320,8 @@ def add_invalid_url_header_for_ui_test(browser: WebDriver):
         })();
     """
     )
+
+
+def get_url_in_utub(app: Flask, utub_id: int) -> Utub_Urls:
+    with app.app_context():
+        return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first()

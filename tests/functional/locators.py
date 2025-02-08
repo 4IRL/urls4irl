@@ -90,6 +90,7 @@ class HomePageLocators(GenericPageLocator):
     INPUT_TAG_CREATE = ".urlTagCreate"
     BUTTON_TAG_SUBMIT_CREATE = ".urlTagSubmitBtnCreate"
     BUTTON_TAG_CANCEL_CREATE = ".urlTagCancelBtnCreate"
+    BUTTON_BIG_TAG_CANCEL_CREATE = ".urlTagCancelBigBtnCreate"
     ERROR_TAG_CREATE = ".urlTagCreate-error"
 
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"

@@ -358,10 +358,20 @@ def login_user_and_select_utub_by_utubid(
 ):
     session_id = create_user_session_and_provide_session_id(app, user_id)
     login_user_with_cookie_from_session(browser, session_id)
-    browser.get_screenshot_as_file("p1.png")
     wait_then_click_element(
         browser, f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']", time=10
     )
+
+
+def login_user_select_utub_by_id_and_url_by_id(
+    app: Flask, browser: WebDriver, user_id: int, utub_id: int, utub_url_id: int
+):
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_id)
+    url_row_selector = f"{HPL.ROWS_URLS}[urlid='{utub_url_id}']"
+    wait_then_click_element(browser, url_row_selector, time=10)
+    selected_url_access_btn = f"{url_row_selector} {HPL.BUTTON_URL_ACCESS}"
+    wait_until_visible_css_selector(browser, selected_url_access_btn, timeout=3)
+    wait_for_animation_to_end(browser, selected_url_access_btn)
 
 
 def login_user_and_select_utub_by_name(
