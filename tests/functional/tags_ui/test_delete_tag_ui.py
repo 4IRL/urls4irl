@@ -1,13 +1,10 @@
-# Standard library
 from time import sleep
 
-# External libraries
 from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-# Internal libraries
 from src.cli.mock_constants import MOCK_URL_TITLES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
@@ -16,7 +13,6 @@ from tests.functional.tags_ui.utils_for_test_tag_ui import (
     show_delete_tag_button_on_hover,
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import (
-    delete_url,
     open_update_url_title,
 )
 from tests.functional.utils_for_test import (
@@ -213,9 +209,6 @@ def test_delete_last_tag(browser, create_test_tags):
 
     # Select URL
     url_title = MOCK_URL_TITLES[0]
-    url_row = select_url_by_title(browser, url_title)
-
-    delete_url(browser, url_row)
 
     warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")

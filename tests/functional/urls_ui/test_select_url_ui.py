@@ -1,6 +1,7 @@
 # External libraries
 from flask import Flask
 import pytest
+from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -18,6 +19,7 @@ from tests.functional.utils_for_test import (
     get_current_user_id,
     get_selected_url,
     login_user_and_select_utub_by_name,
+    wait_for_animation_to_end,
     wait_for_web_element_and_click,
     wait_then_get_elements,
 )
@@ -96,6 +98,7 @@ def test_select_non_added_urls_as_utub_member(
         assert get_selected_url(browser) == url_row
 
         current_utub_url_id = url_row.get_attribute("urlid")
+        assert current_utub_url_id and current_utub_url_id.isnumeric()
         if int(current_utub_url_id) != utub_url_id_user_added:
             verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_row)
 
@@ -168,11 +171,32 @@ def test_select_urls_using_down_key(
 
     # Select first URL
     wait_for_web_element_and_click(browser, url_rows[0])
+    first_url_string = (
+        url_rows[0].find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+    )
+    wait_for_animation_to_end(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
+    selected_url = get_selected_url(browser)
+    assert (
+        selected_url.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+        == first_url_string
+    )
     verify_keyed_url_is_selected(browser, url_rows[0])
 
     for idx in range(1, num_of_urls + 1):
         next_url_idx = idx % num_of_urls
+        next_url_string = (
+            url_rows[next_url_idx]
+            .find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+            .text
+        )
         browser.switch_to.active_element.send_keys(Keys.DOWN)
+        selected_url = get_selected_url(browser)
+        assert (
+            selected_url.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+            == next_url_string
+        )
         verify_keyed_url_is_selected(browser, url_rows[next_url_idx])
 
 
@@ -201,8 +225,27 @@ def test_select_urls_using_up_key(
 
     # Select first URL
     wait_for_web_element_and_click(browser, url_rows[0])
+    first_url_string = (
+        url_rows[0].find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+    )
+    wait_for_animation_to_end(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
+    selected_url = get_selected_url(browser)
+    assert (
+        selected_url.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+        == first_url_string
+    )
     verify_keyed_url_is_selected(browser, url_rows[0])
 
     for idx in range(num_of_urls - 1, -1, -1):
+        next_url_string = (
+            url_rows[idx].find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+        )
         browser.switch_to.active_element.send_keys(Keys.UP)
+        selected_url = get_selected_url(browser)
+        assert (
+            selected_url.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+            == next_url_string
+        )
         verify_keyed_url_is_selected(browser, url_rows[idx])

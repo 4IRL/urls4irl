@@ -1,4 +1,3 @@
-# External libraries
 import random
 from typing import Tuple
 from flask.testing import FlaskCliRunner
@@ -9,16 +8,20 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-# Internal libraries
 from src.cli.mock_constants import MOCK_URL_STRINGS
+from src.models.users import Users
+from src.models.utub_urls import Utub_Urls
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.urls_ui.utils_for_test_url_ui import (
     login_select_utub_select_url_click_delete_get_modal_url,
 )
 from tests.functional.utils_for_test import (
     add_mock_urls,
+    assert_login_with_username,
+    assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
     get_num_url_rows,
+    invalidate_csrf_token_on_page,
     verify_elem_with_url_string_exists,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -26,6 +29,7 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 from locators import HomePageLocators as HPL
+from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 pytestmark = pytest.mark.urls_ui
 
@@ -56,7 +60,7 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
 
     init_num_url_rows = get_num_url_rows(browser)
 
-    confirmation_modal_body_text = delete_modal.get_attribute("innerText")
+    confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
@@ -98,7 +102,7 @@ def test_delete_url_cancel_click_cancel_btn(
 
     init_num_url_rows = get_num_url_rows(browser)
 
-    confirmation_modal_body_text = delete_modal.get_attribute("innerText")
+    confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
@@ -137,7 +141,7 @@ def test_delete_url_cancel_click_x_btn(
 
     init_num_url_rows = get_num_url_rows(browser)
 
-    confirmation_modal_body_text = delete_modal.get_attribute("innerText")
+    confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
@@ -176,7 +180,7 @@ def test_delete_url_cancel_press_esc_key(
 
     init_num_url_rows = get_num_url_rows(browser)
 
-    confirmation_modal_body_text = delete_modal.get_attribute("innerText")
+    confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
@@ -215,7 +219,7 @@ def test_delete_url_cancel_click_outside_modal(
 
     init_num_url_rows = get_num_url_rows(browser)
 
-    confirmation_modal_body_text = delete_modal.get_attribute("innerText")
+    confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
@@ -277,4 +281,40 @@ def test_delete_last_url(
     assert no_url_subheader is not None
 
 
-# TODO: Check invalid CSRF token for sad path tests
+def test_delete_url_invalid_csrf_token(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to attempt to delete a URL with an invalid CSRF token
+
+    GIVEN a user attempting to delete a URL in a UTub
+    WHEN the deleteURL form is sent with an invalid CSRF token
+    THEN ensure U4I responds with a proper error message
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    with app.app_context():
+        user: Users = Users.query.get(user_id_for_test)
+        url_to_delete: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_created.id
+        ).first()
+        url_string_to_delete = url_to_delete.standalone_url.url_string
+
+    login_select_utub_select_url_click_delete_get_modal_url(
+        browser=browser,
+        app=provide_app,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=url_string_to_delete,
+    )
+
+    invalidate_csrf_token_on_page(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    delete_url_modal = wait_until_hidden(browser, HPL.HOME_MODAL, timeout=3)
+    assert not delete_url_modal.is_displayed()
+    assert_login_with_username(browser, user.username)
