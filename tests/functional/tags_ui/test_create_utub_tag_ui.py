@@ -54,6 +54,7 @@ def test_open_input_create_utub_tag(
         HPL.INPUT_UTUB_TAG_CREATE,
         HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
         HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
+        HPL.BUTTON_UNSELECT_ALL,
     )
 
     for visible_elem_selector in visible_elems:
@@ -64,7 +65,6 @@ def test_open_input_create_utub_tag(
     non_visible_elems = (
         HPL.BUTTON_UTUB_TAG_CREATE,
         HPL.LIST_TAGS,
-        HPL.SELECTOR_UNSELECT_ALL,
     )
     for non_visible_elem_selector in non_visible_elems:
         non_visible_elem = browser.find_element(

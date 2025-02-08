@@ -1,6 +1,5 @@
 import secrets
 import time
-from time import sleep
 
 from flask import Flask, session
 from flask.testing import FlaskCliRunner
@@ -510,35 +509,6 @@ def wait_until_update_btn_has_hidden_class(browser: WebDriver, btn_css_selector:
     )
 
 
-def login_utub(
-    browser: WebDriver,
-    username: str = UTS.TEST_USERNAME_1,
-    password: str = UTS.TEST_PASSWORD_1,
-    utub_name: str = UTS.TEST_UTUB_NAME_1,
-):
-    """
-    Streamlines test setup actions of logging in and selecting a UTub
-
-    Args:
-        WebDriver open to U4I Splash Page
-        (Optional) Username of user to login as, defaults to u4i_test1
-        (Optional) Password, defaults to u4i_test1@urls4irl.app
-        (Optional) Name of UTub to select, defaults to MockUTub_1
-
-    Returns:
-        Yields WebDriver to tests
-    """
-
-    login_user(browser, username, password)
-
-    # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
-
-    sleep(3)
-
-    select_utub_by_name(browser, utub_name)
-
-
 def get_num_utubs(browser: WebDriver) -> int:
     """
     Count number of UTub selectors
@@ -593,47 +563,6 @@ def get_selected_utub_name(browser: WebDriver) -> str:
 
 
 # Members Deck
-def get_selected_utub_owner_id(browser: WebDriver):
-    """
-    Extracts the user ID associated with the selected UTub owner.
-
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        Integer user ID
-    """
-
-    owner_badge = wait_then_get_element(browser, HPL.BADGE_OWNER)
-    assert owner_badge is not None
-
-    owner_id = owner_badge.get_attribute("memberid")
-    assert owner_id is not None
-    assert isinstance(owner_id, str)
-    return int(owner_id)
-
-
-def get_current_user_name(browser: WebDriver) -> str:
-    """
-    Extracts the user ID associated with the logged in user.
-
-    Args:
-        WebDriver open to the U4I Home Page
-
-    Returns:
-        String username
-    """
-
-    logged_in_user = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
-    assert logged_in_user is not None
-    logged_in_user_string = logged_in_user.get_attribute("innerText")
-    assert logged_in_user_string is not None
-    assert isinstance(logged_in_user_string, str)
-    user_name = logged_in_user_string.split("as ")
-
-    return user_name[1]
-
-
 def get_current_user_id(browser: WebDriver) -> int:
     """
     Extracts the user ID associated with the logged in user.
@@ -657,48 +586,7 @@ def get_current_user_id(browser: WebDriver) -> int:
     return int(user_id)
 
 
-def user_is_selected_utub_owner(browser: WebDriver):
-    """
-    Determines whether logged in user is the owner of the selected UTub
-
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        Boolean confirmation the logged in user owns the selected UTub
-    """
-
-    return get_current_user_id(browser) == get_selected_utub_owner_id(browser)
-
-
 # URL Deck
-def get_url_by_title(browser: WebDriver, url_title: str) -> WebElement | None:
-    """
-    If a UTub is selected and the UTub contains URLs, this function shall return the URL row associated with the supplied URL title.
-
-    Args:
-        WebDriver open to a selected UTub
-        URL Title
-
-    Returns:
-        URL row with the provided URL title
-    """
-
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    if url_rows is None:
-        return None
-
-    for url_row in url_rows:
-
-        url_row_title = url_row.find_element(
-            By.CSS_SELECTOR, HPL.URL_TITLE_READ
-        ).get_attribute("innerText")
-        if url_row_title == url_title:
-            return url_row
-
-    return None
-
-
 def select_url_by_title(browser: WebDriver, url_title: str):
     """
     If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL title.
@@ -773,32 +661,6 @@ def verify_elem_with_url_string_exists(browser: WebDriver, url_string: str) -> b
     return False
 
 
-def login_utub_url(
-    browser: WebDriver,
-    username: str = UTS.TEST_USERNAME_1,
-    password: str = UTS.TEST_PASSWORD_1,
-    utub_name: str = UTS.TEST_UTUB_NAME_1,
-    url_title: str = UTS.TEST_URL_TITLE_1,
-):
-    """
-    Streamlines test setup actions of logging in, selecting a UTub, and selecting a URL
-
-    Args:
-        WebDriver open to U4I Home Page, logged in as u4i_test1
-        (Optional) Password, defaults to u4i_test1@urls4irl.app
-        (Optional) Name of UTub to select
-        (Optional) Title of URL to select
-
-    Returns:
-        WebElement corresponding to the url_row matching the supplied URL title
-        Yields WebDriver to tests
-    """
-
-    login_utub(browser, username, password, utub_name)
-
-    select_url_by_title(browser, url_title)
-
-
 def get_num_url_rows(browser: WebDriver):
     """
     Count number of URL rows in selected UTub, regardless of filter state
@@ -839,57 +701,6 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
     return url_ids
 
 
-def get_all_tag_ids_in_url_row(url_row: WebElement) -> list[int] | None:
-    tag_badges: list[WebElement] = url_row.find_elements(
-        By.CSS_SELECTOR, HPL.TAG_BADGES
-    )
-    if tag_badges:
-        tag_ids = [
-            int(tag_badge.get_attribute("data-utub-tag-id")) for tag_badge in tag_badges
-        ]
-        return tag_ids
-    return None
-
-
-def url_row_unfiltered(url_rows: list[WebElement]):
-    """
-    Checks if each URL row is unfiltered.
-
-    Args:
-        WebDriver open to U4I Home Page with a UTub selected. Some tag filters may be applied.
-
-    Returns:
-        List of booleans indicating whether a URL row is visible.
-    """
-    unfiltered = []
-    for url_row in url_rows:
-        unfiltered.append(url_row.get_attribute("filterable") == "true")
-    return unfiltered
-
-
-def get_num_url_unfiltered_rows(browser: WebDriver):
-    """
-    Count number of URL rows visible to user, based on filter state
-
-    Args:
-        WebDriver open to U4I Home Page with a UTub selected
-
-    Returns:
-        Integer length of visible URL rows in UTub available to user
-    """
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-
-    if url_rows:
-        visible_url_rows = [
-            url_row
-            for url_row, condition in zip(url_rows, url_row_unfiltered(url_rows))
-            if condition
-        ]
-
-        return len(visible_url_rows)
-    return 0
-
-
 def get_selected_url(browser: WebDriver) -> WebElement:
     """
     If a URL is selected, this function streamlines the extraction of that WebElement.
@@ -905,58 +716,10 @@ def get_selected_url(browser: WebDriver) -> WebElement:
     return selected_url
 
 
-def get_selected_url_title(browser: WebDriver):
-    """
-    Extracts title of selected URL.
-
-    Args:
-        WebDriver open to a selected URL
-
-    Returns:
-        String containing the selected URL title.
-    """
-
-    selected_url_row = get_selected_url(browser)
-
-    return selected_url_row.find_element(
-        By.CSS_SELECTOR, HPL.URL_TITLE_READ
-    ).get_attribute("innerText")
-
-
 def get_url_row_by_id(browser: WebDriver, urlid: int) -> WebElement:
     url_row = wait_then_get_element(browser, HPL.ROWS_URLS + f'[urlid="{urlid}"]')
     assert url_row is not None
     return url_row
-
-
-def get_tag_badge_by_id(browser: WebDriver, urlid: int, tagid: int):
-    url_row = get_url_row_by_id(browser, urlid)
-    return url_row.find_element(
-        By.CSS_SELECTOR, HPL.TAG_BADGES + f'[data-utub-tag-id="{tagid}"]'
-    )
-
-
-def get_tag_badge_by_name(url_row: WebElement, tag_name: str) -> WebElement | None:
-    """
-    Simplifies extraction of a tag badge WebElement by its name in a selected URL.
-
-    Args:
-        WebDriver open to a selected URL
-
-    Returns:
-        Tag badge WebElement
-    """
-    tag_badges = get_selected_url_tags(url_row)
-
-    for tag_badge in tag_badges:
-
-        tag_text = tag_badge.find_element(By.CLASS_NAME, "tagText").get_attribute(
-            "innerText"
-        )
-        if tag_text == tag_name:
-            return tag_badge
-
-    return None
 
 
 def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
@@ -1028,77 +791,6 @@ def verify_update_url_state_is_hidden(url_row: WebElement):
 
     assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).is_displayed()
     assert url_row.find_element(By.CSS_SELECTOR, HPL.GO_TO_URL_ICON).is_displayed()
-
-
-# Tag Deck
-def get_tag_filter_name_by_id(browser: WebDriver, tag_id: int) -> str | None:
-    """
-    Simplifies extraction of a tag filter name by its id.
-
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        Tag filter name string
-    """
-    tag_filter = get_tag_filter_by_id(browser, tag_id)
-
-    if tag_filter is None:
-        return None
-
-    tag_filter_name = tag_filter.find_element(By.TAG_NAME, "span").get_attribute(
-        "innerText"
-    )
-
-    return tag_filter_name
-
-
-def get_tag_filter_by_id(browser: WebDriver, tag_id: int) -> WebElement | None:
-    return browser.find_element(
-        By.CSS_SELECTOR, HPL.TAG_FILTERS + '[data-utub-tag-id="' + str(tag_id) + '"]'
-    )
-
-
-def get_tag_filter_id(tag_filter: WebElement) -> int | None:
-    tag_filter_id = tag_filter.get_attribute("data-utub-tag-id")
-
-    if tag_filter_id is None or not tag_filter_id.isnumeric():
-        return None
-
-    return int(tag_filter_id)
-
-
-def get_tag_filter_by_name(browser: WebDriver, tag_name: str) -> WebElement | None:
-    """
-    Simplifies extraction of a tag filter WebElement by its name.
-
-    Args:
-        WebDriver open to a selected UTub
-
-    Returns:
-        Tag filter WebElement
-    """
-    tag_filters = get_utub_tag_filters(browser)
-    if tag_filters is None:
-        return None
-
-    for tag_filter in tag_filters:
-
-        tag_filter_name = tag_filter.find_element(By.TAG_NAME, "span").get_attribute(
-            "innerText"
-        )
-        if tag_filter_name == tag_name:
-            return tag_filter
-
-    return None
-
-
-def get_utub_tag_filters(browser: WebDriver) -> list[WebElement]:
-    return wait_then_get_elements(browser, HPL.TAG_FILTERS, 0)
-
-
-def get_selected_url_tags(url_row: WebElement) -> list[WebElement]:
-    return url_row.find_elements(By.CSS_SELECTOR, HPL.TAG_BADGES)
 
 
 def invalidate_csrf_token_on_page(browser: WebDriver):

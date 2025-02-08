@@ -130,6 +130,9 @@ function createUTubTagSuccess(response) {
     ),
   );
 
+  // Show unselect all button if not already shown
+  showIfHidden($("#unselectAllTagFilters"));
+
   createUTubTagHideInput();
 }
 
@@ -353,9 +356,7 @@ function createURLTagSuccess(response, urlCard) {
     .append(createTagBadgeInURL(utubTagID, string, urlCard));
 
   // Add SelectAll button if not yet there
-  if (isEmpty($("#unselectAll"))) {
-    $("#listTags").append(createUnselectAllTagFilterInDeck());
-  }
+  showIfHidden($("#unselectAllTagFilters"));
 
   if (!isTagInDeck(utubTagID)) {
     const newTag = createTagFilterInDeck(utubTagID, string);

@@ -1,17 +1,13 @@
-# Standard library
-import random
+from typing import Tuple
 
-# External libraries
 from flask import Flask
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
-# Internal libraries
 from src import db
 from src.models.utub_tags import Utub_Tags
-from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from tests.functional.locators import HomePageLocators as HPL
@@ -49,16 +45,6 @@ def create_tag(browser: WebDriver, selected_url_id: int, tag_string: str = ""):
     clear_then_send_keys(create_tag_input, tag_string)
 
 
-def hover_tag_badge(browser: WebDriver, tag_badge: WebElement):
-    actions = ActionChains(browser)
-
-    actions.move_to_element(tag_badge)
-
-    # Pause to make sure deleteTag button is visible
-    actions.pause(3).perform()
-    return actions
-
-
 def get_delete_tag_button_on_hover(browser: WebDriver, tag_badge_selector: str):
     """
     Args:
@@ -70,64 +56,17 @@ def get_delete_tag_button_on_hover(browser: WebDriver, tag_badge_selector: str):
         WebDriver handoff to member tests
     """
     tag_badge = browser.find_element(By.CSS_SELECTOR, tag_badge_selector)
-    actions = hover_tag_badge(browser, tag_badge)
+
+    actions = ActionChains(browser)
+
+    actions.move_to_element(tag_badge)
+
+    # Pause to make sure deleteTag button is visible
+    actions.pause(3).perform()
 
     actions.move_to_element(tag_badge).pause(2).perform()
 
     return tag_badge.find_element(By.CSS_SELECTOR, HPL.BUTTON_TAG_DELETE)
-
-
-def delete_tag_from_url_in_utub_random(app: Flask, utub_title: str):
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == utub_title).first()
-        utub_urls: list[Utub_Urls] = utub.utub_urls
-
-        utub_url = random.choice(utub_urls)
-        utub_url_id = utub_url.id
-
-        utub_tag: Utub_Url_Tags = random.choice(utub_url.url_tags)
-        utub_tag_id = utub_tag.utub_tag_id
-
-        utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.get(utub_tag.id)
-
-        db.session.delete(utub_url_tag)
-        db.session.commit()
-
-        return utub_url_id, utub_tag_id
-
-
-def delete_each_tag_from_one_url_in_utub(app: Flask, utub_title: str):
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.name == utub_title).first()
-        utub_tags: list[Utub_Tags] = utub.utub_tags
-        utub_urls: list[Utub_Urls] = utub.utub_urls
-
-        # Make mutable copies
-        urls = list(utub_urls)
-        tags = list(utub_tags)
-
-        while len(tags) > 0:
-            # Extract the first of the remaining tags to be removed from some URL
-            first_tag = tags[0]
-            first_tag_id = first_tag.id
-
-            # Loop through the remaining urls until the first URL that has first_tag associated with it is found.
-            for url in urls:
-                tag_ids = [url_tag.id for url_tag in url.url_tags]
-
-                if first_tag_id in tag_ids:
-                    # Find the tag association to the URL
-                    utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.get(first_tag_id)
-                    # Remove the tag from the URL
-                    db.session.delete(utub_url_tag)
-                    db.session.commit()
-                    # One tag has been removed from the URL. Remove the URL from the tracker list
-                    urls.remove(url)
-                    # Continue to next tag
-                    break
-
-            # Tag has been removed from one URL. Remove the tag from the tracker list.
-            tags.remove(first_tag)
 
 
 def login_user_select_utub_by_name_open_create_utub_tag(
@@ -152,7 +91,7 @@ def verify_create_utub_tag_input_form_is_hidden(browser: WebDriver):
     visible_elems = (
         HPL.BUTTON_UTUB_TAG_CREATE,
         HPL.LIST_TAGS,
-        HPL.SELECTOR_UNSELECT_ALL,
+        HPL.BUTTON_UNSELECT_ALL,
     )
     for visible_elem_selector in visible_elems:
         visible_elem = browser.find_element(By.CSS_SELECTOR, visible_elem_selector)
@@ -180,7 +119,7 @@ def verify_new_utub_tag_created(
 
 def assert_unselect_all_tag_filters_disabled(browser: WebDriver):
     unselect_all_selector = browser.find_element(
-        By.CSS_SELECTOR, HPL.SELECTOR_UNSELECT_ALL
+        By.CSS_SELECTOR, HPL.BUTTON_UNSELECT_ALL
     )
 
     # Assert Unselect All filter is disabled
@@ -209,6 +148,10 @@ def get_tag_on_url_in_utub(app: Flask, utub_id: int, utub_url_id: int) -> Utub_U
 
 def get_tag_badge_selector_on_selected_url(url_tag_id: int) -> str:
     return f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}[{HPL.TAG_BADGE_ID_ATTRIB}='{url_tag_id}']"
+
+
+def get_utub_tag_badge_selector(utub_tag_id: int) -> str:
+    return f"{HPL.TAG_FILTERS}[data-utub-tag-id='{utub_tag_id}']"
 
 
 def verify_btns_shown_on_cancel_url_tag_input_creator(browser: WebDriver):
@@ -244,3 +187,55 @@ def verify_btns_shown_on_cancel_url_tag_input_member(browser: WebDriver):
     assert add_tag_btn.is_displayed()
     classes = add_tag_btn.get_attribute("class")
     assert classes and HPL.BUTTON_BIG_TAG_CANCEL_CREATE not in classes
+
+
+def add_tag_to_utub_user_created(
+    app: Flask, utub_id: int, user_id: int, tag_string: str
+) -> Utub_Tags:
+    with app.app_context():
+        new_tag: Utub_Tags = Utub_Tags(
+            utub_id=utub_id, tag_string=tag_string, created_by=user_id
+        )
+        db.session.add(new_tag)
+        db.session.commit()
+
+        return Utub_Tags.query.filter(Utub_Tags.tag_string == tag_string).first()
+
+
+def apply_tag_based_on_id_and_get_shown_urls(
+    browser: WebDriver, utub_tag_id: int
+) -> list[WebElement]:
+    utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
+    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+
+    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    return [url_row for url_row in url_row_elements if url_row.is_displayed()]
+
+
+def add_two_tags_across_urls_in_utub(
+    app: Flask, utub_id: int, first_tag_id: int, second_tag_id: int
+) -> Tuple[int, int, int]:
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).all()
+        num_utub_urls = len(utub_urls)
+        urls_for_first_tag = utub_urls[: len(utub_urls) - 1]
+        num_urls_for_first_tag = len(urls_for_first_tag)
+        urls_for_second_tag = urls_for_first_tag[: len(urls_for_first_tag) // 2]
+        num_urls_for_second_tag = len(urls_for_second_tag)
+
+        for first_tag_url in urls_for_first_tag:
+            url_id = first_tag_url.id
+            new_url_tag = Utub_Url_Tags(
+                utub_id=utub_id, utub_url_id=url_id, utub_tag_id=first_tag_id
+            )
+            db.session.add(new_url_tag)
+
+            if first_tag_url in urls_for_second_tag:
+                new_url_tag = Utub_Url_Tags(
+                    utub_id=utub_id, utub_url_id=url_id, utub_tag_id=second_tag_id
+                )
+                db.session.add(new_url_tag)
+        db.session.commit()
+        return num_utub_urls, num_urls_for_first_tag, num_urls_for_second_tag
