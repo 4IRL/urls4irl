@@ -29,6 +29,7 @@ from tests.functional.utils_for_test import (
     wait_until_visible_css_selector,
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import (
+    add_invalid_url_header_for_ui_test,
     create_url,
     fill_create_url_form,
     get_newly_added_utub_url_id_by_url_string,
@@ -481,22 +482,7 @@ def test_invalid_url_input(browser: WebDriver, create_test_utubs, provide_app: F
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    browser.execute_script(
-        """
-        (function() {
-            var originalBeforeSend = $.ajaxSetup().beforeSend;
-
-            $.ajaxSetup({
-                beforeSend: function(xhr, settings) {
-                    if (originalBeforeSend) {
-                        originalBeforeSend(xhr, settings); // Preserve existing behavior
-                    }
-                    xhr.setRequestHeader("X-U4I-Testing-Invalid", "true");
-                }
-            });
-        })();
-    """
-    )
+    add_invalid_url_header_for_ui_test(browser)
 
     create_url(browser, url_title="Test", url_string="Test")
 
