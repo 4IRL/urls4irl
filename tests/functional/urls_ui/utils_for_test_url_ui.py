@@ -1,4 +1,3 @@
-from time import sleep
 import time
 from typing import Tuple
 
@@ -146,18 +145,6 @@ def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title
     clear_then_send_keys(url_title_input_field, url_title)
 
 
-def delete_url(url_row: WebElement):
-    """
-    Simplifies interaction with URL WebElement to initiate deletion request.
-
-    Args:
-        WebDriver open to a selected URL
-    """
-
-    # Select deleteURL button
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_DELETE).click()
-
-
 def login_select_utub_select_url_click_delete_get_modal_url(
     browser: WebDriver,
     app: Flask,
@@ -171,47 +158,15 @@ def login_select_utub_select_url_click_delete_get_modal_url(
     )
     url_row = get_selected_url(browser)
     wait_until_visible_css_selector(browser, HPL.BUTTON_URL_DELETE, timeout)
-    time.sleep(0.5)
-    delete_url(url_row)
+
+    wait_then_click_element(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}", time=timeout
+    )
     wait_until_visible_css_selector(browser, ML.ELEMENT_MODAL, timeout)
     modal = wait_then_get_element(browser, HPL.BODY_MODAL)
     assert modal is not None
 
     return modal, url_row
-
-
-def delete_url_confirmed(browser: WebDriver, url_row: WebElement):
-    """
-    Simplifies interaction with URL WebElement to initiate and confirm deletion request.
-
-    Args:
-        WebDriver open to a selected URL
-
-    Returns:
-        Yields WebDriver to tests
-    """
-
-    # Select deleteURL button
-    delete_url(url_row)
-    # Confirm warning modal
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
-    # Wait for DELETE request
-    sleep(4)
-
-
-def delete_all_urls(browser: WebDriver):
-    """
-    Automates deletion of all URLs in selected UTub
-
-    Args:
-        WebDriver open to a selected UTub
-    """
-
-    url_rows = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
-
-    for url_row in url_rows:
-        url_row.click()
-        delete_url_confirmed(browser, url_row)
 
 
 def verify_select_url_as_utub_owner_or_url_creator(
