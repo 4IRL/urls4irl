@@ -1,4 +1,3 @@
-import time
 from typing import Tuple
 
 from flask import Flask
@@ -17,6 +16,7 @@ from tests.functional.utils_for_test import (
     clear_then_send_keys,
     get_selected_url,
     login_user_select_utub_by_name_and_url_by_string,
+    wait_for_animation_to_end,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_visible,
@@ -157,7 +157,9 @@ def login_select_utub_select_url_click_delete_get_modal_url(
         app, browser, user_id, utub_name, url_string
     )
     url_row = get_selected_url(browser)
-    wait_until_visible_css_selector(browser, HPL.BUTTON_URL_DELETE, timeout)
+    wait_for_animation_to_end(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
 
     wait_then_click_element(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}", time=timeout
@@ -199,7 +201,9 @@ def verify_select_url_as_utub_owner_or_url_creator(
     assert url_title.is_enabled()
 
     # Wait for element to fully get in view
-    time.sleep(0.5)
+    wait_for_animation_to_end(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
 
     actions = ActionChains(browser)
     actions.scroll_to_element(url_title).move_to_element(url_title).perform()
@@ -247,7 +251,9 @@ def verify_select_url_as_non_utub_owner_and_non_url_adder(
     assert url_title.is_enabled()
 
     # Wait for element to fully get in view
-    time.sleep(0.5)
+    wait_for_animation_to_end(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
 
     actions = ActionChains(browser)
     actions.scroll_to_element(url_title).move_to_element(url_title).perform()

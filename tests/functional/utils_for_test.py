@@ -1,4 +1,5 @@
 import secrets
+import time
 from time import sleep
 
 from flask import Flask, session
@@ -240,6 +241,27 @@ def wait_until_in_focus(browser: WebDriver, css_selector: str, timeout=10):
             driver.find_element(By.CSS_SELECTOR, css_selector),
         )
     )
+
+
+def wait_for_animation_to_end(
+    browser: WebDriver, locator: str, timeout=10, interval=0.1
+):
+    """Wait until an element stops moving by checking its position."""
+
+    def element_stopped_moving(browser: WebDriver):
+        element = browser.find_element(By.CSS_SELECTOR, locator)
+        initial_position = browser.execute_script(
+            "return [arguments[0].getBoundingClientRect().left, arguments[0].getBoundingClientRect().top];",
+            element,
+        )
+        time.sleep(interval)  # Wait a bit before checking again
+        new_position = browser.execute_script(
+            "return [arguments[0].getBoundingClientRect().left, arguments[0].getBoundingClientRect().top];",
+            element,
+        )
+        return initial_position == new_position
+
+    WebDriverWait(browser, timeout).until(element_stopped_moving)
 
 
 def assert_not_visible_css_selector(
