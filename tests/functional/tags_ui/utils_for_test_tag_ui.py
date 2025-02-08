@@ -50,7 +50,6 @@ def create_tag(browser: WebDriver, selected_url_id: int, tag_string: str = ""):
 
 
 def hover_tag_badge(browser: WebDriver, tag_badge: WebElement):
-
     actions = ActionChains(browser)
 
     actions.move_to_element(tag_badge)
@@ -60,7 +59,7 @@ def hover_tag_badge(browser: WebDriver, tag_badge: WebElement):
     return actions
 
 
-def show_delete_tag_button_on_hover(browser: WebDriver, tag_badge: WebElement):
+def get_delete_tag_button_on_hover(browser: WebDriver, tag_badge_selector: str):
     """
     Args:
         WebDriver open to a selected URL
@@ -70,13 +69,12 @@ def show_delete_tag_button_on_hover(browser: WebDriver, tag_badge: WebElement):
         Boolean confirmation of successful deletion of tag
         WebDriver handoff to member tests
     """
+    tag_badge = browser.find_element(By.CSS_SELECTOR, tag_badge_selector)
     actions = hover_tag_badge(browser, tag_badge)
 
-    delete_tag_button = tag_badge.find_element(By.CSS_SELECTOR, HPL.BUTTON_TAG_DELETE)
+    actions.move_to_element(tag_badge).pause(2).perform()
 
-    actions.move_to_element(delete_tag_button).pause(2).perform()
-
-    return delete_tag_button
+    return tag_badge.find_element(By.CSS_SELECTOR, HPL.BUTTON_TAG_DELETE)
 
 
 def delete_tag_from_url_in_utub_random(app: Flask, utub_title: str):
@@ -181,7 +179,6 @@ def verify_new_utub_tag_created(
 
 
 def assert_unselect_all_tag_filters_disabled(browser: WebDriver):
-
     unselect_all_selector = browser.find_element(
         By.CSS_SELECTOR, HPL.SELECTOR_UNSELECT_ALL
     )
@@ -201,6 +198,17 @@ def get_tag_string_already_on_url_in_utub_and_delete(
         db.session.delete(utub_url_tag[1])
         db.session.commit()
         return tag_string
+
+
+def get_tag_on_url_in_utub(app: Flask, utub_id: int, utub_url_id: int) -> Utub_Url_Tags:
+    with app.app_context():
+        return Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_url_id == utub_url_id
+        ).first()
+
+
+def get_tag_badge_selector_on_selected_url(url_tag_id: int) -> str:
+    return f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}[{HPL.TAG_BADGE_ID_ATTRIB}='{url_tag_id}']"
 
 
 def verify_btns_shown_on_cancel_url_tag_input_creator(browser: WebDriver):

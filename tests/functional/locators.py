@@ -77,6 +77,7 @@ class HomePageLocators(GenericPageLocator):
     URL_TAGS_READ = ".urlTags"
     TAG_BADGES = ".tagBadge"
     TAG_BADGE_NAME_READ = ".tagBadge > span"
+    TAG_BADGE_ID_ATTRIB = "data-utub-tag-id"
     URL_BUTTONS_OPTIONS_READ = ".urlOptions"
 
     BUTTON_URL_TITLE_UPDATE = ".urlTitleBtnUpdate"
