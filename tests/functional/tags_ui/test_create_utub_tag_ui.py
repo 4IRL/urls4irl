@@ -1,26 +1,31 @@
-# Standard library
-
-# External libraries
 from flask import Flask
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-# Internal libraries
+from src.models.users import Users
+from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
+from src.utils.strings.tag_strs import TAGS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    login_user_select_utub_by_name_open_create_utub_tag,
+    login_user_select_utub_by_id_open_create_utub_tag,
     verify_create_utub_tag_input_form_is_hidden,
     verify_new_utub_tag_created,
 )
 from tests.functional.utils_for_test import (
-    login_user_and_select_utub_by_name,
+    assert_login_with_username,
+    assert_visited_403_on_invalid_csrf_and_reload,
+    invalidate_csrf_token_on_page,
+    login_user_and_select_utub_by_utubid,
     wait_then_click_element,
+    wait_then_get_element,
     wait_until_hidden,
-    wait_until_visible,
+    wait_until_in_focus,
+    wait_until_visible_css_selector,
 )
+from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 
 def test_open_input_create_utub_tag(
@@ -35,20 +40,19 @@ def test_open_input_create_utub_tag(
     """
     app = provide_app
     user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
-    login_user_and_select_utub_by_name(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
     )
 
-    elem = wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CREATE)
-    assert elem is not None
-
-    utub_tag_input = browser.find_element(By.CSS_SELECTOR, HPL.INPUT_UTUB_TAG_CREATE)
-
-    wait_until_visible(browser, utub_tag_input)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CREATE, time=3)
+    wait_until_visible_css_selector(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
 
     # Ensure input is focused
-    assert browser.switch_to.active_element == utub_tag_input
+    assert browser.switch_to.active_element == browser.find_element(
+        By.CSS_SELECTOR, HPL.INPUT_UTUB_TAG_CREATE
+    )
 
     visible_elems = (
         HPL.INPUT_UTUB_TAG_CREATE,
@@ -85,9 +89,10 @@ def test_open_input_create_utub_tag_click_cancel_btn(
     """
     app = provide_app
     user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
-    login_user_select_utub_by_name_open_create_utub_tag(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
     )
 
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
@@ -107,12 +112,14 @@ def test_open_input_create_utub_tag_press_esc_key(
     """
     app = provide_app
     user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
-    login_user_select_utub_by_name_open_create_utub_tag(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
     )
 
     # Ensure input is focused
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
     wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
     verify_create_utub_tag_input_form_is_hidden(browser)
@@ -131,16 +138,18 @@ def test_open_input_create_utub_tag_click_submit_btn(
     app = provide_app
     user_id_for_test = 1
     new_tag = "WOWZA123"
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
     with app.app_context():
         utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
         init_num_of_utub_tags = len(utub.utub_tags)
 
-    login_user_select_utub_by_name_open_create_utub_tag(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
     )
 
     # Ensure input is focused
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys(new_tag)
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
     wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
@@ -162,16 +171,18 @@ def test_open_input_create_utub_tag_press_enter_key(
     app = provide_app
     user_id_for_test = 1
     new_tag = "WOWZA123"
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
     with app.app_context():
         utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
         init_num_of_utub_tags = len(utub.utub_tags)
 
-    login_user_select_utub_by_name_open_create_utub_tag(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
     )
 
     # Ensure input is focused
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys(new_tag)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
     wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
@@ -180,5 +191,132 @@ def test_open_input_create_utub_tag_press_enter_key(
     verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
 
 
-# TODO: Check sanitized inputs in sad path tests
-# TODO Check invalid CSRF token for sad path tests
+def test_create_utub_tag_empty_field(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests ability to attempt to add a new tag to the UTub with an empty tag field
+
+    GIVEN a user is a UTub member, has selected the UTub, and opens the create UTub tag form
+    WHEN the user presses the submit button after not typing in a tag
+    THEN ensure U4I provides the proper error response to the user
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    # Ensure input is focused
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
+    browser.switch_to.active_element.send_keys("")
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+
+    invalid_utub_tag_error = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_TAG_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_utub_tag_error is not None
+    assert invalid_utub_tag_error.text == TAGS_FAILURE.FIELD_REQUIRED_STR
+
+
+def test_create_utub_tag_duplicate_tag(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests ability to attempt to add a duplicate tag to the UTub
+
+    GIVEN a user is a UTub member, has selected the UTub, and opens the create UTub tag form
+    WHEN the user presses the submit button after typing in a tag that is already in this UTub
+    THEN ensure U4I provides the proper error response to the user
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    with app.app_context():
+        utub_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_created.id
+        ).first()
+        utub_tag_duplicate = utub_tag.tag_string
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    # Ensure input is focused
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
+    browser.switch_to.active_element.send_keys(utub_tag_duplicate)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+
+    invalid_utub_tag_error = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_TAG_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_utub_tag_error is not None
+    assert invalid_utub_tag_error.text == TAGS_FAILURE.TAG_ALREADY_IN_UTUB
+
+
+def test_create_utub_tag_sanitized_tag(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests ability to attempt to add a tag to the UTub that contains improper or unsanitzed inputs
+
+    GIVEN a user is a UTub member, has selected the UTub, and opens the create UTub tag form
+    WHEN the user presses the submit button after typing in a tag that contains improper or unsanitized inputs
+    THEN ensure U4I provides the proper error response to the user
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    # Ensure input is focused
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
+    browser.switch_to.active_element.send_keys('<img src="evl.jpg">')
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+
+    invalid_utub_tag_error = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_TAG_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_utub_tag_error is not None
+    assert invalid_utub_tag_error.text == TAGS_FAILURE.INVALID_INPUT
+
+
+def test_create_utub_tag_invalid_csrf(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests ability to attempt to add a tag to the UTub with an invalid csrf token
+
+    GIVEN a user is a UTub member, has selected the UTub, and opens the create UTub tag form
+    WHEN the user presses the submit button with an invalid csrf token
+    THEN ensure U4I provides the proper error response to the user
+    """
+    app = provide_app
+    user_id_for_test = 1
+    with app.app_context():
+        user: Users = Users.query.get(user_id_for_test)
+
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    # Ensure input is focused
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
+    browser.switch_to.active_element.send_keys("New tag123")
+    invalidate_csrf_token_on_page(browser)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    new_utub_tag_input = wait_until_hidden(
+        browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3
+    )
+    assert not new_utub_tag_input.is_displayed()
+    assert_login_with_username(browser, user.username)

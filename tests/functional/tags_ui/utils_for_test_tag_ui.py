@@ -14,6 +14,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
     login_user_and_select_utub_by_name,
+    login_user_and_select_utub_by_utubid,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_in_focus,
@@ -67,6 +68,13 @@ def get_delete_tag_button_on_hover(browser: WebDriver, tag_badge_selector: str):
     actions.move_to_element(tag_badge).pause(2).perform()
 
     return tag_badge.find_element(By.CSS_SELECTOR, HPL.BUTTON_TAG_DELETE)
+
+
+def login_user_select_utub_by_id_open_create_utub_tag(
+    app: Flask, browser: WebDriver, user_id: int, utub_id: int
+):
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_id)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CREATE)
 
 
 def login_user_select_utub_by_name_open_create_utub_tag(
