@@ -9,7 +9,6 @@ from src.models.utubs import Utubs
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     clear_then_send_keys,
-    user_is_selected_utub_owner,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -175,7 +174,7 @@ def _update_utub_input(
     # Update input field visible
 
 
-def update_utub_name(browser: WebDriver, utub_name: str) -> bool:
+def update_utub_name(browser: WebDriver, utub_name: str):
     """
     Once logged in and UTub selected, this function conducts the actions for editing the selected UTub name. First hover over the UTub name to display the edit button. Then clicks the edit button, interacts with the input field and submits it.
 
@@ -187,19 +186,12 @@ def update_utub_name(browser: WebDriver, utub_name: str) -> bool:
         WebDriver handoff to UTub tests
     """
 
-    if user_is_selected_utub_owner(browser):
-        open_update_utub_name_input(browser)
+    open_update_utub_name_input(browser)
 
-        # Types new UTub name
-        utub_name_update_input = wait_then_get_element(
-            browser, HPL.INPUT_UTUB_NAME_UPDATE
-        )
-        assert utub_name_update_input is not None
-        clear_then_send_keys(utub_name_update_input, utub_name)
-
-        return True
-    else:
-        return False
+    # Types new UTub name
+    utub_name_update_input = wait_then_get_element(browser, HPL.INPUT_UTUB_NAME_UPDATE)
+    assert utub_name_update_input is not None
+    clear_then_send_keys(utub_name_update_input, utub_name)
 
 
 def update_utub_description(browser: WebDriver, utub_description: str):

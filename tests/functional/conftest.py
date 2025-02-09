@@ -330,7 +330,7 @@ def create_test_urls(runner, debug_strings):
     cli_runner.invoke(args=["addmock", "urls"])
 
     if debug_strings:
-        print("\nusers, utubs, and members created")
+        print("\nusers, utubs, members, and urls created")
 
 
 @pytest.fixture
@@ -342,4 +342,4 @@ def create_test_tags(runner, debug_strings):
     cli_runner.invoke(args=["addmock", "tags"])
 
     if debug_strings:
-        print("\nusers, utubs, and members created")
+        print("\nusers, utubs, members, urls, and tags created")

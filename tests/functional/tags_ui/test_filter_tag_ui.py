@@ -1,278 +1,470 @@
-# Standard library
-
-# External libraries
 from flask import Flask
 import pytest
+from selenium.common.exceptions import (
+    ElementClickInterceptedException,
+    ElementNotInteractableException,
+)
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
-from selenium.webdriver.remote.webelement import WebElement
 
-# Internal libraries
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from src import db
+from src.models.utub_tags import Utub_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
+from src.models.utub_urls import Utub_Urls
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    assert_unselect_all_tag_filters_disabled,
-    delete_each_tag_from_one_url_in_utub,
-    delete_tag_from_url_in_utub_random,
+    add_tag_to_utub_user_created,
+    add_two_tags_across_urls_in_utub,
+    apply_tag_based_on_id_and_get_shown_urls,
+    get_utub_tag_badge_selector,
 )
 from tests.functional.utils_for_test import (
-    get_all_tag_ids_in_url_row,
-    get_num_url_unfiltered_rows,
-    get_tag_filter_by_id,
-    get_tag_filter_by_name,
-    get_tag_filter_id,
-    get_tag_filter_name_by_id,
-    get_url_row_by_id,
-    get_url_by_title,
-    get_utub_tag_filters,
-    login_user_select_utub_by_name_and_url_by_title,
-    wait_then_get_element,
-    wait_then_get_elements,
+    login_user_and_select_utub_by_utubid,
+    wait_then_click_element,
+    wait_until_visible_css_selector,
 )
+from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 pytestmark = pytest.mark.tags_ui
 
 
-# @pytest.mark.skip(reason="Testing another in isolation")
-def test_filter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
+def test_filter_tag_with_all_urls_filtered(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
     """
     Tests a user's ability to filter a specific tag in the URL deck by selecting a tag filter.
 
-    GIVEN a user has access to UTubs with URLs with tags applied, and user removes all but one
-    WHEN the associated tag filter is selected in the TagDeck
-    THEN ensure the corresponding URL is hidden
+    GIVEN a user has access to UTubs with URLs with no tags on any URLs
+    WHEN the user selects a tag from the tag deck
+    THEN ensure all URLs are hidden
     """
-
     app = provide_app
-
-    utub_title = UTS.TEST_UTUB_NAME_1
-
-    # From the db, delete a random tag from a random URL in the current UTub
-    utub_url_id, utub_tag_id = delete_tag_from_url_in_utub_random(app, utub_title)
-
-    # Load page
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, utub_title, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag"
     )
 
-    # Find URL row to be filtered
-    url_row = get_url_row_by_id(browser, utub_url_id)
-
-    # Save the URL title for assertion after filtering it out
-    url_title = url_row.find_element(By.CLASS_NAME, "urlTitle").get_attribute(
-        "innerText"
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
     )
+    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
+    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
 
-    # Extract the filtered tag name
-    tag_name = get_tag_filter_name_by_id(browser, utub_tag_id)
-
-    # Assert appropriate initial state of unselectAll button
-    unselect_all_button = wait_then_get_element(browser, HPL.SELECTOR_UNSELECT_ALL)
-    unselect_all_button_class_list = unselect_all_button.get_attribute("class")
-    assert "disabled" in unselect_all_button_class_list
-    assert "unselected" in unselect_all_button_class_list
-
-    # Select tag filter associated with the name of the tag badge deleted above
-    corresponding_tag_filter = get_tag_filter_by_name(browser, tag_name)
-    corresponding_tag_filter.click()
-
-    # Assert appropriate behavior of unselectAll button
-    unselect_all_button_class_list = unselect_all_button.get_attribute("class")
-    assert "disabled" not in unselect_all_button_class_list
-    assert "unselected" in unselect_all_button_class_list
-
-    # Assert tag filter is applied
-    assert "selected" in corresponding_tag_filter.get_attribute("class")
-
-    # Assert filtered URL is now no longer visible to user
-    assert not get_url_by_title(browser, url_title)
+    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    for url_row in url_row_elements:
+        assert not url_row.is_displayed()
 
 
-def test_unfilter_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
+def test_filter_tag_with_some_urls_filtered(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
     """
-    Tests a user's ability to unfilter a specific tag in the URL deck by deselecting tag filter.
+    Tests a user's ability to filter a specific tag in the URL deck by selecting a tag filter.
 
-    GIVEN a user has access to UTubs with URLs with tags applied, and user removes all but one
-    WHEN the associated tag filter is selected in the TagDeck
-    THEN ensure the corresponding URL is hidden
+    GIVEN a user has access to UTubs with URLs with tags on some URLs
+    WHEN the user selects a tag from the tag deck
+    THEN ensure some URLs are hidden
     """
-
     app = provide_app
-
-    utub_title = UTS.TEST_UTUB_NAME_1
-
-    # From the db, delete a random tag from a random URL in the current UTub
-    utub_url_id, utub_tag_id = delete_tag_from_url_in_utub_random(app, utub_title)
-
-    # Load page
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, utub_title, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag"
+    )
+    tag_id = tag_in_utub.id
+
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_created.id
+        ).all()
+        urls_tag_applied_to = len(utub_urls) - 2
+        for idx in range(urls_tag_applied_to):
+            utub_url = utub_urls[idx]
+            new_url_tag = Utub_Url_Tags(
+                utub_id=utub_user_created.id,
+                utub_url_id=utub_url.id,
+                utub_tag_id=tag_id,
+            )
+            db.session.add(new_url_tag)
+        db.session.commit()
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+    displayed_urls = apply_tag_based_on_id_and_get_shown_urls(browser, tag_id)
+    assert len(displayed_urls) == urls_tag_applied_to
+
+
+def test_filter_tag_with_no_urls_filtered(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to filter a specific tag in the URL deck by selecting a tag filter.
+
+    GIVEN a user has access to UTubs with URLs with tags on some URLs
+    WHEN the user selects a tag from the tag deck
+    THEN ensure no URLs are hidden
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag"
+    )
+    tag_id = tag_in_utub.id
+
+    with app.app_context():
+        utub_urls: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_created.id
+        ).all()
+        urls_tag_applied_to = len(utub_urls)
+        for utub_url in utub_urls:
+            new_url_tag = Utub_Url_Tags(
+                utub_id=utub_user_created.id,
+                utub_url_id=utub_url.id,
+                utub_tag_id=tag_id,
+            )
+            db.session.add(new_url_tag)
+        db.session.commit()
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+    displayed_urls = apply_tag_based_on_id_and_get_shown_urls(browser, tag_id)
+    assert len(displayed_urls) == urls_tag_applied_to
+
+
+def test_filter_multiple_tags_with_some_urls_filtered(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to filter a specific tag in the URL deck by selecting a tag filter.
+
+    GIVEN a user has access to UTubs with URLs with tags on some URLs
+    WHEN the user selects a tag from the tag deck applied to some, and then another tag applied to some
+    THEN ensure some URLs are hidden
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    first_tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag1"
+    )
+    first_tag_id = first_tag_in_utub.id
+    second_tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag2"
+    )
+    second_tag_id = second_tag_in_utub.id
+
+    _, num_urls_for_first_tag, num_urls_for_second_tag = (
+        add_two_tags_across_urls_in_utub(
+            app, utub_user_created.id, first_tag_id, second_tag_id
+        )
     )
 
-    # Find URL row to be filtered
-    url_row = get_url_row_by_id(browser, utub_url_id)
-
-    # Save the URL title for assertion after filtering it out
-    url_title = url_row.find_element(By.CLASS_NAME, "urlTitle").get_attribute(
-        "innerText"
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Select tag filter associated with the id of the tag badge deleted above
-    corresponding_tag_filter = get_tag_filter_by_id(browser, utub_tag_id)
-    corresponding_tag_filter.click()
+    displayed_urls_for_first_tag = apply_tag_based_on_id_and_get_shown_urls(
+        browser, first_tag_id
+    )
+    assert len(displayed_urls_for_first_tag) == num_urls_for_first_tag
 
-    # Assert filtered URL is now no longer visible to user
-    assert not get_url_by_title(browser, url_title)
-
-    # Unselect tag filter
-    corresponding_tag_filter.click()
-
-    # Assert unfiltered URL is now visible to user
-    assert get_url_by_title(browser, url_title)
+    displayed_urls_for_second_tag = apply_tag_based_on_id_and_get_shown_urls(
+        browser, second_tag_id
+    )
+    assert len(displayed_urls_for_second_tag) == num_urls_for_second_tag
 
 
-def test_unselect_all_filters_selector(
+def test_unselect_button_toggle_when_filter_selected(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to toggle the unselect all tag filters button
+
+    GIVEN a user has access to UTubs with URLs with no tags on any URLs
+    WHEN the user selects a tag from the tag deck
+    THEN ensure the unselect all tag filters button is clickable
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag"
+    )
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    unselect_filters_btn = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_UNSELECT_ALL
+    )
+
+    with pytest.raises(
+        (ElementNotInteractableException, ElementClickInterceptedException)
+    ):
+        unselect_filters_btn.click()
+
+    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
+    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+
+    unselect_filters_btn = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_UNSELECT_ALL
+    )
+    unselect_filters_btn.click()
+
+
+def test_unselect_button_unselects_all_tags_when_clicked(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
-    Tests a user's ability to unfilter all tags in the URL deck by selecting the 'Unselect All' tag filter.
+    Tests a user's ability to unselect tags using the unselect all tag button
 
-    GIVEN a user has access to UTubs with URLs with tags applied, and user removes all but one
-    WHEN the 'Unselect All' tag filter is selected in the TagDeck
-    THEN ensure all tagged URLs are shown, and 'Unselect All' filters options are disabled.
+    GIVEN a user has access to UTubs with URLs with all tag filters selected
+    WHEN the user clicks the unselect tag button
+    THEN ensure all tags are then unselected
     """
-
     app = provide_app
-
-    utub_title = UTS.TEST_UTUB_NAME_1
-
-    # From the db, delete a different tag from each URL in the current UTub
-    delete_each_tag_from_one_url_in_utub(app, utub_title)
-
-    # Load page
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, utub_title, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    with app.app_context():
+        utub_tags: list[Utub_Tags] = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_created.id
+        ).all()
+        utub_tag_ids = [utub_tag.id for utub_tag in utub_tags]
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+    wait_until_visible_css_selector(
+        browser, f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}", timeout=3
     )
 
-    # Save the number of visible URLs
-    num_visible_url_rows = get_num_url_unfiltered_rows(browser)
-    unfiltered_url_rows: list[WebElement] = wait_then_get_elements(
-        browser, HPL.ROWS_URLS
+    assert len(
+        browser.find_elements(By.CSS_SELECTOR, f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}")
+    ) == len(utub_tag_ids)
+
+    for utub_tag_id in utub_tag_ids:
+        utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
+        wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+
+    assert (
+        len(
+            browser.find_elements(By.CSS_SELECTOR, f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}")
+        )
+        == 0
+    )
+    assert len(
+        browser.find_elements(By.CSS_SELECTOR, f"{HPL.TAG_FILTERS}{HPL.SELECTED}")
+    ) == len(utub_tag_ids)
+
+    unselect_filters_btn = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_UNSELECT_ALL
+    )
+    unselect_filters_btn.click()
+    assert (
+        len(browser.find_elements(By.CSS_SELECTOR, f"{HPL.TAG_FILTERS}{HPL.SELECTED}"))
+        == 0
+    )
+    assert len(
+        browser.find_elements(By.CSS_SELECTOR, f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}")
+    ) == len(utub_tag_ids)
+
+
+def test_unfilter_tag_with_all_urls_filtered(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to filter a specific tag in the URL deck by selecting a tag filter.
+
+    GIVEN a user has access to UTubs with URLs with no tags on any URLs
+    WHEN the user selects a tag from the tag deck
+    THEN ensure all URLs are hidden
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag"
     )
 
-    unselect_all_selector = wait_then_get_element(browser, HPL.SELECTOR_UNSELECT_ALL)
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
+    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
 
-    assert_unselect_all_tag_filters_disabled(browser)
+    # Click again to unselect the tag and show all filtered URLs
+    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
 
-    tag_filters = get_utub_tag_filters(browser)
-
-    # Apply each tag filter. Assert URLs without the associated tagBadge are hidden
-    for tag_filter in tag_filters:
-        tag_id = get_tag_filter_id(tag_filter)
-
-        # Find all URLs that don't have this tag. Save the titles for check
-        filtered_url_row_titles: list[str] = []
-        for i, url_row in enumerate(unfiltered_url_rows):
-            url_tag_ids = get_all_tag_ids_in_url_row(url_row)
-            if tag_id in url_tag_ids:
-                filtered_url_row = unfiltered_url_rows.pop(i)
-
-                # Save the URL title for assertion after filtering it out
-                url_title = filtered_url_row.find_element(
-                    By.CLASS_NAME, "urlTitle"
-                ).get_attribute("innerText")
-                filtered_url_row_titles.append(url_title)
-
-        # Apply the tag filter
-        corresponding_tag_filter = get_tag_filter_by_id(browser, tag_id)
-        corresponding_tag_filter.click()
-
-        # Assert all URLs that didn't have the tag are now hidden
-        for url_title in filtered_url_row_titles:
-            assert not get_url_by_title(browser, url_title)
-
-    # All URLs with tags are filtered
-
-    # Unselect all tag filters
-    unselect_all_selector.click()
-
-    # Assert all URLs are unfiltered and are now visible to user
-    assert num_visible_url_rows == get_num_url_unfiltered_rows(browser)
-
-    # Assert Unselect All filter options are disabled
-    assert_unselect_all_tag_filters_disabled(browser)
+    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    for url_row in url_row_elements:
+        assert url_row.is_displayed()
 
 
-def test_unselect_all_filters_btn(
+def test_unfilter_multiple_tags_with_some_urls_filtered(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to filter a specific tag in the URL deck by selecting a tag filter.
+
+    GIVEN a user has access to UTubs with URLs with tags on some URLs
+    WHEN the user selects a tag from the tag deck applied to some, and then another tag applied to some
+    THEN ensure some URLs are hidden
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    first_tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag1"
+    )
+    first_tag_id = first_tag_in_utub.id
+    second_tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag2"
+    )
+    second_tag_id = second_tag_in_utub.id
+
+    num_utub_urls, num_urls_for_first_tag, num_urls_for_second_tag = (
+        add_two_tags_across_urls_in_utub(
+            app, utub_user_created.id, first_tag_id, second_tag_id
+        )
+    )
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    apply_tag_based_on_id_and_get_shown_urls(browser, first_tag_id)
+    filtered_urls = apply_tag_based_on_id_and_get_shown_urls(browser, second_tag_id)
+
+    assert len(filtered_urls) == num_urls_for_second_tag
+
+    utub_tag_badge_selector = get_utub_tag_badge_selector(second_tag_id)
+    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+
+    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    assert (
+        len([url_row for url_row in url_row_elements if url_row.is_displayed()])
+        == num_urls_for_first_tag
+    )
+
+    utub_tag_badge_selector = get_utub_tag_badge_selector(first_tag_id)
+    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+
+    url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
+    assert (
+        len([url_row for url_row in url_row_elements if url_row.is_displayed()])
+        == num_utub_urls
+    )
+
+
+def test_filter_tag_attempt_with_tag_limit_reached(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
     """
-    Tests a user's ability to unfilter all tags in the URL deck by selecting the 'Clear Filters' button.
+    Tests a user's ability to attempt to add another tag filter when at the limit
 
-    GIVEN a user has access to UTubs with URLs with tags applied, and user removes all but one
-    WHEN the filter-x button is selected in the TagDeck
-    THEN ensure all tagged URLs are shown, and 'Unselect All' filters options are disabled.
+    GIVEN a user has access to UTubs with URLs with tags on all URLs
+    WHEN the user attempts to select a tag from the tag deck above the tag limit
+    THEN ensure user cannot select the tag
     """
-
     app = provide_app
-
-    utub_title = UTS.TEST_UTUB_NAME_1
-
-    # From the db, delete a different tag from each URL in the current UTub
-    delete_each_tag_from_one_url_in_utub(app, utub_title)
-
-    # Load page
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, utub_title, UTS.TEST_URL_TITLE_1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+    wait_until_visible_css_selector(
+        browser, f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}", timeout=3
     )
 
-    # Save the number of visible URLs
-    num_visible_url_rows = get_num_url_unfiltered_rows(browser)
-    unfiltered_url_rows: list[WebElement] = wait_then_get_elements(
-        browser, HPL.ROWS_URLS
+    with app.app_context():
+        utub_tags: list[Utub_Tags] = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_created.id
+        ).all()
+        utub_tag_ids = [utub_tag.id for utub_tag in utub_tags]
+
+    # Add the extra tag above the limit
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag"
     )
 
-    assert_unselect_all_tag_filters_disabled(browser)
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+    wait_until_visible_css_selector(
+        browser, f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}", timeout=3
+    )
 
-    tag_filters = get_utub_tag_filters(browser)
+    for utub_tag_id in utub_tag_ids:
+        utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
+        wait_then_click_element(browser, utub_tag_badge_selector, time=3)
 
-    # Apply each tag filter. Assert URLs without the associated tagBadge are hidden
-    for tag_filter in tag_filters:
-        tag_id = get_tag_filter_id(tag_filter)
+    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
 
-        # Find all URLs that don't have this tag. Save the titles for check
-        filtered_url_row_titles: list[str] = []
-        for i, url_row in enumerate(unfiltered_url_rows):
-            url_tag_ids = get_all_tag_ids_in_url_row(url_row)
-            if tag_id in url_tag_ids:
-                filtered_url_row = unfiltered_url_rows.pop(i)
+    utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_badge_selector)
+    with pytest.raises(
+        (ElementNotInteractableException, ElementClickInterceptedException)
+    ):
+        utub_tag_badge.click()
 
-                # Save the URL title for assertion after filtering it out
-                url_title = filtered_url_row.find_element(
-                    By.CLASS_NAME, "urlTitle"
-                ).get_attribute("innerText")
-                filtered_url_row_titles.append(url_title)
 
-        # Apply the tag filter
-        corresponding_tag_filter = get_tag_filter_by_id(browser, tag_id)
-        corresponding_tag_filter.click()
+def test_filter_tag_clickable_after_unclicking_from_tag_limit(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests a user's ability to attempt to add another tag filter when at the limit
 
-        # Assert all URLs that didn't have the tag are now hidden
-        for url_title in filtered_url_row_titles:
-            assert not get_url_by_title(browser, url_title)
+    GIVEN a user has access to UTubs with URLs with tags on all URLs
+    WHEN the user attempts to select a tag from the tag deck after going above, then below the tag selection limit
+    THEN ensure user can select the tag
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
 
-    # All URLs with tags are filtered
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+    wait_until_visible_css_selector(
+        browser, f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}", timeout=3
+    )
 
-    # Unselect all tag filters
-    unselect_all_button = wait_then_get_element(browser, HPL.BUTTON_UNSELECT_ALL)
-    unselect_all_button.click()
+    with app.app_context():
+        utub_tags: list[Utub_Tags] = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_created.id
+        ).all()
+        utub_tag_ids = [utub_tag.id for utub_tag in utub_tags]
 
-    # Assert all URLs are unfiltered and are now visible to user
-    assert num_visible_url_rows == get_num_url_unfiltered_rows(browser)
+    # Add the extra tag above the limit
+    tag_in_utub = add_tag_to_utub_user_created(
+        app, utub_user_created.id, user_id_for_test, "TestTag"
+    )
 
-    # Assert Unselect All filter options are disabled
-    assert_unselect_all_tag_filters_disabled(browser)
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+    wait_until_visible_css_selector(
+        browser, f"{HPL.TAG_FILTERS}{HPL.UNSELECTED}", timeout=3
+    )
+
+    utub_tag_id = -1
+    for utub_tag_id in utub_tag_ids:
+        utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
+        wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+
+    # Click the last UTub tag id again to unselect it
+    utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
+    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+
+    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
+
+    utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_badge_selector)
+    utub_tag_badge.click()

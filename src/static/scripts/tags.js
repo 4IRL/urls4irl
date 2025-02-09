@@ -34,7 +34,7 @@ function currentTagDeckIDs() {
   );
 }
 
-// Clear member selection
+// Clear tag input form
 function resetNewUTubTagForm() {
   $("#utubTagCreate").val(null);
 }
@@ -163,8 +163,9 @@ function buildTagDeck(dictTags) {
 
   // Select all checkbox if tags in UTub
   if (dictTags.length > 0) {
-    parent.append(createUnselectAllTagFilterInDeck());
-    showIfHidden($("#unselectAllTagFilters"));
+    const unselectAllBtn = $("#unselectAllTagFilters");
+    showIfHidden(unselectAllBtn);
+    unselectAllBtn.addClass("red-icon-disabled");
   }
 
   // Loop through all tags and provide checkbox input for filtering
@@ -173,37 +174,6 @@ function buildTagDeck(dictTags) {
   }
 
   showIfHidden($("#utubTagBtnCreate"));
-}
-
-// Creates Select All tag filter for addition to Tag deck
-function createUnselectAllTagFilterInDeck() {
-  const container = $(document.createElement("div"));
-  const span = $(document.createElement("span"));
-
-  container
-    .addClass("pointerable unselected disabled col-12")
-    .attr({
-      id: "unselectAll",
-      "data-utub-tag-id": "all",
-      tabindex: -1,
-    })
-    .on("focus.unselectAllSelected", function () {
-      $(document).on("keyup.unselectAllSelected", function (e) {
-        if (e.which === 13) {
-          unselectAllTags();
-          container.trigger("blur");
-        }
-      });
-    })
-    .on("blur.unselectAllSelected", function () {
-      $(document).off("keyup.unselectAllSelected");
-    });
-
-  span.text("Unselect All");
-
-  container.append(span);
-
-  return container;
 }
 
 // Creates tag filter for addition to Tag deck
@@ -241,6 +211,8 @@ function toggleTagFilterSelected(activeTagFilter) {
   const currentSelectedTagIDs = $.map($(".tagFilter.selected"), (tagFilter) =>
     parseInt($(tagFilter).attr("data-utub-tag-id")),
   );
+
+  // Prevent selecting more than tag limit
   if (
     currentSelectedTagIDs.length >= CONSTANTS.TAGS_MAX_ON_URLS &&
     activeTagFilter.hasClass("unselected")
@@ -321,16 +293,8 @@ function reapplyAlternatingURLCardBackgroundAfterFilter() {
 }
 
 function enableUnselectAllButtonAfterTagFilterApplied() {
-  $("#unselectAll")
-    .removeClass("disabled")
-    .on("click.unselectAllTags", function () {
-      unselectAllTags();
-    })
-    .attr({ tabindex: 0 });
-
-  // showIfHidden($("#unselectAllTagFilters"));
   $("#unselectAllTagFilters")
-    .removeClass("disabled")
+    .removeClass("red-icon-disabled")
     .on("click.unselectAllTags", function () {
       unselectAllTags();
     })
@@ -338,14 +302,8 @@ function enableUnselectAllButtonAfterTagFilterApplied() {
 }
 
 function disableUnselectAllButtonAfterTagFilterRemoved() {
-  $("#unselectAll")
-    .addClass("disabled")
-    .off(".unselectAllTags")
-    .attr({ tabindex: -1 });
-
-  // $("#unselectAllTagFilters").hide();
   $("#unselectAllTagFilters")
-    .addClass("disabled")
+    .addClass("red-icon-disabled")
     .off(".unselectAllTags")
     .attr({ tabindex: -1 });
 }
