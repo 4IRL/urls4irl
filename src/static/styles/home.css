@@ -63,7 +63,7 @@
 }
 
 .green-clickable-wide {
-    background: var(--splashGreen); 
+    background: var(--splashGreen);
 }
 
 .green-clickable:hover {
@@ -76,13 +76,15 @@
     background: var(--darkSplashGreen);
 }
 
-.trash-fill, .funnel-x {
+.trash-fill,
+.funnel-x {
     background: var(--removeIconColor);
     border-radius: 4px;
 }
 
 .cancelButton-wide:hover,
-.trash-fill:hover, .funnel-x:hover {
+.trash-fill:hover,
+.funnel-x:hover {
     cursor: pointer;
     background: var(--removeIconColorHover);
 }
@@ -95,8 +97,8 @@
     background: var(--removeIconColor);
 }
 
-.green-clickable-wide > svg,
-.cancelButton-wide > svg {
+.green-clickable-wide>svg,
+.cancelButton-wide>svg {
     fill: var(--panelBackgroundColor);
 }
 
@@ -259,8 +261,7 @@
 
 .member,
 .UTubSelector,
-.tagFilter,
-#unselectAll {
+.tagFilter {
     padding: 3px 10px;
 }
 
@@ -277,7 +278,7 @@
 }
 
 .UTubSelector:hover {
-    cursor:pointer;
+    cursor: pointer;
     border-color: var(--deckSelectionGreenHover);
     background-color: var(--selectedUTubColorBackground);
 }
@@ -331,11 +332,11 @@
     transition: padding 0.1s ease-in;
 }
 
-.tagBadgeHoverable:hover > .tagText {
+.tagBadgeHoverable:hover>.tagText {
     padding-right: 6px;
 }
 
-.urlTagBtnDelete:focus ~ .tagText {
+.urlTagBtnDelete:focus~.tagText {
     padding-right: 6px;
 }
 
@@ -351,7 +352,16 @@
     color: var(--tagBadgeDeleteBtnColorHover);
 }
 
-#unselectAll,
+.red-icon-disabled {
+    opacity: 0.15;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+#unselectAllTagFilters {
+    transition: opacity 0.2s ease-in-out;
+}
+
 .tagFilter {
     display: flex;
     margin-top: 5px;
@@ -359,32 +369,26 @@
     transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out;
 }
 
-#unselectAll,
 .tagFilter {
     border: 2px solid var(--tagBorderColor);
     background-color: var(--tagBackgroundColorSelected);
 }
 
-#unselectAll:hover,
 .tagFilter:hover {
     border-color: var(--grayBadgeSelection);
 }
 
-#unselectAll.unselected:hover,
 .tagFilter.unselected:hover {
     background-color: var(--tagBackgroundColorHover);
     border-color: var(--tagBorderColor);
 }
 
 .tagFilter.unselected:active,
-#unselectAll:active,
-#unselectAll.unselected:active,
 .tagFilter:active {
     background-color: var(--grayBadgeSelectionFocus);
     color: var(--tagBackgroundColor);
 }
 
-#unselectAll.unselected,
 .tagFilter.unselected {
     background-color: var(--tagBackgroundColor);
     border: 2px solid var(--tagBorderColor);
@@ -397,10 +401,11 @@
     gap: 2rem;
 }
 
-#unselectAll.disabled, #unselectAllTagFilters.disabled
+#unselectAllTagFilters.disabled,
 .unselected.disabled {
     cursor: not-allowed;
     color: gray;
+    pointer-events: none;
 }
 
 .unselected.disabled:hover {
@@ -410,8 +415,8 @@
 /* URLs */
 
 #listURLs .urlRow.even[filterable="true"],
-#listURLs .urlRow.even[filterable="true"] .text-input-inner-container > label, 
-#listURLs .urlRow.even[filterable="true"] .text-input-inner-container > input { 
+#listURLs .urlRow.even[filterable="true"] .text-input-inner-container>label,
+#listURLs .urlRow.even[filterable="true"] .text-input-inner-container>input {
     background-color: var(--cardBackgroundColor);
 }
 
@@ -420,7 +425,7 @@
 }
 
 #listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
-    background-color: rgba(61, 71, 71, 1.0); 
+    background-color: rgba(61, 71, 71, 1.0);
 }
 
 #listURLs .urlRow.odd[filterable="true"]:not([urlSelected="true"]):hover {
@@ -468,7 +473,7 @@
 
 .urlRow[filterable="true"][urlSelected="false"]:focus .goToUrlIcon,
 .urlRow[filterable="true"][urlSelected="false"]:hover .goToUrlIcon,
-.urlRow[filterable="true"][urlSelected="true"] .goToUrlIcon{
+.urlRow[filterable="true"][urlSelected="true"] .goToUrlIcon {
     visibility: visible;
 }
 
@@ -491,7 +496,7 @@
     opacity: 0;
 }
 
-.urlOptionsInner > button {
+.urlOptionsInner>button {
     opacity: 0;
     height: 0;
     font-size: 0;
@@ -522,7 +527,7 @@
 }
 
 .urlRow[filterable="true"][urlSelected="true"] .urlTags,
-.urlRow[filterable="true"][urlSelected="true"] .urlOptions, 
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions,
 .urlRow[filterable="true"][urlSelected="true"] .urlOptionsInner {
     height: auto;
     opacity: 1;
@@ -536,7 +541,7 @@
     padding: 15px 0 0 0;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .urlOptionsInner > button {
+.urlRow[filterable="true"][urlSelected="true"] .urlOptionsInner>button {
     height: auto;
     font-size: initial;
     opacity: 1;
@@ -558,7 +563,7 @@
     display: none;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover > .urlTitleBtnUpdate {
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover>.urlTitleBtnUpdate {
     display: flex;
 }
 
@@ -570,15 +575,15 @@
     width: max-content;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap > .text-input-container {
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap>.text-input-container {
     width: 65%;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .updateUrlStringWrap > .text-input-container {
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlStringWrap>.text-input-container {
     width: 100%;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap > .text-input-container {
+.urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap>.text-input-container {
     width: 45%;
 }
 
@@ -631,7 +636,7 @@
     text-overflow: unset;
 }
 
-.hiddenBtn#updateUTubDescriptionBtn, 
+.hiddenBtn#updateUTubDescriptionBtn,
 .hiddenBtn#utubNameBtnUpdate {
     display: none !important;
 }
@@ -647,7 +652,7 @@
 }
 
 .memberOtherBtnDelete:focus,
-.member:hover > .memberOtherBtnDelete {
+.member:hover>.memberOtherBtnDelete {
     opacity: 1;
 }
 
@@ -713,7 +718,7 @@
     background: var(--panelBackgroundColor);
 }
 
-.text-input:focus + .text-input-label {
+.text-input:focus+.text-input-label {
     top: 0px;
     left: 10px;
     color: var(--deckSelectionGreenHover);
@@ -729,36 +734,41 @@
 
 /** Loading ring **/
 .dual-loading-ring {
-  /* change color here */
-  color: #1c4c5b
+    /* change color here */
+    color: #1c4c5b
 }
+
 .dual-loading-ring,
 .dual-loading-ring:after {
-  box-sizing: border-box;
+    box-sizing: border-box;
 }
+
 .dual-loading-ring {
-  display: flex !important;
-  align-items: center;
-  height: 38px;
-  width: auto;
+    display: flex !important;
+    align-items: center;
+    height: 38px;
+    width: auto;
 }
+
 .dual-loading-ring:after {
-  content: " ";
-  display: inline-block !important;
-  height: 38px;
-  width: 38px;
-  border-radius: 50%;
-  border: 6.4px solid currentColor;
-  border-color: currentColor transparent currentColor transparent;
-  animation: dual-loading-ring 1.2s linear infinite;
+    content: " ";
+    display: inline-block !important;
+    height: 38px;
+    width: 38px;
+    border-radius: 50%;
+    border: 6.4px solid currentColor;
+    border-color: currentColor transparent currentColor transparent;
+    animation: dual-loading-ring 1.2s linear infinite;
 }
+
 @keyframes dual-loading-ring {
-  0% {
-    transform: rotate(0deg);
-  }
-  100% {
-    transform: rotate(360deg);
-  }
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
 }
 
 
@@ -768,7 +778,7 @@
     display: none;
 }
 
-#UTubDescriptionSubheaderWrap ~ .createDiv {
+#UTubDescriptionSubheaderWrap~.createDiv {
     padding-top: 1rem;
     padding-bottom: 1rem;
 }
@@ -805,14 +815,14 @@
     color: rgba(84, 84, 84, 1.0);
 }
 
-#UTubDescriptionSubheaderWrap > .visibleBtn,
-#UTubNameUpdateWrap > .visibleBtn {
+#UTubDescriptionSubheaderWrap>.visibleBtn,
+#UTubNameUpdateWrap>.visibleBtn {
     display: none !important;
 
 }
 
-#UTubDescriptionSubheaderWrap:hover > .visibleBtn,
-#UTubNameUpdateWrap:hover > .visibleBtn {
+#UTubDescriptionSubheaderWrap:hover>.visibleBtn,
+#UTubNameUpdateWrap:hover>.visibleBtn {
     display: flex !important;
 }
 
@@ -884,6 +894,7 @@
 }
 
 @media (max-width: 991.98px) {
+
     .panel#centerPanel,
     .deck#MemberDeck,
     .deck#TagDeck {
@@ -919,16 +930,17 @@
         opacity: 0 !important;
     }
 
-    .urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap  {
+    .urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap {
         width: 95%;
     }
 
-    .urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap > .text-input-container  {
+    .urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap>.text-input-container {
         width: 100%;
     }
 }
 
 @media (max-width: 767.98px) {
+
     #memberBtnCreate,
     #utubBtnCreate {
         margin-inline: 0px !important;
@@ -951,6 +963,7 @@
 }
 
 @media (min-width: 465px) {
+
     /*
     .urlOptions {
         gap: 15px;
@@ -989,4 +1002,3 @@
     */
 
 }
-

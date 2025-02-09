@@ -32,12 +32,13 @@ class HomePageLocators(GenericPageLocator):
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
     LIST_TAGS = "#listTags"
     TAG_FILTERS = ".tagFilter"
-    SELECTOR_UNSELECT_ALL = "#unselectAll"
     BUTTON_UNSELECT_ALL = "#unselectAllTagFilters"
     BUTTON_UTUB_TAG_CREATE = "#utubTagBtnCreate"
     INPUT_UTUB_TAG_CREATE = "#utubTagCreate"
     BUTTON_UTUB_TAG_SUBMIT_CREATE = "#utubTagSubmitBtnCreate"
     BUTTON_UTUB_TAG_CANCEL_CREATE = "#utubTagCancelBtnCreate"
+    UNSELECTED = ".unselected"
+    SELECTED = ".selected"
 
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"
@@ -77,6 +78,7 @@ class HomePageLocators(GenericPageLocator):
     URL_TAGS_READ = ".urlTags"
     TAG_BADGES = ".tagBadge"
     TAG_BADGE_NAME_READ = ".tagBadge > span"
+    TAG_BADGE_ID_ATTRIB = "data-utub-tag-id"
     URL_BUTTONS_OPTIONS_READ = ".urlOptions"
 
     BUTTON_URL_TITLE_UPDATE = ".urlTitleBtnUpdate"
@@ -90,6 +92,7 @@ class HomePageLocators(GenericPageLocator):
     INPUT_TAG_CREATE = ".urlTagCreate"
     BUTTON_TAG_SUBMIT_CREATE = ".urlTagSubmitBtnCreate"
     BUTTON_TAG_CANCEL_CREATE = ".urlTagCancelBtnCreate"
+    BUTTON_BIG_TAG_CANCEL_CREATE = ".urlTagCancelBigBtnCreate"
     ERROR_TAG_CREATE = ".urlTagCreate-error"
 
     BUTTON_TAG_DELETE = ".urlTagBtnDelete"

@@ -130,6 +130,9 @@ function createUTubTagSuccess(response) {
     ),
   );
 
+  // Show unselect all button if not already shown
+  showIfHidden($("#unselectAllTagFilters"));
+
   createUTubTagHideInput();
 }
 
@@ -217,7 +220,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   // Modify add tag button
   urlTagBtnCreate
     .removeClass("btn-info")
-    .addClass("btn-warning cancel")
+    .addClass("btn-warning cancel urlTagCancelBigBtnCreate")
     .text("Cancel")
     .offAndOn("click", function (e) {
       e.stopPropagation();
@@ -262,7 +265,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
   // Modify add tag button
   const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
   urlTagBtnCreate
-    .removeClass("btn-warning cancel")
+    .removeClass("btn-warning cancel urlTagCancelBigBtnCreate")
     .addClass("btn-info")
     .text("Add Tag")
     .offAndOn("click", function (e) {
@@ -353,9 +356,7 @@ function createURLTagSuccess(response, urlCard) {
     .append(createTagBadgeInURL(utubTagID, string, urlCard));
 
   // Add SelectAll button if not yet there
-  if (isEmpty($("#unselectAll"))) {
-    $("#listTags").append(createUnselectAllTagFilterInDeck());
-  }
+  showIfHidden($("#unselectAllTagFilters"));
 
   if (!isTagInDeck(utubTagID)) {
     const newTag = createTagFilterInDeck(utubTagID, string);

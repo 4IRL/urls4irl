@@ -124,6 +124,9 @@ def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
 
     actions.perform()
 
+    update_url_title_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}"
+    wait_until_visible_css_selector(browser, update_url_title_selector)
+
 
 def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title: str):
     """
@@ -320,3 +323,8 @@ def add_invalid_url_header_for_ui_test(browser: WebDriver):
         })();
     """
     )
+
+
+def get_url_in_utub(app: Flask, utub_id: int) -> Utub_Urls:
+    with app.app_context():
+        return Utub_Urls.query.filter(Utub_Urls.utub_id == utub_id).first()
