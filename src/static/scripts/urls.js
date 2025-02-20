@@ -86,6 +86,24 @@ function getNumOfVisibleURLs() {
   return $(".urlRow[filterable=true]").length;
 }
 
+function getOppositeColoredClassOfVisibleURLs() {
+  const urlCards = $(".urlRow[filterable=true]").toArray();
+  return $(urlCards[0]).hasClass("even") ? "odd" : "even";
+}
+
+function updateColorOfFollowingURLCards() {
+  const urlCards = $(".urlRow[filterable=true]").toArray();
+  let urlCard;
+  for (let i = 1; i < urlCards.length; i++) {
+    urlCard = $(urlCards[i]);
+    if (i % 2 === 0) {
+      urlCard.removeClass("odd").addClass("even");
+    } else {
+      urlCard.removeClass("even").addClass("odd");
+    }
+  }
+}
+
 // Simple function to streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
 function getSelectedURLCard() {
   const selectedUrlCard = $(".urlRow[urlSelected=true]");
