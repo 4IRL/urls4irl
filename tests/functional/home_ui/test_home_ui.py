@@ -208,6 +208,86 @@ def test_back_and_forward_history_with_one_utub_deleted(
         verify_utub_selected(browser, app, utub_id)
 
 
+def test_back_and_forward_history_with_leaving_one_utub(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a set of UTubs with URLs, member, and tags within that UTub
+    WHEN the user selects each UTub 1 by 1, then removes themself from UTub, then uses the browser back and forward history
+    THEN verify that each UTub is shown in the order it was clicked, and the UTub they left shows no UTub selected
+    """
+    app = provide_app
+    user_id = 1
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+
+    with app.app_context():
+        utub_members_with_user: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id
+        ).all()
+        utub_ids: list[int] = [
+            utub_member.utub_id for utub_member in utub_members_with_user
+        ]
+    utub_id_to_delete = 3
+    assert utub_id_to_delete in utub_ids
+
+    # Sort the UTubIDs so the 3rd UTub (the one this user is a member of) is right in the middle
+    utub_ids.sort()
+    for utub_id in utub_ids:
+        select_utub_by_id(browser, utub_id)
+
+    select_utub_by_id(browser, utub_id_to_delete)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
+    assert warning_modal_body is not None
+
+    # Wait for DELETE request
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    utub_css_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id_to_delete}']"
+    utub_selector = browser.find_element(By.CSS_SELECTOR, utub_css_selector)
+    wait_for_element_to_be_removed(browser, utub_selector)
+
+    # Assert UTub selector no longer exists
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, utub_css_selector)
+
+    verify_no_utub_selected(browser)
+
+    # Start at the end of the selected UTubs again
+    utub_ids.append(utub_id_to_delete)
+
+    # Go backwards
+    for idx in range(len(utub_ids)):
+        browser.back()
+        utub_idx = -1 - idx
+        utub_id = utub_ids[utub_idx]
+
+        if utub_id == utub_id_to_delete:
+            verify_no_utub_selected(browser)
+            continue
+
+        with app.app_context():
+            utub: Utubs = Utubs.query.get(utub_id)
+            wait_until_utub_name_appears(browser, utub.name)
+
+        verify_utub_selected(browser, app, utub_id)
+
+    # Go back to the home page when no UTubs were selected
+    browser.back()
+    verify_no_utub_selected(browser)
+
+    # Go forwards
+    for utub_id in utub_ids:
+        browser.forward()
+
+        if utub_id == utub_id_to_delete:
+            verify_no_utub_selected(browser)
+            continue
+
+        verify_utub_selected(browser, app, utub_id)
+
+
 def test_access_utub_id_via_url_logged_in(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):

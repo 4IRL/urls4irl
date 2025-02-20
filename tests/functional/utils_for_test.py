@@ -486,6 +486,7 @@ def verify_no_utub_selected(browser: WebDriver):
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, HPL.BADGES_MEMBERS)
 
+    browser.get_screenshot_as_file("p1.png")
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, HPL.TAG_FILTERS)
 

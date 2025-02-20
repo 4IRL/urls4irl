@@ -297,7 +297,10 @@ function leaveUTubSuccess() {
     hideInputsAndSetUTubDeckSubheader();
   });
 
-  window.history.replaceState(null, null, "/home");
+  setTimeout(function () {
+    window.history.pushState(null, null, "/home");
+    window.history.replaceState(null, null, "/home");
+  }, 0);
 }
 
 function removeMemberFail(xhr) {
