@@ -654,10 +654,10 @@ def verify_members_exist_in_member_deck(browser: WebDriver, member_ids: list[int
             WebDriverWait(browser, 5).until(
                 lambda driver: get_element(driver, member_selector).is_displayed()
             )
-
-        member_elem = wait_then_get_element(browser, member_selector, time=3)
-        assert member_elem is not None
-        assert member_elem.is_displayed()
+        finally:
+            member_elem = wait_then_get_element(browser, member_selector, time=3)
+            assert member_elem is not None
+            assert member_elem.is_displayed()
 
 
 # URL Deck
