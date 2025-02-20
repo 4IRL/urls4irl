@@ -8,6 +8,8 @@ from src import db
 from src.models.utubs import Utubs
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
+    assert_not_visible_css_selector,
+    assert_visible_css_selector,
     clear_then_send_keys,
     wait_then_click_element,
     wait_then_get_element,
@@ -224,3 +226,23 @@ def hover_over_utub_title_to_show_add_utub_description(browser: WebDriver):
     assert wait_until_hidden(browser, HPL.SUBHEADER_URL_DECK, timeout=3) is not None
     utub_desc_elem = browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK)
     assert not utub_desc_elem.is_displayed()
+
+
+def assert_in_created_utub(browser: WebDriver):
+    assert_visible_css_selector(browser, HPL.BUTTON_MEMBER_CREATE)
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_DELETE)
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_CREATE)
+    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_LEAVE)
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_TAG_CREATE)
+    assert_visible_css_selector(browser, HPL.BUTTON_UNSELECT_ALL)
+    assert_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)
+
+
+def assert_in_member_utub(browser: WebDriver):
+    assert_not_visible_css_selector(browser, HPL.BUTTON_MEMBER_CREATE)
+    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_DELETE)
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_CREATE)
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_LEAVE)
+    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_TAG_CREATE)
+    assert_visible_css_selector(browser, HPL.BUTTON_UNSELECT_ALL)
+    assert_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)

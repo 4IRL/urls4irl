@@ -24,6 +24,7 @@ from tests.functional.utils_for_test import (
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
+    verify_url_coloring_is_correct,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -255,6 +256,8 @@ def test_create_url_submit_btn(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
     ).is_displayed()
 
+    verify_url_coloring_is_correct(browser)
+
 
 def test_create_url_using_enter_key(
     browser: WebDriver, create_test_utubs, provide_app: Flask
@@ -301,6 +304,8 @@ def test_create_url_using_enter_key(
     assert browser.find_element(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
     ).is_displayed()
+
+    verify_url_coloring_is_correct(browser)
 
 
 def test_create_url_title_length_exceeded(

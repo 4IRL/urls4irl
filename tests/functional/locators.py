@@ -61,6 +61,7 @@ class HomePageLocators(GenericPageLocator):
     LIST_URL = "#listURLs"
     ROWS_URLS = ".urlRow"
     ROW_SELECTED_URL = ".urlRow[urlselected='true']"
+    ROW_VISIBLE_URL = ".urlRow[filterable='true']"
 
     BUTTON_CORNER_URL_CREATE = "#urlBtnCreate"
     BUTTON_DECK_URL_CREATE = "#urlBtnDeckCreate"
