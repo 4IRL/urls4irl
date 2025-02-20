@@ -52,6 +52,7 @@ class USER_ROUTES:
 class UTUB_ROUTES:
     _UTUBS = "utubs."
     HOME = _UTUBS + "home"
+    GET_SINGLE_UTUB = _UTUBS + "get_single_utub"
     GET_UTUBS = _UTUBS + "get_utubs"
     CREATE_UTUB = _UTUBS + "create_utub"
     DELETE_UTUB = _UTUBS + "delete_utub"

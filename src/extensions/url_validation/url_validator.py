@@ -552,23 +552,30 @@ class UrlValidator:
     def _validate_short_url(
         self, url: str, headers: dict[str, str]
     ) -> Tuple[str, bool]:
+        MAX_RETRY_ATTEMPTS = 5
         try:
-            response = requests.get(
-                url, headers=headers, allow_redirects=False, timeout=10
-            )
+            for _ in range(MAX_RETRY_ATTEMPTS):
+                response = requests.get(
+                    url, headers=headers, allow_redirects=False, timeout=10
+                )
 
-            if response.status_code == 404:
-                raise InvalidURLError("Invalid shortened URL.")
+                if response.status_code == 404:
+                    raise InvalidURLError("Invalid shortened URL.")
 
-            if response.status_code == 200:
-                return response.url, True
+                if response.status_code == 200:
+                    # Sometimes initial attempts at lengthening a URL produces the same URL
+                    # Retry again to see if next attempt will put out long URL
+                    deconstructed_url = deconstruct_url(response.url)
+                    if self._check_if_is_short_url(deconstructed_url.host):
+                        continue
+                    return response.url, True
 
-            if response.status_code in range(300, 400):
-                if response.next is not None and response.next.url:
-                    return response.next.url, True
+                if response.status_code in range(300, 400):
+                    if response.next is not None and response.next.url:
+                        return response.next.url, True
 
-                if VALIDATION_STRS.LOCATION in response.headers:
-                    return response.headers[VALIDATION_STRS.LOCATION], True
+                    if VALIDATION_STRS.LOCATION in response.headers:
+                        return response.headers[VALIDATION_STRS.LOCATION], True
 
         except requests.exceptions.ReadTimeout as e:
             raise InvalidURLError("Timed out trying to read this short URL. " + str(e))

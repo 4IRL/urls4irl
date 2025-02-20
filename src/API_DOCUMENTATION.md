@@ -592,6 +592,10 @@ Required form data:
 <details>
  <summary><code>GET</code> <code><b>/home</b></code> <code>(renders user's home page)</code></summary>
 
+An optional query parameter "UTubID" may be included, indicating the ID of the UTub they are wishing to load.
+This query parameter being included does not change the response of this endpoint.
+UTub selection via the query parameter is handled on the client side.
+
 ##### Responses
 
 > | http code     | content-type                      | response  | details |
@@ -628,7 +632,7 @@ The HTML body on a 200 response contains the following JSON.
 
 </details>
 <details>
- <summary><code>GET</code> <code><b>/home?UTubID=[int:UTubID]</b></code> <code>(get specific UTub information)</code></summary>
+ <summary><code>GET</code> <code><b>/utub/[int:UTubID]</b></code> <code>(get specific UTub information)</code></summary>
 
 ##### Parameters
 
@@ -702,7 +706,7 @@ The HTML body on a 200 response contains the following JSON.
 
 > ```bash
 > curl -X GET \
->  https://urls4irl.app/home?UTubID=1 \
+>  https://urls4irl.app/utub/1 \
 >  -H 'Cookie: YOUR_COOKIE' \
 > ```
 

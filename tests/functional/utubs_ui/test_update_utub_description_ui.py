@@ -15,6 +15,8 @@ from tests.functional.utils_for_test import (
     assert_not_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
     clear_then_send_keys,
+    get_utub_this_user_created,
+    get_utub_this_user_did_not_create,
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     login_user_to_home_page,
@@ -29,8 +31,6 @@ from tests.functional.utils_for_test import (
 )
 from tests.functional.utubs_ui.utils_for_test_utub_ui import (
     create_utub,
-    get_utub_this_user_created,
-    get_utub_this_user_did_not_create,
     hover_over_utub_title_to_show_add_utub_description,
     open_update_utub_desc_input,
     update_utub_description,

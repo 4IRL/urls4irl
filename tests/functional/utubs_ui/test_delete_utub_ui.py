@@ -17,16 +17,18 @@ from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
+    get_utub_this_user_created,
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
+    wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
 from tests.functional.utubs_ui.utils_for_test_utub_ui import (
+    assert_active_utub,
     assert_elems_hidden_after_utub_deleted,
-    get_utub_this_user_created,
 )
 
 pytestmark = pytest.mark.utubs_ui
@@ -202,6 +204,10 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Fla
 
     # Wait for DELETE request
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
+    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
+
+    wait_for_element_to_be_removed(browser, utub_selector, timeout=10)
 
     # Assert UTub selector no longer exists
     with pytest.raises(NoSuchElementException):
@@ -233,6 +239,10 @@ def test_delete_last_utub_no_urls_no_tags_no_members(
 
     # Wait for DELETE request
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_user_created.id}"]'
+    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
+
+    wait_for_element_to_be_removed(browser, utub_selector, timeout=10)
 
     # Make sure all relevant buttons and subheaders are hidden when no UTub selected
     assert_elems_hidden_after_utub_deleted(browser)
@@ -277,6 +287,10 @@ def test_delete_last_utub_with_urls_tags_members(
 
     # Wait for DELETE request
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_user_created.id}"]'
+    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
+
+    wait_for_element_to_be_removed(browser, utub_selector, timeout=10)
 
     # Make sure all relevant buttons and subheaders are hidden when no UTub selected
     assert_elems_hidden_after_utub_deleted(browser)
@@ -327,12 +341,12 @@ def test_delete_utub_invalid_csrf_token(
     assert_visited_403_on_invalid_csrf_and_reload(browser)
 
     # Page reloads after user clicks button in CSRF 403 error page
-    delete_utub_btn = wait_until_hidden(browser, HPL.BUTTON_UTUB_DELETE, timeout=3)
-    assert not delete_utub_btn.is_displayed()
+    assert_login_with_username(browser, username)
+
+    # Reload will bring user back to the UTub they were in before
+    assert_active_utub(browser, utub_user_created.name)
 
     delete_utub_submit_btn_modal = wait_until_hidden(
         browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
     )
     assert not delete_utub_submit_btn_modal.is_displayed()
-
-    assert_login_with_username(browser, username)

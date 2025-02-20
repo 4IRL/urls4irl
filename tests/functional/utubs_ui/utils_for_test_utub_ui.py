@@ -16,16 +16,6 @@ from tests.functional.utils_for_test import (
 )
 
 
-def get_utub_this_user_created(app: Flask, user_id: int) -> Utubs:
-    with app.app_context():
-        return Utubs.query.filter(Utubs.utub_creator == user_id).first()
-
-
-def get_utub_this_user_did_not_create(app: Flask, user_id: int) -> Utubs:
-    with app.app_context():
-        return Utubs.query.filter(Utubs.utub_creator != user_id).first()
-
-
 def update_utub_to_empty_desc(app: Flask, utub_id: int):
     with app.app_context():
         utub: Utubs = Utubs.query.get(utub_id)

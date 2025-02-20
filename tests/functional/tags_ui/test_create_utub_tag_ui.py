@@ -17,6 +17,7 @@ from tests.functional.tags_ui.utils_for_test_tag_ui import (
 from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
+    get_utub_this_user_created,
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_utubid,
     wait_then_click_element,
@@ -25,7 +26,6 @@ from tests.functional.utils_for_test import (
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 
 def test_open_input_create_utub_tag(

@@ -21,6 +21,8 @@ from tests.functional.tags_ui.utils_for_test_tag_ui import (
 from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
+    get_utub_this_user_created,
+    get_utub_this_user_did_not_create,
     invalidate_csrf_token_on_page,
     login_user_select_utub_by_id_and_url_by_id,
     wait_then_click_element,
@@ -29,10 +31,6 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import get_url_in_utub
-from tests.functional.utubs_ui.utils_for_test_utub_ui import (
-    get_utub_this_user_created,
-    get_utub_this_user_did_not_create,
-)
 
 pytestmark = pytest.mark.tags_ui
 

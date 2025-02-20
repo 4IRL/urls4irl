@@ -15,7 +15,6 @@ from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 from src.utils.strings.url_validation_strs import URL_VALIDATION
-from tests.utils_for_test import build_get_utub_route
 
 pytestmark = pytest.mark.tags
 
@@ -490,7 +489,7 @@ def test_delete_last_url_tag_in_utub(
 
     # Ensure getting the UTub indicates the UTubTag still exists even if no UTubUrlTags exist
     response = client.get(
-        build_get_utub_route(utub_id_this_user_member_of),
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=utub_id_this_user_member_of),
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
     assert response.status_code == 200

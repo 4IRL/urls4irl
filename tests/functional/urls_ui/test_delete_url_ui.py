@@ -21,6 +21,7 @@ from tests.functional.utils_for_test import (
     assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
     get_num_url_rows,
+    get_utub_this_user_created,
     invalidate_csrf_token_on_page,
     verify_elem_with_url_string_exists,
     wait_for_element_to_be_removed,
@@ -29,7 +30,7 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 from locators import HomePageLocators as HPL
-from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
+from tests.functional.utubs_ui.utils_for_test_utub_ui import assert_active_utub
 
 pytestmark = pytest.mark.urls_ui
 
@@ -318,3 +319,6 @@ def test_delete_url_invalid_csrf_token(
     delete_url_modal = wait_until_hidden(browser, HPL.HOME_MODAL, timeout=3)
     assert not delete_url_modal.is_displayed()
     assert_login_with_username(browser, user.username)
+
+    # Reload will bring user back to the UTub they were in before
+    assert_active_utub(browser, utub_user_created.name)

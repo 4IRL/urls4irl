@@ -19,11 +19,11 @@ from tests.functional.tags_ui.utils_for_test_tag_ui import (
     get_utub_tag_badge_selector,
 )
 from tests.functional.utils_for_test import (
+    get_utub_this_user_created,
     login_user_and_select_utub_by_utubid,
     wait_then_click_element,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 pytestmark = pytest.mark.tags_ui
 
