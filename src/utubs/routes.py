@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, redirect, request, render_template, abort, url_for
+from flask import Blueprint, jsonify, redirect, request, render_template, url_for
 from flask_login import current_user
 
 from src import db
@@ -10,7 +10,7 @@ from src.utils.all_routes import ROUTES
 from src.utils.constants import CONSTANTS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.url_validation_strs import URL_VALIDATION
-from src.utils.strings.utub_strs import UTUB_SUCCESS, UTUB_FAILURE
+from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM, UTUB_SUCCESS, UTUB_FAILURE
 from src.utils.email_validation import email_validation_required
 
 utubs = Blueprint("utubs", __name__)
@@ -29,33 +29,33 @@ def provide_constants():
 def home():
     """
     Home page for logged in user. Loads and displays all UTubs, and contained URLs.
+    If the query param UTubID is included, the user may be trying to directly access
+    a single UTub.
+
+    If the user is not a member of this UTub, or this UTub does not exist, we reroute
+    them to their home page, instead of denying them access.
+
+    Selection and loading of the selected UTub via query param is handled on the client.
 
     Args:
         /home : With no args, this returns all UTubIDs for the given user
-        /home?UTubID=[int] = Where the integer value is the associated UTubID
-                                that the user clicked on
+        /home?UTubID=1 : Returns same as `/home` - UTub selection is handled on the client
 
     Returns:
-        - All UTubIDs if no args
-        - Requested UTubID if a valid arg
-
+        - All UTubIDs and names
     """
-    if not request.args:
-        # User got here without any arguments in the URL
-        # Therefore, only provide UTub name and UTub ID
-        utub_details = jsonify(current_user.serialized_on_initial_load)
-        return render_template("home.html", utubs_for_this_user=utub_details.json)
+    if request.args and UTUB_ID_QUERY_PARAM in request.args and len(request.args) == 1:
+        utub_id = request.args.get(UTUB_ID_QUERY_PARAM, 0)
+        if Utub_Members.query.get((utub_id, current_user.id)) is None:
+            return redirect(url_for(ROUTES.UTUBS.HOME))
 
-    elif "UTubID" in request.args and len(request.args) == 1:
-        utub_id = request.args.get("UTubID")
-        if not utub_id:
-            abort(404)
-        return get_single_utub(utub_id)
-
-    abort(404)
+    utub_details = jsonify(current_user.serialized_on_initial_load)
+    return render_template("home.html", utubs_for_this_user=utub_details.json)
 
 
-def get_single_utub(utub_id: str):
+@utubs.route("/utub/<int:utub_id>", methods=["GET"])
+@email_validation_required
+def get_single_utub(utub_id: int):
     """
     Retrieves data for a single UTub, and returns it in a serialized format
     """
@@ -65,13 +65,8 @@ def get_single_utub(utub_id: str):
     ):
         # Ensures JSON not viewed in browser, happens if user does a refresh with URL /home?UTubID=X, which would otherwise return JSON normally
         return redirect(url_for(ROUTES.UTUBS.HOME))
-    user_in_utub: Utub_Members | None = Utub_Members.query.get(
-        (utub_id, current_user.id)
-    )
 
-    if user_in_utub is None:
-        # User is not member of the UTub they are requesting
-        abort(404)
+    assert Utub_Members.query.get_or_404((utub_id, current_user.id))
 
     utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_data_serialized = utub.serialized(current_user.id)

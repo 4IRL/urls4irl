@@ -1,3 +1,4 @@
+from os import environ
 import secrets
 import time
 
@@ -10,6 +11,8 @@ from selenium.common.exceptions import (
     TimeoutException,
     StaleElementReferenceException,
 )
+from selenium import webdriver
+from selenium.webdriver.chrome.options import Options
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -18,7 +21,12 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
+from src.config import ConfigTest
 from src.models.users import Users
+from src.models.utub_members import Utub_Members
+from src.models.utub_tags import Utub_Tags
+from src.models.utub_urls import Utub_Urls
+from src.models.utubs import Utubs
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import SplashPageLocators as SPL
@@ -471,6 +479,40 @@ def assert_login_with_username(browser: WebDriver, username: str):
     assert user_logged_in.text == userLoggedInText
 
 
+def verify_no_utub_selected(browser: WebDriver):
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, f"#UTubOwner {HPL.BADGES_MEMBERS}")
+
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, HPL.BADGES_MEMBERS)
+
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, HPL.TAG_FILTERS)
+
+    assert not wait_then_get_elements(browser, HPL.ROWS_URLS)
+
+
+def verify_utub_selected(browser: WebDriver, app: Flask, utub_id: int):
+    with app.app_context():
+        members_in_utub: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id
+        ).all()
+        member_ids: list[int] = [utub_member.user_id for utub_member in members_in_utub]
+        verify_members_exist_in_member_deck(browser, member_ids)
+
+        urls_in_utub: list[Utub_Urls] = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id
+        ).all()
+        utub_url_ids: list[int] = [utub_url.id for utub_url in urls_in_utub]
+        verify_utub_url_exists_in_url_deck(browser, utub_url_ids)
+
+        tags_in_utub: list[Utub_Tags] = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id
+        ).all()
+        utub_tag_ids: list[int] = [utub_tag.id for utub_tag in tags_in_utub]
+        verify_tags_exist_in_tag_deck(browser, utub_tag_ids)
+
+
 # UTub Deck
 def select_utub_by_name(browser: WebDriver, utub_name: str):
     """
@@ -491,6 +533,15 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
             selector.click()
             wait_until_utub_name_appears(browser, utub_name)
             return
+
+
+def select_utub_by_id(browser: WebDriver, utub_id: int):
+    utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
+    utub_selector_elem = wait_then_get_element(browser, utub_selector, time=10)
+    assert utub_selector_elem is not None
+    utub_name = utub_selector_elem.text
+    wait_then_click_element(browser, utub_selector, time=3)
+    wait_until_utub_name_appears(browser, utub_name)
 
 
 def wait_until_utub_name_appears(browser: WebDriver, utub_name: str):
@@ -586,7 +637,37 @@ def get_current_user_id(browser: WebDriver) -> int:
     return int(user_id)
 
 
+def get_element(browser: WebDriver, selector: str) -> WebElement:
+    return browser.find_element(By.CSS_SELECTOR, selector)
+
+
+def verify_members_exist_in_member_deck(browser: WebDriver, member_ids: list[int]):
+    for member_id in member_ids:
+        member_selector = f"{HPL.BADGES_MEMBERS}[memberid='{member_id}']"
+
+        try:
+            WebDriverWait(browser, 5).until(
+                lambda driver: get_element(driver, member_selector).is_displayed()
+            )
+        except StaleElementReferenceException:
+            WebDriverWait(browser, 5).until(
+                lambda driver: get_element(driver, member_selector).is_displayed()
+            )
+
+        member_elem = wait_then_get_element(browser, member_selector, time=3)
+        assert member_elem is not None
+        assert member_elem.is_displayed()
+
+
 # URL Deck
+def verify_utub_url_exists_in_url_deck(browser: WebDriver, utub_url_ids: list[int]):
+    for utub_url_id in utub_url_ids:
+        utub_url_selector = f"{HPL.ROWS_URLS}[urlid='{utub_url_id}']"
+        utub_url_elem = wait_then_get_element(browser, utub_url_selector, time=3)
+        assert utub_url_elem is not None
+        assert utub_url_elem.is_displayed()
+
+
 def select_url_by_title(browser: WebDriver, url_title: str):
     """
     If a UTub is selected and the UTub contains URLs, this function shall select the URL row associated with the supplied URL title.
@@ -836,3 +917,42 @@ def assert_visited_403_on_invalid_csrf_and_reload(browser: WebDriver):
 
     # Click button to refresh page
     wait_then_click_element(browser, SPL.ERROR_PAGE_REFRESH_BTN, time=3)
+
+
+def get_utub_this_user_created(app: Flask, user_id: int) -> Utubs:
+    with app.app_context():
+        return Utubs.query.filter(Utubs.utub_creator == user_id).first()
+
+
+def get_utub_this_user_did_not_create(app: Flask, user_id: int) -> Utubs:
+    with app.app_context():
+        return Utubs.query.filter(Utubs.utub_creator != user_id).first()
+
+
+def build_secondary_driver():
+    config = ConfigTest()
+    options = Options()
+    options.add_argument("--disable-notifications")
+    options.add_argument("--headless")
+
+    if config.DOCKER:
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        driver_path = environ.get("CHROMEDRIVER_PATH", "")
+        service = webdriver.ChromeService(executable_path=driver_path)
+        driver = webdriver.Chrome(service=service, options=options)
+    else:
+        driver = webdriver.Chrome(options=options)
+    driver.set_window_size(width=1920, height=1080)
+    return driver
+
+
+# Tags Deck
+def verify_tags_exist_in_tag_deck(browser: WebDriver, utub_tag_ids: list[int]):
+    for utub_tag_id in utub_tag_ids:
+        utub_tag_selector = (
+            f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{utub_tag_id}']"
+        )
+        utub_tag_elem = wait_then_get_element(browser, utub_tag_selector, time=3)
+        assert utub_tag_elem is not None
+        assert utub_tag_elem.is_displayed()

@@ -635,19 +635,26 @@ function deleteUTubSuccess() {
   // Update UTub Deck
   const currentUTubID = getActiveUTubID();
   const utubSelector = $(".UTubSelector[utubid=" + currentUTubID + "]");
-  utubSelector.fadeOut();
-  utubSelector.remove();
 
-  // Reset all panels
-  setUIWhenNoUTubSelected();
+  setTimeout(function () {
+    window.history.pushState(null, null, "/home");
+    window.history.replaceState(null, null, "/home");
+  }, 0);
 
-  hideInputsAndSetUTubDeckSubheader();
-  resetURLDeckOnDeleteUTub();
+  utubSelector.fadeOut("slow", () => {
+    utubSelector.remove();
 
-  if (getNumOfUTubs() === 0) {
-    resetUTubDeckIfNoUTubs();
-    hideIfShown($("#utubTagBtnCreate"));
-  }
+    // Reset all panels
+    setUIWhenNoUTubSelected();
+
+    hideInputsAndSetUTubDeckSubheader();
+    resetURLDeckOnDeleteUTub();
+
+    if (getNumOfUTubs() === 0) {
+      resetUTubDeckIfNoUTubs();
+      hideIfShown($("#utubTagBtnCreate"));
+    }
+  });
 }
 
 function deleteUTubFail(xhr) {

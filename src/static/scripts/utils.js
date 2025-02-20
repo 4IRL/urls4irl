@@ -491,6 +491,15 @@ function setUIWhenNoUTubSelected() {
   resetMemberDeck();
 }
 
+function resetHomePageToInitialState() {
+  setUIWhenNoUTubSelected();
+  getAllUTubs().then((utubData) => {
+    buildUTubDeck(utubData);
+    setMemberDeckWhenNoUTubSelected();
+    setTagDeckSubheaderWhenNoUTubSelected();
+  });
+}
+
 // jQuery plugins
 (function ($) {
   $.fn.enableTab = function () {

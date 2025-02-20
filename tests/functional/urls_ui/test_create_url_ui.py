@@ -20,6 +20,7 @@ from tests.functional.utils_for_test import (
     assert_visited_403_on_invalid_csrf_and_reload,
     clear_then_send_keys,
     get_url_row_by_id,
+    get_utub_this_user_created,
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
@@ -34,7 +35,6 @@ from tests.functional.urls_ui.utils_for_test_url_ui import (
     fill_create_url_form,
     get_newly_added_utub_url_id_by_url_string,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 pytestmark = pytest.mark.urls_ui
 

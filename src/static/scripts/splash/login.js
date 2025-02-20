@@ -36,8 +36,17 @@ function openForgotPasswordModal() {
 function handleLogin(event) {
   event.preventDefault();
 
+  // Allow user to attach a query param `next` if browser URL currently includes it
+  // This allows for User to be given a link to a UTubID but they haven't logged in recently
+  let url = routes.login;
+  const searchParams = new URLSearchParams(window.location.search);
+  const nextQueryParam = searchParams.get("next");
+  if (searchParams.size === 1 && nextQueryParam !== null) {
+    url = `${url}?${searchParams.toString()}`;
+  }
+
   const loginRequest = $.ajax({
-    url: routes.login,
+    url: url,
     type: "POST",
     data: $("#ModalForm").serialize(),
   });

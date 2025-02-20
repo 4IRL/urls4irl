@@ -296,6 +296,8 @@ function leaveUTubSuccess() {
     utubSelector.remove();
     hideInputsAndSetUTubDeckSubheader();
   });
+
+  window.history.replaceState(null, null, "/home");
 }
 
 function removeMemberFail(xhr) {

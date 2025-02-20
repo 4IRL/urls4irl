@@ -32,7 +32,7 @@ email_sender = EmailSender()
 url_validator = UrlValidator()
 
 
-def create_app(config_class: Config = Config) -> Flask | None:
+def create_app(config_class: type[Config] = Config) -> Flask | None:
     testing = config_class.TESTING
     production = config_class.PRODUCTION
     if testing and production:
@@ -88,6 +88,8 @@ def create_app(config_class: Config = Config) -> Flask | None:
     if not testing:
         # Import models to initialize migration scripts
         from src import models  # noqa: F401
+
+        assert models
 
         migrate.init_app(app)
 

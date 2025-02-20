@@ -19,6 +19,7 @@ from tests.functional.utils_for_test import (
     get_all_url_ids_in_selected_utub,
     get_all_utub_selector_names,
     get_selected_utub_name,
+    get_utub_this_user_created,
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
@@ -32,7 +33,6 @@ from tests.functional.utils_for_test import (
 )
 from tests.functional.utubs_ui.utils_for_test_utub_ui import (
     assert_active_utub,
-    get_utub_this_user_created,
     open_update_utub_name_input,
     update_utub_name,
 )

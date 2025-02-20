@@ -1,3 +1,4 @@
+from urllib.parse import parse_qs, urlencode, urlparse
 from flask import (
     Blueprint,
     jsonify,
@@ -15,6 +16,7 @@ from src.models.email_validations import Email_Validations
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.models.utils import verify_token
+from src.models.utub_members import Utub_Members
 from src.splash.forms import (
     LoginForm,
     UserRegistrationForm,
@@ -34,6 +36,7 @@ from src.splash.utils import (
     _validate_resetting_password,
     build_form_errors,
 )
+from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
@@ -189,8 +192,8 @@ def login():
         next_page = request.args.get(
             "next"
         )  # Takes user to the page they wanted to originally before being logged in
-
-        return redirect(next_page) if next_page else url_for(ROUTES.UTUBS.HOME)
+        next_page = _verify_and_provide_next_page(request.args.to_dict())
+        return next_page if next_page else url_for(ROUTES.UTUBS.HOME)
 
     # Input form errors
     if login_form.errors is not None:
@@ -207,6 +210,41 @@ def login():
         )
 
     return render_template("login.html", login_form=login_form)
+
+
+def _verify_and_provide_next_page(request_args: dict[str, str]) -> str:
+    url = ""
+    if (
+        len(request_args) != 1
+        or "next" not in request_args
+        or not isinstance(request_args.get("next"), str)
+    ):
+        return url
+
+    rel_url = urlparse(request_args.get("next"))
+    if rel_url.path != url_for(ROUTES.UTUBS.HOME):
+        return url
+
+    query_params = parse_qs(str(rel_url.query))
+    if len(query_params) != 1 or UTUB_ID_QUERY_PARAM not in query_params:
+        return url
+
+    utub_id_vals = query_params.get(UTUB_ID_QUERY_PARAM, None)
+    if not utub_id_vals or len(utub_id_vals) != 1:
+        return url
+
+    utub_id = utub_id_vals[0]
+
+    if not utub_id.isdigit() or int(utub_id) <= 0:
+        return url
+
+    if Utub_Members.query.get((int(utub_id), current_user.id)) is None:
+        return url
+
+    url = (
+        f"{url_for(ROUTES.UTUBS.HOME)}?{urlencode({UTUB_ID_QUERY_PARAM: int(utub_id)})}"
+    )
+    return url
 
 
 @splash.route("/confirm-email", methods=["GET"])

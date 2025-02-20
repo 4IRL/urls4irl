@@ -16,18 +16,16 @@ def generate_mock_tags(db: SQLAlchemy):
         db (SQLAlchemy): Database engine and connection for committing mock data
     """
     for idx, tag in enumerate(MOCK_TAGS):
-        for utub_idx in range(Utubs.query.count()):
+        for utub in Utubs.query.all():
             tag_in_utub: bool = (
                 Utub_Tags.query.filter(
-                    Utub_Tags.utub_id == utub_idx + 1, Utub_Tags.tag_string == tag
+                    Utub_Tags.utub_id == utub.id, Utub_Tags.tag_string == tag
                 ).count()
                 == 1
             )
             if not tag_in_utub:
                 print(f"Adding {tag} as a tag to utub")
-                new_tag = Utub_Tags(
-                    utub_id=utub_idx + 1, tag_string=tag, created_by=idx + 1
-                )
+                new_tag = Utub_Tags(utub_id=utub.id, tag_string=tag, created_by=idx + 1)
                 db.session.add(new_tag)
 
     db.session.commit()
