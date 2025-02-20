@@ -677,8 +677,19 @@ def verify_members_exist_in_member_deck(browser: WebDriver, member_ids: list[int
         WebDriverWait(browser, 10).until(
             lambda browser: element_is_visible(browser, member_selector)
         )
-        member_elem = browser.find_element(By.CSS_SELECTOR, member_selector)
-        assert member_elem.is_displayed()
+
+        def retry_assertion():
+            """Fetch element fresh and assert it's displayed to avoid stale reference."""
+            try:
+                fresh_elem = browser.find_element(By.CSS_SELECTOR, member_selector)
+                assert (
+                    fresh_elem.is_displayed()
+                ), f"Member element {member_id} is not displayed"
+                return True  # Success
+            except StaleElementReferenceException:
+                return False  # Retry
+
+        WebDriverWait(browser, 10).until(lambda _: retry_assertion())
 
 
 # URL Deck
