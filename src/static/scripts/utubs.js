@@ -53,11 +53,35 @@ $(document).ready(function () {
 });
 
 window.addEventListener("popstate", function (e) {
-  if (e.state && e.state.hasOwnProperty("UTub")) {
+  if (e.state && e.state.hasOwnProperty("UTubID")) {
+    if (!isUtubIdValidFromStateAccess(e.state.UTubID)) {
+      // Handle when a user previously went back to a now deleted UTub
+      window.history.replaceState(null, null, "/home");
+      resetHomePageToInitialState();
+      return;
+    }
+
     // State will contain property UTub if URL contains query parameter UTubID
-    buildSelectedUTub(e.state.UTub);
+    getUTubInfo(e.state.UTubID).then(
+      (selectedUTub) => {
+        buildSelectedUTub(selectedUTub);
+        // If mobile, go straight to URL deck
+        if ($(window).width() < TABLET_WIDTH) {
+          setMobileUIWhenUTubSelectedOrURLNavSelected();
+        }
+      },
+      () => {
+        resetHomePageToInitialState();
+      },
+    );
   } else {
     // If does not contain query parameter, user is at /home - then update UTub titles/IDs
+    resetHomePageToInitialState();
+  }
+});
+
+window.addEventListener("pageshow", function (e) {
+  if (!this.sessionStorage.getItem("fullyLoaded")) {
     setUIWhenNoUTubSelected();
     getAllUTubs().then((utubData) => {
       buildUTubDeck(utubData);
@@ -65,9 +89,84 @@ window.addEventListener("popstate", function (e) {
       setTagDeckSubheaderWhenNoUTubSelected();
     });
   }
+
+  if (history.state && history.state.UTubID) {
+    getUTubInfo(history.state.UTubID).then(
+      (selectedUTub) => {
+        buildSelectedUTub(selectedUTub);
+        // If mobile, go straight to URL deck
+        if ($(window).width() < TABLET_WIDTH) {
+          setMobileUIWhenUTubSelectedOrURLNavSelected();
+        }
+        return;
+      },
+      () => {
+        // Do nothing in error, as an invalid UTubID should indicate deleted UTub
+      },
+    );
+    return;
+  }
+
+  // If a cold start, user might've been using URL with ID in it
+  // First pull the query parameter
+  // Then pull the UTub ID from the global UTubs variable and match
+  // Handle if it doesn't exist
+  const searchParams = new URLSearchParams(window.location.search);
+  if (searchParams.size === 0) return;
+
+  const utubId = searchParams.get("UTubID");
+  if (searchParams.size > 1 || utubId === null) {
+    window.location.assign(routes.errorPage);
+  }
+
+  if (!isValidUTubID(utubId)) window.location.assign(routes.errorPage);
+
+  if (!isUtubIdValidOnPageLoad(parseInt(utubId))) {
+    window.history.replaceState(null, null, "/home");
+    window.location.assign(routes.errorPage);
+  }
+
+  getUTubInfo(parseInt(utubId)).then(
+    (selectedUTub) => {
+      buildSelectedUTub(selectedUTub);
+      // If mobile, go straight to URL deck
+      if ($(window).width() < TABLET_WIDTH) {
+        setMobileUIWhenUTubSelectedOrURLNavSelected();
+      }
+    },
+    () => {
+      window.location.assign(routes.errorPage);
+    },
+  );
 });
 
 /** UTub Utility Functions **/
+// Verify UTubID is valid
+function isValidUTubID(utubIdStr) {
+  const utubId = parseInt(utubIdStr);
+  const isANumber = !isNaN(utubId);
+  const isPositive = utubId > 0;
+  const isValidIntegerFormat = String(utubId) === utubIdStr;
+
+  return isANumber && isPositive && isValidIntegerFormat;
+}
+
+// Parses inserted UTubs constant for ID's
+function isUtubIdValidOnPageLoad(utubId) {
+  let utub;
+  for (i = 0; i < UTubs.length; i++) {
+    utub = UTubs[i];
+
+    if (utubId === utub.id) {
+      return true;
+    }
+  }
+  return false;
+}
+
+function isUtubIdValidFromStateAccess(utubId) {
+  return $(`.UTubSelector[utubid='${utubId}']`).length === 1;
+}
 
 // Function to count number of UTubs current user has access to
 function getNumOfUTubs() {
@@ -82,15 +181,6 @@ function getActiveUTubID() {
 // Streamline the jQuery selector for the UTub Selector.
 function getUTubSelectorElemFromID(id) {
   return $(".UTubSelector[utubid='" + id + "']");
-}
-
-// Streamline the extraction of a UTub array element from its ID
-function getUTubObjFromID(id) {
-  $(".UTubSelector").forEach(function (utub) {
-    if (utub.attr("utubid") === id) return utub;
-  });
-
-  return -1;
 }
 
 // Streamline the jQuery selector extraction of UTub ID. And makes it easier in case the ID is encoded in a new location in the future
@@ -125,15 +215,19 @@ function getAllAccessibleUTubNames() {
 // Streamline the AJAX call to db for updated info
 function getUTubInfo(selectedUTubID) {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
-  return $.getJSON("/home?UTubID=" + selectedUTubID).always(function () {
-    hideUTubLoadingIconAndClearTimeout(timeoutID);
-  });
+  return $.getJSON(routes.getUTub(selectedUTubID))
+    .fail(function () {
+      window.history.replaceState(null, null, "/home");
+    })
+    .always(function () {
+      hideUTubLoadingIconAndClearTimeout(timeoutID);
+    });
 }
 
 // Utility route to get all UTub summaries
 function getAllUTubs() {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
-  return $.getJSON("/utubs").always(function () {
+  return $.getJSON(routes.getUTubs).always(function () {
     hideUTubLoadingIconAndClearTimeout(timeoutID);
   });
 }
@@ -204,6 +298,7 @@ function removeCreateDeleteUTubEventListeners() {
 // Clear the UTub Deck
 function resetUTubDeck() {
   $("#listUTubs").empty();
+  hideIfShown($("#utubBtnDelete"));
 }
 
 // Create event listeners to escape from updating UTub name
@@ -373,14 +468,17 @@ function buildSelectedUTub(selectedUTub) {
   // Allow user to back and forth in browser based on given UTub selection
   if (
     isUTubHistoryNull ||
-    JSON.stringify(window.history.state.UTub) !== JSON.stringify(selectedUTub)
+    JSON.stringify(window.history.state.UTubID) !==
+      JSON.stringify(selectedUTub.id)
   ) {
     // Push UTub state to browser history if no history, or if previous UTub history is different
     window.history.pushState(
-      { UTub: selectedUTub },
-      "UTub History",
+      { UTubID: selectedUTub.id },
+      "",
       "/home?UTubID=" + selectedUTub.id,
     );
+
+    sessionStorage.setItem("fullyLoaded", "true");
   }
 
   // LH panels
@@ -647,6 +745,17 @@ function setUTubDeckOnUTubSelected(selectedUTubID, UTubOwnerUserID) {
   if (getCurrentUserID() === UTubOwnerUserID) {
     $("#utubBtnDelete").show();
   } else hideIfShown($("#utubBtnDelete"));
+
+  const utubSelector = $(`.UTubSelector[utubid=${selectedUTubID}]`);
+
+  if (!utubSelector.hasClass("active")) {
+    // Remove all other active UTub selectors first
+    $(".UTubSelector.active").removeClass("active").removeClass("focus");
+
+    $(".UTubSelector:focus").blur();
+
+    utubSelector.addClass("active");
+  }
 }
 
 /** Post data handling **/

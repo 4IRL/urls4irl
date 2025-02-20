@@ -296,6 +296,11 @@ function leaveUTubSuccess() {
     utubSelector.remove();
     hideInputsAndSetUTubDeckSubheader();
   });
+
+  setTimeout(function () {
+    window.history.pushState(null, null, "/home");
+    window.history.replaceState(null, null, "/home");
+  }, 0);
 }
 
 function removeMemberFail(xhr) {

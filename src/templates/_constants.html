@@ -1,0 +1,29 @@
+class Constants {
+	constructor() {
+		if (!Constants.instance) {
+
+			// UTub constants
+			this.UTUBS_MAX_NAME_LENGTH = {{CONSTANTS.UTUBS.MAX_NAME_LENGTH}};
+			this.UTUBS_MIN_NAME_LENGTH = {{CONSTANTS.UTUBS.MIN_NAME_LENGTH}};
+			this.UTUBS_MAX_DESCRIPTION_LENGTH = {{CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH}};
+
+			// URL Constants
+			this.URLS_TITLE_MIN_LENGTH = {{CONSTANTS.URLS.MIN_URL_TITLE_LENGTH}};
+			this.URLS_TITLE_MAX_LENGTH = {{CONSTANTS.URLS.MAX_URL_TITLE_LENGTH}};
+			this.URLS_MIN_LENGTH = {{CONSTANTS.URLS.MIN_URL_LENGTH}};
+			this.URLS_MAX_LENGTH = {{CONSTANTS.URLS.MAX_URL_LENGTH}};
+			this.MAX_NUM_OF_URLS_TO_ACCESS = {{CONSTANTS.URLS.MAX_NUM_OF_URLS_TO_ACCESS}};
+
+			// Tag Constants
+			this.TAGS_MIN_LENGTH = {{CONSTANTS.TAGS.MIN_TAG_LENGTH}};
+			this.TAGS_MAX_LENGTH = {{CONSTANTS.TAGS.MAX_TAG_LENGTH}};
+			this.TAGS_MAX_ON_URLS = {{CONSTANTS.TAGS.MAX_URL_TAGS}};
+
+			Constants.instance = this;
+		}
+
+		return Constants.instance;
+	}
+}
+
+const CONSTANTS = new Constants;

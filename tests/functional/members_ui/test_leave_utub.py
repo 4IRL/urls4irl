@@ -13,6 +13,8 @@ from tests.functional.utils_for_test import (
     assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
     get_num_utubs,
+    get_utub_this_user_created,
+    get_utub_this_user_did_not_create,
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     wait_for_element_to_be_removed,
@@ -20,10 +22,6 @@ from tests.functional.utils_for_test import (
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
-)
-from tests.functional.utubs_ui.utils_for_test_utub_ui import (
-    get_utub_this_user_created,
-    get_utub_this_user_did_not_create,
 )
 
 pytestmark = pytest.mark.members_ui

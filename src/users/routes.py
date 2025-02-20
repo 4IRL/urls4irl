@@ -1,8 +1,9 @@
 from flask import (
     Blueprint,
     redirect,
-    url_for,
+    request,
     session,
+    url_for,
 )
 from flask_login import current_user, logout_user
 
@@ -22,7 +23,8 @@ def load_user(user_id) -> Users:
 @login_manager.unauthorized_handler
 def unauthorized():
     if not current_user.is_authenticated:
-        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+        # TODO: Validate the full path here before attaching query param
+        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE, next=request.full_path))
     if current_user.is_authenticated and not current_user.email_confirm.is_validated:
         return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
 

@@ -11,7 +11,7 @@ import warnings
 import redis
 from redis.client import Redis
 
-from src import create_app, db, sess
+from src import create_app, db
 from src.config import ConfigTest
 from src.models.email_validations import Email_Validations
 from src.models.utub_tags import Utub_Tags
@@ -145,7 +145,7 @@ def build_app(
 def app(build_app: Tuple[Flask, ConfigTest]) -> Generator[Flask, None, None]:
     app, testing_config = build_app
     yield app
-    clear_database(testing_config, app, sess)
+    clear_database(testing_config)
     if isinstance(app.session_interface, RedisSessionInterface):
         app.session_interface.client.flushdb()
 

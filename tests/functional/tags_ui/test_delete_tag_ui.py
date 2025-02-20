@@ -19,6 +19,7 @@ from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
     get_selected_url,
+    get_utub_this_user_created,
     invalidate_csrf_token_on_page,
     login_user_select_utub_by_id_and_url_by_id,
     wait_for_animation_to_end,
@@ -26,7 +27,6 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
 )
 from locators import HomePageLocators as HPL
-from tests.functional.utubs_ui.utils_for_test_utub_ui import get_utub_this_user_created
 
 pytestmark = pytest.mark.tags_ui
 

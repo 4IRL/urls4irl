@@ -3,6 +3,7 @@ from src.utils.strings.model_strs import UTUB_DESCRIPTION
 
 # Strings for utub success
 UTUB_ID = "utubID"
+UTUB_ID_QUERY_PARAM = "UTubID"
 UTUB_NAME = "utubName"
 UTUB_USERS = "utubUsers"
 UTUB_CREATOR_ID = "utubCreatorID"
@@ -14,6 +15,7 @@ class UTUB_GENERAL:
     UTUB_NAME = UTUB_NAME
     UTUB_USERS = UTUB_USERS
     UTUB_DESCRIPTION = UTUB_DESCRIPTION
+    UTUB_ID_QUERY_PARAM = UTUB_ID_QUERY_PARAM
 
 
 class UTUB_SUCCESS(UTUB_GENERAL):

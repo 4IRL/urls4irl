@@ -393,10 +393,8 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
     validate_email_btn = unconfirmed_email_feedback.find_element(
         By.CSS_SELECTOR, "button"
     )
-    browser.get_screenshot_as_file("p1.png")
     wait_for_web_element_and_click(browser, validate_email_btn)
     wait_until_visible_css_selector(browser, SPL.HEADER_VALIDATE_EMAIL)
-    browser.get_screenshot_as_file("p2.png")
 
     email_sent = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
     assert email_sent is not None
