@@ -283,6 +283,18 @@ def assert_not_visible_css_selector(
         assert False
 
 
+def assert_visible_css_selector(
+    browser: WebDriver, css_selector: str, time: float = 10
+):
+    try:
+        WebDriverWait(browser, time).until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, css_selector))
+        )
+        assert True
+    except TimeoutException:
+        assert False
+
+
 def assert_on_404_page(browser: WebDriver):
     error_header = wait_then_get_element(browser, css_selector="h2", time=3)
     assert error_header is not None
@@ -365,6 +377,11 @@ def login_user_and_select_utub_by_utubid(
 ):
     session_id = create_user_session_and_provide_session_id(app, user_id)
     login_user_with_cookie_from_session(browser, session_id)
+
+    with app.app_context():
+        user: Users = Users.query.get(user_id)
+
+    assert_login_with_username(browser, user.username)
     wait_then_click_element(
         browser, f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']", time=10
     )
@@ -506,6 +523,7 @@ def verify_utub_selected(browser: WebDriver, app: Flask, utub_id: int):
         ).all()
         utub_url_ids: list[int] = [utub_url.id for utub_url in urls_in_utub]
         verify_utub_url_exists_in_url_deck(browser, utub_url_ids)
+        verify_url_coloring_is_correct(browser)
 
         tags_in_utub: list[Utub_Tags] = Utub_Tags.query.filter(
             Utub_Tags.utub_id == utub_id
@@ -642,22 +660,36 @@ def get_element(browser: WebDriver, selector: str) -> WebElement:
     return browser.find_element(By.CSS_SELECTOR, selector)
 
 
+def element_is_visible(browser: WebDriver, selector: str) -> bool:
+    """
+    Fetches the element fresh from the DOM each time and checks if it is displayed.
+    """
+    try:
+        element = browser.find_element(By.CSS_SELECTOR, selector)
+        return element.is_displayed()
+    except StaleElementReferenceException:
+        return False  # Retry if stale
+
+
 def verify_members_exist_in_member_deck(browser: WebDriver, member_ids: list[int]):
     for member_id in member_ids:
         member_selector = f"{HPL.BADGES_MEMBERS}[memberid='{member_id}']"
+        WebDriverWait(browser, 10).until(
+            lambda browser: element_is_visible(browser, member_selector)
+        )
 
-        try:
-            WebDriverWait(browser, 5).until(
-                lambda driver: get_element(driver, member_selector).is_displayed()
-            )
-        except StaleElementReferenceException:
-            WebDriverWait(browser, 5).until(
-                lambda driver: get_element(driver, member_selector).is_displayed()
-            )
-        finally:
-            member_elem = wait_then_get_element(browser, member_selector, time=3)
-            assert member_elem is not None
-            assert member_elem.is_displayed()
+        def retry_assertion():
+            """Fetch element fresh and assert it's displayed to avoid stale reference."""
+            try:
+                fresh_elem = browser.find_element(By.CSS_SELECTOR, member_selector)
+                assert (
+                    fresh_elem.is_displayed()
+                ), f"Member element {member_id} is not displayed"
+                return True  # Success
+            except StaleElementReferenceException:
+                return False  # Retry
+
+        WebDriverWait(browser, 10).until(lambda _: retry_assertion())
 
 
 # URL Deck
@@ -875,6 +907,19 @@ def verify_update_url_state_is_hidden(url_row: WebElement):
     assert url_row.find_element(By.CSS_SELECTOR, HPL.GO_TO_URL_ICON).is_displayed()
 
 
+def verify_url_coloring_is_correct(browser: WebDriver):
+    url_cards = wait_then_get_elements(browser, HPL.ROW_VISIBLE_URL, time=3)
+    assert url_cards
+    url_cards_in_order = sorted(url_cards, key=lambda elem: elem.location["y"])
+
+    for idx, url_card in enumerate(url_cards_in_order):
+        if idx % 2 == 0:
+            assert "even" in url_card.get_dom_attribute("class")
+        else:
+            assert "odd" in url_card.get_dom_attribute("class")
+
+
+# Misc
 def invalidate_csrf_token_on_page(browser: WebDriver):
     browser.execute_script(
         """

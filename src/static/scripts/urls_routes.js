@@ -84,11 +84,13 @@ function createURLSuccess(response) {
   const newUrlCard = createURLBlock(
     url,
     [], // Mimics an empty array of tags to match against
-  ).addClass(currentNumOfURLs % 2 === 0 ? "even" : "odd");
+  ).addClass("even");
 
   showIfHidden($("#accessAllURLsBtn"));
 
   newUrlCard.insertAfter($("#createURLWrap"));
+  if (currentNumOfURLs === 0) return;
+  updateColorOfFollowingURLCards();
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
