@@ -660,22 +660,25 @@ def get_element(browser: WebDriver, selector: str) -> WebElement:
     return browser.find_element(By.CSS_SELECTOR, selector)
 
 
+def element_is_visible(browser: WebDriver, selector: str) -> bool:
+    """
+    Fetches the element fresh from the DOM each time and checks if it is displayed.
+    """
+    try:
+        element = browser.find_element(By.CSS_SELECTOR, selector)
+        return element.is_displayed()
+    except StaleElementReferenceException:
+        return False  # Retry if stale
+
+
 def verify_members_exist_in_member_deck(browser: WebDriver, member_ids: list[int]):
     for member_id in member_ids:
         member_selector = f"{HPL.BADGES_MEMBERS}[memberid='{member_id}']"
-
-        try:
-            WebDriverWait(browser, 5).until(
-                lambda driver: get_element(driver, member_selector).is_displayed()
-            )
-        except StaleElementReferenceException:
-            WebDriverWait(browser, 5).until(
-                lambda driver: get_element(driver, member_selector).is_displayed()
-            )
-        finally:
-            member_elem = wait_then_get_element(browser, member_selector, time=3)
-            assert member_elem is not None
-            assert member_elem.is_displayed()
+        WebDriverWait(browser, 10).until(
+            lambda browser: element_is_visible(browser, member_selector)
+        )
+        member_elem = browser.find_element(By.CSS_SELECTOR, member_selector)
+        assert member_elem.is_displayed()
 
 
 # URL Deck

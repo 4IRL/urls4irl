@@ -18,9 +18,6 @@ from tests.functional.utubs_ui.utils_for_test_utub_ui import (
 
 pytestmark = pytest.mark.utubs_ui
 
-# TODO: Test when selecting UTub from home page
-# TODO: Test when selecting UTub from another UTub
-
 
 def test_select_member_utub_from_home_page(
     browser: WebDriver, create_test_tags, provide_app: Flask
