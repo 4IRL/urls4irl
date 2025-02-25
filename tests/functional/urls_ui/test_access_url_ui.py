@@ -26,6 +26,7 @@ from tests.functional.urls_ui.utils_for_test_url_ui import (
 from tests.functional.utils_for_test import (
     add_mock_urls,
     dismiss_modal_with_click_out,
+    get_all_url_ids_in_selected_utub,
     get_current_user_id,
     get_num_url_rows,
     get_selected_url,
@@ -452,24 +453,27 @@ def test_access_to_urls_as_utub_owner(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
     )
 
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    assert url_rows is not None
+    url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
-    for url_row in url_rows:
-        current_utub_url_id = url_row.get_attribute("urlid")
-        assert current_utub_url_id is not None
+    for url_utub_id in url_utub_ids:
+        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        wait_until_visible_css_selector(browser, url_selector, timeout=3)
 
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
+
         # Now wait for access link button to show up, which is accessible to all users
         wait_until_visible_css_selector(
             browser,
-            HPL.ROW_SELECTED_URL
-            + f"[urlid='{current_utub_url_id}'] {HPL.BUTTON_URL_ACCESS}",
+            HPL.ROW_SELECTED_URL + f"[urlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
         )
 
         selected_url = get_selected_url(browser)
-        assert current_utub_url_id == selected_url.get_attribute("urlid")
-        verify_select_url_as_utub_owner_or_url_creator(browser, url_row)
+        selected_urlid = selected_url.get_attribute("urlid")
+        assert selected_urlid and selected_urlid.isdigit()
+        assert url_utub_id == int(selected_urlid)
+
+        verify_select_url_as_utub_owner_or_url_creator(browser, url_selector)
 
 
 def test_access_to_non_added_urls_as_utub_member(
@@ -503,25 +507,27 @@ def test_access_to_non_added_urls_as_utub_member(
         app, utub_id, user_id
     )
 
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    assert url_rows is not None
+    url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
-    for url_row in url_rows:
-        current_utub_url_id = url_row.get_attribute("urlid")
-        assert current_utub_url_id is not None
+    for url_utub_id in url_utub_ids:
+        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        wait_until_visible_css_selector(browser, url_selector, timeout=3)
 
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
         # Now wait for access link button to show up, which is accessible to all users
         wait_until_visible_css_selector(
             browser,
-            HPL.ROW_SELECTED_URL
-            + f"[urlid='{current_utub_url_id}'] {HPL.BUTTON_URL_ACCESS}",
+            HPL.ROW_SELECTED_URL + f"[urlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
         )
 
         selected_url = get_selected_url(browser)
-        assert current_utub_url_id == selected_url.get_attribute("urlid")
-        if int(current_utub_url_id) != utub_url_id_user_added:
-            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_row)
+        selected_urlid = selected_url.get_attribute("urlid")
+        assert selected_urlid and selected_urlid.isdigit()
+        assert url_utub_id == int(selected_urlid)
+
+        if url_utub_id != utub_url_id_user_added:
+            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
 
 
 def test_access_to_urls_as_url_creator_and_utub_member(
@@ -554,23 +560,24 @@ def test_access_to_urls_as_url_creator_and_utub_member(
         app, utub_id, user_id
     )
 
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    assert url_rows is not None
+    url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
-    for url_row in url_rows:
-        current_utub_url_id = url_row.get_attribute("urlid")
-        assert current_utub_url_id is not None
+    for url_utub_id in url_utub_ids:
+        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        wait_until_visible_css_selector(browser, url_selector, timeout=3)
 
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
         # Now wait for access link button to show up, which is accessible to all users
         wait_until_visible_css_selector(
             browser,
-            HPL.ROW_SELECTED_URL
-            + f"[urlid='{current_utub_url_id}'] {HPL.BUTTON_URL_ACCESS}",
+            HPL.ROW_SELECTED_URL + f"[urlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
         )
 
         selected_url = get_selected_url(browser)
-        assert current_utub_url_id == selected_url.get_attribute("urlid")
+        selected_urlid = selected_url.get_attribute("urlid")
+        assert selected_urlid and selected_urlid.isdigit()
+        assert url_utub_id == int(selected_urlid)
 
-        if int(current_utub_url_id) == utub_url_id_user_added:
-            verify_select_url_as_utub_owner_or_url_creator(browser, url_row)
+        if url_utub_id == utub_url_id_user_added:
+            verify_select_url_as_utub_owner_or_url_creator(browser, url_selector)

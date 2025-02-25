@@ -16,12 +16,14 @@ from tests.functional.urls_ui.utils_for_test_url_ui import (
     verify_select_url_as_utub_owner_or_url_creator,
 )
 from tests.functional.utils_for_test import (
+    get_all_url_ids_in_selected_utub,
     get_current_user_id,
     get_selected_url,
     login_user_and_select_utub_by_name,
     wait_for_animation_to_end,
     wait_for_web_element_and_click,
     wait_then_get_elements,
+    wait_until_visible_css_selector,
 )
 
 pytestmark = pytest.mark.urls_ui
@@ -50,13 +52,18 @@ def test_select_urls_as_utub_owner(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
     )
 
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    assert url_rows is not None
+    url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
-    for url_row in url_rows:
+    for url_utub_id in url_utub_ids:
+        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        wait_until_visible_css_selector(browser, url_selector)
+
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
+
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         assert get_selected_url(browser) == url_row
-        verify_select_url_as_utub_owner_or_url_creator(browser, url_row)
+        verify_select_url_as_utub_owner_or_url_creator(browser, url_selector)
 
 
 def test_select_non_added_urls_as_utub_member(
@@ -90,17 +97,23 @@ def test_select_non_added_urls_as_utub_member(
         app, utub_id, user_id
     )
 
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    assert url_rows is not None
+    url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
-    for url_row in url_rows:
+    for url_utub_id in url_utub_ids:
+        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        wait_until_visible_css_selector(browser, url_selector)
+
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
+
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         assert get_selected_url(browser) == url_row
 
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         current_utub_url_id = url_row.get_attribute("urlid")
         assert current_utub_url_id and current_utub_url_id.isnumeric()
-        if int(current_utub_url_id) != utub_url_id_user_added:
-            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_row)
+        if url_utub_id != utub_url_id_user_added:
+            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
 
 
 def test_select_urls_as_url_creator_and_utub_member(
@@ -133,17 +146,23 @@ def test_select_urls_as_url_creator_and_utub_member(
         app, utub_id, user_id
     )
 
-    url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
-    assert url_rows is not None
+    url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
-    for url_row in url_rows:
+    for url_utub_id in url_utub_ids:
+        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        wait_until_visible_css_selector(browser, url_selector)
+
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
+
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         assert get_selected_url(browser) == url_row
 
+        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         current_utub_url_id = url_row.get_attribute("urlid")
-        assert current_utub_url_id is not None and isinstance(current_utub_url_id, str)
-        if int(current_utub_url_id) == utub_url_id_user_added:
-            verify_select_url_as_utub_owner_or_url_creator(browser, url_row)
+        assert current_utub_url_id and current_utub_url_id.isnumeric()
+        if url_utub_id != utub_url_id_user_added:
+            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
 
 
 def test_select_urls_using_down_key(
