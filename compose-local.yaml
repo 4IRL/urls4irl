@@ -23,6 +23,7 @@ services:
       - DOCKER=true
     volumes:
       - ./run.py:/code/u4i/run.py
+      - ./pytest.ini:/code/u4i/pytest.ini
       - ./src:/code/u4i/src
       - ./tests:/code/u4i/tests
       - ./migrations:/code/u4i/migrations
@@ -36,7 +37,7 @@ services:
       flask db upgrade &&
       flask shorturls add &&
       echo 'Running on 127.0.0.1:8659!' &&
-      flask run --host=0.0.0.0 --port=5000
+      flask run --host=0.0.0.0 --port=5000 --cert=adhoc
       "
 
   db:

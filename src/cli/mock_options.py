@@ -6,6 +6,7 @@ from flask.cli import AppGroup, with_appcontext
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 
+from src.cli.utils import TABLE_NAMES
 from src.db import db
 from src.cli.mock_constants import TEST_USER_COUNT
 from src.cli.mock_data.tags import generate_mock_tags
@@ -220,14 +221,33 @@ def create_db(db_type: str):
     ),
     default="dev",
 )
+@click.option(
+    "--drop-alembic",
+    is_flag=True,
+    help="Prevent UTubs being created with the same name",
+)
 @with_appcontext
-def drop_db(db_type: str):
+def drop_db(db_type: str, drop_alembic: bool):
     print(f"\n\n--- Dropping each table in {db_type} database ---\n")
     engine = db.engines[db_type]
     con = engine.connect()
     meta = MetaData(engine)
     meta.reflect()
-    meta.drop_all()
+
+    if drop_alembic:
+        meta.drop_all()
+    else:
+        print("\n\nSkipping alembic_version to preserve migrations...\n\n")
+
+        tables_to_drop = []
+        for table_to_delete in TABLE_NAMES.SORTED_TABLES_FOR_DELETION:
+            for table in meta.sorted_tables:
+                if table.name == table_to_delete:
+                    tables_to_drop.append(table)
+
+        # Drop only the tables we want
+        for table in tables_to_drop:
+            table.drop(engine)
     con.close()
     print(f"\n--- Dropped each table in {db_type} database ---\n\n")
 
