@@ -10,7 +10,8 @@
         body {
             margin: 0;
             padding: 0;
-            height: 100vh;
+            height: 100dvh;
+            min-height: 100dvh;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -56,6 +57,12 @@
 
         .refresh-button:hover {
             background-color: #e84118;
+        }
+
+        @media (max-height: 950px) {
+            main {
+                top: 5%;
+            }
         }
     </style>
 </head>
