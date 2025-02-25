@@ -175,7 +175,7 @@ def login_select_utub_select_url_click_delete_get_modal_url(
 
 
 def verify_select_url_as_utub_owner_or_url_creator(
-    browser: WebDriver, url_row: WebElement
+    browser: WebDriver, url_selector: str
 ):
     """
     Verifies that the owner of a UTub or adder of the URL correctly sees all valid elements of the URL
@@ -183,6 +183,8 @@ def verify_select_url_as_utub_owner_or_url_creator(
     Args:
         url_row (WebElement): URL Card with all visible elements
     """
+    url_row = wait_then_get_element(browser, url_selector, time=3)
+    assert url_row is not None
 
     assert "true" == url_row.get_attribute("urlselected")
 
@@ -221,7 +223,7 @@ def verify_select_url_as_utub_owner_or_url_creator(
 
 
 def verify_select_url_as_non_utub_owner_and_non_url_adder(
-    browser: WebDriver, url_row: WebElement
+    browser: WebDriver, url_selector: str
 ):
     """
     Verifies that a UTub sees limited valid elements of the URL
@@ -229,6 +231,8 @@ def verify_select_url_as_non_utub_owner_and_non_url_adder(
     Args:
         url_row (WebElement): URL Card with all visible elements
     """
+    url_row = wait_then_get_element(browser, url_selector, time=3)
+    assert url_row is not None
 
     visible_elements = (
         HPL.BUTTON_URL_ACCESS,
