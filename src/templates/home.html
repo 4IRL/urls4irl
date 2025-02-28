@@ -31,15 +31,16 @@
 <!-- End Center Panel -->
 
 <!-- Home Page JS -->
-<script src="{{ url_for('static', filename='scripts/utils.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/utubs.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/utubs_routes.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/tags.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/tags_routes.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/urls.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/urls_routes.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/members.js') }}"></script>
-<script src="{{ url_for('static', filename='scripts/members_routes.js') }}"></script>
+<!-- Add asset version based on UNIX epoch to cache bust when updates are made -->
+<script src="{{ url_for('static', filename='scripts/utils.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/utubs.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/utubs_routes.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/tags.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/tags_routes.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/urls.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/urls_routes.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/members.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/members_routes.js') }}?v={{ ASSET_VERSION }}"></script>
 
 {% endblock %}
 

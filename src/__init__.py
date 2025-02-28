@@ -72,6 +72,10 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     from src.tags.url_tag_routes import utub_url_tags
     from src.tags.utub_tag_routes import utub_tags
 
+    @app.context_processor
+    def asset_processor():  # type: ignore
+        return {CONFIG_ENVS.ASSET_VERSION: app.config[CONFIG_ENVS.ASSET_VERSION]}
+
     app.register_blueprint(splash)
     app.register_blueprint(utubs)
     app.register_blueprint(users)
