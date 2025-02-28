@@ -1,29 +1,25 @@
 # Making this the name so badge shows something understandable
 name: Build and Deploy Production Server
 
-# Remove push when ready for production
+# Only build production on release publication
 on:
-    pull_request:
-        branches:
-            - main
-        types:
-            - closed
+  release:
+    types:
+      - published
 
 jobs:
     build-prod:
-        if: github.event.pull_request.merged == true
         name: 'CD Prod - Build'
         uses: ./.github/workflows/prod-build.yml
         permissions:
             packages: write
 
     deploy-prod:
-        if: github.event.pull_request.merged == true
         needs: 'build-prod'
         name: 'CD Prod - Deploy'
         uses: ./.github/workflows/prod-deploy.yml
         with:
-            branch_ref: ${{ github.ref }}
+            branch_ref: ${{  github.event.release.target_commitish }}
         secrets:
             PROD_SSH_HOST: ${{ secrets.PROD_SSH_HOST }}
             PROD_SSH_USERNAME: ${{ secrets.PROD_SSH_USERNAME }}
