@@ -498,9 +498,9 @@ function buildSelectedUTub(selectedUTub) {
     utubDescriptionHeader.text(utubDescription);
     removeEventListenersForShowCreateUTubDescIfEmptyDesc();
   } else {
-    //const utubTitle = $("#URLDeckHeader");
-    //utubTitle.off("mouseenter.createUTubdescription");
-    allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty();
+    isCurrentUserOwner
+      ? allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty()
+      : null;
     utubDescriptionHeader.text(null);
   }
 
