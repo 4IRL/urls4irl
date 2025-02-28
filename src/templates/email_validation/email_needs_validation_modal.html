@@ -16,17 +16,18 @@
     <div class="modal-body">
         {{ validate_email_form.hidden_tag() }}
         <p id="ValidateEmailText" class="validate-email-text">Your email address has not been validated. To complete
-            your registration, <strong>check your inbox</strong> and click on the link we sent in the email. If you have not received
+            your registration, <strong>check your inbox</strong> and click on the link we sent in the email. If you have
+            not received
             the email for some time, click the button below to resend a validation email.</p>
         <div id="SplashModalAlertBanner" class="alert alert-banner-splash-modal-hide" role="alert"></div>
     </div>
     <div class="modal-footer" id="EmailValidationFooter">
         <button type="button" class="btn btn-warning close-modal login-register-form-group center-block col-4"
             data-bs-dismiss="modal">Close</button>
-        {{ validate_email_form.submit(class="btn btn-success login-register-form-group login-register-buttons center-block
+        {{ validate_email_form.submit(class="btn btn-success login-register-form-group login-register-buttons
+        center-block
         col-8")}}
     </div>
 </form>
 
-<script src="{{ url_for('static', filename='scripts/splash/emailValidation.js') }}"></script>
-
+<script src="{{ url_for('static', filename='scripts/splash/emailValidation.js') }}?v={{ ASSET_VERSION }}"></script>

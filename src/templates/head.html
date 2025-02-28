@@ -11,7 +11,7 @@
 {% endblock %}
 
 <!-- manifest -->
-<link rel="manifest" href="/static/styles/manifest.webmanifest">
+<link rel="manifest" href="/static/styles/manifest.webmanifest?v={{ ASSET_VERSION }}">
 
 {% if config["USE_LOCAL_JS_BUNDLES"] %}
 <!-- Use local JS and CSS bundles -->
@@ -58,18 +58,18 @@
 {% endif %}
 
 <!-- Custom CSS adjustments -->
-<link rel="stylesheet" href="/static/styles/app.css">
+<link rel="stylesheet" href="/static/styles/app.css?v={{ ASSET_VERSION }}">
 
 {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
-<link rel="stylesheet" href="/static/styles/home.css">
+<link rel="stylesheet" href="/static/styles/home.css?v={{ ASSET_VERSION }}">
 {% else %}
-<link rel="stylesheet" href="/static/styles/splash.css">
+<link rel="stylesheet" href="/static/styles/splash.css?v={{ ASSET_VERSION }}">
 {% endif %}
 
 <!-- Favicon -->
 <link rel="apple-touch-icon" sizes="180x180" href="/static/favicon/apple-touch-icon.png">
 <link rel="icon" type="image/png" sizes="32x32" href="/static/favicon/favicon-32x32.png">
 <link rel="icon" type="image/png" sizes="16x16" href="/static/favicon/favicon-16x16.png">
-<link rel="manifest" href="/static/favicon/site.webmanifest">
+<link rel="manifest" href="/static/favicon/site.webmanifest?v={{ ASSET_VERSION }}">
 
 <title>URLS4IRL</title>
