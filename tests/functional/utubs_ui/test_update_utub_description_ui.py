@@ -1,6 +1,7 @@
 from flask import Flask
 import pytest
 from selenium.common.exceptions import ElementNotInteractableException
+from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -19,6 +20,7 @@ from tests.functional.utils_for_test import (
     get_utub_this_user_did_not_create,
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
+    login_user_and_select_utub_by_utubid,
     login_user_to_home_page,
     select_utub_by_name,
     wait_then_click_element,
@@ -432,7 +434,7 @@ def test_update_empty_utub_description_btn_opens_input(
     assert "" == utub_description_update_input.get_attribute("value")
 
 
-def test_update_empty_utub_description_updates_description(
+def test_update_empty_utub_description_updates_description_creator(
     browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
@@ -478,6 +480,38 @@ def test_update_empty_utub_description_updates_description(
     )
     assert utub_description_elem is not None
     assert utub_description_elem.text == NEW_UTUB_DESC
+
+
+def test_update_empty_utub_description_updates_description_member(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to update UTub description after it was empty
+
+    GIVEN a user owns a UTub
+    WHEN they attempt to add a UTub description after owning a UTub with an empty name
+    THEN ensure the UTub Description is updated properly
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_member_of = get_utub_this_user_did_not_create(app, user_id)
+    update_utub_to_empty_desc(app, utub_user_member_of.id)
+
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_member_of.id)
+
+    actions = ActionChains(browser)
+
+    utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
+    utub_desc_input_elem = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
+
+    # Exception raised since hovering over the element should not pop up the
+    # empty UTub description update button
+    with pytest.raises(ElementNotInteractableException):
+        actions.move_to_element(utub_title_elem).pause(5).move_to_element(
+            utub_desc_input_elem
+        ).pause(5).perform()
 
 
 def test_update_utub_description_form_closes_when_selecting_other_utub(
