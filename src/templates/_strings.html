@@ -1,0 +1,14 @@
+class Strings {
+	constructor() {
+		if (!Strings.instance) {
+
+			// Query Param Strings
+			this.UTUB_QUERY_PARAM = "{{CONSTANTS.STRINGS.UTUB_QUERY_PARAM}}";
+			Strings.instance = this;
+		}
+
+		return Strings.instance;
+	}
+}
+
+const STRINGS = new Strings;

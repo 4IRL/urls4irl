@@ -1,3 +1,6 @@
+from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
+
+
 class EMAIL_CONSTANTS:
     MAX_EMAIL_ATTEMPTS_IN_HOUR = 5
     WAIT_TO_RETRY_BEFORE_MAX_ATTEMPTS = 60
@@ -40,6 +43,10 @@ class CONFIG_CONSTANTS:
     SESSION_LIFETIME = 31 * 86400  # 31 days before session and CSRF expiration
 
 
+class STRINGS:
+    UTUB_QUERY_PARAM = UTUB_ID_QUERY_PARAM
+
+
 class CONSTANTS:
     EMAILS = EMAIL_CONSTANTS()
     USERS = USER_CONSTANTS()
@@ -47,3 +54,4 @@ class CONSTANTS:
     URLS = URL_CONSTANTS()
     TAGS = TAG_CONSTANTS()
     CONFIG = CONFIG_CONSTANTS()
+    STRINGS = STRINGS()
