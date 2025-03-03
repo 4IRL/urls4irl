@@ -708,6 +708,7 @@ The HTML body on a 200 response contains the following JSON.
 > curl -X GET \
 >  https://urls4irl.app/utub/1 \
 >  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'X-Requested-With: XMLHTTPRequest' \
 > ```
 
 </details>
@@ -749,6 +750,7 @@ The HTML body on a 200 response contains the following JSON.
 > curl -X GET \
 >  https://urls4irl.app/utubs \
 >  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'X-Requested-With: XMLHTTPRequest' \
 > ```
 
 </details>
@@ -1316,6 +1318,15 @@ User not member of this UTub.
 >     "status": "Failure",
 >     "message": "Unable to retrieve this URL.",
 > }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls4irl.app/utubs/1/urls/2 \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'X-Requested-With: XMLHTTPRequest' \
 > ```
 
 </details>

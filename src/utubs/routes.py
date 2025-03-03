@@ -1,5 +1,6 @@
 from flask import (
     Blueprint,
+    abort,
     jsonify,
     redirect,
     request,
@@ -7,6 +8,7 @@ from flask import (
     url_for,
 )
 from flask_login import current_user
+from sqlalchemy.exc import DataError
 
 from src import db
 from src.models.utubs import Utubs
@@ -44,6 +46,7 @@ def home():
 
     Selection and loading of the selected UTub via query param is handled on the client.
 
+    URL_VALIDATION
     Args:
         /home : With no args, this returns all UTubIDs for the given user
         /home?UTubID=1 : Returns same as `/home` - UTub selection is handled on the client
@@ -51,13 +54,27 @@ def home():
     Returns:
         - All UTubIDs and names
     """
-    if request.args and UTUB_ID_QUERY_PARAM in request.args and len(request.args) == 1:
-        utub_id = request.args.get(UTUB_ID_QUERY_PARAM, 0)
-        if Utub_Members.query.get((utub_id, current_user.id)) is None:
+    if not request.args:
+        utub_details = jsonify(current_user.serialized_on_initial_load)
+        return render_template("home.html", utubs_for_this_user=utub_details.json)
+
+    if len(request.args) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
+        abort(404)
+
+    utub_id = request.args.get(UTUB_ID_QUERY_PARAM, "")
+    try:
+        if (
+            Utubs.query.get_or_404(int(utub_id))
+            and Utub_Members.query.get((int(utub_id), current_user.id)) is None
+        ):
             return redirect(url_for(ROUTES.UTUBS.HOME))
 
-    utub_details = jsonify(current_user.serialized_on_initial_load)
-    return render_template("home.html", utubs_for_this_user=utub_details.json)
+        utub_details = jsonify(current_user.serialized_on_initial_load)
+        return render_template("home.html", utubs_for_this_user=utub_details.json)
+
+    except (ValueError, DataError):
+        # Handle invalid UTubID passed as query parameter
+        abort(404)
 
 
 @utubs.route("/utub/<int:utub_id>", methods=["GET"])
@@ -86,6 +103,13 @@ def get_utubs():
     """
     User wants a summary of their UTubs in JSON format.
     """
+    if (
+        request.headers.get(URL_VALIDATION.X_REQUESTED_WITH, None)
+        != URL_VALIDATION.XMLHTTPREQUEST
+    ):
+        # Ensure JSON not shown in the browser
+        abort(404)
+
     # TODO: Should serialized summary be utubID and utubName
     # instead of id and name?
     return jsonify(current_user.serialized_on_initial_load)
