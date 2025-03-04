@@ -23,6 +23,7 @@ from src.urls.utils import build_form_errors
 from src.utils.email_validation import email_validation_required
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
+from src.utils.strings.url_validation_strs import URL_VALIDATION
 
 urls = Blueprint("urls", __name__)
 logger = logging.getLogger(__name__)
@@ -309,6 +310,13 @@ def get_url(utub_id: int, utub_url_id: int):
         utub_id (int): The UTub ID containing the relevant URL
         utub_url_id (int): The URL ID to be modified
     """
+    if (
+        request.headers.get(URL_VALIDATION.X_REQUESTED_WITH, None)
+        != URL_VALIDATION.XMLHTTPREQUEST
+    ):
+        # Ensure JSON not shown in the browser
+        abort(404)
+
     # Following line enforces standard response of 404 error page
     Utubs.query.get_or_404(utub_id)
 

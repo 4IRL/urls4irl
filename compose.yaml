@@ -33,6 +33,7 @@ services:
       export SECRET_KEY=$(cat /run/secrets/SECRET_KEY) &&
       export BASE_EMAIL=$(cat /run/secrets/BASE_EMAIL) &&
       export REDIS_PASSWORD=$(cat /run/secrets/REDIS_PASSWORD) &&
+      export ASSET_VERSION=$(date +%s) &&
       . /code/venv/bin/activate &&
       flask db upgrade &&
       flask shorturls add &&

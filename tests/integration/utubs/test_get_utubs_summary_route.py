@@ -9,13 +9,15 @@ from src.models.users import Users
 from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.model_strs import MODELS
+from src.utils.strings.url_validation_strs import URL_VALIDATION
 
 pytestmark = pytest.mark.utubs
 
 
 def test_get_utubs_if_has_no_utubs(
-    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask]
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ):
     """
     GIVEN a logged in user with ID == 1, with no UTubs.
@@ -25,7 +27,10 @@ def test_get_utubs_if_has_no_utubs(
     """
     client, _, _, _ = login_first_user_with_register
 
-    response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS))
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
 
     assert response.status_code == 200
     response_json = response.json
@@ -52,7 +57,10 @@ def test_get_utubs_if_has_one_utub(
             if current_user.id in [member.user_id for member in utub.members]
         ]
 
-    response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS))
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
 
     assert response.status_code == 200
     assert utub_summary == response.json
@@ -78,9 +86,14 @@ def test_get_utubs_if_has_multiple_utubs(
             if current_user.id in [member.user_id for member in utub.members]
         ]
 
-    response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS))
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
 
     assert response.status_code == 200
+    assert isinstance(response.json, list)
+    assert isinstance(response.json[0], dict)
     assert sorted(utub_summary, key=lambda x: x[MODELS.ID]) == sorted(
         response.json, key=lambda x: x[MODELS.ID]
     )
@@ -102,10 +115,13 @@ def test_get_utubs_sorted_based_on_last_updated(
     with app.app_context():
         utub_summary = _get_ordered_utub_summary()
 
-    last_utub_id: int = utub_summary[-1][MODELS.ID]
-    last_utub_name: str = utub_summary[-1][MODELS.NAME]
+    last_utub_id = int(utub_summary[-1][MODELS.ID])
+    last_utub_name = str(utub_summary[-1][MODELS.NAME])
 
-    response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS))
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
 
     assert response.status_code == 200
     assert utub_summary == response.json
@@ -123,15 +139,18 @@ def test_get_utubs_sorted_based_on_last_updated(
     assert response.status_code == 200
 
     # Check last UTub is now first
-    response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS))
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
     assert response.status_code == 200
     with app.app_context():
         utub_summary = _get_ordered_utub_summary()
     assert utub_summary == response.json
     assert utub_summary[0][MODELS.ID] == last_utub_id
 
-    middle_utub_id: int = utub_summary[-2][MODELS.ID]
-    middle_utub_name: str = utub_summary[-2][MODELS.NAME]
+    middle_utub_id = int(utub_summary[-2][MODELS.ID])
+    middle_utub_name = str(utub_summary[-2][MODELS.NAME])
 
     utub_name_form = {
         UTUB_FORM.UTUB_NAME: middle_utub_name + "88",
@@ -146,7 +165,10 @@ def test_get_utubs_sorted_based_on_last_updated(
     assert response.status_code == 200
 
     # Check middle UTub is now first
-    response = client.get(url_for(ROUTES.UTUBS.GET_UTUBS))
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
     assert response.status_code == 200
     with app.app_context():
         utub_summary = _get_ordered_utub_summary()
@@ -161,3 +183,23 @@ def _get_ordered_utub_summary() -> list[dict[str, int | str]]:
         for utub in all_utubs
         if current_user.id in [member.user_id for member in utub.members]
     ]
+
+
+def test_get_utubs_without_ajax_request(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user with ID == 1, with one UTub.
+    WHEN the user requests a summary of all
+        their UTubs
+    THEN verify the response body contains an array with one UTub in the JSON
+    """
+    client, _, _, _ = login_first_user_without_register
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+    )
+
+    assert response.status_code == 404
+    assert IDENTIFIERS.HTML_404.encode() in response.data

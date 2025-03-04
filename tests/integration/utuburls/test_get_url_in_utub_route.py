@@ -10,6 +10,7 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from src.utils.strings.url_validation_strs import URL_VALIDATION
 
 pytestmark = pytest.mark.urls
 
@@ -75,6 +76,7 @@ def test_get_url_in_utub(
             utub_id=utub_creator_of.id,
             utub_url_id=url_id_in_utub,
         ),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
     assert get_url_response.status_code == 200
@@ -130,6 +132,7 @@ def test_get_url_in_utub_as_not_member(
             utub_id=utub_not_member_of.id,
             utub_url_id=url_id_of_utub_not_member_of,
         ),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
     assert get_url_response.status_code == 403
@@ -171,6 +174,7 @@ def test_get_nonexistent_url_in_utub(
             utub_id=utub_creator_of.id,
             utub_url_id=NONEXISTENT_URL_ID,
         ),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
     assert get_url_response.status_code == 404
@@ -202,6 +206,37 @@ def test_get_url_in_nonexistent_utub(
         url_for(
             ROUTES.URLS.GET_URL,
             utub_id=NONEXISTENT_UTUB_ID,
+            utub_url_id=valid_url_in_utub.id,
+        ),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert get_url_response.status_code == 404
+    assert IDENTIFIERS.HTML_404.encode() in get_url_response.data
+
+
+def test_get_url_in_utub_non_ajax_request(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to get a nonexistent URL via a GET to
+        "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN verify that the server sends back a 404 HTTP status code, and the server sends back the 404 page
+    """
+
+    client, _, _, app = login_first_user_without_register
+
+    UTUB_ID = 1
+    with app.app_context():
+        # Get the UTub this user is member of
+        valid_url_in_utub = Utub_Urls.query.first()
+
+    get_url_response = client.get(
+        url_for(
+            ROUTES.URLS.GET_URL,
+            utub_id=UTUB_ID,
             utub_url_id=valid_url_in_utub.id,
         ),
     )

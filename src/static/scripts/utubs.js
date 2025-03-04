@@ -114,7 +114,8 @@ window.addEventListener("pageshow", function (e) {
   const searchParams = new URLSearchParams(window.location.search);
   if (searchParams.size === 0) return;
 
-  const utubId = searchParams.get("UTubID");
+  const utubId = searchParams.get(STRINGS.UTUB_QUERY_PARAM);
+  console.log(`utub id is: ${utubId}`);
   if (searchParams.size > 1 || utubId === null) {
     window.location.assign(routes.errorPage);
   }
@@ -472,10 +473,11 @@ function buildSelectedUTub(selectedUTub) {
       JSON.stringify(selectedUTub.id)
   ) {
     // Push UTub state to browser history if no history, or if previous UTub history is different
+    const utubid_key = STRINGS.UTUB_QUERY_PARAM;
     window.history.pushState(
       { UTubID: selectedUTub.id },
       "",
-      "/home?UTubID=" + selectedUTub.id,
+      `/home?${utubid_key}=${selectedUTub.id}`,
     );
 
     sessionStorage.setItem("fullyLoaded", "true");

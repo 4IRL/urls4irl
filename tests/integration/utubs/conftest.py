@@ -16,7 +16,7 @@ from tests.models_for_test import (
 
 @pytest.fixture
 def add_single_utub_as_user_after_logging_in(
-    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask]
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ) -> Generator[Tuple[FlaskClient, int, str, Flask], None, None]:
     """
     After logging in a user with ID == 1, has the user create a UTub and adds the
