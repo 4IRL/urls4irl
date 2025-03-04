@@ -18,7 +18,7 @@ pytestmark = pytest.mark.utubs
 
 
 def test_get_valid_utub_as_creator(
-    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask]
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
 ):
     """
     GIVEN a creator of a newly formed UTub

@@ -17,7 +17,7 @@ pytestmark = pytest.mark.utubs
 
 
 def test_get_utubs_if_has_no_utubs(
-    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask]
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
 ):
     """
     GIVEN a logged in user with ID == 1, with no UTubs.
