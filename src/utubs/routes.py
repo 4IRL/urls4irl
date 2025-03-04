@@ -94,6 +94,10 @@ def get_single_utub(utub_id: int):
 
     utub: Utubs = Utubs.query.get_or_404(utub_id)
     utub_data_serialized = utub.serialized(current_user.id)
+
+    utub.set_last_updated()
+    db.session.commit()
+
     return jsonify(utub_data_serialized)
 
 
