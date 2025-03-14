@@ -919,6 +919,17 @@ def verify_url_coloring_is_correct(browser: WebDriver):
             assert "odd" in url_card.get_dom_attribute("class")
 
 
+# Tags Deck
+def verify_tags_exist_in_tag_deck(browser: WebDriver, utub_tag_ids: list[int]):
+    for utub_tag_id in utub_tag_ids:
+        utub_tag_selector = (
+            f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{utub_tag_id}']"
+        )
+        utub_tag_elem = wait_then_get_element(browser, utub_tag_selector, time=3)
+        assert utub_tag_elem is not None
+        assert utub_tag_elem.is_displayed()
+
+
 # Misc
 def invalidate_csrf_token_on_page(browser: WebDriver):
     browser.execute_script(
@@ -993,12 +1004,19 @@ def build_secondary_driver():
     return driver
 
 
-# Tags Deck
-def verify_tags_exist_in_tag_deck(browser: WebDriver, utub_tag_ids: list[int]):
-    for utub_tag_id in utub_tag_ids:
-        utub_tag_selector = (
-            f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{utub_tag_id}']"
+def verify_element_in_focus(
+    browser: WebDriver, element: WebElement, timeout=10
+) -> bool:
+    try:
+        # Wait and verify that the element has focus
+        WebDriverWait(browser, timeout).until(
+            lambda d: d.switch_to.active_element == element
         )
-        utub_tag_elem = wait_then_get_element(browser, utub_tag_selector, time=3)
-        assert utub_tag_elem is not None
-        assert utub_tag_elem.is_displayed()
+        return True
+    except TimeoutException:
+        return False
+
+
+def set_focus_on_element(driver: WebDriver, element: WebElement):
+    driver.execute_script("arguments[0].focus();", element)
+    assert verify_element_in_focus(driver, element)
