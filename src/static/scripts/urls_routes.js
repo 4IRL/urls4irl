@@ -747,9 +747,8 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
   });
 
   // Based on IDs, find if tag still exists in UTub - if not, remove from tag deck
-  const allCurrentTags = $(".tagBadge");
   for (let i = 0; i < removedTagIDs.length; i++) {
-    if (!isTagInUTub(allCurrentTags, removedTagIDs[i])) {
+    if (!isTagInUTubTagDeck(receivedTag.utubTagID)) {
       removeTagFromTagDeckGivenTagID(removedTagIDs[i]);
     }
   }
@@ -780,9 +779,9 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
         );
 
       // Add tag to UTub if it doesn't already exist
-      if (!isTagInUTub(allCurrentTags, receivedTag.utubTagID)) {
+      if (!isTagInUTubTagDeck(receivedTag.utubTagID)) {
         $("#listTags").append(
-          createTagFilterInDeck(receivedTag.utubTagID, receivedTag.tagString),
+          buildTagFilterInDeck(receivedTag.utubTagID, receivedTag.tagString),
         );
       }
     }

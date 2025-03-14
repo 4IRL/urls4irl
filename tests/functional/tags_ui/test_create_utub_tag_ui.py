@@ -20,6 +20,7 @@ from tests.functional.utils_for_test import (
     get_utub_this_user_created,
     invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_utubid,
+    set_focus_on_element,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -47,6 +48,63 @@ def test_open_input_create_utub_tag(
     )
 
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CREATE, time=3)
+    wait_until_visible_css_selector(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
+
+    # Ensure input is focused
+    assert browser.switch_to.active_element == browser.find_element(
+        By.CSS_SELECTOR, HPL.INPUT_UTUB_TAG_CREATE
+    )
+
+    visible_elems = (
+        HPL.INPUT_UTUB_TAG_CREATE,
+        HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
+        HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
+        HPL.BUTTON_UNSELECT_ALL,
+    )
+
+    for visible_elem_selector in visible_elems:
+        visible_elem = browser.find_element(By.CSS_SELECTOR, visible_elem_selector)
+        assert visible_elem.is_displayed()
+        assert visible_elem.is_enabled()
+
+    non_visible_elems = (
+        HPL.BUTTON_UTUB_TAG_CREATE,
+        HPL.LIST_TAGS,
+    )
+    for non_visible_elem_selector in non_visible_elems:
+        non_visible_elem = browser.find_element(
+            By.CSS_SELECTOR, non_visible_elem_selector
+        )
+        assert not non_visible_elem.is_displayed()
+
+
+def test_open_input_create_utub_tag_tab_focus(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests ability to open the create UTub tag form
+
+    GIVEN a user is a UTub member and has selected the UTub
+    WHEN the user tags to the create UTub tag plus button
+    THEN ensure the createUTubTag form is opened
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    create_utub_tag_btn = wait_then_get_element(
+        browser, HPL.BUTTON_UTUB_TAG_CREATE, time=3
+    )
+    assert create_utub_tag_btn is not None
+
+    set_focus_on_element(browser, create_utub_tag_btn)
+    create_utub_tag_btn.send_keys(Keys.ENTER)
+
+    browser.get_screenshot_as_file("p1.png")
     wait_until_visible_css_selector(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
 
     # Ensure input is focused
