@@ -23,7 +23,7 @@ RUN set -ex \
 	&& rm -rf /var/lib/apt/lists/*
 
 # Copy over required files
-COPY requirements-prod.txt ./
+COPY requirements/requirements-prod.txt ./
 COPY run.py ./
 COPY src/ ./src/
 COPY migrations/ ./migrations/

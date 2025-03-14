@@ -76,7 +76,7 @@ jobs:
 
           - name: SCP Compose File Into Production Server
             run: |
-              scp -T -q -o StrictHostKeyChecking=no compose.yaml ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
+              scp -T -q -o StrictHostKeyChecking=no docker/compose.yaml ${{ secrets.PROD_SSH_HOST }}:/home/u4i/
 
           # Pull updated images, recreate if needed, run as daemon, and prune old images
           - name: Build Docker Network

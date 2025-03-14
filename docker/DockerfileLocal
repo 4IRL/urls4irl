@@ -48,16 +48,14 @@ COPY utils/ ./utils/
 COPY pytest.ini ./
 
 # Copy requirements files
-COPY requirements-dev.txt ./
-COPY requirements-test.txt ./
-COPY requirements-prod.txt ./
+COPY requirements/ ./requirements/
 
 # Install development level requirements
 RUN chmod -R 775 /code \ 
 	&& chown -R u4i-host:u4i-host-group /code \
 	&& python3 -m venv /code/venv \
 	&& . /code/venv/bin/activate \
-	&& pip install -r requirements-dev.txt --no-cache-dir
+	&& pip install -r requirements/requirements-dev.txt --no-cache-dir
 
 # Create a non-root user
 USER u4i-host

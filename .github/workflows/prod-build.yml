@@ -20,7 +20,7 @@ jobs:
             SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
             FULL_TAG="$DATE-$SHORT_SHA"
 
-            docker build . --file Dockerfile --tag $IMAGE_NAME --tag $FULL_TAG --label "runnumber=${GITHUB_RUN_ID}"
+            docker build . --file docker/Dockerfile --tag $IMAGE_NAME --tag $FULL_TAG --label "runnumber=${GITHUB_RUN_ID}"
 
         - name: Log in to registry
           run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
