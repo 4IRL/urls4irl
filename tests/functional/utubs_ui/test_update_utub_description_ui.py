@@ -22,6 +22,7 @@ from tests.functional.utils_for_test import (
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
     login_user_to_home_page,
+    select_utub_by_id,
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
@@ -572,6 +573,46 @@ def test_open_update_utub_description_btn_not_visible_with_no_utub_selected(
         By.CSS_SELECTOR, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE
     )
     assert not update_utub_desc_btn.is_displayed()
+
+
+def test_open_update_utub_description_btn_not_visible_on_member_utub_after_own_utub_with_no_description(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests a user's ability to not see the update UTub description button when switching from a UTub
+    they own with no description to switching to a UTub they do not own with no description.
+
+    GIVEN a fresh load of the U4I Home page
+    WHEN user selects a UTub they created with no description, then a UTub they do not own
+        that has no description
+    THEN ensure the updateUTubDescription input does not open
+    """
+    app = provide_app
+    user_id = 1
+
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    update_utub_to_empty_desc(app, utub_user_created.id)
+
+    utub_user_member_of = get_utub_this_user_did_not_create(app, user_id)
+    update_utub_to_empty_desc(app, utub_user_member_of.id)
+
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+
+    select_utub_by_id(browser, utub_user_member_of.id)
+
+    actions = ActionChains(browser)
+
+    utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
+    utub_desc_input_elem = browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
+    )
+
+    # Exception raised since hovering over the element should not pop up the
+    # empty UTub description update button
+    with pytest.raises(ElementNotInteractableException):
+        actions.move_to_element(utub_title_elem).pause(5).move_to_element(
+            utub_desc_input_elem
+        ).pause(5).perform()
 
 
 def test_update_utub_description_invalid_csrf_token(

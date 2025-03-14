@@ -72,7 +72,7 @@ jobs:
 
           - name: SCP Compose File Into Development Server
             run: |
-              scp -T -q -o StrictHostKeyChecking=no compose-dev.yaml ${{ secrets.DEV_SSH_HOST}}:~
+              scp -T -q -o StrictHostKeyChecking=no docker/compose-dev.yaml ${{ secrets.DEV_SSH_HOST}}:~
 
           # Allow environment file to be defined by GitHub secrets
           - name: Generate Environment File

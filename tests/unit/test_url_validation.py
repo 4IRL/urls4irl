@@ -91,8 +91,8 @@ valid_urls = {
     "https://developers.google.com/calendar/api/guides/overview": [
         "https://developers.google.com/calendar/api/guides/overview",
     ],
-    "https://developers.google.com/keep/api/reference/rest": [
-        "https://developers.google.com/keep/api/reference/rest"
+    "https://developers.google.com/workspace/keep/api/reference/rest": [
+        "https://developers.google.com/workspace/keep/api/reference/rest"
     ],
 }
 

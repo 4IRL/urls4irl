@@ -16,3 +16,4 @@ bootstrap*.css*
 secrets/
 backups/
 *.gz
+node_modules/
