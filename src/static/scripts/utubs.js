@@ -496,9 +496,9 @@ function buildSelectedUTub(selectedUTub) {
 
   // UTub Description
   const utubDescriptionHeader = $("#URLDeckSubheader");
+  removeEventListenersForShowCreateUTubDescIfEmptyDesc();
   if (utubDescription) {
     utubDescriptionHeader.text(utubDescription);
-    removeEventListenersForShowCreateUTubDescIfEmptyDesc();
   } else {
     isCurrentUserOwner
       ? allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty()
