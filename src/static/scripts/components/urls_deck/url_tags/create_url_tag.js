@@ -1,5 +1,69 @@
 "use strict";
 
+function createTagInputBlock(urlCard) {
+  const urlTagCreateTextInputContainer = makeTextInput(
+    "urlTag",
+    INPUT_TYPES.CREATE.description,
+  )
+    .addClass("createUrlTagWrap")
+    .css("display", "none");
+
+  urlTagCreateTextInputContainer.find("label").text("Tag");
+
+  // Customize the input text box for the Url title
+  const urlTagTextInput = urlTagCreateTextInputContainer
+    .find("input")
+    .prop("minLength", CONSTANTS.TAGS_MIN_LENGTH)
+    .prop("maxLength", CONSTANTS.TAGS_MAX_LENGTH);
+
+  setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard);
+
+  // Create Url Title submit button
+  const urlTagSubmitBtnCreate = makeSubmitButton(30).addClass(
+    "urlTagSubmitBtnCreate",
+  );
+
+  urlTagSubmitBtnCreate
+    .find(".submitButton")
+    .on("click.createURLTag", function () {
+      createURLTag(urlTagTextInput, urlCard);
+    })
+    .on("focus.createURLTag", function () {
+      $(document).on("keyup.createURLTag", function (e) {
+        if (e.which === 13) createURLTag(urlTagTextInput, urlCard);
+      });
+    })
+    .on("blur.createURLTag", function () {
+      $(document).off("keyup.createURLTag");
+    });
+
+  // Create Url Title cancel button
+  const urlTagCancelBtnCreate = makeCancelButton(30).addClass(
+    "urlTagCancelBtnCreate",
+  );
+
+  urlTagCancelBtnCreate
+    .find(".cancelButton")
+    .on("click.createURLTag", function (e) {
+      e.stopPropagation();
+      hideAndResetCreateURLTagForm(urlCard);
+    })
+    .offAndOn("focus.createURLTag", function () {
+      $(document).on("keyup.createURLTag", function (e) {
+        if (e.which === 13) hideAndResetCreateURLTagForm(urlCard);
+      });
+    })
+    .offAndOn("blur.createURLTag", function () {
+      $(document).off("keyup.createURLTag");
+    });
+
+  urlTagCreateTextInputContainer
+    .append(urlTagSubmitBtnCreate)
+    .append(urlTagCancelBtnCreate);
+
+  return urlTagCreateTextInputContainer;
+}
+
 // Displays new Tag input prompt on selected URL
 function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   // Show form to add a tag to this URL
@@ -116,7 +180,7 @@ async function createURLTag(urlTagCreateInput, urlCard) {
 
   let timeoutID;
   try {
-    timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
+    timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, urlID, urlCard);
 
     const request = ajaxCall("post", postURL, data);

@@ -78,6 +78,32 @@ function toggleTagFilterSelected(activeTagFilter) {
   updateURLsAndTagSubheaderWhenTagSelected();
 }
 
+function enableUnselectedTagsAfterDisabledDueToLimit() {
+  const unselectedTags = $(".tagFilter.unselected").removeClass("disabled");
+  unselectedTags.each((_, tag) => {
+    $(tag)
+      .on("click.tagFilterSelected", function () {
+        toggleTagFilterSelected($(tag));
+      })
+      .offAndOn("focus.tagFilterSelected", function () {
+        $(document).on("keyup.tagFilterSelected", function (e) {
+          if (e.which === 13) toggleTagFilterSelected($(tag));
+        });
+      })
+      .offAndOn("blur.tagFilterSelected", function () {
+        $(document).off("keyup.tagFilterSelected");
+      })
+      .attr({ tabindex: 0 });
+  });
+}
+
+function disableUnselectedTagsAfterLimitReached() {
+  const unselectedTags = $(".tagFilter.unselected").addClass("disabled");
+  unselectedTags.each((_, tag) => {
+    $(tag).off(".tagFilterSelected").attr({ tabindex: -1 });
+  });
+}
+
 function updateTagFilteringOnFindingStaleData() {
   // Update tag deck itself
   const selectedTagCount = $(".tagFilter.selected").length;

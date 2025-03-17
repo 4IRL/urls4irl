@@ -37,3 +37,14 @@ function reapplyAlternatingURLCardBackgroundAfterFilter() {
       .addClass(idx % 2 == 0 ? "even" : "odd");
   });
 }
+
+function isURLCurrentlyVisibleInURLDeck(urlString) {
+  const visibleURLs = $(".urlString");
+
+  for (let i = 0; i < visibleURLs.length; i++) {
+    if ($(visibleURLs[i]).attr("data-url") === urlString) {
+      return true;
+    }
+  }
+  return false;
+}

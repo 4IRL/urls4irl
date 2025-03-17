@@ -13,7 +13,7 @@ async function deleteURLTag(utubTagID, tagBadge, urlCard) {
   const urlID = parseInt(urlCard.attr("urlid"));
   let timeoutID;
   try {
-    timeoutID = setTimeoutAndShowLoadingIcon(urlCard);
+    timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, urlID, urlCard);
 
     // If tag was already deleted on update of URL, exit early

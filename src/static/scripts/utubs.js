@@ -115,7 +115,6 @@ window.addEventListener("pageshow", function (e) {
   if (searchParams.size === 0) return;
 
   const utubId = searchParams.get(STRINGS.UTUB_QUERY_PARAM);
-  console.log(`utub id is: ${utubId}`);
   if (searchParams.size > 1 || utubId === null) {
     window.location.assign(routes.errorPage);
   }
