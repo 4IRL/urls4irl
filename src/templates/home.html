@@ -32,9 +32,20 @@
 
 <!-- Home Page JS -->
 <!-- Add asset version based on UNIX epoch to cache bust when updates are made -->
-<script src="{{ url_for('static', filename='scripts/utils.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/utubs.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/utubs_routes.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/extensions.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/btns_forms.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/home.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/navbar.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/mobile.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/visibility.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/window_events.js') }}?v={{ ASSET_VERSION }}"></script>
+
+<script src="{{ url_for('static', filename='scripts/components/utubs_deck/get_utubs_on_stale_data.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/utubs_deck/utubs.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/utubs_deck/utubs_deck.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/utubs_deck/utubs_deck_utils.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/utubs_deck/create_utub_form.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/utubs_deck/delete_utub_form.js') }}?v={{ ASSET_VERSION }}"></script>
 
 <script src="{{ url_for('static', filename='scripts/components/members_deck/create_utub_member.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/members_deck/delete_utub_member.js') }}?v={{ ASSET_VERSION }}"></script>
@@ -46,7 +57,10 @@
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/create_url_btns.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/urls_deck.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/urls_deck_utils.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/urls_deck/update_utub_description.js') }}?v={{ ASSET_VERSION }}"></script>
+<script src="{{ url_for('static', filename='scripts/components/urls_deck/update_utub_name.js') }}?v={{ ASSET_VERSION }}"></script>
 
+<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_utils.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/create_url_card.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/delete_url_card.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/get_url.js') }}?v={{ ASSET_VERSION }}"></script>
@@ -59,7 +73,6 @@
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_selection.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_url_string.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_url_title.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_utils.js') }}?v={{ ASSET_VERSION }}"></script>
 
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/url_tags/create_url_tag.js') }}?v={{ ASSET_VERSION }}"></script>
 <script src="{{ url_for('static', filename='scripts/components/urls_deck/url_tags/delete_url_tag.js') }}?v={{ ASSET_VERSION }}"></script>
