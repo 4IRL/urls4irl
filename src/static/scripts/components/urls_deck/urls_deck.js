@@ -1,5 +1,9 @@
 "use strict";
 
+$(document).ready(function () {
+  bindSwitchURLKeyboardEventListeners();
+});
+
 // Clear the URL Deck
 function resetURLDeck() {
   // Empty URL Deck

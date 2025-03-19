@@ -155,8 +155,9 @@ def test_select_urls_as_url_creator_and_utub_member(
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
 
-        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
-        assert get_selected_url(browser) == url_row
+        selected_url_id = get_selected_url(browser).get_attribute("urlid")
+        assert selected_url_id is not None and selected_url_id.isnumeric()
+        assert int(selected_url_id) == url_utub_id
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         current_utub_url_id = url_row.get_attribute("urlid")
