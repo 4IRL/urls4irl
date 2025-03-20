@@ -9,5 +9,5 @@ platformdirs==3.9.1
 pre-commit==3.7.0
 pyopenssl==25.0.0
 PyYAML==6.0.1
-virtualenv==20.24.5
+virtualenv==20.26.6
 -r requirements-test.txt
