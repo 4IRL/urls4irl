@@ -29,60 +29,11 @@
     {% include 'home/URLDeck/URLDeck.html' %}
 </div>
 <!-- End Center Panel -->
-
 <!-- Home Page JS -->
 <!-- Add asset version based on UNIX epoch to cache bust when updates are made -->
-<script src="{{ url_for('static', filename='scripts/components/extensions.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/btns_forms.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/home.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/navbar.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/mobile.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/visibility.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/window_events.js') }}?v={{ ASSET_VERSION }}"></script>
-
-<script src="{{ url_for('static', filename='scripts/components/utubs_deck/get_utubs_on_stale_data.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utubs_deck/utubs.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utubs_deck/utubs_deck.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utubs_deck/utubs_deck_utils.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utubs_deck/create_utub_form.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utubs_deck/delete_utub_form.js') }}?v={{ ASSET_VERSION }}"></script>
-
-<script src="{{ url_for('static', filename='scripts/components/members_deck/create_utub_member.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/members_deck/delete_utub_member.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/members_deck/utub_members.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/members_deck/utub_members_deck.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/members_deck/utub_members_utils.js') }}?v={{ ASSET_VERSION }}"></script>
-
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/access_all_urls_btn.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/create_url_btns.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/urls_deck.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/urls_deck_utils.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/update_utub_description.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/update_utub_name.js') }}?v={{ ASSET_VERSION }}"></script>
-
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_utils.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/create_url_card.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/delete_url_card.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/get_url.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/update_url_string.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/update_url_title.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_access_url.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_filtering.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_loading_icon.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_selection.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_url_string.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_cards/url_cards_url_title.js') }}?v={{ ASSET_VERSION }}"></script>
-
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_tags/create_url_tag.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_tags/delete_url_tag.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/urls_deck/url_tags/url_tags.js') }}?v={{ ASSET_VERSION }}"></script>
-
-<script src="{{ url_for('static', filename='scripts/components/utub_tags_deck/create_utub_tag.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utub_tags_deck/unselect_all_utub_tags.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utub_tags_deck/utub_tags.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utub_tags_deck/utub_tags_deck.js') }}?v={{ ASSET_VERSION }}"></script>
-<script src="{{ url_for('static', filename='scripts/components/utub_tags_deck/utub_tags_utils.js') }}?v={{ ASSET_VERSION }}"></script>
+{% assets "logged_in_js" %}
+<script src="{{ ASSET_URL }}?v={{ ASSET_VERSION }}"></script>
+{% endassets %}
 
 {% endblock %}
 

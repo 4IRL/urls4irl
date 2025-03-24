@@ -1,6 +1,7 @@
 from flask import (
     Blueprint,
     abort,
+    current_app,
     jsonify,
     redirect,
     request,
@@ -13,6 +14,7 @@ from sqlalchemy.exc import DataError
 from src import db
 from src.models.utubs import Utubs
 from src.models.utub_members import Member_Role, Utub_Members
+from src.utils.strings.config_strs import CONFIG_ENVS
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from src.utubs.utils import build_form_errors
 from src.utils.all_routes import ROUTES
@@ -56,7 +58,13 @@ def home():
     """
     if not request.args:
         utub_details = jsonify(current_user.serialized_on_initial_load)
-        return render_template("home.html", utubs_for_this_user=utub_details.json)
+        return render_template(
+            "home.html",
+            utubs_for_this_user=utub_details.json,
+            is_prod_or_testing=current_app.config.get(
+                CONFIG_ENVS.TESTING_OR_PROD, True
+            ),
+        )
 
     if len(request.args) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
         abort(404)
@@ -70,7 +78,13 @@ def home():
             return redirect(url_for(ROUTES.UTUBS.HOME))
 
         utub_details = jsonify(current_user.serialized_on_initial_load)
-        return render_template("home.html", utubs_for_this_user=utub_details.json)
+        return render_template(
+            "home.html",
+            utubs_for_this_user=utub_details.json,
+            is_prod_or_testing=current_app.config.get(
+                CONFIG_ENVS.TESTING_OR_PROD, True
+            ),
+        )
 
     except (ValueError, DataError):
         # Handle invalid UTubID passed as query parameter

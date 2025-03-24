@@ -31,6 +31,7 @@ services:
       . /code/venv/bin/activate &&
       flask db upgrade &&
       flask shorturls add &&
+      flask assets build &&
       gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
       "
 

@@ -1,4 +1,7 @@
+import os
+
 from flask import Flask
+from flask_assets import Environment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
@@ -12,6 +15,7 @@ from src.extensions.email_sender.email_sender import EmailSender
 from src.extensions.url_validation.url_validator import UrlValidator
 from src.cli.cli_options import register_short_urls_cli
 from src.cli.mock_options import register_mocks_db_cli
+from src.utils.bundle import prepare_bundler_for_js_files
 from src.utils.error_handler import (
     handle_403_response,
     handle_404_response,
@@ -31,6 +35,8 @@ email_sender = EmailSender()
 
 url_validator = UrlValidator()
 
+environment_assets = Environment()
+
 
 def create_app(config_class: type[Config] = Config) -> Flask | None:
     testing = config_class.TESTING
@@ -40,6 +46,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
         return
     app = Flask(__name__)
     app.config.from_object(ConfigProd if production else config_class)
+    app.config[CONFIG_ENVS.TESTING_OR_PROD] = testing or production
 
     sess.init_app(app)
     db.init_app(app)
@@ -64,6 +71,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
 
     url_validator.init_app(app)
 
+    from src.assets.routes import assets_bp
     from src.splash.routes import splash
     from src.utubs.routes import utubs
     from src.users.routes import users
@@ -76,6 +84,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     def asset_processor():  # type: ignore
         return {CONFIG_ENVS.ASSET_VERSION: app.config[CONFIG_ENVS.ASSET_VERSION]}
 
+    app.register_blueprint(assets_bp)
     app.register_blueprint(splash)
     app.register_blueprint(utubs)
     app.register_blueprint(users)
@@ -94,10 +103,17 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
         from src import models  # noqa: F401
 
         assert models
-
         migrate.init_app(app)
 
-    # with app.app_context():
-    #     db.create_all(bind_key="prod") if production else db.create_all()
+    relative_js_path = "static/scripts/components/**/*.js"
+    js_path = os.path.join(app.root_path, relative_js_path)
+    prepare_bundler_for_js_files(
+        abs_js_path=js_path,
+        relative_js_path=relative_js_path,
+        app=app,
+        assets=environment_assets,
+        assets_url_prefix=assets_bp.url_prefix,
+        is_testing_or_prod=(testing or production),
+    )
 
     return app
