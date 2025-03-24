@@ -8,7 +8,7 @@ services:
       dockerfile: docker/DockerfileLocal
     ports: 
       - "127.0.0.1:8659:5000"
-    user: u4i-host
+    user: u4i-host:u4i-host-group
     depends_on:
       - db
       - test-db

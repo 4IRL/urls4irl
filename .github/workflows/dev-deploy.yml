@@ -104,6 +104,7 @@ jobs:
               rm -rf ./secrets;
               docker image prune -f;
               docker exec u4i-dev-flask tar -cf - -C /code/u4i/src/static . | tar -xf - -C ~/static;
+              docker cp u4i-dev-flask:/code/u4i/src/gen/logged_in.js /home/site_ops/static;
               ';
               sleep 30;
           

@@ -13,7 +13,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
 # Internal libraries
-from src import create_app, db
+from src import create_app, db, environment_assets
 from src.config import ConfigTest
 from src.models.email_validations import Email_Validations
 from src.models.forgot_passwords import Forgot_Passwords
@@ -79,6 +79,9 @@ def parallelize_app(provide_port, init_multiprocessing, flask_logs):
 
 @pytest.fixture(scope="session")
 def provide_app() -> Generator[Flask | None, None, None]:
+    # Clear bundles to avoid re-registering
+    environment_assets._named_bundles = {}
+
     yield create_app(ConfigTest())
 
 

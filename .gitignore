@@ -17,3 +17,4 @@ secrets/
 backups/
 *.gz
 node_modules/
+gen/

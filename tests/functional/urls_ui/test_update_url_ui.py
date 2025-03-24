@@ -656,7 +656,7 @@ def test_update_url_string_duplicate_url(
     assert invalid_url_string_error.text == URL_FAILURE.URL_IN_UTUB
 
 
-@pytest.mark.skip(reason="Test cannot pass until JS is bundled")
+@pytest.mark.skip(reason="Test unable to pass due to browser function not executing")
 def test_update_url_string_invalid_url(
     browser: WebDriver, create_test_urls, provide_app: Flask
 ):

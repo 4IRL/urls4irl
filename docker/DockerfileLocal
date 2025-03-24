@@ -37,7 +37,8 @@ RUN set -ex \
 	&& unzip chromedriver-linux64.zip -d /usr/local/bin/ \
 	&& chmod +x /usr/local/bin/chromedriver-linux64 \
 	&& mkdir -p /tmp/.cache/selenium \
-	&& chmod -R 777 /tmp/.cache/selenium
+	&& chmod -R 777 /tmp/.cache/selenium \
+	&& rm chromedriver-linux64.zip chrome-linux64.zip
 
 # Copy files needed
 COPY run.py ./
@@ -56,6 +57,11 @@ RUN chmod -R 775 /code \
 	&& python3 -m venv /code/venv \
 	&& . /code/venv/bin/activate \
 	&& pip install -r requirements/requirements-dev.txt --no-cache-dir
+
+# For development, since the mounted volumes inclue the src/ folder, we need to set this for the bundled JS file
+RUN mkdir -p /code/u4i/src/gen \
+	&& chmod -R 777 /code/u4i/src/gen \
+	&& chown -R u4i-host:u4i-host-group /code/u4i/src/gen
 
 # Create a non-root user
 USER u4i-host
