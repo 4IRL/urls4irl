@@ -66,7 +66,7 @@ valid_urls = {
         "flask-limiter.readthedocs.io",
         "flask-limiter.readthedocs.io/",
     ],
-    "https://stackoverflow.com/questions": [
+    "https://www.stackoverflow.com/": [
         "www.stackoverflow.com",
         "stackoverflow.com",
     ],
