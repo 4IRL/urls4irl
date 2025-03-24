@@ -103,6 +103,18 @@ jobs:
               docker compose -f compose-dev.yaml up --force-recreate --build -d;
               rm -rf ./secrets;
               docker image prune -f;
+              MAX_RETRIES=30;
+              RETRY_COUNT=0;
+              while [ $RETRY_COUNT -lt $MAX_RETRIES; do
+                if docker exec u4i-dev-flask ls /code/u4i/logged_in.js &> /dev/null; then
+                  break
+                fi
+                RETRY_COUNT=$((RETRY_COUNT+1))
+                sleep 5
+              done
+              if [ $RETRY_COUNT -eq $MAX_RETRIES ]; then
+                exit 1
+              fi
               docker exec u4i-dev-flask tar -cf - -C /code/u4i/src/static . | tar -xf - -C ~/static;
               docker cp u4i-dev-flask:/code/u4i/src/gen/logged_in.js /home/site_ops/static;
               ';
