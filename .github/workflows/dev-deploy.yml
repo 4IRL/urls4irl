@@ -104,6 +104,17 @@ jobs:
               rm -rf ./secrets;
               docker image prune -f;
               docker exec u4i-dev-flask tar -cf - -C /code/u4i/src/static . | tar -xf - -C ~/static;
+
+              echo "Waiting for bundled JS file to be built..."
+              for i in {1..30}; do
+                if docker exec u4i-dev-flask ls /code/u4i/src/gen/logged_in.js &> /dev/null; then
+                  echo "Bundled JS file built! Copying to host...
+                  break
+                fi
+              echo "Waiting.... (attempt $i of 30)"
+              sleep 5
+              done
+
               docker exec u4i-dev-flask tar -cf - -C /code/u4i/src/gen logged_in.js | tar -xf - -C ~/static;
               ';
               sleep 30;
