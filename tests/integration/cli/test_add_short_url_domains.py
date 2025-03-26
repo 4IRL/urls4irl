@@ -71,8 +71,8 @@ def test_validate_short_url(runner):
     assert is_validated
     """
 
-    VALID_BITLY_URL = "https://bit.ly/4g9eRTy"
-    LONG_URL = "https://stackoverflow.com/questions/30728973/redis-get-all-keys-values-from-redis-with-prefix"
+    VALID_BITLY_URL = "https://bit.ly/test-u4i-link"
+    LONG_URL = "https://www.youtube.com/watch?v=b0fv54xGOwY&pp=0gcJCb0Ag7Wk3p_U"
 
     final_url, is_validated = url_validator.validate_url(VALID_BITLY_URL)
 
