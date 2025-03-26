@@ -148,7 +148,7 @@ def wait_then_click_element(
             )
         )
 
-        element.click()
+        browser.find_element(By.CSS_SELECTOR, css_selector).click()
         return element
     except NoSuchElementException:
         return None

@@ -313,18 +313,9 @@ def get_newly_added_utub_url_id_by_url_string(
 def add_invalid_url_header_for_ui_test(browser: WebDriver):
     browser.execute_script(
         """
-        (function() {
-            var originalBeforeSend = $.ajaxSetup().beforeSend;
-
-            $.ajaxSetup({
-                beforeSend: function(xhr, settings) {
-                    if (originalBeforeSend) {
-                        originalBeforeSend(xhr, settings); // Preserve existing behavior
-                    }
-                    xhr.setRequestHeader("X-U4I-Testing-Invalid", "true");
-                }
-            });
-        })();
+        $(document).ajaxSend(function(event, xhr, settings) {
+            xhr.setRequestHeader('X-U4I-Testing-Invalid', 'true');
+        });
     """
     )
 
