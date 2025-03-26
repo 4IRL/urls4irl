@@ -66,9 +66,9 @@ valid_urls = {
         "flask-limiter.readthedocs.io",
         "flask-limiter.readthedocs.io/",
     ],
-    "https://www.stackoverflow.com/": [
-        "www.stackoverflow.com",
-        "stackoverflow.com",
+    "https://www.youtube.com/": [
+        "www.youtube.com",
+        "youtube.com",
     ],
     "https://www.lowes.com/pd/ReliaBilt-ReliaBilt-3-1-2-in-Zinc-Plated-Flat-Corner-Brace-4-Pack/5003415919": [
         "https://www.lowes.com/pd/ReliaBilt-ReliaBilt-3-1-2-in-Zinc-Plated-Flat-Corner-Brace-4-Pack/5003415919",

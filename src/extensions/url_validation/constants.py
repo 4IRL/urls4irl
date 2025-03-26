@@ -21,4 +21,5 @@ USER_AGENTS = (
 
 COMMON_REDIRECTS = {
     "https://www.facebook.com/login/?next=",
+    "https://www.youtube.com/supported_browsers?next_url=",
 }
