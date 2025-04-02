@@ -88,8 +88,8 @@ valid_urls = {
     "https://immich.app/docs/overview/introduction/": [
         "https://immich.app/docs/overview/introduction",
     ],
-    "https://developers.google.com/calendar/api/guides/overview": [
-        "https://developers.google.com/calendar/api/guides/overview",
+    "https://developers.google.com/workspace/calendar/api/guides/overview": [
+        "https://developers.google.com/workspace/calendar/api/guides/overview",
     ],
     "https://developers.google.com/workspace/keep/api/reference/rest": [
         "https://developers.google.com/workspace/keep/api/reference/rest"
