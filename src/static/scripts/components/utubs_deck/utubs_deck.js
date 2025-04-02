@@ -1,19 +1,5 @@
 "use strict";
 
-$(document).ready(function () {
-  const timeoutID = showUTubLoadingIconAndSetTimeout();
-  setUIWhenNoUTubSelected();
-  // Instantiate UTubDeck with user's accessible UTubs
-  try {
-    buildUTubDeck(UTubs, timeoutID);
-  } catch (error) {
-    console.log("Something is wrong!");
-    console.log(error);
-  }
-
-  setCreateDeleteUTubEventListeners();
-});
-
 // Utility function to show a loading icon when loading UTubs
 function showUTubLoadingIconAndSetTimeout() {
   return setTimeout(function () {

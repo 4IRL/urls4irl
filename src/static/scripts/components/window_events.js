@@ -29,13 +29,13 @@ window.addEventListener("popstate", function (e) {
 });
 
 window.addEventListener("pageshow", function (e) {
-  if (!this.sessionStorage.getItem("fullyLoaded")) {
+  if (!this.sessionStorage.getItem("fullyLoaded") || !getNumOfUTubs()) {
+    const timeoutID = showUTubLoadingIconAndSetTimeout();
     setUIWhenNoUTubSelected();
-    getAllUTubs().then((utubData) => {
-      buildUTubDeck(utubData);
-      setMemberDeckWhenNoUTubSelected();
-      setTagDeckSubheaderWhenNoUTubSelected();
-    });
+    buildUTubDeck(UTubs, timeoutID);
+    setMemberDeckWhenNoUTubSelected();
+    setTagDeckSubheaderWhenNoUTubSelected();
+    setCreateDeleteUTubEventListeners();
   }
 
   if (history.state && history.state.UTubID) {
