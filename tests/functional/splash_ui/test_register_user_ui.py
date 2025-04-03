@@ -62,7 +62,7 @@ def test_open_register_modal_RHS_btn(browser: WebDriver):
     navbar = wait_then_get_element(browser, SPL.SPLASH_NAVBAR)
     assert navbar is not None
 
-    register_btn = navbar.find_element(By.CSS_SELECTOR, SPL.BUTTON_REGISTER)
+    register_btn = navbar.find_element(By.CSS_SELECTOR, SPL.NAVBAR_REGISTER)
     register_btn.click()
 
     modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)

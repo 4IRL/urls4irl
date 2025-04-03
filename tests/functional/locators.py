@@ -1,6 +1,8 @@
 class GenericPageLocator:
     ERROR_PAGE_HANDLER = "#ErrorPageHandler"
     ERROR_PAGE_REFRESH_BTN = f"{ERROR_PAGE_HANDLER} .refresh-button"
+    NAVBAR_TOGGLER = ".navbar-toggler"
+    NAVBAR_DROPDOWN = "#NavbarNavDropdown"
 
 
 class HomePageLocators(GenericPageLocator):
@@ -136,14 +138,27 @@ class HomePageLocators(GenericPageLocator):
     ACCESS_ALL_URL_MODAL = ".accessAllUrlModal"
     DELETE_URL_MODAL = ".deleteUrlModal"
 
+    # Decks
+    UTUB_DECK = ".deck#UTubDeck"
+    MEMBER_DECK = ".deck#MemberDeck"
+    TAG_DECK = ".deck#TagDeck"
+    URL_DECK = ".deck#URLDeck"
+
+    # Panels
+    MAIN_PANEL = "main#mainPanel"
+
 
 class SplashPageLocators(GenericPageLocator):
     """A collector class for splash page locators"""
 
     # Options
     SPLASH_NAVBAR = "#NavbarDropdownsSplash"
-    BUTTON_REGISTER = ".to-register"
-    BUTTON_LOGIN = ".to-login"
+    BUTTON_REGISTER = ".btn.to-register"
+    BUTTON_LOGIN = ".btn.to-login"
+
+    # Navbar
+    NAVBAR_REGISTER = ".nav-bar-inner-item.to-register"
+    NAVBAR_LOGIN = ".nav-bar-inner-item.to-login"
 
     # Common
     INPUT_USERNAME = "#username"

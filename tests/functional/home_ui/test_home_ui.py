@@ -57,7 +57,7 @@ def test_logout(browser: WebDriver, create_test_users, provide_app: Flask):
     navbar = wait_then_get_element(browser, SPL.SPLASH_NAVBAR)
     assert navbar is not None
 
-    login_btn = navbar.find_element(By.CSS_SELECTOR, SPL.BUTTON_LOGIN)
+    login_btn = navbar.find_element(By.CSS_SELECTOR, SPL.NAVBAR_LOGIN)
 
     assert login_btn.is_displayed()
 
