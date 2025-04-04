@@ -35,6 +35,25 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as MP
 
 
+# Mobile
+class Decks(Enum):
+    UTUBS = HPL.UTUB_DECK
+    MEMBERS = HPL.MEMBER_DECK
+    TAGS = HPL.TAG_DECK
+    URLS = HPL.URL_DECK
+
+
+def verify_panel_visibility_mobile(browser: WebDriver, visible_deck: Decks):
+    wait_until_visible_css_selector(browser, HPL.MAIN_PANEL, timeout=10)
+
+    for deck in Decks:
+        if visible_deck == deck:
+            continue
+        assert_not_visible_css_selector(browser, deck.value)
+
+    assert_visible_css_selector(browser, visible_deck.value)
+
+
 # General
 def wait_for_element_presence(
     browser: WebDriver, css_selector: str, timeout: int = 10
@@ -418,6 +437,18 @@ def login_user_and_select_utub_by_utubid(
     )
 
 
+def login_user_and_select_utub_by_utubid_mobile(
+    app: Flask, browser: WebDriver, user_id: int, utub_id: int
+):
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+    verify_panel_visibility_mobile(browser, Decks.UTUBS)
+
+    wait_then_click_element(
+        browser, f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']", time=10
+    )
+
+
 def login_user_select_utub_by_id_and_url_by_id(
     app: Flask, browser: WebDriver, user_id: int, utub_id: int, utub_url_id: int
 ):
@@ -621,6 +652,13 @@ def select_utub_by_id(browser: WebDriver, utub_id: int):
     utub_name = utub_selector_elem.text
     wait_then_click_element(browser, utub_selector, time=3)
     wait_until_utub_name_appears(browser, utub_name)
+
+
+def select_utub_by_id_mobile(browser: WebDriver, utub_id: int):
+    utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
+    utub_selector_elem = wait_for_element_presence(browser, utub_selector, timeout=10)
+    assert utub_selector_elem is not None
+    wait_then_click_element(browser, utub_selector, time=3)
 
 
 def wait_until_utub_name_appears(browser: WebDriver, utub_name: str):
@@ -988,25 +1026,6 @@ def verify_tags_exist_in_tag_deck(browser: WebDriver, utub_tag_ids: list[int]):
         utub_tag_elem = wait_then_get_element(browser, utub_tag_selector, time=3)
         assert utub_tag_elem is not None
         assert utub_tag_elem.is_displayed()
-
-
-# Mobile
-class Decks(Enum):
-    UTUBS = HPL.UTUB_DECK
-    MEMBERS = HPL.MEMBER_DECK
-    TAGS = HPL.TAG_DECK
-    URLS = HPL.URL_DECK
-
-
-def verify_panel_visibility_mobile(browser: WebDriver, visible_deck: Decks):
-    wait_until_visible_css_selector(browser, HPL.MAIN_PANEL, timeout=10)
-
-    for deck in Decks:
-        if visible_deck == deck:
-            continue
-        assert_not_visible_css_selector(browser, deck.value)
-
-    assert_visible_css_selector(browser, visible_deck.value)
 
 
 # Misc

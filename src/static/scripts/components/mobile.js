@@ -29,6 +29,10 @@ $(document).ready(function () {
   });
 });
 
+function isMobile() {
+  return $(window).width() < TABLET_WIDTH;
+}
+
 function setMobileUIWhenUTubSelectedOrURLNavSelected() {
   $(".panel#leftPanel").addClass("hidden");
   $(".panel#centerPanel").addClass("visible-flex");
@@ -72,6 +76,9 @@ function setMobileUIWhenUTubDeckSelected() {
   $(".deck#UTubDeck").removeClass("hidden");
 
   NAVBAR_TOGGLER.toggler.hide();
+  if ($(".UTubSelector.active").length) {
+    makeUTubSelectableAgainIfMobile($(".UTubSelector.active"));
+  }
 }
 
 function setMobileUIWhenMemberDeckSelected() {

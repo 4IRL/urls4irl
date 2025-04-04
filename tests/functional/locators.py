@@ -147,6 +147,13 @@ class HomePageLocators(GenericPageLocator):
     # Panels
     MAIN_PANEL = "main#mainPanel"
 
+    # Navbar
+    NAVBAR_UTUB_DECK = "#NavbarDropdownsHome #toUTubs"
+    NAVBAR_URLS_DECK = "#NavbarDropdownsHome #toURLs"
+    NAVBAR_MEMBER_DECK = "#NavbarDropdownsHome #toMembers"
+    NAVBAR_TAGS_DECK = "#NavbarDropdownsHome #toTags"
+    NAVBAR_LOGOUT = "#NavbarDropdownsHome #logout"
+
 
 class SplashPageLocators(GenericPageLocator):
     """A collector class for splash page locators"""
