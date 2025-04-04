@@ -52,6 +52,7 @@ jobs:
           - [11, 'UI Member Functional Tests']
           - [12, 'UI UTub URL Functional Tests']
           - [13, 'UI UTub Tags Functional Tests']
+          - [14, 'UI Mobile Functional Tests']
 
     name: ${{ format('{0}', matrix.worker[1]) }}
 
