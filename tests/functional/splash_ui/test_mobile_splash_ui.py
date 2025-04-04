@@ -9,9 +9,9 @@ from tests.functional.utils_for_test import (
     Decks,
     assert_not_visible_css_selector,
     assert_visible_css_selector,
+    click_on_navbar,
     input_login_fields,
     verify_panel_visibility_mobile,
-    wait_for_class_to_be_removed,
     wait_then_click_element,
 )
 
@@ -44,8 +44,7 @@ def test_navbar_on_mobile_splash_shows_login_register(
     """
     browser = browser_mobile_portrait
 
-    wait_then_click_element(browser, SPL.NAVBAR_TOGGLER)
-    wait_for_class_to_be_removed(browser, SPL.NAVBAR_DROPDOWN, class_name="collapsing")
+    click_on_navbar(browser)
 
     assert_visible_css_selector(browser, SPL.NAVBAR_LOGIN)
     assert_visible_css_selector(browser, SPL.NAVBAR_REGISTER)
@@ -63,11 +62,9 @@ def test_navbar_on_mobile_splash_hides_login_register(
     """
     browser = browser_mobile_portrait
 
-    wait_then_click_element(browser, SPL.NAVBAR_TOGGLER)
-    wait_for_class_to_be_removed(browser, SPL.NAVBAR_DROPDOWN, class_name="collapsing")
+    click_on_navbar(browser)
 
-    wait_then_click_element(browser, SPL.NAVBAR_TOGGLER)
-    wait_for_class_to_be_removed(browser, SPL.NAVBAR_DROPDOWN, class_name="collapsing")
+    click_on_navbar(browser)
 
     assert_not_visible_css_selector(browser, SPL.NAVBAR_LOGIN)
     assert_not_visible_css_selector(browser, SPL.NAVBAR_REGISTER)
@@ -112,8 +109,7 @@ def test_mobile_login_brings_user_to_utub_panel(
     """
     browser = browser_mobile_portrait
 
-    wait_then_click_element(browser, SPL.NAVBAR_TOGGLER)
-    wait_for_class_to_be_removed(browser, SPL.NAVBAR_DROPDOWN, class_name="collapsing")
+    click_on_navbar(browser)
 
     wait_then_click_element(browser, SPL.NAVBAR_LOGIN)
     input_login_fields(browser)

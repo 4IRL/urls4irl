@@ -39,6 +39,7 @@ function setMobileUIWhenUTubSelectedOrURLNavSelected() {
   $(".home#toUTubs").removeClass("hidden");
   $(".home#toMembers").removeClass("hidden");
   $(".home#toTags").removeClass("hidden");
+  $(".home#toURLs").addClass("hidden");
 
   $(".deck#MemberDeck").removeClass("visible-flex");
   $(".deck#TagDeck").removeClass("visible-flex");
@@ -107,7 +108,7 @@ function setMobileUIWhenTagDeckSelected() {
   $(".deck#MemberDeck").addClass("hidden");
 
   $(".home#toUTubs").removeClass("hidden");
-  $(".home#toTags").removeClass("hidden");
+  $(".home#toTags").addClass("hidden");
   $(".home#toURLs").removeClass("hidden");
   $(".home#toMembers").removeClass("hidden");
 

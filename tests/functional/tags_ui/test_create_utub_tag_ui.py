@@ -104,7 +104,6 @@ def test_open_input_create_utub_tag_tab_focus(
     set_focus_on_element(browser, create_utub_tag_btn)
     create_utub_tag_btn.send_keys(Keys.ENTER)
 
-    browser.get_screenshot_as_file("p1.png")
     wait_until_visible_css_selector(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
 
     # Ensure input is focused

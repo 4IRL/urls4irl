@@ -15,6 +15,19 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"
     U4I_LOGO = ".navbar-brand"
+    NAVBAR_UTUB_DECK = "#NavbarDropdownsHome #toUTubs"
+    NAVBAR_URLS_DECK = "#NavbarDropdownsHome #toURLs"
+    NAVBAR_MEMBER_DECK = "#NavbarDropdownsHome #toMembers"
+    NAVBAR_TAGS_DECK = "#NavbarDropdownsHome #toTags"
+    NAVBAR_LOGOUT = "#NavbarDropdownsHome #logout"
+    MOBILE_NAVBAR_OPTIONS = (
+        LOGGED_IN_USERNAME_READ,
+        NAVBAR_UTUB_DECK,
+        NAVBAR_URLS_DECK,
+        NAVBAR_MEMBER_DECK,
+        NAVBAR_TAGS_DECK,
+        NAVBAR_LOGOUT,
+    )
 
     # UTub Deck
     SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
@@ -146,13 +159,6 @@ class HomePageLocators(GenericPageLocator):
 
     # Panels
     MAIN_PANEL = "main#mainPanel"
-
-    # Navbar
-    NAVBAR_UTUB_DECK = "#NavbarDropdownsHome #toUTubs"
-    NAVBAR_URLS_DECK = "#NavbarDropdownsHome #toURLs"
-    NAVBAR_MEMBER_DECK = "#NavbarDropdownsHome #toMembers"
-    NAVBAR_TAGS_DECK = "#NavbarDropdownsHome #toTags"
-    NAVBAR_LOGOUT = "#NavbarDropdownsHome #logout"
 
 
 class SplashPageLocators(GenericPageLocator):

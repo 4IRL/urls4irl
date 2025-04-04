@@ -117,6 +117,8 @@ function deleteUTubSuccess() {
       resetUTubDeckIfNoUTubs();
       hideIfShown($("#utubTagBtnCreate"));
     }
+
+    isMobile() ? setMobileUIWhenUTubNotSelectedOrUTubDeleted() : null;
   });
 }
 

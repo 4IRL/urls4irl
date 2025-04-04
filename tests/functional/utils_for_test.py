@@ -54,6 +54,11 @@ def verify_panel_visibility_mobile(browser: WebDriver, visible_deck: Decks):
     assert_visible_css_selector(browser, visible_deck.value)
 
 
+def click_on_navbar(browser: WebDriver):
+    wait_then_click_element(browser, HPL.NAVBAR_TOGGLER)
+    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
+
+
 # General
 def wait_for_element_presence(
     browser: WebDriver, css_selector: str, timeout: int = 10
@@ -594,7 +599,6 @@ def verify_no_utub_selected(browser: WebDriver):
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, HPL.BADGES_MEMBERS)
 
-    browser.get_screenshot_as_file("p1.png")
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, HPL.TAG_FILTERS)
 

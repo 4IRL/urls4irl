@@ -6,12 +6,12 @@ from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     Decks,
+    click_on_navbar,
     get_utub_this_user_created,
     login_user_and_select_utub_by_utubid_mobile,
     login_user_to_home_page,
     select_utub_by_id_mobile,
     verify_panel_visibility_mobile,
-    wait_for_class_to_be_removed,
     wait_then_click_element,
     wait_until_hidden,
 )
@@ -66,10 +66,8 @@ def test_tap_on_already_selected_utub_shows_url_deck_mobile(
     verify_panel_visibility_mobile(browser=browser, visible_deck=Decks.URLS)
 
     # Travel back
-    wait_then_click_element(browser, HPL.NAVBAR_TOGGLER)
-    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
+    click_on_navbar(browser)
 
-    browser.get_screenshot_as_file("p1.png")
     wait_then_click_element(browser, HPL.NAVBAR_UTUB_DECK, time=10)
     verify_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
 
