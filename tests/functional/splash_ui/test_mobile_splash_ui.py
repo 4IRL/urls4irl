@@ -15,7 +15,7 @@ from tests.functional.utils_for_test import (
     wait_then_click_element,
 )
 
-pytestmark = pytest.mark.splash_ui
+pytestmark = pytest.mark.mobile_ui
 
 
 def test_splash_page_ui_shows(browser_mobile_portrait: WebDriver):

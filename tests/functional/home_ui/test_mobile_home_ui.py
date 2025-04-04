@@ -20,6 +20,8 @@ from tests.functional.utils_for_test import (
     wait_until_visible_css_selector,
 )
 
+pytestmark = pytest.mark.mobile_ui
+
 
 def test_navbar_on_utub_panel_utub_unselected_mobile(
     browser_mobile_portrait: WebDriver, create_test_tags, provide_app: Flask

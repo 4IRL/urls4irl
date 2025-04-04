@@ -1,4 +1,5 @@
 from flask import Flask
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -27,6 +28,8 @@ from tests.functional.utils_for_test import (
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
+
+pytestmark = pytest.mark.tags_ui
 
 
 def test_open_input_create_utub_tag(

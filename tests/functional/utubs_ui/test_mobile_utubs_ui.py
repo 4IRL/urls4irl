@@ -1,4 +1,5 @@
 from flask import Flask
+import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from src.models.utubs import Utubs
@@ -16,6 +17,8 @@ from tests.functional.utils_for_test import (
     wait_until_hidden,
 )
 from tests.functional.utubs_ui.utils_for_test_utub_ui import create_utub
+
+pytestmark = pytest.mark.mobile_ui
 
 
 def test_create_utub_shows_url_deck_mobile(

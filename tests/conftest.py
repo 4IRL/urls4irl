@@ -49,6 +49,7 @@ TEST_SPLIT = (
     "members_ui",
     "urls_ui",
     "tags_ui",
+    "mobile_ui",
 )
 
 
