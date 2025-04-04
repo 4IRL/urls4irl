@@ -1,3 +1,4 @@
+from enum import Enum
 from os import environ
 import secrets
 import time
@@ -34,26 +35,52 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as MP
 
 
+# Mobile
+class Decks(Enum):
+    UTUBS = HPL.UTUB_DECK
+    MEMBERS = HPL.MEMBER_DECK
+    TAGS = HPL.TAG_DECK
+    URLS = HPL.URL_DECK
+
+
+def verify_panel_visibility_mobile(browser: WebDriver, visible_deck: Decks):
+    wait_until_visible_css_selector(browser, HPL.MAIN_PANEL, timeout=10)
+
+    for deck in Decks:
+        if visible_deck == deck:
+            continue
+        assert_not_visible_css_selector(browser, deck.value)
+
+    assert_visible_css_selector(browser, visible_deck.value)
+
+
+def click_on_navbar(browser: WebDriver):
+    wait_then_click_element(browser, HPL.NAVBAR_TOGGLER)
+    wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
+
+
 # General
-def get_all_attributes(driver: WebDriver, element: WebElement):
-    """
-    Args:
-        WebDriver open to U4I
-        An element on page
-
-    Returns:
-        List of attributes of element supplied
-    """
-
-    driver.execute_script(
-        "var items = {};"
-        + "element = arguments[0];"
-        + "for (i = 0; i < element.attributes.length; ++i) { "
-        + "items[element.attributes[i].name] = element.attributes[i].value;"
-        + "}; "
-        + "return items;",
-        element,
-    )
+def wait_for_element_presence(
+    browser: WebDriver, css_selector: str, timeout: int = 10
+) -> WebElement | None:
+    try:
+        element = WebDriverWait(browser, timeout).until(
+            EC.presence_of_element_located(
+                (
+                    By.CSS_SELECTOR,
+                    css_selector,
+                )
+            )
+        )
+        return element
+    except ElementNotInteractableException:
+        return None
+    except NoSuchElementException:
+        return None
+    except TimeoutException:
+        return None
+    except StaleElementReferenceException:
+        return None
 
 
 def wait_then_get_element(
@@ -271,6 +298,34 @@ def wait_for_animation_to_end(
     WebDriverWait(browser, timeout).until(element_stopped_moving)
 
 
+def wait_for_class_to_be_removed(
+    browser: WebDriver, css_selector: str, class_name: str, timeout: float = 10
+):
+    """
+    Wait for a specific class to be removed from an element.
+
+    Args:
+        browser: WebDriver instance
+        css_selector: CSS selector to locate the element
+        class_name: Class name to check for removal
+        timeout: Maximum time to wait in seconds
+
+    Returns:
+        True if the class was removed, False if timeout occurred
+    """
+
+    def class_is_removed(driver):
+        element = driver.find_element(By.CSS_SELECTOR, css_selector)
+        element_classes = element.get_attribute("class").split()
+        return class_name not in element_classes
+
+    try:
+        WebDriverWait(browser, timeout).until(class_is_removed)
+        return True
+    except TimeoutException:
+        return False
+
+
 def assert_not_visible_css_selector(
     browser: WebDriver, css_selector: str, time: float = 10
 ):
@@ -387,6 +442,18 @@ def login_user_and_select_utub_by_utubid(
     )
 
 
+def login_user_and_select_utub_by_utubid_mobile(
+    app: Flask, browser: WebDriver, user_id: int, utub_id: int
+):
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+    verify_panel_visibility_mobile(browser, Decks.UTUBS)
+
+    wait_then_click_element(
+        browser, f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']", time=10
+    )
+
+
 def login_user_select_utub_by_id_and_url_by_id(
     app: Flask, browser: WebDriver, user_id: int, utub_id: int, utub_url_id: int
 ):
@@ -439,7 +506,14 @@ def login_user(
 
     # Find and click login button to open modal
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+    return input_login_fields(browser, username, password)
 
+
+def input_login_fields(
+    browser: WebDriver,
+    username: str = UTS.TEST_USERNAME_1,
+    password: str = UTS.TEST_PASSWORD_1,
+):
     # Input login details
     username_input = wait_then_get_element(browser, SPL.INPUT_USERNAME)
     assert username_input is not None
@@ -496,6 +570,28 @@ def assert_login_with_username(browser: WebDriver, username: str):
     assert user_logged_in.text == userLoggedInText
 
 
+def assert_login_with_username_mobile(browser: WebDriver, username: str):
+    """
+    Streamlines actions needed to confirm a user is logged in.
+
+    Args:
+        WebDriver open to U4I Home Page
+    """
+
+    # Confirm user logged in
+    # Logout button visible
+    btn_logout = wait_then_get_element(browser, HPL.BUTTON_LOGOUT)
+    assert btn_logout is not None
+    assert btn_logout.text == "Logout"
+
+    # Correct user logged in
+    user_logged_in = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
+    assert user_logged_in is not None
+    userLoggedInText = "Logged in as " + username
+
+    assert user_logged_in.text == userLoggedInText
+
+
 def verify_no_utub_selected(browser: WebDriver):
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, f"#UTubOwner {HPL.BADGES_MEMBERS}")
@@ -503,7 +599,6 @@ def verify_no_utub_selected(browser: WebDriver):
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, HPL.BADGES_MEMBERS)
 
-    browser.get_screenshot_as_file("p1.png")
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, HPL.TAG_FILTERS)
 
@@ -556,11 +651,18 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
 
 def select_utub_by_id(browser: WebDriver, utub_id: int):
     utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-    utub_selector_elem = wait_then_get_element(browser, utub_selector, time=10)
+    utub_selector_elem = wait_for_element_presence(browser, utub_selector, timeout=10)
     assert utub_selector_elem is not None
     utub_name = utub_selector_elem.text
     wait_then_click_element(browser, utub_selector, time=3)
     wait_until_utub_name_appears(browser, utub_name)
+
+
+def select_utub_by_id_mobile(browser: WebDriver, utub_id: int):
+    utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
+    utub_selector_elem = wait_for_element_presence(browser, utub_selector, timeout=10)
+    assert utub_selector_elem is not None
+    wait_then_click_element(browser, utub_selector, time=3)
 
 
 def wait_until_utub_name_appears(browser: WebDriver, utub_name: str):

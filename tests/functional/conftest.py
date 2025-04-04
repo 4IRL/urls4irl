@@ -102,9 +102,6 @@ def build_driver(
 
     if turn_off_headless:
         # Disable Chrome browser pop-up notifications
-        # prefs = {"profile.default_content_setting_values.notifications" : 2}
-        # options.add_experimental_option("prefs",prefs)
-        # options.add_argument("--disable-notifications")
         print("Browser incoming")
     else:
         options.add_argument("--headless")
@@ -112,7 +109,7 @@ def build_driver(
     if config.DOCKER:
         driver_path = environ.get("CHROMEDRIVER_PATH", "")
         service = webdriver.ChromeService(executable_path=driver_path)
-        options.add_argument("--user-data-dir=/tmp/chrome-user-data")
+        options.add_argument("--user-data-dir=/tmp/chrome-user-data-desktop")
         driver = webdriver.Chrome(service=service, options=options)
     else:
         driver = webdriver.Chrome(options=options)
@@ -127,27 +124,33 @@ def build_driver(
 
 
 @pytest.fixture(scope="session")
-def build_driver_mobile(
+def build_driver_mobile_portrait(
     provide_port: int, parallelize_app, turn_off_headless
 ) -> Generator[WebDriver, None, None]:
     """
     Given the Flask app running in parallel, this function gets the browser ready for manipulation and pings server to ensure Flask app is running in parallel.
     """
+    config = ConfigTest()
     open_port = provide_port
     options = Options()
+    options.add_argument("--disable-notifications")
 
-    if turn_off_headless:
-        # Disable Chrome browser pop-up notifications
-        # prefs = {"profile.default_content_setting_values.notifications" : 2}
-        # options.add_experimental_option("prefs",prefs)
-        options.add_argument("--disable-notifications")
-    else:
+    if config.DOCKER:
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+
+    if not turn_off_headless:
         options.add_argument("--headless")
 
-    driver = webdriver.Chrome(options=options)
-    driver.set_window_size(width=400, height=600)
+    if config.DOCKER:
+        driver_path = environ.get("CHROMEDRIVER_PATH", "")
+        service = webdriver.ChromeService(executable_path=driver_path)
+        options.add_argument("--user-data-dir=/tmp/chrome-user-data-mobile")
+        driver = webdriver.Chrome(service=service, options=options)
+    else:
+        driver = webdriver.Chrome(options=options)
+    driver.set_window_size(width=420, height=900)
 
-    # driver.maximize_window()
     ping_server(UI_TEST_STRINGS.BASE_URL + str(open_port))
 
     yield driver
@@ -190,9 +193,9 @@ def browser(
 
 
 @pytest.fixture
-def browser_mobile(
+def browser_mobile_portrait(
     provide_port: int,
-    build_driver_mobile: WebDriver,
+    build_driver_mobile_portrait: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     debug_strings,
 ):
@@ -200,7 +203,7 @@ def browser_mobile(
     This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
     """
     open_port = provide_port
-    driver = build_driver_mobile
+    driver = build_driver_mobile_portrait
 
     driver.delete_all_cookies()
 

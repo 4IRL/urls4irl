@@ -93,12 +93,15 @@ function selectUTub(selectedUTubID, utubSelector) {
 
   currentlySelected.removeClass("active");
   utubSelector.addClass("active");
+  getSelectedUTubInfo(selectedUTubID);
+}
 
+function getSelectedUTubInfo(selectedUTubID) {
   getUTubInfo(selectedUTubID).then(
     (selectedUTub) => {
       buildSelectedUTub(selectedUTub);
       // If mobile, go straight to URL deck
-      if ($(window).width() < TABLET_WIDTH) {
+      if (isMobile()) {
         setMobileUIWhenUTubSelectedOrURLNavSelected();
       }
     },
@@ -139,4 +142,13 @@ function createUTubSelector(utubName, utubID, index) {
     .append(utubSelectorText);
 
   return utubSelector;
+}
+
+function makeUTubSelectableAgainIfMobile(utub) {
+  $(utub).offAndOn("click.selectUTubMobile", function (e) {
+    e.stopPropagation();
+    e.preventDefault();
+    getSelectedUTubInfo($(this).attr("utubid"));
+    $(this).off("click.selectUTubMobile");
+  });
 }

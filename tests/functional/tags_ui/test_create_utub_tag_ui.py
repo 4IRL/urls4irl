@@ -1,4 +1,5 @@
 from flask import Flask
+import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -27,6 +28,8 @@ from tests.functional.utils_for_test import (
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
+
+pytestmark = pytest.mark.tags_ui
 
 
 def test_open_input_create_utub_tag(
@@ -104,7 +107,6 @@ def test_open_input_create_utub_tag_tab_focus(
     set_focus_on_element(browser, create_utub_tag_btn)
     create_utub_tag_btn.send_keys(Keys.ENTER)
 
-    browser.get_screenshot_as_file("p1.png")
     wait_until_visible_css_selector(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
 
     # Ensure input is focused

@@ -29,12 +29,17 @@ $(document).ready(function () {
   });
 });
 
+function isMobile() {
+  return $(window).width() < TABLET_WIDTH;
+}
+
 function setMobileUIWhenUTubSelectedOrURLNavSelected() {
   $(".panel#leftPanel").addClass("hidden");
   $(".panel#centerPanel").addClass("visible-flex");
   $(".home#toUTubs").removeClass("hidden");
   $(".home#toMembers").removeClass("hidden");
   $(".home#toTags").removeClass("hidden");
+  $(".home#toURLs").addClass("hidden");
 
   $(".deck#MemberDeck").removeClass("visible-flex");
   $(".deck#TagDeck").removeClass("visible-flex");
@@ -72,6 +77,9 @@ function setMobileUIWhenUTubDeckSelected() {
   $(".deck#UTubDeck").removeClass("hidden");
 
   NAVBAR_TOGGLER.toggler.hide();
+  if ($(".UTubSelector.active").length) {
+    makeUTubSelectableAgainIfMobile($(".UTubSelector.active"));
+  }
 }
 
 function setMobileUIWhenMemberDeckSelected() {
@@ -100,7 +108,7 @@ function setMobileUIWhenTagDeckSelected() {
   $(".deck#MemberDeck").addClass("hidden");
 
   $(".home#toUTubs").removeClass("hidden");
-  $(".home#toTags").removeClass("hidden");
+  $(".home#toTags").addClass("hidden");
   $(".home#toURLs").removeClass("hidden");
   $(".home#toMembers").removeClass("hidden");
 

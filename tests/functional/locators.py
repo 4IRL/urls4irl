@@ -1,6 +1,8 @@
 class GenericPageLocator:
     ERROR_PAGE_HANDLER = "#ErrorPageHandler"
     ERROR_PAGE_REFRESH_BTN = f"{ERROR_PAGE_HANDLER} .refresh-button"
+    NAVBAR_TOGGLER = ".navbar-toggler"
+    NAVBAR_DROPDOWN = "#NavbarNavDropdown"
 
 
 class HomePageLocators(GenericPageLocator):
@@ -13,6 +15,19 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"
     U4I_LOGO = ".navbar-brand"
+    NAVBAR_UTUB_DECK = "#NavbarDropdownsHome #toUTubs"
+    NAVBAR_URLS_DECK = "#NavbarDropdownsHome #toURLs"
+    NAVBAR_MEMBER_DECK = "#NavbarDropdownsHome #toMembers"
+    NAVBAR_TAGS_DECK = "#NavbarDropdownsHome #toTags"
+    NAVBAR_LOGOUT = "#NavbarDropdownsHome #logout"
+    MOBILE_NAVBAR_OPTIONS = (
+        LOGGED_IN_USERNAME_READ,
+        NAVBAR_UTUB_DECK,
+        NAVBAR_URLS_DECK,
+        NAVBAR_MEMBER_DECK,
+        NAVBAR_TAGS_DECK,
+        NAVBAR_LOGOUT,
+    )
 
     # UTub Deck
     SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
@@ -136,14 +151,27 @@ class HomePageLocators(GenericPageLocator):
     ACCESS_ALL_URL_MODAL = ".accessAllUrlModal"
     DELETE_URL_MODAL = ".deleteUrlModal"
 
+    # Decks
+    UTUB_DECK = ".deck#UTubDeck"
+    MEMBER_DECK = ".deck#MemberDeck"
+    TAG_DECK = ".deck#TagDeck"
+    URL_DECK = ".deck#URLDeck"
+
+    # Panels
+    MAIN_PANEL = "main#mainPanel"
+
 
 class SplashPageLocators(GenericPageLocator):
     """A collector class for splash page locators"""
 
     # Options
     SPLASH_NAVBAR = "#NavbarDropdownsSplash"
-    BUTTON_REGISTER = ".to-register"
-    BUTTON_LOGIN = ".to-login"
+    BUTTON_REGISTER = ".btn.to-register"
+    BUTTON_LOGIN = ".btn.to-login"
+
+    # Navbar
+    NAVBAR_REGISTER = ".nav-bar-inner-item.to-register"
+    NAVBAR_LOGIN = ".nav-bar-inner-item.to-login"
 
     # Common
     INPUT_USERNAME = "#username"
