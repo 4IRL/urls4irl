@@ -144,6 +144,26 @@ function createUTubSelector(utubName, utubID, index) {
   return utubSelector;
 }
 
+function setUTubSelectorEventListeners(utub) {
+  const utubSelector = $(utub);
+  const utubID = utubSelector.attr("utubid");
+  utubSelector
+    // Bind display state change function on click
+    .on("click.selectUTub", function (e) {
+      e.stopPropagation();
+      e.preventDefault();
+      selectUTub(utubID, utubSelector);
+    })
+    .offAndOn("focus.selectUTub", function () {
+      $(document).on("keyup.selectUTub", function (e) {
+        if (e.which === 13) selectUTub(utubID, utubSelector);
+      });
+    })
+    .offAndOn("blur.selectUTub", function () {
+      $(document).off("keyup.selectUTub");
+    });
+}
+
 function makeUTubSelectableAgainIfMobile(utub) {
   $(utub).offAndOn("click.selectUTubMobile", function (e) {
     e.stopPropagation();

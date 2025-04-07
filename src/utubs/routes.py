@@ -57,10 +57,10 @@ def home():
         - All UTubIDs and names
     """
     if not request.args:
-        utub_details = jsonify(current_user.serialized_on_initial_load)
+        utub_details = current_user.serialized_on_initial_load
         return render_template(
             "home.html",
-            utubs_for_this_user=utub_details.json,
+            utubs_for_this_user=utub_details,
             is_prod_or_testing=current_app.config.get(
                 CONFIG_ENVS.TESTING_OR_PROD, True
             ),
@@ -77,10 +77,10 @@ def home():
         ):
             return redirect(url_for(ROUTES.UTUBS.HOME))
 
-        utub_details = jsonify(current_user.serialized_on_initial_load)
+        utub_details = current_user.serialized_on_initial_load
         return render_template(
             "home.html",
-            utubs_for_this_user=utub_details.json,
+            utubs_for_this_user=utub_details,
             is_prod_or_testing=current_app.config.get(
                 CONFIG_ENVS.TESTING_OR_PROD, True
             ),

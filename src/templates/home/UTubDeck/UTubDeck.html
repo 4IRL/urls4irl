@@ -1,13 +1,17 @@
-    <div id="UTubDeck" class="deck flex-column">
+<div id="UTubDeck" class="deck flex-column">
 
-		<!-- Headers -->
-		{% include 'home/UTubDeck/UTubDeckHeaders.html' %}
+    <!-- Headers -->
+    {% include 'home/UTubDeck/UTubDeckHeaders.html' %}
 
-        <div class="flex-column content">
-			<!-- Create UTub Form -->
-			{% include 'home/UTubDeck/CreateUTubForm.html' %}
-            <div class="pad-in-15p flex-column" id="listUTubs">
-                <!-- UTubs -->
-            </div>
+    <div class="flex-column content">
+        <!-- Create UTub Form -->
+        {% include 'home/UTubDeck/CreateUTubForm.html' %}
+        <div class="pad-in-15p flex-column" id="listUTubs">
+            <!-- UTubs -->
+            {% for utub in utubs_for_this_user %}
+            {% set position=loop.index %}
+            {% include 'home/UTubDeck/UTubCard.html' %}
+            {% endfor %}
         </div>
     </div>
+</div>
