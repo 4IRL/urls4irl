@@ -11,15 +11,7 @@ function isValidUTubID(utubIdStr) {
 }
 
 function isUtubIdValidOnPageLoad(utubId) {
-  let utub;
-  for (let i = 0; i < UTubs.length; i++) {
-    utub = UTubs[i];
-
-    if (utubId === utub.id) {
-      return true;
-    }
-  }
-  return false;
+  return isUtubIdValidFromStateAccess(utubId);
 }
 
 function isUtubIdValidFromStateAccess(utubId) {
@@ -36,9 +28,14 @@ function getActiveUTubID() {
   return parseInt($(".UTubSelector.active").attr("utubid"));
 }
 
+// Check if a UTub is selected
+function isUTubSelected() {
+  return $(".UTubSelector.active").length === 1;
+}
+
 // Streamline the jQuery selector extraction of UTub name.
 function getCurrentUTubName() {
-  return $(".UTubSelector.active").text();
+  return $(".UTubSelector.active .UTubName").text();
 }
 
 // Quickly extracts all UTub names from #listUTubs and returns an array.

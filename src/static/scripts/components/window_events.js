@@ -29,14 +29,8 @@ window.addEventListener("popstate", function (e) {
 });
 
 window.addEventListener("pageshow", function (e) {
-  if (!this.sessionStorage.getItem("fullyLoaded") || !getNumOfUTubs()) {
-    const timeoutID = showUTubLoadingIconAndSetTimeout();
-    setUIWhenNoUTubSelected();
-    buildUTubDeck(UTubs, timeoutID);
-    setMemberDeckWhenNoUTubSelected();
-    setTagDeckSubheaderWhenNoUTubSelected();
-    setCreateDeleteUTubEventListeners();
-  }
+  setUTubEventListenersOnInitialPageLoad();
+  setCreateDeleteUTubEventListeners();
 
   if (history.state && history.state.UTubID) {
     getUTubInfo(history.state.UTubID).then(
@@ -60,7 +54,13 @@ window.addEventListener("pageshow", function (e) {
   // Then pull the UTub ID from the global UTubs variable and match
   // Handle if it doesn't exist
   const searchParams = new URLSearchParams(window.location.search);
-  if (searchParams.size === 0) return;
+  if (searchParams.size === 0) {
+    setUIWhenNoUTubSelected();
+    //setURLDeckWhenNoUTubSelected()
+    setMemberDeckWhenNoUTubSelected();
+    setTagDeckSubheaderWhenNoUTubSelected();
+    return;
+  }
 
   const utubId = searchParams.get(STRINGS.UTUB_QUERY_PARAM);
   if (searchParams.size > 1 || utubId === null) {

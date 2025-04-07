@@ -42,12 +42,18 @@ function buildUTubDeck(utubs, timeoutID) {
     }
 
     hideInputsAndSetUTubDeckSubheader();
-    setURLDeckWhenNoUTubSelected();
   } else {
     resetUTubDeckIfNoUTubs();
   }
 
   if (timeoutID) hideUTubLoadingIconAndClearTimeout(timeoutID);
+}
+
+function setUTubEventListenersOnInitialPageLoad() {
+  const utubs = $(".UTubSelector");
+  for (let i = 0; i < utubs.length; i++) {
+    setUTubSelectorEventListeners(utubs[i]);
+  }
 }
 
 function resetUTubDeckIfNoUTubs() {

@@ -104,13 +104,17 @@ function buildURLDeck(utubName, dictURLs, dictTags) {
 }
 
 function setURLDeckWhenNoUTubSelected() {
+  $(".urlRow").remove();
   $("#URLDeckHeader").text("URLs");
   $(".updateUTubBtn").hide();
   $("#urlBtnCreate").hide();
   $("#accessAllURLsBtn").hide();
   $("#URLDeckSubheaderCreateDescription").hide();
   $("#utubNameBtnUpdate").hide();
-  $("#updateUTubDescriptionBtn").removeClass("visibleBtn");
+  $("#updateUTubDescriptionBtn")
+    .removeClass("visibleBtn")
+    .addClass("hiddenBtn");
+  removeEventListenersForShowCreateUTubDescIfEmptyDesc();
 
   const urlDeckSubheader = $("#URLDeckSubheader");
   urlDeckSubheader.text("Select a UTub");

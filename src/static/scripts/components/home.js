@@ -5,7 +5,6 @@ function setUIWhenNoUTubSelected() {
   setTagDeckSubheaderWhenNoUTubSelected();
   resetTagDeckIfNoUTubSelected();
   setURLDeckWhenNoUTubSelected();
-  resetURLDeck();
   setMemberDeckWhenNoUTubSelected();
   resetMemberDeck();
 }
