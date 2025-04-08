@@ -112,7 +112,7 @@ function getSelectedUTubInfo(selectedUTubID) {
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
-function createUTubSelector(utubName, utubID, index) {
+function createUTubSelector(utubName, utubID, memberRole, index) {
   const utubSelector = $(document.createElement("span"));
   const utubSelectorText = $(document.createElement("b"));
 
@@ -140,6 +140,8 @@ function createUTubSelector(utubName, utubID, index) {
       $(document).off("keyup.selectUTub");
     })
     .append(utubSelectorText);
+
+  // TODO: Add icon based on memberRole here
 
   return utubSelector;
 }

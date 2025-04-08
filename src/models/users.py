@@ -103,7 +103,11 @@ class Users(db.Model, UserMixin):
             reverse=True,
         )
         utub_summaries = [
-            {MODEL_STRS.ID: utub.to_utub.id, MODEL_STRS.NAME: utub.to_utub.name}
+            {
+                MODEL_STRS.ID: utub.to_utub.id,
+                MODEL_STRS.NAME: utub.to_utub.name,
+                MODEL_STRS.MEMBER_ROLE: utub.member_role.value,
+            }
             for utub in sorted_utubs_user_is_in
         ]
 

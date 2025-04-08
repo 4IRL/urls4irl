@@ -18,3 +18,4 @@ backups/
 *.gz
 node_modules/
 gen/
+*.bak

@@ -5,7 +5,9 @@ from flask.testing import FlaskClient
 from flask_login import current_user
 import pytest
 
+from src import db
 from src.models.users import Users
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
@@ -50,11 +52,16 @@ def test_get_utubs_if_has_one_utub(
     client, _, _, app = login_first_user_without_register
 
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs_in: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id
+        ).all()
         utub_summary = [
-            {MODELS.ID: utub.id, MODELS.NAME: utub.name}
-            for utub in all_utubs
-            if current_user.id in [member.user_id for member in utub.members]
+            {
+                MODELS.ID: member.to_utub.id,
+                MODELS.NAME: member.to_utub.name,
+                MODELS.MEMBER_ROLE: member.member_role.value,
+            }
+            for member in all_utubs_in
         ]
 
     response = client.get(
@@ -79,11 +86,16 @@ def test_get_utubs_if_has_multiple_utubs(
     client, _, _, app = login_first_user_without_register
 
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs_in: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id
+        ).all()
         utub_summary = [
-            {MODELS.ID: utub.id, MODELS.NAME: utub.name}
-            for utub in all_utubs
-            if current_user.id in [member.user_id for member in utub.members]
+            {
+                MODELS.ID: member.to_utub.id,
+                MODELS.NAME: member.to_utub.name,
+                MODELS.MEMBER_ROLE: member.member_role.value,
+            }
+            for member in all_utubs_in
         ]
 
     response = client.get(
@@ -177,11 +189,16 @@ def test_get_utubs_sorted_based_on_last_updated(
 
 
 def _get_ordered_utub_summary() -> list[dict[str, int | str]]:
-    all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.last_updated.desc()).all()
+    all_utubs: list[Tuple[Utubs, Member_Role]] = (
+        db.session.query(Utubs, Utub_Members.member_role)
+        .join(Utub_Members, Utubs.id == Utub_Members.utub_id)
+        .filter(Utub_Members.user_id == current_user.id)
+        .order_by(Utubs.last_updated.desc())
+        .all()
+    )
     return [
-        {MODELS.ID: utub.id, MODELS.NAME: utub.name}
-        for utub in all_utubs
-        if current_user.id in [member.user_id for member in utub.members]
+        {MODELS.ID: utub.id, MODELS.NAME: utub.name, MODELS.MEMBER_ROLE: member.value}
+        for utub, member in all_utubs
     ]
 
 
