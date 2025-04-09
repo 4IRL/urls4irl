@@ -144,6 +144,11 @@ def test_create_utub_btn(browser: WebDriver, create_test_users, provide_app: Fla
 
     assert not create_utub_name_input.is_displayed()
     assert_active_utub(browser, utub_name)
+    utub_selector_for_creator_icon = f"{HPL.SELECTORS_UTUB} {HPL.CREATOR_ICON}"
+
+    icon = wait_then_get_element(browser, utub_selector_for_creator_icon, time=3)
+    assert icon is not None
+    assert icon.is_displayed()
 
 
 def test_create_utub_key(browser: WebDriver, create_test_users, provide_app: Flask):
@@ -171,6 +176,11 @@ def test_create_utub_key(browser: WebDriver, create_test_users, provide_app: Fla
 
     assert not create_utub_name_input.is_displayed()
     assert_active_utub(browser, utub_name)
+    utub_selector_for_creator_icon = f"{HPL.SELECTORS_UTUB} {HPL.CREATOR_ICON}"
+
+    icon = wait_then_get_element(browser, utub_selector_for_creator_icon, time=3)
+    assert icon is not None
+    assert icon.is_displayed()
 
 
 def test_create_utub_name_length_exceeded(

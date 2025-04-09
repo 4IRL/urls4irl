@@ -43,9 +43,9 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_UTUB_SUBMIT_CREATE = "#utubSubmitBtnCreate"
     BUTTON_UTUB_CANCEL_CREATE = "#utubCancelBtnCreate"
 
-    MEMBER_ICON = "bi-people-fill"
-    CO_CREATOR_ICON = "bi-diamond-half"
-    CREATOR_ICON = "bi-diamond-fill"
+    MEMBER_ICON = ".bi-people-fill"
+    CO_CREATOR_ICON = ".bi-diamond-half"
+    CREATOR_ICON = ".bi-diamond-fill"
 
     # Tag Deck
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
