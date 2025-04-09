@@ -29,8 +29,8 @@ function hideAndResetUpdateURLTitleForm(urlCard) {
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLTitleSetup(urlTitleInput, utubID, urlID) {
-  const patchURL = routes.updateURLTitle(utubID, urlID);
+function updateURLTitleSetup(urlTitleInput, utubID, utubUrlID) {
+  const patchURL = routes.updateURLTitle(utubID, utubUrlID);
 
   const updatedURLTitle = urlTitleInput.val();
 
@@ -43,11 +43,11 @@ function updateURLTitleSetup(urlTitleInput, utubID, urlID) {
 async function updateURLTitle(urlTitleInput, urlCard) {
   // Extract data to submit in POST request
   const utubID = getActiveUTubID();
-  const urlID = parseInt(urlCard.attr("urlid"));
+  const utubUrlID = parseInt(urlCard.attr("utuburlid"));
   let timeoutID;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
-    await getUpdatedURL(utubID, urlID, urlCard);
+    await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     if (urlTitleInput.val() === urlCard.find(".urlTitle").text()) {
       hideAndResetUpdateURLTitleForm(urlCard);
@@ -56,7 +56,7 @@ async function updateURLTitle(urlTitleInput, urlCard) {
     }
 
     let patchURL, data;
-    [patchURL, data] = updateURLTitleSetup(urlTitleInput, utubID, urlID);
+    [patchURL, data] = updateURLTitleSetup(urlTitleInput, utubID, utubUrlID);
 
     const request = ajaxCall("patch", patchURL, data);
 

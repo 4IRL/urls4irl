@@ -129,9 +129,6 @@ function updateTagFilteringOnURLOrURLTagDeletion() {
   const selectedTagsRemaining = $(".tagFilter.selected").length;
 
   switch (selectedTagsRemaining) {
-    case CONSTANTS.TAGS_MAX_ON_URLS:
-      // Max number of tags still applied, do nothing
-      break;
     case 0:
       // No tags left selected
       disableUnselectAllButtonAfterTagFilterRemoved();

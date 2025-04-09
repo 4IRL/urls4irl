@@ -23,7 +23,7 @@ from tests.functional.utils_for_test import (
 
 
 def open_url_tag_input(browser: WebDriver, selected_url_id: int):
-    url_selector = f"{HPL.ROWS_URLS}[urlid='{selected_url_id}']"
+    url_selector = f"{HPL.ROWS_URLS}[utuburlid='{selected_url_id}']"
 
     open_tag_input_selector = f"{url_selector} {HPL.BUTTON_TAG_CREATE}"
     wait_then_click_element(browser, open_tag_input_selector, time=3)

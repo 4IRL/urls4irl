@@ -25,9 +25,9 @@ def test_delete_tag_from_url_as_utub_creator(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a tag from a URL as the creator of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
@@ -138,9 +138,9 @@ def test_delete_tag_from_url_as_utub_member(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a tag from a URL as a member of a UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
@@ -252,9 +252,9 @@ def test_delete_tag_from_url_with_one_tag(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 1 tag associated
     WHEN the user tries to delete a tag from a URL as a member of a UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
@@ -370,9 +370,9 @@ def test_delete_last_url_tag_in_utub(
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 1 tag associated
     WHEN the user tries to delete a tag from a URL as a member of a UTub, and the tag is not associated with any other
         URLs in that UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
@@ -505,9 +505,9 @@ def test_delete_tag_from_url_with_five_tags(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 1 URL in each UTub, and each URL has 5 tag associated
     WHEN the user tries to delete a tag from a URL as a member of a UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association is deleted,
@@ -643,9 +643,9 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a nonexistent tag from a URL as the creator of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 400 HTTP status code, and that the Tag-URL-UTub association still does not exist,
         that the tag does not exist exists, and that the association between URL, UTub, and Tag is recorded properly
@@ -717,9 +717,9 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a nonexistent tag from a URL as the member of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 400 HTTP status code, and that the Tag-URL-UTub association still does not exist,
         that the tag does not exist exists, and that the association between URL, UTub, and Tag is recorded properly
@@ -798,9 +798,9 @@ def test_delete_tag_from_url_but_not_member_of_utub(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to delete a newly added tag from a URL as not a member of the UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 403 HTTP status code, that the proper JSON response
         is sent by the server, and that the Tag-URL-UTub association still exists,
@@ -903,9 +903,9 @@ def test_delete_tag_from_url_from_nonexistent_utub(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to delete a a tag from a URL within a nonexistent UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 404 HTTP status code, that the tag still exists,
         and that all associations between the URL and tags are still valid
@@ -998,9 +998,9 @@ def test_delete_tag_from_nonexistent_url_utub(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with it
     WHEN the user tries to delete a a tag from a nonexistent URL within a UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 404 HTTP status code, that the tag still exists, and the UTub
         still has proper associations with the valid tag
@@ -1070,9 +1070,9 @@ def test_delete_tag_with_no_csrf_token(
     """
     GIVEN 3 users and 3 UTubs, with all 1 member in each UTub, with 1 URL in each UTub, and each URL has no tags associated with it initially
     WHEN the user tries to delete a tag from a URL without including the CSRF token
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 400 HTTP status code, that the server sends back the proper
         HTML element indicating a missing CSRF token, and that all valid associations still exist for the tags
@@ -1135,9 +1135,9 @@ def test_delete_tag_from_url_updates_utub_last_updated(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a tag from a URL as the creator of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 200 HTTP status code, and the UTub's last updated
         field is updated
@@ -1187,9 +1187,9 @@ def test_delete_nonexistent_tag_from_url_does_not_update_utub_last_updated(
     """
     GIVEN 3 users and 3 UTubs, with all 3 members in each UTub, with 3 URLs in each UTub, and each URL has 3 tags associated with
     WHEN the user tries to delete a nonexistent tag from a URL as the creator of the current UTub
-        - By DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>/tags/<int:utub_url_tag_id> where:
+        - By DELETE to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id> where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to delete tag from,
+            "utub_url_id": An integer representing URL ID to delete tag from,
             "utub_url_tag_id": An integer representing Tag ID to delete from the URL
     THEN ensure that the server responds with a 400 HTTP status code, and that the UTub's last updated field
         is not updated

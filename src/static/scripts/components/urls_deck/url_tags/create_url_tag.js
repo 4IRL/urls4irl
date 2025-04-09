@@ -158,9 +158,9 @@ function hideAndResetCreateURLTagForm(urlCard) {
 }
 
 // Prepares post request inputs for addition of a new Tag to URL
-function createURLTagSetup(urlTagCreateInput, utubID, urlID) {
+function createURLTagSetup(urlTagCreateInput, utubID, utubUrlID) {
   // Assemble post request route
-  const postURL = routes.createURLTag(utubID, urlID);
+  const postURL = routes.createURLTag(utubID, utubUrlID);
 
   // Assemble submission data
   const data = {
@@ -173,15 +173,15 @@ function createURLTagSetup(urlTagCreateInput, utubID, urlID) {
 // Handles addition of new Tag to URL after user submission
 async function createURLTag(urlTagCreateInput, urlCard) {
   const utubID = getActiveUTubID();
-  const urlID = parseInt(urlCard.attr("urlid"));
+  const utubUrlID = parseInt(urlCard.attr("utuburlid"));
   // Extract data to submit in POST request
   let postURL, data;
-  [postURL, data] = createURLTagSetup(urlTagCreateInput, utubID, urlID);
+  [postURL, data] = createURLTagSetup(urlTagCreateInput, utubID, utubUrlID);
 
   let timeoutID;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
-    await getUpdatedURL(utubID, urlID, urlCard);
+    await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     const request = ajaxCall("post", postURL, data);
 

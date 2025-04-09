@@ -1,8 +1,8 @@
 "use strict";
 
 // Prepares post request inputs for removal of a URL - tag
-function deleteURLTagSetup(utubID, urlID, utubTagID) {
-  const deleteURL = routes.deleteURLTag(utubID, urlID, utubTagID);
+function deleteURLTagSetup(utubID, utubUrlID, utubTagID) {
+  const deleteURL = routes.deleteURLTag(utubID, utubUrlID, utubTagID);
 
   return deleteURL;
 }
@@ -10,11 +10,11 @@ function deleteURLTagSetup(utubID, urlID, utubTagID) {
 // Remove tag from selected URL
 async function deleteURLTag(utubTagID, tagBadge, urlCard) {
   const utubID = getActiveUTubID();
-  const urlID = parseInt(urlCard.attr("urlid"));
+  const utubUrlID = parseInt(urlCard.attr("utuburlid"));
   let timeoutID;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
-    await getUpdatedURL(utubID, urlID, urlCard);
+    await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     // If tag was already deleted on update of URL, exit early
     if (!isTagInURL(utubTagID, urlCard)) {
@@ -23,7 +23,7 @@ async function deleteURLTag(utubTagID, tagBadge, urlCard) {
     }
 
     // Extract data to submit in POST request
-    const deleteURL = deleteURLTagSetup(utubID, urlID, utubTagID);
+    const deleteURL = deleteURLTagSetup(utubID, utubUrlID, utubTagID);
 
     const request = ajaxCall("delete", deleteURL, []);
 

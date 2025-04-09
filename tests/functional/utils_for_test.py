@@ -458,7 +458,7 @@ def login_user_select_utub_by_id_and_url_by_id(
     app: Flask, browser: WebDriver, user_id: int, utub_id: int, utub_url_id: int
 ):
     login_user_and_select_utub_by_utubid(app, browser, user_id, utub_id)
-    url_row_selector = f"{HPL.ROWS_URLS}[urlid='{utub_url_id}']"
+    url_row_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
     wait_then_click_element(browser, url_row_selector, time=10)
     selected_url_access_btn = f"{url_row_selector} {HPL.BUTTON_URL_ACCESS}"
     wait_until_visible_css_selector(browser, selected_url_access_btn, timeout=3)
@@ -819,7 +819,7 @@ def verify_members_exist_in_member_deck(browser: WebDriver, member_ids: list[int
 # URL Deck
 def verify_utub_url_exists_in_url_deck(browser: WebDriver, utub_url_ids: list[int]):
     for utub_url_id in utub_url_ids:
-        utub_url_selector = f"{HPL.ROWS_URLS}[urlid='{utub_url_id}']"
+        utub_url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
         utub_url_elem = wait_then_get_element(browser, utub_url_selector, time=3)
         assert utub_url_elem is not None
         assert utub_url_elem.is_displayed()
@@ -931,7 +931,7 @@ def get_all_url_ids_in_selected_utub(browser: WebDriver) -> list[int]:
     url_ids = []
     if url_rows:
         for row in url_rows:
-            url_id = row.get_attribute("urlid")
+            url_id = row.get_attribute("utuburlid")
             assert url_id is not None
             assert isinstance(url_id, str) and url_id.isdecimal()
             url_ids.append(int(url_id))
@@ -954,8 +954,10 @@ def get_selected_url(browser: WebDriver) -> WebElement:
     return selected_url
 
 
-def get_url_row_by_id(browser: WebDriver, urlid: int) -> WebElement:
-    url_row = wait_then_get_element(browser, HPL.ROWS_URLS + f'[urlid="{urlid}"]')
+def get_url_row_by_id(browser: WebDriver, utuburlid: int) -> WebElement:
+    url_row = wait_then_get_element(
+        browser, HPL.ROWS_URLS + f'[utuburlid="{utuburlid}"]'
+    )
     assert url_row is not None
     return url_row
 

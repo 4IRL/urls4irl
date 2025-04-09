@@ -40,7 +40,7 @@ They must contain a positive, non-zero integer value associated with the given e
 
 > ```bash
 > curl -X GET \
->  https://urls4irl.app/ \
+>  https://urls4irl.app/
 > ```
 
 </details>
@@ -65,7 +65,7 @@ They must contain a positive, non-zero integer value associated with the given e
 
 > ```bash
 > curl -X GET \
->  https://urls4irl.app/login \
+>  https://urls4irl.app/login
 > ```
 
 </details>
@@ -147,7 +147,7 @@ Invalid form data sent with the request.
 
 > ```bash
 > curl -X GET \
->  https://urls4irl.app/logout \
+>  https://urls4irl.app/logout
 > ```
 
 </details>
@@ -172,7 +172,7 @@ Invalid form data sent with the request.
 
 > ```bash
 > curl -X GET \
->  https://urls4irl.app/register \
+>  https://urls4irl.app/register
 > ```
 
 </details>
@@ -240,7 +240,7 @@ Invalid form data sent with the request.
 >  --data-urlencode 'confirmEmail=EMAIL' \
 >  --data-urlencode 'username=USERNAME' \
 >  --data-urlencode 'password=PASSWORD' \
->  --data-urlencode 'confirmPassword=PASSWORD'
+>  --data-urlencode 'confirmPassword=PASSWORD' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -263,7 +263,7 @@ Invalid form data sent with the request.
 > ```bash
 > curl -X GET \
 >  https://urls4irl.app/confirm-email \
->  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'Cookie: YOUR_COOKIE'
 > ```
 
 </details>
@@ -393,7 +393,7 @@ Invalid form data sent with the request.
 > ```bash
 > curl -X GET \
 >  https://urls4irl.app/forgot-password \
->  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'Cookie: YOUR_COOKIE'
 > ```
 
 </details>
@@ -473,7 +473,7 @@ or missing email is provided. However, the reset-password email is only sent if 
 >  https://urls4irl.app/forgot-password \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'email=EMAIL'
+>  --data-urlencode 'email=EMAIL' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -505,7 +505,7 @@ or missing email is provided. However, the reset-password email is only sent if 
 
 > ```bash
 > curl -X GET \
->  https://urls4irl.app/reset-password/123456789ABCDEFGH \
+>  https://urls4irl.app/reset-password/123456789ABCDEFGH
 > ```
 
 </details>
@@ -578,8 +578,8 @@ Required form data:
 >  https://urls4irl.app/reset-password/ABCDEFGH123456789 \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'newPassword=PASSWORD'
->  --data-urlencode 'confirmNewPassword=PASSWORD'
+>  --data-urlencode 'newPassword=PASSWORD' \
+>  --data-urlencode 'confirmNewPassword=PASSWORD' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -611,7 +611,7 @@ UTub selection via the query parameter is handled on the client side.
 > ```bash
 > curl -X GET \
 >  https://urls4irl.app/home \
->  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'Cookie: YOUR_COOKIE'
 > ```
 
 </details>
@@ -692,7 +692,7 @@ UTub selection via the query parameter is handled on the client side.
 > curl -X GET \
 >  https://urls4irl.app/utub/1 \
 >  -H 'Cookie: YOUR_COOKIE' \
->  -H 'X-Requested-With: XMLHTTPRequest' \
+>  -H 'X-Requested-With: XMLHTTPRequest'
 > ```
 
 </details>
@@ -736,7 +736,7 @@ UTub selection via the query parameter is handled on the client side.
 > curl -X GET \
 >  https://urls4irl.app/utubs \
 >  -H 'Cookie: YOUR_COOKIE' \
->  -H 'X-Requested-With: XMLHTTPRequest' \
+>  -H 'X-Requested-With: XMLHTTPRequest'
 > ```
 
 </details>
@@ -810,8 +810,8 @@ Invalid form data sent with the request.
 >  https://urls4irl.app/utubs \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'utubName=UTub Name'
->  --data-urlencode 'utubDescription=UTub Description'
+>  --data-urlencode 'utubName=UTub Name' \
+>  --data-urlencode 'utubDescription=UTub Description' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -861,7 +861,7 @@ Invalid form data sent with the request.
 > ```bash
 > curl -X DELETE \
 >  https://urls4irl.app/utubs/1 \
->  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'Cookie: YOUR_COOKIE'
 > ```
 
 </details>
@@ -948,7 +948,7 @@ Invalid form data sent with the request.
 >  https://urls4irl.app/utubs/1/name \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'name=UTub Name'
+>  --data-urlencode 'name=UTub Name' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -1048,7 +1048,7 @@ Invalid form data sent with the request.
 >  https://urls4irl.app/utubs/1/description \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'description=UTub Description'
+>  --data-urlencode 'description=UTub Description' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -1156,7 +1156,7 @@ Indicates missing or invalid form data sent with the request.
 >  https://urls4irl.app/utubs/1/members \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'username=UTub Name'
+>  --data-urlencode 'username=UTub Name' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -1233,7 +1233,7 @@ Indicates missing or invalid form data sent with the request.
 > ```bash
 > curl -X DELETE \
 >  https://urls4irl.app/utubs/1/members/2 \
->  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'Cookie: YOUR_COOKIE'
 > ```
 
 </details>
@@ -1312,7 +1312,7 @@ User not member of this UTub.
 > curl -X GET \
 >  https://urls4irl.app/utubs/1/urls/2 \
 >  -H 'Cookie: YOUR_COOKIE' \
->  -H 'X-Requested-With: XMLHTTPRequest' \
+>  -H 'X-Requested-With: XMLHTTPRequest'
 > ```
 
 </details>
@@ -1449,8 +1449,8 @@ through the Wayback Machine, which implements its own rate limiting system.
 >  https://urls4irl.app/utubs/1/urls \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'urlString=urls4irl.app'
->  --data-urlencode 'urlTitle=My home page'
+>  --data-urlencode 'urlString=urls4irl.app' \
+>  --data-urlencode 'urlTitle=My home page' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -1504,7 +1504,7 @@ through the Wayback Machine, which implements its own rate limiting system.
 > ```bash
 > curl -X DELETE \
 >  https://urls4irl.app/utubs/1/urls/1 \
->  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'Cookie: YOUR_COOKIE'
 > ```
 
 </details>
@@ -1660,7 +1660,7 @@ through the Wayback Machine, which implements its own rate limiting system.
 >  https://urls4irl.app/utubs/1/urls/1 \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'urlString=www.google.com'
+>  --data-urlencode 'urlString=www.google.com' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -1779,7 +1779,7 @@ Indicates invalid form data sent in the request.
 >  https://urls4irl.app/utubs/1/urls/1/title \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'urlTitle=New URL title'
+>  --data-urlencode 'urlTitle=New URL title' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -1885,7 +1885,7 @@ Indicates form errors with adding this tag to this UTub.
 >  https://urls4irl.app/utubs/1/tags \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'tagString=Hello'
+>  --data-urlencode 'tagString=Hello' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -1922,7 +1922,7 @@ Indicates form errors with adding this tag to this UTub.
 >         "utubTagID": 1,
 >         "tagString": "Hello",
 >     }
->     "urlIDs": [1, 2, 3]       // IDs of UTubURLs this tag was removed from, can be empty
+>     "utubUrlIDs": [1, 2, 3]       // IDs of UTubURLs this tag was removed from, can be empty
 > }
 > ```
 
@@ -1941,7 +1941,7 @@ Indicates form errors with adding this tag to this UTub.
 > curl -X DELETE \
 >  https://urls4irl.app/utubs/1/tags/1 \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
->  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'Cookie: YOUR_COOKIE'
 > ```
 
 </details>
@@ -2058,7 +2058,7 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 >  https://urls4irl.app/utubs/1/urls/1/tags \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'tagString=Hello'
+>  --data-urlencode 'tagString=Hello' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
@@ -2112,7 +2112,7 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > ```bash
 > curl -X DELETE \
 >  https://urls4irl.app/utubs/1/urls/1/tags/4 \
->  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'Cookie: YOUR_COOKIE'
 > ```
 
 </details>
@@ -2230,7 +2230,7 @@ Possible messages include: `Tag on this URL modified.`, `Tag was not modified on
 >  https://urls4irl.app/utubs/1/urls/1/tags/1 \
 >  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'tagString=NewTag'
+>  --data-urlencode 'tagString=NewTag' \
 >  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 

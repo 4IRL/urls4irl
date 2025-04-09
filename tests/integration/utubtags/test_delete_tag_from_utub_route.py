@@ -35,7 +35,7 @@ def test_delete_tag_from_utub_with_no_url_associations(
                 MODELS.UTUB_TAG_ID: Integer representing ID of deleted tag,
                 TAG_FORM.TAG_STRING: String representing the tag just deleted
             }
-        TAGS_SUCCESS.URL_IDS : Array of integers representing URLs that has this tag removed
+        TAGS_SUCCESS.UTUB_URL_IDS : Array of integers representing URLs that has this tag removed
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -80,7 +80,7 @@ def test_delete_tag_from_utub_with_no_url_associations(
         delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID]
         == utub_tag_id
     )
-    assert delete_tag_response_json[TAGS_SUCCESS.URL_IDS] == []
+    assert delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_IDS] == []
 
     with app.app_context():
         assert Utub_Tags.query.count() == num_of_utub_tags - 1
@@ -108,7 +108,7 @@ def test_delete_tag_from_utub_with_url_associations(
                 MODELS.UTUB_TAG_ID: Integer representing ID of deleted tag,
                 TAG_FORM.TAG_STRING: String representing the tag just deleted
             }
-        TAGS_SUCCESS.URL_IDS : Array of integers representing URLs that has this tag removed
+        TAGS_SUCCESS.UTUB_URL_IDS : Array of integers representing URLs that has this tag removed
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -158,7 +158,7 @@ def test_delete_tag_from_utub_with_url_associations(
         delete_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID]
         == utub_tag_id
     )
-    assert sorted(delete_tag_response_json[TAGS_SUCCESS.URL_IDS]) == sorted(
+    assert sorted(delete_tag_response_json[TAGS_SUCCESS.UTUB_URL_IDS]) == sorted(
         utub_url_tag_ids
     )
 

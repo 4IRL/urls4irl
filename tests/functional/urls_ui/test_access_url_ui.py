@@ -456,7 +456,7 @@ def test_access_to_urls_as_utub_owner(
     url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
     for url_utub_id in url_utub_ids:
-        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_utub_id}']"
         wait_until_visible_css_selector(browser, url_selector, timeout=3)
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
@@ -465,11 +465,12 @@ def test_access_to_urls_as_utub_owner(
         # Now wait for access link button to show up, which is accessible to all users
         wait_until_visible_css_selector(
             browser,
-            HPL.ROW_SELECTED_URL + f"[urlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
+            HPL.ROW_SELECTED_URL
+            + f"[utuburlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
         )
 
         selected_url = get_selected_url(browser)
-        selected_urlid = selected_url.get_attribute("urlid")
+        selected_urlid = selected_url.get_attribute("utuburlid")
         assert selected_urlid and selected_urlid.isdigit()
         assert url_utub_id == int(selected_urlid)
 
@@ -510,7 +511,7 @@ def test_access_to_non_added_urls_as_utub_member(
     url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
     for url_utub_id in url_utub_ids:
-        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_utub_id}']"
         wait_until_visible_css_selector(browser, url_selector, timeout=3)
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
@@ -518,11 +519,12 @@ def test_access_to_non_added_urls_as_utub_member(
         # Now wait for access link button to show up, which is accessible to all users
         wait_until_visible_css_selector(
             browser,
-            HPL.ROW_SELECTED_URL + f"[urlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
+            HPL.ROW_SELECTED_URL
+            + f"[utuburlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
         )
 
         selected_url = get_selected_url(browser)
-        selected_urlid = selected_url.get_attribute("urlid")
+        selected_urlid = selected_url.get_attribute("utuburlid")
         assert selected_urlid and selected_urlid.isdigit()
         assert url_utub_id == int(selected_urlid)
 
@@ -563,7 +565,7 @@ def test_access_to_urls_as_url_creator_and_utub_member(
     url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
     for url_utub_id in url_utub_ids:
-        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_utub_id}']"
         wait_until_visible_css_selector(browser, url_selector, timeout=3)
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
@@ -571,11 +573,12 @@ def test_access_to_urls_as_url_creator_and_utub_member(
         # Now wait for access link button to show up, which is accessible to all users
         wait_until_visible_css_selector(
             browser,
-            HPL.ROW_SELECTED_URL + f"[urlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
+            HPL.ROW_SELECTED_URL
+            + f"[utuburlid='{url_utub_id}'] {HPL.BUTTON_URL_ACCESS}",
         )
 
         selected_url = get_selected_url(browser)
-        selected_urlid = selected_url.get_attribute("urlid")
+        selected_urlid = selected_url.get_attribute("utuburlid")
         assert selected_urlid and selected_urlid.isdigit()
         assert url_utub_id == int(selected_urlid)
 

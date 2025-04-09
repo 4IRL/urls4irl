@@ -90,8 +90,8 @@ function hideAndResetUpdateURLStringForm(urlCard) {
 }
 
 // Prepares post request inputs for update of a URL
-function updateURLSetup(urlStringUpdateInput, utubID, urlID) {
-  const postURL = routes.updateURL(utubID, urlID);
+function updateURLSetup(urlStringUpdateInput, utubID, utubUrlID) {
+  const postURL = routes.updateURL(utubID, utubUrlID);
 
   const updatedURL = urlStringUpdateInput.val();
 
@@ -103,11 +103,11 @@ function updateURLSetup(urlStringUpdateInput, utubID, urlID) {
 // Handles update of an existing URL
 async function updateURL(urlStringUpdateInput, urlCard) {
   const utubID = getActiveUTubID();
-  const urlID = parseInt(urlCard.attr("urlid"));
+  const utubUrlID = parseInt(urlCard.attr("utuburlid"));
   let timeoutID;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
-    await getUpdatedURL(utubID, urlID, urlCard);
+    await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     if (
       urlStringUpdateInput.val() === urlCard.find(".urlString").attr("data-url")
@@ -119,7 +119,7 @@ async function updateURL(urlStringUpdateInput, urlCard) {
 
     // Extract data to submit in POST request
     let patchURL, data;
-    [patchURL, data] = updateURLSetup(urlStringUpdateInput, utubID, urlID);
+    [patchURL, data] = updateURLSetup(urlStringUpdateInput, utubID, utubUrlID);
 
     const request = ajaxCall("patch", patchURL, data, 35000);
 
