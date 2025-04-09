@@ -1,25 +1,25 @@
 {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
 <nav id="mainNavbar" class="navbar navbar-expand-lg navbar-dark bg-dark py-0">
-        <a class="navbar-brand navbar-start" href="/home">
-    {% else %}
-<nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0">
-        <a class="navbar-brand navbar-start" href="/">
-    {% endif %}
-        URLS4IRL
-        <div id="iconContainer">
-            <img id="u4iFavicon" src="/static/favicon/android-chrome-192x192.png" />
-        </div>
-    </a>
-    <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#NavbarNavDropdown"
-        aria-controls="NavbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
-        <span class="navbar-toggler-icon"></span>
-    </button>
-        {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
-    <div class="navbar-collapse collapse bg-dark home" id="NavbarNavDropdown">
-            {% include 'components/navHomeItems.html' %}
+    <a class="navbar-brand navbar-start" href="/home">
         {% else %}
-    <div class="navbar-collapse collapse bg-dark splash" id="NavbarNavDropdown">
-            {% include 'components/navSplashItems.html' %}
-        {% endif %}
-    </div>
-</nav>
+        <nav id="mainNavbar" class="navbar navbar-expand-md navbar-dark bg-dark py-0">
+            <a class="navbar-brand navbar-start" href="/">
+                {% endif %}
+                URLS4IRL
+                <div id="iconContainer">
+                    <img id="u4iFavicon" src="/static/favicon/android-chrome-192x192.png" />
+                </div>
+            </a>
+            <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#NavbarNavDropdown"
+                aria-controls="NavbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+                <span class="navbar-toggler-icon"></span>
+            </button>
+            {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+            <div class="navbar-collapse collapse bg-dark home" id="NavbarNavDropdown">
+                {% include 'components/navHomeItems.html' %}
+                {% else %}
+                <div class="navbar-collapse collapse bg-dark splash" id="NavbarNavDropdown">
+                    {% include 'components/navSplashItems.html' %}
+                    {% endif %}
+                </div>
+        </nav>

@@ -468,3 +468,6 @@ def test_filter_tag_clickable_after_unclicking_from_tag_limit(
 
     utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_badge_selector)
     utub_tag_badge.click()
+
+
+# TODO: Test URL hidden when all tags selected, all tags on URL, and one of tags on URL is deleted

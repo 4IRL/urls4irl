@@ -76,10 +76,10 @@ function hideInputsAndSetUTubDeckSubheader() {
   $("#UTubDeckSubheader").text(subheaderText);
 }
 
-function setUTubDeckOnUTubSelected(selectedUTubID, UTubOwnerUserID) {
+function setUTubDeckOnUTubSelected(selectedUTubID, isCurrentUserOwner) {
   hideInputsAndSetUTubDeckSubheader();
 
-  if (getCurrentUserID() === UTubOwnerUserID) {
+  if (isCurrentUserOwner) {
     $("#utubBtnDelete").show();
   } else hideIfShown($("#utubBtnDelete"));
 

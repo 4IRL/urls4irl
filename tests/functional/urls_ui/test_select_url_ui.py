@@ -17,7 +17,6 @@ from tests.functional.urls_ui.utils_for_test_url_ui import (
 )
 from tests.functional.utils_for_test import (
     get_all_url_ids_in_selected_utub,
-    get_current_user_id,
     get_selected_url,
     login_user_and_select_utub_by_name,
     wait_for_animation_to_end,
@@ -92,9 +91,8 @@ def test_select_non_added_urls_as_utub_member(
     )
 
     utub_id = get_selected_utub_id(browser)
-    user_id = get_current_user_id(browser)
     utub_url_id_user_added = get_utub_url_id_for_added_url_in_utub_as_member(
-        app, utub_id, user_id
+        app, utub_id, user_id_for_test
     )
 
     url_utub_ids = get_all_url_ids_in_selected_utub(browser)
@@ -141,9 +139,8 @@ def test_select_urls_as_url_creator_and_utub_member(
     )
 
     utub_id = get_selected_utub_id(browser)
-    user_id = get_current_user_id(browser)
     utub_url_id_user_added = get_utub_url_id_for_added_url_in_utub_as_member(
-        app, utub_id, user_id
+        app, utub_id, user_id_for_test
     )
 
     url_utub_ids = get_all_url_ids_in_selected_utub(browser)

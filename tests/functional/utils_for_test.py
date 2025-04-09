@@ -506,6 +506,14 @@ def login_user(
 
     # Find and click login button to open modal
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+
+    wait_for_element_presence(browser, SPL.SPLASH_MODAL)
+    wait_for_animation_to_end(browser, SPL.SPLASH_MODAL)
+    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
+
+    wait_for_element_presence(browser, SPL.INPUT_USERNAME)
+    wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME)
+
     return input_login_fields(browser, username, password)
 
 
@@ -757,29 +765,6 @@ def get_selected_utub_name(browser: WebDriver) -> str:
 
 
 # Members Deck
-def get_current_user_id(browser: WebDriver) -> int:
-    """
-    Extracts the user ID associated with the logged in user.
-
-    Args:
-        WebDriver open to the U4I Home Page
-
-    Returns:
-        Integer user ID
-    """
-    logged_in_user = wait_then_get_element(browser, HPL.LOGGED_IN_USERNAME_READ)
-    assert logged_in_user is not None
-
-    parent_element = logged_in_user.find_element(By.XPATH, "..")
-    assert parent_element is not None
-
-    user_id = parent_element.get_attribute("userid")
-    assert user_id is not None
-    assert isinstance(user_id, str)
-
-    return int(user_id)
-
-
 def get_element(browser: WebDriver, selector: str) -> WebElement:
     return browser.find_element(By.CSS_SELECTOR, selector)
 

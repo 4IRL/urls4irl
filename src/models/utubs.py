@@ -71,6 +71,7 @@ class Utubs(db.Model):
             ],
             MODEL_STRS.TAGS: [tag.serialized for tag in self.utub_tags],
             MODEL_STRS.IS_CREATOR: self.utub_creator == current_user_id,
+            MODEL_STRS.CURRENT_USER: str(current_user_id),
         }
 
     def set_last_updated(self):
