@@ -112,14 +112,14 @@ function getSelectedUTubInfo(selectedUTubID) {
 }
 
 // Creates UTub radio button that changes URLDeck display to show contents of the selected UTub
-function createUTubSelector(utubName, utubID, index) {
+function createUTubSelector(utubName, utubID, memberRole, index) {
   const utubSelector = $(document.createElement("span"));
   const utubSelectorText = $(document.createElement("b"));
 
   utubSelectorText.addClass("UTubName").text(utubName);
 
   utubSelector
-    .addClass("UTubSelector")
+    .addClass("UTubSelector flex-row justify-space-between align-center")
     .attr({
       utubid: utubID,
       position: index,
@@ -139,7 +139,8 @@ function createUTubSelector(utubName, utubID, index) {
     .offAndOn("blur.selectUTub", function () {
       $(document).off("keyup.selectUTub");
     })
-    .append(utubSelectorText);
+    .append(utubSelectorText)
+    .append(makeUTubRoleIcon(memberRole));
 
   return utubSelector;
 }
@@ -162,6 +163,30 @@ function setUTubSelectorEventListeners(utub) {
     .offAndOn("blur.selectUTub", function () {
       $(document).off("keyup.selectUTub");
     });
+}
+
+function makeUTubRoleIcon(memberRole) {
+  let icon = "";
+
+  switch (memberRole) {
+    case `${CONSTANTS.MEMBER_ROLES.CREATOR}`:
+      icon += `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-diamond-fill memberRole" viewBox="0 0 16 16">`;
+      icon += `<path fill-rule="evenodd" d="M6.95.435c.58-.58 1.52-.58 2.1 0l6.515 6.516c.58.58.58 1.519 0 2.098L9.05 15.565c-.58.58-1.519.58-2.098 0L.435 9.05a1.48 1.48 0 0 1 0-2.098z"/>`;
+
+      break;
+    case `${CONSTANTS.MEMBER_ROLES.CO_CREATOR}`:
+      icon += `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-diamond-half memberRole" viewBox="0 0 16 16">`;
+      icon += `<path d="M9.05.435c-.58-.58-1.52-.58-2.1 0L.436 6.95c-.58.58-.58 1.519 0 2.098l6.516 6.516c.58.58 1.519.58 2.098 0l6.516-6.516c.58-.58.58-1.519 0-2.098zM8 .989c.127 0 .253.049.35.145l6.516 6.516a.495.495 0 0 1 0 .7L8.35 14.866a.5.5 0 0 1-.35.145z"/>`;
+
+      break;
+    default:
+      icon += `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-people-fill memberRole" viewBox="0 0 16 16">`;
+      icon += `<path d="M7 14s-1 0-1-1 1-4 5-4 5 3 5 4-1 1-1 1zm4-6a3 3 0 1 0 0-6 3 3 0 0 0 0 6m-5.784 6A2.24 2.24 0 0 1 5 13c0-1.355.68-2.75 1.936-3.72A6.3 6.3 0 0 0 5 9c-4 0-5 3-5 4s1 1 1 1zM4.5 8a2.5 2.5 0 1 0 0-5 2.5 2.5 0 0 0 0 5"/>`;
+  }
+
+  icon += `</svg>`;
+
+  return icon;
 }
 
 function makeUTubSelectableAgainIfMobile(utub) {

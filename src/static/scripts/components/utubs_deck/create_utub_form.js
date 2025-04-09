@@ -219,6 +219,7 @@ function createUTubSuccess(response) {
   const newUTubSelector = createUTubSelector(
     response.utubName,
     UTubID,
+    CONSTANTS.MEMBER_ROLES.CREATOR,
     index - 1,
   );
   $("#listUTubs").prepend(newUTubSelector);

@@ -24,7 +24,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 from src.config import ConfigTest
 from src.models.users import Users
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
@@ -625,6 +625,28 @@ def verify_utub_selected(browser: WebDriver, app: Flask, utub_id: int):
         ).all()
         utub_tag_ids: list[int] = [utub_tag.id for utub_tag in tags_in_utub]
         verify_tags_exist_in_tag_deck(browser, utub_tag_ids)
+
+
+def verify_utub_icon(browser: WebDriver, app: Flask, user_id: int, utub_id: int):
+    with app.app_context():
+        membership: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.utub_id == utub_id, Utub_Members.user_id == user_id
+        ).first()
+
+    icon_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}'] "
+    if membership.member_role == Member_Role.CREATOR.value:
+        icon_selector += HPL.CREATOR_ICON
+
+    elif membership.member_role == Member_Role.CO_CREATOR.value:
+        icon_selector += HPL.CO_CREATOR_ICON
+
+    elif membership.member_role == Member_Role.MEMBER.value:
+        icon_selector += HPL.MEMBER_ICON
+
+    wait_until_visible_css_selector(browser, icon_selector, timeout=10)
+    icon = wait_then_get_element(browser, icon_selector, time=10)
+    assert icon is not None
+    assert icon.is_displayed()
 
 
 # UTub Deck

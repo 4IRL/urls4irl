@@ -1,3 +1,4 @@
+from src.models.utub_members import Member_Role
 from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
 
@@ -23,6 +24,7 @@ class UTUB_CONSTANTS:
     MAX_NAME_LENGTH = 30
     MIN_NAME_LENGTH = 1
     MAX_DESCRIPTION_LENGTH = 500
+    MEMBER_ROLES = Member_Role
 
 
 class URL_CONSTANTS:

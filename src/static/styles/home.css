@@ -306,6 +306,9 @@
     color: white;
 }
 
+.UTubSelector .memberRole {
+    color: var(--memberRoleIconColor);
+}
 
 /* Tags */
 

@@ -38,7 +38,9 @@ function buildUTubDeck(utubs, timeoutID) {
   if (numOfUTubs !== 0) {
     // Instantiate deck with list of UTubs accessible to current user
     for (let i = 0; i < numOfUTubs; i++) {
-      parent.append(createUTubSelector(utubs[i].name, utubs[i].id, i));
+      parent.append(
+        createUTubSelector(utubs[i].name, utubs[i].id, utubs[i].memberRole, i),
+      );
     }
 
     hideInputsAndSetUTubDeckSubheader();

@@ -5,7 +5,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utubs import Utubs
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.functional.locators import HomePageLocators as HPL
@@ -18,12 +18,14 @@ from tests.functional.utils_for_test import (
     login_user_with_cookie_from_session,
     select_utub_by_id,
     verify_no_utub_selected,
+    verify_utub_icon,
     verify_utub_selected,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_utub_name_appears,
+    wait_until_visible_css_selector,
 )
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 
@@ -113,6 +115,7 @@ def test_back_and_forward_history(
         utub_id = utub_ids[utub_idx]
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
         browser.back()
 
@@ -123,6 +126,7 @@ def test_back_and_forward_history(
         browser.forward()
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_back_and_forward_history_with_one_utub_deleted(
@@ -192,6 +196,7 @@ def test_back_and_forward_history_with_one_utub_deleted(
             wait_until_utub_name_appears(browser, utub.name)
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
     # Go back to the home page when no UTubs were selected
     browser.back()
@@ -206,6 +211,7 @@ def test_back_and_forward_history_with_one_utub_deleted(
             continue
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_back_and_forward_history_with_leaving_one_utub(
@@ -272,6 +278,7 @@ def test_back_and_forward_history_with_leaving_one_utub(
             wait_until_utub_name_appears(browser, utub.name)
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
     # Go back to the home page when no UTubs were selected
     browser.back()
@@ -286,6 +293,7 @@ def test_back_and_forward_history_with_leaving_one_utub(
             continue
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_access_utub_id_via_url_logged_in(
@@ -341,6 +349,40 @@ def test_access_utub_id_via_url_logged_out(
     wait_until_utub_name_appears(browser, utub_name_to_select)
 
     verify_utub_selected(browser, app, utub_id_to_select)
+
+
+def test_utub_member_icon(browser: WebDriver, create_test_tags, provide_app: Flask):
+    """
+    GIVEN a set of UTubs with URLs, member, and tags within that UTub, and the user has no session cookie
+    WHEN the user logs in and sees their UTubs
+    THEN verify that the UTubs contain the correct member icon
+    """
+    app = provide_app
+    user_id = 1
+
+    with app.app_context():
+        members_of: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id
+        ).all()
+
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+
+    for utub_member in members_of:
+        utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_member.utub_id}'] "
+
+        if utub_member.member_role == Member_Role.CREATOR.value:
+            utub_selector += HPL.CREATOR_ICON
+
+        elif utub_member.member_role == Member_Role.CO_CREATOR.value:
+            utub_selector += HPL.CO_CREATOR_ICON
+
+        elif utub_member.member_role == Member_Role.MEMBER.value:
+            utub_selector += HPL.MEMBER_ICON
+
+        wait_until_visible_css_selector(browser, utub_selector, timeout=10)
+        elem = browser.find_element(By.CSS_SELECTOR, utub_selector)
+        assert elem is not None and elem.is_displayed()
 
 
 # TODO: test async addition of component by 2nd test user in a shared UTub, then confirm 1st test user can see the update upon refresh

@@ -600,27 +600,11 @@ UTub selection via the query parameter is handled on the client side.
 
 > | http code     | content-type                      | response  | details |
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `text/html;charset=utf−8`         | `Renders user's home page, with below JSON embedded.` | Displays the user's home page, with selectable UTubs. |
+> | `200`         | `text/html;charset=utf−8`         | `Renders user's home page.` | Displays the user's home page, with selectable UTubs. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unknown error occurred. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
-###### 200 HTTP Code JSON Included in HTML Body
-
-The HTML body on a 200 response contains the following JSON.
-
-> ```json
-> [
->     {
->         "id": 1,
->         "name": "utub2"
->     },
->     {
->         "id": 2,
->         "name": "utub1"
->     }
-> ]
-> ```
 
 ##### Example cURL
 
@@ -735,11 +719,13 @@ The HTML body on a 200 response contains the following JSON.
 > [
 >     {
 >         "id": 1,
->         "name": "utub2"
+>         "name": "utub2",
+>         "memberRole": "creator",
 >     },
 >     {
 >         "id": 2,
->         "name": "utub1"
+>         "name": "utub1",
+>         "memberRole": "member",
 >     }
 > ]
 > ```

@@ -8,6 +8,7 @@ EMAIL = "email"
 ID = "id"
 IS_CREATOR = "isCreator"
 MEMBERS = "members"
+MEMBER_ROLE = "memberRole"
 NAME = "name"
 PASSWORD = "password"
 TAG_STRING = "tagString"
@@ -44,6 +45,7 @@ class MODELS:
     CREATED_BY = CREATED_BY
     DESCRIPTION = DESCRIPTION
     MEMBERS = MEMBERS
+    MEMBER_ROLE = MEMBER_ROLE
     URLS = URLS
     TAGS = TAGS
     URL = URL
