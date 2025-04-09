@@ -38,15 +38,15 @@ function showURLDeckBannerError(errorMessage) {
 // Update URLs in center panel based on asynchronous updates or stale data
 function updateURLDeck(updatedUTubUrls, updatedUTubTags) {
   const oldURLs = $(".urlRow");
-  const oldURLIDs = $.map(oldURLs, (url) => parseInt($(url).attr("urlid")));
+  const oldURLIDs = $.map(oldURLs, (url) => parseInt($(url).attr("utuburlid")));
   const newURLIDs = $.map(updatedUTubUrls, (newURL) => newURL.utubUrlID);
 
   // Remove any URLs that are in old that aren't in new
   let oldURLID, urlToRemove;
   for (let i = 0; i < oldURLIDs.length; i++) {
-    oldURLID = parseInt($(oldURLIDs[i]).attr("urlid"));
+    oldURLID = parseInt($(oldURLIDs[i]).attr("utuburlid"));
     if (!newURLIDs.includes(oldURLID)) {
-      urlToRemove = $(".urlRow[urlid=" + oldURLID + "]");
+      urlToRemove = $(".urlRow[utuburlid=" + oldURLID + "]");
       urlToRemove.fadeOut("fast", function () {
         urlToRemove.remove();
       });
@@ -65,7 +65,7 @@ function updateURLDeck(updatedUTubUrls, updatedUTubTags) {
   let urlToUpdate;
   for (let i = 0; i < oldURLIDs.length; i++) {
     if (newURLIDs.includes(oldURLIDs[i])) {
-      urlToUpdate = $(".urlRow[urlid=" + oldURLIDs[i] + "]");
+      urlToUpdate = $(".urlRow[utuburlid=" + oldURLIDs[i] + "]");
       updateURLAfterFindingStaleData(
         urlToUpdate,
         updatedUTubUrls.find((url) => url.utubUrlID === oldURLIDs[i]),

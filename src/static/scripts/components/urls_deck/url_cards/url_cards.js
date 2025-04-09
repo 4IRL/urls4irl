@@ -62,7 +62,7 @@ function createURLBlock(url, tagArray) {
   urlTitleGoToURLWrap.append(createGoToURLIcon(url.urlString));
 
   urlCard.append(urlTitleGoToURLWrap).attr({
-    urlID: url.utubUrlID,
+    utubUrlID: url.utubUrlID,
     urlSelected: false,
     filterable: true,
   });
@@ -82,10 +82,10 @@ function createURLBlock(url, tagArray) {
 
 // Add focus and blur on URL card when tabbing through URLs
 function setFocusEventListenersOnURLCard(urlCard) {
-  const urlID = urlCard.attr("urlID");
-  urlCard.offAndOn("focus.focusURLCard" + urlID, function () {
+  const utubUrlID = urlCard.attr("utuburlid");
+  urlCard.offAndOn("focus.focusURLCard" + utubUrlID, function () {
     urlCard.find(".goToUrlIcon").addClass("visible-on-focus");
-    $(document).on("keyup.focusURLCard" + urlID, function (e) {
+    $(document).on("keyup.focusURLCard" + utubUrlID, function (e) {
       if (e.which === 13) {
         selectURLCard(urlCard);
         urlCard.trigger("focusout");
@@ -93,13 +93,13 @@ function setFocusEventListenersOnURLCard(urlCard) {
     });
   });
 
-  urlCard.offAndOn("focusout.focusURLCard" + urlID, function (e) {
+  urlCard.offAndOn("focusout.focusURLCard" + utubUrlID, function (e) {
     const target = $(e.target);
     if (target.closest(".urlRow").is(urlCard)) {
       if (target.hasClass("goToUrlIcon")) {
         urlCard.find(".goToUrlIcon").removeClass("visible-on-focus");
       }
-      $(document).off("keyup.focusURLCard" + urlID);
+      $(document).off("keyup.focusURLCard" + utubUrlID);
     }
   });
 }

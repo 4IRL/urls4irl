@@ -32,7 +32,7 @@ def test_get_url_in_utub(
         STD_JSON.MESSAGE: URL_SUCCESS.URL_FOUND_IN_UTUB,
         URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
         {
-            "urlID": ID of URL that was modified,
+            "utubUrlID": ID of URL that was modified,
             "urlString": The URL that was newly modified,
             "urlTags": An array of tag objects associated with this URL
         }

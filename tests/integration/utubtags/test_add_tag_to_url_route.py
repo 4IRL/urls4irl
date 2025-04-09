@@ -28,9 +28,9 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to add a new tag to the URL they added
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag-URL-UTub association exists where it didn't before,
         that a new Tag exists, and that the association between URL and Tag is recorded properly
@@ -138,9 +138,9 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
     GIVEN 3 users and 3 UTubs, with all 3 users in each UTub, and no existing tags or Tag-URL-UTub associations,
         and the currently logged in user is a member of a UTub, and one URL exists in the UTub, added by another member
     WHEN the user tries to add a new tag to the URL
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag-URL-UTub association exists where it didn't before,
         that a new Tag exists, and that the association between URL and Tag is recorded properly
@@ -240,9 +240,9 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
         Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to add a tag, that was already created by another user, to the URL they added
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag-URL-UTub association exists where it didn't before,
         that a new Tag does not exist, and that the association between URL and Tag is recorded properly
@@ -345,9 +345,9 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
         Tag-URL-UTub associations, and the currently logged in user is a member (not creator) of a UTub, and 3 URLs
         exist, all added to each UTub by each member
     WHEN the user tries to add a tag, that was already added by another user, to a URL they did not add
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 200 HTTP status code, that the proper JSON response
         is sent by the server, and that a new Tag-URL-UTub association exists where it didn't before,
         that a new Tag does not exist, and that the association between URL and Tag is recorded properly
@@ -446,9 +446,9 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
     GIVEN 3 users, 3 UTubs, 3 URLs, and 3 Tags, with only the creator of the UTub in each UTub, and the currently logged in user is a creator of a UTub,
         and 3 URLs exists in each UTub, added by the user with the same ID as the URL, and each URL has a tag on it that has the identical tag ID as the URL
     WHEN the user tries to add a tag to a URL that already has that tag on it
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response is sent by the server,
         and that no new Tag-URL-UTub association exists, that a new Tag does not exist, and that the association between URL and Tag is serialized properly
 
@@ -561,9 +561,9 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
     GIVEN 3 users, 3 UTubs, 3 URLs, and 3 Tags, with only the creator of the UTub in each UTub, and the currently logged in user is a member of a UTub,
         and 3 URLs exists in each UTub, added by the user with the same ID as the URL, and each URL has a tag on it that has the identical tag ID as the URL
     WHEN the user tries to add a tag to a URL that already has that tag on it
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response is sent by the server,
         and that no new Tag-URL-UTub association exists, that a new Tag does not exist, and that the association between URL and Tag is serialized properly
 
@@ -734,9 +734,9 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
     GIVEN 3 users, 3 UTubs, and 3 Tags, with every user in every UTub, and the currently logged in user is a creator of a UTub,
         and no URLs exists, but 3 Tags exist
     WHEN the user tries to add a tag to a nonexistent URL
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 404 HTTP status code, and that no new Tag-URL-UTub association exists,
         that a new Tag does not exist, that a new URL does not exist, and that the association between URL and Tag is serialized properly
     """
@@ -820,9 +820,9 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
     GIVEN 3 users, 3 UTubs, and 3 Tags, with every user in every UTub, and the currently logged in user is a member of a UTub,
         and no URLs exists, but 3 Tags exist
     WHEN the user tries to add a tag to a nonexistent URL
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 404 HTTP status code, and that no new Tag-URL-UTub association exists,
         that a new Tag does not exist, that a new URL does not exist, and that the association between URL and Tag is serialized properly
     """
@@ -906,9 +906,9 @@ def test_add_tag_to_url_in_nonexistent_utub(
     GIVEN 3 users, 3 UTubs, and 3 Tags, with every user in every UTub, and the currently logged in user is a member of a UTub,
         and 3 URLs exists, 3 Tags exist, and every tag exists on every URL
     WHEN the user tries to add a tag to a URL to a UTub that doesn't exist
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 404 HTTP status code, and that no new Tag-URL-UTub association exists,
         that a new Tag does not exist, that a new URL does not exist, that a new UTub does not exist,
         and that the association between URL and Tag is serialized properly
@@ -966,9 +966,9 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
     GIVEN 3 users, 3 UTubs, and 3 Tags, with only one user (the creator) in each UTub, and the currently logged in user is a creator of a UTub,
         and one URL exists in each UTub, and 3 Tags exist but are not applied to any URLs
     WHEN the user tries to add a tag to a URL in a UTub they are not a member or creator of
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 404 HTTP status code, the server sends the proper JSON response,
         and that no new Tag-URL-UTub association exists, that a new Tag does not exist, that a new URL does not exist,
         and that the association between URL and Tag is serialized properly
@@ -1085,9 +1085,9 @@ def test_add_tag_to_url_not_in_utub(
     GIVEN 3 users, 3 UTubs, and 3 Tags, with only one user (the creator) in each UTub, and the currently logged in user is a creator of a UTub,
         and one URL exists in each UTub, and 3 Tags exist but are not applied to any URLs
     WHEN the user tries to add a tag to a URL that doesn't exist in their UTub
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 404 HTTP status code, and that no new Tag-URL-UTub association exists, that a new Tag does not exist,
         that a new URL does not exist, and that the association between URL and Tag is serialized properly
     """
@@ -1185,9 +1185,9 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
     GIVEN 3 users, 3 UTubs, and 3 Tags, with all users in each UTub, and the currently logged in user is a creator of a UTub,
         one URL exists in each UTub, 8 Tags exist, and 5 tags are applied to a single URL in a UTub
     WHEN the user tries to add a tag to the same URL with 5 tags in a UTub they are a creator of
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, the server sends the proper JSON response,
         and that no new Tag-URL-UTub association exists, that a new Tag does not exist, and that the association between URL and Tag is serialized properly
 
@@ -1317,9 +1317,9 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
     GIVEN 3 users, 3 UTubs, and 3 Tags, with all users in each UTub, and the currently logged in user is a member of a UTub,
         one URL exists in each UTub, 8 Tags exist, and 5 tags are applied to a single URL that this user did add
     WHEN the user tries to add a tag to the same URL with 5 tags in a UTub they are a member of
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, the server sends the proper JSON response,
         and that no new Tag-URL-UTub association exists, that a new Tag does not exist, and that the association between URL and Tag is serialized properly
 
@@ -1448,9 +1448,9 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to add a new tag to the URL they added but the TAG_FORM.TAG_STRING field is missing
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server, and that no new Tag-URL-UTub association exists where it didn't before,
         that no new Tag exists, and that the association between URL and Tag is recorded properly
@@ -1550,9 +1550,9 @@ def test_add_tag_to_valid_url_valid_utub_fully_sanitized_tag(
         Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to add a new tag to the URL they added but the TAG_FORM.TAG_STRING contains a tag string that is fully sanitized by backend
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server
 
@@ -1619,9 +1619,9 @@ def test_add_tag_to_valid_url_valid_utub_partially_sanitized_tag(
         Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to add a new tag to the URL they added but the TAG_FORM.TAG_STRING contains a tag string that is fully sanitized by backend
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
         is sent by the server
 
@@ -1693,9 +1693,9 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to add a new tag to the URL they added but the TAG_FORM.CSRF_TOKEN is missing
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, that the proper HTML response
         is sent by the server, and that no new Tag-URL-UTub association exists where it didn't before,
         that no new Tag exists, and that the association between URL and Tag is recorded properly
@@ -1776,9 +1776,9 @@ def test_add_fresh_tag_to_url_updates_utub_last_updated(
         Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to add a new tag to the URL they added
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 200 HTTP status code, and the UTub's last updated
         field is updated
     """
@@ -1832,9 +1832,9 @@ def test_add_existing_tag_to_url_updates_utub_last_updated(
         Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
         URL exists in each UTub, added by the creator
     WHEN the user tries to add a tag, that was already created by another user, to the URL they added
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 200 HTTP status code, and the UTub's last updated
         field is updated
     """
@@ -1885,9 +1885,9 @@ def test_add_duplicate_tag_to_url_does_not_update_utub_last_updated(
     GIVEN 3 users, 3 UTubs, 3 URLs, and 3 Tags, with only the creator of the UTub in each UTub, and the currently logged in user is a creator of a UTub,
         and 3 URLs exists in each UTub, added by the user with the same ID as the URL, and each URL has a tag on it that has the identical tag ID as the URL
     WHEN the user tries to add a tag to a URL that already has that tag on it
-        - By POST to "/utubs/<int:utub_id>/urls/<int:url_id>/tags where:
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
-            "urlID": An integer representing URL ID to add tag to
+            "utub_url_id": An integer representing URL ID to add tag to
     THEN ensure that the server responds with a 400 HTTP status code, and the UTub's last updated field is not updated
     """
     client, csrf_token, _, app = login_first_user_without_register

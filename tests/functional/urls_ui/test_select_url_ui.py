@@ -55,7 +55,7 @@ def test_select_urls_as_utub_owner(
     url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
     for url_utub_id in url_utub_ids:
-        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_utub_id}']"
         wait_until_visible_css_selector(browser, url_selector)
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
@@ -100,7 +100,7 @@ def test_select_non_added_urls_as_utub_member(
     url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
     for url_utub_id in url_utub_ids:
-        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_utub_id}']"
         wait_until_visible_css_selector(browser, url_selector)
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
@@ -110,7 +110,7 @@ def test_select_non_added_urls_as_utub_member(
         assert get_selected_url(browser) == url_row
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
-        current_utub_url_id = url_row.get_attribute("urlid")
+        current_utub_url_id = url_row.get_attribute("utuburlid")
         assert current_utub_url_id and current_utub_url_id.isnumeric()
         if url_utub_id != utub_url_id_user_added:
             verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
@@ -149,18 +149,18 @@ def test_select_urls_as_url_creator_and_utub_member(
     url_utub_ids = get_all_url_ids_in_selected_utub(browser)
 
     for url_utub_id in url_utub_ids:
-        url_selector = f"{HPL.ROWS_URLS}[urlid='{url_utub_id}']"
+        url_selector = f"{HPL.ROWS_URLS}[utuburlid='{url_utub_id}']"
         wait_until_visible_css_selector(browser, url_selector)
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
 
-        selected_url_id = get_selected_url(browser).get_attribute("urlid")
+        selected_url_id = get_selected_url(browser).get_attribute("utuburlid")
         assert selected_url_id is not None and selected_url_id.isnumeric()
         assert int(selected_url_id) == url_utub_id
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
-        current_utub_url_id = url_row.get_attribute("urlid")
+        current_utub_url_id = url_row.get_attribute("utuburlid")
         assert current_utub_url_id and current_utub_url_id.isnumeric()
         if url_utub_id != utub_url_id_user_added:
             verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)

@@ -6,7 +6,7 @@ function deleteURLHideModal() {
 }
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
-function deleteURLShowModal(urlID, urlCard) {
+function deleteURLShowModal(utubUrlID, urlCard) {
   let modalTitle = "Are you sure you want to delete this URL from the UTub?";
   let modalText = "You can always add it back again!";
   let buttonTextDismiss = "Just kidding";
@@ -25,7 +25,7 @@ function deleteURLShowModal(urlID, urlCard) {
   $("#modalSubmit")
     .offAndOn("click", function (e) {
       e.preventDefault();
-      deleteURL(urlID, urlCard);
+      deleteURL(utubUrlID, urlCard);
     })
     .text(buttonTextSubmit);
 
@@ -40,19 +40,19 @@ function deleteURLShowModal(urlID, urlCard) {
 }
 
 // Prepares post request inputs for removal of a URL
-function deleteURLSetup(utubID, urlID) {
-  const deleteURL = routes.deleteURL(utubID, urlID);
+function deleteURLSetup(utubID, utubUrlID) {
+  const deleteURL = routes.deleteURL(utubID, utubUrlID);
   return deleteURL;
 }
 
 // Handles post request and response for removing an existing URL from current UTub, after confirmation
-async function deleteURL(urlID, urlCard) {
+async function deleteURL(utubUrlID, urlCard) {
   const utubID = getActiveUTubID();
   try {
     // Check for stale data
-    await getUpdatedURL(utubID, urlID, urlCard);
+    await getUpdatedURL(utubID, utubUrlID, urlCard);
     // Extract data to submit in POST request
-    const deleteURL = deleteURLSetup(utubID, urlID);
+    const deleteURL = deleteURLSetup(utubID, utubUrlID);
 
     const request = ajaxCall("delete", deleteURL, []);
 

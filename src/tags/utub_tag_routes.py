@@ -142,11 +142,15 @@ def delete_utub_tag(utub_id: int, utub_tag_id: int):
 
     utub_tag: Utub_Tags = Utub_Tags.query.get_or_404(utub_tag_id)
 
-    urls_with_utub_tag: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
-        Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_tag_id == utub_tag_id
-    ).all()
+    utub_url_ids_with_utub_tag: list[int] = [
+        id_tuple[0]
+        for id_tuple in db.session.query(Utub_Url_Tags.utub_url_id)
+        .filter(
+            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_tag_id == utub_tag_id
+        )
+        .all()
+    ]
 
-    url_ids_with_utub_tag: list[int] = [url.utub_url_id for url in urls_with_utub_tag]
     serialized_tag = utub_tag.serialized_on_add_delete
 
     db.session.delete(utub_tag)
@@ -159,7 +163,7 @@ def delete_utub_tag(utub_id: int, utub_tag_id: int):
                 STD_JSON.STATUS: STD_JSON.SUCCESS,
                 STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_UTUB,
                 TAGS_SUCCESS.UTUB_TAG: serialized_tag,
-                TAGS_SUCCESS.URL_IDS: url_ids_with_utub_tag,
+                TAGS_SUCCESS.UTUB_URL_IDS: utub_url_ids_with_utub_tag,
             }
         ),
         200,
