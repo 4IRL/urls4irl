@@ -48,14 +48,14 @@ function createMemberBadge(
         e.stopPropagation();
         hideInputs();
         deselectAllURLs();
-        removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+        removeMemberShowModal(utubMemberUserID, isCurrentUserOwner);
       })
       .offAndOn("focus.removeSelf", function () {
         $(document).on("keyup.removeSelf", function (e) {
           if (e.which === 13) {
             hideInputs();
             deselectAllURLs();
-            removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+            removeMemberShowModal(utubMemberUserID, isCurrentUserOwner);
           }
         });
       })

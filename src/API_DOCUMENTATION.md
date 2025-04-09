@@ -639,7 +639,8 @@ UTub selection via the query parameter is handled on the client side.
 > {
 >     "id": 1,
 >     "name": "My UTub",
->     "createdByUserID": 1, 
+>     "createdByUserID": 1,
+>     "currentUser": 2,
 >     "isCreator": false,
 >     "createdAt": "04/04/2024 04:04:04",
 >     "description": "Here lies the description",

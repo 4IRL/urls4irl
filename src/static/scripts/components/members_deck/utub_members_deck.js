@@ -39,7 +39,12 @@ function updateMemberDeck(newMembers, isCurrentUserOwner) {
 }
 
 // Build center panel URL list for selectedUTub
-function buildMemberDeck(dictMembers, utubOwnerUserID, isCurrentUserOwner) {
+function buildMemberDeck(
+  dictMembers,
+  utubOwnerUserID,
+  isCurrentUserOwner,
+  currentUserID,
+) {
   resetMemberDeck();
   const parent = $("#listMembers");
   const numOfMembers = dictMembers.length;
@@ -70,7 +75,9 @@ function buildMemberDeck(dictMembers, utubOwnerUserID, isCurrentUserOwner) {
 
   // TODO: Move leaving of UTub badge creation here so that createMemberBadge does one thing
   // VERIFY where it is being used first
-  isCurrentUserOwner ? null : createLeaveUTubAsMemberIcon(isCurrentUserOwner);
+  isCurrentUserOwner
+    ? null
+    : createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID);
 
   // Subheader prompt
   setMemberDeckForUTub(isCurrentUserOwner);

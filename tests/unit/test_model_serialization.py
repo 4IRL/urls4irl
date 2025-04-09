@@ -292,6 +292,8 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
     MODEL_STRS.ID: Integer representing UTub ID,
     MODEL_STRS.NAME: String representing UTub name,
     MODEL_STRS.CREATED_BY: Integer representing creator ID,
+    MODEL_STRS.IS_CREATOR: Boolean representing if user is creator,
+    MODEL_STRS.CURRENT_USER: Integer representing current user,
     MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
     MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
     MODEL_STRS.MEMBERS: Array containing each members information, in the following format:
@@ -333,6 +335,9 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
 
             # Match creator elements
             test_utub[MODEL_STRS.IS_CREATOR] = utub.serialized(1)[MODEL_STRS.IS_CREATOR]
+            test_utub[MODEL_STRS.CURRENT_USER] = utub.serialized(1)[
+                MODEL_STRS.CURRENT_USER
+            ]
             assert json.dumps(test_utub) == json.dumps(utub.serialized(1))
 
 
@@ -351,6 +356,8 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
     MODEL_STRS.NAME: String representing UTub name,
     MODEL_STRS.CREATED_BY: Integer representing creator ID,
     MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    MODEL_STRS.IS_CREATOR: Boolean representing if user is creator,
+    MODEL_STRS.CURRENT_USER: Integer representing current user,
     MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
     MODEL_STRS.MEMBERS: Array containing each members information, in the following format:
         [
@@ -399,6 +406,9 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
             ]
+            test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
+                MODEL_STRS.CURRENT_USER
+            ]
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
@@ -419,6 +429,8 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
     MODEL_STRS.IS_CREATOR: Boolean indicating if current user is the creator
     MODEL_STRS.CREATED_BY: Integer representing creator ID,
     MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    MODEL_STRS.IS_CREATOR: Boolean representing if user is creator,
+    MODEL_STRS.CURRENT_USER: Integer representing current user,
     MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
     MODEL_STRS.MEMBERS: Array containing each members information, in the following format:
         [
@@ -479,6 +491,9 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
                 MODEL_STRS.IS_CREATOR
             ]
+            test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
+                MODEL_STRS.CURRENT_USER
+            ]
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
@@ -498,6 +513,8 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
     MODEL_STRS.NAME: String representing UTub name,
     MODEL_STRS.CREATED_BY: Integer representing creator ID,
     MODEL_STRS.CREATED_AT: Time UTub created, see this format (datetime.utcnow().strftime("%m/%d/%Y %H:%M:%S")),
+    MODEL_STRS.IS_CREATOR: Boolean representing if user is creator,
+    MODEL_STRS.CURRENT_USER: Integer representing current user,
     MODEL_STRS.DESCRIPTION: String representing UTub description, "" if empty,
     MODEL_STRS.MEMBERS: Array containing each members information, in the following format:
         [
@@ -589,5 +606,8 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
                 utub_in_data_serialized[MODEL_STRS.CREATED_BY]
                 == test_utub[MODEL_STRS.CREATED_BY]
             )
+            test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
+                MODEL_STRS.CURRENT_USER
+            ]
 
             assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)

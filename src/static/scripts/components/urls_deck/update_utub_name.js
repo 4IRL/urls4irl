@@ -229,19 +229,18 @@ function updateUTubNameSetup() {
   return [postURL, data];
 }
 
-// Handle updateion of UTub's name
+// Handle update of UTub's name
 function updateUTubNameSuccess(response) {
-  const UTubName = response.utubName;
+  const utubName = response.utubName;
 
   $("#confirmModal").modal("hide");
 
   // UTubDeck display updates
   const updatedUTubSelector = $("#listUTubs").find(".active");
-  updatedUTubSelector.find(".UTubName").text(UTubName);
+  updatedUTubSelector.find(".UTubName").text(utubName);
 
   // Display updates
-  setUTubDeckOnUTubSelected(getActiveUTubID(), getCurrentUTubOwnerUserID());
-  setUTubNameAndDescription(UTubName);
+  setUTubNameAndDescription(utubName);
 }
 
 // Handle error response display to user

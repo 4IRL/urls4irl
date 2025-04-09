@@ -21,6 +21,7 @@ function buildSelectedUTub(selectedUTub) {
   const utubOwnerID = selectedUTub.createdByUserID;
   const utubDescription = selectedUTub.description;
   const isCurrentUserOwner = selectedUTub.isCreator;
+  const currentUserID = selectedUTub.currentUser;
 
   const isUTubHistoryNull = window.history.state === null;
 
@@ -43,7 +44,7 @@ function buildSelectedUTub(selectedUTub) {
 
   // LH panels
   // UTub deck
-  setUTubDeckOnUTubSelected(selectedUTub.id, utubOwnerID);
+  setUTubDeckOnUTubSelected(selectedUTub.id, isCurrentUserOwner);
 
   // Tag deck
   buildTagDeck(dictTags);
@@ -65,7 +66,7 @@ function buildSelectedUTub(selectedUTub) {
   }
 
   // Members deck
-  buildMemberDeck(dictMembers, utubOwnerID, isCurrentUserOwner);
+  buildMemberDeck(dictMembers, utubOwnerID, isCurrentUserOwner, currentUserID);
 
   // Only allow owner to update UTub name and description
   if (isCurrentUserOwner) {

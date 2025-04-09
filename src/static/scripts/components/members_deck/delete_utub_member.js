@@ -29,20 +29,20 @@ function createMemberRemoveIcon() {
   return removeMemberOuterIconSvg;
 }
 
-function createLeaveUTubAsMemberIcon(isCurrentUserOwner) {
+function createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID) {
   $("#memberSelfBtnDelete")
     .offAndOn("click.removeMember", function (e) {
       e.stopPropagation();
       hideInputs();
       deselectAllURLs();
-      removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+      removeMemberShowModal(currentUserID, isCurrentUserOwner);
     })
     .offAndOn("focus.removeSelf", function () {
       $(document).on("keyup.removeSelf", function (e) {
         if (e.which === 13) {
           hideInputs();
           deselectAllURLs();
-          removeMemberShowModal(getCurrentUserID(), isCurrentUserOwner);
+          removeMemberShowModal(currentUserID, isCurrentUserOwner);
         }
       });
     })

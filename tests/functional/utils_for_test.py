@@ -506,6 +506,9 @@ def login_user(
 
     # Find and click login button to open modal
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+    wait_for_element_presence(browser, SPL.INPUT_USERNAME)
+    wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME)
+
     return input_login_fields(browser, username, password)
 
 

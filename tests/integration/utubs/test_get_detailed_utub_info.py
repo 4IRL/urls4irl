@@ -55,6 +55,7 @@ def test_get_valid_utub_as_creator(
     assert response_json[MODELS.IS_CREATOR] == (
         current_user_id == utub_user_creator_of.utub_creator
     )
+    assert response_json[MODELS.CURRENT_USER] == str(current_user_id)
 
     user_dict: dict[str, int | str] = {
         MODELS.ID: current_user_id,
@@ -111,6 +112,7 @@ def test_get_valid_utub_as_member(
     assert response_json[MODELS.IS_CREATOR] == (
         current_user_id == utub_user_member_of.utub_creator
     )
+    assert response_json[MODELS.CURRENT_USER] == str(current_user_id)
 
     user_dict: dict[str, int | str] = {
         MODELS.ID: current_user_id,
@@ -200,6 +202,7 @@ def test_get_valid_utub_with_members_urls_no_tags(
     assert response_json[MODELS.IS_CREATOR] == (
         current_user_id == utub_user_is_member_of.utub_creator
     )
+    assert response_json[MODELS.CURRENT_USER] == str(current_user_id)
 
     # Clarify that this user did not add the URL to the UTub
     assert only_url_in_utub.user_id != current_user_id
@@ -273,6 +276,7 @@ def test_get_valid_utub_with_members_urls_tags(
     assert response_json[MODELS.IS_CREATOR] == (
         current_user_id == utub_user_is_creator_of.utub_creator
     )
+    assert response_json[MODELS.CURRENT_USER] == str(current_user_id)
 
     assert len(response_json[MODELS.MEMBERS]) == len(all_users)
     assert len(response_json[MODELS.TAGS]) == len(all_tags)
