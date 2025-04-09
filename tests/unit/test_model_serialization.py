@@ -9,7 +9,7 @@ from src.models.urls import Possible_Url_Validation, Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
@@ -261,10 +261,17 @@ def test_user_utub_data_serialized_on_initial_load():
 
         # Add the valid user to the utub
         new_utub_user = Utub_Members()
+        new_utub_user.member_role = Member_Role.CREATOR
         new_utub_user.to_user = new_user
         new_utub.members.append(new_utub_user)
 
-        valid_utubs.append({MODEL_STRS.ID: new_utub.id, MODEL_STRS.NAME: new_utub.name})
+        valid_utubs.append(
+            {
+                MODEL_STRS.ID: new_utub.id,
+                MODEL_STRS.NAME: new_utub.name,
+                MODEL_STRS.MEMBER_ROLE: Member_Role.CREATOR.value,
+            }
+        )
 
     # Reverse considering the serialized values will be sorted by most recently updated
     valid_utubs.reverse()
