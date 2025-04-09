@@ -18,6 +18,7 @@ from tests.functional.utils_for_test import (
     login_user_with_cookie_from_session,
     select_utub_by_id,
     verify_no_utub_selected,
+    verify_utub_icon,
     verify_utub_selected,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -114,6 +115,7 @@ def test_back_and_forward_history(
         utub_id = utub_ids[utub_idx]
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
         browser.back()
 
@@ -124,6 +126,7 @@ def test_back_and_forward_history(
         browser.forward()
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_back_and_forward_history_with_one_utub_deleted(
@@ -193,6 +196,7 @@ def test_back_and_forward_history_with_one_utub_deleted(
             wait_until_utub_name_appears(browser, utub.name)
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
     # Go back to the home page when no UTubs were selected
     browser.back()
@@ -207,6 +211,7 @@ def test_back_and_forward_history_with_one_utub_deleted(
             continue
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_back_and_forward_history_with_leaving_one_utub(
@@ -273,6 +278,7 @@ def test_back_and_forward_history_with_leaving_one_utub(
             wait_until_utub_name_appears(browser, utub.name)
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
     # Go back to the home page when no UTubs were selected
     browser.back()
@@ -287,6 +293,7 @@ def test_back_and_forward_history_with_leaving_one_utub(
             continue
 
         verify_utub_selected(browser, app, utub_id)
+        verify_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_access_utub_id_via_url_logged_in(
