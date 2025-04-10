@@ -15,6 +15,7 @@ from src import db
 from src.models.utubs import Utubs
 from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.strings.config_strs import CONFIG_ENVS
+from src.utils.strings.model_strs import MODELS
 from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
 from src.utubs.utils import build_form_errors
 from src.utils.all_routes import ROUTES
@@ -60,7 +61,7 @@ def home():
         utub_details = current_user.serialized_on_initial_load
         return render_template(
             "home.html",
-            utubs_for_this_user=utub_details,
+            utubs_for_this_user=utub_details[MODELS.UTUBS],
             is_prod_or_testing=current_app.config.get(
                 CONFIG_ENVS.TESTING_OR_PROD, True
             ),
@@ -80,7 +81,7 @@ def home():
         utub_details = current_user.serialized_on_initial_load
         return render_template(
             "home.html",
-            utubs_for_this_user=utub_details,
+            utubs_for_this_user=utub_details[MODELS.UTUBS],
             is_prod_or_testing=current_app.config.get(
                 CONFIG_ENVS.TESTING_OR_PROD, True
             ),
@@ -91,7 +92,7 @@ def home():
         abort(404)
 
 
-@utubs.route("/utub/<int:utub_id>", methods=["GET"])
+@utubs.route("/utubs/<int:utub_id>", methods=["GET"])
 @email_validation_required
 def get_single_utub(utub_id: int):
     """

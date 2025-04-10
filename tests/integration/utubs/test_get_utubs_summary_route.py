@@ -36,7 +36,7 @@ def test_get_utubs_if_has_no_utubs(
 
     assert response.status_code == 200
     response_json = response.json
-    assert response_json == []
+    assert response_json == {MODELS.UTUBS: []}
 
 
 def test_get_utubs_if_has_one_utub(
@@ -55,14 +55,16 @@ def test_get_utubs_if_has_one_utub(
         all_utubs_in: list[Utub_Members] = Utub_Members.query.filter(
             Utub_Members.user_id == current_user.id
         ).all()
-        utub_summary = [
-            {
-                MODELS.ID: member.to_utub.id,
-                MODELS.NAME: member.to_utub.name,
-                MODELS.MEMBER_ROLE: member.member_role.value,
-            }
-            for member in all_utubs_in
-        ]
+        utub_summary = {
+            MODELS.UTUBS: [
+                {
+                    MODELS.ID: member.to_utub.id,
+                    MODELS.NAME: member.to_utub.name,
+                    MODELS.MEMBER_ROLE: member.member_role.value,
+                }
+                for member in all_utubs_in
+            ]
+        }
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_UTUBS),
@@ -89,14 +91,16 @@ def test_get_utubs_if_has_multiple_utubs(
         all_utubs_in: list[Utub_Members] = Utub_Members.query.filter(
             Utub_Members.user_id == current_user.id
         ).all()
-        utub_summary = [
-            {
-                MODELS.ID: member.to_utub.id,
-                MODELS.NAME: member.to_utub.name,
-                MODELS.MEMBER_ROLE: member.member_role.value,
-            }
-            for member in all_utubs_in
-        ]
+        utub_summary = {
+            MODELS.UTUBS: [
+                {
+                    MODELS.ID: member.to_utub.id,
+                    MODELS.NAME: member.to_utub.name,
+                    MODELS.MEMBER_ROLE: member.member_role.value,
+                }
+                for member in all_utubs_in
+            ]
+        }
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_UTUBS),
@@ -104,10 +108,10 @@ def test_get_utubs_if_has_multiple_utubs(
     )
 
     assert response.status_code == 200
-    assert isinstance(response.json, list)
-    assert isinstance(response.json[0], dict)
-    assert sorted(utub_summary, key=lambda x: x[MODELS.ID]) == sorted(
-        response.json, key=lambda x: x[MODELS.ID]
+    assert isinstance(response.json, dict)
+    assert isinstance(response.json[MODELS.UTUBS], list)
+    assert sorted(utub_summary[MODELS.UTUBS], key=lambda x: x[MODELS.ID]) == sorted(
+        response.json[MODELS.UTUBS], key=lambda x: x[MODELS.ID]
     )
 
 
@@ -127,8 +131,8 @@ def test_get_utubs_sorted_based_on_last_updated(
     with app.app_context():
         utub_summary = _get_ordered_utub_summary()
 
-    last_utub_id = int(utub_summary[-1][MODELS.ID])
-    last_utub_name = str(utub_summary[-1][MODELS.NAME])
+    last_utub_id = int(utub_summary[MODELS.UTUBS][-1][MODELS.ID])
+    last_utub_name = str(utub_summary[MODELS.UTUBS][-1][MODELS.NAME])
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_UTUBS),
@@ -159,10 +163,10 @@ def test_get_utubs_sorted_based_on_last_updated(
     with app.app_context():
         utub_summary = _get_ordered_utub_summary()
     assert utub_summary == response.json
-    assert utub_summary[0][MODELS.ID] == last_utub_id
+    assert utub_summary[MODELS.UTUBS][0][MODELS.ID] == last_utub_id
 
-    middle_utub_id = int(utub_summary[-2][MODELS.ID])
-    middle_utub_name = str(utub_summary[-2][MODELS.NAME])
+    middle_utub_id = int(utub_summary[MODELS.UTUBS][-2][MODELS.ID])
+    middle_utub_name = str(utub_summary[MODELS.UTUBS][-2][MODELS.NAME])
 
     utub_name_form = {
         UTUB_FORM.UTUB_NAME: middle_utub_name + "88",
@@ -185,10 +189,10 @@ def test_get_utubs_sorted_based_on_last_updated(
     with app.app_context():
         utub_summary = _get_ordered_utub_summary()
     assert utub_summary == response.json
-    assert utub_summary[0][MODELS.ID] == middle_utub_id
+    assert utub_summary[MODELS.UTUBS][0][MODELS.ID] == middle_utub_id
 
 
-def _get_ordered_utub_summary() -> list[dict[str, int | str]]:
+def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]]]:
     all_utubs: list[Tuple[Utubs, Member_Role]] = (
         db.session.query(Utubs, Utub_Members.member_role)
         .join(Utub_Members, Utubs.id == Utub_Members.utub_id)
@@ -196,10 +200,16 @@ def _get_ordered_utub_summary() -> list[dict[str, int | str]]:
         .order_by(Utubs.last_updated.desc())
         .all()
     )
-    return [
-        {MODELS.ID: utub.id, MODELS.NAME: utub.name, MODELS.MEMBER_ROLE: member.value}
-        for utub, member in all_utubs
-    ]
+    return {
+        MODELS.UTUBS: [
+            {
+                MODELS.ID: utub.id,
+                MODELS.NAME: utub.name,
+                MODELS.MEMBER_ROLE: member.value,
+            }
+            for utub, member in all_utubs
+        ]
+    }
 
 
 def test_get_utubs_without_ajax_request(

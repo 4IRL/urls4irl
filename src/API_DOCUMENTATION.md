@@ -615,8 +615,54 @@ UTub selection via the query parameter is handled on the client side.
 > ```
 
 </details>
+
+------------------------------------------------------------------------------------------
+
+#### UTubs
+
 <details>
- <summary><code>GET</code> <code><b>/utub/[int:UTubID]</b></code> <code>(get specific UTub information)</code></summary>
+ <summary><code>GET</code> <code><b>/utubs</b></code> <code>(gets summary of user's UTubs)</code></summary>
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Returns summary of user's UTubs in JSON format. |
+> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
+> | `404`         | `text/html;charset=utf−8`         | None | Unknown error occurred. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> { "utubs": [
+>       {
+>           "id": 1,
+>           "name": "utub2",
+>           "memberRole": "creator",
+>       },
+>       {
+>           "id": 2,
+>           "name": "utub1",
+>           "memberRole": "member",
+>       }
+>   ]
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls4irl.app/utubs \
+>  -H 'Cookie: YOUR_COOKIE' \
+>  -H 'X-Requested-With: XMLHTTPRequest'
+> ```
+
+</details>
+
+<details>
+ <summary><code>GET</code> <code><b>/utubs/[int:UTubID]</b></code> <code>(get specific UTub information)</code></summary>
 
 ##### Parameters
 
@@ -691,51 +737,7 @@ UTub selection via the query parameter is handled on the client side.
 
 > ```bash
 > curl -X GET \
->  https://urls4irl.app/utub/1 \
->  -H 'Cookie: YOUR_COOKIE' \
->  -H 'X-Requested-With: XMLHTTPRequest'
-> ```
-
-</details>
-
-------------------------------------------------------------------------------------------
-
-#### UTubs
-
-<details>
- <summary><code>GET</code> <code><b>/utubs</b></code> <code>(gets summary of user's UTubs)</code></summary>
-
-##### Responses
-
-> | http code     | content-type                      | response  | details |
-> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `See below.` | Returns summary of user's UTubs in JSON format. |
-> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `404`         | `text/html;charset=utf−8`         | None | Unknown error occurred. |
-> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
-
-###### 200 HTTP Code Response Body
-
-> ```json
-> [
->     {
->         "id": 1,
->         "name": "utub2",
->         "memberRole": "creator",
->     },
->     {
->         "id": 2,
->         "name": "utub1",
->         "memberRole": "member",
->     }
-> ]
-> ```
-
-##### Example cURL
-
-> ```bash
-> curl -X GET \
->  https://urls4irl.app/utubs \
+>  https://urls4irl.app/utubs/1 \
 >  -H 'Cookie: YOUR_COOKIE' \
 >  -H 'X-Requested-With: XMLHTTPRequest'
 > ```
@@ -2114,125 +2116,6 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > curl -X DELETE \
 >  https://urls4irl.app/utubs/1/urls/1/tags/4 \
 >  -H 'Cookie: YOUR_COOKIE'
-> ```
-
-</details>
-<details>
- <summary><code>PUT</code> <code><b>/utubs/{UTubID}/urls/1/tags/1</b></code> <code>(modify tag on URL in UTub)</code></summary>
-
-##### Parameters
-
-> | name   |  type      | data type      | description                                          |
-> |--------|------------|----------------|------------------------------------------------------|
-> | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL with given tag |
-> | `utubUrlID` |  required  | int ($int64) | The unique ID of the UTub-URL associated with the tag to modify |
-> | `tagID` |  required  | int ($int64) | The unique ID of the tag to modify |
-
-##### Request Payload
-
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
-
-Required form data:
-> ```
-> tagString: %New Tag%
-> csrf_token: %csrf_token%
-> ```
-
-##### Responses
-
-> | http code     | content-type                      | response  | details |
-> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
-> | `200`         | `application/json`                | `See below.` | Successfully modified a tag, or no change. |
-> | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Missing form fields or tag already on URL. |
-> | `403`         | `application/json`                | `See below.` | Only UTub members can modify a tag on a URL. |
-> | `404`         | `application/json`                | `See below.` | Unable to process the form. |
-> | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, the URL within the UTub, or the tag on the URL. |
-> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
-
-###### 200 HTTP Code Response Body
-
-Possible messages include: `Tag on this URL modified.`, `Tag was not modified on this URL.`
-
-> ```json
-> {
->     "status": "Success",
->     "message": "Tag on this URL modified.", 
->     "urlTagIDs": [1, 2, 3, 4],      // If modified, contains newly modified tag ID
->     "tag": {
->         "tagID": 4,
->         "tagString": "Hello",
->     },
->     "previousTag": {
->         "tagID": 5,
->         "tagInUTub": false,
->     }
-> }
-> ```
-
-###### 200 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "No change",
->     "message": "Tag was not modified on this URL.",
-> }
-> ```
-
-###### 400 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "URL already has this tag.",
->     "errorCode": 2,
-> }
-> ```
-
-###### 400 HTTP Code Response Body
-
-`tagString` field must be included in form.
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Unable to add tag to URL.",
->     "errorCode": 3,
->     "errors": {
->         "tagString": ["This field is required."],
->     }
-> }
-> ```
-
-###### 403 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Only UTub members can modify tags.",
->     "errorCode": 1
-> }
-> ```
-
-###### 404 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Unable to add tag to URL.",
->     "errorCode": 4,
-> }
-> ```
-
-##### Example cURL
-
-> ```bash
-> curl -X PUT \
->  https://urls4irl.app/utubs/1/urls/1/tags/1 \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
->  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'tagString=NewTag' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
 > ```
 
 </details>

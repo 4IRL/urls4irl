@@ -12,7 +12,7 @@ function setUIWhenNoUTubSelected() {
 function resetHomePageToInitialState() {
   setUIWhenNoUTubSelected();
   getAllUTubs().then((utubData) => {
-    buildUTubDeck(utubData);
+    buildUTubDeck(utubData.utubs);
     setMemberDeckWhenNoUTubSelected();
     setTagDeckSubheaderWhenNoUTubSelected();
   });
