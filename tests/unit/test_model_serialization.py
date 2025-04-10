@@ -275,7 +275,9 @@ def test_user_utub_data_serialized_on_initial_load():
 
     # Reverse considering the serialized values will be sorted by most recently updated
     valid_utubs.reverse()
-    assert json.dumps(valid_utubs) == json.dumps(new_user.serialized_on_initial_load)
+    assert json.dumps({MODEL_STRS.UTUBS: valid_utubs}) == json.dumps(
+        new_user.serialized_on_initial_load
+    )
 
 
 def test_utub_serialized_only_creator_no_urls_no_tags(

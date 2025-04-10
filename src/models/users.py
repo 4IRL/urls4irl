@@ -93,7 +93,7 @@ class Users(db.Model, UserMixin):
         }
 
     @property
-    def serialized_on_initial_load(self) -> list[dict]:
+    def serialized_on_initial_load(self) -> dict[str, list[dict]]:
         """Returns object in serialized for, with only the utub id and Utub name the user is a member of."""
 
         # Sort by last updated
@@ -111,7 +111,7 @@ class Users(db.Model, UserMixin):
             for utub in sorted_utubs_user_is_in
         ]
 
-        return utub_summaries
+        return {MODEL_STRS.UTUBS: utub_summaries}
 
     def __repr__(self):
         return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
