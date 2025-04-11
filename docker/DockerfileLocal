@@ -22,8 +22,8 @@ RUN chmod -R 775 /code
 
 # Create non-root user, update packages, clean up
 RUN set -ex \
-	&& addgroup --system --gid 1001 u4i-host-group \
-	&& adduser --system --uid 1001 --gid 1001 --no-create-home u4i-host \
+	&& addgroup --system --gid 1000 u4i-host-group \
+	&& adduser --system --uid 1000 --gid 1000 --no-create-home u4i-host \
 	&& apt-get update \
 	&& apt-get -y install libpq-dev gcc wget unzip xvfb libglib2.0-dev libnss3-dev libdbus-1-dev  libatk1.0-0 libatk-bridge2.0-0 libcups2 libxkbcommon-dev libxcomposite-dev libxdamage-dev libgbm-dev libpangocairo-1.0-0 libasound2 \
 	&& apt-get upgrade -y \

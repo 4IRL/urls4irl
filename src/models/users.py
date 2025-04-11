@@ -45,7 +45,9 @@ class Users(db.Model, UserMixin):
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
     role: str = Column(SQLEnum(User_Role), nullable=False, default=User_Role.USER)
-    email_validated: bool = Column(Boolean, default=False, name="emailValidated")
+    email_validated: bool = Column(
+        Boolean, default=False, name="emailValidated", nullable=False
+    )
     utubs_is_member_of: list[Utub_Members] = db.relationship(
         "Utub_Members", back_populates="to_user"
     )

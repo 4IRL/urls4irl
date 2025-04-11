@@ -27,6 +27,7 @@ services:
       - ./src:/code/u4i/src
       - ./tests:/code/u4i/tests
       - ./migrations:/code/u4i/migrations
+      - ./migrations/versions:/code/u4i/migrations/versions
       - ./utils:/code/u4i/utils
 
     # Sleep for 10 seconds to allow postgres image to start if necessary
