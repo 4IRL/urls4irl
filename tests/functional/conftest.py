@@ -281,11 +281,7 @@ def create_user_resetting_password(
             plaintext_password=UI_TEST_STRINGS.TEST_PASSWORD_1,
         )
 
-        new_email_validation = Email_Validations(
-            validation_token=new_user.get_email_validation_token()
-        )
-        new_email_validation.is_validated = True
-        new_user.email_confirm = new_email_validation
+        new_user.email_validated = True
 
         new_password_reset = Forgot_Passwords(
             reset_token=new_user.get_password_reset_token()

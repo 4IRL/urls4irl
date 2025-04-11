@@ -57,7 +57,7 @@ def error_page():
 @splash.route("/", methods=["GET"])
 def splash_page():
     """Splash page for an unlogged in user."""
-    if current_user.is_authenticated and current_user.email_confirm.is_validated:
+    if current_user.is_authenticated and current_user.email_validated:
         return redirect(url_for(ROUTES.UTUBS.HOME))
     return render_template("splash.html")
 
@@ -66,7 +66,7 @@ def splash_page():
 def register_user():
     """Allows a user to register an account."""
     if current_user.is_authenticated:
-        if not current_user.email_confirm.is_validated:
+        if not current_user.email_validated:
             return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
@@ -163,7 +163,7 @@ def register_user():
 def login():
     """Login page. Allows user to register or login."""
     if current_user.is_authenticated:
-        if not current_user.email_confirm.is_validated:
+        if not current_user.email_validated:
             return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
@@ -175,9 +175,8 @@ def login():
     if login_form.validate_on_submit():
         username = login_form.username.data
         user: Users = Users.query.filter(Users.username == username).first()
-        email_confirm: Email_Validations = user.email_confirm
         login_user(user)  # Can add Remember Me functionality here
-        if not email_confirm.is_validated:
+        if not user.email_validated:
             return (
                 jsonify(
                     {
@@ -251,7 +250,7 @@ def _verify_and_provide_next_page(request_args: dict[str, str]) -> str:
 def confirm_email_after_register():
     if current_user.is_anonymous:
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-    if current_user.email_confirm.is_validated:
+    if current_user.email_validated:
         return redirect(url_for(ROUTES.UTUBS.HOME))
     return render_template(
         "email_validation/email_needs_validation_modal.html",
@@ -370,8 +369,8 @@ def validate_email(token: str):
     if not email_validation.validation_token == token:
         abort(404)
 
-    email_validation.validate()
-    email_validation.validation_token = ""
+    user_to_validate.validate_email()
+    db.session.delete(email_validation)
     db.session.commit()
     login_user(user_to_validate)
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
@@ -381,7 +380,7 @@ def validate_email(token: str):
 @splash.route("/forgot-password", methods=["GET", "POST"])
 def forgot_password():
     if current_user.is_authenticated:
-        if not current_user.email_confirm.is_validated:
+        if not current_user.email_validated:
             return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
@@ -440,7 +439,7 @@ def reset_password(token: str):
         # Invalid token
         abort(404)
 
-    if not reset_password_user.is_email_authenticated():
+    if not reset_password_user.email_validated:
         # Remove the object if it exists
         reset_password_obj = Forgot_Passwords.query.filter(
             Forgot_Passwords.reset_token == token

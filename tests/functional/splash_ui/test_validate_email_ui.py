@@ -40,7 +40,7 @@ def test_email_validation_routes_user_properly(
 
     with app.app_context():
         user: Users = Users.query.filter(Users.username == UTS.TEST_USERNAME_1).first()
-        assert user.is_email_authenticated()
+        assert user.email_validated
 
 
 def test_expired_email_validation_routes_user_properly(

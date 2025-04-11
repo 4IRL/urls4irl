@@ -4,7 +4,7 @@ from enum import Enum
 import jwt
 from flask_login import UserMixin
 from flask import current_app
-from sqlalchemy import Column, DateTime, Enum as SQLEnum, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, Integer, String
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src import db
@@ -45,6 +45,7 @@ class Users(db.Model, UserMixin):
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
     role: str = Column(SQLEnum(User_Role), nullable=False, default=User_Role.USER)
+    email_validated: bool = Column(Boolean, default=False, name="emailValidated")
     utubs_is_member_of: list[Utub_Members] = db.relationship(
         "Utub_Members", back_populates="to_user"
     )
@@ -77,12 +78,11 @@ class Users(db.Model, UserMixin):
     def is_password_correct(self, plaintext_password: str) -> bool:
         return check_password_hash(self.password, plaintext_password)
 
-    def is_email_authenticated(self) -> bool:
-        email_confirm: Email_Validations = self.email_confirm
-        return email_confirm.is_validated
-
     def change_password(self, new_plaintext_password: str):
         self.password = generate_password_hash(new_plaintext_password)
+
+    def validate_email(self):
+        self.email_validated = True
 
     @property
     def serialized(self) -> dict[str, int | str]:

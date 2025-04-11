@@ -25,7 +25,7 @@
 
     {% include 'password_reset/reset_password_modal.html' %}
 
-    {% elif current_user.is_authenticated and current_user.email_confirm.is_validated %}
+    {% elif current_user.is_authenticated and current_user.email_validated %}
 
     {% include 'modals/homeModalBase.html' %}
 
@@ -38,7 +38,7 @@
     {% endblock %}
 
     {% block mainbody %}
-    {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+    {% if current_user.is_authenticated and current_user.email_validated %}
     <!-- Main Panel View -->
 
     <main id="mainPanel" class="mx-0 bt-4 pt-0">

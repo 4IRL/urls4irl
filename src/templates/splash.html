@@ -2,7 +2,7 @@
 {% block mainbody %}
 
 <!-- SPLASH PAGE INTRO -->
-{% if not current_user.is_authenticated or not current_user.email_confirm.is_validated %}
+{% if not current_user.is_authenticated or not current_user.email_validated %}
 <main class="bg-img">
     <div class="container-fluid bg-cover">
         <div class="container-fluid jumbotron-holder">

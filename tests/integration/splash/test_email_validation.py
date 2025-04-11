@@ -204,7 +204,7 @@ def test_token_validates_user(app, load_register_page):
             Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
         user_token = user.email_confirm.validation_token
-        assert not user.is_email_authenticated() and not user.email_confirm.is_validated
+        assert not user.email_validated and not user.email_confirm.is_validated
 
     response = client.get(
         url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=user_token), follow_redirects=True
@@ -223,8 +223,7 @@ def test_token_validates_user(app, load_register_page):
         user: Users = Users.query.filter(
             Users.email == valid_user_1[REGISTER_FORM.EMAIL].lower()
         ).first()
-        assert user.is_email_authenticated() and user.email_confirm.is_validated
-        assert user.email_confirm.validation_token != user_token
+        assert user.email_validated and user.email_confirm is None
 
 
 def test_token_can_expire(app, register_first_user_without_email_validation):

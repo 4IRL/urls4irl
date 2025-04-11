@@ -5,7 +5,6 @@ from src.cli.mock_constants import (
     USERNAME_BASE,
     MOCK_UTUB_NAME_BASE,
 )
-from src.models.email_validations import Email_Validations
 from src.models.utub_tags import Utub_Tags
 from src.models.urls import Urls
 from src.models.users import Users
@@ -15,19 +14,12 @@ from src.models.utubs import Utubs
 
 
 def verify_users_added():
-    """Verifies all unique mock users are in the database with associated validated EmailValidations"""
+    """Verifies all unique mock users are in the database with emails validated"""
     for i in range(TEST_USER_COUNT):
         username = f"{USERNAME_BASE}{i + 1}"
         assert Users.query.filter(Users.username == username).count() == 1
         user: Users = Users.query.filter(Users.username == username).first()
-        assert (
-            Email_Validations.query.filter(Email_Validations.user_id == user.id).count()
-            == 1
-        )
-        email_validation: Email_Validations = Email_Validations.query.filter(
-            Email_Validations.user_id == user.id
-        ).first()
-        assert email_validation.is_validated
+        assert user.email_validated
 
 
 def verify_utubs_added_duplicates(utub_count: int):

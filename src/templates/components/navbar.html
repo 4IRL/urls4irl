@@ -1,4 +1,4 @@
-{% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+{% if current_user.is_authenticated and current_user.email_validated %}
 <nav id="mainNavbar" class="navbar navbar-expand-lg navbar-dark bg-dark py-0">
     <a class="navbar-brand navbar-start" href="/home">
         {% else %}
@@ -14,7 +14,7 @@
                 aria-controls="NavbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            {% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+            {% if current_user.is_authenticated and current_user.email_validated %}
             <div class="navbar-collapse collapse bg-dark home" id="NavbarNavDropdown">
                 {% include 'components/navHomeItems.html' %}
                 {% else %}
