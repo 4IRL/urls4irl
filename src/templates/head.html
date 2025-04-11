@@ -4,7 +4,7 @@
 <meta name="description" content="">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 {% block scripts_for_login %}
-{% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+{% if current_user.is_authenticated and current_user.email_validated %}
 <meta http-equiv="refresh" content="{{ CONSTANTS.CONFIG.SESSION_LIFETIME }}">
 <meta name="csrf-token" content="{{ csrf_token() }}">
 {% endif %}
@@ -60,7 +60,7 @@
 <!-- Custom CSS adjustments -->
 <link rel="stylesheet" href="/static/styles/app.css?v={{ ASSET_VERSION }}">
 
-{% if current_user.is_authenticated and current_user.email_confirm.is_validated %}
+{% if current_user.is_authenticated and current_user.email_validated %}
 <link rel="stylesheet" href="/static/styles/home.css?v={{ ASSET_VERSION }}">
 {% else %}
 <link rel="stylesheet" href="/static/styles/splash.css?v={{ ASSET_VERSION }}">

@@ -93,7 +93,7 @@ def test_mobile_email_validation_brings_user_to_utub_panel(
 
     with app.app_context():
         user: Users = Users.query.filter(Users.username == UTS.TEST_USERNAME_1).first()
-        assert user.is_email_authenticated()
+        assert user.email_validated
 
 
 def test_mobile_login_brings_user_to_utub_panel(

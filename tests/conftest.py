@@ -13,7 +13,6 @@ from redis.client import Redis
 
 from src import create_app, db, environment_assets
 from src.config import ConfigTest
-from src.models.email_validations import Email_Validations
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.users import Users
@@ -253,11 +252,7 @@ def register_first_user(
             plaintext_password=valid_user_1[model_strs.PASSWORD],
         )
 
-        new_email_validation = Email_Validations(
-            validation_token=new_user.get_email_validation_token()
-        )
-        new_email_validation.is_validated = True
-        new_user.email_confirm = new_email_validation
+        new_user.email_validated = True
 
         db.session.add(new_user)
         db.session.commit()
@@ -294,11 +289,7 @@ def register_multiple_users(
                 plaintext_password=user[model_strs.PASSWORD],
             )
 
-            new_email_validation = Email_Validations(
-                validation_token=new_user.get_email_validation_token()
-            )
-            new_email_validation.is_validated = True
-            new_user.email_confirm = new_email_validation
+            new_user.email_validated = True
 
             db.session.add(new_user)
             db.session.commit()

@@ -342,7 +342,7 @@ def test_password_reset_with_unconfirmed_email(
     app = provide_app
     with app.app_context():
         user: Users = Users.query.first()
-        user.email_confirm.is_validated = False
+        user.email_validated = False
         db.session.commit()
 
     reset_password_suffix = create_user_resetting_password

@@ -15,7 +15,7 @@ bootstrap*.css*
 *.code-workspace
 secrets/
 backups/
-*.gz
+*.gz*
 node_modules/
 gen/
 *.bak

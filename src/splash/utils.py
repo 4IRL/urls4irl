@@ -78,7 +78,7 @@ def _handle_after_forgot_password_form_validated(
     ).first()
 
     if user_with_email is not None:
-        if not user_with_email.email_confirm.is_validated:
+        if not user_with_email.email_validated:
             return (
                 jsonify(
                     {
