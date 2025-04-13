@@ -2,10 +2,15 @@
 
 // Element to displayu the URL string
 function createURLString(urlStringText) {
-  return $(document.createElement("span"))
+  let displayURL = urlStringText.replace(/^https:\/\//, "");
+  displayURL = displayURL.replace(/^www\./, "");
+  return $(document.createElement("a"))
     .addClass("urlString long-text-ellipsis tabbable")
-    .attr({ "data-url": urlStringText })
-    .text(urlStringText);
+    .attr({
+      href: urlStringText,
+      target: "_blank",
+    })
+    .text(displayURL);
 }
 
 // Create the container for both displaying URL string, and updating the URL string

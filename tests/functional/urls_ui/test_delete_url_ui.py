@@ -56,7 +56,7 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
         )
     )
 
-    css_selector = f'{HPL.URL_STRING_READ}[data-url="{UTS.TEST_URL_STRING_CREATE}"]'
+    css_selector = f'{HPL.URL_STRING_READ}[href="{UTS.TEST_URL_STRING_CREATE}"]'
     assert browser.find_element(By.CSS_SELECTOR, css_selector)
 
     init_num_url_rows = get_num_url_rows(browser)
@@ -269,7 +269,7 @@ def test_delete_last_url(
         url_string=random_url_to_add_as_last,
     )
 
-    css_selector = f'{HPL.URL_STRING_READ}[data-url="{random_url_to_add_as_last}"]'
+    css_selector = f'{HPL.URL_STRING_READ}[href="{random_url_to_add_as_last}"]'
     assert browser.find_element(By.CSS_SELECTOR, css_selector)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)

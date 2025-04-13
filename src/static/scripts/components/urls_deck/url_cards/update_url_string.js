@@ -53,7 +53,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   showIfHidden(urlStringElem);
 
   // Update the input with current value of url string element
-  urlCard.find(".urlStringUpdate").val(urlStringElem.attr("data-url"));
+  urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href"));
 
   // Make the Update URL button now allow updating again
   const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
@@ -110,7 +110,7 @@ async function updateURL(urlStringUpdateInput, urlCard) {
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     if (
-      urlStringUpdateInput.val() === urlCard.find(".urlString").attr("data-url")
+      urlStringUpdateInput.val() === urlCard.find(".urlString").attr("href")
     ) {
       hideAndResetUpdateURLStringForm(urlCard);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
@@ -157,7 +157,7 @@ function updateURLSuccess(response, urlCard) {
   // Update URL body with latest published data
   urlCard
     .find(".urlString")
-    .attr({ "data-url": updatedURLString })
+    .attr({ href: updatedURLString })
     .text(updatedURLString);
 
   // Update URL options
@@ -170,7 +170,6 @@ function updateURLSuccess(response, urlCard) {
     e.stopPropagation();
     accessLink(updatedURLString);
   });
-  setURLCardURLStringClickableWhenSelected(urlCard);
 
   hideAndResetUpdateURLStringForm(urlCard);
 }

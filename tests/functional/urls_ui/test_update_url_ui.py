@@ -87,7 +87,7 @@ def test_update_url_string_submit_btn(
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.text
-    url_row_data_attrib = url_row_string_elem.get_attribute("data-url")
+    url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == url_row_string_display
 
@@ -148,7 +148,7 @@ def test_update_url_string_press_enter_key(
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.text
-    url_row_data_attrib = url_row_string_elem.get_attribute("data-url")
+    url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == url_row_string_display
 
@@ -199,7 +199,7 @@ def test_update_url_string_big_cancel_btn(
     url_row = get_selected_url(browser)
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
-    init_url_row_data = url_row_string_elem.get_attribute("data-url")
+    init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
 
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
@@ -217,7 +217,7 @@ def test_update_url_string_big_cancel_btn(
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.text
-    url_row_data_attrib = url_row_string_elem.get_attribute("data-url")
+    url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == init_url_row_data
     assert url_row_string_display == init_url_row_string_display
@@ -262,7 +262,7 @@ def test_update_url_string_cancel_btn(
     url_row = get_selected_url(browser)
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
-    init_url_row_data = url_row_string_elem.get_attribute("data-url")
+    init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
     verify_update_url_state_is_shown(url_row)
@@ -279,7 +279,7 @@ def test_update_url_string_cancel_btn(
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.text
-    url_row_data_attrib = url_row_string_elem.get_attribute("data-url")
+    url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == init_url_row_data
     assert url_row_string_display == init_url_row_string_display
@@ -324,7 +324,7 @@ def test_update_url_string_escape_key(
     url_row = get_selected_url(browser)
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
-    init_url_row_data = url_row_string_elem.get_attribute("data-url")
+    init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
     verify_update_url_state_is_shown(url_row)
@@ -341,7 +341,7 @@ def test_update_url_string_escape_key(
 
     # Extract URL string from updated URL row
     url_row_string_display = url_row_string_elem.text
-    url_row_data_attrib = url_row_string_elem.get_attribute("data-url")
+    url_row_data_attrib = url_row_string_elem.get_attribute("href")
 
     assert url_row_data_attrib == init_url_row_data
     assert url_row_string_display == init_url_row_string_display

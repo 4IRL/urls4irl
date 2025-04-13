@@ -42,7 +42,7 @@ function isURLCurrentlyVisibleInURLDeck(urlString) {
   const visibleURLs = $(".urlString");
 
   for (let i = 0; i < visibleURLs.length; i++) {
-    if ($(visibleURLs[i]).attr("data-url") === urlString) {
+    if ($(visibleURLs[i]).attr("href") === urlString) {
       return true;
     }
   }

@@ -62,9 +62,7 @@ function accessAllURLsInUTub() {
   const visibleURLs = $(visibleSelector);
   if (visibleURLs.length === 0) return;
 
-  const visibleURLsToAccess = $.map(visibleURLs, (url) =>
-    $(url).attr("data-url"),
-  );
+  const visibleURLsToAccess = $.map(visibleURLs, (url) => $(url).attr("href"));
 
   for (let i = 0; i < visibleURLsToAccess.length; i++) {
     accessLink(visibleURLsToAccess[i]);

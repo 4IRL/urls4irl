@@ -851,7 +851,7 @@ def select_url_by_url_string(browser: WebDriver, url_string: str):
 
         url_row_string = url_row.find_element(
             By.CSS_SELECTOR, HPL.URL_STRING_READ
-        ).get_attribute("data-url")
+        ).get_attribute("href")
         if url_row_string == url_string:
             url_row.click()
             return
@@ -876,7 +876,7 @@ def verify_elem_with_url_string_exists(browser: WebDriver, url_string: str) -> b
     for url_row in url_rows:
         url_row_string = url_row.find_element(
             By.CSS_SELECTOR, HPL.URL_STRING_READ
-        ).get_attribute("data-url")
+        ).get_attribute("href")
 
         if url_row_string == url_string:
             return True

@@ -17,6 +17,7 @@ services:
     environment:
       - PRODUCTION=false
       - REDIS_URI=redis://redis:6379/0
+      - TEST_REDIS_URI=redis://redis:6379/1
       - FLASK_DEBUG=true
       - FLASK_ENV=development
       - BASE_EMAIL=u4i@urls4irl.app

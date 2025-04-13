@@ -9,31 +9,12 @@ function getSelectedURLCard() {
 // Perform actions on selection of a URL card
 function selectURLCard(urlCard) {
   deselectAllURLs();
-  setURLCardURLStringClickableWhenSelected(urlCard);
 
   urlCard.attr({ urlSelected: true });
   urlCard.find(".goToUrlIcon").addClass("visible-flex");
   enableClickOnSelectedURLCardToHide(urlCard);
 
   enableTabbingOnURLCardElements(urlCard);
-}
-
-function setURLCardURLStringClickableWhenSelected(urlCard) {
-  const urlString = urlCard.find(".urlString").attr("data-url");
-  urlCard
-    .find(".urlString")
-    .offAndOn("click.goToURL", function (e) {
-      e.stopPropagation();
-      accessLink(urlString);
-    })
-    .offAndOn("focus.accessURL", function () {
-      $(document).on("keyup.accessURL", function (e) {
-        if (e.which === 13) accessLink(urlString);
-      });
-    })
-    .offAndOn("blur.accessURL", function () {
-      $(document).off("keyup.accessURL");
-    });
 }
 
 function enableClickOnSelectedURLCardToHide(urlCard) {

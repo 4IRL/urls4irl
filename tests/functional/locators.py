@@ -126,7 +126,7 @@ class HomePageLocators(GenericPageLocator):
 
     BUTTON_URL_DELETE = ".urlBtnDelete"
 
-    URL_STRING_IN_DATA = "data-url"
+    URL_STRING_IN_DATA = "href"
     GO_TO_URL_ICON = ".goToUrlIcon"
 
     # Members Deck
