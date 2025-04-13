@@ -248,9 +248,15 @@ def test_create_url_submit_btn(
 
     url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
     url_row_string = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+    url_row_href = url_row.find_element(
+        By.CSS_SELECTOR, HPL.URL_STRING_READ
+    ).get_attribute(HPL.URL_STRING_IN_DATA)
+
+    url_string_visible = url_string.replace("https://", "").replace("www.", "")
 
     assert url_title == url_row_title
-    assert url_string == url_row_string
+    assert url_row_string == url_string_visible
+    assert url_string == url_row_href
 
     assert browser.find_element(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
@@ -297,9 +303,15 @@ def test_create_url_using_enter_key(
 
     url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
     url_row_string = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+    url_row_href = url_row.find_element(
+        By.CSS_SELECTOR, HPL.URL_STRING_READ
+    ).get_attribute(HPL.URL_STRING_IN_DATA)
+
+    url_string_visible = url_string.replace("https://", "").replace("www.", "")
 
     assert url_title == url_row_title
-    assert url_string == url_row_string
+    assert url_row_string == url_string_visible
+    assert url_string == url_row_href
 
     assert browser.find_element(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS

@@ -31,7 +31,7 @@ function updateURLBasedOnGetData(urlUpdateResponse, urlCard) {
 
   urlStringElem !== urlUpdateResponse.urlString
     ? urlStringElem
-        .attr({ "data-url": urlUpdateResponse.urlString })
+        .attr({ href: urlUpdateResponse.urlString })
         .text(urlUpdateResponse.urlString)
     : null;
 

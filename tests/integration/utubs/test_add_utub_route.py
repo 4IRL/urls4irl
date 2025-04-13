@@ -605,7 +605,7 @@ def test_session_expiration(
     """
     if provide_redis is None:
         return
-    redis_uri = app.config.get(CONFIG_ENVS.REDIS_URI, None)
+    redis_uri = app.config.get(CONFIG_ENVS.TEST_REDIS_URI, None)
 
     if not redis_uri or redis_uri == "memory://":
         return

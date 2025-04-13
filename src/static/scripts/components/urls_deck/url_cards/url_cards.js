@@ -6,8 +6,8 @@ function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
 
   urlTitle.text() !== newUrl.urlTitle ? urlTitle.text(newUrl.urlTitle) : null;
 
-  urlString.attr("data-url") !== newUrl.urlString
-    ? urlString.text(newUrl.urlString).attr({ "data-url": newUrl.urlString })
+  urlString.attr("href") !== newUrl.urlString
+    ? urlString.text(newUrl.urlString).attr({ href: newUrl.urlString })
     : null;
 
   const currentURLTags = urlCard.find(".tagBadge");

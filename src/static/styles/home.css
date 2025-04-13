@@ -427,6 +427,11 @@
     background: var(--pageBackgroundColor);
 }
 
+.urlRow:not([urlSelected="true"]) a {
+    pointer-events: none;
+    cursor: default;
+}
+
 #listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
     background-color: rgba(61, 71, 71, 1.0);
 }
@@ -550,6 +555,15 @@
     opacity: 1;
     pointer-events: initial;
 }
+
+a.urlString {
+    text-decoration: none;
+}
+
+a.urlString:hover {
+    color: var(--cardURLTextColor);
+}
+
 
 .urlRow[filterable="true"][urlSelected="true"] .urlString {
     overflow-wrap: break-word;

@@ -51,6 +51,8 @@ DEV_DB_URI = build_db_uri(
     database_host="db" if IS_DOCKER else "localhost",
 )
 
+TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
+
 if IS_PRODUCTION:
     redis_password = environ.get("REDIS_PASSWORD", "")
     encoded_password = quote(redis_password)
@@ -148,6 +150,9 @@ class ConfigTest(Config):
     SQLALCHEMY_BINDS = {"test": TEST_DB_URI}
     SQLALCHEMY_DATABASE_URI = TEST_DB_URI
     UI_TESTING = False
+
+    SESSION_TYPE = "redis"
+    SESSION_REDIS = Redis.from_url(TEST_REDIS_URI)
 
     def __init__(self) -> None:
         super().__init__()

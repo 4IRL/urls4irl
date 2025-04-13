@@ -40,6 +40,15 @@ $(window).on("focus", () => {
 // Refocus when going to another tab
 $(window).on("blur", () => {
   if (document.activeElement !== null) {
-    $(document.activeElement).addClass("focus");
+    const activeElement = $(document.activeElement);
+
+    const urlCard = activeElement.closest(".urlRow");
+    if (urlCard.length == 0) {
+      activeElement.addClass("focus");
+      return;
+    }
+
+    urlCard.attr({ urlselected: true });
+    enableTabbableChildElements(urlCard);
   }
 });
