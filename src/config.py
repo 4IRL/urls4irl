@@ -152,7 +152,11 @@ class ConfigTest(Config):
     UI_TESTING = False
 
     SESSION_TYPE = "redis"
-    SESSION_REDIS = Redis.from_url(TEST_REDIS_URI)
+    SESSION_REDIS = (
+        Redis.from_url(TEST_REDIS_URI)
+        if (TEST_REDIS_URI is not None and TEST_REDIS_URI != "memory://")
+        else ""
+    )
 
     def __init__(self) -> None:
         super().__init__()
