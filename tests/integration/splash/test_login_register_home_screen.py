@@ -56,11 +56,11 @@ def test_get_login_screen_not_logged_in(app_with_server_name, client):
 
         assert response.status_code == 200
 
-        login_input_html = f'<input class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
+        login_input_html = f'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
 
         assert login_input_html.encode() in response.data
         assert (
-            b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
+            b'<input autocomplete="current-password" class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
             in response.data
         )
         assert (
@@ -84,21 +84,21 @@ def test_get_register_screen_not_logged_in(app_with_server_name, client):
         assert response.status_code == 200
 
         assert (
-            b'<input class="form-control login-register-form-group" id="username" maxlength="20" minlength="3" name="username" required type="text" value="">'
+            b'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="20" minlength="3" name="username" required type="text" value="">'
             in response.data
         )
         assert (
-            b'<input class="form-control login-register-form-group" id="email" name="email" required type="text" value="">'
+            b'<input autocomplete="email" class="form-control login-register-form-group" id="email" name="email" required type="email" value="">'
             in response.data
         )
         assert (
-            b'<input class="form-control login-register-form-group" id="confirmEmail" name="confirmEmail" required type="text" value="">'
+            b'<input autocomplete="email" class="form-control login-register-form-group" id="confirmEmail" name="confirmEmail" required type="email" value="">'
             in response.data
         )
-        password_input_html = f'<input class="form-control login-register-form-group" id="password" maxlength="{USER_CONSTANTS.MAX_PASSWORD_LENGTH}" minlength="{USER_CONSTANTS.MIN_PASSWORD_LENGTH}" name="password" required type="password" value="">'
+        password_input_html = f'<input autocomplete="new-password" class="form-control login-register-form-group" id="password" maxlength="{USER_CONSTANTS.MAX_PASSWORD_LENGTH}" minlength="{USER_CONSTANTS.MIN_PASSWORD_LENGTH}" name="password" required type="password" value="">'
         assert password_input_html.encode() in response.data
         assert (
-            b'<input class="form-control login-register-form-group" id="confirmPassword" name="confirmPassword" required type="password" value="">'
+            b'<input autocomplete="new-password" class="form-control login-register-form-group" id="confirmPassword" name="confirmPassword" required type="password" value="">'
             in response.data
         )
         assert (

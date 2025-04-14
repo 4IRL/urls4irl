@@ -132,7 +132,7 @@ class ValidateEmailForm(FlaskForm):
 
 
 class ForgotPasswordForm(FlaskForm):
-    email = StringField(
+    email = EmailField(
         FORGOT_PASSWORD.EMAIL_TEXT, validators=[InputRequired(), Email()]
     )
 

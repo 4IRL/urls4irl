@@ -45,14 +45,15 @@
             <div class="form-group">
                 {{ register_form.confirm_email.label(class="form-control-label login-register-label")}}
                 {% if register_form.confirm_email.errors %}
-                {{ register_form.confirm_email(class="form-control login-register-form-group is-invalid") }}
+                {{ register_form.confirm_email(class="form-control login-register-form-group is-invalid",
+                autocomplete="email") }}
                 <div class="invalid-feedback">
                     {% for error in register_form.confirm_email.errors %}
                     <span>{{ error }}</span>
                     {% endfor %}
                 </div>
                 {% else %}
-                {{ register_form.confirm_email(class="form-control login-register-form-group")}}
+                {{ register_form.confirm_email(class="form-control login-register-form-group", autocomplete="email")}}
                 {% endif %}
             </div>
             <div class="form-group">
@@ -66,7 +67,7 @@
                     {% endfor %}
                 </div>
                 {% else %}
-                {{ register_form.password(class="form-control login-register-form-group")}}
+                {{ register_form.password(class="form-control login-register-form-group", autocomplete="new-password")}}
                 {% endif %}
             </div>
             <div class="form-group">
