@@ -1,5 +1,5 @@
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SubmitField
+from wtforms import StringField, PasswordField, SubmitField, EmailField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
 
 from src.models.users import Users
@@ -33,10 +33,10 @@ class UserRegistrationForm(FlaskForm):
             ),
         ],
     )
-    email = StringField(
+    email = EmailField(
         REGISTER_LOGIN_FORM.EMAIL_TEXT, validators=[InputRequired(), Email()]
     )
-    confirm_email = StringField(
+    confirm_email = EmailField(
         REGISTER_LOGIN_FORM.CONFIRM_EMAIL_TEXT,
         validators=[InputRequired(), EqualTo(REGISTER_LOGIN_FORM.EMAIL)],
         name=REGISTER_FORM.CONFIRM_EMAIL,

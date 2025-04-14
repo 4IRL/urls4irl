@@ -29,11 +29,17 @@ function updateURLBasedOnGetData(urlUpdateResponse, urlCard) {
     ? urlTitleElem.text(urlUpdateResponse.urlTitle)
     : null;
 
-  urlStringElem !== urlUpdateResponse.urlString
-    ? urlStringElem
-        .attr({ href: urlUpdateResponse.urlString })
-        .text(urlUpdateResponse.urlString)
-    : null;
+  if (urlStringElem.attr("href") !== urlUpdateResponse.urlString) {
+    let urlDisplayString = urlUpdateResponse.urlString.replace(
+      /^https:\/\//,
+      "",
+    );
+    urlDisplayString = urlDisplayString.replace(/^www\./, "");
+
+    urlStringElem
+      .attr({ href: urlUpdateResponse.urlString })
+      .text(urlDisplayString);
+  }
 
   updateURLTagsAndUTubTagsBasedOnGetURLData(
     urlTags,

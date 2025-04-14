@@ -701,6 +701,7 @@ a.urlString:hover {
     position: relative;
 }
 
+.text-input[type="url"],
 .text-input[type="text"] {
     width: 100%;
     padding: 10px;
@@ -713,10 +714,12 @@ a.urlString:hover {
     color: whitesmoke;
 }
 
+.text-input[type="url"]:hover,
 .text-input[type="text"]:hover {
     border-color: var(--deckSelectionGreenHover);
 }
 
+.text-input[type="url"]:focus,
 .text-input[type="text"]:focus {
     border-color: var(--deckSelectionGreen);
 }
