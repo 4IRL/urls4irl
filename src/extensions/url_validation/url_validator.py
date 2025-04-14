@@ -30,7 +30,7 @@ import time
 import requests
 import socket
 from typing import Tuple, Union
-from urllib.parse import unquote
+from urllib.parse import unquote, urljoin
 
 import redis
 from redis.client import Redis
@@ -208,6 +208,7 @@ class UrlValidator:
     ) -> requests.Response | None:
         max_num_redirects = 10
         num_redirects = 0
+        redirect_url = None
 
         response: requests.Response = requests.head(
             url,
@@ -224,17 +225,18 @@ class UrlValidator:
                 400, 600
             ):
                 return None
+            original_url: str = redirect_url if redirect_url is not None else url
 
             redirect_url = response.headers.get(VALIDATION_STRS.LOCATION, "")
             if (
-                deconstruct_url(redirect_url).scheme != "https"
-                and response.next
+                response.next
                 and response.next.url
                 and deconstruct_url(response.next.url).scheme == "https"
             ):
                 redirect_url = response.next.url
-            else:
-                return None
+
+            elif not deconstruct_url(redirect_url).scheme == "https":
+                redirect_url = urljoin(original_url, redirect_url)
 
             response = requests.head(
                 redirect_url,
@@ -293,6 +295,7 @@ class UrlValidator:
     ) -> requests.Response:
         max_num_redirects = 10
         num_redirects = 0
+        redirect_url = None
 
         response: requests.Response = requests.get(
             url,
@@ -314,13 +317,18 @@ class UrlValidator:
 
             # Check for proper schema, some responses include a relative URL in the LOCATION header
             # so that needs to be checked here as well
+            original_url: str = redirect_url if redirect_url is not None else url
+
+            redirect_url = response.headers.get(VALIDATION_STRS.LOCATION, "")
             if (
-                deconstruct_url(redirect_url).scheme != "https"
-                and response.next
+                response.next
                 and response.next.url
                 and deconstruct_url(response.next.url).scheme == "https"
             ):
                 redirect_url = response.next.url
+
+            elif not deconstruct_url(redirect_url).scheme == "https":
+                redirect_url = urljoin(original_url, redirect_url)
 
             response = requests.get(
                 redirect_url,
@@ -646,8 +654,10 @@ class UrlValidator:
         if response is None or response.status_code == 404:
             response = self._perform_get_request(url, headers)
 
-        if response.status_code == 404 and not self._is_cloudfront_error(
-            response.headers
+        if (
+            response.status_code == 404
+            and not self._is_cloudfront_error(response.headers)
+            and not self._is_accelerator_error(url, response.reason)
         ):
             raise InvalidURLError(
                 f"Could not find the given resource at the URL\nurl={url}\nrequest headers={headers}\nresponse headers={response.headers}\nresponse status code={response.status_code}\n"
@@ -685,6 +695,11 @@ class UrlValidator:
         cf_error = VALIDATION_STRS.ERROR_FROM_CLOUDFRONT
         return x_cache in headers and headers.get(x_cache, "").lower() == cf_error
 
+    def _is_accelerator_error(self, url: str, response_reason: str) -> bool:
+        deconstructed_url = deconstruct_url(url)
+        is_valid_url = self._validate_host(deconstructed_url.host)
+        return is_valid_url and "accelerator" in response_reason.lower()
+
     def _return_url_for_ui_testing(
         self, headers: dict[str, str] | None, url: str
     ) -> tuple[str, bool]:
@@ -721,6 +736,7 @@ if __name__ == "__main__":
         "https://developers.google.com/keep/api/reference/rest",
         "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-16-inch-amd/len101t0076#ports_slots",
         "https://www.stackoverflow.com/",
+        "yahoo.com",
     )
 
     print(validator.validate_url(INVALID_URLS[-1]))
