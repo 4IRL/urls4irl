@@ -343,11 +343,11 @@ def test_user_can_login_logout_login(login_first_user_with_register):
         in response.data
     )
 
-    login_input_html = f'<input class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
+    login_input_html = f'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
 
     assert login_input_html.encode() in response.data
     assert (
-        b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
+        b'<input autocomplete="current-password" class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
         in response.data
     )
     assert response.request.path == url_for(ROUTES.SPLASH.LOGIN)
@@ -396,11 +396,11 @@ def test_login_modal_is_shown(app_with_server_name, client):
             b'<input id="csrf_token" name="csrf_token" type="hidden" value='
             in response.data
         )
-        login_input_html = f'<input class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
+        login_input_html = f'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
 
         assert login_input_html.encode() in response.data
         assert (
-            b'<input class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
+            b'<input autocomplete="current-password" class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
             in response.data
         )
         assert request.path == url_for(ROUTES.SPLASH.LOGIN)

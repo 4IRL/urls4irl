@@ -31,7 +31,8 @@ function createURLStringAndUpdateBlock(urlStringText, urlCard) {
 function createUpdateURLStringInput(urlStringText, urlCard) {
   const urlStringUpdateTextInputContainer = makeTextInput(
     "urlString",
-    INPUT_TYPES.UPDATE.description,
+    METHOD_TYPES.UPDATE.description,
+    INPUT_TYPES.URL.description,
   )
     .addClass("updateUrlStringWrap")
     .css("display", "none");

@@ -18,27 +18,30 @@
             <div class="form-group first-in-register-login-form">
                 {{ login_form.username.label(class="form-control-label login-register-label")}}
                 {% if login_form.username.errors %}
-                {{ login_form.username(class="form-control login-register-form-group is-invalid") }}
+                {{ login_form.username(class="form-control login-register-form-group is-invalid",
+                autocomplete="username") }}
                 <div class="invalid-feedback">
                     {% for error in login_form.username.errors %}
                     <span>{{ error }}</span>
                     {% endfor %}
                 </div>
                 {% else %}
-                {{ login_form.username(class="form-control login-register-form-group")}}
+                {{ login_form.username(class="form-control login-register-form-group", autocomplete="username")}}
                 {% endif %}
             </div>
             <div class="form-group">
                 {{ login_form.password.label(class="form-control-label login-register-label")}}
                 {% if login_form.password.errors %}
-                {{ login_form.password(class="form-control login-register-form-group is-invalid") }}
+                {{ login_form.password(class="form-control login-register-form-group is-invalid",
+                autocomplete="current-password") }}
                 <div class="invalid-feedback">
                     {% for error in login_form.password.errors %}
                     <span>{{ error }}</span>
                     {% endfor %}
                 </div>
                 {% else %}
-                {{ login_form.password(class="form-control login-register-form-group")}}
+                {{ login_form.password(class="form-control login-register-form-group",
+                autocomplete="current-password")}}
                 {% endif %}
             </div>
             <div class="form-group" id="ForgotPasswordLink">

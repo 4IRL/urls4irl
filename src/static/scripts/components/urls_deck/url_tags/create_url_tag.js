@@ -3,7 +3,7 @@
 function createTagInputBlock(urlCard) {
   const urlTagCreateTextInputContainer = makeTextInput(
     "urlTag",
-    INPUT_TYPES.CREATE.description,
+    METHOD_TYPES.CREATE.description,
   )
     .addClass("createUrlTagWrap")
     .css("display", "none");

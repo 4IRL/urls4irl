@@ -1,9 +1,15 @@
 "use strict";
 
 // To differentiate between the text box types when dynamically creating input text boxes
-const INPUT_TYPES = Object.freeze({
+const METHOD_TYPES = Object.freeze({
   CREATE: Symbol("Create"),
   UPDATE: Symbol("Update"),
+});
+
+const INPUT_TYPES = Object.freeze({
+  TEXT: Symbol("text"),
+  URL: Symbol("url"),
+  EMAIL: Symbol("email"),
 });
 
 $(document).ready(function () {
@@ -125,7 +131,11 @@ function makeCancelButton(wh) {
 }
 
 // Fancy text box creation
-function makeTextInput(textInputID, type) {
+function makeTextInput(
+  textInputID,
+  method,
+  type = INPUT_TYPES.TEXT.description,
+) {
   const inputAndButtonWrap = $(document.createElement("div")).addClass(
     "createDiv flex-row full-width pad-top-5p",
   );
@@ -147,14 +157,14 @@ function makeTextInput(textInputID, type) {
 
   inputInputBox
     .attr({
-      type: "text",
+      type: type,
       name: textInputID,
     })
-    .addClass(textInputID + type);
+    .addClass(textInputID + method);
 
   inputLabel.attr({ for: textInputID });
 
-  inputErrorMessage.addClass(textInputID + type + "-error");
+  inputErrorMessage.addClass(textInputID + method + "-error");
 
   inputInnerContainer.append(inputInputBox).append(inputLabel);
 
