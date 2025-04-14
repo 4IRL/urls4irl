@@ -117,8 +117,11 @@ function createURLSuccess(response) {
   showIfHidden($("#accessAllURLsBtn"));
 
   newUrlCard.insertAfter($("#createURLWrap"));
-  if (currentNumOfURLs === 0) return;
-  updateColorOfFollowingURLCardsAfterURLCreated();
+
+  currentNumOfURLs === 0
+    ? null
+    : updateColorOfFollowingURLCardsAfterURLCreated();
+  selectURLCard(newUrlCard);
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL

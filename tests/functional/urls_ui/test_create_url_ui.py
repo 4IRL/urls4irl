@@ -19,6 +19,7 @@ from tests.functional.utils_for_test import (
     assert_not_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
     clear_then_send_keys,
+    get_selected_url,
     get_url_row_by_id,
     get_utub_this_user_created,
     invalidate_csrf_token_on_page,
@@ -210,7 +211,7 @@ def test_create_url_cancel_input_escape(
     assert not url_creation_row.is_displayed()
 
 
-def test_create_url_submit_btn(
+def test_create_url_submit_btn_no_urls(
     browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
@@ -264,8 +265,79 @@ def test_create_url_submit_btn(
 
     verify_url_coloring_is_correct(browser)
 
+    url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+    wait_until_visible_css_selector(browser, url_selector)
+    selected_url = get_selected_url(browser)
+    selected_utub_url_id = selected_url.get_attribute("utuburlid")
 
-def test_create_url_using_enter_key(
+    assert selected_utub_url_id and selected_utub_url_id.isnumeric()
+    assert int(selected_utub_url_id) == utub_url_id
+
+
+def test_create_url_submit_btn_some_urls(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to create a new URL in a selected UTub
+
+    GIVEN a user and selected UTub
+    WHEN they submit a new URL using the submit button
+    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    url_title = MOCK_URL_TITLES[0]
+    url_string = MOCK_URL_STRINGS[0] + "extraextra"
+
+    fill_create_url_form(browser, url_title, url_string)
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE, time=3)
+
+    # Wait for HTTP request to complete
+    wait_until_hidden(browser, HPL.INPUT_URL_STRING_CREATE, timeout=3)
+    url_creation_row = browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE)
+    assert not url_creation_row.is_displayed()
+
+    # Extract URL title and string from new row in URL deck
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(
+        app, utub_user_created.id, url_string
+    )
+    url_row = get_url_row_by_id(browser, utub_url_id)
+    assert url_row is not None
+
+    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_string = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+    url_row_href = url_row.find_element(
+        By.CSS_SELECTOR, HPL.URL_STRING_READ
+    ).get_attribute(HPL.URL_STRING_IN_DATA)
+
+    url_string_visible = url_string.replace("https://", "").replace("www.", "")
+
+    assert url_title == url_row_title
+    assert url_row_string == url_string_visible
+    assert url_string == url_row_href
+
+    assert browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
+    ).is_displayed()
+
+    verify_url_coloring_is_correct(browser)
+
+    url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+    wait_until_visible_css_selector(browser, url_selector)
+    selected_url = get_selected_url(browser)
+    selected_utub_url_id = selected_url.get_attribute("utuburlid")
+
+    assert selected_utub_url_id and selected_utub_url_id.isnumeric()
+    assert int(selected_utub_url_id) == utub_url_id
+
+
+def test_create_url_using_enter_key_no_urls(
     browser: WebDriver, create_test_utubs, provide_app: Flask
 ):
     """
@@ -318,6 +390,77 @@ def test_create_url_using_enter_key(
     ).is_displayed()
 
     verify_url_coloring_is_correct(browser)
+
+    url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+    wait_until_visible_css_selector(browser, url_selector)
+    selected_url = get_selected_url(browser)
+    selected_utub_url_id = selected_url.get_attribute("utuburlid")
+
+    assert selected_utub_url_id and selected_utub_url_id.isnumeric()
+    assert int(selected_utub_url_id) == utub_url_id
+
+
+def test_create_url_using_enter_key_some_urls(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to create a new URL in a selected UTub
+
+    GIVEN a user and selected UTub
+    WHEN they submit a new URL using the submit button
+    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    url_title = MOCK_URL_TITLES[0]
+    url_string = MOCK_URL_STRINGS[0] + "extraextra"
+
+    fill_create_url_form(browser, url_title, url_string)
+    browser.switch_to.active_element.send_keys(Keys.ENTER)
+
+    # Wait for HTTP request to complete
+    wait_until_hidden(browser, HPL.INPUT_URL_STRING_CREATE, timeout=3)
+    url_creation_row = browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE)
+    assert not url_creation_row.is_displayed()
+
+    # Extract URL title and string from new row in URL deck
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(
+        app, utub_user_created.id, url_string
+    )
+    url_row = get_url_row_by_id(browser, utub_url_id)
+    assert url_row is not None
+
+    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_string = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+    url_row_href = url_row.find_element(
+        By.CSS_SELECTOR, HPL.URL_STRING_READ
+    ).get_attribute(HPL.URL_STRING_IN_DATA)
+
+    url_string_visible = url_string.replace("https://", "").replace("www.", "")
+
+    assert url_title == url_row_title
+    assert url_row_string == url_string_visible
+    assert url_string == url_row_href
+
+    assert browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
+    ).is_displayed()
+
+    verify_url_coloring_is_correct(browser)
+
+    url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+    wait_until_visible_css_selector(browser, url_selector)
+    selected_url = get_selected_url(browser)
+    selected_utub_url_id = selected_url.get_attribute("utuburlid")
+
+    assert selected_utub_url_id and selected_utub_url_id.isnumeric()
+    assert int(selected_utub_url_id) == utub_url_id
 
 
 def test_create_url_title_length_exceeded(
