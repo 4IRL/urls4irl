@@ -15,6 +15,12 @@ from src.utils.strings.url_validation_strs import USER_AGENT
 pytestmark = pytest.mark.unit
 
 valid_urls = {
+    "https://www.yahoo.com/": [
+        "yahoo.com",
+        "www.yahoo.com",
+        "https://www.yahoo.com",
+        "https://yahoo.com",
+    ],
     "https://www.google.com/": [
         "https://www.google.com/",
         "https://www.google.com",
