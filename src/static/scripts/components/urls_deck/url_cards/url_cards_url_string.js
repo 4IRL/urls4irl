@@ -12,7 +12,10 @@ function createURLString(urlStringText) {
     })
     .text(displayURL)
     .offAndOn("click.defaultlinkbehavior", function (e) {
-      e.preventDefault();
+      // Only allow a URL to be clickable when the Card is selected
+      if ($(e.target).closest(".urlRow").attr("urlSelected") !== "true") {
+        e.preventDefault();
+      }
     });
 }
 
