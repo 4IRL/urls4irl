@@ -104,7 +104,7 @@ def build_driver(
     if not turn_off_headless:
         options.add_argument("--headless=new")
 
-    if config.DOCKER or isinstance(config.TEST_SELENIUM_URI, str):
+    if config.DOCKER:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")

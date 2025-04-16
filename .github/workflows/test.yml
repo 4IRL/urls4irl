@@ -90,21 +90,6 @@ jobs:
           --health-timeout 5s
           --health-retries 5
 
-      selenium:
-        image: selenium/standalone-chromium:latest
-        container_name: u4i-selenium
-        depends_on:
-          - web
-        environment:
-          - START_XVFB=false
-          - SE_NODE_MAX_SESSIONS=5
-          - JAVA_OPTS=-XX:ActiveProcessorCount=5
-          - SE_NODE_OVERRIDE_MAX_SESSIONS=5
-        ports:
-          - "4444:4444"
-        volumes:
-          - /dev/shm:/dev/shm
-    
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
