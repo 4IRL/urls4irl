@@ -52,6 +52,7 @@ DEV_DB_URI = build_db_uri(
 )
 
 TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
+TEST_SELENIUM_URI = environ.get(ENV.SELENIUM_URL, default=None)
 
 if IS_PRODUCTION:
     redis_password = environ.get("REDIS_PASSWORD", "")
@@ -157,6 +158,8 @@ class ConfigTest(Config):
         if (TEST_REDIS_URI is not None and TEST_REDIS_URI != "memory://")
         else ""
     )
+    if isinstance(TEST_SELENIUM_URI, str):
+        TEST_SELENIUM_URI = TEST_SELENIUM_URI
 
     def __init__(self) -> None:
         super().__init__()
@@ -166,3 +169,4 @@ class ConfigTest(Config):
 
 class ConfigTestUI(ConfigTest):
     UI_TESTING = True
+    SESSION_COOKIE_SECURE = False

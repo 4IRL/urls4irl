@@ -22,6 +22,7 @@ services:
       - FLASK_ENV=development
       - BASE_EMAIL=u4i@urls4irl.app
       - DOCKER=true
+      - SELENIUM_URL=http://selenium:4444/wd/hub
     volumes:
       - ./run.py:/code/u4i/run.py
       - ./pytest.ini:/code/u4i/pytest.ini
@@ -41,6 +42,21 @@ services:
       echo 'Running on 127.0.0.1:8659!' &&
       flask run --host=0.0.0.0 --port=5000 --cert=adhoc
       "
+
+  selenium:
+    image: selenium/standalone-chromium:latest
+    container_name: u4i-selenium
+    depends_on:
+      - web
+    environment:
+      - START_XVFB=false
+      - SE_NODE_MAX_SESSIONS=5
+      - JAVA_OPTS=-XX:ActiveProcessorCount=5
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=5
+    ports:
+      - "4444:4444"
+    volumes:
+      - /dev/shm:/dev/shm
 
   db:
     image: postgres:16.3-bookworm
