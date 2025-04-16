@@ -10,7 +10,10 @@ function createURLString(urlStringText) {
       href: urlStringText,
       target: "_blank",
     })
-    .text(displayURL);
+    .text(displayURL)
+    .offAndOn("click.defaultlinkbehavior", function (e) {
+      e.preventDefault();
+    });
 }
 
 // Create the container for both displaying URL string, and updating the URL string
