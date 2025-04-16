@@ -7,38 +7,21 @@ ENV FLASK_APP=run
 ENV PYTHONUNBEFFERED=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PIP_NO_CACHE_DIR=1
-ENV PATH="/usr/local/bin/chrome-linux64:$PATH"
-ENV PATH="/usr/local/bin/chromedriver-linux64:$PATH"
-ENV CHROMEDRIVER_PATH="/usr/local/bin/chromedriver-linux64/chromedriver"
-
-# Set environment variables for selenium
-ENV SE_CACHE_PATH=/tmp/.cache/selenium
-ENV SE_BROWSER_PATH=/usr/local/bin/chrome64-linux/chrome
 
 # Use code as working directory
 WORKDIR /code/u4i
 RUN chmod -R 775 /code
 
-
 # Create non-root user, update packages, clean up
 RUN set -ex \
 	&& addgroup --system --gid 1000 u4i-host-group \
-	&& adduser --system --uid 1000 --gid 1000 --no-create-home u4i-host \
+	&& adduser --system --uid 1000 --gid 1000 u4i-host \
 	&& apt-get update \
 	&& apt-get -y install libpq-dev gcc wget unzip xvfb libglib2.0-dev libnss3-dev libdbus-1-dev  libatk1.0-0 libatk-bridge2.0-0 libcups2 libxkbcommon-dev libxcomposite-dev libxdamage-dev libgbm-dev libpangocairo-1.0-0 libasound2 \
 	&& apt-get upgrade -y \
 	&& apt-get autoremove -y \
 	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/* \
-	&& wget https://storage.googleapis.com/chrome-for-testing-public/132.0.6834.83/linux64/chrome-linux64.zip \
-	&& unzip chrome-linux64.zip -d /usr/local/bin/ \
-	&& chmod +x /usr/local/bin/chrome-linux64 \
-	&& wget https://storage.googleapis.com/chrome-for-testing-public/132.0.6834.83/linux64/chromedriver-linux64.zip \
-	&& unzip chromedriver-linux64.zip -d /usr/local/bin/ \
-	&& chmod +x /usr/local/bin/chromedriver-linux64 \
-	&& mkdir -p /tmp/.cache/selenium \
-	&& chmod -R 777 /tmp/.cache/selenium \
-	&& rm chromedriver-linux64.zip chrome-linux64.zip
+	&& rm -rf /var/lib/apt/lists/*
 
 # Copy files needed
 COPY run.py ./
@@ -57,8 +40,9 @@ RUN chmod -R 775 /code \
 	&& python3 -m venv /code/venv \
 	&& . /code/venv/bin/activate \
 	&& pip install -r requirements/requirements-dev.txt --no-cache-dir
+#&& echo '. /code/venv/bin/activate
 
-# For development, since the mounted volumes inclue the src/ folder, we need to set this for the bundled JS file
+# For development, since the mounted volumes include the src/ folder, we need to set this for the bundled JS file
 RUN mkdir -p /code/u4i/src/gen \
 	&& chmod -R 777 /code/u4i/src/gen \
 	&& chown -R u4i-host:u4i-host-group /code/u4i/src/gen
@@ -68,4 +52,10 @@ USER u4i-host
 
 # Expose a port to access the container
 EXPOSE 5000
+
+# Add custom shell entrypoint that activates the venv
+USER root
+RUN echo '#!/bin/bash\nsource /code/venv/bin/activate\nexec bash --rcfile <(echo "source /code/venv/bin/activate")' > /usr/local/bin/venvshell \
+    && chmod +x /usr/local/bin/venvshell
+USER u4i-host
 

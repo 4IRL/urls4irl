@@ -10,7 +10,13 @@ function createURLString(urlStringText) {
       href: urlStringText,
       target: "_blank",
     })
-    .text(displayURL);
+    .text(displayURL)
+    .offAndOn("click.defaultlinkbehavior", function (e) {
+      // Only allow a URL to be clickable when the Card is selected
+      if ($(e.target).closest(".urlRow").attr("urlSelected") !== "true") {
+        e.preventDefault();
+      }
+    });
 }
 
 // Create the container for both displaying URL string, and updating the URL string

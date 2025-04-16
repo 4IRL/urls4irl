@@ -427,11 +427,6 @@
     background: var(--pageBackgroundColor);
 }
 
-.urlRow:not([urlSelected="true"]) a {
-    pointer-events: none;
-    cursor: default;
-}
-
 #listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
     background-color: rgba(61, 71, 71, 1.0);
 }
