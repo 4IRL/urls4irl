@@ -9,6 +9,7 @@ from src.cli.mock_constants import (
 
 class UI_TEST_STRINGS:
     BASE_URL = "http://127.0.0.1:"
+    DOCKER_BASE_URL = "http://web:"
 
     TEST_USERNAME_1 = USERNAME_BASE + "1"
     # Using password as email
@@ -46,11 +47,6 @@ class UI_TEST_STRINGS:
     BODY_MODAL_URL_DELETE = "You can always add it back again!"
 
     TEST_URL_STRING_CREATE = MOCK_URL_STRINGS[0]
-    TEST_URL_STRING_UPDATE = "https://support.microsoft.com/en-us/microsoft-edge"
     TEST_URL_TITLE_1 = "This is " + MOCK_URL_STRINGS[0] + "."
     # TEST_URL_TITLE_1 = MOCK_URL_TITLES[0]
     TEST_URL_TITLE_UPDATE = "MS Support"
-
-    MAX_CHAR_LIM_URL_STRING = "Lorem ipsum dolor sit amet consectetur adipisicing elit. Obcaecati necessitatibus suscipit labore sapiente dignissimos hic voluptatem modi vero ipsam cupiditate?"
-
-    MESSAGE_NO_URLS = "No URLs here - add one!"

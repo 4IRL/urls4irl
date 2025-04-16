@@ -21,6 +21,7 @@ env:
   POSTGRES_TEST_DB: 'postgres'
   REDIS_URI: 'redis://localhost:6379/0'
   TEST_REDIS_URI: 'redis://localhost:6379/1'
+  SELENIUM_URL: 'http://selenium:4444/wd/hub'
 
 jobs:
   Tests:
@@ -88,6 +89,21 @@ jobs:
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
+      selenium:
+        image: selenium/standalone-chromium:latest
+        container_name: u4i-selenium
+        depends_on:
+          - web
+        environment:
+          - START_XVFB=false
+          - SE_NODE_MAX_SESSIONS=5
+          - JAVA_OPTS=-XX:ActiveProcessorCount=5
+          - SE_NODE_OVERRIDE_MAX_SESSIONS=5
+        ports:
+          - "4444:4444"
+        volumes:
+          - /dev/shm:/dev/shm
     
     steps:
       - name: Checkout code

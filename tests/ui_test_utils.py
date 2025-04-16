@@ -28,7 +28,9 @@ def run_app(port: int, show_flask_logs: bool):
         import flask.cli
 
         flask.cli.show_server_banner = lambda *args: None
-    app_for_test.run(debug=False, port=port)
+
+    host = "0.0.0.0" if config.DOCKER else "127.0.0.1"
+    app_for_test.run(host=host, debug=False, port=port)
 
 
 def clear_db(runner: Tuple[Flask, FlaskCliRunner], debug_strings):

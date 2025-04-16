@@ -1,6 +1,5 @@
 # Standard library
 import multiprocessing
-from os import environ
 from time import sleep
 from typing import Generator, Tuple
 
@@ -45,6 +44,11 @@ def init_multiprocessing():
     Creates a process separate from pytest to run the app in parallel
     """
     multiprocessing.set_start_method("spawn")
+
+
+@pytest.fixture(scope="session")
+def provide_config() -> Generator[ConfigTest | None, None, None]:
+    yield ConfigTest()
 
 
 @pytest.fixture(scope="session")
@@ -96,26 +100,26 @@ def build_driver(
     open_port = provide_port
     options = Options()
     options.add_argument("--disable-notifications")
-    if config.DOCKER:
+
+    if not turn_off_headless:
+        options.add_argument("--headless=new")
+
+    if config.DOCKER or isinstance(config.TEST_SELENIUM_URI, str):
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
+        options.add_argument("--disable-gpu")
 
-    if turn_off_headless:
-        # Disable Chrome browser pop-up notifications
-        print("Browser incoming")
-    else:
-        options.add_argument("--headless")
-
-    if config.DOCKER:
-        driver_path = environ.get("CHROMEDRIVER_PATH", "")
-        service = webdriver.ChromeService(executable_path=driver_path)
-        options.add_argument("--user-data-dir=/tmp/chrome-user-data-desktop")
-        driver = webdriver.Chrome(service=service, options=options)
+        driver = webdriver.Remote(
+            command_executor=config.TEST_SELENIUM_URI, options=options
+        )
+        url = UI_TEST_STRINGS.DOCKER_BASE_URL
     else:
         driver = webdriver.Chrome(options=options)
+        url = UI_TEST_STRINGS.BASE_URL
+
     driver.set_window_size(width=1920, height=1080)
 
-    ping_server(UI_TEST_STRINGS.BASE_URL + str(open_port))
+    ping_server(url + str(open_port))
 
     yield driver
 
@@ -135,23 +139,26 @@ def build_driver_mobile_portrait(
     options = Options()
     options.add_argument("--disable-notifications")
 
-    if config.DOCKER:
-        options.add_argument("--no-sandbox")
-        options.add_argument("--disable-dev-shm-usage")
-
     if not turn_off_headless:
         options.add_argument("--headless")
 
-    if config.DOCKER:
-        driver_path = environ.get("CHROMEDRIVER_PATH", "")
-        service = webdriver.ChromeService(executable_path=driver_path)
-        options.add_argument("--user-data-dir=/tmp/chrome-user-data-mobile")
-        driver = webdriver.Chrome(service=service, options=options)
+    if config.DOCKER or isinstance(config.TEST_SELENIUM_URI, str):
+        options.add_argument("--no-sandbox")
+        options.add_argument("--disable-dev-shm-usage")
+        capabilities = webdriver.ChromeOptions().to_capabilities()
+        capabilities["acceptInsecureCerts"] = True
+
+        driver = webdriver.Remote(
+            command_executor=config.TEST_SELENIUM_URI, options=options
+        )
+        url = UI_TEST_STRINGS.DOCKER_BASE_URL
     else:
         driver = webdriver.Chrome(options=options)
+        url = UI_TEST_STRINGS.BASE_URL
+
     driver.set_window_size(width=420, height=900)
 
-    ping_server(UI_TEST_STRINGS.BASE_URL + str(open_port))
+    ping_server(url + str(open_port))
 
     yield driver
 
@@ -162,6 +169,7 @@ def build_driver_mobile_portrait(
 @pytest.fixture
 def browser(
     provide_port: int,
+    provide_config: ConfigTest,
     build_driver: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     debug_strings,
@@ -170,11 +178,16 @@ def browser(
     This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
     """
     open_port = provide_port
+    url = (
+        UI_TEST_STRINGS.DOCKER_BASE_URL
+        if provide_config.DOCKER
+        else UI_TEST_STRINGS.BASE_URL
+    )
     driver = build_driver
 
     driver.delete_all_cookies()
 
-    driver.get(UI_TEST_STRINGS.BASE_URL + str(open_port))
+    driver.get(url + str(open_port) + "/")
     init_handle = driver.current_window_handle
 
     clear_db(runner, debug_strings)
@@ -195,6 +208,7 @@ def browser(
 @pytest.fixture
 def browser_mobile_portrait(
     provide_port: int,
+    provide_config: ConfigTest,
     build_driver_mobile_portrait: WebDriver,
     runner: Tuple[Flask, FlaskCliRunner],
     debug_strings,
@@ -203,11 +217,16 @@ def browser_mobile_portrait(
     This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
     """
     open_port = provide_port
+    url = (
+        UI_TEST_STRINGS.DOCKER_BASE_URL
+        if provide_config.DOCKER
+        else UI_TEST_STRINGS.BASE_URL
+    )
     driver = build_driver_mobile_portrait
 
     driver.delete_all_cookies()
 
-    driver.get(UI_TEST_STRINGS.BASE_URL + str(open_port))
+    driver.get(url + str(open_port) + "/")
 
     clear_db(runner, debug_strings)
 
