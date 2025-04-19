@@ -9,6 +9,7 @@ from flask_migrate import Migrate
 from flask_session import Session
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
+from src import app_logger
 from src.db import db
 from src.config import Config, ConfigProd
 from src.extensions.email_sender.email_sender import EmailSender
@@ -47,6 +48,8 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     app = Flask(__name__)
     app.config.from_object(ConfigProd if production else config_class)
     app.config[CONFIG_ENVS.TESTING_OR_PROD] = testing or production
+
+    app_logger.init_app(app)
 
     sess.init_app(app)
     db.init_app(app)

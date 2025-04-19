@@ -21,7 +21,7 @@ MAILJET_ERROR_MESSAGE = "ErrorMessage"
 MAILJET_ERROR_CODE = "ErrorCode"
 MAILJET_ERROR_RELATED_TO = "ErrorRelatedTo"
 MAILJET_ERRORS = "Errors"
-ERROR_WITH_MAILJET = "Error with Mailjet service."
+ERROR_WITH_MAILJET = "Error with Mailjet service, retry later."
 INVALID_EMAIL_INPUT = "Invalid email address."
 
 

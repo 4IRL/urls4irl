@@ -26,7 +26,11 @@
 <!-- Home Page JS -->
 <!-- Add asset version based on UNIX epoch to cache bust when updates are made -->
 {% assets "logged_in_js" %}
-<script src="{{ ASSET_URL }}?v={{ ASSET_VERSION }}"></script>
+    {% if '?' in ASSET_URL %}
+        <script src="{{ ASSET_URL }}&v={{ ASSET_VERSION }}"></script>
+    {% else %}
+        <script src="{{ ASSET_URL }}?v={{ ASSET_VERSION }}"></script>
+    {% endif %}
 {% endassets %}
 
 {% endblock %}
