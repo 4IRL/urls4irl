@@ -1,3 +1,4 @@
+import traceback
 from json import dumps
 
 from flask import render_template
@@ -5,6 +6,7 @@ from requests import Response
 from mailjet_rest import Client
 from mailjet_rest.client import ApiError, TimeoutError
 
+from src.app_logger import error_log
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.config_strs import CONFIG_ENVS
@@ -62,7 +64,7 @@ class EmailSender:
         if self._testing:
             message[EMAILS.SANDBOXMODE] = True
 
-        return self._mailjet_client.send.create(data=message)
+        return self._send_or_fail(message)
 
     def send_password_reset_email(self, to_email: str, to_name: str, reset_url: str):
         message = {
@@ -112,13 +114,17 @@ class EmailSender:
         try:
             return self._mailjet_client.send.create(data=message)
 
-        except (ApiError, TimeoutError):
+        except (ApiError, TimeoutError) as e:
             # Can occur if not connected to internet, or on a limited service
             # TODO: Include the error output for logging but just return error here
+            error_log(
+                f"Error with Mailjet service: {e}\n\n[BEGIN EXCEPTION]\n\n{traceback.format_exc()}\n[END EXCEPTION]\n"
+            )
             return self._mock_response_builder(500)
 
-        except Exception:
+        except Exception as e:
             # TODO: Include the error output for logging but just return error here
+            error_log(f"Error with Mailjet service: {e}")
             return self._mock_response_builder(500)
 
     @staticmethod
