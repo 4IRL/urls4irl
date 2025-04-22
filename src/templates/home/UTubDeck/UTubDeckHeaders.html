@@ -5,11 +5,11 @@
         <div id="UTubSelectDualLoadingRing"></div>
     </div>
     <!-- Icons -->
-    <div class="flex-row icon-holder" style="gap:2px">
+    <div class="flex-row button-container" style="gap:2px">
         <!-- Create UTub button -->
         <i id="utubBtnCreate" tabindex="0">
-            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill green-clickable" width="30" height="30"
-                viewBox="0 0 16 16">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="currentColor" class="bi bi-plus-square-fill green-clickable"
+                width="30" height="30" viewBox="0 0 16 16">
                 <path
                     d="M2 0a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V2a2 2 0 0 0-2-2zm6.5 4.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3a.5.5 0 0 1 1 0" />
             </svg>
@@ -17,8 +17,10 @@
 
         <!-- Delete UTub button -->
         <i id="utubBtnDelete" class="ms-1" style="display:none" tabindex="0">
-            <svg xmlns="http://www.w3.org/2000/svg" height="30" viewBox="0 -960 960 960" width="30" fill="black" class="bi trash-fill text-danger">
-                <path d="m376-300 104-104 104 104 56-56-104-104 104-104-56-56-104 104-104-104-56 56 104 104-104 104 56 56Zm-96 180q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520Zm-400 0v520-520Z"/>
+            <svg xmlns="http://www.w3.org/2000/svg" height="30" viewBox="0 -960 960 960" width="30" fill="black"
+                class="bi trash-fill text-danger">
+                <path
+                    d="m376-300 104-104 104 104 56-56-104-104 104-104-56-56-104 104-104-104-56 56 104 104-104 104 56 56Zm-96 180q-33 0-56.5-23.5T200-200v-520h-40v-80h200v-40h240v40h200v80h-40v520q0 33-23.5 56.5T680-120H280Zm400-600H280v520h400v-520Zm-400 0v520-520Z" />
             </svg>
         </i>
     </div>
@@ -27,8 +29,22 @@
 <!-- Subheader -->
 <div class="titleElement pad-in-15p">
     {% if utubs_for_this_user|length == 0 %}
-        <h5 id="UTubDeckSubheader">Create a UTub</h5>
+    <h5 id="UTubDeckSubheader">Create a UTub</h5>
     {% else %}
+    <div class="flex-column">
         <h5 id="UTubDeckSubheader">{{ utubs_for_this_user|length }} UTubs</h5>
+
+        <div id="UTubSearchFilterWrapper" class="titleElement search-input-wrapper">
+            <span id="UTubSearchFilterIcon" class="searchIcon-container">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="white" class="bi bi-plus-square-fill green-clickable"
+                    height="30" width="30"
+                    viewBox="0 0 512 512"><!--!Font Awesome Free 6.7.2 by @fontawesome - https://fontawesome.com License - https://fontawesome.com/license/free Copyright 2025 Fonticons, Inc.-->
+                    <path
+                        d="M416 208c0 45.9-14.9 88.3-40 122.7L502.6 457.4c12.5 12.5 12.5 32.8 0 45.3s-32.8 12.5-45.3 0L330.7 376c-34.4 25.2-76.8 40-122.7 40C93.1 416 0 322.9 0 208S93.1 0 208 0S416 93.1 416 208zM208 352a144 144 0 1 0 0-288 144 144 0 1 0 0 288z" />
+                </svg>
+            </span>
+            <input id="UTubSearchFilterInput" class="searchFilterInput" type="text" placeholder="Search UTubs">
+        </div>
+    </div>
     {% endif %}
 </div>

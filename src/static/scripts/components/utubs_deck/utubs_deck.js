@@ -51,11 +51,45 @@ function buildUTubDeck(utubs, timeoutID) {
   if (timeoutID) hideUTubLoadingIconAndClearTimeout(timeoutID);
 }
 
+// Takes a user input into the UTub search field and returns an array of UTub ids that have names that contain the user's input as a substring
+function filterUTubs(searchTerm) {
+  const UTubSelectors = $(".UTubSelector");
+
+  if (searchTerm === "")
+    return Object.values(
+      UTubSelectors.map((i) => $(UTubSelectors[i]).attr("utubid")),
+    );
+
+  const filteredSelectors = UTubSelectors.filter((i) => {
+    const UTubName = $(UTubSelectors[i]).children(".UTubName")[0].innerText;
+    if (UTubName === "") {
+      // In case UTubName returns empty string for some reason...
+      return false;
+    }
+    return UTubName.toLowerCase().includes(searchTerm);
+  });
+
+  return Object.values(
+    filteredSelectors.map((i) => $(filteredSelectors[i]).attr("utubid")),
+  );
+}
+
+// Updates displayed UTub selectors based on the provided array
+function updatedUTubSelectorDisplay(filteredUTubIDs) {
+  const UTubSelectors = $(".UTubSelector");
+  UTubSelectors.each(function (_, UTubSelector) {
+    const UTubID = $(UTubSelector).attr("utubid");
+    if (!filteredUTubIDs.includes(UTubID)) $(this).hide();
+    else $(this).show();
+  });
+}
+
 function setUTubEventListenersOnInitialPageLoad() {
   const utubs = $(".UTubSelector");
   for (let i = 0; i < utubs.length; i++) {
     setUTubSelectorEventListeners(utubs[i]);
   }
+  setUTubSelectorSearchEventListener();
 }
 
 function resetUTubDeckIfNoUTubs() {

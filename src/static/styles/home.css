@@ -107,9 +107,51 @@
     color: var(--removeIconColorHover);
 }
 
-.icon-holder {
+.button-container {
     justify-content: flex-end;
 }
+
+.search-input-wrapper {
+    position: relative;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.searchIcon-container {
+    position: absolute;
+    left: 10px;
+    top: 50%;
+    transform: translateY(-50%);
+    font-size: 16px;
+    color: #666;
+    cursor: pointer;
+    z-index: 2;
+    transition: font-size 0.2s ease;
+}
+
+.searchFilterInput {
+    height: 34px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 17px;
+    padding-left: 15px;
+    padding-right: 10px;
+    width: 0;
+    opacity: 0;
+    vertical-align: middle;
+    font-size: 14px;
+    transition: width 0.35s ease-in-out, opacity 0.3s ease-in-out 0.1s;
+}
+
+.search-input-wrapper.expanded #UTubSearchFilterInput {
+    width: 220px; 
+    opacity: 1;
+    padding-left: 36px; 
+  }
+
+  .search-input-wrapper.expanded #UTubSearchFilterIcon {
+    font-size: 0px; 
+  }
 
 /* Utility */
 
