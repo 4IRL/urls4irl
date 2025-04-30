@@ -83,7 +83,9 @@ def _handle_after_forgot_password_form_validated(
 
     if user_with_email is not None:
         if not user_with_email.email_validated:
-            warning_log("User forgot password but not email validated")
+            warning_log(
+                f"User {user_with_email.id} forgot password but not email validated"
+            )
             return (
                 jsonify(
                     {
@@ -164,6 +166,7 @@ def _validate_resetting_password(
     forgot_password_obj = reset_password_user.forgot_password
     db.session.delete(forgot_password_obj)
     db.session.commit()
+    safe_add_log("Password successfully reset")
     return (
         jsonify(
             {

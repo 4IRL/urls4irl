@@ -2,6 +2,13 @@ from flask import Blueprint, jsonify
 from flask_login import current_user
 
 from src import db
+from src.app_logger import (
+    critical_log,
+    error_log,
+    safe_add_many_logs,
+    turn_form_into_str_for_log,
+    warning_log,
+)
 from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -32,6 +39,9 @@ def create_utub_tag(utub_id: int):
 
     if not user_in_utub:
         # How did a user not in this utub get access to add a tag to this UTub?
+        error_log(
+            f"User {current_user.id} tried adding tag to UTub {utub_id} but not in {utub_id}!"
+        )
         return (
             jsonify(
                 {
@@ -54,6 +64,9 @@ def create_utub_tag(utub_id: int):
         ).first()
 
         if utub_tag_already_created:
+            warning_log(
+                f"User {current_user.id} tried adding tag '{tag_to_add}' but already exists in UTub {utub_id}"
+            )
             return (
                 jsonify(
                     {
@@ -74,6 +87,14 @@ def create_utub_tag(utub_id: int):
         db.session.commit()
 
         # Successfully added tag to UTub
+        safe_add_many_logs(
+            [
+                "Added UTubTag",
+                f"UTub.id={utub_id}",
+                f"UTubTag.id={new_utub_tag.id}",
+                f"UTubTag.tag_string={tag_to_add}",
+            ]
+        )
         return (
             jsonify(
                 {
@@ -88,6 +109,9 @@ def create_utub_tag(utub_id: int):
     # Input form errors
     if utub_tag_form.errors is not None:
         errors = {MODELS.TAG_STRING: utub_tag_form.tag_string.errors}
+        warning_log(
+            f"User {current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_tag_form)}"
+        )
         return (
             jsonify(
                 {
@@ -100,6 +124,7 @@ def create_utub_tag(utub_id: int):
             400,
         )
 
+    critical_log(f"User {current_user.id} failed to add tag to UTub {utub_id}")
     return (
         jsonify(
             {
@@ -130,6 +155,9 @@ def delete_utub_tag(utub_id: int, utub_tag_id: int):
     user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
 
     if not user_in_utub:
+        critical_log(
+            f"User {current_user.id} tried removing UTubTag {utub_tag_id} but not in {utub_id}!"
+        )
         return (
             jsonify(
                 {
@@ -156,6 +184,14 @@ def delete_utub_tag(utub_id: int, utub_tag_id: int):
     db.session.delete(utub_tag)
     utub.set_last_updated()
     db.session.commit()
+    safe_add_many_logs(
+        [
+            "Deleted UTubTag",
+            f"UTub.id={utub_id}",
+            f"UTubTag.id={utub_tag_id}",
+            f"UTubTag.tag_string={serialized_tag[MODELS.TAG_STRING]}",
+        ]
+    )
 
     return (
         jsonify(

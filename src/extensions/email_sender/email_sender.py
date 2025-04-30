@@ -6,7 +6,7 @@ from requests import Response
 from mailjet_rest import Client
 from mailjet_rest.client import ApiError, TimeoutError
 
-from src.app_logger import error_log
+from src.app_logger import error_log, safe_get_request_id
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.config_strs import CONFIG_ENVS
@@ -111,6 +111,7 @@ class EmailSender:
         }
 
     def _send_or_fail(self, message: dict[str, list[dict]]) -> Response:
+        request_id = safe_get_request_id()
         try:
             return self._mailjet_client.send.create(data=message)
 
@@ -118,13 +119,13 @@ class EmailSender:
             # Can occur if not connected to internet, or on a limited service
             # TODO: Include the error output for logging but just return error here
             error_log(
-                f"Error with Mailjet service: {e}\n\n[BEGIN EXCEPTION]\n\n{traceback.format_exc()}\n[END EXCEPTION]\n"
+                f"[{request_id}] Error with Mailjet service: {e}\n\n[BEGIN EXCEPTION]\n\n{traceback.format_exc()}\n[END EXCEPTION]\n"
             )
             return self._mock_response_builder(500)
 
         except Exception as e:
             # TODO: Include the error output for logging but just return error here
-            error_log(f"Error with Mailjet service: {e}")
+            error_log(f"[{request_id}] Error with Mailjet service: {e}")
             return self._mock_response_builder(500)
 
     @staticmethod

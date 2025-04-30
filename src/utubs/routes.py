@@ -77,11 +77,13 @@ def home():
         )
 
     if len(request.args) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
-        warning_log(
+        log_msg = (
             "Too many query parameters"
             if len(request.args) != 1
             else "Does not contain 'UTubID' as a query parameter"
         )
+        log_msg = f"User {current_user.id} | " + log_msg
+        warning_log(log_msg)
         abort(404)
 
     utub_id = request.args.get(UTUB_ID_QUERY_PARAM, "")
@@ -90,7 +92,7 @@ def home():
             Utubs.query.get_or_404(int(utub_id))
             and Utub_Members.query.get((int(utub_id), current_user.id)) is None
         ):
-            safe_add_log(f"User not a member of UTub.id={utub_id}")
+            safe_add_log(f"User {current_user.id} not a member of UTub.id={utub_id}")
             return redirect(url_for(ROUTES.UTUBS.HOME))
 
         safe_add_log(f"Retrieving UTub.id={utub_id} from query parameter")
@@ -105,7 +107,7 @@ def home():
 
     except (ValueError, DataError):
         # Handle invalid UTubID passed as query parameter
-        warning_log(f"Invalid UTub.id={utub_id}")
+        warning_log(f"Invalid UTub.id={utub_id} for User {current_user.id}")
         abort(404)
 
 
@@ -120,7 +122,7 @@ def get_single_utub(utub_id: int):
         != URL_VALIDATION.XMLHTTPREQUEST
     ):
         # Ensures JSON not viewed in browser, happens if user does a refresh with URL /home?UTubID=X, which would otherwise return JSON normally
-        safe_add_log("User did not make an AJAX request")
+        warning_log(f"User {current_user.id} did not make an AJAX request")
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
     assert Utub_Members.query.get_or_404((utub_id, current_user.id))
@@ -146,7 +148,7 @@ def get_utubs():
         != URL_VALIDATION.XMLHTTPREQUEST
     ):
         # Ensure JSON not shown in the browser
-        warning_log("User did not make an AJAX request")
+        warning_log(f"User {current_user.id} did not make an AJAX request")
         abort(404)
 
     # TODO: Should serialized summary be utubID and utubName
@@ -186,7 +188,7 @@ def create_utub():
 
         safe_add_many_logs(
             [
-                "User created UTub",
+                "Created UTub",
                 f"UTub.id={new_utub.id}",
                 f"UTub.name={name}",
             ]
@@ -207,7 +209,9 @@ def create_utub():
 
     # Invalid form inputs
     if utub_form.errors is not None:
-        warning_log(f"Invalid form: {turn_form_into_str_for_log(utub_form)}")
+        warning_log(
+            f"User {current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_form)}"
+        )
         return (
             jsonify(
                 {
@@ -220,7 +224,7 @@ def create_utub():
             400,
         )
 
-    critical_log("Unable to make UTub")
+    critical_log(f"User {current_user.id} failed to make UTub")
     return (
         jsonify(
             {
@@ -248,8 +252,8 @@ def delete_utub(utub_id: int):
     utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id != utub.utub_creator:
-        warning_log(
-            f"User is not the creator of UTub.id={utub.id} | UTub.name={utub.name}"
+        critical_log(
+            f"User {current_user.id} is not the creator of UTub.id={utub.id} | UTub.name={utub.name}"
         )
         return (
             jsonify(
@@ -308,7 +312,7 @@ def update_utub_name(utub_id: int):
 
     if current_user.id != current_utub.utub_creator:
         warning_log(
-            f"User not creator: UTub.id={current_utub.id} | UTub.name={current_utub.name}"
+            f"User {current_user.id} not creator: UTub.id={current_utub.id} | UTub.name={current_utub.name}"
         )
         return (
             jsonify(
@@ -355,7 +359,9 @@ def update_utub_name(utub_id: int):
 
     # Invalid form errors
     if utub_name_form.errors is not None:
-        warning_log(f"Invalid form: {turn_form_into_str_for_log(utub_name_form)}")
+        warning_log(
+            f"User {current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_name_form)}"
+        )
         return (
             jsonify(
                 {
@@ -368,7 +374,7 @@ def update_utub_name(utub_id: int):
             400,
         )
 
-    critical_log("Unable to update UTub name")
+    critical_log(f"User {current_user.id} | Unable to update UTub name")
     return (
         jsonify(
             {
@@ -403,7 +409,7 @@ def update_utub_desc(utub_id: int):
 
     if current_user.id != current_utub.utub_creator:
         warning_log(
-            f"User not creator: UTub.id={current_utub.id} | UTub.name={current_utub.name}"
+            f"User {current_user.id} not creator: UTub.id={current_utub.id} | UTub.name={current_utub.name}"
         )
         return (
             jsonify(
@@ -426,7 +432,7 @@ def update_utub_desc(utub_id: int):
         new_utub_description = utub_desc_form.description.data
 
         if new_utub_description is None:
-            warning_log("UTub description was None")
+            warning_log(f"User {current_user.id} | UTub description was None")
             return (
                 jsonify(
                     {
@@ -445,7 +451,7 @@ def update_utub_desc(utub_id: int):
 
             safe_add_many_logs(
                 [
-                    "User updated UTub description",
+                    "Updated UTub description",
                     f"UTub.id={current_utub.id}",
                     f"OLD UTub.description={current_utub_description}",
                     f"NEW UTub.name={new_utub_description}",
@@ -465,7 +471,9 @@ def update_utub_desc(utub_id: int):
 
     # Invalid form input
     if utub_desc_form.errors is not None:
-        warning_log(f"Invalid form: {turn_form_into_str_for_log(utub_desc_form)}")
+        warning_log(
+            f"User {current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_desc_form)}"
+        )
         return (
             jsonify(
                 {
@@ -478,7 +486,7 @@ def update_utub_desc(utub_id: int):
             400,
         )
 
-    critical_log("Unable to update UTub description")
+    critical_log(f"User {current_user.id} | Unable to update UTub description")
     return (
         jsonify(
             {

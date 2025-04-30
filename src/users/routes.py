@@ -8,7 +8,7 @@ from flask import (
 from flask_login import current_user, logout_user
 
 from src import login_manager
-from src.app_logger import safe_add_log
+from src.app_logger import warning_log
 from src.models.users import Users
 from src.utils.all_routes import ROUTES
 from src.utils.strings.email_validation_strs import EMAILS
@@ -25,10 +25,10 @@ def load_user(user_id) -> Users:
 def unauthorized():
     if not current_user.is_authenticated:
         # TODO: Validate the full path here before attaching query param
-        safe_add_log("User not authenticated")
+        warning_log(f"User {current_user.id} not authenticated")
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE, next=request.full_path))
     if current_user.is_authenticated and not current_user.email_validated:
-        safe_add_log("User authenticated but email not validated")
+        warning_log(f"User {current_user.id} authenticated but email not validated")
         return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
 
 

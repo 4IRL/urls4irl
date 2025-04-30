@@ -123,6 +123,12 @@ def init_app(app: Flask):
     werkzeug_logger.disabled = True
 
 
+def safe_get_request_id():
+    if not g or not hasattr(g, "request_id"):
+        return
+    return g.request_id
+
+
 def safe_add_log(log: str):
     if not g or not hasattr(g, "log_messages"):
         return
