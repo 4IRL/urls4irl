@@ -26,6 +26,7 @@ class Utub_Members(db.Model):
         default=Member_Role.MEMBER,
         name="memberRole",
     )
+    # TODO: Add time when member was added
 
     to_user = db.relationship("Users", back_populates="utubs_is_member_of")
     to_utub = db.relationship("Utubs", back_populates="members")

@@ -4,7 +4,6 @@ import uuid
 
 from flask import Flask, Response, current_app, g, request
 from flask.logging import default_handler
-from flask_wtf import FlaskForm
 
 from src.utils.strings.config_strs import CONFIG_ENVS
 
@@ -43,6 +42,7 @@ def configure_logging(app: Flask, is_production=False):
 
     # Create console handler
     console_handler = logging.StreamHandler()
+    console_handler.set_name(CONFIG_ENVS.U4I_LOGGER)
     console_handler.setFormatter(formatter)
     console_handler.addFilter(RequestInfoFilter())
     app.logger.addHandler(console_handler)
@@ -159,8 +159,9 @@ def error_log(log: str):
     current_app.logger.error(msg=log)
 
 
-def turn_form_into_str_for_log(form: FlaskForm) -> str:
+def turn_form_into_str_for_log(form_errors: dict[str, list[str]]) -> str:
     try:
-        return " | ".join([f"{key}={val}" for key, val in form.data.items()])
+        return " | ".join([f"{key}={val}" for key, val in form_errors.items()])
     except Exception:
+        current_app.logger.exception("Unable to parse form data")
         return "Unable to parse form data"

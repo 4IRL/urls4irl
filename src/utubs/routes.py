@@ -1,3 +1,4 @@
+from itertools import islice
 from flask import (
     Blueprint,
     abort,
@@ -76,13 +77,16 @@ def home():
             ),
         )
 
-    if len(request.args) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
+    # Count total number of query param keys/values, even for repeats
+    query_param_pairs = list(islice(request.args.items(multi=True), 2))
+
+    if len(query_param_pairs) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
         log_msg = (
             "Too many query parameters"
-            if len(request.args) != 1
+            if len(query_param_pairs) != 1
             else "Does not contain 'UTubID' as a query parameter"
         )
-        log_msg = f"User {current_user.id} | " + log_msg
+        log_msg = f"User={current_user.id} | " + log_msg
         warning_log(log_msg)
         abort(404)
 
@@ -92,7 +96,7 @@ def home():
             Utubs.query.get_or_404(int(utub_id))
             and Utub_Members.query.get((int(utub_id), current_user.id)) is None
         ):
-            safe_add_log(f"User {current_user.id} not a member of UTub.id={utub_id}")
+            warning_log(f"User={current_user.id} not a member of UTub.id={utub_id}")
             return redirect(url_for(ROUTES.UTUBS.HOME))
 
         safe_add_log(f"Retrieving UTub.id={utub_id} from query parameter")
@@ -107,7 +111,7 @@ def home():
 
     except (ValueError, DataError):
         # Handle invalid UTubID passed as query parameter
-        warning_log(f"Invalid UTub.id={utub_id} for User {current_user.id}")
+        warning_log(f"Invalid UTub.id={utub_id} for User={current_user.id}")
         abort(404)
 
 
@@ -210,7 +214,7 @@ def create_utub():
     # Invalid form inputs
     if utub_form.errors is not None:
         warning_log(
-            f"User {current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_form)}"
+            f"User {current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_form.errors)}"
         )
         return (
             jsonify(
@@ -253,7 +257,7 @@ def delete_utub(utub_id: int):
 
     if current_user.id != utub.utub_creator:
         critical_log(
-            f"User {current_user.id} is not the creator of UTub.id={utub.id} | UTub.name={utub.name}"
+            f"User={current_user.id} is not the creator of UTub.id={utub.id} | UTub.name={utub.name}"
         )
         return (
             jsonify(

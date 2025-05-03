@@ -22,6 +22,7 @@ from src.utils.constants import CONFIG_CONSTANTS
 from src.utils.strings.form_strs import UTUB_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
 
@@ -715,3 +716,91 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
 
     # Check for all 3 test utubs added
     assert Utubs.query.count() == len(valid_utubs)
+
+
+def test_add_utub_success_logs(login_first_user_with_register, caplog):
+    """
+    GIVEN a valid logged in user on the home page
+    WHEN they make a new UTub for themselves and do a POST to "/utubs" with valid form data
+    THEN verify that app logs are correct
+    """
+    client, csrf_token, _, _ = login_first_user_with_register
+
+    new_utub_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token,
+        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
+    }
+
+    new_utub_response = client.post(
+        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+    )
+
+    assert new_utub_response.status_code == 200
+    new_utub_response_json = new_utub_response.json
+    utub_id = int(new_utub_response_json[UTUB_SUCCESS.UTUB_ID])
+
+    assert is_string_in_logs("Created UTub", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_id}", caplog.records)
+    assert is_string_in_logs(
+        f"UTub.name={valid_empty_utub_1[UTUB_FORM.NAME]}", caplog.records
+    )
+
+
+def test_add_utub_form_failed_logs(login_first_user_with_register, caplog):
+    """
+    GIVEN a valid logged in user on the home page
+    WHEN they make a new UTub for themselves and do a POST to "/utubs" with invalid form data
+    THEN verify that app logs are correct
+    """
+    client, csrf_token, user, _ = login_first_user_with_register
+
+    new_utub_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token,
+        UTUB_FORM.UTUB_NAME: "",
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
+    }
+
+    new_utub_response = client.post(
+        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+    )
+
+    assert new_utub_response.status_code == 400
+
+    assert is_string_in_logs(f"User {user.id}", caplog.records)
+    assert is_string_in_logs(
+        f"Invalid form: name={UTUB_FAILURE.FIELD_REQUIRED}", caplog.records
+    )
+
+
+def test_csrf_expiration_log(app, login_first_user_with_register, caplog):
+    """
+    GIVEN a valid user on the home page
+    WHEN they make a POST request using an expired CSRF token
+    THEN ensure the response logs correctly
+    """
+    current_time = int(time.time())
+    client, csrf_token, user, _ = login_first_user_with_register
+    new_utub_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token,
+        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
+    }
+
+    valid_utub_response_with_csrf = client.post(
+        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+    )
+    assert valid_utub_response_with_csrf.status_code == 200
+
+    # Mock the `time.time` method response to return a value indicating an expired token
+    with patch(
+        "time.time",
+        return_value=current_time + CONFIG_CONSTANTS.SESSION_LIFETIME + 10,
+    ):
+        invalid_utub_response_with_csrf = client.post(
+            url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        )
+        assert invalid_utub_response_with_csrf.status_code == 403
+        assert is_string_in_logs(
+            f"CSRF token expired for User={user.id}", caplog.records
+        )

@@ -1,10 +1,14 @@
 from flask import render_template, jsonify, make_response
+from flask_login import current_user
 
+from src.app_logger import warning_log
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 
 
-def handle_403_response(_):
+def handle_403_response_from_csrf(_):
+    user_id = -1 if not current_user.is_authenticated else current_user.id
+    warning_log(f"CSRF token expired for User={user_id}")
     return (
         render_template(
             "error_pages/error_response.html",

@@ -1,4 +1,5 @@
 import os
+import logging
 from typing import Any, Awaitable, Generator, Tuple, Union
 
 from flask import Flask
@@ -135,6 +136,16 @@ def build_app(
     if app_for_test is None:
         return
 
+    # Prevent logs from cluttering test output, while still being captured in caplog
+    original_log_handlers = app_for_test.logger.handlers.copy()
+    for handler in original_log_handlers:
+        if isinstance(handler, logging.StreamHandler) and not isinstance(
+            handler, logging.NullHandler
+        ):
+            app_for_test.logger.removeHandler(handler)
+
+    app_for_test.logger.propagate = True
+
     with app_for_test.app_context():
         db.init_app(app_for_test)
         db.create_all()
@@ -146,7 +157,8 @@ def build_app(
 
 
 @pytest.fixture
-def app(build_app: Tuple[Flask, ConfigTest]) -> Generator[Flask, None, None]:
+def app(build_app: Tuple[Flask, ConfigTest], caplog) -> Generator[Flask, None, None]:
+    caplog.set_level("INFO", logger=CONFIG_ENVS.U4I_LOGGER)
     app, testing_config = build_app
     yield app
     clear_database(testing_config)

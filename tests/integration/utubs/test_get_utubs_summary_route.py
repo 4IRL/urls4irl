@@ -14,6 +14,7 @@ from src.utils.strings.form_strs import UTUB_FORM
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_validation_strs import URL_VALIDATION
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
 
@@ -230,3 +231,46 @@ def test_get_utubs_without_ajax_request(
 
     assert response.status_code == 404
     assert IDENTIFIERS.HTML_404.encode() in response.data
+
+
+def test_get_utubs_success_logs(
+    every_user_in_every_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+    caplog,
+):
+    """
+    GIVEN a logged in user with ID == 1, and is a member of multiple UTubs .
+    WHEN the user requests a summary of all their UTubs
+    THEN verify the app logs are valid
+    """
+    client, _, _, _ = login_first_user_without_register
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+    assert is_string_in_logs("Returning user's UTubs from direct route", caplog.records)
+
+
+def test_get_utubs_without_ajax_request_logs(
+    every_user_makes_a_unique_utub,
+    login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
+    caplog,
+):
+    """
+    GIVEN a logged in user with ID == 1, with one UTub.
+    WHEN the user requests a summary of all their UTubs
+    THEN verify the app logs are correct
+    """
+    client, _, user, _ = login_first_user_without_register
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_UTUBS),
+    )
+
+    assert response.status_code == 404
+    assert is_string_in_logs(
+        f"User {user.id} did not make an AJAX request", caplog.records
+    )

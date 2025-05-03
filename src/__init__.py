@@ -18,7 +18,7 @@ from src.cli.cli_options import register_short_urls_cli
 from src.cli.mock_options import register_mocks_db_cli
 from src.utils.bundle import prepare_bundler_for_js_files
 from src.utils.error_handler import (
-    handle_403_response,
+    handle_403_response_from_csrf,
     handle_404_response,
     handle_429_response_default_ratelimit,
 )
@@ -99,7 +99,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     register_short_urls_cli(app)
 
     app.register_error_handler(404, handle_404_response)
-    app.register_error_handler(CSRFError, handle_403_response)
+    app.register_error_handler(CSRFError, handle_403_response_from_csrf)
 
     if not testing:
         # Import models to initialize migration scripts

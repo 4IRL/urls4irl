@@ -13,6 +13,7 @@ from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_validation_strs import URL_VALIDATION
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
 
@@ -312,3 +313,60 @@ def test_get_valid_utub_with_members_urls_tags(
         assert (
             utub_user_is_creator_of.last_updated - initial_last_updated
         ).total_seconds() > 0
+
+
+def test_get_valid_utub_success_logs(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+    caplog,
+):
+    """
+    GIVEN a creator of a newly formed UTub
+    WHEN the user requests the details of that newly formed UTub
+    THEN verify the app logs correctly
+    """
+    client, _, _, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        utub_user_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub = utub_user_creator_of.id
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=id_of_utub),
+        headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
+    )
+
+    assert response.status_code == 200
+
+    assert is_string_in_logs(
+        f"Retrieving UTub.id={id_of_utub} from direct route", caplog.records
+    )
+
+
+def test_get_valid_utub_without_ajax_request_logs(
+    add_single_utub_as_user_after_logging_in: Tuple[FlaskClient, int, str, Flask],
+    caplog,
+):
+    """
+    GIVEN a creator of a newly formed UTub
+    WHEN the user requests the details of that newly formed UTub without an AJAX request
+    THEN verify the app logs correctly
+    """
+    client, _, _, app = add_single_utub_as_user_after_logging_in
+
+    with app.app_context():
+        utub_user_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        id_of_utub = utub_user_creator_of.id
+        current_user_id = current_user.id
+
+    response = client.get(
+        url_for(ROUTES.UTUBS.GET_SINGLE_UTUB, utub_id=id_of_utub),
+    )
+
+    assert response.status_code == 302
+    assert is_string_in_logs(
+        f"User {current_user_id} did not make an AJAX request", caplog.records
+    )
