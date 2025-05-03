@@ -7,6 +7,7 @@ function setUIWhenNoUTubSelected() {
   setURLDeckWhenNoUTubSelected();
   setMemberDeckWhenNoUTubSelected();
   resetMemberDeck();
+  $(".dynamic-subheader").removeClass("height-2p5rem");
 }
 
 function resetHomePageToInitialState() {

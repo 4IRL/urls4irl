@@ -47,6 +47,10 @@ class HomePageLocators(GenericPageLocator):
     CO_CREATOR_ICON = ".bi-diamond-half"
     CREATOR_ICON = ".bi-diamond-fill"
 
+    UTUB_OPEN_SEARCH_ICON = "#UTubSearchFilterIcon"
+    UTUB_CLOSE_SEARCH_ICON = "#UTubSearchFilterIconClose"
+    UTUB_SEARCH_INPUT = "#UTubNameSearch"
+
     # Tag Deck
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
     LIST_TAGS = "#listTags"

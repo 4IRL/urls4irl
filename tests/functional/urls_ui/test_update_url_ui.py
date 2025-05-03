@@ -329,7 +329,6 @@ def test_update_url_string_escape_key(
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
     verify_update_url_state_is_shown(url_row)
 
-    # Sleep required to allow the element to come into focus
     wait_until_in_focus(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
     )

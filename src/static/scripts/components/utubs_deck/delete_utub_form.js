@@ -56,6 +56,7 @@ function deleteUTubShowModal() {
     .offAndOn("click", function (e) {
       e.preventDefault();
       deleteUTub();
+      closeUTubSearchAndEraseInput();
     });
 
   $("#confirmModal").modal("show");

@@ -48,5 +48,11 @@ class UI_TEST_STRINGS:
 
     TEST_URL_STRING_CREATE = MOCK_URL_STRINGS[0]
     TEST_URL_TITLE_1 = "This is " + MOCK_URL_STRINGS[0] + "."
-    # TEST_URL_TITLE_1 = MOCK_URL_TITLES[0]
     TEST_URL_TITLE_UPDATE = "MS Support"
+
+    UTUB_SEARCH_NAMES = (
+        "A1",
+        "B1",
+        "C1",
+        "D1",
+    )

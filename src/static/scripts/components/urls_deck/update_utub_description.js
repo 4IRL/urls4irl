@@ -161,6 +161,7 @@ function updateUTubDescriptionShowInput() {
   hideIfShown($("#UTubDescription"));
   hideIfShown($("#updateUTubDescriptionBtn"));
   hideIfShown($("#URLDeckSubheader"));
+  $("#URLDeckHeaderWrap > .dynamic-subheader").removeClass("height-2p5rem");
 }
 
 // Hides input fields for updating an exiting UTub's description
@@ -181,6 +182,9 @@ function updateUTubDescriptionHideInput() {
 
   // Reset errors on hiding of inputs
   resetUpdateUTubDescriptionFailErrors();
+  $("#URLDeckSubheader").text().length !== 0
+    ? $("#URLDeckHeaderWrap > .dynamic-subheader").addClass("height-2p5rem")
+    : null;
 }
 
 // Handles post request and response for updating an existing UTub's description
@@ -226,8 +230,10 @@ function updateUTubDescriptionSuccess(response) {
   const originalUTubDescriptionLength = utubDescriptionElem.text().length;
   if (utubDescription.length === 0) {
     allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty();
+    $("#URLDeckHeaderWrap > .dynamic-subheader").removeClass("height-2p5rem");
   } else if (originalUTubDescriptionLength === 0) {
     removeEventListenersForShowCreateUTubDescIfEmptyDesc();
+    $("#URLDeckHeaderWrap > .dynamic-subheader").removeClass("height-2p5rem");
   }
 
   // Change displayed and updateable value for utub description

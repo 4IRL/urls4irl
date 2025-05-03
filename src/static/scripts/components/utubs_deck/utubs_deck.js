@@ -56,6 +56,7 @@ function setUTubEventListenersOnInitialPageLoad() {
   for (let i = 0; i < utubs.length; i++) {
     setUTubSelectorEventListeners(utubs[i]);
   }
+  setUTubSelectorSearchEventListener();
 }
 
 function resetUTubDeckIfNoUTubs() {

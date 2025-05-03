@@ -5,6 +5,7 @@ function setCreateUTubEventListeners() {
   const utubBtnCreate = $("#utubBtnCreate");
   utubBtnCreate.offAndOn("click.createDeleteUTub", function () {
     createUTubShowInput();
+    closeUTubSearchAndEraseInput();
   });
 
   // Allows user to press enter to bring up form while focusing on the add UTub icon, esp after tabbing
@@ -156,7 +157,7 @@ function createUTubShowInput() {
   createNewUTubEventListeners();
   $("#utubNameCreate").trigger("focus");
   hideIfShown($("#listUTubs"));
-  $("#UTubDeck").find(".icon-holder").hide();
+  $("#UTubDeck").find(".button-container").hide();
   removeCreateDeleteUTubEventListeners();
 }
 
@@ -168,7 +169,7 @@ function createUTubHideInput() {
   $("#utubDescriptionCreate").val(null);
   removeNewUTubEventListeners();
   resetUTubFailErrors();
-  $("#UTubDeck").find(".icon-holder").show();
+  $("#UTubDeck").find(".button-container").show();
   setCreateDeleteUTubEventListeners();
 }
 

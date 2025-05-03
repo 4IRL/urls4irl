@@ -58,15 +58,14 @@ function buildSelectedUTub(selectedUTub) {
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
   if (utubDescription) {
     utubDescriptionHeader.text(utubDescription);
+    $("#URLDeckHeaderWrap > .dynamic-subheader").addClass("height-2p5rem");
   } else {
     isCurrentUserOwner
       ? allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty()
       : null;
     utubDescriptionHeader.text(null);
+    $("#URLDeckHeaderWrap > .dynamic-subheader").removeClass("height-2p5rem");
   }
-
-  // Members deck
-  buildMemberDeck(dictMembers, utubOwnerID, isCurrentUserOwner, currentUserID);
 
   // Only allow owner to update UTub name and description
   if (isCurrentUserOwner) {
@@ -83,6 +82,9 @@ function buildSelectedUTub(selectedUTub) {
       .addClass("hiddenBtn")
       .removeClass("visibleBtn");
   }
+
+  // Members deck
+  buildMemberDeck(dictMembers, utubOwnerID, isCurrentUserOwner, currentUserID);
 }
 
 // Handles progagating changes across page related to a UTub selection

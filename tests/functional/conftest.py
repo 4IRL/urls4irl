@@ -17,6 +17,7 @@ from src.config import ConfigTest
 from src.models.email_validations import Email_Validations
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
+from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.ui_test_utils import clear_db, find_open_port, ping_server, run_app
@@ -327,6 +328,23 @@ def create_test_utubs(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
 
     if debug_strings:
         print("\nusers and utubs created")
+
+
+@pytest.fixture
+def create_test_searchable_utubs(
+    create_test_users, runner: Tuple[Flask, FlaskCliRunner], debug_strings
+):
+    """
+    Assumes users created. Creates sample UTubs, each user owns one.
+    """
+    app, _ = runner
+    utub_names = UI_TEST_STRINGS.UTUB_SEARCH_NAMES
+    with app.app_context():
+        user: Users = Users.query.get(1)
+        for utub_name in utub_names:
+            new_utub = Utubs(name=utub_name, utub_description="", utub_creator=user.id)
+            db.session.add(new_utub)
+        db.session.commit()
 
 
 @pytest.fixture
