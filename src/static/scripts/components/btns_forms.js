@@ -23,10 +23,39 @@ $(document).ready(function () {
   let textInput;
   for (let i = 0; i < textInputs.length; i++) {
     textInput = $(textInputs[i]);
+    textInput.val("");
+    if (textInput.hasClass("search-input")) {
+      textInput.on("blur", handleSearchInputBlur);
+      continue;
+    }
     textInput.on("focus", handleFocus);
     textInput.on("blur", handleBlur);
   }
 });
+
+// Handle focus for the text input box
+function handleFocus(event) {
+  const label = event.target.nextElementSibling;
+  label.style.top = "0px";
+  label.style.left = "10px";
+  label.style.fontSize = "14px";
+}
+
+// Handle blur for the text input box
+function handleBlur(event) {
+  if (event.target.value === "") {
+    const label = event.target.nextElementSibling;
+    label.style.top = "50%";
+    label.style.left = "10px";
+    label.style.fontSize = "16px";
+  }
+}
+
+// Handle blur for the search text input boxes
+function handleSearchInputBlur(event) {
+  const label = event.target.nextElementSibling;
+  event.target.value === "" ? $(label).show() : $(label).hide();
+}
 
 // Request user text input by showing the appropriate text input element and await valid input
 function showInput(handle) {
@@ -183,22 +212,4 @@ function disable(jqueryObj) {
 // Enables buttons
 function enable(jqueryObj) {
   $(jqueryObj).prop("disabled", false);
-}
-
-// Handle focus for the text input box
-function handleFocus(event) {
-  const label = event.target.nextElementSibling;
-  label.style.top = "0px";
-  label.style.left = "10px";
-  label.style.fontSize = "14px";
-}
-
-// Handle blur for the text input box
-function handleBlur(event) {
-  if (event.target.value === "") {
-    const label = event.target.nextElementSibling;
-    label.style.top = "50%";
-    label.style.left = "10px";
-    label.style.fontSize = "16px";
-  }
 }

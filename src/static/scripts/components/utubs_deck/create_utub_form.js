@@ -5,6 +5,7 @@ function setCreateUTubEventListeners() {
   const utubBtnCreate = $("#utubBtnCreate");
   utubBtnCreate.offAndOn("click.createDeleteUTub", function () {
     createUTubShowInput();
+    closeUTubSearchAndEraseInput();
   });
 
   // Allows user to press enter to bring up form while focusing on the add UTub icon, esp after tabbing

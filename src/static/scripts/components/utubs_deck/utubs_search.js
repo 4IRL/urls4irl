@@ -1,51 +1,66 @@
+"use strict";
+
 // Takes a user input into the UTub search field and returns an array of UTub ids that have names that contain the user's input as a substring
 function filterUTubs(searchTerm) {
-  const UTubSelectors = $(".UTubSelector");
+  const utubSelectors = $(".UTubSelector");
+  const utubsToHide = [];
 
-  if (searchTerm === "")
-    return Object.values(
-      UTubSelectors.map((i) => $(UTubSelectors[i]).attr("utubid")),
-    );
+  let utubName;
+  let utubID;
+  let utubSelector;
+  for (let i = 0; i < utubSelectors.length; i++) {
+    utubSelector = $(utubSelectors[i]);
+    utubID = parseInt(utubSelector.attr("utubid"));
+    utubName = utubSelector.find(".UTubName").text().toLowerCase();
 
-  const filteredSelectors = UTubSelectors.filter((i) => {
-    const UTubName = $(UTubSelectors[i]).children(".UTubName")[0].innerText;
-    if (UTubName === "") {
-      // In case UTubName returns empty string for some reason...
-      return false;
-    }
-    return UTubName.toLowerCase().includes(searchTerm);
-  });
-
-  return Object.values(
-    filteredSelectors.map((i) => $(filteredSelectors[i]).attr("utubid")),
-  );
+    if (!utubName.includes(searchTerm)) utubsToHide.push(utubID);
+  }
+  return utubsToHide;
 }
 
 // Updates displayed UTub selectors based on the provided array
-function updatedUTubSelectorDisplay(filteredUTubIDs) {
-  const UTubSelectors = $(".UTubSelector");
-  UTubSelectors.each(function (_, UTubSelector) {
-    const UTubID = $(UTubSelector).attr("utubid");
-    if (!filteredUTubIDs.includes(UTubID)) $(this).hide();
-    else $(this).show();
-  });
+function updatedUTubSelectorDisplay(filteredUTubIDsToHide) {
+  if (filteredUTubIDsToHide.length === 0) {
+    $(".UTubSelector").removeClass("hidden");
+    return;
+  }
+  const hideSet = new Set(filteredUTubIDsToHide);
+  const utubSelectors = $(".UTubSelector");
+
+  let utubName;
+  let utubID;
+  for (let i = 0; i < utubSelectors.length; i++) {
+    utubID = parseInt($(utubSelectors[i]).attr("utubid"));
+    hideSet.has(utubID)
+      ? $(utubSelectors[i]).addClass("hidden")
+      : $(utubSelectors[i]).removeClass("hidden");
+  }
 }
 
 function setUTubSelectorSearchEventListener() {
-  const wrapper = $("#UTubSearchFilterWrapper");
+  const wrapper = $("#SearchUTubWrap");
   const searchIcon = $("#UTubSearchFilterIcon");
-  const searchInput = $("#UTubSearchFilterInput");
+  const searchIconClose = $("#UTubSearchFilterIconClose");
+  const searchInput = $("#UTubNameSearch");
 
-  searchIcon.offAndOn("click.searchInputExpand", function (e) {
+  searchIcon.offAndOn("click.searchInputShow", function (e) {
     e.stopPropagation();
+    wrapper.addClass("visible").removeClass("hidden");
+    $("#UTubDeckSubheader").addClass("hidden");
+    searchIcon.addClass("hidden");
+    searchIconClose.removeClass("hidden");
 
-    if (!wrapper.hasClass("expanded")) {
-      wrapper.addClass("expanded"); // Add class to wrapper
-      // Use setTimeout to ensure element is visible before focusing
-      setTimeout(() => {
-        searchInput.focus();
-      }, 50); // Small delay might be needed
-    }
+    setTimeout(() => {
+      searchInput.addClass("utub-search-expanded");
+    }, 0);
+
+    searchInput.focus();
+  });
+
+  searchIconClose.offAndOn("click.searchInputClose", function (e) {
+    e.stopPropagation();
+    closeUTubSearchAndEraseInput();
+    searchInput.removeClass("utub-search-expanded");
   });
 
   searchInput
@@ -54,31 +69,30 @@ function setUTubSelectorSearchEventListener() {
       // When the input gains focus, attach a keyup listener to the document
       $(document).offAndOn("keyup.searchInputEsc", function (e) {
         if (e.which === 27) {
-          wrapper.removeClass("expanded");
           searchInput.blur();
         }
       });
     })
     .offAndOn("blur.searchInputEsc", function () {
       $(document).off("keyup.searchInputEsc");
-
-      // Optional: Collapse the input if it's empty when blurred
-      // Use a small timeout to allow clicking the icon again without immediate collapse
-      setTimeout(function () {
-        // Check if input lost focus AND is empty AND is currently expanded
-        if (
-          !searchInput.is(":focus") &&
-          searchInput.val() === "" &&
-          wrapper.hasClass("expanded")
-        ) {
-          wrapper.removeClass("expanded");
-        }
-      }, 150); // 150ms delay
     })
     .offAndOn("input", function () {
-      const searchTerm = $("#UTubSearchFilterInput")[0].value.toLowerCase();
-      console.log(searchTerm);
-      const filteredUTubIDs = filterUTubs(searchTerm);
-      updatedUTubSelectorDisplay(filteredUTubIDs);
+      const searchTerm = searchInput.val().toLowerCase();
+      if (searchTerm.length < CONSTANTS.UTUBS_MIN_NAME_LENGTH) {
+        // Show all UTubs
+        updatedUTubSelectorDisplay([]);
+        return;
+      }
+      const filteredUTubIDsToHide = filterUTubs(searchTerm);
+      updatedUTubSelectorDisplay(filteredUTubIDsToHide);
     });
+}
+
+function closeUTubSearchAndEraseInput() {
+  $("#UTubSearchFilterIconClose").addClass("hidden");
+  $("#UTubSearchFilterIcon").removeClass("hidden");
+  $("#SearchUTubWrap").addClass("hidden").removeClass("visible");
+  $("#UTubDeckSubheader").removeClass("hidden");
+  $("#UTubNameSearch").val("");
+  $(".UTubSelector").removeClass("hidden");
 }

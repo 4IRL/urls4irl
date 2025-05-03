@@ -326,6 +326,67 @@ def wait_for_class_to_be_removed(
         return False
 
 
+def wait_for_page_complete(browser: WebDriver, timeout: int = 10):
+    """
+    Wait for the page to be completely loaded and stable.
+        This is a more comprehensive wait function that checks multiple indicators
+            of page readiness.
+    """
+    # Wait for document.readyState to be 'complete'
+    WebDriverWait(browser, timeout).until(
+        lambda d: d.execute_script("return document.readyState") == "complete"
+    )
+
+    # Wait for jQuery to be loaded and active requests to be completed (if jQuery is used)
+    jquery_check = """
+            return (typeof jQuery !== 'undefined') ?
+                           jQuery.active == 0 :
+                                          true;
+                                              """
+    WebDriverWait(browser, timeout).until(lambda d: d.execute_script(jquery_check))
+
+    # Check for any animations
+    animation_check = """
+            return (typeof jQuery !== 'undefined') ?
+                           jQuery(':animated').length == 0 :
+                                          true;
+                                              """
+    WebDriverWait(browser, timeout).until(lambda d: d.execute_script(animation_check))
+
+    return True
+
+
+def wait_for_dom_stable(
+    browser: WebDriver, timeout: int = 5, poll_frequency: float = 0.5
+):
+    """
+    Wait until the DOM is stable (no changes for a period of time).
+        This helps with pages that have dynamic content loading.
+    """
+    start_time = time.time()
+    last_snapshot, current_snapshot = None, None
+
+    while time.time() - start_time < timeout:
+        current_snapshot = browser.execute_script(
+            "return document.documentElement.outerHTML"
+        )
+
+        if last_snapshot == current_snapshot:
+            # DOM hasn't changed since last check
+            return True
+
+        last_snapshot = current_snapshot
+        time.sleep(poll_frequency)
+
+    # The DOM kept changing until timeout
+    return False
+
+
+def wait_for_page_complete_and_dom_stable(browser: WebDriver, timeout: int = 10):
+    assert wait_for_page_complete(browser, timeout=timeout)
+    assert wait_for_dom_stable(browser, timeout=timeout)
+
+
 def assert_not_visible_css_selector(
     browser: WebDriver, css_selector: str, time: float = 10
 ):
@@ -1066,7 +1127,9 @@ def invalidate_csrf_token_in_form(browser: WebDriver):
         f"document.querySelector('input[id=\"csrf_token\"]').setAttribute('value', '{invalid_csrf_token}');"
     )
 
-    csrf_token = browser.find_element(By.CSS_SELECTOR, "input#csrf_token")
+    csrf_token = wait_for_element_presence(browser, "input#csrf_token")
+    assert csrf_token is not None
+
     WebDriverWait(browser, 3).until(
         lambda _: csrf_token.get_attribute("value") == invalid_csrf_token
     )
@@ -1081,10 +1144,10 @@ def assert_visited_403_on_invalid_csrf_and_reload(browser: WebDriver):
     assert error_page_subheader is not None
     assert error_page_subheader.text == IDENTIFIERS.HTML_403
 
-    wait_until_visible_css_selector(browser, SPL.ERROR_PAGE_REFRESH_BTN, timeout=3)
+    wait_until_visible_css_selector(browser, SPL.ERROR_PAGE_REFRESH_BTN, timeout=10)
 
     # Click button to refresh page
-    wait_then_click_element(browser, SPL.ERROR_PAGE_REFRESH_BTN, time=3)
+    wait_then_click_element(browser, SPL.ERROR_PAGE_REFRESH_BTN, time=10)
 
 
 def get_utub_this_user_created(app: Flask, user_id: int) -> Utubs:

@@ -36,7 +36,6 @@
     border-radius: 15px;
     color: var(--deckSelectionGreen);
     overflow: hidden;
-    /**padding-inline: 15px;**/
     padding-top: 5px;
     padding-bottom: 8px;
 }
@@ -102,6 +101,31 @@
     fill: var(--panelBackgroundColor);
 }
 
+#UTubSearchFilterIconClose,
+#UTubSearchFilterIcon {
+    cursor: pointer;
+    height: 100%;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    margin-right: 4px;
+}
+
+#UTubSearchFilterIcon>svg {
+    fill: var(--grayBadgeSelection);
+}
+
+#UTubSearchFilterIcon:hover>svg {
+    fill: var(--deckSelectionGreenHover);
+}
+
+#UTubSearchFilterIconClose>svg {
+    fill: var(--spanRemoveColor);
+}
+
+#UTubSearchFilterIconClose:hover>svg {
+    fill: var(--spanRemoveColorHover);
+}
+
 .cancelButton:hover {
     cursor: pointer;
     color: var(--removeIconColorHover);
@@ -110,48 +134,6 @@
 .button-container {
     justify-content: flex-end;
 }
-
-.search-input-wrapper {
-    position: relative;
-    display: block;
-    margin-bottom: 5px;
-}
-
-.searchIcon-container {
-    position: absolute;
-    left: 10px;
-    top: 50%;
-    transform: translateY(-50%);
-    font-size: 16px;
-    color: #666;
-    cursor: pointer;
-    z-index: 2;
-    transition: font-size 0.2s ease;
-}
-
-.searchFilterInput {
-    height: 34px;
-    box-sizing: border-box;
-    border: 1px solid #ccc;
-    border-radius: 17px;
-    padding-left: 15px;
-    padding-right: 10px;
-    width: 0;
-    opacity: 0;
-    vertical-align: middle;
-    font-size: 14px;
-    transition: width 0.35s ease-in-out, opacity 0.3s ease-in-out 0.1s;
-}
-
-.search-input-wrapper.expanded #UTubSearchFilterInput {
-    width: 220px; 
-    opacity: 1;
-    padding-left: 36px; 
-  }
-
-  .search-input-wrapper.expanded #UTubSearchFilterIcon {
-    font-size: 0px; 
-  }
 
 /* Utility */
 
@@ -187,6 +169,10 @@
 
 .flex-start {
     align-items: flex-start;
+}
+
+.flex-center {
+    align-items: center;
 }
 
 .wrap {
@@ -231,6 +217,10 @@
 
 .pad-bot-5p {
     padding-bottom: 5px;
+}
+
+.height-2p5rem {
+    height: 2.5rem;
 }
 
 .pad-top-bot-5p {
@@ -751,6 +741,31 @@ a.urlString:hover {
     color: whitesmoke;
 }
 
+#UTubNameSearch.text-input[type="text"] {
+    background: var(--searchInputBackgroundColor);
+    border-radius: 25px;
+    padding-inline: 13px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 0;
+    opacity: 0;
+    transition: width 0.25s ease-in-out, opacity 0.10s ease-in-out 0.1s;
+}
+
+#UTubNameSearch.text-input[type="text"].utub-search-expanded {
+    width: 100%;
+    opacity: 1;
+}
+
+#UTubNameSearch+.text-input-label {
+    background: var(--searchInputBackgroundColor);
+    color: #c6c6c6;
+}
+
+#UTubNameSearch:focus+.text-input-label {
+    display: none;
+}
+
 .text-input[type="url"]:hover,
 .text-input[type="text"]:hover {
     border-color: var(--deckSelectionGreenHover);
@@ -782,6 +797,7 @@ a.urlString:hover {
     font-size: 14px;
 }
 
+
 .text-input-error-message {
     display: none;
     color: red;
@@ -791,7 +807,6 @@ a.urlString:hover {
 
 /** Loading ring **/
 .dual-loading-ring {
-    /* change color here */
     color: #1c4c5b
 }
 
@@ -854,9 +869,12 @@ a.urlString:hover {
 
 #MemberDeckSubheader,
 #TagDeckSubheader,
-#UTubDeckSubheader,
 #URLDeckSubheader {
     margin-top: 3px;
+}
+
+#UTubDeckSubheaderWrap {
+    width: 100%;
 }
 
 #MembersHeader {
@@ -930,15 +948,6 @@ a.urlString:hover {
 /* Media size for responsiveness 
  * https://getbootstrap.com/docs/5.2/layout/breakpoints/ 
  * */
-
-@media (max-width: 1100px) {
-    .urlRow[urlSelected="true"] .urlTitle {
-        /*
-        width: max-content;
-        max-width: 95%;
-        */
-    }
-}
 
 @media (min-width: 992px) {
     .panel#centerPanel {
@@ -1021,11 +1030,6 @@ a.urlString:hover {
 
 @media (min-width: 465px) {
 
-    /*
-    .urlOptions {
-        gap: 15px;
-    }
-    */
     .urlTagBtnCreate {
         margin-right: 15px;
     }
@@ -1050,12 +1054,5 @@ a.urlString:hover {
     .urlRow[filterable="true"][urlSelected="true"] .urlOptionsInner:nth-child(2) {
         padding-top: 15px;
     }
-
-    /*
-    .urlTagBtnCreate,
-    .urlStringBtnUpdate {
-        flex: 1 1 auto;
-    }
-    */
 
 }

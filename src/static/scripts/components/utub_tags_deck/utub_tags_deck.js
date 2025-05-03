@@ -17,6 +17,8 @@ function buildTagDeck(dictTags) {
   }
 
   showIfHidden($("#utubTagBtnCreate"));
+
+  $("#TagDeck > .dynamic-subheader").addClass("height-2p5rem");
 }
 
 function resetTagDeck() {

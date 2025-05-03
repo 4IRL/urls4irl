@@ -18,6 +18,7 @@
     --navbarBackgroundFocus: rgba(121, 124, 126, 1.0);
 
     --pageBackgroundColor: rgba(31, 36, 36, 0.81);
+    --searchInputBackgroundColor: rgba(111, 123, 123, 1.0);
     --panelBackgroundColor: rgba(31, 36, 36, 1.0);
     --borderColor: #343c3d;
     --deckHeaderGreen: rgba(36, 167, 69, 1.0);
@@ -38,7 +39,8 @@
     --cardBackgroundColorHover: rgba(40, 47, 47, 0.8);
     --UTubDescriptionColor: white;
 
-    --spanRemoveColor: rgb(254, 115, 1);
+    --spanRemoveColor: rgba(254, 115, 1, 1.0);
+    --spanRemoveColorHover: rgba(254, 115, 1, 0.5);
     --removeIconColor: rgba(220, 53, 69, 1.0);
     --removeIconColorHover: rgba(154, 37, 48, 1.0);
 

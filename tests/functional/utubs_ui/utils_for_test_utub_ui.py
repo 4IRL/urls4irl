@@ -5,15 +5,20 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src import db
+from src.models.users import Users
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utubs import Utubs
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.utils_for_test import (
     assert_not_visible_css_selector,
     assert_visible_css_selector,
     clear_then_send_keys,
+    wait_for_animation_to_end,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
+    wait_until_in_focus,
     wait_until_visible_css_selector,
 )
 
@@ -246,3 +251,41 @@ def assert_in_member_utub(browser: WebDriver):
     assert_visible_css_selector(browser, HPL.BUTTON_UTUB_TAG_CREATE)
     assert_visible_css_selector(browser, HPL.BUTTON_UNSELECT_ALL)
     assert_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)
+
+
+def open_utub_search_box(browser: WebDriver):
+    wait_until_visible_css_selector(browser, HPL.UTUB_OPEN_SEARCH_ICON, timeout=3)
+    assert_visible_css_selector(browser, HPL.UTUB_OPEN_SEARCH_ICON)
+
+    wait_then_click_element(browser, HPL.UTUB_OPEN_SEARCH_ICON, time=3)
+    browser.get_screenshot_as_file("p1.png")
+    wait_for_animation_to_end(browser, HPL.UTUB_SEARCH_INPUT, timeout=3)
+    wait_until_in_focus(browser, HPL.UTUB_SEARCH_INPUT)
+
+    assert_visible_css_selector(browser, HPL.UTUB_CLOSE_SEARCH_ICON, time=3)
+    utub_search_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT, time=3)
+    assert browser.switch_to.active_element == utub_search_elem
+
+
+def create_test_searchable_utubs(app: Flask, test_user_id: int) -> dict[str, int]:
+    """
+    Assumes users created. Creates sample UTubs, each user owns one.
+    """
+    utub_names = UI_TEST_STRINGS.UTUB_SEARCH_NAMES
+    utub_ids = {key: 0 for key in utub_names}
+    with app.app_context():
+        user: Users = Users.query.get(test_user_id)
+        for utub_name in utub_names:
+            new_utub = Utubs(name=utub_name, utub_description="", utub_creator=user.id)
+            db.session.add(new_utub)
+            db.session.commit()
+            utub_ids[utub_name] = new_utub.id
+
+            utub_member = Utub_Members(utub_id=new_utub.id, user_id=test_user_id)
+            utub_member.utub_id = new_utub.id
+            utub_member.user_id = test_user_id
+            utub_member.member_role = Member_Role.CREATOR
+            db.session.add(utub_member)
+            db.session.commit()
+
+    return utub_ids

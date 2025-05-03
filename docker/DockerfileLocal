@@ -1,4 +1,4 @@
-# syntax=docker/dockerfile:1
+# syntax=docker/dockerfile:1.5
 FROM python:3.11-slim-bookworm
 LABEL org.opencontainers.image.source="https://github.com/4IRL/urls4irl"
 

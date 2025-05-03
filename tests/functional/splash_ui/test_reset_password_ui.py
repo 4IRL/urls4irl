@@ -1,5 +1,4 @@
 from datetime import datetime
-from time import sleep
 from flask import Flask
 import pytest
 from selenium.webdriver.common.action_chains import ActionChains
@@ -8,6 +7,7 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src import db
+from src.config import ConfigTest
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.utils.constants import CONSTANTS
@@ -22,6 +22,7 @@ from tests.functional.utils_for_test import (
     assert_visited_403_on_invalid_csrf_and_reload,
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
+    wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -57,7 +58,7 @@ def test_password_reset_routes_user_properly(
 
 
 def test_password_reset_dismiss_modal_click(
-    browser: WebDriver, create_user_resetting_password, provide_port
+    browser: WebDriver, create_user_resetting_password, provide_port, provide_config
 ):
     """
     Tests a user's ability to click a non-expired password reset URL
@@ -82,16 +83,18 @@ def test_password_reset_dismiss_modal_click(
 
     # Put focus on splash modal and wait, or else escape key won't work
     splash_modal.click()
-    sleep(2)
+    wait_for_page_complete_and_dom_stable(browser, timeout=10)
 
     dismiss_modal_with_click_out(browser)
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
     assert not modal_element.is_displayed()
-    assert browser.current_url == f"{UTS.BASE_URL}{provide_port}/"
+    config: ConfigTest = provide_config
+    base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
+    assert browser.current_url == f"{base_url}{provide_port}/"
 
 
 def test_password_reset_dismiss_modal_x(
-    browser: WebDriver, create_user_resetting_password, provide_port
+    browser: WebDriver, create_user_resetting_password, provide_port, provide_config
 ):
     """
     Tests a user's ability to click a non-expired password reset URL
@@ -116,16 +119,22 @@ def test_password_reset_dismiss_modal_x(
 
     # Put focus on splash modal and wait, or else escape key won't work
     splash_modal.click()
-    sleep(2)
+    wait_for_page_complete_and_dom_stable(browser, timeout=10)
 
     wait_then_click_element(browser, ModalLocators.BUTTON_X_MODAL_DISMISS, time=3)
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
     assert not modal_element.is_displayed()
-    assert browser.current_url == f"{UTS.BASE_URL}{provide_port}/"
+
+    config: ConfigTest = provide_config
+    base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
+    assert browser.current_url == f"{base_url}{provide_port}/"
 
 
 def test_password_reset_dismiss_modal_key(
-    browser: WebDriver, create_user_resetting_password, provide_port: int
+    browser: WebDriver,
+    create_user_resetting_password,
+    provide_port: int,
+    provide_config,
 ):
     """
     Tests a user's ability to click a non-expired password reset URL
@@ -150,12 +159,14 @@ def test_password_reset_dismiss_modal_key(
 
     # Put focus on splash modal and wait, or else escape key won't work
     splash_modal.click()
-    sleep(2)
+    wait_for_page_complete_and_dom_stable(browser, timeout=10)
 
     ActionChains(browser).send_keys(Keys.ESCAPE).perform()
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL, timeout=5)
     assert not modal_element.is_displayed()
-    assert browser.current_url == f"{UTS.BASE_URL}{provide_port}/"
+    config: ConfigTest = provide_config
+    base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
+    assert browser.current_url == f"{base_url}{provide_port}/"
 
 
 def test_password_reset_successful_reset_btn(
@@ -193,7 +204,7 @@ def test_password_reset_successful_reset_btn(
     new_password_input.send_keys(NEW_PASSWORD)
     confirm_new_password_input.send_keys(NEW_PASSWORD)
 
-    browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
     confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
     assert confirm_alert is not None
 
@@ -391,7 +402,9 @@ def test_password_reset_unequal_password_fields(
     new_password_input.send_keys(NEW_PASSWORD)
     confirm_new_password_input.send_keys(NEW_PASSWORD + "a")
 
+    wait_for_page_complete_and_dom_stable(browser, timeout=10)
     browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
+    wait_for_page_complete_and_dom_stable(browser, timeout=10)
 
     invalid_field = wait_then_get_element(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
@@ -462,10 +475,11 @@ def test_password_reset_invalid_csrf_token(
         browser, SPL.INPUT_CONFIRM_NEW_PASSWORD
     )
     assert confirm_new_password_input is not None
+    wait_for_page_complete_and_dom_stable(browser, timeout=10)
 
     invalidate_csrf_token_in_form(browser)
-
-    browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
+    wait_for_page_complete_and_dom_stable(browser, timeout=10)
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, time=10)
 
     # Visit 403 error page due to CSRF, then reload
     assert_visited_403_on_invalid_csrf_and_reload(browser)
