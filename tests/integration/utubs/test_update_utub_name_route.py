@@ -12,6 +12,7 @@ from src.utils.strings.form_strs import UTUB_FORM
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
 
@@ -1153,3 +1154,125 @@ def test_same_name_does_not_update_utub_last_updated_time(
     with app.app_context():
         updated_utub: Utubs = Utubs.query.filter(Utubs.id == current_utub_id).first()
         assert updated_utub.last_updated == initial_last_updated
+
+
+def test_update_valid_utub_name_success_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
+    WHEN the creator attempts to modify the UTub name to a new name, via a POST to
+        "/utubs/<utub_id: int>/name" with valid form data
+    THEN verify that the the logs are valid
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_NAME = "This is my new UTub name"
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        current_utub_id = utub_of_user.id
+        current_utub_name = utub_of_user.name
+
+    utub_name_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_FORM.UTUB_NAME: NEW_NAME,
+    }
+
+    update_utub_name_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
+        data=utub_name_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_name_response.status_code == 200
+
+    # Ensure JSON response is correct
+    assert is_string_in_logs(f"UTub.id={current_utub_id}", caplog.records)
+    assert is_string_in_logs(f"OLD UTub.name={current_utub_name}", caplog.records)
+    assert is_string_in_logs(f"NEW UTub.name={NEW_NAME}", caplog.records)
+
+
+def test_update_utub_name_invalid_form_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
+    WHEN the creator attempts to modify the UTub name to a new name, via a POST to
+        "/utubs/<utub_id: int>/name" with invalid form data
+    THEN verify that the the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        current_utub_id = utub_of_user.id
+
+    utub_name_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_FORM.UTUB_NAME: "",
+    }
+
+    update_utub_name_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
+        data=utub_name_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_name_response.status_code == 400
+
+    # Ensure JSON response is correct
+    assert is_string_in_logs(f"User={user.id}", caplog.records)
+    assert is_string_in_logs(
+        f"Invalid form: name={UTUB_FAILURE.FIELD_REQUIRED}", caplog.records
+    )
+
+
+def test_update_utub_name_invalid_permission_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
+    WHEN the creator attempts to modify the UTub name to a new name, via a POST to
+        "/utubs/<utub_id: int>/name" with valid form data but user is not creator
+    THEN verify that the the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        current_utub_id = utub_of_user.id
+        current_utub_name = utub_of_user.name
+
+    utub_name_form = {
+        UTUB_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_FORM.UTUB_NAME: "New",
+    }
+
+    update_utub_name_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=current_utub_id),
+        data=utub_name_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_name_response.status_code == 403
+
+    # Ensure JSON response is correct
+    assert is_string_in_logs(f"User={user.id} not creator: ", caplog.records)
+    assert is_string_in_logs(f"UTub.id={current_utub_id} |", caplog.records)
+    assert is_string_in_logs(f"UTub.name={current_utub_name}", caplog.records)

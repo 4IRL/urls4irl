@@ -767,7 +767,7 @@ def test_add_utub_form_failed_logs(login_first_user_with_register, caplog):
 
     assert new_utub_response.status_code == 400
 
-    assert is_string_in_logs(f"User {user.id}", caplog.records)
+    assert is_string_in_logs(f"User={user.id}", caplog.records)
     assert is_string_in_logs(
         f"Invalid form: name={UTUB_FAILURE.FIELD_REQUIRED}", caplog.records
     )
