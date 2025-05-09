@@ -1,4 +1,3 @@
-import logging
 import time
 
 from flask import abort, Blueprint, jsonify, request
@@ -34,7 +33,6 @@ from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
 from src.utils.strings.url_validation_strs import URL_VALIDATION
 
 urls = Blueprint("urls", __name__)
-logger = logging.getLogger(__name__)
 
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
@@ -58,7 +56,7 @@ def delete_url(utub_id: int, utub_url_id: int):
     url_in_utub: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
     if url_in_utub.utub_id != utub_id:
         critical_log(
-            f"User {current_user.id} tried removing UTubURL.id={utub_url_id} but the given UTubURL does not exist."
+            f"User={current_user.id} tried removing UTubURL.id={utub_url_id} which is in UTub.id={url_in_utub.id}"
         )
         abort(404)
 
@@ -70,13 +68,13 @@ def delete_url(utub_id: int, utub_url_id: int):
     if user_in_utub and user_url_adder_or_utub_creator:
         # Store serialized data from URL association with UTub and associated tags
         url_string_to_remove = url_in_utub.standalone_url.url_string
+        url_id_to_remove = url_in_utub.standalone_url.id
 
         # Remove all tags associated with this URL in this UTub
         Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_url_id == utub_url_id
         ).delete()
 
-        # Can only remove URLs as the creator of UTub, or as the adder of that URL
         db.session.delete(url_in_utub)
         utub.set_last_updated()
 
@@ -85,8 +83,10 @@ def delete_url(utub_id: int, utub_url_id: int):
         safe_add_many_logs(
             [
                 "Deleted UTubURL and associated UTubURLTags",
+                f"User.id={current_user.id}",
                 f"UTub.id={utub_id}",
                 f"UTubURL.id={utub_url_id}",
+                f"URL.id={url_id_to_remove}",
             ]
         )
 
@@ -106,20 +106,26 @@ def delete_url(utub_id: int, utub_url_id: int):
             200,
         )
 
-    else:
-        # Can only remove URLs you added, or if you are the creator of this UTub
+    # Can only remove URLs you added, or if you are the creator of this UTub
+    if not user_in_utub:
         critical_log(
-            f"User {current_user.id} tried removing UTubURL.id={utub_url_id} from UTub.id={utub_id}"
+            f"User={current_user.id} tried removing UTubURL.id={utub_url_id} from UTub.id={utub_id} and they aren't a member"
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_DELETE_URL,
-                }
-            ),
-            403,
+
+    if not user_url_adder_or_utub_creator:
+        critical_log(
+            f"User={current_user.id} tried removing UTubURL.id={utub_url_id} from UTub.id={utub_id} and they aren't the URL adder or UTub creator"
         )
+
+    return (
+        jsonify(
+            {
+                STD_JSON.STATUS: STD_JSON.FAILURE,
+                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_DELETE_URL,
+            }
+        ),
+        403,
+    )
 
 
 @urls.route("/utubs/<int:utub_id>/urls", methods=["POST"])

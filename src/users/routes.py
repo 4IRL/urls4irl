@@ -25,10 +25,10 @@ def load_user(user_id) -> Users:
 def unauthorized():
     if not current_user.is_authenticated:
         # TODO: Validate the full path here before attaching query param
-        warning_log(f"User {current_user.id} not authenticated")
+        warning_log(f"User={current_user.id} not authenticated")
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE, next=request.full_path))
     if current_user.is_authenticated and not current_user.email_validated:
-        warning_log(f"User {current_user.id} authenticated but email not validated")
+        warning_log(f"User={current_user.id} authenticated but email not validated")
         return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
 
 

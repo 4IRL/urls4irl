@@ -11,6 +11,7 @@ from src.utils.strings.form_strs import URL_FORM
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.urls
 
@@ -575,6 +576,54 @@ def test_delete_url_as_utub_member_with_tags(
         assert Utub_Url_Tags.query.count() == initial_tag_urls - tags_on_url_in_utub
 
 
+def test_delete_url_not_in_utub_no_tags(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register
+):
+    """
+    GIVEN a logged-in creator of a UTub who has added a valid URL to their UTub, with no tags
+    WHEN the creator wishes to remove the URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN the server responds with a 404 HTTP status code
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    # Get UTub of current user
+    with app.app_context():
+        current_user_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        url_utub_user_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != current_user_utub.id
+        ).first()
+        url_id_to_remove = url_utub_user_association.id
+
+        # Get initial number of UTub-URL associations
+        initial_utub_urls = Utub_Urls.query.count()
+        url_object: Urls = url_utub_user_association.standalone_url
+
+    # Remove URL from UTub as UTub creator
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=current_user_utub.id,
+            utub_url_id=url_id_to_remove,
+        ),
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure 200 HTTP status code response
+    assert delete_url_response.status_code == 404
+    assert IDENTIFIERS.HTML_404.encode() in delete_url_response.data
+
+    # Ensure proper removal from database
+    with app.app_context():
+        # Assert url still in database
+        assert Urls.query.get(url_object.id) is not None
+
+        # Ensure UTub has no URLs left
+        assert Utub_Urls.query.count() == initial_utub_urls
+
+
 def test_delete_url_from_utub_no_csrf_token(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ):
@@ -713,9 +762,167 @@ def test_remove_invalid_url_does_not_update_utub_last_updated(
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
-    # Ensure 200 HTTP status code response
+    # Ensure 404 HTTP status code response
     assert delete_url_response.status_code == 404
 
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(id_of_utub_current_user_creator_of)
         assert current_utub.last_updated == initial_last_updated
+
+
+def test_delete_url_logs(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged-in creator of a UTub who has added a valid URL to their UTub, with no tags
+    WHEN the creator wishes to remove the URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN the server responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    # Get UTub of current user
+    with app.app_context():
+        current_user_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        url_utub_user_association: Utub_Urls = current_user_utub.utub_urls[0]
+        url_id = url_utub_user_association.standalone_url.id
+        utub_url_id_to_remove = url_utub_user_association.id
+
+    # Remove URL from UTub as UTub creator
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=current_user_utub.id,
+            utub_url_id=utub_url_id_to_remove,
+        ),
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure 200 HTTP status code response
+    assert delete_url_response.status_code == 200
+    assert is_string_in_logs(f"User.id={current_user_utub.id}", caplog.records)
+    assert is_string_in_logs(f"UTub.id={current_user_utub.id}", caplog.records)
+    assert is_string_in_logs(f"UTubURL.id={utub_url_id_to_remove}", caplog.records)
+    assert is_string_in_logs(f"URL.id={url_id}", caplog.records)
+
+
+def test_delete_url_not_in_utub_logs(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged-in creator of a UTub who has added a valid URL to their UTub, with no tags
+    WHEN the creator wishes to remove the URL from the UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN the server responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    # Get UTub of current user
+    with app.app_context():
+        current_user_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        url_utub_user_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != current_user_utub.id
+        ).first()
+        utub_url_id_to_remove = url_utub_user_association.id
+
+    # Remove URL from UTub as UTub creator
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=current_user_utub.id,
+            utub_url_id=utub_url_id_to_remove,
+        ),
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure 200 HTTP status code response
+    assert delete_url_response.status_code == 404
+    assert is_string_in_logs(
+        f"User={current_user_utub.id} tried removing UTubURL.id={utub_url_id_to_remove} which is in UTub.id={url_utub_user_association.utub_id}",
+        caplog.records,
+    )
+
+
+def test_delete_url_user_not_in_utub_logs(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged-in member of a UTub
+    WHEN the member tries to remove a URL from another UTub by DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN the server responds with a 403 HTTP status code and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    # Get UTub of current user
+    with app.app_context():
+        another_user_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != user.id
+        ).first()
+
+        url_utub_user_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == another_user_utub.id
+        ).first()
+        utub_url_id_to_remove = url_utub_user_association.id
+
+    # Remove URL from UTub as UTub creator
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=another_user_utub.id,
+            utub_url_id=utub_url_id_to_remove,
+        ),
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure 200 HTTP status code response
+    assert delete_url_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} tried removing UTubURL.id={utub_url_id_to_remove} from UTub.id={another_user_utub.id} and they aren't a member",
+        caplog.records,
+    )
+
+
+def test_delete_url_user_not_adder_or_creator_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a logged-in member of a UTub
+    WHEN the member tries to remove a URL from a UTub but they didn't add the URL or create the UTub by DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN the server responds with a 403 HTTP status code and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    # Get UTub of current user
+    with app.app_context():
+        another_user_utub: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != user.id
+        ).first()
+
+        url_utub_user_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == another_user_utub.id,
+            Utub_Urls.user_id == another_user_utub.utub_creator,
+        ).first()
+        utub_url_id_to_remove = url_utub_user_association.id
+
+    # Remove URL from UTub as UTub creator
+    delete_url_response = client.delete(
+        url_for(
+            ROUTES.URLS.DELETE_URL,
+            utub_id=another_user_utub.id,
+            utub_url_id=utub_url_id_to_remove,
+        ),
+        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure 200 HTTP status code response
+    assert delete_url_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} tried removing UTubURL.id={utub_url_id_to_remove} from UTub.id={another_user_utub.id} and they aren't the URL adder or UTub creator",
+        caplog.records,
+    )
