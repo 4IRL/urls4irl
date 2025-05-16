@@ -355,7 +355,7 @@ def get_url(utub_id: int, utub_url_id: int):
         != URL_VALIDATION.XMLHTTPREQUEST
     ):
         # Ensure JSON not shown in the browser
-        warning_log(f"User {current_user.id} did not make an AJAX request")
+        warning_log(f"User={current_user.id} did not make an AJAX request")
         abort(404)
 
     # Following line enforces standard response of 404 error page
@@ -364,7 +364,7 @@ def get_url(utub_id: int, utub_url_id: int):
     user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
     if not user_in_utub:
         critical_log(
-            f"User {current_user.id} tried to get UTubURL.id={utub_url_id} but not in UTub.id={utub_id}"
+            f"User={current_user.id} tried to get UTubURL.id={utub_url_id} but not in UTub.id={utub_id}"
         )
         return (
             jsonify(
@@ -398,7 +398,7 @@ def get_url(utub_id: int, utub_url_id: int):
         )
 
     critical_log(
-        f"User {current_user.id} tried to retrieve nonexistent UTubURL.id={utub_url_id}"
+        f"User={current_user.id} tried to retrieve nonexistent UTubURL.id={utub_url_id}"
     )
     return (
         jsonify(
