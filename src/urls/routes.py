@@ -428,10 +428,16 @@ def update_url(utub_id: int, utub_url_id: int):
 
     # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
-    url_in_utub: Utub_Urls = Utub_Urls.query.get(utub_url_id)
+    url_in_utub: Utub_Urls | None = Utub_Urls.query.get(utub_url_id)
+    if url_in_utub is None:
+        critical_log(
+            f"User={current_user.id} tried to change nonexistent UTubURL.id={utub_url_id} in UTub.id={utub_id}"
+        )
+        abort(404)
+
     if url_in_utub.utub_id != utub_id:
         critical_log(
-            f"User {current_user.id} tried to remove UTubURL.id={utub_url_id} from invalid UTub.id{utub_id}"
+            f"User={current_user.id} tried to change UTubURL.id={utub_url_id} that is not in UTub.id={utub_id}"
         )
         abort(404)
 
@@ -443,10 +449,10 @@ def update_url(utub_id: int, utub_url_id: int):
     if not user_in_utub or not user_added_url_or_is_utub_creator:
         # Can only modify URLs you added, or if you are the creator of this UTub
         if not user_in_utub:
-            critical_log(f"User {current_user.id} not in UTub.id={utub_id}")
+            critical_log(f"User={current_user.id} not in UTub.id={utub_id}")
         else:
             critical_log(
-                f"User {current_user.id} not allowed to modify UTubURL.id={utub_url_id} in UTub.id{utub_id}"
+                f"User={current_user.id} not allowed to modify UTubURL.id={utub_url_id} in UTub.id={utub_id}"
             )
         return (
             jsonify(
@@ -466,7 +472,7 @@ def update_url(utub_id: int, utub_url_id: int):
 
         if url_to_change_to == "":
             warning_log(
-                f"User {current_user.id} tried changing UTubURL.id={utub_url_id} to an empty URL"
+                f"User={current_user.id} tried changing UTubURL.id={utub_url_id} to a URL with only spaces"
             )
             return (
                 jsonify(
@@ -484,7 +490,7 @@ def update_url(utub_id: int, utub_url_id: int):
         if url_to_change_to == url_in_utub.standalone_url.url_string:
             # Identical URL
             warning_log(
-                f"User {current_user.id} tried changing UTubURL.id={utub_url_id} to the same URL"
+                f"User={current_user.id} tried changing UTubURL.id={utub_url_id} to the same URL"
             )
             return jsonify(
                 {
@@ -502,13 +508,11 @@ def update_url(utub_id: int, utub_url_id: int):
                 url_to_change_to, headers
             )
         except InvalidURLError as e:
-            # TODO: Adding logging for this failed URL validation attempt
-            # URL was unable to be verified as a valid URL
             end = (time.perf_counter() - start) * 1000
             request_id = safe_get_request_id()
 
             warning_log(
-                f"[{request_id}] Unable to validate the URL given by user={current_user.id}\n"
+                f"[{request_id}] Unable to validate the URL given by User={current_user.id}\n"
                 + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                 + f"[{request_id}] url_string={url_to_change_to}\n"
                 + f"[{request_id}] Exception={str(e)}"
@@ -531,7 +535,7 @@ def update_url(utub_id: int, utub_url_id: int):
             request_id = safe_get_request_id()
 
             warning_log(
-                f"[{request_id}] Unable to validate the URL given by user={current_user.id}\n"
+                f"[{request_id}] Unable to validate the URL given by User={current_user.id}\n"
                 + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                 + f"[{request_id}] url_string={url_to_change_to}\n"
                 + f"[{request_id}] Exception={str(e)}"
@@ -552,7 +556,7 @@ def update_url(utub_id: int, utub_url_id: int):
 
         end = (time.perf_counter() - start) * 1000
         safe_add_many_logs(
-            [f"Finished checks {url_to_change_to=}", f"Took {end:.3f} ms"]
+            [f"Finished checks for {url_to_change_to=}", f"Took {end:.3f} ms"]
         )
 
         # Now check if url already in database
@@ -580,7 +584,7 @@ def update_url(utub_id: int, utub_url_id: int):
                 request_id = safe_get_request_id()
 
                 warning_log(
-                    f"[{request_id}] INVALID. Finished but unable to validate the URL given by user={current_user.id}\n"
+                    f"[{request_id}] INVALID. Finished but unable to validate the URL given by User={current_user.id}\n"
                     + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                     + f"[{request_id}] url_string={normalized_url}\n"
                     + f"[{request_id}] request_headers={request.headers}\n"
@@ -607,7 +611,7 @@ def update_url(utub_id: int, utub_url_id: int):
             if url_already_in_utub:
                 # URL already exists in UTub
                 warning_log(
-                    f"User {current_user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_id}"
+                    f"User={current_user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_id}"
                 )
                 return (
                     jsonify(
@@ -620,22 +624,6 @@ def update_url(utub_id: int, utub_url_id: int):
                     ),
                     409,
                 )
-
-        # Now check if this normalized URL is the same as the original
-        if url_in_database.url_string == url_in_utub.standalone_url.url_string:
-            # Same URL after normalizing
-            warning_log(
-                "After normalizing, both URLs were the same.\ninput_url={url_to_change_to}\n{normalized_url={url_in_database.url_string}"
-            )
-            return jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.NO_CHANGE,
-                    STD_JSON.MESSAGE: URL_NO_CHANGE.URL_NOT_MODIFIED,
-                    URL_SUCCESS.UTUB_ID: utub.id,
-                    URL_SUCCESS.UTUB_NAME: utub.name,
-                    URL_SUCCESS.URL: serialized_url_in_utub,
-                }
-            )
 
         # Completely new URL. Now set the URL ID for the old URL to the new URL
         url_in_utub.url_id = url_in_database.id
@@ -665,7 +653,7 @@ def update_url(utub_id: int, utub_url_id: int):
 
     # Invalid form input
     if update_url_form.errors is not None:
-        warning_log(f"Invalid form: {turn_form_into_str_for_log(update_url_form)}")
+        warning_log(f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(update_url_form.errors)}")  # type: ignore
         return (
             jsonify(
                 {
