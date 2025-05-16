@@ -6,7 +6,11 @@ import pytest
 import redis
 import requests
 
-from src.extensions.url_validation.url_validator import InvalidURLError, UrlValidator
+from src.extensions.url_validation.url_validator import (
+    InvalidURLError,
+    UrlValidator,
+    WaybackRateLimited,
+)
 from src.models.urls import Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -18,6 +22,7 @@ from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from tests.models_for_test import valid_url_strings
+from tests.utils_for_test import is_string_in_logs, is_string_in_logs_regex
 
 pytestmark = pytest.mark.urls
 
@@ -886,7 +891,9 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
 @mock.patch(
     "src.extensions.url_validation.url_validator.UrlValidator._perform_head_request"
 )
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator._validate_host")
 def test_add_url_when_wayback_ratelimited(
+    mock_validate_host,
     mock_head_request,
     mock_get_request,
     mock_redis_from_url,
@@ -910,6 +917,7 @@ def test_add_url_when_wayback_ratelimited(
         STD_JSON.ERROR_CODE : 6
     }
     """
+    mock_validate_host.return_value = True
     mock_head_request.return_value = None
     mock_get_response = mock.Mock(spec=requests.Response)
     mock_get_response.status_code = 400
@@ -1404,3 +1412,411 @@ def test_add_duplicate_url_to_utub_does_not_update_utub_last_updated(
     with app.app_context():
         utub_to_check: Utubs = Utubs.query.get(id_of_utub_that_is_member_of)
         assert initial_last_updated == utub_to_check.last_updated
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_add_valid_existing_url_log(
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database but not associated with any UTubs
+    WHEN the user tries to add a (previously generated) URL to a UTub they are a part of
+        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
+    THEN ensure that the server responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a URL to add
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        mock_validate_url.return_value = url_string_to_add, True
+        url_title_to_add = f"This is {url_string_to_add}"
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 200
+    assert is_string_in_logs(
+        f"Finished checks for url_string='{url_string_to_add}'", caplog.records
+    )
+    assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
+    assert is_string_in_logs(
+        f"URL already exists in U4I, URL.id={url_to_add.id}", caplog.records
+    )
+    assert is_string_in_logs("Added URL to UTub", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_id_to_add_to}", caplog.records)
+    assert is_string_in_logs(f"URL.id={url_to_add.id}", caplog.records)
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_add_valid_fresh_url_log(
+    mock_validate_url,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database but not associated with any UTubs
+    WHEN the user tries to add a fresh URL to a UTub they are a part of
+        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
+    THEN ensure that the server responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    valid_url_to_add = valid_url_strings[0]
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a URL to add
+        mock_validate_url.return_value = valid_url_to_add, True
+        url_title_to_add = f"This is {valid_url_to_add}"
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: valid_url_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 200
+    assert is_string_in_logs(
+        f"Finished checks for url_string='{valid_url_to_add}'", caplog.records
+    )
+    assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
+    assert is_string_in_logs("Added URL to UTub", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_id_to_add_to}", caplog.records)
+
+    with app.app_context():
+        new_url = Urls.query.filter(Urls.url_string == valid_url_to_add).first()
+        assert is_string_in_logs(f"Added new URL, URL.id={new_url.id}", caplog.records)
+        assert is_string_in_logs(f"URL.id={new_url.id}", caplog.records)
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_add_unable_to_validate_fresh_url_log(
+    mock_validate_url,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database but not associated with any UTubs
+    WHEN the user tries to add a fresh URL to a UTub they are a part of but URL is fully tested and unable to be validated
+        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
+    THEN ensure that the server responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+    valid_url_to_add = valid_url_strings[0]
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a URL to add
+        mock_validate_url.return_value = valid_url_to_add, False
+        url_title_to_add = f"This is {valid_url_to_add}"
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: valid_url_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 200
+    assert is_string_in_logs(
+        f"Finished checks for url_string='{valid_url_to_add}'", caplog.records
+    )
+    assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
+    assert is_string_in_logs("Added URL to UTub", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_id_to_add_to}", caplog.records)
+
+    assert is_string_in_logs(
+        f"INVALID. Finished but unable to validate the URL given by User={user.id}",
+        caplog.records,
+    )
+    assert is_string_in_logs_regex(
+        r"(.*)[\s](.*)Took (\d).(\d+) ms to fail validation[\s](.*)[\s](.*)",
+        caplog.records,
+    )
+    assert is_string_in_logs(f"url_string={valid_url_to_add}", caplog.records)
+
+    with app.app_context():
+        new_url = Urls.query.filter(Urls.url_string == valid_url_to_add).first()
+        assert is_string_in_logs(f"Added new URL, URL.id={new_url.id}", caplog.records)
+        assert is_string_in_logs(f"URL.id={new_url.id}", caplog.records)
+
+
+def test_add_url_not_in_utub_log(
+    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN 3 users and 3 UTubs, with only the creator in each UTub
+    WHEN the user tries to add a URL to a UTub they are a not a member of
+        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
+    THEN ensure that the server responds with a 403 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+    url_string_to_add = valid_url_strings[0]
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_not_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a URL to add
+        url_title_to_add = f"This is {url_string_to_add}"
+        utub_id_to_add_to = current_utub_not_member_of.id
+
+    # Add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} tried adding a URL to UTub.id={utub_id_to_add_to}",
+        caplog.records,
+    )
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_add_invalid_url_log(
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database but not associated with any UTubs
+    WHEN the user tries to add an invalid URL to a UTub they are a part of
+        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
+    THEN ensure that the server responds with a 400 HTTP status code and the logs are valid
+    """
+    mock_validate_url.side_effect = InvalidURLError("Invalid URL")
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Try to add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: "AAAA",
+        URL_FORM.URL_TITLE: "This is AAAA",
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 400
+    assert is_string_in_logs(
+        f"Unable to validate the URL given by User={user.id}", caplog.records
+    )
+    assert is_string_in_logs_regex(
+        r"(.*)[\s](.*)Took (\d).(\d+) ms to fail validation[\s](.*)[\s](.*)",
+        caplog.records,
+    )
+    assert is_string_in_logs("url_string=AAAA", caplog.records)
+    assert is_string_in_logs("Exception=Invalid URL", caplog.records)
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_add_wayback_rate_limited_url_log(
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database but not associated with any UTubs
+    WHEN the user tries to add URL to a UTub they are a part of that is rate limited by Wayback
+        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
+    THEN ensure that the server responds with a 400 HTTP status code and the logs are valid
+    """
+    mock_validate_url.side_effect = WaybackRateLimited("Waybacked URL")
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Try to add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: "AAAA",
+        URL_FORM.URL_TITLE: "This is AAAA",
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 400
+    assert is_string_in_logs(
+        f"Unable to validate the URL given by User={user.id}", caplog.records
+    )
+    assert is_string_in_logs_regex(
+        r"(.*)[\s](.*)Took (\d).(\d+) ms to fail validation[\s](.*)[\s](.*)",
+        caplog.records,
+    )
+    assert is_string_in_logs("url_string=AAAA", caplog.records)
+    assert is_string_in_logs("Exception=Waybacked URL", caplog.records)
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_add_url_already_in_utub_log(
+    mock_validate_url,
+    add_all_urls_and_users_to_each_utub_no_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database and all URLs added to each UTub
+    WHEN the user tries to add a previously added URL to a UTub they are a part of
+        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
+    THEN ensure that the server responds with a 409 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a URL to add
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        mock_validate_url.return_value = url_string_to_add, True
+        url_title_to_add = f"This is {url_string_to_add}"
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+        URL_FORM.URL_TITLE: url_title_to_add,
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 409
+    assert is_string_in_logs(
+        f"Finished checks for url_string='{url_string_to_add}'", caplog.records
+    )
+    assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
+    assert is_string_in_logs(
+        f"URL already exists in U4I, URL.id={url_to_add.id}", caplog.records
+    )
+    assert is_string_in_logs(
+        f"User={user.id} tried adding URL.id={url_to_add.id} but already exists in UTub.id={utub_id_to_add_to}",
+        caplog.records,
+    )
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_add_url_invalid_form_log(
+    mock_validate_url,
+    add_urls_to_database,
+    every_user_in_every_utub,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and 3 URLs
+        added to the database and all URLs added to each UTub
+    WHEN the user tries to add a previously added URL to a UTub they are a part of with missing form data
+        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
+    THEN ensure that the server responds with a 400 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find a UTub this current user is a member of (and not creator of)
+        current_utub_member_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Grab a URL to add
+        url_to_add: Urls = Urls.query.first()
+        url_string_to_add = url_to_add.url_string
+        mock_validate_url.return_value = url_string_to_add, True
+        utub_id_to_add_to = current_utub_member_of.id
+
+    # Add the URL to the UTub
+    add_url_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token,
+        URL_FORM.URL_STRING: url_string_to_add,
+    }
+
+    add_url_response = client.post(
+        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
+    )
+
+    assert add_url_response.status_code == 400
+    assert is_string_in_logs(f"User={user.id}", caplog.records)
+    assert is_string_in_logs(
+        f"Invalid form: url_title={URL_FAILURE.FIELD_REQUIRED}", caplog.records
+    )

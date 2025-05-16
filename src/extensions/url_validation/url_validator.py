@@ -465,7 +465,9 @@ class UrlValidator:
                 )
                 if is_rate_limited:
                     critical_log("Rate limited using Wayback")
-                    raise WaybackRateLimited("Too many attempts, please wait a minute.")
+                    raise WaybackRateLimited(
+                        "Too many Wayback attempts, please wait a minute."
+                    )
 
                 wayback_url = VALIDATION_STRS.WAYBACK_ARCHIVE + str(year) + "/" + url
                 safe_add_log(f"Checking year {year} in Wayback | {wayback_url}")
@@ -489,7 +491,7 @@ class UrlValidator:
                     if is_rate_limited:
                         critical_log("Rate limited using Wayback in redirect")
                         raise WaybackRateLimited(
-                            "Too many attempts, please wait a minute."
+                            "Too many Wayback attempts, please wait a minute."
                         )
 
                     redirect_url = wayback_archive_response.headers.get(
@@ -530,7 +532,7 @@ class UrlValidator:
 
         except requests.exceptions.ConnectionError:
             warning_log("Connection error using Wayback")
-            raise WaybackRateLimited("Too many attempts, please wait a minute.")
+            raise WaybackRateLimited("Wayback experienced a ConnectionError")
 
     def _get_current_minute_window(self) -> int:
         return int(datetime.now().timestamp())

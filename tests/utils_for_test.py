@@ -67,3 +67,8 @@ def trim_and_parse_logs(logs: list[LogRecord]) -> list[str]:
 def is_string_in_logs(needle: str, log_records: list[LogRecord]) -> bool:
     logs = trim_and_parse_logs(log_records)
     return any([needle in haystack for haystack in logs])
+
+
+def is_string_in_logs_regex(needle: str, log_records: list[LogRecord]) -> bool:
+    logs = trim_and_parse_logs(log_records)
+    return any([re.match(needle, haystack) is not None for haystack in logs])

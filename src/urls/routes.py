@@ -142,7 +142,7 @@ def create_url(utub_id: int):
 
     if not user_in_utub:
         # Not authorized to add URL to this UTub
-        critical_log(f"User {current_user.id} tried adding a URL to UTub.id={utub_id}")
+        critical_log(f"User={current_user.id} tried adding a URL to UTub.id={utub_id}")
         return (
             jsonify(
                 {
@@ -167,13 +167,11 @@ def create_url(utub_id: int):
             )
 
         except InvalidURLError as e:
-            # TODO: Adding logging for this failed URL validation attempts
-            # URL was unable to be verified as a valid URL
             end = (time.perf_counter() - start) * 1000
             request_id = safe_get_request_id()
 
             warning_log(
-                f"[{request_id}] Unable to validate the URL given by user={current_user.id}\n"
+                f"[{request_id}] Unable to validate the URL given by User={current_user.id}\n"
                 + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                 + f"[{request_id}] url_string={url_string}\n"
                 + f"[{request_id}] Exception={str(e)}"
@@ -196,7 +194,7 @@ def create_url(utub_id: int):
             request_id = safe_get_request_id()
 
             warning_log(
-                f"[{request_id}] Unable to validate the URL given by user={current_user.id}\n"
+                f"[{request_id}] Unable to validate the URL given by User={current_user.id}\n"
                 + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                 + f"[{request_id}] url_string={url_string}\n"
                 + f"[{request_id}] Exception={str(e)}"
@@ -243,7 +241,7 @@ def create_url(utub_id: int):
             if not is_validated:
                 request_id = safe_get_request_id()
                 warning_log(
-                    f"[{request_id}] INVALID. Finished but unable to validate the URL given by user={current_user.id}\n"
+                    f"[{request_id}] INVALID. Finished but unable to validate the URL given by User={current_user.id}\n"
                     + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                     + f"[{request_id}] url_string={normalized_url}\n"
                 )
@@ -262,7 +260,7 @@ def create_url(utub_id: int):
             if utub_url_if_already_exists is not None:
                 # URL already exists in UTub
                 warning_log(
-                    f"User {current_user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_id}"
+                    f"User={current_user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_id}"
                 )
                 return (
                     jsonify(
@@ -314,7 +312,7 @@ def create_url(utub_id: int):
 
     # Invalid form input
     if utub_new_url_form.errors is not None:
-        warning_log(f"Invalid form: {turn_form_into_str_for_log(utub_new_url_form)}")
+        warning_log(f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_new_url_form.errors)}")  # type: ignore
         return (
             jsonify(
                 {
