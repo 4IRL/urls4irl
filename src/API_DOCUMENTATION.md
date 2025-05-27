@@ -2067,7 +2067,7 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 
 </details>
 <details>
- <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/tags/{tagID}</b></code> <code>(remove a tag from a URL in a UTub)</code></summary>
+ <summary><code>DELETE</code> <code><b>/utubs/{UTubID}/urls/{utubUrlID}/tags/{utubTagID}</b></code> <code>(remove a tag from a URL in a UTub)</code></summary>
 
 ##### Parameters
 
@@ -2075,7 +2075,7 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > |--------|------------|----------------|------------------------------------------------------|
 > | `UTubID` |  required  | int ($int64) | The unique ID of the UTub containing the URL |
 > | `utubUrlID` |  required  | int ($int64) | The unique ID of the UTub-URL with the tag to remove |
-> | `tagID` |  required  | int ($int64) | The unique ID of the tag to remove |
+> | `utubTagID` |  required  | int ($int64) | The unique ID of the tag to remove |
 
 ##### Responses
 

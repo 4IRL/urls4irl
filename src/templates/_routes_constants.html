@@ -41,11 +41,11 @@
                     "{{url_for('utub_url_tags.create_utub_url_tag', utub_id=-1, utub_url_id=-2)}}"
                         .replace("-1", utub_id)
                         .replace("-2", utub_url_id);
-                this.deleteURLTag = (utub_id, utub_url_id, utub_url_tag_id) =>
-                    "{{url_for('utub_url_tags.delete_utub_url_tag', utub_id=-1, utub_url_id=-2, utub_url_tag_id=-3)}}"
+                this.deleteURLTag = (utub_id, utub_url_id, utub_tag_id) =>
+                    "{{url_for('utub_url_tags.delete_utub_url_tag', utub_id=-1, utub_url_id=-2, utub_tag_id=-3)}}"
                         .replace("-1", utub_id)
                         .replace("-2", utub_url_id)
-                        .replace("-3", utub_url_tag_id);
+                        .replace("-3", utub_tag_id);
 
                 // UTub Tag routes
                 this.createUTubTag = (utub_id) =>
