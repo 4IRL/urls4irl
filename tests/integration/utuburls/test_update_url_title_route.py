@@ -12,6 +12,7 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.urls
 
@@ -1180,3 +1181,370 @@ def test_update_url_title_with_same_title_does_not_update_utub_last_updated(
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(utub_creator_of.id)
         assert current_utub.last_updated == initial_last_updated
+
+
+def test_update_url_title_log(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 200 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_TITLE = "This is my newest facebook.com!"
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_url_id = url_in_this_utub.id
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: NEW_TITLE,
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            utub_url_id=current_url_id,
+        ),
+        data=update_url_string_title_form,
+    )
+
+    assert update_url_string_title_form.status_code == 200
+    assert is_string_in_logs("URL title updated", caplog.records)
+
+
+def test_update_url_identical_title_log(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title to the same title, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 200 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_url_id = url_in_this_utub.id
+        current_url_title = url_in_this_utub.url_title
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: current_url_title,
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            utub_url_id=current_url_id,
+        ),
+        data=update_url_string_title_form,
+    )
+
+    assert update_url_string_title_form.status_code == 200
+    assert is_string_in_logs(
+        f"User={user.id} tried updating to identical URL title", caplog.records
+    )
+
+
+def test_update_url_title_nonexistent_url_log(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title for a nonexistent URL, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 404 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    NEW_TITLE = "This is my newest facebook.com!"
+    utub_url_id = 9999
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: NEW_TITLE,
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            utub_url_id=utub_url_id,
+        ),
+        data=update_url_string_title_form,
+    )
+
+    assert update_url_string_title_form.status_code == 404
+    assert is_string_in_logs(
+        f"User={user.id} tried to modify title for nonexistent UTubURL.id={utub_url_id} from UTub.id={utub_creator_of.id}",
+        caplog.records,
+    )
+
+
+def test_update_url_title_url_not_in_utub_log(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title for a URL that isn't in the prescribed UTub, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 404 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    NEW_TITLE = "This is my newest facebook.com!"
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != utub_creator_of.id
+        ).first()
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: NEW_TITLE,
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_title_form,
+    )
+
+    assert update_url_string_title_form.status_code == 404
+    assert is_string_in_logs(
+        f"User={user.id} tried to modify title for UTubURL.id={url_in_this_utub.id} that is not in UTub.id={utub_creator_of.id}",
+        caplog.records,
+    )
+
+
+def test_update_url_title_user_not_in_utub_log(
+    add_two_users_and_all_urls_to_each_utub_with_one_tag,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the user attempts to modify the URL title for a UTub they aren't, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 403 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    NEW_TITLE = "This is my newest facebook.com!"
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL of another UTub
+        url_not_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != utub_creator_of.id,
+            Utub_Urls.user_id != current_user.id,
+        ).first()
+        utub_id = url_not_in_this_utub.utub_id
+        current_url_id = url_not_in_this_utub.id
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: NEW_TITLE,
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_id,
+            utub_url_id=current_url_id,
+        ),
+        data=update_url_string_title_form,
+    )
+    assert update_url_string_title_form.status_code == 403
+    assert is_string_in_logs(f"User={user.id} not in UTub.id={utub_id}", caplog.records)
+
+
+def test_update_url_title_user_not_allowed_log(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title for a URL when the user isn't in the URL's UTub, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 403 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    NEW_TITLE = "This is my newest facebook.com!"
+    with app.app_context():
+        # Get UTub this user is only a member of
+        utub_member_of = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_member_of.id, Utub_Urls.user_id != current_user.id
+        ).first()
+        current_url_id = url_in_this_utub.id
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: NEW_TITLE,
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_member_of.id,
+            utub_url_id=current_url_id,
+        ),
+        data=update_url_string_title_form,
+    )
+
+    assert update_url_string_title_form.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} not allowed to modify UTubURL.id={current_url_id} in UTub.id={utub_member_of.id}",
+        caplog.records,
+    )
+
+
+def test_update_url_title_missing_title_field_log(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title with a missing title field, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 400 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_url_id = url_in_this_utub.id
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            utub_url_id=current_url_id,
+        ),
+        data=update_url_string_title_form,
+    )
+
+    assert update_url_string_title_form.status_code == 400
+    assert is_string_in_logs(f"User={user.id} missing URL title field", caplog.records)
+
+
+def test_update_url_title_empty_title_field_log(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
+    WHEN the creator attempts to modify the URL title with a missing title field, via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_TITLE: String of new title
+    THEN the server sends back a 400 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_url_id = url_in_this_utub.id
+
+    update_url_string_title_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_TITLE: "",
+    }
+
+    update_url_string_title_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL_TITLE,
+            utub_id=utub_creator_of.id,
+            utub_url_id=current_url_id,
+        ),
+        data=update_url_string_title_form,
+    )
+
+    assert update_url_string_title_form.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} | Invalid form: url_title={URL_FAILURE.FIELD_REQUIRED}",
+        caplog.records,
+    )

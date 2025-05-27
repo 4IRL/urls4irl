@@ -697,10 +697,16 @@ def update_url_title(utub_id: int, utub_url_id: int):
 
     # Search through all urls in the UTub for the one that matches the prescribed
     # URL ID and get the user who added it - should be only one
-    url_in_utub: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
+    url_in_utub: Utub_Urls | None = Utub_Urls.query.get(utub_url_id)
+    if url_in_utub is None:
+        critical_log(
+            f"User={current_user.id} tried to modify title for nonexistent UTubURL.id={utub_url_id} from UTub.id={utub_id}"
+        )
+        abort(404)
+
     if url_in_utub.utub_id != utub_id:
         critical_log(
-            f"User {current_user.id} tried to remove UTubURL.id={utub_url_id} from invalid UTub.id{utub_id}"
+            f"User={current_user.id} tried to modify title for UTubURL.id={utub_url_id} that is not in UTub.id={utub_id}"
         )
         abort(404)
 
@@ -712,10 +718,10 @@ def update_url_title(utub_id: int, utub_url_id: int):
     if not user_in_utub or not user_added_url_or_is_utub_creator:
         # Can only modify titles for URLs you added, or if you are the creator of this UTub
         if not user_in_utub:
-            critical_log(f"User {current_user.id} not in UTub.id={utub_id}")
+            critical_log(f"User={current_user.id} not in UTub.id={utub_id}")
         else:
             critical_log(
-                f"User {current_user.id} not allowed to modify UTubURL.id={utub_url_id} in UTub.id{utub_id}"
+                f"User={current_user.id} not allowed to modify UTubURL.id={utub_url_id} in UTub.id={utub_id}"
             )
         return (
             jsonify(
@@ -747,7 +753,7 @@ def update_url_title(utub_id: int, utub_url_id: int):
             db.session.commit()
             safe_add_log("URL title updated")
         else:
-            warning_log(f"User {current_user.id} tried updating to identical URL title")
+            warning_log(f"User={current_user.id} tried updating to identical URL title")
 
         return jsonify(
             {
@@ -763,7 +769,7 @@ def update_url_title(utub_id: int, utub_url_id: int):
 
     # Missing URL title field
     if update_url_title_form.url_title.data is None:
-        warning_log(f"User {current_user.id} missing URL Title field")
+        warning_log(f"User={current_user.id} missing URL title field")
         return (
             jsonify(
                 {
@@ -781,7 +787,7 @@ def update_url_title(utub_id: int, utub_url_id: int):
     # Invalid form input
     if update_url_title_form.errors is not None:
         warning_log(
-            f"Invalid form: {turn_form_into_str_for_log(update_url_title_form)}"
+            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(update_url_title_form.errors)}"  # type: ignore
         )
         return (
             jsonify(
