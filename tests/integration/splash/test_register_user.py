@@ -7,7 +7,7 @@ from werkzeug.security import check_password_hash
 from src.utils.constants import USER_CONSTANTS
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
-from tests.utils_for_test import get_csrf_token
+from tests.utils_for_test import get_csrf_token, is_string_in_logs
 from src.models.users import Users
 from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -331,3 +331,46 @@ def test_register_user_missing_csrf(app, load_register_page):
         ).first()
 
     assert new_db_user is None
+
+
+def test_register_new_user_log(app, load_register_page, caplog):
+    """
+    GIVEN a new, unregistered user to the page
+    WHEN they register to an empty database, and POST to "/register" correctly
+    THEN ensure they are logged in and logs are valid
+    """
+    client, csrf_token_string = load_register_page
+
+    new_user = deepcopy(valid_user_1)
+    new_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
+
+    # Ensure no user with this data exists in database
+    with app.app_context():
+        assert (
+            Users.query.filter(
+                Users.username == new_user[REGISTER_FORM.USERNAME]
+            ).first()
+            is None
+        )
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER), data=new_user, follow_redirects=True
+    )
+
+    # Correctly sends URL to email validation modal
+    assert response.status_code == 201
+    assert (
+        b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
+        in response.data
+    )
+
+    # Test if user logged in
+    assert current_user.username == new_user[REGISTER_FORM.USERNAME]
+    with app.app_context():
+        user: Users = Users.query.filter(
+            Users.username == new_user[REGISTER_FORM.USERNAME]
+        ).first()
+        assert is_string_in_logs(
+            f"User={user.id} successfully registered but not email validated",
+            caplog.records,
+        )

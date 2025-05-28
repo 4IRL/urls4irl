@@ -9,6 +9,7 @@ from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
+from src.utils.constants import TAG_CONSTANTS
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import all_tag_strings
 from src.utils.all_routes import ROUTES
@@ -16,6 +17,7 @@ from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.tags
 
@@ -1183,8 +1185,8 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
 ):
     """
     GIVEN 3 users, 3 UTubs, and 3 Tags, with all users in each UTub, and the currently logged in user is a creator of a UTub,
-        one URL exists in each UTub, 8 Tags exist, and 5 tags are applied to a single URL in a UTub
-    WHEN the user tries to add a tag to the same URL with 5 tags in a UTub they are a creator of
+        one URL exists in each UTub, 8 Tags exist, and max tags are applied to a single URL in a UTub
+    WHEN the user tries to add a tag to the same URL with max tags in a UTub they are a creator of
         - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
             "utub_url_id": An integer representing URL ID to add tag to
@@ -1198,7 +1200,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
         STD_JSON.ERROR_CODE : 2
     }
     """
-    MAX_NUM_OF_TAGS = 5
+    MAX_NUM_OF_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
     NEW_TAG_ABOVE_LIMIT = "OVER LIMIT TAG"
     client, csrf_token, _, app = login_first_user_without_register
 
@@ -1286,7 +1288,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
             == 0
         )
 
-        # Ensure 5 tags on this URL
+        # Ensure max tags on this URL
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
@@ -1315,8 +1317,8 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
 ):
     """
     GIVEN 3 users, 3 UTubs, and 3 Tags, with all users in each UTub, and the currently logged in user is a member of a UTub,
-        one URL exists in each UTub, 8 Tags exist, and 5 tags are applied to a single URL that this user did add
-    WHEN the user tries to add a tag to the same URL with 5 tags in a UTub they are a member of
+        one URL exists in each UTub, 8 Tags exist, and max tags are applied to a single URL that this user did add
+    WHEN the user tries to add a tag to the same URL with max tags in a UTub they are a member of
         - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
             "utub_id" : An integer representing UTub ID,
             "utub_url_id": An integer representing URL ID to add tag to
@@ -1330,7 +1332,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
         STD_JSON.ERROR_CODE : 2
     }
     """
-    MAX_NUM_OF_TAGS = 5
+    MAX_NUM_OF_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
     client, csrf_token, _, app = login_second_user_without_register
     tag_to_add = all_tag_strings[0]
 
@@ -1418,7 +1420,7 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
             == 0
         )
 
-        # Ensure 5 tags on this URL
+        # Ensure max tags on this URL
         assert (
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
@@ -1936,3 +1938,357 @@ def test_add_duplicate_tag_to_url_does_not_update_utub_last_updated(
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(utub_id_user_is_creator_of)
         assert current_utub.last_updated == initial_last_updated
+
+
+def test_add_fresh_tag_to_valid_url_log(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register, caplog
+):
+    """
+    GIVEN 3 users and 3 UTubs, with only the creator of the UTub in each UTub, and no existing tags or
+        Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
+        URL exists in each UTub, added by the creator
+    WHEN the user tries to add a new tag to the URL they added
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
+            "utub_id" : An integer representing UTub ID,
+            "utub_url_id": An integer representing URL ID to add tag to
+    THEN ensure that the server responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    tag_to_add = all_tag_strings[0]
+
+    with app.app_context():
+        # Find UTub this current user is creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Get URL that is in this UTub, added by this user
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_to_add_tag_to = url_utub_association.id
+
+    # Add tag to this URL
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_to_add,
+    }
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_to_add_tag_to,
+        ),
+        data=add_tag_form,
+    )
+
+    assert add_tag_response.status_code == 200
+    assert is_string_in_logs("Added new UTubTag", caplog.records)
+    assert is_string_in_logs("Added new UTubURLTag", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_id_user_is_creator_of}", caplog.records)
+    assert is_string_in_logs(f"UTubURL.id={url_id_to_add_tag_to}", caplog.records)
+    assert is_string_in_logs(f"UTubTag.tag_string={tag_to_add}", caplog.records)
+
+    with app.app_context():
+        utub_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.tag_string == tag_to_add
+        ).first()
+        assert is_string_in_logs(f"UTubTag.id={utub_tag.id}", caplog.records)
+
+        utub_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_tag_id == utub_tag.id,
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+        ).first()
+
+        assert is_string_in_logs(f"UTubURLTag.id={utub_url_tag.id}", caplog.records)
+
+
+def test_add_tag_to_url_not_in_utub_log(
+    add_one_url_to_each_utub_no_tags,
+    add_tags_to_utubs,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users, 3 UTubs, and 3 Tags, with only one user (the creator) in each UTub, and the currently logged in user is a creator of a UTub,
+        and one URL exists in each UTub, and 3 Tags exist but are not applied to any URLs
+    WHEN the user tries to add a tag to a URL that doesn't exist in their UTub
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
+            "utub_id" : An integer representing UTub ID,
+            "utub_url_id": An integer representing URL ID to add tag to
+    THEN ensure that the server responds with a 404 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+    tag_to_add = all_tag_strings[0]
+
+    with app.app_context():
+        # Find UTub that current user is creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Find URL that isn't in this UTub
+        url_association_not_with_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != utub_id_user_is_creator_of
+        ).first()
+        url_id_for_url_not_in_utub = url_association_not_with_this_utub.id
+
+    # Add tag to this URL
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_to_add,
+    }
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_for_url_not_in_utub,
+        ),
+        data=add_tag_form,
+    )
+
+    assert add_tag_response.status_code == 404
+    assert is_string_in_logs(
+        f"User={user.id} tried adding a tag to UTubURL.id={url_id_for_url_not_in_utub} in UTub.id={utub_id_user_is_creator_of} but UTubURL.id={url_id_for_url_not_in_utub} in UTub.id={url_association_not_with_this_utub.utub_id}",
+        caplog.records,
+    )
+
+
+def test_add_tag_to_url_in_utub_user_is_not_member_of_log(
+    add_one_url_to_each_utub_no_tags,
+    add_tags_to_utubs,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users, 3 UTubs, and 3 Tags, with only one user (the creator) in each UTub, and the currently logged in user is a creator of a UTub,
+        and one URL exists in each UTub, and 3 Tags exist but are not applied to any URLs
+    WHEN the user tries to add a tag to a URL in a UTub they are not a member or creator of
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
+            "utub_id" : An integer representing UTub ID,
+            "utub_url_id": An integer representing URL ID to add tag to
+    THEN ensure that the server responds with a 404 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+    tag_to_add = all_tag_strings[0]
+
+    with app.app_context():
+        # Find UTub that current user is not member of
+        utub_user_association_not_member_of = Utub_Members.query.filter(
+            Utub_Members.user_id != current_user.id
+        ).first()
+        utub_user_not_member_of: Utubs = utub_user_association_not_member_of.to_utub
+        utub_id_that_user_not_member_of = utub_user_not_member_of.id
+
+        # Find URL in this UTub
+        url_association_with_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_that_user_not_member_of
+        ).first()
+        url_id_for_url_in_utub: int = url_association_with_this_utub.id
+
+    # Add tag to this URL
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_to_add,
+    }
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_that_user_not_member_of,
+            utub_url_id=url_id_for_url_in_utub,
+        ),
+        data=add_tag_form,
+    )
+
+    assert add_tag_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} tried adding tag to UTubURL.id={url_id_for_url_in_utub} but User={user.id} not in UTub.id={utub_id_that_user_not_member_of}",
+        caplog.records,
+    )
+
+
+def test_add_tag_to_url_with_max_tags_log(
+    add_one_url_and_all_users_to_each_utub_no_tags,
+    add_tags_to_utubs,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users, 3 UTubs, and 3 Tags, with all users in each UTub, and the currently logged in user is a creator of a UTub,
+        one URL exists in each UTub, 8 Tags exist, and max tags are applied to a single URL in a UTub
+    WHEN the user tries to add a tag to the same URL with max tags in a UTub they are a creator of
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
+            "utub_id" : An integer representing UTub ID,
+            "utub_url_id": An integer representing URL ID to add tag to
+    THEN ensure that the server responds with a 400 HTTP status code and the logs are valid
+    """
+    MAX_NUM_OF_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
+    NEW_TAG_ABOVE_LIMIT = "OVER LIMIT TAG"
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get UTub this user is creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Get all tags
+        all_tags: list[Utub_Tags] = Utub_Tags.query.all()
+
+        # Get a URL in this UTub that this user added
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_in_this_utub = url_in_this_utub.id
+
+        # Add five tags to this URL
+        for idx in range(MAX_NUM_OF_TAGS):
+            previously_added_tag_to_add = all_tags[idx]
+            new_url_tag_association = Utub_Url_Tags()
+            new_url_tag_association.utub_tag_id = previously_added_tag_to_add.id
+            new_url_tag_association.utub_url_id = url_id_in_this_utub
+            new_url_tag_association.utub_id = utub_id_user_is_creator_of
+
+            db.session.add(new_url_tag_association)
+
+        db.session.commit()
+
+    # Add tag to this URL
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: NEW_TAG_ABOVE_LIMIT,
+    }
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_in_this_utub,
+        ),
+        data=add_tag_form,
+    )
+
+    assert add_tag_response.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} tried adding tag to UTubURL.id={url_id_in_this_utub} but UTubURL.id={url_id_in_this_utub} tag limited",
+        caplog.records,
+    )
+
+
+def test_add_duplicate_tag_to_valid_url_log(
+    add_all_urls_and_users_to_each_utub_with_one_tag,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN 3 users, 3 UTubs, 3 URLs, and 3 Tags, with only the creator of the UTub in each UTub, and the currently logged in user is a creator of a UTub,
+        and 3 URLs exists in each UTub, added by the user with the same ID as the URL, and each URL has a tag on it that has the identical tag ID as the URL
+    WHEN the user tries to add a tag to a URL that already has that tag on it
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
+            "utub_id" : An integer representing UTub ID,
+            "utub_url_id": An integer representing URL ID to add tag to
+    THEN ensure that the server responds with a 400 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find UTub this current user is creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Get URL that is in this UTub, added by this user
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_to_add_tag_to = url_utub_association.id
+
+        tag_on_url_in_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+        ).first()
+
+        tag_on_url_in_utub: Utub_Tags = tag_on_url_in_utub_association.utub_tag_item
+        tag_to_add = tag_on_url_in_utub.tag_string
+
+    # Add tag to this URL
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_to_add,
+    }
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_to_add_tag_to,
+        ),
+        data=add_tag_form,
+    )
+
+    assert add_tag_response.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} tried adding UTubTag.tag_string={tag_to_add} to UTubURL.id={url_id_to_add_tag_to} but already on UTubURL",
+        caplog.records,
+    )
+
+
+def test_add_tag_to_valid_url_valid_utub_missing_tag_field_log(
+    add_one_url_to_each_utub_no_tags, login_first_user_without_register, caplog
+):
+    """
+    GIVEN 3 users and 3 UTubs, with only the creator of the UTub in each UTub, and no existing tags or
+        Tag-URL-UTub associations, and the currently logged in user is a creator of a UTub, and one
+        URL exists in each UTub, added by the creator
+    WHEN the user tries to add a new tag to the URL they added but the TAG_FORM.TAG_STRING field is missing
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
+            "utub_id" : An integer representing UTub ID,
+            "utub_url_id": An integer representing URL ID to add tag to
+    THEN ensure that the server responds with a 400 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find UTub this current user is creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
+        # Get URL that is in this UTub, added by this user
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_to_add_tag_to = url_utub_association.id
+
+    # Add tag to this URL
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+    }
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_to_add_tag_to,
+        ),
+        data=add_tag_form,
+    )
+
+    assert add_tag_response.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} | Invalid form: tag_string={TAGS_FAILURE.FIELD_REQUIRED}",
+        caplog.records,
+    )

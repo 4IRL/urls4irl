@@ -2,10 +2,9 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src import db
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
@@ -14,6 +13,7 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
 
@@ -487,7 +487,7 @@ def test_delete_utub_as_not_member_or_creator(
 
 
 def test_delete_utub_as_member_only(
-    every_user_makes_a_unique_utub, login_first_user_without_register
+    every_user_in_every_utub, login_first_user_without_register
 ):
     """
     GIVEN three sets of users, with each user having created their own UTub
@@ -505,34 +505,17 @@ def test_delete_utub_as_member_only(
 
     with app.app_context():
         # Get the UTubs from the database that this member is not a part of
-        user_not_in_these_utubs: list[Utub_Members] = Utub_Members.query.filter(
-            Utub_Members.user_id != current_user.id
+        user_member_of_utubs: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role == Member_Role.MEMBER,
         ).all()
-        # Make sure that only 2 utubs-user associations exist, one for each utub/user combo
-        original_count_of_user_not_in_utubs = len(user_not_in_these_utubs)
-
-        # Add the current logged in user to the UTub's it is not a part of
-        for utub_not_part_of in user_not_in_these_utubs:
-            utub_to_join = utub_not_part_of.utub_id
-            new_utub_user_association = Utub_Members(utub_id=utub_to_join, user_id=_.id)
-            new_utub_user_association.to_user = current_user
-            new_utub_user_association.to_utub = Utubs.query.get(utub_to_join)
-            db.session.add(new_utub_user_association)
-            db.session.commit()
-
-        # Assert current user is in all UTubs
-        all_utubs: list[Utubs] = Utubs.query.all()
-        for utub in all_utubs:
-            assert Utub_Members.query.get((utub.id, current_user.id)) is not None
+        only_member_in_these_utubs = [member.utub_id for member in user_member_of_utubs]
 
         initial_num_utubs = Utubs.query.count()
 
-        # The logged in user should now be a member of the utubs they weren't a part of before
-        only_member_in_these_utubs = [utub.utub_id for utub in user_not_in_these_utubs]
-
-    for utub_id_not_in in only_member_in_these_utubs:
+    for utub_id_member_of in only_member_in_these_utubs:
         delete_utub_response = client.delete(
-            url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_not_in),
+            url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_member_of),
             data={UTUB_FORM.CSRF_TOKEN: csrf_token},
         )
 
@@ -545,12 +528,58 @@ def test_delete_utub_as_member_only(
             delete_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
         )
 
-        with app.app_context():
-            user_not_in_these_utubs = Utub_Members.query.filter(
-                Utub_Members.user_id != current_user.id
-            ).all()
-            assert len(user_not_in_these_utubs) == original_count_of_user_not_in_utubs
-
     with app.app_context():
         # Make sure all 3 test UTubs are still available in the database
         assert Utubs.query.count() == initial_num_utubs
+
+
+def test_delete_success_logs(add_single_utub_as_user_after_logging_in, caplog):
+    """
+    GIVEN a valid existing user and a UTub they have created
+    WHEN the user requests to delete the UTub via a DELETE to "/utubs/<int: utub_id>"
+    THEN ensure that a 200 status code response is given, and the logs are correct
+    """
+    client, utub_id, csrf_token, _ = add_single_utub_as_user_after_logging_in
+
+    utub_name = valid_empty_utub_1[UTUB_FORM.NAME]
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id),
+        data={UTUB_FORM.CSRF_TOKEN: csrf_token},
+    )
+
+    assert delete_utub_response.status_code == 200
+    assert is_string_in_logs("Deleted UTub", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_id}", caplog.records)
+    assert is_string_in_logs(f"UTub.name={utub_name}", caplog.records)
+
+
+def test_delete_utub_as_member_logs(
+    every_user_in_every_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN three sets of users, with each user having created their own UTub
+    WHEN one user who is a member of all three UTubs,
+        tries to delete the other two users' UTubs via DELETE to "/utubs/<int: utub_id>"
+    THEN ensure response status code is 403, and the logs are correct
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user.id,
+            Utub_Members.member_role == Member_Role.MEMBER,
+        ).first()
+        utub_id_member_of = member.utub_id
+        utub: Utubs = member.to_utub
+        utub_name = utub.name
+
+    delete_utub_response = client.delete(
+        url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_id_member_of),
+        data={UTUB_FORM.CSRF_TOKEN: csrf_token},
+    )
+
+    assert delete_utub_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} is not the creator of UTub.id={utub_id_member_of} | UTub.name={utub_name}",
+        caplog.records,
+    )

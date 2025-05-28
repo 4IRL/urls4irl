@@ -14,6 +14,7 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.members
 
@@ -763,3 +764,169 @@ def test_add_duplicate_user_to_utub_does_not_update_utub_last_updated(
     with app.app_context():
         current_user_utub: Utubs = Utubs.query.get(current_user_utub_id)
         assert current_user_utub.last_updated == initial_last_updated
+
+
+def test_add_valid_users_to_utub_success_log(
+    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
+    WHEN the user wants to add another valid user to their UTub by POST to "/utubs/<int:utub_id>/members"
+    THEN ensure that the backend responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    # Get the other users' usernames and this user's UTub, assuming 3 valid users
+    with app.app_context():
+        other_user: Users = Users.query.filter(
+            Users.username != current_user.username
+        ).first()
+        other_username = other_user.username
+        other_user_id = other_user.id
+
+        utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role == Member_Role.CREATOR,
+        ).first()
+        utub_of_current_user: Utubs = utub_member.to_utub
+        utub_id_of_current_user = utub_of_current_user.id
+
+    # Add the other users to the current user's UTubs
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+        ADD_USER_FORM.USERNAME: other_username,
+    }
+
+    added_user_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
+        data=add_user_form,
+    )
+
+    # Assert correct status code
+    assert added_user_response.status_code == 200
+    assert is_string_in_logs(f"UTub.id={utub_id_of_current_user}", caplog.records)
+    assert is_string_in_logs(f"Added User={other_user_id}", caplog.records)
+
+
+def test_add_duplicate_user_to_utub_log(
+    every_user_in_every_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
+    WHEN the user wants to add an already added user to their UTub by POST to "/utubs/<int:utub_id>/members"
+    THEN ensure that the backend responds with a 400 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    # Get the other users' usernames and this user's UTub, assuming 3 valid users
+    with app.app_context():
+        other_user: Users = Users.query.filter(
+            Users.username != current_user.username
+        ).first()
+        other_username = other_user.username
+        other_user_id = other_user.id
+
+        utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role == Member_Role.CREATOR,
+        ).first()
+        utub_of_current_user: Utubs = utub_member.to_utub
+        utub_id_of_current_user = utub_of_current_user.id
+
+    # Add the other users to the current user's UTubs
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+        ADD_USER_FORM.USERNAME: other_username,
+    }
+
+    added_user_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
+        data=add_user_form,
+    )
+
+    # Assert correct status code
+    assert added_user_response.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} tried adding a User={other_user_id} already in this UTub",
+        caplog.records,
+    )
+
+
+def test_add_user_to_utub_invalid_log(
+    every_user_in_every_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
+    WHEN the user wants to add a user to their UTub by POST to "/utubs/<int:utub_id>/members" with an invalid form
+    THEN ensure that the backend responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    # Get the other users' usernames and this user's UTub, assuming 3 valid users
+    with app.app_context():
+        utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role == Member_Role.CREATOR,
+        ).first()
+        utub_of_current_user: Utubs = utub_member.to_utub
+        utub_id_of_current_user = utub_of_current_user.id
+
+    # Add the other users to the current user's UTubs
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+    }
+
+    added_user_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
+        data=add_user_form,
+    )
+
+    # Assert correct status code
+    assert added_user_response.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} | Invalid form: username={MEMBER_FAILURE.FIELD_REQUIRED}",
+        caplog.records,
+    )
+
+
+def test_add_user_as_member_invalid_log(
+    every_user_in_every_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
+    WHEN the user wants to add a user to their UTub by POST to "/utubs/<int:utub_id>/members" with an invalid form
+    THEN ensure that the backend responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    # Get the other users' usernames and this user's UTub, assuming 3 valid users
+    with app.app_context():
+        other_user: Users = Users.query.filter(
+            Users.username != current_user.username
+        ).first()
+        other_username = other_user.username
+
+        utub_member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == current_user.id,
+            Utub_Members.member_role != Member_Role.CREATOR,
+        ).first()
+        utub_of_current_user: Utubs = utub_member.to_utub
+        utub_id_of_current_user = utub_of_current_user.id
+
+    # Add the other users to the current user's UTubs
+    add_user_form = {
+        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
+        ADD_USER_FORM.USERNAME: other_username,
+    }
+
+    added_user_response = client.post(
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
+        data=add_user_form,
+    )
+
+    # Assert correct status code
+    assert added_user_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} tried adding a member to UTub.id={utub_id_of_current_user}",
+        caplog.records,
+    )

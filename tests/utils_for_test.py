@@ -1,5 +1,5 @@
-# Standard library
 import re
+from logging import LogRecord
 
 import sqlalchemy
 
@@ -41,3 +41,34 @@ def clear_database(test_config: ConfigTest):
     meta.reflect()
     meta.drop_all()
     meta.create_all()
+
+
+def trim_and_parse_logs(logs: list[LogRecord]) -> list[str]:
+    """
+    Remove first and last logs for an endpoint's logs as they do not contain unique data to test for
+
+    Request: GET /home                                      # Not being tested for
+    [BEGIN] Returning user's UTubs on home page load [END]  # Being tested for
+    Response: 200 completed in 109.63ms                     # Not being tested for
+
+    Args:
+        logs (list[LogRecord]): Raw LogRecords for a request
+
+    Returns:
+        list[str]: Log messages that aren't the first or last log
+    """
+    return [
+        record.getMessage()
+        for idx, record in enumerate(logs)
+        if idx not in (0, len(logs) - 1)
+    ]
+
+
+def is_string_in_logs(needle: str, log_records: list[LogRecord]) -> bool:
+    logs = trim_and_parse_logs(log_records)
+    return any([needle in haystack for haystack in logs])
+
+
+def is_string_in_logs_regex(needle: str, log_records: list[LogRecord]) -> bool:
+    logs = trim_and_parse_logs(log_records)
+    return any([re.match(needle, haystack) is not None for haystack in logs])

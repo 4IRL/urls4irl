@@ -2,6 +2,13 @@ from flask import abort, Blueprint, jsonify
 from flask_login import current_user
 
 from src import db
+from src.app_logger import (
+    critical_log,
+    safe_add_log,
+    safe_add_many_logs,
+    turn_form_into_str_for_log,
+    warning_log,
+)
 from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
@@ -27,14 +34,17 @@ STD_JSON = STD_JSON_RESPONSE
 def create_utub_url_tag(utub_id: int, utub_url_id: int):
     """
     User wants to add a tag to a URL. 5 tags per URL.
-    # TODO: Do not allow empty tags
 
     Args:
         utub_id (int): The utub that this user is being added to
         url_id (int): The URL this user wants to add a tag to
     """
+    # TODO: Do not allow empty tags
     utub_url_association: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
     if utub_url_association.utub_id != utub_id:
+        warning_log(
+            f"User={current_user.id} tried adding a tag to UTubURL.id={utub_url_id} in UTub.id={utub_id} but UTubURL.id={utub_url_id} in UTub.id={utub_url_association.utub_id}"
+        )
         abort(404)
 
     utub: Utubs = utub_url_association.utub
@@ -42,6 +52,9 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
 
     if not user_in_utub:
         # How did a user not in this utub get access to add a tag to this URL?
+        critical_log(
+            f"User={current_user.id} tried adding tag to UTubURL.id={utub_url_id} but User={current_user.id} not in UTub.id={utub_id}!"
+        )
         return (
             jsonify(
                 {
@@ -64,6 +77,9 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
 
         if len(tags_already_on_this_url) >= TAG_CONSTANTS.MAX_URL_TAGS:
             # Cannot have more than 5 tags on a URL
+            warning_log(
+                f"User={current_user.id} tried adding tag to UTubURL.id={utub_url_id} but UTubURL.id={utub_url_id} tag limited"
+            )
             return (
                 jsonify(
                     {
@@ -87,6 +103,9 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
             ]
 
             if this_tag_is_already_on_this_url:
+                warning_log(
+                    f"User={current_user.id} tried adding UTubTag.tag_string={tag_to_add} to UTubURL.id={utub_url_id} but already on UTubURL"
+                )
                 return (
                     jsonify(
                         {
@@ -113,6 +132,7 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
             )
             db.session.add(new_utub_tag)
             db.session.commit()
+            safe_add_log("Added new UTubTag")
             utub_url_tag = Utub_Url_Tags(
                 utub_id=utub_id, utub_url_id=utub_url_id, utub_tag_id=new_utub_tag.id
             )
@@ -123,6 +143,16 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
         db.session.commit()
 
         # Successfully added tag to URL on UTub
+        safe_add_many_logs(
+            [
+                "Added new UTubURLTag",
+                f"UTub.id={utub_id}",
+                f"UTubURL.id={utub_url_id}",
+                f"UTubTag.id={tag_model.id}",
+                f"UTubTag.tag_string={tag_model.tag_string}",
+                f"UTubURLTag.id={utub_url_tag.id}",
+            ]
+        )
         return (
             jsonify(
                 {
@@ -138,6 +168,9 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
     # Input form errors
     if url_tag_form.errors is not None:
         errors = {MODELS.TAG_STRING: url_tag_form.tag_string.errors}
+        warning_log(
+            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(url_tag_form.errors)}"  # type: ignore
+        )
         return (
             jsonify(
                 {
@@ -150,6 +183,9 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
             400,
         )
 
+    critical_log(
+        f"User={current_user.id} failed to add tag to UTubURL.id={utub_url_id} in UTub.id={utub_id}"
+    )
     return (
         jsonify(
             {
@@ -163,23 +199,26 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
 
 
 @utub_url_tags.route(
-    "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_url_tag_id>",
+    "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags/<int:utub_tag_id>",
     methods=["DELETE"],
 )
 @email_validation_required
-def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_url_tag_id: int):
+def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_tag_id: int):
     """
     User wants to delete a tag from a URL contained in a UTub.
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted
         url_id (int): The ID of the URL containing tag to be deleted
-        utub_url_tag_id (int): The ID of the tag to be deleted
+        utub_tag_id (int): The ID of the tag to be deleted
     """
     utub: Utubs = Utubs.query.get_or_404(utub_id)
     user_in_utub = Utub_Members.query.get((utub_id, current_user.id)) is not None
 
     if not user_in_utub:
+        critical_log(
+            f"User={current_user.id} tried to remove UTubTag.id={utub_tag_id} from UTubURL.id={utub_url_id} but user not in UTub.id={utub_id}"
+        )
         return (
             jsonify(
                 {
@@ -194,7 +233,7 @@ def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_url_tag_id: int):
     tag_for_url_in_utub: Utub_Url_Tags = Utub_Url_Tags.query.filter(
         Utub_Url_Tags.utub_id == utub_id,
         Utub_Url_Tags.utub_url_id == utub_url_id,
-        Utub_Url_Tags.utub_tag_id == utub_url_tag_id,
+        Utub_Url_Tags.utub_tag_id == utub_tag_id,
     ).first_or_404()
     url_id_to_remove_tag = tag_for_url_in_utub.utub_url_id
     tag_to_remove: Utub_Tags = tag_for_url_in_utub.utub_tag_item
@@ -204,6 +243,17 @@ def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_url_tag_id: int):
     db.session.commit()
 
     url_utub_association: Utub_Urls = Utub_Urls.query.get_or_404(url_id_to_remove_tag)
+
+    safe_add_many_logs(
+        [
+            "Removed UTubURLTag",
+            f"UTub.id={utub_id}",
+            f"UTubURL.id={utub_url_id}",
+            f"UTubTag.id={tag_to_remove.id}",
+            f"UTubTag.tag_string={tag_to_remove.tag_string}",
+            f"UTubURLTag.id={utub_tag_id}",
+        ]
+    )
 
     return (
         jsonify(

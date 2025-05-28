@@ -12,6 +12,7 @@ from src.utils.strings.form_strs import UTUB_DESCRIPTION_FORM
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs
 
@@ -395,7 +396,7 @@ def test_update_utub_description_fully_sanitized(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESCRIPTION
-        STD_JSON.ERROR_CODE: 2
+        STD_JSON.ERROR_CODE: 3
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing name field:
             {
@@ -1103,3 +1104,196 @@ def test_update_utub_desc_same_desc_does_not_update_utub_last_updated(
         updated_utub: Utubs = Utubs.query.filter(Utubs.id == current_utub_id).first()
 
         assert updated_utub.last_updated == initial_last_updated
+
+
+def test_update_utub_description_success_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
+    WHEN the creator attempts to modify the UTub description to a new description, via a POST to
+        "/utubs/<utub_id: int>/description" with valid form data
+    THEN verify that the logs are valid
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    UPDATE_TEXT = "This is my new UTub description. 123456"
+    # Grab this creator's UTub
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        current_utub_id = utub_of_user.id
+        current_utub_description = utub_of_user.utub_description
+
+    utub_desc_form = {
+        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
+
+    update_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        data=utub_desc_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_desc_response.status_code == 200
+    assert is_string_in_logs(f"UTub.id={current_utub_id}", caplog.records)
+    assert is_string_in_logs(
+        f"OLD UTub.description={current_utub_description}", caplog.records
+    )
+    assert is_string_in_logs(f"NEW UTub.description={UPDATE_TEXT}", caplog.records)
+
+
+def test_update_utub_description_same_description_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
+    WHEN the creator attempts to modify the UTub description to a new description, via a POST to
+        "/utubs/<utub_id: int>/description" with valid form data using the original UTub description
+    THEN verify that the logs are valid
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    # Grab this creator's UTub
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        current_utub_id = utub_of_user.id
+        current_utub_description = utub_of_user.utub_description
+
+    utub_desc_form = {
+        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: current_utub_description,
+    }
+
+    update_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        data=utub_desc_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_desc_response.status_code == 200
+    assert is_string_in_logs("No change in UTub description", caplog.records)
+
+
+def test_update_utub_description_invalid_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
+    WHEN the creator attempts to modify the UTub description to a new description, via a POST to
+        "/utubs/<utub_id: int>/description" with valid form data and unsanitized input
+    THEN verify that the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    UPDATE_TEXT = '<img src="evl.jpg">'
+    # Grab this creator's UTub
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        current_utub_id = utub_of_user.id
+
+    utub_desc_form = {
+        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
+    }
+
+    update_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        data=utub_desc_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_desc_response.status_code == 400
+    assert is_string_in_logs(f"User={user.id} | ", caplog.records)
+    assert is_string_in_logs(
+        f"Invalid form: description=['{UTUB_FAILURE.INVALID_INPUT}']", caplog.records
+    )
+
+
+def test_update_utub_description_missing_utub_description_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
+    WHEN the creator attempts to modify the UTub description to a new description, via a POST to
+        "/utubs/<utub_id: int>/description" with invalid form data
+    THEN verify that the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    # Grab this creator's UTub
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        current_utub_id = utub_of_user.id
+
+    utub_desc_form = {
+        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: None,
+    }
+
+    update_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        data=utub_desc_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_desc_response.status_code == 400
+    assert is_string_in_logs(f"User={user.id} | ", caplog.records)
+    assert is_string_in_logs("UTub description was None", caplog.records)
+
+
+def test_update_utub_description_invalid_permissions_logs(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid member of a UTub that has members, URLs, and tags associated with those URLs
+    WHEN the member attempts to modify the UTub description to a new description, via a POST to
+        "/utubs/<utub_id: int>/description" with valid form data
+    THEN verify that the logs are valid indicating invalid permissions
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    # Grab this creator's UTub
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+        current_utub_id = utub_of_user.id
+
+    utub_desc_form = {
+        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: "Test",
+    }
+
+    update_utub_desc_response = client.patch(
+        url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
+        data=utub_desc_form,
+    )
+
+    # Ensure valid reponse
+    assert update_utub_desc_response.status_code == 403
+    assert is_string_in_logs(f"User={user.id} not creator | ", caplog.records)
+    assert is_string_in_logs(f"UTub.id={current_utub_id}", caplog.records)

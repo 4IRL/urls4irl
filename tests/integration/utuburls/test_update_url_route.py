@@ -6,7 +6,11 @@ import pytest
 import redis
 import requests
 
-from src.extensions.url_validation.url_validator import InvalidURLError, UrlValidator
+from src.extensions.url_validation.url_validator import (
+    InvalidURLError,
+    UrlValidator,
+    WaybackRateLimited,
+)
 from src.models.urls import Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
@@ -18,6 +22,7 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from tests.utils_for_test import is_string_in_logs, is_string_in_logs_regex
 
 pytestmark = pytest.mark.urls
 
@@ -1065,7 +1070,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
     THEN verify that the url-utub-user associations and url-tag are unmodified, all other URL associations are kept consistent,
-        the server sends back a 404 HTTP status code, and the server sends back the appropriate JSON response
+        the server sends back a 400 HTTP status code, and the server sends back the appropriate JSON response
 
     Proper JSON is as follows:
     {
@@ -1266,7 +1271,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
 ):
     """
     GIVEN a valid member of another UTub that has members, URLs, and tags associated with each URL
-    WHEN the member attempts to modify the URL title and change the URL for a URL of UTub they are not a member of, via a PATCH to:
+    WHEN the member attempts to modify the URL in a UTub they are not a member of, via a PATCH to:
         "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
             URL_FORM.URL_STRING: String of URL to add
@@ -1359,6 +1364,109 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
             )
             .first()
             .serialized_on_get_or_update
+            == url_in_utub_serialized_originally
+        )
+
+        # Check associated tags
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_user_not_member_of.id,
+            Utub_Url_Tags.utub_url_id == url_in_this_utub.id,
+        ).count() == len(associated_tags)
+
+
+def test_update_nonexistent_url_as_utub_creator(
+    add_two_users_and_all_urls_to_each_utub_with_tags, login_first_user_without_register
+):
+    """
+    GIVEN a valid creator of a UTub that has members, URLs, and tags associated with each URL
+    WHEN the creator attempts to modify a nonexistent URL via a PATCH to:
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add
+    THEN verify that the server responds with a 404 status code, the url-utub-user associations and url-tag are not modified,
+        all other URL associations are kept consistent
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    NEW_FRESH_URL = "https://www.yahoo.com"
+    nonexistent_utub_url_id = 9999
+    with app.app_context():
+        # Get UTub this user is not a member of
+        utub_member_user_not_member_of: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id != current_user.id
+        ).first()
+        utub_user_not_member_of: Utubs = utub_member_user_not_member_of.to_utub
+
+        # Use URL not already in database
+        assert Urls.query.filter(Urls.url_string == NEW_FRESH_URL).first() is None
+
+        # Get the URL not in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_not_member_of.id
+        ).first()
+        current_title = url_in_this_utub.url_title
+        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_get_or_update
+        original_user_id = url_in_this_utub.user_id
+        original_url_id = url_in_this_utub.url_id
+
+        # Get number of URLs in this UTub
+        num_of_urls_in_utub = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_not_member_of.id
+        ).count()
+
+        # Find associated tags with this url
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_user_not_member_of.id,
+            Utub_Url_Tags.utub_url_id == url_in_this_utub.id,
+        ).all()
+
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: NEW_FRESH_URL,
+    }
+
+    update_url_string_response = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_user_not_member_of.id,
+            utub_url_id=nonexistent_utub_url_id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_response.status_code == 404
+    assert IDENTIFIERS.HTML_404.encode() in update_url_string_response.data
+
+    with app.app_context():
+        # Assert database is consistent after newly modified URL
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.utub_id == utub_user_not_member_of.id
+            ).count()
+            == num_of_urls_in_utub
+        )
+
+        utub_url_object: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.id == url_in_this_utub.id,
+            Utub_Urls.utub_id == utub_user_not_member_of.id,
+            Utub_Urls.url_id == original_url_id,
+            Utub_Urls.user_id == original_user_id,
+            Utub_Urls.url_title == current_title,
+        ).first()
+
+        # Assert url-utub association hasn't changed
+        assert utub_url_object is not None
+
+        assert (
+            utub_url_object.serialized_on_get_or_update
             == url_in_utub_serialized_originally
         )
 
@@ -1494,7 +1602,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
         "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
             URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
     THEN verify that the url-utub-user associations and url-tag are unmodified, all other URL associations are kept consistent,
-        the server sends back a 404 HTTP status code, and the server sends back the appropriate JSON response
+        the server sends back a 400 HTTP status code, and the server sends back the appropriate JSON response
 
     Proper JSON is as follows:
     {
@@ -1858,3 +1966,677 @@ def test_update_utub_url_with_url_already_in_utub(
             ).first()
             is not None
         )
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_valid_url_with_fresh_valid_url_log(
+    mock_validate_url,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with a URL not already in the database via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 200 HTTP status code, and the logs are valid
+    """
+    UPDATED_URL = "https://www.yahoo.com/"
+    mock_validate_url.return_value = UPDATED_URL, True
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Verify URL to modify to is not already in database
+        assert Urls.query.filter(Urls.url_string == UPDATED_URL).first() is None
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: "yahoo.com",
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 200
+    assert is_string_in_logs(
+        "Finished checks for url_to_change_to='yahoo.com'", caplog.records
+    )
+    assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
+
+    with app.app_context():
+        new_url = Urls.query.filter(Urls.url_string == UPDATED_URL).first()
+
+    assert is_string_in_logs(f"Added new URL, URL.id={new_url.id}", caplog.records)
+    assert is_string_in_logs("Added URL to UTub", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_creator_of.id}", caplog.records)
+    assert is_string_in_logs(f"URL.id={new_url.id}", caplog.records)
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_valid_url_with_existing_url_log(
+    mock_validate_url,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with a URL already in the database via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 200 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        url_not_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != utub_creator_of.id
+        ).first()
+        url_string = url_not_in_this_utub.standalone_url.url_string
+        url_id = url_not_in_this_utub.url_id
+
+    mock_validate_url.return_value = url_string, True
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 200
+    assert is_string_in_logs(
+        f"Finished checks for url_to_change_to='{url_string}'", caplog.records
+    )
+    assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
+
+    assert is_string_in_logs(
+        f"URL already exists in U4I, URL.id={url_id}", caplog.records
+    )
+    assert is_string_in_logs("Added URL to UTub", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_creator_of.id}", caplog.records)
+    assert is_string_in_logs(f"URL.id={url_id}", caplog.records)
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_valid_url_with_same_url_log(
+    mock_validate_url,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with the same URL via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 409 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        url_string = url_in_this_utub.standalone_url.url_string
+        url_id = url_in_this_utub.url_id
+
+    mock_validate_url.return_value = url_string, True
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: "yahoo.com",
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 409
+    assert is_string_in_logs(
+        "Finished checks for url_to_change_to='yahoo.com'", caplog.records
+    )
+    assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
+
+    assert is_string_in_logs(
+        f"URL already exists in U4I, URL.id={url_id}", caplog.records
+    )
+    assert is_string_in_logs(
+        f"User={user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_creator_of.id}",
+        caplog.records,
+    )
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_valid_url_with_same_url_before_normalization_url_log(
+    mock_validate_url,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with a URL not in database but after normalization is already in the database via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 409 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        url_string = url_in_this_utub.standalone_url.url_string
+        url_id = url_in_this_utub.url_id
+        url_string_before_normalize = url_string.replace("https://", "")
+
+    mock_validate_url.return_value = url_string, True
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string_before_normalize,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 409
+    assert is_string_in_logs(
+        f"Finished checks for url_to_change_to='{url_string_before_normalize}'",
+        caplog.records,
+    )
+    assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
+
+    assert is_string_in_logs(
+        f"URL already exists in U4I, URL.id={url_id}", caplog.records
+    )
+    assert is_string_in_logs(
+        f"User={user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_creator_of.id}",
+        caplog.records,
+    )
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_to_invalid_url_log(
+    mock_validate_url,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with an invalid URL via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 400 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+    mock_validate_url.side_effect = InvalidURLError("Invalid URL error")
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        url_string = url_in_this_utub.standalone_url.url_string.replace("https://", "")
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 400
+    assert is_string_in_logs(
+        f"Unable to validate the URL given by User={user.id}", caplog.records
+    )
+    assert is_string_in_logs_regex(
+        r"(.*)[\s](.*)Took (\d).(\d+) ms to fail validation[\s](.*)[\s](.*)",
+        caplog.records,
+    )
+    assert is_string_in_logs(f"url_string={url_string}", caplog.records)
+    assert is_string_in_logs("Exception=Invalid URL error", caplog.records)
+
+
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_to_wayback_ratelimited_url_log(
+    mock_validate_url,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with an invalid URL via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 400 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+    mock_validate_url.side_effect = WaybackRateLimited("Invalid URL error")
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        url_string = url_in_this_utub.standalone_url.url_string.replace("https://", "")
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 400
+    assert is_string_in_logs(
+        f"Unable to validate the URL given by User={user.id}", caplog.records
+    )
+    assert is_string_in_logs_regex(
+        r"(.*)[\s](.*)Took (\d).(\d+) ms to fail validation[\s](.*)[\s](.*)",
+        caplog.records,
+    )
+    assert is_string_in_logs(f"url_string={url_string}", caplog.records)
+    assert is_string_in_logs("Exception=Invalid URL error", caplog.records)
+
+
+def test_update_to_same_url_log(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with an invalid URL via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 200 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        url_string = url_in_this_utub.standalone_url.url_string
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 200
+    assert is_string_in_logs(
+        f"User={user.id} tried changing UTubURL.id={url_in_this_utub.id} to the same URL",
+        caplog.records,
+    )
+
+
+def test_update_url_user_not_in_utub_log(
+    add_two_users_and_all_urls_to_each_utub_with_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN a non-member attempts to modify the URL with URL via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 403 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_member_user_not_member_of: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id != current_user.id
+        ).first()
+        utub_user_not_member_of: Utubs = utub_member_user_not_member_of.to_utub
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_user_not_member_of.id
+        ).first()
+        url_string = url_in_this_utub.standalone_url.url_string
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_user_not_member_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} not in UTub.id={utub_user_not_member_of.id}", caplog.records
+    )
+
+
+def test_update_url_user_not_allowed_to_log(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN a member attempts to modify URL they did not add with URL via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 403 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        url_in_this_utub_did_not_add: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id != user.id,
+            Utub_Urls.user_id != user.id,
+        ).first()
+        utub_id = url_in_this_utub_did_not_add.utub_id
+        utub_url_id = url_in_this_utub_did_not_add.id
+        url_string = url_in_this_utub_did_not_add.standalone_url.url_string
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} not allowed to modify UTubURL.id={utub_url_id} in UTub.id={utub_id}",
+        caplog.records,
+    )
+
+
+def test_update_nonexistent_url_log(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN a member attempts to modify nonexistent URL via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 404 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == user.id,
+            Utub_Urls.user_id == user.id,
+        ).first()
+        utub_id = url_in_this_utub.utub_id
+        utub_url_id = 9999
+        url_string = url_in_this_utub.standalone_url.url_string
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 404
+    assert is_string_in_logs(
+        f"User={user.id} tried to change nonexistent UTubURL.id={utub_url_id} in UTub.id={utub_id}",
+        caplog.records,
+    )
+
+
+def test_update_url_in_other_utub_log(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN a member attempts to modify URL but gives invalid UTub ID via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 404 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == user.id,
+            Utub_Urls.user_id == user.id,
+        ).first()
+        utub_id = url_in_this_utub.utub_id
+        utub_url_id = url_in_this_utub.id
+        invalid_utub: Utubs = Utubs.query.filter(Utubs.id != utub_id).first()
+        invalid_utub_id = invalid_utub.id
+
+        url_string = url_in_this_utub.standalone_url.url_string
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=invalid_utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 404
+    assert is_string_in_logs(
+        f"User={user.id} tried to change UTubURL.id={utub_url_id} that is not in UTub.id={invalid_utub_id}",
+        caplog.records,
+    )
+
+
+def test_update_url_with_only_spaces_log(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN a member attempts to modify URL but gives URL string with only spaces in body via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 400 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == user.id,
+            Utub_Urls.user_id == user.id,
+        ).first()
+        utub_id = url_in_this_utub.utub_id
+        utub_url_id = url_in_this_utub.id
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: "  ",
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} tried changing UTubURL.id={utub_url_id} to a URL with only spaces",
+        caplog.records,
+    )
+
+
+def test_update_url_with_invalid_form_log(
+    add_all_urls_and_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN a member attempts to modify URL but gives invalid form in body via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify the server sends back a 400 HTTP status code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == user.id,
+            Utub_Urls.user_id == user.id,
+        ).first()
+        utub_id = url_in_this_utub.utub_id
+        utub_url_id = url_in_this_utub.id
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_id,
+            utub_url_id=utub_url_id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} | Invalid form: url_string={URL_FAILURE.FIELD_REQUIRED}",
+        caplog.records,
+    )

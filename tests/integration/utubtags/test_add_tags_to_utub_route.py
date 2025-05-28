@@ -11,6 +11,7 @@ from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.tags
 
@@ -605,3 +606,139 @@ def test_add_tag_updates_utub_last_updated(
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(utub_to_add_tag_to.id)
         assert (current_utub.last_updated - initial_last_updated).total_seconds() > 0
+
+
+def test_add_tag_to_utub_log(
+    every_user_in_every_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN UTubs with members in every UTub, but no tags
+    WHEN a tag is added to a UTub
+    THEN verify that a new UtubTag item exists, the server responds with a 200 HTTP status code and the logs are valid
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+    NEW_TAG = "Funny!"
+
+    with app.app_context():
+        utub_to_add_tag_to: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
+
+    add_tag_response = client.post(
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
+        data=new_tag_form,
+    )
+
+    assert add_tag_response.status_code == 200
+    assert is_string_in_logs("Added UTubTag", caplog.records)
+    assert is_string_in_logs(f"UTub.id={utub_to_add_tag_to.id}", caplog.records)
+    assert is_string_in_logs(f"UTubTag.tag_string={NEW_TAG}", caplog.records)
+
+    with app.app_context():
+        utub_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_to_add_tag_to.id, Utub_Tags.tag_string == NEW_TAG
+        ).first()
+        assert is_string_in_logs(f"UTubTag.id={utub_tag.id}", caplog.records)
+
+
+def test_add_duplicate_tag_to_utub_log(
+    add_one_tag_to_each_utub_after_all_users_added,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN UTubs already containing a tag and users
+    WHEN a user wants to add a tag to a UTub that already exists
+    THEN verify that the server responds with a 400 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        tag_already_added: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_of_user.id
+        ).first()
+        tag_string_already_added = tag_already_added.tag_string
+
+    new_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_string_already_added,
+    }
+
+    add_tag_response = client.post(
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
+        data=new_tag_form,
+    )
+
+    assert add_tag_response.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} tried adding UTubTag.tag_string={tag_string_already_added} but UTubTag already exists in UTub.id={utub_of_user.id}",
+        caplog.records,
+    )
+
+
+def test_add_tag_to_utub_not_member_of_log(
+    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN UTubs with only a single member in every UTub, and no tags
+    WHEN a user tries to add a tag to a UTub they aren't a member of
+    THEN verify that no new UtubTag item exists, the server responds with a 403 HTTP status code,
+        and logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+    NEW_TAG = "Funny!"
+
+    with app.app_context():
+        utub_to_add_tag_to: Utubs = Utubs.query.filter(
+            Utubs.utub_creator != current_user.id
+        ).first()
+
+    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
+
+    add_tag_response = client.post(
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
+        data=new_tag_form,
+    )
+
+    assert add_tag_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} tried adding UTubTag to UTub.id={utub_to_add_tag_to.id} but user not in UTub",
+        caplog.records,
+    )
+
+
+def test_add_tag_to_utub_missing_tag_field_log(
+    every_user_in_every_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN UTubs with members in every UTub, but no tags
+    WHEN a tag is added to a UTub but the form is missing the CSRF token
+    THEN verify that a new UtubTag item exists, the server responds with a 400 HTTP status code,
+        and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_to_add_tag_to: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+    new_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+    }
+
+    add_tag_response = client.post(
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
+        data=new_tag_form,
+    )
+
+    assert add_tag_response.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} | Invalid form: tag_string={TAGS_FAILURE.FIELD_REQUIRED}",
+        caplog.records,
+    )

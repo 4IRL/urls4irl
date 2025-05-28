@@ -14,6 +14,7 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.members
 
@@ -970,3 +971,170 @@ def test_remove_invalid_user_from_utub_does_not_update_utub(
     with app.app_context():
         current_utub: Utubs = Utubs.query.get(current_utub_id)
         assert current_utub.last_updated == initial_last_updated
+
+
+def test_remove_valid_user_from_utub_as_creator_log(
+    add_single_user_to_utub_without_logging_in,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN a logged in user who is creator of a UTub that has another member in it, with no URLs or tags in the UTub
+    WHEN the logged in user tries to remove second user by DELETE to "/utubs/<int:utub_id>/members/<int:user_id>"
+    THEN ensure the user gets removed from the UTub by checking UTub-User associations, that the server responds with a
+        200 HTTP status code, and that the logs are valid
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Get the only UTub, which contains two members
+        current_utub: Utubs = Utubs.query.first()
+
+        # Grab the second user from the members
+        second_user_in_utub_association: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.utub_id == current_utub.id,
+            Utub_Members.user_id != current_user.id,
+        ).first()
+        second_user_in_utub: Users = second_user_in_utub_association.to_user
+
+    # Remove second user
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=current_utub.id,
+            user_id=second_user_in_utub.id,
+        ),
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure HTTP response code is correct
+    assert remove_user_response.status_code == 200
+    assert is_string_in_logs(f"UTub.id={current_utub.id}", caplog.records)
+    assert is_string_in_logs(f"User={second_user_in_utub.id}", caplog.records)
+
+
+def test_remove_missing_user_from_utub_as_creator_log(
+    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged in user who is creator of a UTub that has another member in it, with no URLs or tags in the UTub
+    WHEN the logged in user tries to remove a user that isn't in the UTub
+    THEN ensure the user that the server responds with a 404 HTTP status code, and that the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == user.id).first()
+        second_user: Users = Users.query.filter(Users.id != user.id).first()
+
+    # Remove second user
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=utub.id,
+            user_id=second_user.id,
+        ),
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure HTTP response code is correct
+    assert remove_user_response.status_code == 404
+    assert is_string_in_logs(
+        f"User={user.id} tried removing a member that isn't in this UTub",
+        caplog.records,
+    )
+
+
+def test_remove_user_from_utub_as_member_log(
+    every_user_in_every_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged in user who is member of a UTub that has another member in it, with no URLs or tags in the UTub
+    WHEN the logged in user tries to remove the other user
+    THEN ensure the server responds with a 403 HTTP code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator != user.id).first()
+        second_user: Users = Users.query.filter(
+            Users.id != user.id, Users.id != utub.utub_creator
+        ).first()
+
+    # Remove second user
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=utub.id,
+            user_id=second_user.id,
+        ),
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure HTTP response code is correct
+    assert remove_user_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} tried removing another member from UTub.id={utub.id}",
+        caplog.records,
+    )
+
+
+def test_remove_self_from_utub_not_in_log(
+    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged in user
+    WHEN the logged in user tries to remove themselves from a UTub they aren't a member of
+    THEN ensure the server responds with a 403 HTTP code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator != user.id).first()
+
+    # Remove second user
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=utub.id,
+            user_id=user.id,
+        ),
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure HTTP response code is correct
+    assert remove_user_response.status_code == 403
+    assert is_string_in_logs(
+        f"User={user.id} tried removing themselves from UTub.id={utub.id} they aren't in",
+        caplog.records,
+    )
+
+
+def test_remove_self_from_utub_as_creator_log(
+    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
+):
+    """
+    GIVEN a logged in user who created a UTub
+    WHEN the logged in user tries to remove themselves from the UTub they created
+    THEN ensure the server responds with a 400 HTTP code, and the logs are valid
+    """
+    client, csrf_token_string, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub: Utubs = Utubs.query.filter(Utubs.utub_creator == user.id).first()
+
+    # Remove second user
+    remove_user_response = client.delete(
+        url_for(
+            ROUTES.MEMBERS.REMOVE_MEMBER,
+            utub_id=utub.id,
+            user_id=user.id,
+        ),
+        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+    )
+
+    # Ensure HTTP response code is correct
+    assert remove_user_response.status_code == 400
+    assert is_string_in_logs(
+        f"User={user.id} | UTub creator tried to remove themselves", caplog.records
+    )

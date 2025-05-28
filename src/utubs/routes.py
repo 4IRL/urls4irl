@@ -1,3 +1,4 @@
+from itertools import islice
 from flask import (
     Blueprint,
     abort,
@@ -12,6 +13,13 @@ from flask_login import current_user
 from sqlalchemy.exc import DataError
 
 from src import db
+from src.app_logger import (
+    critical_log,
+    safe_add_log,
+    safe_add_many_logs,
+    turn_form_into_str_for_log,
+    warning_log,
+)
 from src.models.utubs import Utubs
 from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.strings.config_strs import CONFIG_ENVS
@@ -59,6 +67,8 @@ def home():
     """
     if not request.args:
         utub_details = current_user.serialized_on_initial_load
+        safe_add_log("Returning user's UTubs on home page load")
+
         return render_template(
             "home.html",
             utubs_for_this_user=utub_details[MODELS.UTUBS],
@@ -67,7 +77,17 @@ def home():
             ),
         )
 
-    if len(request.args) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
+    # Count total number of query param keys/values, even for repeats
+    query_param_pairs = list(islice(request.args.items(multi=True), 2))
+
+    if len(query_param_pairs) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
+        log_msg = (
+            "Too many query parameters"
+            if len(query_param_pairs) != 1
+            else "Does not contain 'UTubID' as a query parameter"
+        )
+        log_msg = f"User={current_user.id} | " + log_msg
+        warning_log(log_msg)
         abort(404)
 
     utub_id = request.args.get(UTUB_ID_QUERY_PARAM, "")
@@ -76,8 +96,10 @@ def home():
             Utubs.query.get_or_404(int(utub_id))
             and Utub_Members.query.get((int(utub_id), current_user.id)) is None
         ):
+            warning_log(f"User={current_user.id} not a member of UTub.id={utub_id}")
             return redirect(url_for(ROUTES.UTUBS.HOME))
 
+        safe_add_log(f"Retrieving UTub.id={utub_id} from query parameter")
         utub_details = current_user.serialized_on_initial_load
         return render_template(
             "home.html",
@@ -89,6 +111,7 @@ def home():
 
     except (ValueError, DataError):
         # Handle invalid UTubID passed as query parameter
+        warning_log(f"Invalid UTub.id={utub_id} for User={current_user.id}")
         abort(404)
 
 
@@ -103,6 +126,7 @@ def get_single_utub(utub_id: int):
         != URL_VALIDATION.XMLHTTPREQUEST
     ):
         # Ensures JSON not viewed in browser, happens if user does a refresh with URL /home?UTubID=X, which would otherwise return JSON normally
+        warning_log(f"User={current_user.id} did not make an AJAX request")
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
     assert Utub_Members.query.get_or_404((utub_id, current_user.id))
@@ -113,6 +137,7 @@ def get_single_utub(utub_id: int):
     utub.set_last_updated()
     db.session.commit()
 
+    safe_add_log(f"Retrieving UTub.id={utub_id} from direct route")
     return jsonify(utub_data_serialized)
 
 
@@ -127,10 +152,12 @@ def get_utubs():
         != URL_VALIDATION.XMLHTTPREQUEST
     ):
         # Ensure JSON not shown in the browser
+        warning_log(f"User={current_user.id} did not make an AJAX request")
         abort(404)
 
     # TODO: Should serialized summary be utubID and utubName
     # instead of id and name?
+    safe_add_log(f"Returning UTubs for User={current_user.id}")
     return jsonify(current_user.serialized_on_initial_load)
 
 
@@ -163,6 +190,13 @@ def create_utub():
         db.session.add(creator_to_utub)
         db.session.commit()
 
+        safe_add_many_logs(
+            [
+                "Created UTub",
+                f"UTub.id={new_utub.id}",
+                f"UTub.name={name}",
+            ]
+        )
         # Add time made?
         return (
             jsonify(
@@ -179,6 +213,9 @@ def create_utub():
 
     # Invalid form inputs
     if utub_form.errors is not None:
+        warning_log(
+            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_form.errors)}"  # type: ignore
+        )
         return (
             jsonify(
                 {
@@ -191,6 +228,7 @@ def create_utub():
             400,
         )
 
+    critical_log(f"User={current_user.id} failed to make UTub")
     return (
         jsonify(
             {
@@ -218,6 +256,9 @@ def delete_utub(utub_id: int):
     utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id != utub.utub_creator:
+        critical_log(
+            f"User={current_user.id} is not the creator of UTub.id={utub.id} | UTub.name={utub.name}"
+        )
         return (
             jsonify(
                 {
@@ -231,6 +272,14 @@ def delete_utub(utub_id: int):
     else:
         db.session.delete(utub)
         db.session.commit()
+
+        safe_add_many_logs(
+            [
+                "Deleted UTub",
+                f"UTub.id={utub.id}",
+                f"UTub.name={utub.name}",
+            ]
+        )
 
         return (
             jsonify(
@@ -266,6 +315,9 @@ def update_utub_name(utub_id: int):
     current_utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id != current_utub.utub_creator:
+        warning_log(
+            f"User={current_user.id} not creator: UTub.id={current_utub.id} | UTub.name={current_utub.name}"
+        )
         return (
             jsonify(
                 {
@@ -289,6 +341,15 @@ def update_utub_name(utub_id: int):
             current_utub.set_last_updated()
             db.session.commit()
 
+            safe_add_many_logs(
+                [
+                    "User updated UTub name",
+                    f"UTub.id={current_utub.id}",
+                    f"OLD UTub.name={current_utub_name}",
+                    f"NEW UTub.name={new_utub_name}",
+                ]
+            )
+
         return (
             jsonify(
                 {
@@ -302,6 +363,9 @@ def update_utub_name(utub_id: int):
 
     # Invalid form errors
     if utub_name_form.errors is not None:
+        warning_log(
+            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_name_form.errors)}"  # type: ignore
+        )
         return (
             jsonify(
                 {
@@ -314,6 +378,7 @@ def update_utub_name(utub_id: int):
             400,
         )
 
+    critical_log(f"User={current_user.id} | Unable to update UTub name")
     return (
         jsonify(
             {
@@ -347,6 +412,7 @@ def update_utub_desc(utub_id: int):
     current_utub: Utubs = Utubs.query.get_or_404(utub_id)
 
     if current_user.id != current_utub.utub_creator:
+        warning_log(f"User={current_user.id} not creator | UTub.id={current_utub.id}")
         return (
             jsonify(
                 {
@@ -368,6 +434,7 @@ def update_utub_desc(utub_id: int):
         new_utub_description = utub_desc_form.description.data
 
         if new_utub_description is None:
+            warning_log(f"User={current_user.id} | UTub description was None")
             return (
                 jsonify(
                     {
@@ -384,6 +451,17 @@ def update_utub_desc(utub_id: int):
             current_utub.set_last_updated()
             db.session.commit()
 
+            safe_add_many_logs(
+                [
+                    "Updated UTub description",
+                    f"UTub.id={current_utub.id}",
+                    f"OLD UTub.description={current_utub_description}",
+                    f"NEW UTub.description={new_utub_description}",
+                ]
+            )
+        else:
+            safe_add_log("No change in UTub description")
+
         return (
             jsonify(
                 {
@@ -397,6 +475,9 @@ def update_utub_desc(utub_id: int):
 
     # Invalid form input
     if utub_desc_form.errors is not None:
+        warning_log(
+            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_desc_form.errors)}"  # type: ignore
+        )
         return (
             jsonify(
                 {
@@ -409,6 +490,7 @@ def update_utub_desc(utub_id: int):
             400,
         )
 
+    critical_log(f"User={current_user.id} | Unable to update UTub description")
     return (
         jsonify(
             {

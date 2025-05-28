@@ -4,10 +4,11 @@ from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
 
+from src.models.utub_members import Utub_Members
 from src.utils.constants import USER_CONSTANTS
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import invalid_user_1, valid_user_1
-from tests.utils_for_test import get_csrf_token
+from tests.utils_for_test import get_csrf_token, is_string_in_logs
 from src.models.users import Users
 from src.utils.all_routes import ROUTES
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -431,3 +432,76 @@ def test_login_modal_logs_user_in(app_with_server_name, client, register_first_u
             current_user.password, registered_user_data[LOGIN_FORM.PASSWORD]
         )
         assert current_user.email == registered_user_data[LOGIN_FORM.EMAIL].lower()
+
+
+def test_login_user_to_home_log(
+    app_with_server_name, client, register_first_user, caplog
+):
+    """
+    GIVEN a registered and logged in user
+    WHEN "/login" is POST'd with CSRF token
+    THEN ensure the user is redirected to the home page since they are already logged in
+    """
+    with client:
+        with app_with_server_name.app_context():
+            user: Users = Users.query.filter(
+                Users.username == valid_user_1[LOGIN_FORM.USERNAME]
+            ).first()
+            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            response = client.get(url_for(ROUTES.SPLASH.LOGIN))
+            csrf_token_str = get_csrf_token(response.data)
+
+            new_user = deepcopy(valid_user_1)
+            new_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
+
+            response = client.post(
+                url_for(ROUTES.SPLASH.LOGIN), data=new_user, follow_redirects=True
+            )
+
+            # Test if user logged in
+            assert current_user.username == new_user[LOGIN_FORM.USERNAME]
+            user_id = user.id
+
+    assert response.status_code == 200
+    assert is_string_in_logs(f"Logging User.id={user_id} in", caplog.records)
+
+
+def test_login_user_to_utub_id_log(
+    app_with_server_name, client, every_user_in_every_utub, caplog
+):
+    """
+    GIVEN a registered and logged in user
+    WHEN "/login" is POST'd with CSRF token
+    THEN ensure the user is redirected to the home page since they are already logged in
+    """
+
+    with client:
+        with app_with_server_name.app_context():
+            user: Users = Users.query.filter(
+                Users.username == valid_user_1[LOGIN_FORM.USERNAME]
+            ).first()
+            user_id = user.id
+
+            utub_member: Utub_Members = Utub_Members.query.filter(
+                Utub_Members.user_id == user.id
+            ).first()
+            utub_id = utub_member.utub_id
+            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            response = client.get(url_for(ROUTES.SPLASH.LOGIN))
+            csrf_token_str = get_csrf_token(response.data)
+
+            new_user = deepcopy(valid_user_1)
+            new_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
+
+            response = client.post(
+                url_for(ROUTES.SPLASH.LOGIN, next=f"/home?UTubID={utub_id}"),
+                data=new_user,
+                follow_redirects=True,
+            )
+            # Test if user logged in
+            assert current_user.username == new_user[LOGIN_FORM.USERNAME]
+
+        assert response.status_code == 200
+
+        assert is_string_in_logs(f"Logging User.id={user_id} in", caplog.records)
+        assert is_string_in_logs(f"Routing user to UTub.id={utub_id}", caplog.records)

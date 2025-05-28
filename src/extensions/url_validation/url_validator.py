@@ -40,6 +40,14 @@ from url_normalize.tools import deconstruct_url
 
 from flask import Flask
 
+from src.app_logger import (
+    critical_log,
+    error_log,
+    safe_add_log,
+    safe_add_many_logs,
+    warning_log,
+)
+
 
 if __name__ == "__main__":
     # TODO: Change imports when running as standalone module
@@ -76,6 +84,7 @@ class UrlValidator:
         self._is_testing = is_testing
         self._redis_uri = os.environ.get(ENV.REDIS_URI, None)
         self.timer = None
+        self._has_app = False
 
     def init_app(self, app: Flask) -> None:
         app.extensions[VALIDATION_STRS.URL_VALIDATION_MODULE] = self
@@ -88,6 +97,10 @@ class UrlValidator:
         self._ui_testing: bool = is_not_production_and_is_testing_ui
         self._redis_uri = app.config.get(ENV.REDIS_URI, None)
         self._is_testing = is_testing
+        self._has_app = is_testing or is_production or is_ui_testing
+
+    def _log(self, log_fn, log):
+        log_fn(log) if self._has_app else None
 
     def _normalize_url(self, url: str) -> str:
         """
@@ -178,26 +191,44 @@ class UrlValidator:
     ) -> requests.Response | None:
         try:
             if limited_redirects:
+                self._log(
+                    safe_add_log, "Performing HEAD request with limited redirects"
+                )
                 response = self._perform_head_with_custom_redirect(url, headers)
             else:
+                safe_add_log("Performing HEAD request with no redirects")
+                self._log(safe_add_log, "Performing HEAD request with no redirects")
                 response = self._perform_head_with_no_redirects(url, headers)
 
         except requests.exceptions.ReadTimeout:
+            self._log(safe_add_log, "Read timed out with HEAD request")
             return None
 
         except requests.exceptions.TooManyRedirects:
+            self._log(
+                warning_log, "Too many redirects exception with custom HEAD redirect"
+            )
             return self._perform_head_request(url, headers, limited_redirects=False)
 
         except requests.exceptions.SSLError as e:
             if "UNSAFE_LEGACY_RENEGOTIATION_DISABLED" in str(e):
                 # Check wayback for these, else let it fail in the GET request
+                self._log(
+                    safe_add_log,
+                    "UNSAFE_LEGACY_RENEGOTIATION_DISABLED in HEAD response",
+                )
                 return self._perform_wayback_check(url, headers)
+            self._log(warning_log, "SSLError with given URL")
             raise InvalidURLError("SSLError with the given URL. " + str(e))
 
         except requests.exceptions.ConnectionError as e:
+            self._log(
+                warning_log, "Unable to connect to the given URL with HEAD request"
+            )
             raise InvalidURLError("Unable to connect to the given URL. " + str(e))
 
         except requests.exceptions.MissingSchema as e:
+            self._log(warning_log, f"Invalid/missing schema in HEAD request for: {url}")
             raise InvalidURLError("Invalid schema for this URL. " + str(e))
 
         else:
@@ -224,6 +255,12 @@ class UrlValidator:
             if num_redirects >= max_num_redirects or response.status_code in range(
                 400, 600
             ):
+                self._log(safe_add_log, f"HEAD Too many redirects: {num_redirects}")
+                return None
+            elif response.status_code in range(400, 600):
+                self._log(
+                    safe_add_log, f"HEAD Response status code: {response.status_code}"
+                )
                 return None
             original_url: str = redirect_url if redirect_url is not None else url
 
@@ -233,10 +270,14 @@ class UrlValidator:
                 and response.next.url
                 and deconstruct_url(response.next.url).scheme == "https"
             ):
+                self._log(
+                    safe_add_log, f"HEAD Redirect found next URL: {response.next.url}"
+                )
                 redirect_url = response.next.url
 
             elif not deconstruct_url(redirect_url).scheme == "https":
                 redirect_url = urljoin(original_url, redirect_url)
+                self._log(safe_add_log, f"HEAD constructed next url: {redirect_url}")
 
             response = requests.head(
                 redirect_url,
@@ -249,6 +290,13 @@ class UrlValidator:
             )
             num_redirects += 1
 
+        self._log(
+            safe_add_many_logs,
+            [
+                f"From HEAD request with redirect: {response.headers} ",
+                f"{redirect_url=}" f"{response.url=}",
+            ],
+        )
         return response
 
     def _perform_head_with_no_redirects(
@@ -266,7 +314,15 @@ class UrlValidator:
             403,
             405,
         ):
+            safe_add_log(f"HEAD request failed with status code {response.status_code}")
             return None
+
+        safe_add_many_logs(
+            [
+                f"From HEAD request without redirect: {response.headers} ",
+                f"{url=}" f"{response.url=}",
+            ]
+        )
         return response
 
     def _perform_get_request(
@@ -276,15 +332,23 @@ class UrlValidator:
             response = self._perform_get_with_custom_redirect(url, headers)
 
         except requests.exceptions.ReadTimeout:
+            self._log(warning_log, "Read timed out with GET request")
             return self._all_user_agent_sampling(url, headers)
 
         except requests.exceptions.ConnectionError as e:
+            self._log(
+                warning_log, "Unable to connect to the given URL with GET request"
+            )
             raise InvalidURLError("Unable to connect to the given URL. " + str(e))
 
         except requests.exceptions.MissingSchema as e:
+            self._log(warning_log, f"Invalid/missing schema in GET request for: {url}")
             raise InvalidURLError("Invalid schema for this URL. " + str(e))
 
         except requests.exceptions.TooManyRedirects as e:
+            self._log(
+                warning_log, "Too many redirects exception with custom GET redirect"
+            )
             raise InvalidURLError("Too many redirects for this URL. " + str(e))
 
         else:
@@ -311,6 +375,10 @@ class UrlValidator:
             if num_redirects >= max_num_redirects or response.status_code in range(
                 400, 600
             ):
+                self._log(safe_add_log, f"Too many redirects: {num_redirects}")
+                return response
+            elif response.status_code in range(400, 600):
+                self._log(safe_add_log, f"Response status code: {response.status_code}")
                 return response
 
             redirect_url = response.headers.get(VALIDATION_STRS.LOCATION, "")
@@ -325,10 +393,14 @@ class UrlValidator:
                 and response.next.url
                 and deconstruct_url(response.next.url).scheme == "https"
             ):
+                self._log(
+                    safe_add_log, f"GET Redirect found next URL: {response.next.url}"
+                )
                 redirect_url = response.next.url
 
             elif not deconstruct_url(redirect_url).scheme == "https":
                 redirect_url = urljoin(original_url, redirect_url)
+                self._log(safe_add_log, f"GET constructed next url: {redirect_url}")
 
             response = requests.get(
                 redirect_url,
@@ -341,13 +413,22 @@ class UrlValidator:
             )
             num_redirects += 1
 
+        self._log(
+            safe_add_many_logs,
+            [
+                f"From GET request with redirect: {response.headers} ",
+                f"{redirect_url=}" f"{response.url=}",
+            ],
+        )
         return response
 
     def _all_user_agent_sampling(
         self, url: str, headers: dict[str, str]
     ) -> requests.Response:
+        self._log(safe_add_log, f"Trying all user agent sampling for: {url}")
         for agent in USER_AGENTS:
             try:
+                self._log(safe_add_log, f"Trying: {agent}")
                 headers[VALIDATION_STRS.USER_AGENT] = agent
                 response = requests.get(
                     url,
@@ -359,17 +440,25 @@ class UrlValidator:
                 )
             except requests.exceptions.ReadTimeout:
                 if self.timer and (time.perf_counter() - self.timer) >= 30:
+                    self._log(
+                        warning_log,
+                        "Could not validate URL with sampled agents within 30 seconds",
+                    )
                     raise InvalidURLError("Unable to validate URL within 30 seconds.")
                 continue
             except requests.exceptions.ConnectionError as e:
+                self._log(warning_log, "Could not connect to URL with sampled agents")
                 raise InvalidURLError("Unable to connect to the given URL. " + str(e))
             except requests.exceptions.MissingSchema as e:
+                self._log(warning_log, "Invalid schema for URL with sampled agents")
                 raise InvalidURLError("Invalid schema for this URL. " + str(e))
             except requests.exceptions.TooManyRedirects as e:
+                self._log(warning_log, "Too many redirects for URL with sampled agents")
                 raise InvalidURLError("Too many redirects for this URL. " + str(e))
             else:
                 return response
 
+        self._log(critical_log, "Unable to connect to url after sampling agents")
         raise InvalidURLError("Unable to connect to this URL.")
 
     def _perform_wayback_check(
@@ -403,18 +492,29 @@ class UrlValidator:
                     redis_client
                 )
                 if is_rate_limited:
-                    raise WaybackRateLimited("Too many attempts, please wait a minute.")
+                    self._log(critical_log, "Rate limited using Wayback")
+                    raise WaybackRateLimited(
+                        "Too many Wayback attempts, please wait a minute."
+                    )
 
                 wayback_url = VALIDATION_STRS.WAYBACK_ARCHIVE + str(year) + "/" + url
+                self._log(
+                    safe_add_log, f"Checking year {year} in Wayback | {wayback_url}"
+                )
                 wayback_archive_response = self._perform_head_request(
                     wayback_url,
                     headers,
                 )
                 if wayback_archive_response is None:
+                    self._log(safe_add_log, f"No response provided for year {year}")
                     continue
 
                 wayback_status_code = wayback_archive_response.status_code
                 if wayback_status_code not in range(200, 400):
+                    self._log(
+                        safe_add_log,
+                        f"Wayback response status code: {wayback_status_code}",
+                    )
                     continue
 
                 if 300 <= wayback_status_code < 400:
@@ -422,16 +522,28 @@ class UrlValidator:
                         redis_client
                     )
                     if is_rate_limited:
-                        raise WaybackRateLimited(
-                            "Too many attempts, please wait a minute."
+                        self._log(
+                            critical_log, "Rate limited using Wayback in redirect"
                         )
+                        raise WaybackRateLimited(
+                            "Too many Wayback attempts, please wait a minute."
+                        )
+
+                    redirect_url = wayback_archive_response.headers.get(
+                        VALIDATION_STRS.LOCATION, ""
+                    )
+                    self._log(
+                        safe_add_log,
+                        f"Found redirect using Wayback log, status code: {wayback_status_code} | url: {redirect_url}",
+                    )
                     wayback_archive_response = self._perform_head_request(
-                        wayback_archive_response.headers.get(
-                            VALIDATION_STRS.LOCATION, ""
-                        ),
+                        redirect_url,
                         headers,
                     )
                     if wayback_archive_response is None:
+                        self._log(
+                            safe_add_log, "No response from wayback redirect response"
+                        )
                         continue
 
                 if wayback_archive_response.links:
@@ -443,14 +555,24 @@ class UrlValidator:
 
                 wayback_archive_response.url = url
                 wayback_archive_response.status_code = 200
+                self._log(
+                    safe_add_many_logs,
+                    [
+                        "Successfully found URL with Wayback",
+                        f"Waybacked URL: {url}",
+                    ],
+                )
+
                 print(f"Waybacked: {url=}")
 
                 return wayback_archive_response
 
+            self._log(warning_log, "Could not validate URL using Wayback")
             return None
 
         except requests.exceptions.ConnectionError:
-            raise WaybackRateLimited("Too many attempts, please wait a minute.")
+            self._log(warning_log, "Connection error using Wayback")
+            raise WaybackRateLimited("Wayback experienced a ConnectionError")
 
     def _get_current_minute_window(self) -> int:
         return int(datetime.now().timestamp())
@@ -480,22 +602,27 @@ class UrlValidator:
             return host_by_name != ""
 
         except socket.gaierror as e:
+            self._log(warning_log, f"Host domain is invalid: {host}")
             raise InvalidURLError("This domain is invalid. " + str(e))
 
         except socket.timeout as e:
+            self._log(warning_log, f"DNS timed out for domain: {host}")
             raise InvalidURLError("DNS lookup timed out. " + str(e))
 
         except socket.herror as e:
+            self._log(warning_log, f"Host related error: {host}")
             raise InvalidURLError(
                 "Host-related error, unable to validate this domain. " + str(e)
             )
 
         except socket.error as e:
+            self._log(critical_log, f"Unknown error validating host error: {host}")
             raise InvalidURLError(
                 "Unknown error leading to issues validating domain. " + str(e)
             )
 
         except Exception as e:
+            self._log(error_log, f"Unexpected error validating host error: {host}")
             raise InvalidURLError("Unexpected error occurred. " + str(e))
 
     def _check_for_valid_response_location(
@@ -511,12 +638,16 @@ class UrlValidator:
                 location = url
 
             if any(common_redirect in location for common_redirect in COMMON_REDIRECTS):
+                self._log(safe_add_log, "Filtering out common redirect on 200")
                 location = self._filter_out_common_redirect(url)
 
             deconstructed = deconstruct_url(location)
 
             # Check for proper schema
             if deconstructed.scheme == "https":
+                self._log(
+                    safe_add_log, f"Valid schema on deconstructed URL: {location}"
+                )
                 return location
 
         # Check for redirects
@@ -542,16 +673,21 @@ class UrlValidator:
             # Common redirects, where sometimes 'www.facebook.com' could send you to the following:
             #       'https://www.facebook.com/login/?next=https%3A%2F%2Fwww.facebook.com%2F'
             # Forces the return of 'https://www.facebook.com', which comes after the ?next= query param
+            self._log(
+                safe_add_log, "Filtering out common redirect on redirect with 302"
+            )
             return self._filter_out_common_redirect(url)
 
         # Check for proper schema
         if location is not None and deconstruct_url(location).scheme != "https":
+            self._log(warning_log, f"Invalid schema on deconstructed URL: {location}")
             return None
 
         return location
 
     def _check_if_is_short_url(self, url_domain: str) -> bool:
         if not self._redis_uri or self._redis_uri == "memory://":
+            self._log(warning_log, "Redis unavailable to check for short URL")
             return False
 
         redis_client: Redis = redis.Redis.from_url(self._redis_uri)  # type: ignore
@@ -580,18 +716,38 @@ class UrlValidator:
 
                 if response.status_code in range(300, 400):
                     if response.next is not None and response.next.url:
+                        self._log(
+                            safe_add_many_logs,
+                            [
+                                "Validated short URL",
+                                f"Short URL: {url}",
+                                f"Long URL: {response.next.url}",
+                            ],
+                        )
                         return response.next.url, True
 
                     if VALIDATION_STRS.LOCATION in response.headers:
+                        self._log(
+                            safe_add_many_logs,
+                            [
+                                "Validated short URL",
+                                f"Short URL: {url}",
+                                f"Long URL: {response.headers[VALIDATION_STRS.LOCATION]}",
+                            ],
+                        )
                         return response.headers[VALIDATION_STRS.LOCATION], True
 
         except requests.exceptions.ReadTimeout as e:
+            self._log(warning_log, "Short URL request timed out on GET")
             raise InvalidURLError("Timed out trying to read this short URL. " + str(e))
         except requests.exceptions.ConnectionError as e:
+            self._log(warning_log, "Unable to connect to short URL request on GET")
             raise InvalidURLError("Unable to connect to the short URL. " + str(e))
         except requests.exceptions.MissingSchema as e:
+            self._log(warning_log, "Invalid schema for short URL request on GET")
             raise InvalidURLError("Invalid schema for this short URL. " + str(e))
         except requests.RequestException as e:
+            self._log(warning_log, "Unable to validate short URL request on GET")
             raise InvalidURLError("Unable to validate short URL. " + str(e))
 
         else:
@@ -626,32 +782,48 @@ class UrlValidator:
 
         # First normalize the URL
         url = self._normalize_url(url)
+        self._log(safe_add_log, f"Normalized URL for validation: {url}")
         deconstructed = deconstruct_url(url)
 
         # Check for proper schema
         if deconstructed.scheme != "https":
+            self._log(warning_log, "URL schema was not https")
             raise InvalidURLError("Improper scheme given for this URL")
 
         # Return during UI testing here so we can check ill-formed URLs and behavior on frontend
         if self._ui_testing:
+            self._log(safe_add_log, "Returning given URL while in testing...")
             return self._return_url_for_ui_testing(user_headers, url)
 
         # DNS Check to ensure valid domain and host
+        self._log(safe_add_log, f"Validating host: {deconstructed.host}")
         if not self._validate_host(deconstructed.host):
             raise InvalidURLError("Domain did not resolve into a valid IP address")
 
         # Build headers to perform HTTP request to validate URL
         headers = self._generate_headers(url, user_headers)
+        self._log(safe_add_log, f"Using headers:\n{headers}")
 
         # Check if contained within short URL domains
         if self._check_if_is_short_url(deconstructed.host):
+            self._log(
+                safe_add_log, f"Found short URL with {deconstructed.host} in Redis"
+            )
             return self._validate_short_url(url, headers)
 
         # Perform HEAD request, majority of URLs should be okay with this
         response = self._perform_head_request(url, headers, limited_redirects=True)
 
-        # HEAD requests can fail for shortened URLs, try GET just in case
+        # HEAD requests can fail, try heavier GET instead
         if response is None or response.status_code == 404:
+            self._log(
+                warning_log,
+                (
+                    "HEAD request failed: " + "response null"
+                    if response is None
+                    else f"{response.status_code=}"
+                ),
+            )
             response = self._perform_get_request(url, headers)
 
         if (
@@ -671,9 +843,14 @@ class UrlValidator:
         if response is None or (
             response.status_code >= 400 and response.status_code < 500
         ):
+            self._log(
+                safe_add_log,
+                f"Have to perform wayback check after {response.status_code=}",
+            )
             response = self._perform_wayback_check(url, headers)
 
         if response is None:
+            self._log(warning_log, f"HEAD/GET/Wayback failed validation for: {url}")
             raise InvalidURLError("Unable to validate this URL")
 
         # Validates the Wayback response
@@ -688,17 +865,25 @@ class UrlValidator:
         The URL may have a fully JavaScript based frontend, which would make these traditional methods more difficult.
         We provide back the normalized URL and mark the URL as UNKNOWN, to be later verified by a headless automated browser.
         """
+        self._log(critical_log, f"HEAD/GET/Wayback failed validation for: {url}")
         return url, False
 
     def _is_cloudfront_error(self, headers: CaseInsensitiveDict) -> bool:
         x_cache = VALIDATION_STRS.X_CACHE
         cf_error = VALIDATION_STRS.ERROR_FROM_CLOUDFRONT
-        return x_cache in headers and headers.get(x_cache, "").lower() == cf_error
+        is_cloudfront_error = (
+            x_cache in headers and headers.get(x_cache, "").lower() == cf_error
+        )
+        self._log(safe_add_log, f"Is cloudfront error: {is_cloudfront_error}")
+        return is_cloudfront_error
 
     def _is_accelerator_error(self, url: str, response_reason: str) -> bool:
         deconstructed_url = deconstruct_url(url)
         is_valid_url = self._validate_host(deconstructed_url.host)
-        return is_valid_url and "accelerator" in response_reason.lower()
+        is_accelerator_error = is_valid_url and "accelerator" in response_reason.lower()
+
+        self._log(safe_add_log, f"Is accelerator error: {is_accelerator_error}")
+        return is_accelerator_error
 
     def _return_url_for_ui_testing(
         self, headers: dict[str, str] | None, url: str
@@ -708,13 +893,16 @@ class UrlValidator:
             raise InvalidURLError("Invalid URL used during test")
         return url, True
 
-    @staticmethod
-    def _filter_out_common_redirect(url: str) -> str:
+    def _filter_out_common_redirect(self, url: str) -> str:
         for common_redirect in COMMON_REDIRECTS:
             if common_redirect in url:
                 url = url.removeprefix(common_redirect)
+                self._log(
+                    safe_add_log, f"Found common direct for URL: {common_redirect}"
+                )
                 return unquote(url)
 
+        self._log(warning_log, "Unable to find common direct for URL")
         return unquote(url)
 
     @staticmethod

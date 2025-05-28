@@ -9,6 +9,7 @@ from flask_migrate import Migrate
 from flask_session import Session
 from flask_wtf.csrf import CSRFError, CSRFProtect
 
+from src import app_logger
 from src.db import db
 from src.config import Config, ConfigProd
 from src.extensions.email_sender.email_sender import EmailSender
@@ -17,7 +18,7 @@ from src.cli.cli_options import register_short_urls_cli
 from src.cli.mock_options import register_mocks_db_cli
 from src.utils.bundle import prepare_bundler_for_js_files
 from src.utils.error_handler import (
-    handle_403_response,
+    handle_403_response_from_csrf,
     handle_404_response,
     handle_429_response_default_ratelimit,
 )
@@ -47,6 +48,8 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     app = Flask(__name__)
     app.config.from_object(ConfigProd if production else config_class)
     app.config[CONFIG_ENVS.TESTING_OR_PROD] = testing or production
+
+    app_logger.init_app(app)
 
     sess.init_app(app)
     db.init_app(app)
@@ -96,7 +99,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     register_short_urls_cli(app)
 
     app.register_error_handler(404, handle_404_response)
-    app.register_error_handler(CSRFError, handle_403_response)
+    app.register_error_handler(CSRFError, handle_403_response_from_csrf)
 
     if not testing:
         # Import models to initialize migration scripts

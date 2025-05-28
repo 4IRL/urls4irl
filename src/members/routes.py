@@ -1,3 +1,4 @@
+from typing import Optional
 from flask import (
     Blueprint,
     jsonify,
@@ -5,6 +6,12 @@ from flask import (
 from flask_login import current_user
 
 from src import db
+from src.app_logger import (
+    critical_log,
+    safe_add_many_logs,
+    turn_form_into_str_for_log,
+    warning_log,
+)
 from src.members.forms import (
     UTubNewMemberForm,
 )
@@ -37,6 +44,7 @@ def remove_member(utub_id: int, user_id: int):
 
     if user_id == current_utub.utub_creator:
         # Creator tried to remove themselves, not allowed
+        warning_log(f"User={current_user.id} | UTub creator tried to remove themselves")
         return (
             jsonify(
                 {
@@ -66,7 +74,16 @@ def remove_member(utub_id: int, user_id: int):
         current_utub_member_not_in_utub
         or current_utub_member_not_creator_and_removing_another_member
     ):
-        # if current_user_not_in_utub or member_trying_to_remove_another_member:
+        if current_utub_member_not_in_utub:
+            critical_log(
+                f"User={current_user.id} tried removing themselves from UTub.id={utub_id} they aren't in"
+            )
+
+        if current_utub_member_not_creator_and_removing_another_member:
+            critical_log(
+                f"User={current_user.id} tried removing another member from UTub.id={utub_id}"
+            )
+
         return (
             jsonify(
                 {
@@ -78,9 +95,14 @@ def remove_member(utub_id: int, user_id: int):
             403,
         )
 
-    user_to_remove_in_utub: Utub_Members = Utub_Members.query.get((utub_id, user_id))
+    user_to_remove_in_utub: Optional[Utub_Members] = Utub_Members.query.get(
+        (utub_id, user_id)
+    )
 
     if user_to_remove_in_utub is None:
+        warning_log(
+            f"User={current_user.id} tried removing a member that isn't in this UTub"
+        )
         return (
             jsonify(
                 {
@@ -92,12 +114,19 @@ def remove_member(utub_id: int, user_id: int):
             404,
         )
 
-    removed_user_username = user_to_remove_in_utub.to_user.username
+    removed_user_username: str = user_to_remove_in_utub.to_user.username
 
     db.session.delete(user_to_remove_in_utub)
     current_utub.set_last_updated()
     db.session.commit()
 
+    safe_add_many_logs(
+        [
+            "Removed member from UTub",
+            f"UTub.id={utub_id}",
+            f"User={user_id}",
+        ]
+    )
     return (
         jsonify(
             {
@@ -127,6 +156,9 @@ def create_member(utub_id: int):
 
     if utub.utub_creator != current_user.id:
         # User not authorized to add a member to this UTub
+        critical_log(
+            f"User={current_user.id} tried adding a member to UTub.id={utub_id}"
+        )
         return (
             jsonify(
                 {
@@ -148,6 +180,9 @@ def create_member(utub_id: int):
 
         if already_in_utub:
             # User already exists in UTub
+            warning_log(
+                f"User={current_user.id} tried adding a User={new_user.id} already in this UTub"
+            )
             return (
                 jsonify(
                     {
@@ -167,6 +202,10 @@ def create_member(utub_id: int):
         db.session.commit()
 
         # Successfully added user to UTub
+        safe_add_many_logs(
+            ["Added member to UTub", f"UTub.id={utub_id}", f"Added User={new_user.id}"]
+        )
+
         return (
             jsonify(
                 {
@@ -183,6 +222,9 @@ def create_member(utub_id: int):
         )
 
     if utub_new_user_form.errors is not None:
+        warning_log(
+            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_new_user_form.errors)}"
+        )
         return (
             jsonify(
                 {
@@ -195,6 +237,7 @@ def create_member(utub_id: int):
             400,
         )
 
+    critical_log(f"User={current_user.id} failed to add member to UTub")
     return (
         jsonify(
             {
