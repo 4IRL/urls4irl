@@ -91,8 +91,8 @@ valid_urls = {
         "www.upgrad.com/blog/top-artificial-intelligence-project-ideas-topics-for-beginners/",
         "upgrad.com/blog/top-artificial-intelligence-project-ideas-topics-for-beginners/",
     ],
-    "https://immich.app/docs/overview/introduction/": [
-        "https://immich.app/docs/overview/introduction",
+    "https://immich.app/docs/overview/welcome/": [
+        "https://immich.app/docs/overview/welcome",
     ],
     "https://developers.google.com/workspace/calendar/api/guides/overview": [
         "https://developers.google.com/workspace/calendar/api/guides/overview",
