@@ -368,5 +368,5 @@ def test_get_valid_utub_without_ajax_request_logs(
 
     assert response.status_code == 302
     assert is_string_in_logs(
-        f"User {current_user_id} did not make an AJAX request", caplog.records
+        f"User={current_user_id} did not make an AJAX request", caplog.records
     )

@@ -243,7 +243,7 @@ def test_get_utubs_success_logs(
     WHEN the user requests a summary of all their UTubs
     THEN verify the app logs are valid
     """
-    client, _, _, _ = login_first_user_without_register
+    client, _, user, _ = login_first_user_without_register
 
     response = client.get(
         url_for(ROUTES.UTUBS.GET_UTUBS),
@@ -251,7 +251,7 @@ def test_get_utubs_success_logs(
     )
 
     assert response.status_code == 200
-    assert is_string_in_logs("Returning user's UTubs from direct route", caplog.records)
+    assert is_string_in_logs(f"Returning UTubs for User={user.id}", caplog.records)
 
 
 def test_get_utubs_without_ajax_request_logs(
@@ -272,5 +272,5 @@ def test_get_utubs_without_ajax_request_logs(
 
     assert response.status_code == 404
     assert is_string_in_logs(
-        f"User {user.id} did not make an AJAX request", caplog.records
+        f"User={user.id} did not make an AJAX request", caplog.records
     )

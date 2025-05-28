@@ -112,7 +112,7 @@ def test_get_home_page_when_not_in_utub(
     response = client.get(url_to_get)
     assert response.status_code == 302
     assert is_string_in_logs(
-        f"User {user.id} not a member of UTub.id={utub_id_not_member_of}",
+        f"User={user.id} not a member of UTub.id={utub_id_not_member_of}",
         caplog.records,
     )
 

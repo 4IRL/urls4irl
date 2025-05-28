@@ -157,7 +157,7 @@ def get_utubs():
 
     # TODO: Should serialized summary be utubID and utubName
     # instead of id and name?
-    safe_add_log("Returning user's UTubs from direct route")
+    safe_add_log(f"Returning UTubs for User={current_user.id}")
     return jsonify(current_user.serialized_on_initial_load)
 
 
