@@ -84,7 +84,7 @@ def _handle_after_forgot_password_form_validated(
     if user_with_email is not None:
         if not user_with_email.email_validated:
             warning_log(
-                f"User {user_with_email.id} forgot password but not email validated"
+                f"User={user_with_email.id} forgot password but not email validated"
             )
             return (
                 jsonify(
@@ -122,7 +122,7 @@ def _handle_after_forgot_password_form_validated(
             if email_send_result.status_code >= 500:
                 return _handle_mailjet_failure(email_send_result, error_code=3)
 
-            safe_add_log("Sending password reset email")
+            safe_add_log(f"Sending password reset email for User={user_with_email.id}")
 
     return (
         jsonify(

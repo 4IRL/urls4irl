@@ -63,7 +63,7 @@ def error_page():
 def splash_page():
     """Splash page for an unlogged in user."""
     if current_user.is_authenticated and current_user.email_validated:
-        safe_add_log("User already logged in")
+        safe_add_log(f"User={current_user} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
     return render_template("splash.html")
 
@@ -73,9 +73,9 @@ def register_user():
     """Allows a user to register an account."""
     if current_user.is_authenticated:
         if not current_user.email_validated:
-            warning_log("User registered but not email validated")
+            warning_log(f"User={current_user.id} registered but not email validated")
             return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
-        warning_log("User already logged in")
+        warning_log(f"User={current_user.id} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
     register_form: UserRegistrationForm = UserRegistrationForm()
@@ -102,7 +102,7 @@ def register_user():
 
         user = Users.query.filter(Users.username == username).first()
         login_user(user)
-        safe_add_log("User successfully registered but not email validated")
+        safe_add_log(f"User={user.id} successfully registered but not email validated")
         validate_email_form = ValidateEmailForm()
         return (
             render_template(
@@ -140,12 +140,11 @@ def register_user():
                     400,
                 )
             else:
-                login_user(
-                    Users.query.filter(
-                        Users.email == register_form.email.data.lower()  # type: ignore
-                    ).first_or_404()
-                )
-                warning_log("User has not validated email yet")
+                user: Users = Users.query.filter(
+                    Users.email == register_form.email.data.lower()  # type: ignore
+                ).first_or_404()
+                login_user(user)
+                warning_log(f"User={user.id} has not validated email yet")
                 return (
                     jsonify(
                         {
@@ -178,9 +177,9 @@ def login():
     """Login page. Allows user to register or login."""
     if current_user.is_authenticated:
         if not current_user.email_validated:
-            warning_log(f"User {current_user.id} registered but not email validated")
+            warning_log(f"User={current_user.id} registered but not email validated")
             return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
-        warning_log(f"User {current_user.id} already logged in")
+        warning_log(f"User={current_user.id} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
     login_form = LoginForm()
@@ -193,7 +192,7 @@ def login():
         user: Users = Users.query.filter(Users.username == username).first()
         login_user(user)  # Can add Remember Me functionality here
         if not user.email_validated:
-            warning_log(f"User {user.id} not email validated")
+            warning_log(f"User={user.id} not email validated")
             return (
                 jsonify(
                     {
@@ -205,7 +204,7 @@ def login():
                 401,
             )
 
-        safe_add_log("Logging user in")
+        safe_add_log(f"Logging User.id={user.id} in")
         next_page = request.args.get(
             "next"
         )  # Takes user to the page they wanted to originally before being logged in
@@ -272,7 +271,7 @@ def confirm_email_after_register():
         safe_add_log("No user logged in")
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
     if current_user.email_validated:
-        warning_log(f"User {current_user.id} already logged in")
+        warning_log(f"User={current_user.id} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
     return render_template(
         "email_validation/email_needs_validation_modal.html",
@@ -364,7 +363,7 @@ def validate_email_expired():
     db.session.commit()
     login_user(user_with_expired_token)
 
-    safe_add_log("User email validation token reset")
+    safe_add_log(f"User={user_with_expired_token.id} email validation token reset")
     return (
         render_template(
             "splash.html",
@@ -384,7 +383,7 @@ def validate_email(token: str):
 
     if expired:
         warning_log(
-            f"User {user_to_validate.id if user_to_validate else 'None'} token expired"
+            f"User={user_to_validate.id if user_to_validate else 'None'} token expired"
         )
         return redirect(url_for("splash.validate_email_expired", token=token))
 
@@ -405,7 +404,7 @@ def validate_email(token: str):
     email_validation: Email_Validations = user_to_validate.email_confirm
 
     if not email_validation.validation_token == token:
-        critical_log(f"Token did not match with user for User {user_to_validate.id}")
+        critical_log(f"Token did not match with user for User={user_to_validate.id}")
         abort(404)
 
     user_to_validate.validate_email()
@@ -413,7 +412,7 @@ def validate_email(token: str):
     db.session.commit()
     login_user(user_to_validate)
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
-    safe_add_log("User email has been validated")
+    safe_add_log(f"User={user_to_validate.id} email has been validated")
     return redirect(url_for(ROUTES.UTUBS.HOME))
 
 
@@ -421,9 +420,9 @@ def validate_email(token: str):
 def forgot_password():
     if current_user.is_authenticated:
         if not current_user.email_validated:
-            warning_log(f"User {current_user.id} registered but not email validated")
+            warning_log(f"User={current_user.id} registered but not email validated")
             return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
-        warning_log(f"User {current_user.id} already logged in")
+        warning_log(f"User={current_user.id} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
 
     forgot_password_form = ForgotPasswordForm()
@@ -450,7 +449,7 @@ def forgot_password():
             401,
         )
 
-    critical_log(f"User {current_user.id} unable to handle forgotten password")
+    critical_log(f"User={current_user.id} unable to handle forgotten password")
     return (
         jsonify(
             {
@@ -478,7 +477,7 @@ def reset_password(token: str):
         db.session.delete(reset_password_obj)
         db.session.commit()
         warning_log(
-            f"User {reset_password_user.id if reset_password_user else 'None'}Reset password token expired"
+            f"User={reset_password_user.id if reset_password_user else 'None'} reset password token expired"
         )
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
@@ -495,7 +494,7 @@ def reset_password(token: str):
         db.session.delete(reset_password_obj)
         db.session.commit()
         critical_log(
-            f"User {current_user.id} not email validated but received password reset token!"
+            f"User={reset_password_user.id} not email validated but received password reset token"
         )
         abort(404)
 
@@ -505,7 +504,7 @@ def reset_password(token: str):
         or reset_password_user.forgot_password.is_more_than_hour_old()
     ):
         critical_log(
-            f"User {current_user.id} never reset password, or token expired or invalid"
+            f"User={reset_password_user.id} never reset password, or token expired or invalid"
         )
         abort(404)
 
@@ -523,7 +522,9 @@ def reset_password(token: str):
         return _validate_resetting_password(reset_password_user, reset_password_form)
 
     if reset_password_form.errors is not None:
-        warning_log("Invalid form for resetting password")
+        warning_log(
+            f"User={reset_password_user.id} | Invalid form for resetting password"
+        )
         return (
             jsonify(
                 {
@@ -536,7 +537,7 @@ def reset_password(token: str):
             400,
         )
 
-    critical_log(f"User {current_user.id} unable to reset password")
+    critical_log(f"User={reset_password_user.id} unable to reset password")
     return (
         jsonify(
             {
