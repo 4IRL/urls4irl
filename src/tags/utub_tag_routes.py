@@ -40,7 +40,7 @@ def create_utub_tag(utub_id: int):
     if not user_in_utub:
         # How did a user not in this utub get access to add a tag to this UTub?
         error_log(
-            f"User {current_user.id} tried adding tag to UTub {utub_id} but not in {utub_id}!"
+            f"User={current_user.id} tried adding UTubTag to UTub.id={utub_id} but user not in UTub"
         )
         return (
             jsonify(
@@ -65,7 +65,7 @@ def create_utub_tag(utub_id: int):
 
         if utub_tag_already_created:
             warning_log(
-                f"User {current_user.id} tried adding tag '{tag_to_add}' but already exists in UTub {utub_id}"
+                f"User={current_user.id} tried adding UTubTag.tag_string={tag_to_add} but UTubTag already exists in UTub.id={utub_id}"
             )
             return (
                 jsonify(
@@ -110,7 +110,7 @@ def create_utub_tag(utub_id: int):
     if utub_tag_form.errors is not None:
         errors = {MODELS.TAG_STRING: utub_tag_form.tag_string.errors}
         warning_log(
-            f"User {current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_tag_form)}"
+            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_tag_form.errors)}"  # type: ignore
         )
         return (
             jsonify(
@@ -124,7 +124,7 @@ def create_utub_tag(utub_id: int):
             400,
         )
 
-    critical_log(f"User {current_user.id} failed to add tag to UTub {utub_id}")
+    critical_log(f"User={current_user.id} failed to add UTubTag to UTub.id={utub_id}")
     return (
         jsonify(
             {
@@ -156,7 +156,7 @@ def delete_utub_tag(utub_id: int, utub_tag_id: int):
 
     if not user_in_utub:
         critical_log(
-            f"User {current_user.id} tried removing UTubTag {utub_tag_id} but not in {utub_id}!"
+            f"User={current_user.id} tried removing UTubTag.id={utub_tag_id} but user not in UTub.id={utub_id}"
         )
         return (
             jsonify(
