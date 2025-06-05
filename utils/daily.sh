@@ -2,8 +2,7 @@
 set +x # Disable command echoing
 SCRIPT_DIR=$(dirname "$0")
 
-# Make log folder if not already exists
-mkdir -p "$SCRIPT_DIR/daily_workflow_logs"
+# Daily log file
 LOGFILE="$SCRIPT_DIR/daily_workflow_logs/$(date +%Y_%m_%d)-daily-workflow-logs.txt"
 
 # Redirecting file stdout/stderr to logfile
@@ -14,7 +13,7 @@ exec 2>&1
 echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
 echo -e "\n\nPREPARING TO RUN DAILY TASKS... $(date +%Y%m%d_%H%M%S)\n\n"
 
-bash "$SCRIPT_DIR/backup-database.sh"
+source "$SCRIPT_DIR/backup-database.sh"
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in backing up database"
   exit 1
