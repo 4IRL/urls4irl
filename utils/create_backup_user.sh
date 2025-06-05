@@ -181,16 +181,16 @@ echo "Success: Sudoers file created with specified commands"
 # Validate the sudoers command
 visudo -cf "$SUDOERS_FILE" && echo "Sudoers file updated successfully!" || echo "Error in sudoers file!"
 
-# Create cronjob to run the backups for this user
-#TODO: Change the commands here to match the backup script
-BACKUP_LOGS_DIR="/home/$USERNAME/backup_logs/"
-mkdir -p "$BACKUP_LOGS_DIR"
-chown $USERNAME $BACKUP_LOGS_DIR
-chgrp $USERNAME $BACKUP_LOGS_DIR
-chmod 700 $BACKUP_LOGS_DIR
+# Create the backup logs directory to store logs for database backups
+LOGS_DIR="/home/$USERNAME/daily_workflow_logs/"
+mkdir -p "$LOGS_DIR"
+chown $USERNAME $LOGS_DIR
+chgrp $USERNAME $LOGS_DIR
+chmod 700 $LOGS_DIR
 
-#TODO:The cron file needs to be edited manually to allow for specific date naming, as this line causes the date function to expand
-CRON_JOB="0 0 * * * /home/$USERNAME/backup-database.sh > $BACKUP_LOGS_DIR$(/$USER_BIN/date +\%Y_\%m_\%d)-backup-logs.txt 2>&1"
+# Create cronjob to run the backups for this user
+# Command to call the daily workflows
+CRON_JOB="0 0 * * * /home/$USERNAME/daily.sh"
 
 # Retrieve the user's current crontab
 CURRENT_CRON=$(mktemp)

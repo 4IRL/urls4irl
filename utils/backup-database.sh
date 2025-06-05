@@ -217,9 +217,5 @@ NUM_BACKUPS=$(find ${BACKUP_DIR} -maxdepth 1 -type f | wc -l)
 unset NUM_BACKUPS
 
 
-#TODO:
-# ------- ROTATE REMOTE DB's - ONLY STORE PAST 90 DAYS AND FIRST OF EVERY MONTH  ------- #
-
-
 echo -e "\n\n FINISH BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 echo "----------------------------------------------------"
