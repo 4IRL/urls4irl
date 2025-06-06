@@ -17,6 +17,7 @@ class RequestInfoFilter(logging.Filter):
     def filter(self, record):
         record.request_id = getattr(g, "request_id", "-")
         record.remote_addr = getattr(request, "remote_addr", "-") if request else "-"
+        record.user_agent = getattr(request, "user_agent", "-") if request else "-"
         record.module = "u4i"
         if request and request.endpoint:
             record.module = request.endpoint
@@ -37,7 +38,7 @@ def configure_logging(app: Flask, is_production=False):
 
     # Create formatter with enhanced Flask style
     formatter = logging.Formatter(
-        "[%(asctime)s] %(levelname)s [%(request_id)s] [%(remote_addr)s] %(module)s: %(message)s"
+        "[%(asctime)s] %(levelname)s [%(request_id)s] [%(remote_addr)s] [%(user_agent)s] %(module)s: %(message)s"
     )
 
     # Create console handler
