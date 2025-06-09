@@ -61,3 +61,15 @@ class URL_VALIDATION:
     HTML_CONTENT = HTML_CONTENT
     URL_VALIDATION_MODULE = URL_VALIDATION_MODULE
     SHORT_URLS = SHORT_URLS
+    INVALID_HEADERS = {
+        header.lower()
+        for header in (
+            CONTENT_TYPE,
+            X_REQUESTED_WITH,
+            X_CSRF_TOKEN,
+            CONTENT_LENGTH,
+            COOKIE,
+            ORIGIN,
+            REFERER,
+        )
+    }
