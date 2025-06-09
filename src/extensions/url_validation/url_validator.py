@@ -169,19 +169,11 @@ class UrlValidator:
         if VALIDATION_STRS.CONNECTION not in headers:
             headers[VALIDATION_STRS.CONNECTION] = "keep-alive"
 
-        invalid_headers = (
-            VALIDATION_STRS.CONTENT_TYPE,
-            VALIDATION_STRS.X_REQUESTED_WITH,
-            VALIDATION_STRS.X_CSRF_TOKEN,
-            VALIDATION_STRS.CONTENT_LENGTH,
-            VALIDATION_STRS.COOKIE,
-            VALIDATION_STRS.ORIGIN,
-            VALIDATION_STRS.REFERER,
-        )
-
-        for invalid_header in invalid_headers:
-            if invalid_header in headers:
-                headers.pop(invalid_header)
+        # Remove invalid headers before making URL validation request
+        header_keys = list(headers)
+        for header in header_keys:
+            if header.lower() in VALIDATION_STRS.INVALID_HEADERS:
+                headers.pop(header)
 
         headers[VALIDATION_STRS.HOST] = deconstruct_url(url).host
         return headers

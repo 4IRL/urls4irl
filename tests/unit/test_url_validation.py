@@ -10,7 +10,7 @@ from src.extensions.url_validation.url_validator import (
     WaybackRateLimited,
 )
 from src.extensions.url_validation import constants as url_constants
-from src.utils.strings.url_validation_strs import USER_AGENT
+from src.utils.strings.url_validation_strs import URL_VALIDATION, USER_AGENT
 
 pytestmark = pytest.mark.unit
 
@@ -236,3 +236,21 @@ def test_random_user_agents():
                 break
 
     assert valid_agent_used == len(urls_needing_valid_user_agent)
+
+
+def test_invalid_headers_removed():
+    """
+    GIVEN a URL to validate using the user's provided Headers
+    WHEN the headers contain a set of invalid headers
+    THEN ensure that those headers are removed
+    """
+    url_validator = UrlValidator(is_testing=True)
+    invalid_headers = URL_VALIDATION.INVALID_HEADERS
+
+    invalid_headers_dict = {header.upper(): "URLS" for header in invalid_headers}
+
+    valid_headers = url_validator._generate_headers(
+        "urls.4irl.app", invalid_headers_dict
+    )
+
+    assert all([header.upper() not in valid_headers for header in invalid_headers])
