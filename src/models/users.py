@@ -116,7 +116,7 @@ class Users(db.Model, UserMixin):
         return {MODEL_STRS.UTUBS: utub_summaries}
 
     def __repr__(self):
-        return f"User: {self.username}, Email: {self.email}, Password: {self.password}"
+        return f"User: {self.username}"
 
     def get_email_validation_token(
         self, expires_in=EMAIL_CONSTANTS.WAIT_TO_ATTEMPT_AFTER_MAX_ATTEMPTS
