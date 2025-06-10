@@ -24,6 +24,19 @@ class RequestInfoFilter(logging.Filter):
         return True
 
 
+class DetailedRequestInfoFilter(logging.Filter):
+    """Add detailed request-specific information to log records (includes user agent and remote addr)."""
+
+    def filter(self, record):
+        record.request_id = getattr(g, "request_id", "-")
+        record.remote_addr = getattr(request, "remote_addr", "-") if request else "-"
+        record.user_agent = getattr(request, "user_agent", "-") if request else "-"
+        record.module = "u4i"
+        if request and request.endpoint:
+            record.module = request.endpoint
+        return True
+
+
 def generate_request_id() -> str:
     return str(uuid.uuid4())[-12:]
 
@@ -37,16 +50,26 @@ def configure_logging(app: Flask, is_production=False):
     app.logger.setLevel(logging.INFO if app.config.get("PRODUCTION") else logging.DEBUG)
 
     # Create formatter with enhanced Flask style
-    formatter = logging.Formatter(
+    # Create formatter for regular logs (without user agent and remote addr)
+    regular_formatter = logging.Formatter(
+        "[%(asctime)s] %(levelname)s [%(request_id)s] %(module)s: %(message)s"
+    )
+
+    # Create formatter for detailed logs (with user agent and remote addr)
+    detailed_formatter = logging.Formatter(
         "[%(asctime)s] %(levelname)s [%(request_id)s] [%(remote_addr)s] [%(user_agent)s] %(module)s: %(message)s"
     )
 
     # Create console handler
     console_handler = logging.StreamHandler()
     console_handler.set_name(CONFIG_ENVS.U4I_LOGGER)
-    console_handler.setFormatter(formatter)
+    console_handler.setFormatter(regular_formatter)
     console_handler.addFilter(RequestInfoFilter())
     app.logger.addHandler(console_handler)
+
+    # Store formatters for use in before_request logging
+    app._detailed_formatter = detailed_formatter
+    app._regular_formatter = regular_formatter
 
     # Configure root logger for third-party libraries
     root_logger = logging.getLogger()
@@ -54,6 +77,27 @@ def configure_logging(app: Flask, is_production=False):
 
     # Set propagate to False since we're handling our own handlers
     app.logger.propagate = False
+
+
+def log_with_detailed_info(app: Flask, level: int, message: str):
+    """Log a message with detailed request info (user agent and remote addr)."""
+    # Create a temporary handler with detailed formatter
+    temp_handler = logging.StreamHandler()
+    temp_handler.setFormatter(app._detailed_formatter)
+    temp_handler.addFilter(DetailedRequestInfoFilter())
+
+    # Create a temporary logger to avoid affecting the main logger
+    temp_logger = logging.getLogger(f"temp_{generate_request_id()}")
+    temp_logger.setLevel(app.logger.level)
+    temp_logger.addHandler(temp_handler)
+    temp_logger.propagate = False
+
+    # Log the message
+    temp_logger.log(level, message)
+
+    # Clean up
+    temp_handler.close()
+    temp_logger.removeHandler(temp_handler)
 
 
 def setup_before_request_logging(app: Flask):
@@ -75,9 +119,8 @@ def setup_before_request_logging(app: Flask):
             "PATCH": "\033[93m",  # yellow
             "PUT": "\033[93m",  # yellow
         }
-        app.logger.info(
-            f"Request: {method_colors.get(request.method, '')}{request.method}{END} {path} "
-        )
+        message = f"Request: {method_colors.get(request.method, '')}{request.method}{END} {path} "
+        log_with_detailed_info(app, logging.INFO, message)
 
     @app.after_request
     def after_request(response: Response):
@@ -122,6 +165,12 @@ def init_app(app: Flask):
     # Disable Werkzeug's built-in logging to avoid duplication
     werkzeug_logger = logging.getLogger("werkzeug")
     werkzeug_logger.disabled = True
+
+    if not app.config.get("PRODUCTION", False):
+        return
+
+    gunicorn_access_logger = logging.getLogger("gunicorn.access")
+    gunicorn_access_logger.disabled = True
 
 
 def safe_get_request_id():

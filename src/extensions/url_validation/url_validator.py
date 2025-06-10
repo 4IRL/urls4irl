@@ -286,7 +286,8 @@ class UrlValidator:
             safe_add_many_logs,
             [
                 f"From HEAD request with redirect: {response.headers} ",
-                f"{redirect_url=}" f"{response.url=}",
+                f"{redirect_url=}",
+                f"{response.url=}",
             ],
         )
         return response
@@ -312,7 +313,8 @@ class UrlValidator:
         safe_add_many_logs(
             [
                 f"From HEAD request without redirect: {response.headers} ",
-                f"{url=}" f"{response.url=}",
+                f"{url=}",
+                f"{response.url=}",
             ]
         )
         return response
@@ -409,7 +411,8 @@ class UrlValidator:
             safe_add_many_logs,
             [
                 f"From GET request with redirect: {response.headers} ",
-                f"{redirect_url=}" f"{response.url=}",
+                f"{redirect_url=}",
+                f"{response.url=}",
             ],
         )
         return response
