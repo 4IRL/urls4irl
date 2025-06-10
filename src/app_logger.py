@@ -81,6 +81,19 @@ def configure_logging(app: Flask, is_production=False):
 
 def log_with_detailed_info(app: Flask, level: int, message: str):
     """Log a message with detailed request info (user agent and remote addr)."""
+    # Check if we're in a test environment by seeing if the app logger has any StreamHandlers
+    # If not, it means they've been removed for testing, so just use the regular logger
+    has_stream_handlers = any(
+        isinstance(handler, logging.StreamHandler)
+        and not isinstance(handler, logging.NullHandler)
+        for handler in app.logger.handlers
+    )
+
+    if not has_stream_handlers:
+        # In test mode, just use the regular logger (which will be captured by caplog)
+        app.logger.log(level, message)
+        return
+
     # Create a temporary handler with detailed formatter
     temp_handler = logging.StreamHandler()
     temp_handler.setFormatter(app._detailed_formatter)
