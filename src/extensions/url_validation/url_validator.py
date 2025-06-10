@@ -286,7 +286,8 @@ class UrlValidator:
             safe_add_many_logs,
             [
                 f"From HEAD request with redirect: {response.headers} ",
-                f"{redirect_url=}" f"{response.url=}",
+                f"{redirect_url=}",
+                f"{response.url=}",
             ],
         )
         return response
@@ -312,7 +313,8 @@ class UrlValidator:
         safe_add_many_logs(
             [
                 f"From HEAD request without redirect: {response.headers} ",
-                f"{url=}" f"{response.url=}",
+                f"{url=}",
+                f"{response.url=}",
             ]
         )
         return response
@@ -409,7 +411,8 @@ class UrlValidator:
             safe_add_many_logs,
             [
                 f"From GET request with redirect: {response.headers} ",
-                f"{redirect_url=}" f"{response.url=}",
+                f"{redirect_url=}",
+                f"{response.url=}",
             ],
         )
         return response
@@ -675,7 +678,11 @@ class UrlValidator:
             self._log(warning_log, f"Invalid schema on deconstructed URL: {location}")
             return None
 
-        return location
+        return (
+            self._filter_out_common_redirect(location)
+            if location is not None
+            else location
+        )
 
     def _check_if_is_short_url(self, url_domain: str) -> bool:
         if not self._redis_uri or self._redis_uri == "memory://":
@@ -894,7 +901,7 @@ class UrlValidator:
                 )
                 return unquote(url)
 
-        self._log(warning_log, "Unable to find common direct for URL")
+        self._log(safe_add_log, "Unable to find common direct for URL")
         return unquote(url)
 
     @staticmethod

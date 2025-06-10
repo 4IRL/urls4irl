@@ -25,6 +25,17 @@ def run_app(port: int, show_flask_logs: bool):
         log.disabled = True
         app_for_test.logger.disabled = True
 
+        # Remove all StreamHandlers from the app logger to prevent console output
+        handlers_to_remove = []
+        for handler in app_for_test.logger.handlers:
+            if isinstance(handler, logging.StreamHandler) and not isinstance(
+                handler, logging.NullHandler
+            ):
+                handlers_to_remove.append(handler)
+
+        for handler in handlers_to_remove:
+            app_for_test.logger.removeHandler(handler)
+
         import flask.cli
 
         flask.cli.show_server_banner = lambda *args: None
