@@ -678,7 +678,11 @@ class UrlValidator:
             self._log(warning_log, f"Invalid schema on deconstructed URL: {location}")
             return None
 
-        return location
+        return (
+            self._filter_out_common_redirect(location)
+            if location is not None
+            else location
+        )
 
     def _check_if_is_short_url(self, url_domain: str) -> bool:
         if not self._redis_uri or self._redis_uri == "memory://":
@@ -897,7 +901,7 @@ class UrlValidator:
                 )
                 return unquote(url)
 
-        self._log(warning_log, "Unable to find common direct for URL")
+        self._log(safe_add_log, "Unable to find common direct for URL")
         return unquote(url)
 
     @staticmethod
