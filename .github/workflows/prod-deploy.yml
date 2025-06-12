@@ -83,6 +83,7 @@ jobs:
             run: |
               ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.PROD_SSH_HOST }} '
               cd /home/u4i/;
+              docker logs --since=24h u4i-prod-flask > "${{ secrets.PROD_DB_DIRECTORY }}log_$(date +%Y%m%d_%H%M%S).txt";
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
               docker compose -f compose.yaml pull;
               mkdir -p ./secrets/;

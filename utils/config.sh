@@ -139,6 +139,7 @@ export BACKUP_DIR="/home/$USERNAME/backups/"
 export BACKUP_FILE="${DB_NAME}_$(date +%Y%m%d_%H%M%S).sql"
 export COMPRESSED_BACKUP_FILE="${BACKUP_FILE}"
 export LOG_DIR="/home/$USERNAME/app_logs/"
+export TMP_LOG_DIR="/home/$USERNAME/tmp_app_logs/"
 export LOG_FILE="log_$(date +%Y%m%d_%H%M%S).txt"
 export COMPRESSED_LOG_FILE="${LOG_FILE}"
 
