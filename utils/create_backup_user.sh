@@ -195,6 +195,13 @@ chown $USERNAME $APP_LOGS_DIR
 chgrp $USERNAME $APP_LOGS_DIR
 chmod 700 $APP_LOGS_DIR
 
+# Create the backup logs directory to store logs for the app
+TMP_APP_LOGS_DIR="/home/$USERNAME/tmp_app_logs/"
+mkdir -p "$TMP_APP_LOGS_DIR"
+chown $USERNAME $TMP_APP_LOGS_DIR
+chgrp $USERNAME $TMP_APP_LOGS_DIR
+chmod 770 $TMP_APP_LOGS_DIR
+
 # Create cronjob to run the backups for this user
 # Command to call the daily workflows
 CRON_JOB="0 0 * * * /home/$USERNAME/daily.sh"
