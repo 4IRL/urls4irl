@@ -29,6 +29,7 @@ jobs:
             PROD_SERVICE_TOKEN_SECRET: ${{ secrets.PROD_SERVICE_TOKEN_SECRET }}
             PROD_DB_NAME: ${{ secrets.PROD_DB_NAME_INF }}
             PROD_DB_USER: ${{ secrets.PROD_DB_USER_INF }}
+            PROD_LOG_DIRECTORY: ${{ secrets.PROD_LOG_DIRECTORY }}
             PROD_DB_PASSWORD: ${{ secrets.PROD_DB_PASSWORD_INF }}
             REDIS_PASSWORD: ${{ secrets.REDIS_PASSWORD_INF }}
             MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY_INF }}
