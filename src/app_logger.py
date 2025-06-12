@@ -210,6 +210,10 @@ def safe_retrieve_logs() -> str:
     return " | ".join([val for val in g.log_messages])
 
 
+def info_log(log: str):
+    current_app.logger.info(msg=log)
+
+
 def warning_log(log: str):
     current_app.logger.warning(msg=log)
 

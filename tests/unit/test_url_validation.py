@@ -10,7 +10,7 @@ from src.extensions.url_validation.url_validator import (
     WaybackRateLimited,
 )
 from src.extensions.url_validation import constants as url_constants
-from src.utils.strings.url_validation_strs import URL_VALIDATION, USER_AGENT
+from src.utils.strings.url_validation_strs import LOCATION, URL_VALIDATION, USER_AGENT
 
 pytestmark = pytest.mark.unit
 
@@ -254,3 +254,54 @@ def test_invalid_headers_removed():
     )
 
     assert all([header.upper() not in valid_headers for header in invalid_headers])
+
+
+@mock.patch("requests.head")
+@mock.patch.object(UrlValidator, "_check_if_is_short_url")
+@mock.patch("socket.gethostbyname")
+def test_android_valid_intent_url(socket_mock, short_url_mock, head_request_mock):
+    """
+    GIVEN a user on Android device attempting to validate a URL
+    WHEN the URL is automatically converted into an `intent` type
+    THEN ensure that it is parsed for the actual URL
+    """
+    original_url = "https://maps.app.goo.gl/ZPB15B5zC3dL3y4A7"
+    valid_intent_url = "intent://maps.app.goo.gl/ZPB15B5zC3dL3y4A7#Intent;package=com.google.android.gms;scheme=https;S.browser_fallback_url=https://www.google.com/maps/place/Ithaca%2BFarmers%2BMarket,%2BSteamboat%2BLanding,%2B545%2B3rd%2BSt,%2BIthaca,%2BNY%2B14850/data%3D!4m2!3m1!1s0x89d0817c483332a1:0x697348f602028b6c%3Futm_source%3Dmstt_1&entry%3Dgps&coh%3D192189&g_ep%3DCAESBzI1LjIzLjQYACCenQoqhwEsOTQyMjMyOTksOTQyMTY0MTMsOTQyNzU3ODUsOTQyMTI0OTYsOTQyNzQ4ODMsOTQyMDczOTQsOTQyMDc1MDYsOTQyMDg1MDYsOTQyMTc1MjMsOTQyMTg2NTMsOTQyMjk4MzksOTQyNzUxNjQsNDcwODQzOTMsOTQyMTMyMDAsOTQyNTgzMjVCAlVT&skid%3D91ec9421-c7f2-438b-9b7d-114626892533;end;"
+
+    android_user_agent = "Mozilla/5.0 (Linux; Android 10; K) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Mobile Safari/537.36"
+
+    socket_mock.return_value = "maps.app.goo.gl"
+    short_url_mock.return_value = False
+
+    response_return = mock.Mock(spec=requests.Response)
+    response_return.status_code = 301
+    response_return.is_redirect = True
+    response_return.headers = {LOCATION: valid_intent_url}
+    response_return.next = None
+    response_return.url = original_url
+    head_request_mock.return_value = response_return
+
+    url_validator = UrlValidator(is_testing=True)
+    validated_url, is_valid = url_validator.validate_url(
+        url=original_url, user_headers={USER_AGENT: android_user_agent}
+    )
+    assert is_valid and validated_url == original_url
+
+
+@mock.patch("requests.head")
+@mock.patch.object(UrlValidator, "_check_if_is_short_url")
+@mock.patch("socket.gethostbyname")
+def test_url_invalid_schema_in_redirect(socket_mock, short_url_mock, head_request_mock):
+    """
+    GIVEN a user on Android device attempting to validate a URL
+    WHEN the URL is automatically converted into an `intent` type
+    THEN ensure that it is parsed for the actual URL
+    """
+    original_url = "https://maps.app.goo.gl/ZPB15B5zC3dL3y4A7"
+    socket_mock.return_value = "maps.app.goo.gl"
+    short_url_mock.return_value = False
+    head_request_mock.side_effect = requests.exceptions.InvalidSchema
+
+    url_validator = UrlValidator(is_testing=True)
+    with pytest.raises(InvalidURLError):
+        url_validator.validate_url(url=original_url)
