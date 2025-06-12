@@ -9,7 +9,7 @@ echo -e "\n\n START LOG BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 
 # Create backup and store on host
 echo "Generating log backup and storing on the host..."
-docker logs --since=24h u4i-prod-flask > "${TMP_LOG_DIR}${LOG_FILE}"
+docker logs --since=24h u4i-prod-flask &> "${TMP_LOG_DIR}${LOG_FILE}"
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in generating app logs from docker container"
   exit 1
