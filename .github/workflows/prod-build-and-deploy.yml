@@ -35,3 +35,4 @@ jobs:
             MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY_INF }}
             BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}
             SECRET_KEY: ${{ secrets.PROD_SECRET_KEY }}
+            PROD_LOG_DIRECTORY: ${{ secrets.PROD_LOG_DIRECTORY }}
