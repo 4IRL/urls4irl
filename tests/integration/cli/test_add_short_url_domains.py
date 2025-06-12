@@ -74,7 +74,8 @@ def test_validate_short_url(runner):
     VALID_BITLY_URL = "https://bit.ly/test-u4i-link"
     LONG_URL = "https://www.youtube.com/watch?v=b0fv54xGOwY&pp=0gcJCb0Ag7Wk3p_U"
 
-    final_url, is_validated = url_validator.validate_url(VALID_BITLY_URL)
+    with app.app_context():
+        final_url, is_validated = url_validator.validate_url(VALID_BITLY_URL)
 
     assert LONG_URL == final_url
     assert is_validated

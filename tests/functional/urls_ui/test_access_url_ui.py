@@ -11,6 +11,8 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.wait import WebDriverWait
 
 # Internal libraries
 from src.cli.mock_constants import MOCK_URL_STRINGS
@@ -39,6 +41,11 @@ from tests.functional.utils_for_test import (
 )
 
 pytestmark = pytest.mark.urls_ui
+
+MOCK_TEST_URL_STRINGS = [
+    f"https://www.u4i.test/{idx}"
+    for idx in range(URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS + 5)
+]
 
 
 def test_access_url_by_access_btn_while_selected(
@@ -198,9 +205,8 @@ def test_access_all_urls_at_limit(
     num_of_urls_to_add = URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS - 1
 
     # Randomize URLs chosen to prevent any chance of looking like a bot
-    urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
+    urls_to_add = random.sample(MOCK_TEST_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
-
     app = provide_app
     user_id_for_test = 1
 
@@ -228,7 +234,7 @@ def test_access_all_urls_at_limit(
             browser.switch_to.window(handle)
             browser_url_hostname = urlsplit(browser.current_url).hostname
             assert browser_url_hostname is not None
-            assert any([browser_url_hostname in url for url in MOCK_URL_STRINGS])
+            assert any([browser_url_hostname in url for url in MOCK_TEST_URL_STRINGS])
 
 
 def test_access_all_urls_above_limit(
@@ -248,7 +254,7 @@ def test_access_all_urls_above_limit(
     num_of_urls_to_add = URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS + 1
 
     # Randomize URLs chosen to prevent any chance of looking like a bot
-    urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
+    urls_to_add = random.sample(MOCK_TEST_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
     app = provide_app
@@ -280,12 +286,12 @@ def test_access_all_urls_above_limit(
             browser.switch_to.window(handle)
             browser_url_hostname = urlsplit(browser.current_url).hostname
             assert browser_url_hostname is not None
-            assert any([browser_url_hostname in url for url in MOCK_URL_STRINGS])
+            assert any([browser_url_hostname in url for url in MOCK_TEST_URL_STRINGS])
 
     browser.switch_to.window(init_tab)
-
-    with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, HPL.ACCESS_ALL_URL_MODAL)
+    WebDriverWait(browser, 10).until_not(
+        EC.presence_of_element_located((By.CSS_SELECTOR, HPL.ACCESS_ALL_URL_MODAL))
+    )
 
 
 def test_access_all_urls_above_limit_cancel_modal_dismiss_btn(
@@ -305,7 +311,7 @@ def test_access_all_urls_above_limit_cancel_modal_dismiss_btn(
     num_of_urls_to_add = URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS + 1
 
     # Randomize URLs chosen to prevent any chance of looking like a bot
-    urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
+    urls_to_add = random.sample(MOCK_TEST_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
     app = provide_app
@@ -352,7 +358,7 @@ def test_access_all_urls_above_limit_cancel_modal_x_btn(
     num_of_urls_to_add = URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS + 1
 
     # Randomize URLs chosen to prevent any chance of looking like a bot
-    urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
+    urls_to_add = random.sample(MOCK_TEST_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
     app = provide_app
@@ -399,7 +405,7 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
     num_of_urls_to_add = URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS + 1
 
     # Randomize URLs chosen to prevent any chance of looking like a bot
-    urls_to_add = random.sample(MOCK_URL_STRINGS, num_of_urls_to_add)
+    urls_to_add = random.sample(MOCK_TEST_URL_STRINGS, num_of_urls_to_add)
     add_mock_urls(cli_runner, list(urls_to_add))
 
     app = provide_app

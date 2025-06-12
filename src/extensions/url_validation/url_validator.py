@@ -43,6 +43,7 @@ from flask import Flask
 from src.app_logger import (
     critical_log,
     error_log,
+    info_log,
     safe_add_log,
     safe_add_many_logs,
     warning_log,
@@ -91,13 +92,14 @@ class UrlValidator:
         is_testing: bool = app.config.get("TESTING", False)
         is_production: bool = app.config.get("PRODUCTION", False)
         is_ui_testing: bool = app.config.get("UI_TESTING", False)
+        is_debug: bool = app.config.get("FLASK_DEBUG", False)
         is_not_production_and_is_testing_ui = (
             not is_production and is_testing and is_ui_testing
         )
         self._ui_testing: bool = is_not_production_and_is_testing_ui
         self._redis_uri = app.config.get(ENV.REDIS_URI, None)
         self._is_testing = is_testing
-        self._has_app = is_testing or is_production or is_ui_testing
+        self._has_app = is_testing or is_production or is_ui_testing or is_debug
 
     def _log(self, log_fn, log):
         log_fn(log) if self._has_app else None
@@ -188,7 +190,6 @@ class UrlValidator:
                 )
                 response = self._perform_head_with_custom_redirect(url, headers)
             else:
-                safe_add_log("Performing HEAD request with no redirects")
                 self._log(safe_add_log, "Performing HEAD request with no redirects")
                 response = self._perform_head_with_no_redirects(url, headers)
 
@@ -220,8 +221,12 @@ class UrlValidator:
             raise InvalidURLError("Unable to connect to the given URL. " + str(e))
 
         except requests.exceptions.MissingSchema as e:
-            self._log(warning_log, f"Invalid/missing schema in HEAD request for: {url}")
-            raise InvalidURLError("Invalid schema for this URL. " + str(e))
+            self._log(warning_log, f"Missing schema in HEAD request for: {url}")
+            raise InvalidURLError("Missing schema for this URL. " + str(e))
+
+        except requests.exceptions.InvalidSchema as e:
+            self._log(warning_log, f"Invalid schema in HEAD request for: {url}")
+            raise InvalidURLError(f"Invalid schema for this URL. | {url=} |" + str(e))
 
         else:
             return response
@@ -232,6 +237,7 @@ class UrlValidator:
         max_num_redirects = 10
         num_redirects = 0
         redirect_url = None
+        self._log(info_log, f"Trying HEAD redirect with {url=}")
 
         response: requests.Response = requests.head(
             url,
@@ -271,6 +277,15 @@ class UrlValidator:
                 redirect_url = urljoin(original_url, redirect_url)
                 self._log(safe_add_log, f"HEAD constructed next url: {redirect_url}")
 
+            self._log(info_log, f"Trying HEAD redirect with {redirect_url=}")
+            if self.has_android_user_agent_and_intent_url(
+                user_agent=headers[VALIDATION_STRS.USER_AGENT], url=redirect_url
+            ):
+                # If an intent was returned, then the original URL was valid
+                # Override HTTP status code and return the response to indicate valid URL
+                self._log(info_log, "User has Android and URL was an intent")
+                response.status_code = 200
+                return response
             response = requests.head(
                 redirect_url,
                 timeout=(
@@ -295,6 +310,7 @@ class UrlValidator:
     def _perform_head_with_no_redirects(
         self, url: str, headers: dict[str, str]
     ) -> requests.Response | None:
+        self._log(info_log, f"Trying HEAD with no redirect on {url=}")
         response = requests.head(
             url,
             timeout=(
@@ -307,15 +323,21 @@ class UrlValidator:
             403,
             405,
         ):
-            safe_add_log(f"HEAD request failed with status code {response.status_code}")
+            self._log(
+                safe_add_log,
+                f"HEAD request failed with status code {response.status_code}",
+            )
             return None
 
-        safe_add_many_logs(
-            [
-                f"From HEAD request without redirect: {response.headers} ",
-                f"{url=}",
-                f"{response.url=}",
-            ]
+        self._log(
+            safe_add_many_logs,
+            (
+                [
+                    f"From HEAD request without redirect: {response.headers} ",
+                    f"{url=}",
+                    f"{response.url=}",
+                ]
+            ),
         )
         return response
 
@@ -336,14 +358,18 @@ class UrlValidator:
             raise InvalidURLError("Unable to connect to the given URL. " + str(e))
 
         except requests.exceptions.MissingSchema as e:
-            self._log(warning_log, f"Invalid/missing schema in GET request for: {url}")
-            raise InvalidURLError("Invalid schema for this URL. " + str(e))
+            self._log(warning_log, f"Missing schema in GET request for: {url}")
+            raise InvalidURLError("Missing schema for this URL. " + str(e))
 
         except requests.exceptions.TooManyRedirects as e:
             self._log(
                 warning_log, "Too many redirects exception with custom GET redirect"
             )
             raise InvalidURLError("Too many redirects for this URL. " + str(e))
+
+        except requests.exceptions.InvalidSchema as e:
+            self._log(warning_log, f"Invalid schema in GET request for: {url}")
+            raise InvalidURLError("Invalid schema for this URL. " + str(e))
 
         else:
             return response
@@ -355,6 +381,7 @@ class UrlValidator:
         num_redirects = 0
         redirect_url = None
 
+        self._log(info_log, f"Trying GET redirect with {url=}")
         response: requests.Response = requests.get(
             url,
             timeout=(
@@ -366,9 +393,7 @@ class UrlValidator:
         )
 
         while response.is_redirect or response.is_permanent_redirect:
-            if num_redirects >= max_num_redirects or response.status_code in range(
-                400, 600
-            ):
+            if num_redirects >= max_num_redirects:
                 self._log(safe_add_log, f"Too many redirects: {num_redirects}")
                 return response
             elif response.status_code in range(400, 600):
@@ -396,6 +421,15 @@ class UrlValidator:
                 redirect_url = urljoin(original_url, redirect_url)
                 self._log(safe_add_log, f"GET constructed next url: {redirect_url}")
 
+            self._log(info_log, f"Trying GET redirect with {redirect_url=}")
+            if self.has_android_user_agent_and_intent_url(
+                user_agent=headers[VALIDATION_STRS.USER_AGENT], url=redirect_url
+            ):
+                # If an intent was returned, then the original URL was valid
+                # Override HTTP status code and return the response to indicate valid URL
+                self._log(info_log, "User has Android and URL was an intent")
+                response.status_code = 200
+                return response
             response = requests.get(
                 redirect_url,
                 timeout=(
@@ -420,10 +454,10 @@ class UrlValidator:
     def _all_user_agent_sampling(
         self, url: str, headers: dict[str, str]
     ) -> requests.Response:
-        self._log(safe_add_log, f"Trying all user agent sampling for: {url}")
+        self._log(info_log, f"Trying all user agent sampling for: {url}")
         for agent in USER_AGENTS:
             try:
-                self._log(safe_add_log, f"Trying: {agent}")
+                self._log(info_log, f"Trying: {agent}")
                 headers[VALIDATION_STRS.USER_AGENT] = agent
                 response = requests.get(
                     url,
@@ -493,9 +527,7 @@ class UrlValidator:
                     )
 
                 wayback_url = VALIDATION_STRS.WAYBACK_ARCHIVE + str(year) + "/" + url
-                self._log(
-                    safe_add_log, f"Checking year {year} in Wayback | {wayback_url}"
-                )
+                self._log(info_log, f"Checking year {year} in Wayback | {wayback_url}")
                 wayback_archive_response = self._perform_head_request(
                     wayback_url,
                     headers,
@@ -697,7 +729,10 @@ class UrlValidator:
     ) -> Tuple[str, bool]:
         MAX_RETRY_ATTEMPTS = 5
         try:
-            for _ in range(MAX_RETRY_ATTEMPTS):
+            for idx in range(MAX_RETRY_ATTEMPTS):
+                self._log(
+                    info_log, f"Attempt: {idx + 1} | Trying to validate shortened URL"
+                )
                 response = requests.get(
                     url, headers=headers, allow_redirects=False, timeout=10
                 )
@@ -849,7 +884,7 @@ class UrlValidator:
             response = self._perform_wayback_check(url, headers)
 
         if response is None:
-            self._log(warning_log, f"HEAD/GET/Wayback failed validation for: {url}")
+            self._log(warning_log, f"1: HEAD/GET/Wayback failed validation for: {url}")
             raise InvalidURLError("Unable to validate this URL")
 
         # Validates the Wayback response
@@ -864,7 +899,7 @@ class UrlValidator:
         The URL may have a fully JavaScript based frontend, which would make these traditional methods more difficult.
         We provide back the normalized URL and mark the URL as UNKNOWN, to be later verified by a headless automated browser.
         """
-        self._log(critical_log, f"HEAD/GET/Wayback failed validation for: {url}")
+        self._log(critical_log, f"2: HEAD/GET/Wayback failed validation for: {url}")
         return url, False
 
     def _is_cloudfront_error(self, headers: CaseInsensitiveDict) -> bool:
@@ -907,6 +942,13 @@ class UrlValidator:
     @staticmethod
     def generate_random_user_agent() -> str:
         return random.choice(USER_AGENTS)
+
+    @staticmethod
+    def has_android_user_agent_and_intent_url(user_agent: str, url: str) -> bool:
+        deconstructed = deconstruct_url(url)
+        return (
+            "android" in user_agent.lower() and deconstructed.scheme.lower() == "intent"
+        )
 
 
 if __name__ == "__main__":

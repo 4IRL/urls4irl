@@ -156,7 +156,7 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_MODAL_REDIRECT = "#modalRedirect"
     BUTTON_MODAL_SUBMIT = "#modalSubmit"
     BUTTON_X_CLOSE = ".btn-close"
-    ACCESS_ALL_URL_MODAL = ".accessAllUrlModal"
+    ACCESS_ALL_URL_MODAL = "#confirmModal.accessAllUrlModal"
     DELETE_URL_MODAL = ".deleteUrlModal"
 
     # Decks
