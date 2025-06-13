@@ -25,7 +25,7 @@ if [ "$?" -ne 0 ]; then
 fi
 
 echo "Removing all temporary daily log files..."
-rm "${TMP_LOG_DIR}*"
+rm -f "${TMP_LOG_DIR}"*
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in removing the temporary log files"
   exit 1
