@@ -8,6 +8,7 @@ from flask_login import LoginManager
 from flask_migrate import Migrate
 from flask_session import Session
 from flask_wtf.csrf import CSRFError, CSRFProtect
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import app_logger
 from src.db import db
@@ -71,6 +72,9 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     email_sender.init_app(app)
     if production:
         email_sender.in_production()
+
+    if production or app.config.get(CONFIG_ENVS.DEV_SERVER, False):
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
 
     url_validator.init_app(app)
 
