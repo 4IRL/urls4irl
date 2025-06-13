@@ -2,7 +2,7 @@ import logging
 import time
 import uuid
 
-from flask import Flask, Response, current_app, g, request
+from flask import Flask, Request, Response, current_app, g, has_request_context, request
 from flask.logging import default_handler
 
 from src.utils.strings.config_strs import CONFIG_ENVS
@@ -39,6 +39,22 @@ class DetailedRequestInfoFilter(logging.Filter):
 
 def generate_request_id() -> str:
     return str(uuid.uuid4())[-12:]
+
+
+def get_remote_addr(request: Request):
+    # NOTE: Currently not in user as ProxyFix handles updating remote_addr, but could be useful
+    if not has_request_context() or not request.headers:
+        return "NOT-AVAILABLE"
+
+    headers = {header.lower(): header_val for header, header_val in request.headers}
+    cf_ip = headers.get(CONFIG_ENVS.CF_CONNECTING_IP.lower(), None)
+    if cf_ip and isinstance(cf_ip, str):
+        return cf_ip
+
+    x_forwarded_for = headers.get(CONFIG_ENVS.X_FORWARDED_FOR.lower(), None)
+    if x_forwarded_for and isinstance(x_forwarded_for, str):
+        return x_forwarded_for.split(",")[0].strip()
+    return request.remote_addr or "Unknown"
 
 
 def configure_logging(app: Flask, is_production=False):

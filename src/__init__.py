@@ -74,7 +74,8 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
         email_sender.in_production()
 
     if production or app.config.get(CONFIG_ENVS.DEV_SERVER, False):
-        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1, x_prefix=1)
+        # NOTE: Handle both the nginx reverse proxy, and Cloudflare as a reverse proxy
+        app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=2, x_host=2, x_prefix=2)
 
     url_validator.init_app(app)
 
