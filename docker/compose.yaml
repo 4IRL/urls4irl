@@ -38,7 +38,7 @@ services:
       flask db upgrade &&
       flask shorturls add &&
       flask assets build &&
-      gunicorn --workers 4 --bind 0.0.0.0:5000 --forwarded-allow-ips=\"*\" --proxy-allow-ips=\"*\" --access-logfile - --error-logfile - run:app
+      gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
       "
 
   db:
