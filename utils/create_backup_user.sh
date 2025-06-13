@@ -102,6 +102,7 @@ ln -s /usr/bin/cp "$USER_BIN/cp"
 ln -s /usr/bin/dirname "$USER_BIN/dirname"
 ln -s /usr/bin/realpath "$USER_BIN/realpath"
 ln -s /usr/bin/rclone "$USER_BIN/rclone"
+ln -s /usr/bin/xargs "$USER_BIN/xargs"
 
 # Need a specific cURL wrapper script to allow curl to only specified endpoints
 CURL_WRAPPER_SCRIPT="$USER_BIN/restricted_curl"
@@ -174,6 +175,7 @@ echo "Creating sudoers file with specified commands..."
   echo "$USERNAME ALL=(ALL) NOPASSWD: $USER_BIN/dirname"
   echo "$USERNAME ALL=(ALL) NOPASSWD: $USER_BIN/realpath"
   echo "$USERNAME ALL=(ALL) NOPASSWD: $USER_BIN/rclone"
+  echo "$USERNAME ALL=(ALL) NOPASSWD: $USER_BIN/xargs"
 
 } >> "$SUDOERS_FILE"
 echo "Success: Sudoers file created with specified commands"
