@@ -18,3 +18,5 @@ class CONFIG_ENVS:
     X_REQUEST_ID = "X-Request-ID"
     U4I_LOGGER = "U4I-LOGGER"
     DEV_SERVER = "DEV_SERVER"
+    CF_CONNECTING_IP = "Cf-Connecting-Ip"
+    X_FORWARDED_FOR = "X-Forwarded-For"
