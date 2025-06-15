@@ -11,7 +11,7 @@ from flask import (
 )
 from flask_login import current_user, login_user
 
-from src import db, email_sender
+from src import db, email_sender, notification_sender
 from src.app_logger import (
     critical_log,
     safe_add_log,
@@ -413,6 +413,9 @@ def validate_email(token: str):
     login_user(user_to_validate)
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
     safe_add_log(f"User={user_to_validate.id} email has been validated")
+    notification_sender.send_notification(
+        f"Welcome! New user: {user_to_validate.username}"
+    )
     return redirect(url_for(ROUTES.UTUBS.HOME))
 
 

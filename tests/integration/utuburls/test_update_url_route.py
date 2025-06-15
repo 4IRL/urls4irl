@@ -1,3 +1,4 @@
+import threading
 from unittest import mock
 
 from flask import url_for
@@ -776,6 +777,7 @@ def test_update_valid_url_with_same_url_as_url_adder(
         ).count() == len(associated_tags)
 
 
+@mock.patch("src.extensions.notifications.notifications.threading.Thread")
 @mock.patch(
     "src.extensions.url_validation.url_validator.UrlValidator", autospec=UrlValidator
 )
@@ -795,6 +797,7 @@ def test_update_url_when_wayback_ratelimited(
     mock_redis_from_url,
     mock_wayback_rate_limited,
     mock_validator,
+    mock_thread,
     add_two_url_and_all_users_to_each_utub_no_tags,
     login_first_user_without_register,
 ):
@@ -813,6 +816,10 @@ def test_update_url_when_wayback_ratelimited(
         STD_JSON.ERROR_CODE : 6
     }
     """
+    mock_thread_response = mock.MagicMock()
+    mock_thread_response.start.return_value = None
+    mock_thread.return_value = mock_thread_response
+
     mock_head_request.return_value = None
     mock_get_response = mock.Mock(spec=requests.Response)
     mock_get_response.status_code = 400
@@ -870,9 +877,11 @@ def test_update_url_when_wayback_ratelimited(
         assert Urls.query.count() == initial_urls
 
 
+@mock.patch("src.extensions.notifications.notifications.threading.Thread")
 @mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_invalid_url_as_utub_creator(
     mock_validate_url,
+    mock_thread,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -892,6 +901,10 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         STD_JSON.ERROR_CODE: 3
     }
     """
+    mock_thread_response = mock.MagicMock()
+    mock_thread_response.start.return_value = None
+    mock_thread.return_value = mock_thread_response
+
     mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
@@ -965,9 +978,11 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
+@mock.patch("src.extensions.notifications.notifications.threading.Thread")
 @mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_invalid_url_as_url_adder(
     mock_validate_url,
+    mock_thread,
     add_two_url_and_all_users_to_each_utub_no_tags,
     login_first_user_without_register,
 ):
@@ -987,6 +1002,10 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         STD_JSON.ERROR_CODE: 3
     }
     """
+    mock_thread_response = mock.MagicMock()
+    mock_thread_response.start.return_value = None
+    mock_thread.return_value = mock_thread_response
+
     mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
@@ -1830,9 +1849,11 @@ def test_update_valid_url_updates_utub_last_updated(
         assert (current_utub.last_updated - initial_last_updated).total_seconds() > 0
 
 
+@mock.patch("src.extensions.notifications.notifications.threading.Thread")
 @mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
     mock_validate_url,
+    mock_thread,
     add_two_url_and_all_users_to_each_utub_no_tags,
     login_first_user_without_register,
 ):
@@ -1844,6 +1865,10 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
             URL_FORM.URL_STRING: String of URL to add
     THEN the server sends back a 400 HTTP status code, and the UTub last updated field is not modified
     """
+    mock_thread_response = mock.MagicMock()
+    mock_thread_response.start.return_value = None
+    mock_thread.return_value = mock_thread_response
+
     mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
@@ -2213,9 +2238,11 @@ def test_update_valid_url_with_same_url_before_normalization_url_log(
     )
 
 
+@mock.patch("src.extensions.notifications.notifications.threading.Thread")
 @mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_to_invalid_url_log(
     mock_validate_url,
+    mock_thread,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
     caplog,
@@ -2228,6 +2255,10 @@ def test_update_to_invalid_url_log(
             "urlString": String of URL to add
     THEN verify the server sends back a 400 HTTP status code, and the logs are valid
     """
+    mock_thread_response = mock.MagicMock()
+    mock_thread_response.start.return_value = None
+    mock_thread.return_value = mock_thread_response
+
     client, csrf_token_string, user, app = login_first_user_without_register
     mock_validate_url.side_effect = InvalidURLError("Invalid URL error")
 
@@ -2268,9 +2299,11 @@ def test_update_to_invalid_url_log(
     assert is_string_in_logs("Exception=Invalid URL error", caplog.records)
 
 
+@mock.patch("src.extensions.notifications.notifications.threading.Thread")
 @mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_to_wayback_ratelimited_url_log(
     mock_validate_url,
+    mock_thread,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
     caplog,
@@ -2283,6 +2316,10 @@ def test_update_to_wayback_ratelimited_url_log(
             "urlString": String of URL to add
     THEN verify the server sends back a 400 HTTP status code, and the logs are valid
     """
+    mock_thread_response = mock.MagicMock()
+    mock_thread_response.start.return_value = None
+    mock_thread.return_value = mock_thread_response
+
     client, csrf_token_string, user, app = login_first_user_without_register
     mock_validate_url.side_effect = WaybackRateLimited("Invalid URL error")
 
@@ -2640,3 +2677,192 @@ def test_update_url_with_invalid_form_log(
         f"User={user.id} | Invalid form: url_string={URL_FAILURE.FIELD_REQUIRED}",
         caplog.records,
     )
+
+
+@mock.patch("src.extensions.notifications.notifications.requests.post")
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_invalid_url_sends_notification(
+    mock_validate_url,
+    mock_request_post,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with an invalid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add that contains an invalid URL
+    THEN verify that server sends back a 400 HTTP status code and a notification is sent
+    """
+    notification_sent = threading.Event()
+
+    def mock_post_with_event(*args, **kwargs):
+        mock_response = type("MockResponse", (), {"status_code": 200})()
+        notification_sent.set()  # Signal that the request was made
+        return mock_response
+
+    mock_request_post.side_effect = mock_post_with_event
+    mock_validate_url.side_effect = InvalidURLError
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Grab URL that already exists in this UTub
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        id_of_url_in_utub = url_already_in_utub.id
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: "AAAAA",
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=id_of_url_in_utub,
+        ),
+        data=update_url_string_form,
+    )
+
+    # Wait for notification to be sent (with timeout)
+    assert notification_sent.wait(
+        timeout=5.0
+    ), "Notification was not sent within timeout"
+
+    assert update_url_string_form.status_code == 400
+
+    mock_request_post.assert_called_once()
+
+
+@mock.patch("src.extensions.notifications.notifications.requests.post")
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_waybacked_limited_url_sends_notification(
+    mock_validate_url,
+    mock_request_post,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with an invalid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add that contains an invalid URL
+    THEN verify that server sends back a 400 HTTP status code and a notification is sent
+    """
+    notification_sent = threading.Event()
+
+    def mock_post_with_event(*args, **kwargs):
+        mock_response = type("MockResponse", (), {"status_code": 200})()
+        notification_sent.set()  # Signal that the request was made
+        return mock_response
+
+    mock_request_post.side_effect = mock_post_with_event
+    mock_validate_url.side_effect = WaybackRateLimited
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Grab URL that already exists in this UTub
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        id_of_url_in_utub = url_already_in_utub.id
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: "AAAAA",
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=id_of_url_in_utub,
+        ),
+        data=update_url_string_form,
+    )
+
+    # Wait for notification to be sent (with timeout)
+    assert notification_sent.wait(
+        timeout=5.0
+    ), "Notification was not sent within timeout"
+
+    assert update_url_string_form.status_code == 400
+
+    mock_request_post.assert_called_once()
+
+
+@mock.patch("src.extensions.notifications.notifications.requests.post")
+@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+def test_update_invalidated_url_sends_notification(
+    mock_validate_url,
+    mock_request_post,
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with an invalid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add that contains an invalid URL
+    THEN verify that server sends back a 400 HTTP status code and a notification is sent
+    """
+    notification_sent = threading.Event()
+
+    def mock_post_with_event(*args, **kwargs):
+        mock_response = type("MockResponse", (), {"status_code": 200})()
+        notification_sent.set()  # Signal that the request was made
+        return mock_response
+
+    mock_request_post.side_effect = mock_post_with_event
+    mock_validate_url.return_value = "AAAA", False
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Grab URL that already exists in this UTub
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        id_of_url_in_utub = url_already_in_utub.id
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: "AAAAA",
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=id_of_url_in_utub,
+        ),
+        data=update_url_string_form,
+    )
+
+    # Wait for notification to be sent (with timeout)
+    assert notification_sent.wait(
+        timeout=5.0
+    ), "Notification was not sent within timeout"
+
+    assert update_url_string_form.status_code == 200
+
+    mock_request_post.assert_called_once()

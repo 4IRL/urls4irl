@@ -32,6 +32,8 @@ on:
         required: true
       BASE_EMAIL:
         required: true
+      NOTIFICATION_URL:
+        required: true
 
 jobs:
     DevDeploy:
@@ -97,6 +99,7 @@ jobs:
               chmod 700 ./secrets/;
               echo "${{ secrets.MAILJET_API_KEY }}" > ./secrets/MAILJET_API_KEY;
               echo "${{ secrets.MAILJET_SECRET_KEY }}" > ./secrets/MAILJET_SECRET_KEY;
+              echo "${{ secrets.NOTIFICATION_URL }}" > ./secrets/NOTIFICATION_URL;
               echo "${{ secrets.BASE_EMAIL }}" > ./secrets/BASE_EMAIL;
               echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin;
               docker compose -f compose-dev.yaml pull;

@@ -1,3 +1,5 @@
+import threading
+from unittest import mock
 from flask import url_for
 from flask_login import current_user
 import pytest
@@ -185,12 +187,22 @@ def test_valid_token_generated_on_user_register(
         )
 
 
-def test_token_validates_user(app, load_register_page):
+@mock.patch("src.extensions.notifications.notifications.requests.post")
+def test_token_validates_user(mock_request_post, app, load_register_page):
     """
     GIVEN a user trying to register via the register page
     WHEN they register and click on the link received in their email
     THEN ensure their email is validated and they are logged in and token to the home page
     """
+    notification_sent = threading.Event()
+
+    def mock_post_with_event(*args, **kwargs):
+        mock_response = type("MockResponse", (), {"status_code": 200})()
+        notification_sent.set()  # Signal that the request was made
+        return mock_response
+
+    mock_request_post.side_effect = mock_post_with_event
+
     client, csrf_token = load_register_page
 
     valid_user_1[REGISTER_FORM.CSRF_TOKEN] = csrf_token
@@ -210,10 +222,16 @@ def test_token_validates_user(app, load_register_page):
         url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=user_token), follow_redirects=True
     )
 
+    # Wait for notification to be sent (with timeout)
+    assert notification_sent.wait(
+        timeout=5.0
+    ), "Notification was not sent within timeout"
+
     assert len(response.history) == 1
     assert response.history[0].status_code == 302
     assert response.history[0].location == url_for(ROUTES.UTUBS.HOME)
     assert response.status_code == 200
+    mock_request_post.assert_called_once()
 
     # Ensure user logged in
     assert current_user.get_id() == user.get_id()
