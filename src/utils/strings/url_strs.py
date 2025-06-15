@@ -57,6 +57,7 @@ UNABLE_TO_MODIFY_URL = "Unable to modify this URL."
 UNABLE_TO_RETRIEVE_URL = "Unable to retrieve this URL."
 EMPTY_URL = "URL cannot be empty."
 TOO_MANY_WAYBACK_ATTEMPTS = "Too many attempts, please try again in one minute."
+UNEXPECTED_VALIDATION_EXCEPTION = "Unexpected exception while validating the URL."
 
 
 class URL_FAILURE(FAILURE_GENERAL):
@@ -72,6 +73,7 @@ class URL_FAILURE(FAILURE_GENERAL):
     URL_TITLE = URL_TITLE
     URL_STRING = URL_STRING
     TOO_MANY_WAYBACK_ATTEMPTS = TOO_MANY_WAYBACK_ATTEMPTS
+    UNEXPECTED_VALIDATION_EXCEPTION = UNEXPECTED_VALIDATION_EXCEPTION
 
 
 # Strings for URL no change

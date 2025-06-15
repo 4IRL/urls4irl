@@ -217,6 +217,31 @@ def create_url(utub_id: int):
                 ),
                 400,
             )
+        except Exception as e:
+            end = (time.perf_counter() - start) * 1000
+            request_id = safe_get_request_id()
+
+            critical_log(
+                f"[{request_id}] Unexpected exception validating the URL given by User={current_user.id}\n"
+                + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
+                + f"[{request_id}] url_string={url_string}\n"
+                + f"[{request_id}] Exception={str(e)}"
+            )
+            notification_sender.send_notification(
+                f"Unexpected exception validating {url_string} | Exception={str(e)}"
+            )
+
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.UNEXPECTED_VALIDATION_EXCEPTION,
+                        STD_JSON.DETAILS: str(e),
+                        STD_JSON.ERROR_CODE: -1,
+                    }
+                ),
+                400,
+            )
 
         end = (time.perf_counter() - start) * 1000
         safe_add_many_logs([f"Finished checks for {url_string=}", f"Took {end:.3f} ms"])
@@ -560,6 +585,32 @@ def update_url(utub_id: int, utub_url_id: int):
                         STD_JSON.MESSAGE: URL_FAILURE.TOO_MANY_WAYBACK_ATTEMPTS,
                         STD_JSON.DETAILS: str(e),
                         STD_JSON.ERROR_CODE: 6,
+                    }
+                ),
+                400,
+            )
+
+        except Exception as e:
+            end = (time.perf_counter() - start) * 1000
+            request_id = safe_get_request_id()
+
+            critical_log(
+                f"[{request_id}] Unexpected exception validating the URL given by User={current_user.id}\n"
+                + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
+                + f"[{request_id}] url_string={url_to_change_to}\n"
+                + f"[{request_id}] Exception={str(e)}"
+            )
+            notification_sender.send_notification(
+                f"Unexpected exception validating {url_to_change_to} | Exception={str(e)}"
+            )
+
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.UNEXPECTED_VALIDATION_EXCEPTION,
+                        STD_JSON.DETAILS: str(e),
+                        STD_JSON.ERROR_CODE: -1,
                     }
                 ),
                 400,
