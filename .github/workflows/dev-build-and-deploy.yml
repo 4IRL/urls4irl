@@ -36,3 +36,4 @@ jobs:
             MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY_INF }}
             MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY_INF }}
             BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}
+            NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL_INF }}

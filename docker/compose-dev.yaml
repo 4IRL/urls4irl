@@ -27,6 +27,7 @@ services:
       sh -c "
       export MAILJET_API_KEY=$(cat /run/secrets/MAILJET_API_KEY) &&
       export MAILJET_SECRET_KEY=$(cat /run/secrets/MAILJET_SECRET_KEY) &&
+      export NOTIFICATION_URL=$(cat /run/secrets/NOTIFICATION_URL) &&
       export BASE_EMAIL=$(cat /run/secrets/BASE_EMAIL) &&
       sleep 5 &&
       . /code/venv/bin/activate &&
@@ -59,6 +60,8 @@ secrets:
     file: ./secrets/MAILJET_API_KEY
   MAILJET_SECRET_KEY:
     file: ./secrets/MAILJET_SECRET_KEY
+  NOTIFICATION_URL:
+    file: ./secrets/NOTIFICATION_URL
   BASE_EMAIL:
     file: ./secrets/BASE_EMAIL
 

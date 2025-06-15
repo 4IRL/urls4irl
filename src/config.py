@@ -17,6 +17,7 @@ load_dotenv(path.join(path.dirname(basedir), ".env"))
 IS_DOCKER = environ.get(ENV.DOCKER, default="false").lower() == "true"
 IS_PRODUCTION = environ.get(ENV.PRODUCTION, default="false").lower() == "true"
 IS_DEV_SERVER = environ.get(ENV.DEV_SERVER, default="false").lower() == "true"
+NOTIFICATION_URL = environ.get(ENV.NOTIFICATION_URL, default="")
 
 POSTGRES_USER = environ.get(ENV.POSTGRES_USER)
 POSTGRES_PASSWORD = environ.get(ENV.POSTGRES_PASSWORD)
@@ -110,6 +111,7 @@ class Config:
     DOCKER = IS_DOCKER
     ASSET_VERSION = ASSET_VERSION
     DEV_SERVER = IS_DEV_SERVER
+    NOTIFICATION_URL = NOTIFICATION_URL
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:

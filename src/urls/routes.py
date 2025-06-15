@@ -3,7 +3,7 @@ import time
 from flask import abort, Blueprint, jsonify, request
 from flask_login import current_user
 
-from src import db, url_validator
+from src import db, notification_sender, url_validator
 from src.app_logger import (
     critical_log,
     safe_add_log,
@@ -176,7 +176,10 @@ def create_url(utub_id: int):
                 + f"[{request_id}] url_string={url_string}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
-            # TODO: Add notification to devs here
+
+            notification_sender.send_notification(
+                f"Failed validating {url_string} | Exception={str(e)}"
+            )
 
             return (
                 jsonify(
@@ -199,7 +202,9 @@ def create_url(utub_id: int):
                 + f"[{request_id}] url_string={url_string}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
-            # TODO: Add notification to devs here
+            notification_sender.send_notification(
+                f"Wayback failed validating {url_string} | Exception={str(e)}"
+            )
 
             return (
                 jsonify(
@@ -208,6 +213,31 @@ def create_url(utub_id: int):
                         STD_JSON.MESSAGE: URL_FAILURE.TOO_MANY_WAYBACK_ATTEMPTS,
                         STD_JSON.DETAILS: str(e),
                         STD_JSON.ERROR_CODE: 6,
+                    }
+                ),
+                400,
+            )
+        except Exception as e:
+            end = (time.perf_counter() - start) * 1000
+            request_id = safe_get_request_id()
+
+            critical_log(
+                f"[{request_id}] Unexpected exception validating the URL given by User={current_user.id}\n"
+                + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
+                + f"[{request_id}] url_string={url_string}\n"
+                + f"[{request_id}] Exception={str(e)}"
+            )
+            notification_sender.send_notification(
+                f"Unexpected exception validating {url_string} | Exception={str(e)}"
+            )
+
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.UNEXPECTED_VALIDATION_EXCEPTION,
+                        STD_JSON.DETAILS: str(e),
+                        STD_JSON.ERROR_CODE: -1,
                     }
                 ),
                 400,
@@ -245,7 +275,9 @@ def create_url(utub_id: int):
                     + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                     + f"[{request_id}] url_string={normalized_url}\n"
                 )
-                # TODO: Add notification to devs here
+                notification_sender.send_notification(
+                    f"Unable to completely validate {url_string} | URL.id={new_url.id}"
+                )
 
             url_id = new_url.id
 
@@ -517,7 +549,9 @@ def update_url(utub_id: int, utub_url_id: int):
                 + f"[{request_id}] url_string={url_to_change_to}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
-            # TODO: Add notification to devs here
+            notification_sender.send_notification(
+                f"Failed to validate {url_to_change_to} | Exception={str(e)}"
+            )
 
             return (
                 jsonify(
@@ -540,7 +574,9 @@ def update_url(utub_id: int, utub_url_id: int):
                 + f"[{request_id}] url_string={url_to_change_to}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
-            # TODO: Add notification to devs here
+            notification_sender.send_notification(
+                f"Wayback failed validating {url_to_change_to} | Exception={str(e)}"
+            )
 
             return (
                 jsonify(
@@ -549,6 +585,32 @@ def update_url(utub_id: int, utub_url_id: int):
                         STD_JSON.MESSAGE: URL_FAILURE.TOO_MANY_WAYBACK_ATTEMPTS,
                         STD_JSON.DETAILS: str(e),
                         STD_JSON.ERROR_CODE: 6,
+                    }
+                ),
+                400,
+            )
+
+        except Exception as e:
+            end = (time.perf_counter() - start) * 1000
+            request_id = safe_get_request_id()
+
+            critical_log(
+                f"[{request_id}] Unexpected exception validating the URL given by User={current_user.id}\n"
+                + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
+                + f"[{request_id}] url_string={url_to_change_to}\n"
+                + f"[{request_id}] Exception={str(e)}"
+            )
+            notification_sender.send_notification(
+                f"Unexpected exception validating {url_to_change_to} | Exception={str(e)}"
+            )
+
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.UNEXPECTED_VALIDATION_EXCEPTION,
+                        STD_JSON.DETAILS: str(e),
+                        STD_JSON.ERROR_CODE: -1,
                     }
                 ),
                 400,
@@ -589,7 +651,9 @@ def update_url(utub_id: int, utub_url_id: int):
                     + f"[{request_id}] url_string={normalized_url}\n"
                     + f"[{request_id}] request_headers={request.headers}\n"
                 )
-                # TODO: Add notification to devs here
+                notification_sender.send_notification(
+                    f"Unable to completely validate {url_to_change_to} | URL.id={new_url.id}"
+                )
 
             url_in_database = new_url
             url_id = url_in_database.id

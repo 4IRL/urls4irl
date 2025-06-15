@@ -132,6 +132,20 @@ fi
 echo "Success: Parsed R2 Endpoint"
 export R2_ENDPOINT
 
+# Parse for R2 Endpoint
+echo "Parsing Notification URL..."
+NOTIFICATION_URL=$(echo $response | jq -r --arg key "NOTIFICATION_URL" '.secrets[] | select(.secretKey == $key) | .secretValue')
+if [ "$?" -ne 0 ]; then
+  echo "Error: Failure in parsing for Notification URL"
+  exit 1
+fi
+if [[ ! $NOTIFICATION_URL ]]; then
+  echo "Error: Empty Notification URL"
+  exit 1
+fi
+echo "Success: Parsed Notification URL"
+export NOTIFICATION_URL
+
 unset response
 
 # Set environment variables for backups

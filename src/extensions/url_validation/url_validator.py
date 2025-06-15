@@ -173,7 +173,8 @@ class UrlValidator:
 
         # Remove invalid headers before making URL validation request
         header_keys = list(headers)
-        for header in header_keys:
+        for idx in range(len(header_keys)):
+            header = header_keys[idx]
             if header.lower() in VALIDATION_STRS.INVALID_HEADERS:
                 headers.pop(header)
 

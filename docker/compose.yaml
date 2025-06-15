@@ -33,6 +33,7 @@ services:
       export SECRET_KEY=$(cat /run/secrets/SECRET_KEY) &&
       export BASE_EMAIL=$(cat /run/secrets/BASE_EMAIL) &&
       export REDIS_PASSWORD=$(cat /run/secrets/REDIS_PASSWORD) &&
+      export NOTIFICATION_URL=$(cat /run/secrets/NOTIFICATION_URL) &&
       export ASSET_VERSION=$(date +%s) &&
       . /code/venv/bin/activate &&
       flask db upgrade &&
@@ -96,6 +97,8 @@ secrets:
     file: ./secrets/REDIS_PASSWORD
   SECRET_KEY:
     file: ./secrets/SECRET_KEY
+  NOTIFICATION_URL:
+    file: ./secrets/NOTIFICATION_URL
 
 volumes:
   pgdata:

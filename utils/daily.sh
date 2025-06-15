@@ -9,7 +9,7 @@ exec 1>>"$LOGFILE"
 exec 2>&1
 
 
-SENSITIVE_VARS=("R2_ENDPOINT" "SECRET_ACCESS_KEY" "ACCESS_KEY" "DB_PASS" "DB_USER" "DB_NAME" "ACCESS_TOKEN" "INF_ID" "INF_SECRET" "USERNAME" "BACKUP_DIR" "BACKUP_FILE" "COMPRESSED_BACKUP_FILE" "LOG_DIR" "LOG_FILE" "COMPRESSED_LOG_FILE" "FINAL_LOG_FILE" "TMP_LOG_DIR")
+SENSITIVE_VARS=("R2_ENDPOINT" "SECRET_ACCESS_KEY" "ACCESS_KEY" "DB_PASS" "DB_USER" "DB_NAME" "ACCESS_TOKEN" "INF_ID" "INF_SECRET" "USERNAME" "BACKUP_DIR" "BACKUP_FILE" "COMPRESSED_BACKUP_FILE" "LOG_DIR" "LOG_FILE" "COMPRESSED_LOG_FILE" "FINAL_LOG_FILE" "TMP_LOG_DIR" "NOTIFICATION_URL")
 
 # Cleanup function
 cleanup_secrets() {
@@ -38,6 +38,13 @@ cleanup_secrets() {
     done
 }
 
+send_notification_msg() {
+    restricted_curl POST "$NOTIFICATION_URL" "$1"
+    if [ "$?" -ne 0 ]; then
+      echo "Error: Failure in sending notification"
+    fi
+}
+
 trap cleanup_secrets EXIT
 
 echo '$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$$'
@@ -45,32 +52,39 @@ echo -e "\n\nPREPARING TO RUN DAILY TASKS... $(date +%Y%m%d_%H%M%S)\n\n"
 
 source "$SCRIPT_DIR/config.sh"
 if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in getting daily config setup"
+  echo "Error: Failure in getting daily config setup for daily workflow"
+  send_notification_msg "Error: Failure in getting config setup for daily workflow"
   exit 1
 fi
 unset INF_ID INF_SECRET ACCESS_TOKEN
 
 source "$SCRIPT_DIR/backup-database.sh"
 if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in backing up database"
+  echo "Error: Failure in daily local backup of database"
+  send_notification_msg "Error: Failure in daily local backup of database"
   exit 1
 fi
 unset DB_PASS DB_USER DB_NAME
 
 source "$SCRIPT_DIR/backup-logs.sh"
 if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in backing up the daily app logs"
+  echo "Error: Failure in daily local backup of app logs"
+  send_notification_msg "Error: Failure in daily local backup of app logs"
   exit 1
 fi
 
 source "$SCRIPT_DIR/remote-object-storage.sh"
 if [ "$?" -ne 0 ]; then
-  echo "Error: Failure in performing remote object storage"
+  echo "Error: Failure in daily export of backups to remote object storage"
+  send_notification_msg "Error: Failure in daily export of backups to remote object storage"
   exit 1
 fi
+
+send_notification_msg "Success: Backups saved and exported to cloud"
 unset ACCESS_KEY SECRET_ACCESS_KEY R2_ENDPOINT USERNAME
 unset BACKUP_DIR BACKUP_FILE COMPRESSED_BACKUP_FILE
 unset TMP_LOG_DIR LOG_DIR LOG_FILE COMPRESSED_LOG_FILE FINAL_LOG_FILE
+unset NOTIFICATION_URL
 
 cleanup_secrets
 

@@ -128,6 +128,12 @@ if [[ "$1" == "POST" && "$2" == "$ALLOWED_URL_1" ]]; then
 elif [[ "$1" == "GET" && "$2" == "$ALLOWED_URL_2" ]]; then
     /usr/bin/curl -s --request GET "${ALLOWED_URL_2}" \
       --header "Authorization: Bearer $3"
+elif [[ "$1" == "POST" && "$2" == https://discord.com/api/webhooks/* ]]; then
+    # Allow POST requests to Discord webhooks
+    # $3 contains the message content
+    /usr/bin/curl -s -d '{"content":"'"$3"'"}' \
+        -H "Content-Type: application/json" \
+        -X POST "$2"
 else
     echo "Error: Unauthorized URL or method"
     exit 1

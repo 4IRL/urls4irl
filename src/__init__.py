@@ -14,6 +14,7 @@ from src import app_logger
 from src.db import db
 from src.config import Config, ConfigProd
 from src.extensions.email_sender.email_sender import EmailSender
+from src.extensions.notifications.notifications import NotificationSender
 from src.extensions.url_validation.url_validator import UrlValidator
 from src.cli.cli_options import register_short_urls_cli
 from src.cli.mock_options import register_mocks_db_cli
@@ -36,6 +37,8 @@ login_manager = LoginManager()
 email_sender = EmailSender()
 
 url_validator = UrlValidator()
+
+notification_sender = NotificationSender()
 
 environment_assets = Environment()
 
@@ -78,6 +81,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=2, x_host=2, x_prefix=2)
 
     url_validator.init_app(app)
+    notification_sender.init_app(app)
 
     from src.assets.routes import assets_bp
     from src.splash.routes import splash
