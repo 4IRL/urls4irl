@@ -173,12 +173,11 @@ def create_utub():
     utub_form: UTubForm = UTubForm()
 
     if utub_form.validate_on_submit():
-        name = utub_form.name.data
-        description = (
-            utub_form.description.data if utub_form.description.data is not None else ""
-        )
+        name = utub_form.name.get()
+        description = utub_form.description.get()
+
         new_utub = Utubs(
-            name=name, utub_creator=current_user.id, utub_description=description  # type: ignore
+            name=name, utub_creator=current_user.id, utub_description=description
         )
         db.session.add(new_utub)
         db.session.commit()
@@ -334,10 +333,10 @@ def update_utub_name(utub_id: int):
     utub_name_form: UTubNewNameForm = UTubNewNameForm()
 
     if utub_name_form.validate_on_submit():
-        new_utub_name = utub_name_form.name.data
+        new_utub_name = utub_name_form.name.get()
 
         if new_utub_name != current_utub_name:
-            current_utub.name = new_utub_name  # type: ignore
+            current_utub.name = new_utub_name
             current_utub.set_last_updated()
             db.session.commit()
 

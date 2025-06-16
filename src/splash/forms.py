@@ -5,6 +5,7 @@ from wtforms.validators import Length, Email, EqualTo, InputRequired, Validation
 from src.models.users import Users
 from src.utils.constants import USER_CONSTANTS
 from src.utils.input_sanitization import sanitize_user_input
+from src.utils.string_field_v2 import StringFieldV2
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM, REGISTER_FORM
 from src.utils.strings.user_strs import USER_FAILURE
@@ -23,7 +24,7 @@ class UserRegistrationForm(FlaskForm):
         submit (SubmitField): Represents the button to submit the form
     """
 
-    username = StringField(
+    username = StringFieldV2(
         REGISTER_LOGIN_FORM.USERNAME_TEXT,
         validators=[
             InputRequired(),
@@ -59,20 +60,26 @@ class UserRegistrationForm(FlaskForm):
 
     submit = SubmitField(REGISTER_LOGIN_FORM.REGISTER)
 
-    def validate_username(self, username):
+    def get_email(self) -> str:
+        return self.email.data if self.email.data is not None else ""
+
+    def get_password(self) -> str:
+        return self.password.data if self.password.data is not None else ""
+
+    def validate_username(self, username: StringFieldV2):
         """Validates username is unique in the db"""
-        user: Users = Users.query.filter(Users.username == username.data).first()
+        user: Users = Users.query.filter(Users.username == username.get()).first()
 
         if user and user.email_validated:
             raise ValidationError(USER_FAILURE.USERNAME_TAKEN)
 
-        sanitized_username = sanitize_user_input(username.data)
+        sanitized_username = sanitize_user_input(username.get())
 
         if (
             sanitized_username is None
             or not isinstance(sanitized_username, str)
             or len(sanitized_username) < USER_CONSTANTS.MIN_USERNAME_LENGTH
-            or sanitized_username != username.data
+            or sanitized_username != username.get()
         ):
             raise ValidationError(USER_FAILURE.INVALID_INPUT)
 
@@ -152,6 +159,9 @@ class ResetPasswordForm(FlaskForm):
     )
 
     submit = SubmitField(RESET_PASSWORD.RESET_YOUR_PASSWORD)
+
+    def get_new_password(self) -> str:
+        return self.new_password.data if self.new_password.data is not None else ""
 
     def validate_confirm_new_password(self, confirm_new_password):
         if confirm_new_password.data != self.new_password.data:

@@ -316,6 +316,41 @@ def test_create_utub_tag_duplicate_tag(
     assert invalid_utub_tag_error.text == TAGS_FAILURE.TAG_ALREADY_IN_UTUB
 
 
+def test_create_utub_tag_tag_with_whitespace(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests ability to attempt to add a duplicate tag to the UTub
+
+    GIVEN a user is a UTub member, has selected the UTub, and opens the create UTub tag form
+    WHEN the user presses the submit button after typing in a tag that is already in this UTub
+    THEN ensure U4I provides the proper error response to the user
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    with app.app_context():
+        utub_tag: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_created.id
+        ).first()
+        utub_tag_duplicate = utub_tag.tag_string
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    # Ensure input is focused
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
+    browser.switch_to.active_element.send_keys(f" {utub_tag_duplicate} ")
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+
+    invalid_utub_tag_error = wait_then_get_element(
+        browser, HPL.INPUT_UTUB_TAG_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_utub_tag_error is not None
+    assert invalid_utub_tag_error.text == TAGS_FAILURE.TAG_ALREADY_IN_UTUB
+
+
 def test_create_utub_tag_sanitized_tag(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):

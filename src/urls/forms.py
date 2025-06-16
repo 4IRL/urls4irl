@@ -4,6 +4,7 @@ from wtforms.validators import Length, InputRequired
 
 from src.utils.constants import URL_CONSTANTS
 from src.utils.input_sanitization import sanitize_user_input
+from src.utils.string_field_v2 import StringFieldV2
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_strs import URL_FAILURE
 
@@ -25,7 +26,7 @@ class NewURLForm(FlaskForm):
         ],
         name=MODELS.URL_STRING,
     )
-    url_title = StringField(
+    url_title = StringFieldV2(
         "URL Title",
         validators=[
             InputRequired(),
@@ -70,6 +71,9 @@ class UpdateURLForm(FlaskForm):
 
     submit = SubmitField("Edit URL!")
 
+    def get_url_string(self) -> str:
+        return self.url_string.data if self.url_string.data is not None else ""
+
 
 class UpdateURLTitleForm(FlaskForm):
     """
@@ -79,7 +83,7 @@ class UpdateURLTitleForm(FlaskForm):
         url_title (Stringfield): Required. Maximum 2000 chars? TODO
     """
 
-    url_title = StringField(
+    url_title = StringFieldV2(
         "URL Title",
         validators=[InputRequired(), Length(max=URL_CONSTANTS.MAX_URL_TITLE_LENGTH)],
         name=MODELS.URL_TITLE,

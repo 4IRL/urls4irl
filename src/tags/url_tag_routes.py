@@ -39,7 +39,6 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
         utub_id (int): The utub that this user is being added to
         url_id (int): The URL this user wants to add a tag to
     """
-    # TODO: Do not allow empty tags
     utub_url_association: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
     if utub_url_association.utub_id != utub_id:
         warning_log(
@@ -69,7 +68,7 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
     url_tag_form: NewTagForm = NewTagForm()
 
     if url_tag_form.validate_on_submit():
-        tag_to_add = url_tag_form.tag_string.data
+        tag_to_add = url_tag_form.tag_string.get()
 
         tags_already_on_this_url: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub.id, Utub_Url_Tags.utub_url_id == utub_url_id

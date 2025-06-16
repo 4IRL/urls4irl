@@ -742,3 +742,54 @@ def test_add_tag_to_utub_missing_tag_field_log(
         f"User={user.id} | Invalid form: tag_string={TAGS_FAILURE.FIELD_REQUIRED}",
         caplog.records,
     )
+
+
+def test_add_tag_with_whitespace_to_utub(
+    add_one_tag_to_each_utub_after_all_users_added,
+    login_first_user_without_register,
+    caplog,
+):
+    """
+    GIVEN UTubs already containing a tag and users
+    WHEN a user wants to add a tag that already exists but has trailing/leading whitespace
+    THEN verify that the server responds with a 400 HTTP status code and the logs are valid
+    """
+    client, csrf_token, user, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_of_user: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        tag_already_added: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_of_user.id
+        ).first()
+        tag_string_already_added = tag_already_added.tag_string
+
+    client, csrf_token, _, app = login_first_user_without_register
+    tag_string_to_add = f" {tag_string_already_added} "
+
+    new_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_string_to_add,
+    }
+
+    add_tag_response = client.post(
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
+        data=new_tag_form,
+    )
+
+    assert add_tag_response.status_code == 400
+    add_tag_response_json = add_tag_response.json
+
+    assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.TAG_ALREADY_IN_UTUB
+    assert add_tag_response_json[STD_JSON.ERROR_CODE] == 2
+
+    with app.app_context():
+        assert (
+            Utub_Tags.query.filter(
+                Utub_Tags.utub_id == utub_of_user.id,
+                Utub_Tags.tag_string == tag_string_to_add,
+            ).first()
+            is None
+        )

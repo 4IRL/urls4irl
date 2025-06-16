@@ -56,7 +56,7 @@ def create_utub_tag(utub_id: int):
     utub_tag_form: NewTagForm = NewTagForm()
 
     if utub_tag_form.validate_on_submit():
-        tag_to_add = utub_tag_form.tag_string.data
+        tag_to_add = utub_tag_form.tag_string.get()
 
         # Check if tag already exists in UTub
         utub_tag_already_created: Utub_Tags = Utub_Tags.query.filter(
