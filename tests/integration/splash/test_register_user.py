@@ -140,6 +140,69 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     )
 
 
+def test_register_existing_username_with_trailing_leading_whitespace(
+    app, load_register_page, register_first_user
+):
+    """
+    GIVEN a user to the page
+    WHEN they register with same credentials, and POST to "/register" correctly
+    THEN ensure they are not logged in and not registered again
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
+        STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for invalid form inputs
+        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
+            [
+                {
+                    REGISTER_FORM.USERNAME: "That username is taken. Please choose another.",
+                    REGISTER_FORM.EMAIL: "That email address is already in use."
+                }
+            ]
+    }
+    """
+    client, csrf_token_string = load_register_page
+    already_registered_user_data, _ = register_first_user
+    already_registered_user_data = deepcopy(already_registered_user_data)
+
+    already_registered_user_data[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
+    already_registered_user_data[REGISTER_FORM.USERNAME] = (
+        f" {already_registered_user_data[REGISTER_FORM.USERNAME]} "
+    )
+
+    # Ensure no one is logged in
+    assert current_user.get_id() is None
+    assert current_user.is_active is False
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        data=already_registered_user_data,
+        follow_redirects=True,
+    )
+
+    # Check that does not reroute
+    assert response.status_code == 400
+    assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+    assert len(response.history) == 0
+
+    # Ensure json response from server is valid
+    register_user_response_json = response.json
+    assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        register_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_REGISTER
+    )
+    assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        USER_FAILURE.USERNAME_TAKEN
+        in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
+    )
+    assert (
+        USER_FAILURE.EMAIL_TAKEN
+        in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.EMAIL]
+    )
+
+
 def test_register_user_cased_email(app, load_register_page, register_first_user):
     """
     GIVEN a user to the page
@@ -172,14 +235,6 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
 
     for email in cased_emails:
         already_registered_user_data[REGISTER_FORM.EMAIL] = email
-
-        # Ensure user already exists
-        with app.app_context():
-            new_db_user = Users.query.filter(
-                Users.username == already_registered_user_data[REGISTER_FORM.USERNAME]
-            ).first()
-
-        assert new_db_user is not None
 
         # Ensure no one is logged in
         assert current_user.get_id() is None

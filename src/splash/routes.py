@@ -84,13 +84,13 @@ def register_user():
         return render_template("register_user.html", register_form=register_form)
 
     if register_form.validate_on_submit():
-        username = register_form.username.data
-        email = register_form.email.data
-        plain_password = register_form.password.data
+        username = register_form.username.get()
+        email = register_form.get_email()
+        plain_password = register_form.get_password()
         new_user = Users(
-            username=username,  # type: ignore
-            email=email.lower(),  # type: ignore
-            plaintext_password=plain_password,  # type: ignore
+            username=username,
+            email=email.lower(),
+            plaintext_password=plain_password,
         )
         email_validation_token = new_user.get_email_validation_token()
         new_email_validation = Email_Validations(
@@ -141,7 +141,7 @@ def register_user():
                 )
             else:
                 user: Users = Users.query.filter(
-                    Users.email == register_form.email.data.lower()  # type: ignore
+                    Users.email == register_form.get_email().lower()
                 ).first_or_404()
                 login_user(user)
                 warning_log(f"User={user.id} has not validated email yet")

@@ -6,6 +6,7 @@ from src.utils.constants import UTUB_CONSTANTS
 from src.utils.input_sanitization import sanitize_user_input
 from src.utils.strings.form_strs import UTUB_FORM, UTUB_DESCRIPTION_FORM
 from src.utils.strings.utub_strs import UTUB_FAILURE
+from src.utils.string_field_v2 import StringFieldV2
 
 
 class UTubForm(FlaskForm):
@@ -16,7 +17,7 @@ class UTubForm(FlaskForm):
         name (Stringfield): Maximum 30 chars? TODO
     """
 
-    name = StringField(
+    name = StringFieldV2(
         name=UTUB_FORM.UTUB_NAME,
         label="UTub Name",
         validators=[
@@ -26,7 +27,7 @@ class UTubForm(FlaskForm):
             ),
         ],
     )
-    description = StringField(
+    description = StringFieldV2(
         name=UTUB_FORM.UTUB_DESCRIPTION,
         label="UTub Description",
         validators=[Length(max=UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH)],
@@ -68,7 +69,7 @@ class UTubNewNameForm(FlaskForm):
         name (Stringfield): Maximum 30 chars? TODO
     """
 
-    name = StringField(
+    name = StringFieldV2(
         name=UTUB_FORM.UTUB_NAME,
         label="UTub Name",
         validators=[

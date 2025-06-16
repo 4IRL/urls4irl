@@ -2292,3 +2292,120 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field_log(
         f"User={user.id} | Invalid form: tag_string={TAGS_FAILURE.FIELD_REQUIRED}",
         caplog.records,
     )
+
+
+def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
+    add_all_urls_and_users_to_each_utub_with_one_tag, login_first_user_without_register
+):
+    """
+    GIVEN 3 users, 3 UTubs, 3 URLs, and 3 Tags, with only the creator of the UTub in each UTub, and the currently logged in user is a creator of a UTub,
+        and 3 URLs exists in each UTub, added by the user with the same ID as the URL, and each URL has a tag on it that has the identical tag ID as the URL
+    WHEN the user tries to add a tag with added leading/trailing whitespace to a URL that already has that tag on it without the whitespace
+        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
+            "utub_id" : An integer representing UTub ID,
+            "utub_url_id": An integer representing URL ID to add tag to
+    THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response is sent by the server,
+        and that no new Tag-URL-UTub association exists, that a new Tag does not exist, and that the association between URL and Tag is serialized properly
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : "Failure",
+        STD_JSON.MESSAGE : "URL already has this tag",
+        "Error_code" : 3
+    }
+    """
+    client, csrf_token, _, app = login_first_user_without_register
+
+    with app.app_context():
+        # Find UTub this current user is creator of
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+        creator_of_utub_id = utub_user_is_creator_of.utub_creator
+
+        # Get URL that is in this UTub, added by this user
+        url_utub_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        url_id_to_add_tag_to = url_utub_association.id
+        url_serialization_for_check = url_utub_association.serialized(
+            current_user.id, creator_of_utub_id
+        )
+
+        num_of_tag_associations_with_url_in_utub = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+        ).count()
+
+        tag_on_url_in_utub_association: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+        ).first()
+
+        tag_on_url_in_utub: Utub_Tags = tag_on_url_in_utub_association.utub_tag_item
+        tag_to_add = tag_on_url_in_utub.tag_string
+
+        # Get initial num of Url-Tag associations
+        initial_num_url_tag_associations = Utub_Url_Tags.query.count()
+        initial_num_utub_tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id_user_is_creator_of
+        ).count()
+
+    tag_to_add = f" {tag_to_add} "
+
+    # Add tag to this URL
+    add_tag_form = {
+        TAG_FORM.CSRF_TOKEN: csrf_token,
+        TAG_FORM.TAG_STRING: tag_to_add,
+    }
+
+    add_tag_response = client.post(
+        url_for(
+            ROUTES.URL_TAGS.CREATE_URL_TAG,
+            utub_id=utub_id_user_is_creator_of,
+            utub_url_id=url_id_to_add_tag_to,
+        ),
+        data=add_tag_form,
+    )
+
+    assert add_tag_response.status_code == 400
+
+    # Ensure json response from server is valid
+    add_tag_response_json = add_tag_response.json
+    assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.TAG_ALREADY_ON_URL
+    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 3
+
+    with app.app_context():
+        # Ensure no new tags exist
+        assert (
+            Utub_Tags.query.filter(
+                Utub_Tags.utub_id == utub_id_user_is_creator_of
+            ).count()
+            == initial_num_utub_tags
+        )
+
+        # Ensure no new tags exist on this URL
+        assert (
+            num_of_tag_associations_with_url_in_utub
+            == Utub_Url_Tags.query.filter(
+                Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+                Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
+            ).count()
+        )
+
+        url_utub_tag_association: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id_user_is_creator_of,
+            Utub_Urls.user_id == current_user.id,
+            Utub_Urls.id == url_id_to_add_tag_to,
+        ).first()
+
+        assert (
+            url_utub_tag_association.serialized(current_user.id, creator_of_utub_id)
+            == url_serialization_for_check
+        )
+
+        # Ensure correct count of Url-Tag associations
+        assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations

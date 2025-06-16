@@ -515,7 +515,7 @@ class UrlValidator:
 
             redis_client: Redis | None = None
             if self._redis_uri and self._redis_uri != "memory://":
-                redis_client = redis.Redis.from_url(self._redis_uri)  # type: ignore
+                redis_client = redis.Redis.from_url(self._redis_uri)
 
             for year in range(2020, current_year + 1):
                 is_rate_limited = redis_client and self._is_wayback_rate_limited(

@@ -142,7 +142,9 @@ def create_url(utub_id: int):
 
     if not user_in_utub:
         # Not authorized to add URL to this UTub
-        critical_log(f"User={current_user.id} tried adding a URL to UTub.id={utub_id}")
+        critical_log(
+            f"User={current_user.id} tried adding a URL to UTub.id={utub_id} but User not in UTub"
+        )
         return (
             jsonify(
                 {
@@ -311,7 +313,7 @@ def create_url(utub_id: int):
             utub_id=utub_id,
             url_id=url_id,
             user_id=current_user.id,
-            url_title=utub_new_url_form.url_title.data,
+            url_title=utub_new_url_form.url_title.get(),
         )
         db.session.add(url_utub_user_add)
         utub.set_last_updated()
@@ -500,7 +502,7 @@ def update_url(utub_id: int, utub_url_id: int):
     update_url_form: UpdateURLForm = UpdateURLForm()
 
     if update_url_form.validate_on_submit():
-        url_to_change_to: str = update_url_form.url_string.data.replace(" ", "")  # type: ignore
+        url_to_change_to: str = update_url_form.get_url_string().replace(" ", "")
 
         if url_to_change_to == "":
             warning_log(
@@ -801,11 +803,7 @@ def update_url_title(utub_id: int, utub_url_id: int):
     update_url_title_form: UpdateURLTitleForm = UpdateURLTitleForm()
 
     if update_url_title_form.validate_on_submit():
-        url_title_to_change_to = (
-            update_url_title_form.url_title.data
-            if update_url_title_form.url_title.data is not None
-            else ""
-        )
+        url_title_to_change_to = update_url_title_form.url_title.get()
         serialized_url_in_utub = url_in_utub.serialized_on_get_or_update
         title_diff = url_title_to_change_to != url_in_utub.url_title
 

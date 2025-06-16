@@ -403,6 +403,44 @@ def test_create_existing_tag(browser: WebDriver, create_test_tags, provide_app: 
     assert duplicate_url_tag_error.text == TAGS_FAILURE.TAG_ALREADY_ON_URL
 
 
+def test_create_existing_tag_with_whitespace(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests the site error response to a user's attempt to create a tag with the same name as another already on the selected URL.
+
+    GIVEN a user has access to UTubs with URLs and tags applied
+    WHEN the createTag form is populated with a tag value that is already applied to the selected URL and submitted
+    THEN ensure the appropriate error is presented to the user.
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    url_in_utub = get_url_in_utub(app, utub_user_created.id)
+    existing_tag = get_tag_string_already_on_url_in_utub_and_delete(
+        app, utub_user_created.id, url_in_utub.id
+    )
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+    )
+
+    create_tag(browser, url_in_utub.id, f" {existing_tag} ")
+
+    # Submit
+    btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
+    wait_then_click_element(browser, btn_selector, time=3)
+
+    # Wait for POST request
+    duplicate_url_tag_selector = f"{HPL.ROW_SELECTED_URL} {HPL.ERROR_TAG_CREATE}"
+    duplicate_url_tag_error = wait_then_get_element(
+        browser, duplicate_url_tag_selector, time=3
+    )
+    assert duplicate_url_tag_error is not None
+    assert duplicate_url_tag_error.text == TAGS_FAILURE.TAG_ALREADY_ON_URL
+
+
 def test_create_sixth_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     """
     Tests the site error response to a user's attempt to create an additional unique tag once a URL already has the maximum number of tags applied
