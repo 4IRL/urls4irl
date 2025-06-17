@@ -2,6 +2,7 @@ import time
 
 from flask import abort, Blueprint, jsonify, request
 from flask_login import current_user
+from sqlalchemy import case, func
 
 from src import db, notification_sender, url_validator
 from src.app_logger import (
@@ -26,7 +27,7 @@ from src.urls.forms import (
     UpdateURLForm,
     UpdateURLTitleForm,
 )
-from src.urls.utils import build_form_errors
+from src.urls.utils import build_form_errors, parse_pk_and_tag_ids
 from src.utils.email_validation import email_validation_required
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.url_strs import URL_SUCCESS, URL_FAILURE, URL_NO_CHANGE
@@ -70,10 +71,37 @@ def delete_url(utub_id: int, utub_url_id: int):
         url_string_to_remove = url_in_utub.standalone_url.url_string
         url_id_to_remove = url_in_utub.standalone_url.id
 
+        # Find all rows corresponding to tags on the URL to be deleted in current UTub
+        primary_key_and_tag_ids = (
+            db.session.query(Utub_Url_Tags)
+            .filter(
+                Utub_Url_Tags.utub_id == utub_id,
+                Utub_Url_Tags.utub_url_id == utub_url_id,
+            )
+            .with_entities(Utub_Url_Tags.id, Utub_Url_Tags.utub_tag_id)
+            .all()
+        )
+        pks, tag_ids = parse_pk_and_tag_ids(primary_key_and_tag_ids)
+
+        # Count instances of tags in UTub that were unique to the URL to be deleted
+        tag_ids_and_count = (
+            db.session.query(
+                Utub_Url_Tags.utub_tag_id,
+                case([(func.count() > 0, func.count() - 1)], else_=0).label("count"),
+            )
+            .filter(
+                Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_tag_id.in_(tag_ids)
+            )
+            .group_by(Utub_Url_Tags.utub_tag_id)
+            .all()
+        )
+
         # Remove all tags associated with this URL in this UTub
-        Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_url_id == utub_url_id
-        ).delete()
+        db.session.query(Utub_Url_Tags).filter(Utub_Url_Tags.id.in_(pks)).delete()
+
+        # Updated count after successful removal of all tags associated with deleted URL
+        # {tag_id: count}
+        tag_ids_and_updated_count = {t[0]: t[1] - 1 for t in tag_ids_and_count}
 
         db.session.delete(url_in_utub)
         utub.set_last_updated()
@@ -101,6 +129,7 @@ def delete_url(utub_id: int, utub_url_id: int):
                         URL_SUCCESS.UTUB_URL_ID: utub_url_id,
                         URL_SUCCESS.URL_TITLE: url_in_utub.url_title,
                     },
+                    URL_SUCCESS.TAG_COUNTS_MODIFIED: tag_ids_and_updated_count,
                 }
             ),
             200,

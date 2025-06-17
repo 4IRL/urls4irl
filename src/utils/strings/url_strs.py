@@ -21,6 +21,7 @@ URL_OR_TITLE_MODIFIED = "URL and/or URL title modified."
 URL_MODIFIED = "URL modified."
 URL_FOUND_IN_UTUB = "URL found in UTub."
 TAG_IN_UTUB = "tagInUTub"
+TAG_COUNTS_MODIFIED = "tagCountsInUTub"
 
 
 class URL_GENERAL:
@@ -44,6 +45,7 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     UTUB_URL_ID = UTUB_URL_ID
     URL_FOUND_IN_UTUB = URL_FOUND_IN_UTUB
     URL_TAGS = URL_TAGS
+    TAG_COUNTS_MODIFIED = TAG_COUNTS_MODIFIED
 
 
 # Strings for URL failure

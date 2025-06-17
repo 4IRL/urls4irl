@@ -28,6 +28,7 @@ UTUB_DESCRIPTION = "utubDescription"
 UTUB_URL_ID = "utubUrlID"
 CURRENT_USER = "currentUser"
 UTUBS = "utubs"
+TAG_APPLIED = "tagApplied"
 
 
 class MODELS:
@@ -58,3 +59,4 @@ class MODELS:
     UTUB_URL_ID = UTUB_URL_ID
     CURRENT_USER = CURRENT_USER
     UTUBS = UTUBS
+    TAG_APPLIED = TAG_APPLIED
