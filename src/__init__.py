@@ -16,7 +16,7 @@ from src.config import Config, ConfigProd
 from src.extensions.email_sender.email_sender import EmailSender
 from src.extensions.notifications.notifications import NotificationSender
 from src.extensions.url_validation.url_validator import UrlValidator
-from src.cli.cli_options import register_short_urls_cli
+from src.cli.cli_options import register_short_urls_cli, register_utils_cli
 from src.cli.mock_options import register_mocks_db_cli
 from src.utils.bundle import prepare_bundler_for_js_files
 from src.utils.error_handler import (
@@ -93,7 +93,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     from src.tags.utub_tag_routes import utub_tags
 
     @app.context_processor
-    def asset_processor():  # type: ignore
+    def asset_processor():
         return {CONFIG_ENVS.ASSET_VERSION: app.config[CONFIG_ENVS.ASSET_VERSION]}
 
     app.register_blueprint(assets_bp)
@@ -106,6 +106,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     app.register_blueprint(utub_tags)
     register_mocks_db_cli(app)
     register_short_urls_cli(app)
+    register_utils_cli(app)
 
     app.register_error_handler(404, handle_404_response)
     app.register_error_handler(CSRFError, handle_403_response_from_csrf)

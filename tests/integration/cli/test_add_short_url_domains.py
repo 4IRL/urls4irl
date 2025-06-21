@@ -48,8 +48,8 @@ def test_validate_short_url(runner):
     """
     GIVEN a developer wanting to add mock users to the database
     WHEN the developer provides the following CLI command:
-        `flask addmock users`
-    THEN verify that mock users are added to the database
+        `flask shorturls add`
+    THEN verify that the short urls can be properly validated
 
     Args:
         runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
@@ -62,14 +62,6 @@ def test_validate_short_url(runner):
         return
 
     cli_runner.invoke(args=["shorturls", "add"])
-
-    """
-    VALID_SHORT_URL = "https://a.co/d/5bgDNcz"
-    final_url, is_validated = url_validator.validate_url(VALID_SHORT_URL)
-
-    assert "amazon.com" in final_url
-    assert is_validated
-    """
 
     VALID_BITLY_URL = "https://bit.ly/test-u4i-link"
     LONG_URL = "https://www.youtube.com/watch?v=b0fv54xGOwY&pp=0gcJCb0Ag7Wk3p_U"

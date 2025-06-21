@@ -1,4 +1,6 @@
+from datetime import datetime
 import logging
+import os
 import time
 import uuid
 
@@ -15,7 +17,7 @@ class RequestInfoFilter(logging.Filter):
     """Add request-specific information to log records."""
 
     def filter(self, record):
-        record.request_id = getattr(g, "request_id", "-")
+        record.request_id = getattr(g, "request_id", "-") if request else "-"
         record.remote_addr = getattr(request, "remote_addr", "-") if request else "-"
         record.user_agent = getattr(request, "user_agent", "-") if request else "-"
         record.module = "u4i"
@@ -28,7 +30,7 @@ class DetailedRequestInfoFilter(logging.Filter):
     """Add detailed request-specific information to log records (includes user agent and remote addr)."""
 
     def filter(self, record):
-        record.request_id = getattr(g, "request_id", "-")
+        record.request_id = getattr(g, "request_id", "-") if request else "-"
         record.remote_addr = getattr(request, "remote_addr", "-") if request else "-"
         record.user_agent = getattr(request, "user_agent", "-") if request else "-"
         record.module = "u4i"
@@ -37,12 +39,39 @@ class DetailedRequestInfoFilter(logging.Filter):
         return True
 
 
+# Create a custom handler that creates new files daily
+class DailyFileHandler(logging.FileHandler):
+    def __init__(self, log_dir):
+        self.log_dir = log_dir
+        super().__init__(get_log_file_path(log_dir), mode="a")
+
+    def emit(self, record):
+        current_file = get_log_file_path(self.log_dir)
+
+        if self.baseFilename != current_file:
+            self.close()
+            self.baseFilename = current_file
+            self.stream = self._open()
+
+        super().emit(record)
+
+
 def generate_request_id() -> str:
     return str(uuid.uuid4())[-12:]
 
 
+def get_log_file_path(log_dir: str) -> str:
+    """Generate log file path based on current date."""
+    # Ensure log directory exists
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Generate filename with current date
+    today = datetime.now().strftime("%Y-%m-%d")
+    return os.path.join(log_dir, f"{today}.log")
+
+
 def get_remote_addr(request: Request):
-    # NOTE: Currently not in user as ProxyFix handles updating remote_addr, but could be useful
+    # NOTE: Currently not in use as ProxyFix handles updating remote_addr, but could be useful
     if not has_request_context() or not request.headers:
         return "NOT-AVAILABLE"
 
@@ -83,13 +112,53 @@ def configure_logging(app: Flask, is_production=False):
     console_handler.addFilter(RequestInfoFilter())
     app.logger.addHandler(console_handler)
 
+    # Create file handler
+    if not app.config.get("TESTING", False):
+        log_dir = app.config.get(CONFIG_ENVS.LOG_DIR, "logs/")
+        file_handler = DailyFileHandler(log_dir)
+        file_handler.setFormatter(regular_formatter)
+        file_handler.addFilter(RequestInfoFilter())
+        app.logger.addHandler(file_handler)
+        app._file_handler = file_handler  # type: ignore
+
     # Store formatters for use in before_request logging
-    app._detailed_formatter = detailed_formatter
-    app._regular_formatter = regular_formatter
+    app._detailed_formatter = detailed_formatter  # type: ignore
+    app._regular_formatter = regular_formatter  # type: ignore
 
     # Configure root logger for third-party libraries
     root_logger = logging.getLogger()
     root_logger.setLevel(app.config.get("LOG_LEVEL", logging.INFO))
+
+    # Add file handler to root logger to catch all logs (all environments)
+    if not app.config.get("TESTING", False):
+        log_dir = app.config.get(CONFIG_ENVS.LOG_DIR, "logs")
+        root_file_handler = DailyFileHandler(log_dir)
+        root_file_handler.setFormatter(regular_formatter)
+        root_file_handler.addFilter(RequestInfoFilter())
+        root_logger.addHandler(root_file_handler)
+
+    # Create unformatted logger
+    raw_logger = logging.getLogger("raw_logger")
+    raw_logger.setLevel(logging.INFO)
+    raw_logger.propagate = False  # Prevent going up to root logger
+
+    raw_handler = logging.StreamHandler()
+    raw_handler.setFormatter(
+        logging.Formatter("%(message)s")
+    )  # No timestamp, level, etc.
+    raw_logger.addHandler(raw_handler)
+
+    if not app.config.get("TESTING", False):
+        log_dir = app.config.get(CONFIG_ENVS.LOG_DIR, "logs")
+        raw_file_handler = DailyFileHandler(log_dir)
+        raw_file_handler.setFormatter(
+            logging.Formatter("%(message)s")
+        )  # No timestamp, level, etc.
+        raw_file_handler.addFilter(RequestInfoFilter())
+        raw_logger.addHandler(raw_file_handler)
+
+    # Store in app context if needed later
+    app.raw_logger = raw_logger  # type: ignore
 
     # Set propagate to False since we're handling our own handlers
     app.logger.propagate = False
@@ -112,13 +181,23 @@ def log_with_detailed_info(app: Flask, level: int, message: str):
 
     # Create a temporary handler with detailed formatter
     temp_handler = logging.StreamHandler()
-    temp_handler.setFormatter(app._detailed_formatter)
+    temp_handler.setFormatter(app._detailed_formatter)  # type: ignore
     temp_handler.addFilter(DetailedRequestInfoFilter())
 
     # Create a temporary logger to avoid affecting the main logger
     temp_logger = logging.getLogger(f"temp_{generate_request_id()}")
     temp_logger.setLevel(app.logger.level)
     temp_logger.addHandler(temp_handler)
+
+    # Create temporary file handler with detailed formatter (all environments)
+    temp_file_handler = None
+    if not app.config.get("TESTING", False):
+        log_dir = app.config.get(CONFIG_ENVS.LOG_DIR, "logs")
+        temp_file_handler = DailyFileHandler(log_dir)
+        temp_file_handler.setFormatter(app._detailed_formatter)  # type: ignore
+        temp_file_handler.addFilter(DetailedRequestInfoFilter())
+        temp_logger.addHandler(temp_file_handler)
+
     temp_logger.propagate = False
 
     # Log the message
@@ -127,6 +206,10 @@ def log_with_detailed_info(app: Flask, level: int, message: str):
     # Clean up
     temp_handler.close()
     temp_logger.removeHandler(temp_handler)
+
+    if temp_file_handler and not app.config.get("TESTING", False):
+        temp_file_handler.close()
+        temp_logger.removeHandler(temp_file_handler)
 
 
 def setup_before_request_logging(app: Flask):

@@ -23,6 +23,8 @@ services:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
       - REDIS_PASSWORD
+    volumes:
+      - app_logs:/app/volume
     command: >
       sh -c "
       export MAILJET_API_KEY=$(cat /run/secrets/MAILJET_API_KEY) &&
@@ -39,6 +41,7 @@ services:
       flask db upgrade &&
       flask shorturls add &&
       flask assets build &&
+      flask utils start-log &&
       gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
       "
 
@@ -103,4 +106,5 @@ secrets:
 volumes:
   pgdata:
   redisdata:
+  app_logs:
 
