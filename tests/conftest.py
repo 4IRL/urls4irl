@@ -132,16 +132,17 @@ def build_app(
     # Clear bundles to avoid re-registering
     environment_assets._named_bundles = {}
 
-    app_for_test = create_app(config)
+    app_for_test = create_app(config)  # type: ignore
     if app_for_test is None:
         return
 
     # Prevent logs from cluttering test output, while still being captured in caplog
     original_log_handlers = app_for_test.logger.handlers.copy()
     for handler in original_log_handlers:
-        if isinstance(handler, logging.StreamHandler) and not isinstance(
-            handler, logging.NullHandler
-        ):
+        is_stream_or_file_handler = isinstance(
+            handler, logging.StreamHandler
+        ) or isinstance(handler, logging.FileHandler)
+        if is_stream_or_file_handler and not isinstance(handler, logging.NullHandler):
             app_for_test.logger.removeHandler(handler)
 
     app_for_test.logger.propagate = True

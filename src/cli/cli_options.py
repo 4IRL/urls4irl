@@ -1,3 +1,4 @@
+from datetime import datetime
 import requests
 
 from flask import Flask, current_app
@@ -8,7 +9,8 @@ from redis.client import Redis
 from src.utils.strings.config_strs import CONFIG_ENVS as ENV
 from src.utils.strings.url_validation_strs import SHORT_URLS
 
-HELP_SUMMARY_MOCKS = """Add list of short URL domains to redis."""
+HELP_SUMMARY_SHORT_URL = """Add list of short URL domains to redis."""
+HELP_SUMMARY_UTILS = """General CLI Utils for U4I."""
 SHORT_URL_DOMAINS_LIST = (
     "https://raw.githubusercontent.com/PeterDaveHello/url-shorteners/master/list"
 )
@@ -16,7 +18,13 @@ SHORT_URL_DOMAINS_LIST = (
 short_urls_cli = AppGroup(
     "shorturls",
     context_settings={"ignore_unknown_options": True},
-    help=HELP_SUMMARY_MOCKS,
+    help=HELP_SUMMARY_SHORT_URL,
+)
+
+utils_cli = AppGroup(
+    "utils",
+    context_settings={"ignore_unknown_options": True},
+    help=HELP_SUMMARY_UTILS,
 )
 
 
@@ -47,7 +55,7 @@ def add_short_url_domains_to_redis():
 
         short_urls_strs = [str(val.decode()) for val in short_urls]
 
-        redis_client: Redis = redis.Redis.from_url(url=redis_uri)
+        redis_client: Redis = redis.Redis.from_url(url=redis_uri)  # type: ignore
         added = redis_client.sadd(SHORT_URLS, *short_urls_strs)
         if added == 0:
             print("No new domains added.")
@@ -63,5 +71,24 @@ def add_short_url_domains_to_redis():
         print(f"Unknown exception when generating short URL domain list. {str(e)}")
 
 
+@utils_cli.command("start-log", help="Log to indicate application start")
+@with_appcontext
+def starting_log_for_u4i():
+    now = datetime.now()
+    start_time = now.strftime("[%Y-%m-%d  %H:%M:%S]")
+    current_app.raw_logger.info(  # type: ignore
+        """
+    !!------------------------------------------------------------------------------------------------------!!\n
+    !!-------------------------------------------- STARTING U4I --------------------------------------------!!\n
+    !!------------------------------------------------------------------------------------------------------!!\n
+    """
+        + f"!!----------------------------------------{start_time}----------------------------------------!!\n"
+    )
+
+
 def register_short_urls_cli(app: Flask):
     app.cli.add_command(short_urls_cli)
+
+
+def register_utils_cli(app: Flask):
+    app.cli.add_command(utils_cli)

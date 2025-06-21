@@ -56,6 +56,8 @@ DEV_DB_URI = build_db_uri(
 TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
 TEST_SELENIUM_URI = environ.get(ENV.SELENIUM_URL, default=None)
 
+LOG_DIR = environ.get(ENV.LOG_DIR, default="logs")
+
 if IS_PRODUCTION:
     redis_password = environ.get("REDIS_PASSWORD", "")
     encoded_password = quote(redis_password)
@@ -112,6 +114,7 @@ class Config:
     ASSET_VERSION = ASSET_VERSION
     DEV_SERVER = IS_DEV_SERVER
     NOTIFICATION_URL = NOTIFICATION_URL
+    LOG_DIR = LOG_DIR
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:

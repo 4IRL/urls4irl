@@ -7,6 +7,7 @@ ENV FLASK_APP=run
 ENV PYTHONUNBEFFERED=1
 ENV PIP_DISABLE_PIP_VERSION_CHECK=1
 ENV PIP_NO_CACHE_DIR=1
+ENV LOG_DIR=/app/volume/logs
 
 # Use code as working directory
 WORKDIR /code/u4i
@@ -20,7 +21,10 @@ RUN set -ex \
 	&& apt-get upgrade -y \
 	&& apt-get autoremove -y \
 	&& apt-get clean -y \
-	&& rm -rf /var/lib/apt/lists/*
+	&& rm -rf /var/lib/apt/lists/* \
+	&& mkdir -p /app/volume/logs \
+	&& chmod -R 775 /app/volume/logs \
+	&& chown -R u4i-host:u4i-host-group /app/volume/logs
 
 # Copy over required files
 COPY requirements/requirements-prod.txt ./

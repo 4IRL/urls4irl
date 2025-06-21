@@ -21,6 +21,8 @@ services:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
       - BASE_EMAIL
+    volumes:
+      - app_logs:/app/volume
 
     # Sleep for 5 seconds to allow postgres image to start if necessary
     command: >
@@ -34,6 +36,7 @@ services:
       flask db upgrade &&
       flask shorturls add &&
       flask assets build &&
+      flask utils start-log &&
       gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
       "
 
@@ -68,4 +71,5 @@ secrets:
 volumes:
   pgdata:
   redisdata:
+  app_logs:
 
