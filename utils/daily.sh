@@ -4,7 +4,7 @@ set +x # Disable command echoing
 # Redirecting file stdout/stderr to a daily logfile
 # https://unix.stackexchange.com/a/184217
 SCRIPT_DIR=$(dirname "$0")
-LOGFILE="$SCRIPT_DIR/daily_workflow_logs/$(date +%Y_%m_%d)-daily-workflow-logs.txt"
+LOGFILE="$SCRIPT_DIR/workflow_logs/$(date +%Y_%m_%d)-daily-workflow-logs.txt"
 exec 1>>"$LOGFILE"
 exec 2>&1
 

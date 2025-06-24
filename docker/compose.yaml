@@ -23,6 +23,7 @@ services:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
       - REDIS_PASSWORD
+      - NOTIFICATION_URL
     volumes:
       - app_logs:/app/volume
     command: >
@@ -78,10 +79,28 @@ services:
       timeout: 5s
       retries: 3
     command: >
-      /bin/sh -c "
-      export REDIS_PASSWORD=$(cat /run/secrets/REDIS_PASSWORD) &&
-      redis-server --appendonly yes --requirepass $${REDIS_PASSWORD}
-      "
+      /bin/sh -c "redis-server --appendonly yes --requirepass $(cat /run/secrets/REDIS_PASSWORD)"
+
+  workflow:
+    container_name: u4i-prod-workflow
+    image: ghcr.io/4irl/u4i-workflow:latest
+    depends_on:
+      - web
+      - db
+    secrets:
+      - POSTGRES_DB
+      - POSTGRES_USER
+      - POSTGRES_PASSWORD
+      - NOTIFICATION_URL
+    environment:
+      - PRODUCTION=true
+      - DEV_SERVER=false
+    volumes:
+      - app_logs:/app/volume
+      - pgdata:/var/lib/postgresql/data:ro
+      - workflow_logs:/app/workflow_logs
+      - backups:/backups
+    command: ["sh", "/app/startup-workflow.sh"]
 
 secrets:
   POSTGRES_DB:
@@ -107,4 +126,6 @@ volumes:
   pgdata:
   redisdata:
   app_logs:
+  workflow_logs:
+  backups:
 

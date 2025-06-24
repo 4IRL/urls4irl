@@ -131,8 +131,9 @@ jobs:
               hasRedis=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep redis);
               hasDB=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep db);
               hasWeb=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep web);
+              hasWorkflow=$(docker compose -f compose.yaml ps --services --filter "status=running" | grep workflow);
 
-              if [ -n "${hasRedis}" ] && [ -n "${hasDB}" ] && [ -n "${hasWeb}" ]; then
+              if [ -n "${hasRedis}" ] && [ -n "${hasDB}" ] && [ -n "${hasWeb}" ] && [ -n "${hasWorkflow}" ]; then
                 echo "After 30 seconds, all of the services are up!";
                 exit 0; 
               else
@@ -140,6 +141,7 @@ jobs:
                 [ "redis" != "${hasRedis}" ] && echo "Redis not operational"; 
                 [ "db" != "${hasDB}" ] && echo "Database not operational"; 
                 [ "web" != "${hasWeb}" ] && echo "Web service not operational";
+                [ "workflow" != "${hasWorkflow}" ] && echo "Workflow service not operational";
                 exit 1;
               fi; 
               '

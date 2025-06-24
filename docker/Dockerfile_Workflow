@@ -1,0 +1,45 @@
+# syntax=docker/dockerfile:1.5
+FROM debian:12-slim
+LABEL org.opencontainers.image.source="https://github.com/4IRL/urls4irl/daily-workflow"
+
+# Install required tools
+RUN apt-get update && \
+    apt-get install -y wget gnupg lsb-release && \
+    echo "deb http://apt.postgresql.org/pub/repos/apt/ $(lsb_release -cs)-pgdg main" \
+        > /etc/apt/sources.list.d/pgdg.list && \
+    wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor \
+        > /usr/share/keyrings/postgresql.gpg && \
+    echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+    > /etc/apt/sources.list.d/pgdg.list && \
+    apt-get update && \
+    apt-get install -y \
+    bash \
+    curl \
+    jq \
+    tar \
+    gzip \
+    cron \
+    postgresql-client-16 \
+    unzip \
+    && curl -fsSL https://rclone.org/install.sh | bash \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Create app directory
+WORKDIR /app
+
+# Copy backup scripts
+COPY docker/startup-workflow.sh /app/
+COPY utils/daily-docker.sh /app/
+COPY utils/restricted-curl.sh /usr/bin/restricted_curl
+COPY utils/backup-database.sh /app/
+COPY utils/backup-logs.sh /app/
+COPY utils/remote-object-storage.sh /app/
+
+# Make scripts executable and replace curl with a restricted version
+RUN chmod +x /app/*.sh && \
+    chmod +x /usr/bin/restricted_curl && \
+    mv /usr/bin/curl /usr/bin/curl.real && \
+    ln -s /usr/bin/restricted_curl /usr/bin/curl
+
+# Create cron job to run daily at 1am
+RUN echo "0 1 * * * /app/daily-test.sh > /app/workflow_logs/cron.log 2>&1" | crontab -

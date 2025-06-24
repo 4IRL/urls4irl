@@ -85,6 +85,7 @@ jobs:
               POSTGRES_DB=${{ secrets.DEV_DB_NAME }}
               POSTGRES_PASSWORD=${{ secrets.DEV_DB_PASSWORD }}
               SECRET_KEY=$KEY
+              NOTIFICATION_URL="false"
               EOF
 
           - name: SCP Environment File
