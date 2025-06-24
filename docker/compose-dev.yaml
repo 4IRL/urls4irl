@@ -21,6 +21,7 @@ services:
       - MAILJET_API_KEY
       - MAILJET_SECRET_KEY
       - BASE_EMAIL
+      - NOTIFICATION_URL
     volumes:
       - app_logs:/app/volume
 
@@ -58,6 +59,28 @@ services:
     volumes:
       - redisdata:/data
 
+  workflow:
+    container_name: u4i-dev-workflow
+    image: ghcr.io/4irl/u4i-workflow:latest
+    env_file:
+      - .env
+    depends_on:
+      - web
+      - db
+    environment:
+      - PRODUCTION=false
+      - DEV_SERVER=true
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NOTIFICATION_URL=${NOTIFICATION_URL}
+    volumes:
+      - app_logs:/app/volume
+      - pgdata:/var/lib/postgresql/data:ro
+      - workflow_logs:/app/workflow_logs
+      - backups:/backups
+    command: ["sh", "/app/startup-workflow.sh"]
+
 secrets:
   MAILJET_API_KEY:
     file: ./secrets/MAILJET_API_KEY
@@ -72,4 +95,6 @@ volumes:
   pgdata:
   redisdata:
   app_logs:
+  workflow_logs:
+  backups:
 

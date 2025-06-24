@@ -64,13 +64,25 @@ services:
     container_name: u4i-local-workflow
     build:
       context: .
-      dockerfile: docker/Dockerfile_WorkflowLocal
+      dockerfile: docker/Dockerfile_Workflow
+    env_file:
+      - .env
     depends_on:
       - web
     environment:
       - PRODUCTION=false
+      - DEV_SERVER=false
+      - POSTGRES_DB=${POSTGRES_DB}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+      - NOTIFICATION_URL=${NOTIFICATION_URL}
     volumes:
       - app_logs:/app/volume
+      - pgdata:/var/lib/postgresql/data:ro
+      - workflow_logs:/app/workflow_logs
+      - backups:/backups
+    command: ["sh", "/app/startup-workflow.sh"]
+    restart: unless-stopped
 
   db:
     image: postgres:16.3-bookworm
@@ -104,4 +116,6 @@ volumes:
   pgdata:
   redisdata:
   app_logs:
+  workflow_logs:
+  backups:
 
