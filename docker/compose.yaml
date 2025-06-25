@@ -26,25 +26,7 @@ services:
       - NOTIFICATION_URL
     volumes:
       - app_logs:/app/volume
-    command: >
-      sh -c "
-      export MAILJET_API_KEY=$(cat /run/secrets/MAILJET_API_KEY) &&
-      export MAILJET_SECRET_KEY=$(cat /run/secrets/MAILJET_SECRET_KEY) &&
-      export POSTGRES_USER=$(cat /run/secrets/POSTGRES_USER) &&
-      export POSTGRES_DB=$(cat /run/secrets/POSTGRES_DB) &&
-      export POSTGRES_PASSWORD=$(cat /run/secrets/POSTGRES_PASSWORD) &&
-      export SECRET_KEY=$(cat /run/secrets/SECRET_KEY) &&
-      export BASE_EMAIL=$(cat /run/secrets/BASE_EMAIL) &&
-      export REDIS_PASSWORD=$(cat /run/secrets/REDIS_PASSWORD) &&
-      export NOTIFICATION_URL=$(cat /run/secrets/NOTIFICATION_URL) &&
-      export ASSET_VERSION=$(date +%s) &&
-      . /code/venv/bin/activate &&
-      flask db upgrade &&
-      flask shorturls add &&
-      flask assets build &&
-      flask utils start-log &&
-      gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
-      "
+    command: ["bash", "startup-flask.sh"]
 
   db:
     image: postgres:16.3-bookworm
@@ -100,7 +82,7 @@ services:
       - pgdata:/var/lib/postgresql/data:ro
       - workflow_logs:/app/workflow_logs
       - backups:/backups
-    command: ["sh", "/app/startup-workflow.sh"]
+    command: ["bash", "/app/startup-workflow.sh"]
 
 secrets:
   POSTGRES_DB:
