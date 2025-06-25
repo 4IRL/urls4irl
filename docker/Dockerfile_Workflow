@@ -42,4 +42,4 @@ RUN chmod +x /app/*.sh && \
     ln -s /usr/bin/restricted_curl /usr/bin/curl
 
 # Create cron job to run daily at 1am
-RUN echo "0 1 * * * /app/daily-test.sh > /app/workflow_logs/cron.log 2>&1" | crontab -
+RUN echo "0 1 * * * /app/daily-docker.sh > /app/workflow_logs/cron.log 2>&1" | crontab -

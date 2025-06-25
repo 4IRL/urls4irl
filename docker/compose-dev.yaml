@@ -24,22 +24,7 @@ services:
       - NOTIFICATION_URL
     volumes:
       - app_logs:/app/volume
-
-    # Sleep for 5 seconds to allow postgres image to start if necessary
-    command: >
-      sh -c "
-      export MAILJET_API_KEY=$(cat /run/secrets/MAILJET_API_KEY) &&
-      export MAILJET_SECRET_KEY=$(cat /run/secrets/MAILJET_SECRET_KEY) &&
-      export NOTIFICATION_URL=$(cat /run/secrets/NOTIFICATION_URL) &&
-      export BASE_EMAIL=$(cat /run/secrets/BASE_EMAIL) &&
-      sleep 5 &&
-      . /code/venv/bin/activate &&
-      flask db upgrade &&
-      flask shorturls add &&
-      flask assets build &&
-      flask utils start-log &&
-      gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
-      "
+    command: ["bash", "startup-flask.sh"]
 
   db:
     image: postgres:16.3-bookworm
@@ -79,7 +64,7 @@ services:
       - pgdata:/var/lib/postgresql/data:ro
       - workflow_logs:/app/workflow_logs
       - backups:/backups
-    command: ["sh", "/app/startup-workflow.sh"]
+    command: ["bash", "/app/startup-workflow.sh"]
 
 secrets:
   MAILJET_API_KEY:

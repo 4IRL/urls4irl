@@ -32,18 +32,7 @@ services:
       - ./migrations/versions:/code/u4i/migrations/versions
       - ./utils:/code/u4i/utils
       - app_logs:/app/volume
-
-    # Sleep for 10 seconds to allow postgres image to start if necessary
-    command: >
-      sh -c "
-      sleep 10 &&
-      . /code/venv/bin/activate &&
-      flask db upgrade &&
-      flask shorturls add &&
-      flask utils start-log &&
-      echo 'Running on 127.0.0.1:8659!' &&
-      flask run --host=0.0.0.0 --port=5000 --cert=adhoc
-      "
+    command: ["bash", "startup-flask.sh"]
 
   selenium:
     image: selenium/standalone-chromium:latest
@@ -81,7 +70,7 @@ services:
       - pgdata:/var/lib/postgresql/data:ro
       - workflow_logs:/app/workflow_logs
       - backups:/backups
-    command: ["sh", "/app/startup-workflow.sh"]
+    command: ["bash", "/app/startup-workflow.sh"]
     restart: unless-stopped
 
   db:

@@ -3,7 +3,7 @@ set +x # Disable command echoing
 
 
 echo "!!######################################################################################################!!"
-echo "\nSTARTING DAILY WORKFLOW CONTAINER: $(date +%Y%m%d_%H%M%S)\n"
+echo -e "\nSTARTING DAILY WORKFLOW CONTAINER: $(date +%Y%m%d_%H%M%S)\n"
 echo "!!######################################################################################################!!"
 
 # Function to load secrets from Docker secrets

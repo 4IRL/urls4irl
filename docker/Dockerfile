@@ -27,6 +27,7 @@ RUN set -ex \
 	&& chown -R u4i-host:u4i-host-group /app/volume/logs
 
 # Copy over required files
+COPY docker/startup-flask.sh ./
 COPY requirements/requirements-prod.txt ./
 COPY run.py ./
 COPY src/ ./src/
