@@ -167,6 +167,10 @@
     padding-bottom: 3px;
 }
 
+.flex-1-1-auto {
+    flex: 1 1 auto;
+}
+
 .flex-start {
     align-items: flex-start;
 }
@@ -179,8 +183,16 @@
     flex-wrap: wrap;
 }
 
+.align-stretch {
+    align-items: stretch;
+}
+
 .align-center {
     align-items: center;
+}
+
+.align-flex-end {
+    align-items: flex-end;
 }
 
 .justify-center {
@@ -199,6 +211,14 @@
     padding-inline: 15px;
 }
 
+.gap-2p {
+    gap: 2px;
+}
+
+.gap-8p {
+    gap: 8px;
+}
+
 .gap-15p {
     gap: 15px;
 }
@@ -211,7 +231,15 @@
     gap: 10px;
 }
 
+.pad-top-1rem {
+    padding-top: 1rem;
+}
+
 .pad-top-5p {
+    padding-top: 5px;
+}
+
+.pad-top-10p {
     padding-top: 5px;
 }
 
@@ -289,6 +317,18 @@
 
 .z9999 {
     z-index: 9999;
+}
+
+.top-50perc {
+    top: 50%;
+}
+
+.left-10p {
+    left: 10px;
+}
+
+.font-size-16p {
+    font-size: 16px;
 }
 
 .member,

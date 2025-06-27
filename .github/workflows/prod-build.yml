@@ -1,4 +1,4 @@
-name: Build production docker image
+name: Build production docker images
 
 on:
   workflow_call:
@@ -10,7 +10,7 @@ env:
 
 jobs:
     ProdBuild:
-        name: Build flask production docker image
+        name: Build flask production docker image and workflow image
         runs-on: ubuntu-latest
 
         steps:

@@ -53,7 +53,11 @@ send_notification_msg() {
         output="IGNORE, IN DEVELOPMENT: $output"
     fi
     #TODO: Remove DOCKER prefix once we verify this is working in prod
-    restricted_curl "POST" "$NOTIFICATION_URL" "DOCKER: $output"
+    if [[ "$DEV_SERVER" == "true" ]]; then
+          echo "DOCKER: $output"
+    else
+        restricted_curl "POST" "$NOTIFICATION_URL" "DOCKER: $output"
+    fi
     if [ "$?" -ne 0 ]; then
       echo "Error: Failure in sending notification"
     fi

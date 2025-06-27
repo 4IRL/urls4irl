@@ -123,7 +123,7 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal() {
       setEventListenersToEscapeUpdateUTubName();
     });
 
-  hideIfShown($("#modalRedirect"));
+  $("#modalRedirect").hideClass();
   $("#modalRedirect").hide();
 
   $("#modalSubmit")
@@ -154,9 +154,9 @@ function updateUTubNameShowInput() {
   utubNameUpdate.trigger("focus");
 
   // Hide current name and update button
-  hideIfShown($("#URLDeckHeader"));
-  hideIfShown($("#utubNameBtnUpdate"));
-  hideIfShown($("#urlBtnCreate"));
+  $("#URLDeckHeader").hideClass();
+  $("#utubNameBtnUpdate").hideClass();
+  $("#urlBtnCreate").hideClass();
 
   // Handle hiding the button on mobile when hover events stay after touch
   $("#utubNameBtnUpdate").removeClass("visibleBtn");
@@ -172,9 +172,9 @@ function updateUTubNameHideInput() {
   hideInput("#utubNameUpdate");
 
   // Show values and update button
-  showIfHidden($("#URLDeckHeader"));
-  showIfHidden($("#utubNameBtnUpdate"));
-  showIfHidden($("#urlBtnCreate"));
+  $("#URLDeckHeader").showClassNormal();
+  $("#utubNameBtnUpdate").showClassNormal();
+  $("#urlBtnCreate").showClassNormal();
 
   // Remove event listeners on window and escape/enter keys
   removeEventListenersToEscapeUpdateUTubName();
@@ -183,7 +183,7 @@ function updateUTubNameHideInput() {
   $("#utubNameBtnUpdate").addClass("visibleBtn");
 
   if ($("#URLDeckSubheader").text().length === 0) {
-    hideIfShown($("#URLDeckSubheaderCreateDescription"));
+    $("#URLDeckSubheaderCreateDescription").hideClass();
   }
 
   // Remove any errors if shown

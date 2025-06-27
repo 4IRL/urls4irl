@@ -1,6 +1,7 @@
 import os
+import secrets
 
-from flask import Flask
+from flask import Flask, Response, g, session
 from flask_assets import Environment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -129,4 +130,65 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
         is_testing_or_prod=(testing or production),
     )
 
+    add_security_headers(app)
     return app
+
+
+def add_security_headers(app: Flask):
+    @app.context_processor
+    def nonce_processor():
+        if "nonce" not in session:
+            session["nonce"] = secrets.token_urlsafe(16)
+        g.nonce = session["nonce"]
+        return {"nonce": g.nonce}
+
+    # Keep the before_request for the CSP headers
+    @app.before_request
+    def set_nonce():
+        if "nonce" not in session:
+            session["nonce"] = secrets.token_urlsafe(16)
+        g.nonce = session["nonce"]
+
+    @app.after_request
+    def _add_security_headers(response: Response):
+        valid_script_cdns = (
+            "https://code.jquery.com",
+            "https://cdn.jsdelivr.net",
+        )
+
+        valid_style_cdns = (
+            "https://code.jquery.com",
+            "https://cdn.jsdelivr.net",
+            "https://maxcdn.bootstrapcdn.com",
+            "https://fonts.googleapis.com",
+            "https://stackpath.bootstrapcdn.com",
+        )
+
+        valid_font_cdns = (
+            "https://fonts.gstatic.com",
+            "https://maxcdn.bootstrapcdn.com",
+        )
+        valid_scripts = (
+            "script-src 'self' "
+            + f"'nonce-{g.nonce}' "
+            + f"{' '.join(valid_script_cdns)}; "
+        )
+        valid_styles = (
+            "style-src 'self' "
+            + f"'nonce-{g.nonce}' "
+            + f"{' '.join(valid_style_cdns)}; "
+        )
+        valid_style_elems = "style-src-attr 'unsafe-inline'; "
+        valid_fonts = "font-src 'self' " + f"{' '.join(valid_font_cdns)}; "
+        valid_imgs = "img-src 'self' data:;"
+
+        response.headers[CONFIG_ENVS.CONTENT_SECURITY_POLICY] = (
+            "default-src 'self';"
+            + valid_scripts
+            + valid_styles
+            + valid_style_elems
+            + valid_fonts
+            + valid_imgs
+        )
+
+        return response

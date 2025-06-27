@@ -69,7 +69,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   // Show form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   enableTabbableChildElements(tagInputFormContainer);
-  showIfHidden(tagInputFormContainer);
+  $(tagInputFormContainer).showClassNormal();
 
   // Focus on the input to add a tag - with delay in case user opened by pressing enter
   setTimeout(function () {
@@ -77,9 +77,9 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   }, 100);
 
   // Disable URL Buttons as url Tag is being created
-  hideIfShown(urlCard.find(".urlBtnAccess"));
-  hideIfShown(urlCard.find(".urlStringBtnUpdate"));
-  hideIfShown(urlCard.find(".urlBtnDelete"));
+  urlCard.find(".urlBtnAccess").hideClass();
+  urlCard.find(".urlStringBtnUpdate").hideClass();
+  urlCard.find(".urlBtnDelete").hideClass();
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
@@ -124,7 +124,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
   // Hide form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   disableTabbableChildElements(tagInputFormContainer);
-  hideIfShown(tagInputFormContainer);
+  tagInputFormContainer.hideClass();
 
   // Reset input form
   tagInputFormContainer.find("input").val(null);
@@ -141,9 +141,9 @@ function hideAndResetCreateURLTagForm(urlCard) {
     });
 
   // Enable URL Buttons as url Tag creation form is hidden
-  showIfHidden(urlCard.find(".urlBtnAccess"));
-  showIfHidden(urlCard.find(".urlStringBtnUpdate"));
-  showIfHidden(urlCard.find(".urlBtnDelete"));
+  urlCard.find(".urlBtnAccess").showClassNormal();
+  urlCard.find(".urlStringBtnUpdate").showClassNormal();
+  urlCard.find(".urlBtnDelete").showClassNormal();
 
   // For tablets or in case of resize, change some of the sizing
   urlTagBtnCreate.removeClass("full-width");
@@ -224,7 +224,7 @@ function createURLTagSuccess(response, urlCard) {
     .append(createTagBadgeInURL(utubTagID, string, urlCard));
 
   // Add SelectAll button if not yet there
-  showIfHidden($("#unselectAllTagFilters"));
+  $("#unselectAllTagFilters").showClassNormal();
 
   if (!isTagInUTubTagDeck(utubTagID)) {
     const newTag = buildTagFilterInDeck(utubTagID, string);

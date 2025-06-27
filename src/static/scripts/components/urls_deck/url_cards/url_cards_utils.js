@@ -27,7 +27,7 @@ function disableTabbingOnURLCardElements(urlCard) {
 function disableEditingURLTitle(urlCard) {
   const showUpdateURLTitleFormIcon = urlCard.find(".urlTitleBtnUpdate");
   if (showUpdateURLTitleFormIcon.length > 0) {
-    showUpdateURLTitleFormIcon.addClass("hidden");
+    showUpdateURLTitleFormIcon.hideClass();
   }
 }
 
@@ -35,6 +35,6 @@ function disableEditingURLTitle(urlCard) {
 function enableEditingURLTitle(urlCard) {
   const showUpdateURLTitleFormIcon = urlCard.find(".urlTitleBtnUpdate");
   if (showUpdateURLTitleFormIcon.length > 0) {
-    showUpdateURLTitleFormIcon.removeClass("hidden");
+    showUpdateURLTitleFormIcon.removeHideClass();
   }
 }

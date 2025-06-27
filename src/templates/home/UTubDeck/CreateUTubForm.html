@@ -1,4 +1,4 @@
-<div id="createUTubWrap" class="input-text-holder flex-column createDiv pad-in-15p" style="display: none;">
+<div id="createUTubWrap" class="input-text-holder flex-column createDiv pad-in-15p hidden">
     <div class="text-input-container">
         <div class="text-input-inner-container">
             <input class="text-input" type="text" id="utubNameCreate" name="utubName" minlength={{CONSTANTS.UTUBS.MIN_NAME_LENGTH}} maxlength={{CONSTANTS.UTUBS.MAX_NAME_LENGTH}} required tabindex="0">
@@ -13,7 +13,7 @@
         </div>
         <span class="text-input-error-message" id="utubDescriptionCreate-error"></span>
     </div>
-    <div class="flex-row justify-center" style="gap: 8px; flex: 1 1 auto; align-items: flex-end;">
+    <div class="flex-row justify-center gap-8p flex-1-1-auto align-flex-end">
         <!-- Checkbox to accept UTub creation -->
         <i class="green-clickable-wide half-width flex-column align-center justify-center border-radius-5px" id="utubSubmitBtnCreate" tabindex="0">
             <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="30px" height="30px">

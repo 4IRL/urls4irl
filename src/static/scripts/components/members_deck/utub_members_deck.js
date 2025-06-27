@@ -86,8 +86,8 @@ function buildMemberDeck(
 function setMemberDeckWhenNoUTubSelected() {
   resetMemberDeck();
 
-  $("#memberBtnCreate").hide();
-  $("#memberSelfBtnDelete").hide();
+  $("#memberBtnCreate").hideClass();
+  $("#memberSelfBtnDelete").hideClass();
 
   // Subheader prompt hidden
   $("#MemberDeckSubheader").text(null);
@@ -99,14 +99,14 @@ function setMemberDeckForUTub(isCurrentUserOwner) {
   memberDeckSubheader.parent().addClass("height-2p5rem");
   // Ability to add members is restricted to UTub owner
   if (isCurrentUserOwner) {
-    $("#memberSelfBtnDelete").hide();
-    $("#memberBtnCreate").show();
+    $("#memberSelfBtnDelete").hideClass();
+    $("#memberBtnCreate").showClassNormal();
     numOfMembers === 1
       ? memberDeckSubheader.text("Add a member")
       : memberDeckSubheader.text(numOfMembers + " members");
   } else {
-    $("#memberBtnCreate").hide();
-    $("#memberSelfBtnDelete").show();
+    $("#memberBtnCreate").hideClass();
+    $("#memberSelfBtnDelete").showClassNormal();
     memberDeckSubheader.text(numOfMembers + " members");
   }
 

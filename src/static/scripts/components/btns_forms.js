@@ -61,9 +61,7 @@ function handleSearchInputBlur(event) {
 function showInput(handle) {
   const inputEl = $(handle);
   const inputDiv = inputEl.closest(".createDiv");
-  showIfHidden(inputDiv);
-
-  //highlightInput(inputEl);
+  $(inputDiv).showClassFlex();
 }
 
 // Highlight the input field. Typically if user requests action that is already displayed
@@ -94,7 +92,7 @@ function hideInputs() {
 function hideInput(handle) {
   const inputEl = $(handle);
   const inputDiv = inputEl.closest(".createDiv");
-  hideIfShown(inputDiv);
+  $(inputDiv).hideClass();
 }
 
 // Creates update button

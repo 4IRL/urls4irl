@@ -1,4 +1,4 @@
-<script type="text/javascript">
+<script nonce="{{ nonce }}" type="text/javascript">
     if (document.querySelector('head').childElementCount === 1) {
         window.location.href = '/';
     };
@@ -94,9 +94,9 @@
 <div class="d-flex justify-content-center register-to-login-footer">
     <div class="border-top pb-3">
         <small class="text-muted">
-            <a class="splash-page-links" id="ToLoginFromRegister" href="javascript:;">Already a user? Login</a>
+            <a class="splash-page-links" id="ToLoginFromRegister" href="#">Already a user? Login</a>
         </small>
     </div>
 </div>
 
-<script src="{{ url_for('static', filename='scripts/splash/register.js') }}?v={{ ASSET_VERSION }}"></script>
+<script nonce="{{ nonce }}" src="{{ url_for('static', filename='scripts/splash/register.js') }}?v={{ ASSET_VERSION }}"></script>

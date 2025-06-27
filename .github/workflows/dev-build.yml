@@ -1,4 +1,4 @@
-name: Build development docker image
+name: Build development docker images
 
 on:
   workflow_call:

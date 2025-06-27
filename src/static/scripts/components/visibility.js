@@ -5,22 +5,6 @@ function isHidden(el) {
   return el.offsetParent === null || $(el).get(0).offsetParent === null;
 }
 
-// Checks jqueryObj display status, and shows it if hidden
-function showIfHidden(jqueryObj) {
-  for (let i = 0; i < jqueryObj.length; i++)
-    if (isHidden(jqueryObj[i])) {
-      jqueryObj.show();
-    }
-}
-
-// Checks jqueryObj display status, and hides it if shown
-function hideIfShown(jqueryObj) {
-  for (let i = 0; i < jqueryObj.length; i++)
-    if (!isHidden(jqueryObj[i])) {
-      jqueryObj.hide();
-    }
-}
-
 $(window).on("focus", () => {
   const prevFocusedElem = $(".focus");
   if (prevFocusedElem.length === 0) return;

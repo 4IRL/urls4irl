@@ -32,7 +32,7 @@ EOF
   unset ACCESS_KEY SECRET_ACCESS_KEY R2_ENDPOINT
 
   # Send database backup using rclone
-  if [ database_success == "true" ]; then
+  if [ "$database_success" = "true" ]; then
     echo "Copying daily database backup to Cloudflare R2..."
     rclone --config="$CONFIG_FILE" copy "${COMPRESSED_BACKUP_FILE}" "remote:u4i-backups/" --progress --s3-no-check-bucket
     if [ "$?" -ne 0 ]; then
@@ -61,7 +61,7 @@ EOF
   fi
 
   # Send logs backup using rclone
-  if [ log_success == "true" ]; then
+  if [ "$log_success" == "true" ]; then
     echo "Copying daily app logs to Cloudflare R2..."
     rclone --config="$CONFIG_FILE" copy "${COMPRESSED_LOG_FILE}" "remote:u4i-logs/" --progress --s3-no-check-bucket
     if [ "$?" -ne 0 ]; then

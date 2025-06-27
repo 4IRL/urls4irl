@@ -98,10 +98,10 @@ function removeEventListenersToEscapeUpdateUTubDescription() {
 
 function allowUserToCreateDescriptionIfEmptyOnTitleUpdate() {
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
-  showIfHidden(clickToCreateDesc);
+  clickToCreateDesc.showClassNormal();
   clickToCreateDesc.offAndOn("click.createUTubdescription", function (e) {
     e.stopPropagation();
-    hideIfShown(clickToCreateDesc);
+    clickToCreateDesc.hideClass();
     updateUTubNameHideInput();
     updateUTubDescriptionShowInput();
     clickToCreateDesc.off("click.createUTubdescription");
@@ -112,10 +112,10 @@ function allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty() {
   const utubTitle = $("#URLDeckHeader");
   utubTitle.offAndOn("mouseenter.createUTubdescription", function () {
     const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
-    showIfHidden(clickToCreateDesc);
+    clickToCreateDesc.showClassNormal();
     clickToCreateDesc.offAndOn("click.createUTubdescription", function (e) {
       e.stopPropagation();
-      hideIfShown(clickToCreateDesc);
+      clickToCreateDesc.hideClass();
       updateUTubDescriptionShowInput();
       clickToCreateDesc.off("click.createUTubdescription");
     });
@@ -128,7 +128,7 @@ function hideCreateUTubDescriptionButtonOnMouseExit() {
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
   urlHeaderWrap.offAndOn("mouseleave.createUTubdescription", function () {
     if (!isHidden($(clickToCreateDesc))) {
-      hideIfShown(clickToCreateDesc);
+      clickToCreateDesc.hideClass();
       clickToCreateDesc.off("click.createUTubdescription");
       urlHeaderWrap.off("mouseleave.createUTubdescription");
     }
@@ -152,15 +152,15 @@ function updateUTubDescriptionShowInput() {
   utubDescriptionUpdate.val($("#URLDeckSubheader").text());
   showInput("#utubDescriptionUpdate");
   utubDescriptionUpdate.trigger("focus");
-  showIfHidden($("#utubDescriptionSubmitBtnUpdate"));
+  $("#utubDescriptionSubmitBtnUpdate").showClassNormal();
 
   // Handle hiding the button on mobile when hover events stay after touch
   $("#updateUTubDescriptionBtn").removeClass("visibleBtn");
 
   // Hide current description and update button
-  hideIfShown($("#UTubDescription"));
-  hideIfShown($("#updateUTubDescriptionBtn"));
-  hideIfShown($("#URLDeckSubheader"));
+  $("#UTubDescription").hideClass();
+  $("#updateUTubDescriptionBtn").hideClass();
+  $("#URLDeckSubheader").hideClass();
   $("#URLDeckHeaderWrap > .dynamic-subheader").removeClass("height-2p5rem");
 }
 
@@ -168,7 +168,7 @@ function updateUTubDescriptionShowInput() {
 function updateUTubDescriptionHideInput() {
   // Hide update fields
   hideInput("#utubDescriptionUpdate");
-  hideIfShown($("#utubDescriptionSubmitBtnUpdate"));
+  $("#utubDescriptionSubmitBtnUpdate").hideClass();
 
   // Handle giving mobile devices ability to see button again
   $("#updateUTubDescriptionBtn").addClass("visibleBtn");
@@ -177,8 +177,8 @@ function updateUTubDescriptionHideInput() {
   removeEventListenersToEscapeUpdateUTubDescription();
 
   // Show values and update button
-  showIfHidden($("#URLDeckSubheader"));
-  showIfHidden($("#updateUTubDescriptionBtn"));
+  $("#URLDeckSubheader").showClassNormal();
+  $("#updateUTubDescriptionBtn").showClassNormal();
 
   // Reset errors on hiding of inputs
   resetUpdateUTubDescriptionFailErrors();

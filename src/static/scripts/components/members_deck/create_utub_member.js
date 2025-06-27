@@ -96,19 +96,18 @@ function resetNewMemberForm() {
 
 // Shows new Member input fields
 function createMemberShowInput() {
-  showIfHidden($("#createMemberWrap"));
-  hideIfShown($("#displayMemberWrap"));
-  hideIfShown($("#memberBtnCreate"));
+  $("#createMemberWrap").showClassFlex();
+  $("#displayMemberWrap").showClassNormal();
+  $("#memberBtnCreate").hideClass();
   setupCreateMemberEventListeners();
   $("#memberCreate").trigger("focus");
 }
 
 // Hides new Member input fields
 function createMemberHideInput() {
-  hideIfShown($("#createMemberWrap"));
-  $("#createMemberWrap").hide();
-  showIfHidden($("#displayMemberWrap"));
-  showIfHidden($("#memberBtnCreate"));
+  $("#createMemberWrap").hideClass();
+  $("#displayMemberWrap").showClassNormal();
+  $("#memberBtnCreate").showClassNormal();
   removeCreateMemberEventListeners();
   resetCreateMemberFailErrors();
   resetNewMemberForm();

@@ -11,14 +11,14 @@ function resetURLDeck() {
   resetNewURLForm();
   newURLInputRemoveEventListeners();
   $(".urlRow").remove();
-  hideIfShown($("#urlBtnCreate"));
+  $("#urlBtnCreate").hideClass();
   updateUTubDescriptionHideInput();
 }
 
 function resetURLDeckOnDeleteUTub() {
-  hideIfShown($("#urlBtnCreate"));
-  hideIfShown($("#NoURLsSubheader"));
-  hideIfShown($("#urlBtnDeckCreateWrap"));
+  $("#urlBtnCreate").hideClass();
+  $("#NoURLsSubheader").hideClass();
+  $("#urlBtnDeckCreateWrap").hideClass();
   $("#updateUTubDescriptionBtn")
     .removeClass("visibleBtn")
     .addClass("hiddenBtn");
@@ -92,25 +92,27 @@ function buildURLDeck(utubName, dictURLs, dictTags) {
     }
 
     // Show access all URLs button
-    $("#accessAllURLsBtn").show();
-    $("#NoURLsSubheader").hide();
-    $("#urlBtnDeckCreateWrap").hide();
+    $("#accessAllURLsBtn").showClassNormal();
+    $("#NoURLsSubheader").hideClass();
+    $("#urlBtnDeckCreateWrap").hideClass();
   } else {
-    $("#NoURLsSubheader").show();
-    $("#urlBtnDeckCreateWrap").show();
-    $("#accessAllURLsBtn").hide();
+    $("#NoURLsSubheader").showClassNormal();
+    $("#urlBtnDeckCreateWrap").showClassFlex();
+    $("#accessAllURLsBtn").hideClass();
   }
+
+  $("#urlBtnCreate").showClassNormal();
   setUTubNameAndDescription(utubName);
 }
 
 function setURLDeckWhenNoUTubSelected() {
   $(".urlRow").remove();
   $("#URLDeckHeader").text("URLs");
-  $(".updateUTubBtn").hide();
-  $("#urlBtnCreate").hide();
-  $("#accessAllURLsBtn").hide();
-  $("#URLDeckSubheaderCreateDescription").hide();
-  $("#utubNameBtnUpdate").hide();
+  $(".updateUTubBtn").hideClass();
+  $("#urlBtnCreate").hideClass();
+  $("#accessAllURLsBtn").hideClass();
+  $("#URLDeckSubheaderCreateDescription").hideClass();
+  $("#utubNameBtnUpdate").hideClass();
   $("#updateUTubDescriptionBtn")
     .removeClass("visibleBtn")
     .addClass("hiddenBtn");

@@ -59,4 +59,33 @@ function disableTabbableChildElements(parent) {
     this.off(eventName).on(eventName, callback);
     return this;
   };
+
+  $.fn.removeClassStartingWith = function (filter) {
+    $(this).removeClass(function (_, className) {
+      return (
+        className.match(new RegExp("\\S*" + filter + "\\S*", "g")) || []
+      ).join(" ");
+    });
+    return this;
+  };
+
+  $.fn.showClassNormal = function () {
+    this.removeClass("hidden").addClass("visible");
+    return this;
+  };
+
+  $.fn.showClassFlex = function () {
+    this.removeClassStartingWith("hidden").addClass("visible-flex");
+    return this;
+  };
+
+  $.fn.hideClass = function () {
+    this.removeClassStartingWith("visible").addClass("hidden");
+    return this;
+  };
+
+  $.fn.removeHideClass = function () {
+    this.removeClass("hidden");
+    return this;
+  };
 })(jQuery);
