@@ -83,4 +83,9 @@ function disableTabbableChildElements(parent) {
     this.removeClassStartingWith("visible").addClass("hidden");
     return this;
   };
+
+  $.fn.removeHideClass = function () {
+    this.removeClass("hidden");
+    return this;
+  };
 })(jQuery);

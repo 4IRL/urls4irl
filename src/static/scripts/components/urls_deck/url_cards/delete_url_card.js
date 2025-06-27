@@ -80,8 +80,8 @@ function deleteURLSuccessOnDelete(response, urlCard) {
     urlCard.remove();
     if ($("#listURLs .urlRow").length === 0) {
       $("#accessAllURLsBtn").hideClass();
-      $("#NoURLsSubheader").showClass();
-      $("#urlBtnDeckCreateWrap").showClass();
+      $("#NoURLsSubheader").showClassFlex();
+      $("#urlBtnDeckCreateWrap").showClassFlex();
     } else {
       updateTagFilteringOnURLOrURLTagDeletion();
     }

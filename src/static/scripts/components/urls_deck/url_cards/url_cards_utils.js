@@ -35,6 +35,6 @@ function disableEditingURLTitle(urlCard) {
 function enableEditingURLTitle(urlCard) {
   const showUpdateURLTitleFormIcon = urlCard.find(".urlTitleBtnUpdate");
   if (showUpdateURLTitleFormIcon.length > 0) {
-    showUpdateURLTitleFormIcon.showClassFlex();
+    showUpdateURLTitleFormIcon.removeHideClass();
   }
 }
