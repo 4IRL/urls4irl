@@ -37,7 +37,7 @@ on:
 
 jobs:
     DevDeploy:
-        name: Deploy docker image to development server
+        name: Deploy docker compose stack to development server
         runs-on: ubuntu-latest
 
         steps:

@@ -43,7 +43,7 @@ on:
 
 jobs:
     ProdDeploy:
-        name: Deploy docker image to production server
+        name: Deploy docker compose stack to production server
         runs-on: ubuntu-latest
 
         steps:
