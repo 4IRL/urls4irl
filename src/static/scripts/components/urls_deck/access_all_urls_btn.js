@@ -53,7 +53,7 @@ function accessAllWarningShowModal() {
     .on("hidden.bs.modal", hideAccessAllWarningShowModal);
 
   $("#modalRedirect").hide();
-  hideIfShown($("#modalRedirect"));
+  $("#modalRedirect").hideClass();
 }
 
 // Opens all visible URLs in UTub in separate tabs

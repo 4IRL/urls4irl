@@ -7,7 +7,7 @@ function buildTagDeck(dictTags) {
   // Select all checkbox if tags in UTub
   if (dictTags.length > 0) {
     const unselectAllBtn = $("#unselectAllTagFilters");
-    showIfHidden(unselectAllBtn);
+    unselectAllBtn.showClassNormal();
     unselectAllBtn.addClass("red-icon-disabled");
   }
 
@@ -16,7 +16,7 @@ function buildTagDeck(dictTags) {
     parent.append(buildTagFilterInDeck(dictTags[i].id, dictTags[i].tagString));
   }
 
-  showIfHidden($("#utubTagBtnCreate"));
+  $("#utubTagBtnCreate").showClassNormal();
 
   $("#TagDeck > .dynamic-subheader").addClass("height-2p5rem");
 }
@@ -25,17 +25,16 @@ function resetTagDeck() {
   $("#listTags").empty();
   resetCountOfTagFiltersApplied();
   disableUnselectAllButtonAfterTagFilterRemoved();
-  hideIfShown($("#utubTagBtnCreate"));
-  hideIfShown($("#unselectAllTagFilters"));
+  $("#utubTagBtnCreate").hideClass();
+  $("#unselectAllTagFilters").hideClass();
   createUTubTagHideInput();
 }
 
 function resetTagDeckIfNoUTubSelected() {
   $("#listTags").empty();
-  $("#createUTubTagWrap").hide();
-  hideIfShown($("#createUTubTagWrap"));
-  hideIfShown($("#utubTagBtnCreate"));
-  hideIfShown($("#unselectAllTagFilters"));
+  $("#createUTubTagWrap").hideClass();
+  $("#utubTagBtnCreate").hideClass();
+  $("#unselectAllTagFilters").hideClass();
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();

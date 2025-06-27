@@ -26,7 +26,7 @@ function removeCreateDeleteUTubEventListeners() {
 // Clear the UTub Deck
 function resetUTubDeck() {
   $("#listUTubs").empty();
-  hideIfShown($("#utubBtnDelete"));
+  $("#utubBtnDelete").hideClass();
 }
 
 // Assembles components of the UTubDeck (top left panel)
@@ -64,7 +64,7 @@ function resetUTubDeckIfNoUTubs() {
   $("#UTubDeckSubheader").text("Create a UTub");
 
   // Hide delete UTub button
-  hideIfShown($("#utubBtnDelete"));
+  $("#utubBtnDelete").hideClass();
 }
 
 function hideInputsAndSetUTubDeckSubheader() {
@@ -81,8 +81,8 @@ function setUTubDeckOnUTubSelected(selectedUTubID, isCurrentUserOwner) {
   hideInputsAndSetUTubDeckSubheader();
 
   if (isCurrentUserOwner) {
-    $("#utubBtnDelete").show();
-  } else hideIfShown($("#utubBtnDelete"));
+    $("#utubBtnDelete").showClassNormal();
+  } else $("#utubBtnDelete").hideClass();
 
   const utubSelector = $(`.UTubSelector[utubid=${selectedUTubID}]`);
 

@@ -7,12 +7,11 @@
     <p>If this keeps happening, refreshing the page or starting fresh might help. Otherwise, feel free to blame it on
         the internet gremlins. We certainly do.</p>
 
-    <button class="refresh-button" onclick="hardRefresh()">Click to Refresh</button>
+    <button class="refresh-button" id="refreshBtn">Click to Refresh</button>
 
-    <script>
-        function hardRefresh() {
-            // Force a hard reload by appending a cache-busting timestamp
-            window.location.href = window.location.href;
-        }
+    <script nonce="{{ nonce }}">
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            window.location.href = window.location.href.split("#")[0];
+        })
     </script>
 </section>

@@ -130,7 +130,7 @@ function sameUTubNameOnNewUTubWarningShowModal() {
       highlightInput($("#utubNameCreate"));
     });
 
-  hideIfShown($("#modalRedirect"));
+  $("#modalRedirect").hideClass();
   $("#modalRedirect").hide();
 
   $("#modalSubmit")
@@ -153,23 +153,23 @@ function sameUTubNameOnNewUTubWarningShowModal() {
 
 // Shows new UTub input fields
 function createUTubShowInput() {
-  showIfHidden($("#createUTubWrap"));
+  $("#createUTubWrap").showClassFlex();
   createNewUTubEventListeners();
   $("#utubNameCreate").trigger("focus");
-  hideIfShown($("#listUTubs"));
-  $("#UTubDeck").find(".button-container").hide();
+  $("#listUTubs").hideClass();
+  $("#UTubDeck").find(".button-container").hideClass();
   removeCreateDeleteUTubEventListeners();
 }
 
 // Hides new UTub input fields
 function createUTubHideInput() {
-  hideIfShown($("#createUTubWrap"));
-  showIfHidden($("#listUTubs"));
+  $("#createUTubWrap").hideClass();
+  $("#listUTubs").showClassNormal();
   $("#utubNameCreate").val(null);
   $("#utubDescriptionCreate").val(null);
   removeNewUTubEventListeners();
   resetUTubFailErrors();
-  $("#UTubDeck").find(".button-container").show();
+  $("#UTubDeck").find(".button-container").showClassNormal();
   setCreateDeleteUTubEventListeners();
 }
 
@@ -196,7 +196,7 @@ function createUTub() {
   request.done(function (response, textStatus, xhr) {
     if (xhr.status === 200) {
       createUTubSuccess(response);
-      showIfHidden($("#listUTubs"));
+      $("#listUTubs").showClassNormal();
     }
   });
 

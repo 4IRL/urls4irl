@@ -36,7 +36,7 @@ function deleteURLShowModal(utubUrlID, urlCard) {
       $("#confirmModal").removeClass("deleteUrlModal");
     });
   $("#modalRedirect").hide();
-  hideIfShown($("#modalRedirect"));
+  $("#modalRedirect").hideClass();
 }
 
 // Prepares post request inputs for removal of a URL
@@ -79,9 +79,9 @@ function deleteURLSuccessOnDelete(response, urlCard) {
   urlCard.fadeOut("slow", function () {
     urlCard.remove();
     if ($("#listURLs .urlRow").length === 0) {
-      $("#accessAllURLsBtn").hide();
-      $("#NoURLsSubheader").show();
-      $("#urlBtnDeckCreateWrap").show();
+      $("#accessAllURLsBtn").hideClass();
+      $("#NoURLsSubheader").showClass();
+      $("#urlBtnDeckCreateWrap").showClass();
     } else {
       updateTagFilteringOnURLOrURLTagDeletion();
     }

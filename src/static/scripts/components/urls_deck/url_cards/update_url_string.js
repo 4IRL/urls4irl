@@ -2,10 +2,10 @@
 
 // Shows update URL inputs
 function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
-  hideIfShown(urlCard.find(".urlString"));
+  urlCard.find(".urlString").hideClass();
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
   enableTabbableChildElements(updateURLStringWrap);
-  showIfHidden(updateURLStringWrap);
+  updateURLStringWrap.showClassFlex();
 
   // Set timeout in case user pressed enter to avoid propagation through to URL string update
   setTimeout(function () {
@@ -13,9 +13,9 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
   }, 100);
 
   // Disable URL Buttons as URL is being edited
-  hideIfShown(urlCard.find(".urlBtnAccess"));
-  hideIfShown(urlCard.find(".urlTagBtnCreate"));
-  hideIfShown(urlCard.find(".urlBtnDelete"));
+  urlCard.find(".urlBtnAccess").hideClass();
+  urlCard.find(".urlTagBtnCreate").hideClass();
+  urlCard.find(".urlBtnDelete").hideClass();
 
   // Disable Go To URL Icon
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
@@ -47,10 +47,10 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
 function hideAndResetUpdateURLStringForm(urlCard) {
   // Toggle input form and display of URL
   const updateURLStringWrap = urlCard.find(".updateUrlStringWrap");
-  hideIfShown(updateURLStringWrap);
+  updateURLStringWrap.hideClass();
   disableTabbableChildElements(updateURLStringWrap);
   const urlStringElem = urlCard.find(".urlString");
-  showIfHidden(urlStringElem);
+  urlStringElem.showClassNormal();
 
   // Update the input with current value of url string element
   urlCard.find(".urlStringUpdate").val(urlStringElem.attr("href"));
@@ -71,9 +71,9 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   urlStringBtnUpdate.closest(".urlOptionsInner").removeClass("half-width");
 
   // Enable URL Buttons
-  showIfHidden(urlCard.find(".urlBtnAccess"));
-  showIfHidden(urlCard.find(".urlTagBtnCreate"));
-  showIfHidden(urlCard.find(".urlBtnDelete"));
+  urlCard.find(".urlBtnAccess").showClassNormal();
+  urlCard.find(".urlTagBtnCreate").showClassNormal();
+  urlCard.find(".urlBtnDelete").showClassNormal();
 
   // Enable Go To URL Icon
   const selected = urlCard.attr("urlSelected");

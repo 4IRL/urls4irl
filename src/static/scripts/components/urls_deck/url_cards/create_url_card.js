@@ -25,32 +25,31 @@ function unbindCreateURLFocusEventListeners() {
 function resetNewURLForm() {
   $("#urlTitleCreate").val(null);
   $("#urlStringCreate").val(null);
-  hideIfShown($("#createURLWrap"));
-  $("#createURLWrap").hide();
+  $("#createURLWrap").hideClass();
   newURLInputRemoveEventListeners();
-  showIfHidden($("#urlBtnCreate"));
+  $("#urlBtnCreate").showClassNormal();
 }
 // Displays new URL input prompt
 function createURLHideInput() {
   resetNewURLForm();
   if (!getNumOfURLs()) {
-    $("#NoURLsSubheader").show();
-    $("#urlBtnDeckCreateWrap").show();
+    $("#NoURLsSubheader").showClassNormal();
+    $("#urlBtnDeckCreateWrap").showClassFlex();
   }
 }
 
 // Hides new URL input prompt
 function createURLShowInput() {
   if (!getNumOfURLs()) {
-    $("#NoURLsSubheader").hide();
-    $("#urlBtnDeckCreateWrap").hide();
+    $("#NoURLsSubheader").hideClass();
+    $("#urlBtnDeckCreateWrap").hideClass();
   }
   const createURLInputForm = $("#createURLWrap");
-  showIfHidden(createURLInputForm);
+  createURLInputForm.showClassFlex();
   newURLInputAddEventListeners(createURLInputForm);
   $("#urlTitleCreate").trigger("focus");
-  hideIfShown($("#urlBtnCreate"));
-  hideIfShown($("#urlBtnDeckCreateWrap"));
+  $("#urlBtnCreate").hideClass();
+  $("#urlBtnDeckCreateWrap").hideClass();
 }
 
 // Prepares post request inputs for addition of a new URL
@@ -114,7 +113,7 @@ function createURLSuccess(response) {
     [], // Mimics an empty array of tags to match against
   ).addClass("even");
 
-  showIfHidden($("#accessAllURLsBtn"));
+  $("#accessAllURLsBtn").showClassNormal();
 
   newUrlCard.insertAfter($("#createURLWrap"));
 

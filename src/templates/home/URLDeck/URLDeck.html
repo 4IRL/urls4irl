@@ -1,4 +1,4 @@
-<div id="URLDeck" class="deck h-100 flex-column" style="align-items: stretch;">
+<div id="URLDeck" class="deck h-100 flex-column align-stretch">
 	<div class="flex-column" id="URLDeckHeaderWrap">
 		<!-- Header -->
 		{% include 'home/URLDeck/URLDeckHeader.html' %}
@@ -10,15 +10,15 @@
 	<!-- URLs -->
 	<div class="flex-column content">
 		<!-- URLs above selected URL will be displayed here -->
-		<p class="pad-in-15p" id="NoURLsSubheader" style="display: none; padding-top: 1rem;"></p>
+		<p class="pad-in-15p hidden pad-top-1rem" id="NoURLsSubheader"></p>
 
 		<!-- Create URL button -->
-		<div id="urlBtnDeckCreateWrap" class="flex-column align-center pad-in-15p" style="display: none; padding-top: 10px; width: 100%;">
-			<button id="urlBtnDeckCreate" class="btn btn-success" style="width: 50%;">No URLs here yet - Add one!</button>
+		<div id="urlBtnDeckCreateWrap" class="flex-column align-center pad-in-15p pad-top-10p hidden full-width">
+			<button id="urlBtnDeckCreate" class="btn btn-success half-width">No URLs here yet - Add one!</button>
 		</div>
 
 		<div id="listURLs">
-			<h5 class="flex-row justify-center" id="URLDeckErrorIndicator" tabindex="-1">Check me out here</h5>
+			<h5 class="flex-row justify-center" id="URLDeckErrorIndicator" tabindex="-1"></h5>
 			<!-- Create URL Form -->
 			{% include 'home/URLDeck/CreateURLForm.html' %}
 			<!-- All URLs otherwise go here -->
@@ -26,8 +26,8 @@
 	</div>
 
 	<!-- Access all URLs button -->
-	<div class="flex-column align-center pad-in-15p" style="padding-top: 10px; width: 100%;">
-		<button id="accessAllURLsBtn" class="btn btn-primary" style="display: none; width: 50%;">Access All URLs
+	<div class="flex-column align-center pad-in-15p pad-top-10p full-width">
+		<button id="accessAllURLsBtn" class="btn btn-primary hidden half-width">Access All URLs
 			in UTub</button>
 	</div>
 </div>

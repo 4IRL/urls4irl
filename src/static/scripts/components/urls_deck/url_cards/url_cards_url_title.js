@@ -58,9 +58,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
   const urlTitleUpdateInputContainer = makeTextInput(
     "urlTitle",
     METHOD_TYPES.UPDATE.description,
-  )
-    .addClass("updateUrlTitleWrap")
-    .css("display", "none");
+  ).addClass("updateUrlTitleWrap hidden");
 
   urlTitleUpdateInputContainer.find("label").text("URL Title");
 

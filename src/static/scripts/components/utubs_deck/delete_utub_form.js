@@ -116,7 +116,7 @@ function deleteUTubSuccess() {
 
     if (getNumOfUTubs() === 0) {
       resetUTubDeckIfNoUTubs();
-      hideIfShown($("#utubTagBtnCreate"));
+      $("#utubTagBtnCreate").hideClass();
     }
 
     isMobile() ? setMobileUIWhenUTubNotSelectedOrUTubDeleted() : null;

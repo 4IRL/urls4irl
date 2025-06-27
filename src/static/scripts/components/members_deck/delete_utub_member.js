@@ -144,7 +144,7 @@ function leaveUTubSuccess() {
   $("#confirmModal").modal("hide");
 
   // Members Deck display updates
-  $("#memberSelfBtnDelete").hide();
+  $("#memberSelfBtnDelete").hideClass();
   $("#confirmModal").modal("hide");
   setUIWhenNoUTubSelected();
 

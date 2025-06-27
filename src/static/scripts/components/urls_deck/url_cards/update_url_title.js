@@ -2,11 +2,11 @@
 
 // Shows the update URL title form
 function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard) {
-  hideIfShown(urlTitleAndShowUpdateIconWrap);
+  urlTitleAndShowUpdateIconWrap.hideClass();
   const updateTitleForm = urlTitleAndShowUpdateIconWrap.siblings(
     ".updateUrlTitleWrap",
   );
-  showIfHidden(updateTitleForm);
+  updateTitleForm.showClassFlex();
   updateTitleForm.find("input").trigger("focus");
 
   // Prevent hovering on tags from adding padding
@@ -17,8 +17,8 @@ function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard) {
 
 // Resets and hides the Update URL form upon cancellation or selection of another URL
 function hideAndResetUpdateURLTitleForm(urlCard) {
-  hideIfShown(urlCard.find(".updateUrlTitleWrap"));
-  showIfHidden(urlCard.find(".urlTitleAndUpdateIconWrap"));
+  urlCard.find(".updateUrlTitleWrap").hideClass();
+  urlCard.find(".urlTitleAndUpdateIconWrap").showClassFlex();
   urlCard.find(".urlTitleUpdate").val(urlCard.find(".urlTitle").text());
 
   // Enable hovering on tags for deletion

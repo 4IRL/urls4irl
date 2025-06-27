@@ -1,4 +1,4 @@
-<div id="createMemberWrap" class="input-text-holder flex-column createDiv pad-in-15p" style="display: none;">
+<div id="createMemberWrap" class="input-text-holder flex-column createDiv pad-in-15p hidden">
 	<div class="text-input-container">
 		<div class="text-input-inner-container">
 			<input class="text-input" type="text" id="memberCreate" name="username" minlength={{CONSTANTS.USERS.MIN_USERNAME_LENGTH}} maxlength={{CONSTANTS.USERS.MAX_USERNAME_LENGTH}} required>
@@ -6,7 +6,7 @@
 		</div>
 		<span class="text-input-error-message" id="memberCreate-error">This field is required.</span>
 	</div>
-	<div class="flex-row justify-center" style="gap: 8px; flex: 1 1 auto; align-items: flex-end;">
+	<div class="flex-row justify-center gap-8p flex-1-1-auto align-flex-end">
 		<!-- Checkbox to create member -->
 		<i class="green-clickable-wide half-width flex-column align-center justify-center border-radius-5px" id="memberSubmitBtnCreate" tabindex="0">
 			<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 448 512" width="30px" height="30px">

@@ -27,9 +27,9 @@ function resetNewUTubTagForm() {
 
 // Shows new UTub Tag input fields
 function createUTubTagShowInput() {
-  showIfHidden($("#createUTubTagWrap"));
-  hideIfShown($("#listTags"));
-  hideIfShown($("#utubTagBtnCreate"));
+  $("#createUTubTagWrap").showClassFlex();
+  $("#listTags").hideClass();
+  $("#utubTagBtnCreate").hideClass();
   setupCreateUTubTagEventListeners();
   $("#utubTagCreate").trigger("focus");
 }
@@ -105,10 +105,9 @@ function unbindCreateUTubTagFocusEventListeners() {
 
 // Hides new UTubTag input fields
 function createUTubTagHideInput() {
-  hideIfShown($("#createUTubTagWrap"));
-  $("#createUTubTagWrap").hide();
-  showIfHidden($("#listTags"));
-  if (getNumOfUTubs() !== 0) showIfHidden($("#utubTagBtnCreate"));
+  $("#createUTubTagWrap").hideClass();
+  $("#listTags").showClassNormal();
+  if (getNumOfUTubs() !== 0) $("#utubTagBtnCreate").showClassNormal();
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();
@@ -157,7 +156,7 @@ function createUTubTagSuccess(response) {
   );
 
   // Show unselect all button if not already shown
-  showIfHidden($("#unselectAllTagFilters"));
+  $("#unselectAllTagFilters").showClassNormal();
 
   createUTubTagHideInput();
 }
