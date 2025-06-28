@@ -102,7 +102,7 @@ unset LOG_FILE LOG_DIR
 
 
 source "$SCRIPT_DIR/remote-object-storage.sh"
-remote_backup database_backed_up logs_backed_up
+remote_backup "$database_backed_up" "$logs_backed_up"
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in daily export of backups to remote object storage"
   send_notification_msg "Error: Failure in daily export of backups to remote object storage"
