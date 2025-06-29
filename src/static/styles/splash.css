@@ -51,6 +51,7 @@ form {
   justify-content: center;
 }
 
+#mainNavbar,
 .jumbotron-holder {
     z-index: 1;
 }
