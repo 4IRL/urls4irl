@@ -8,6 +8,7 @@ from redis.client import Redis
 
 from src.utils.strings.config_strs import CONFIG_ENVS as ENV
 from src.utils.strings.url_validation_strs import SHORT_URLS
+from src.utils.strings.url_validation_strs import CUSTOM_SHORT_URLS
 
 HELP_SUMMARY_SHORT_URL = """Add list of short URL domains to redis."""
 HELP_SUMMARY_UTILS = """General CLI Utils for U4I."""
@@ -53,7 +54,9 @@ def add_short_url_domains_to_redis():
         # Remove title block from list
         short_urls = short_urls[11:]
 
-        short_urls_strs = [str(val.decode()) for val in short_urls]
+        short_urls_strs = [str(val.decode()) for val in short_urls] + [
+            short for short in CUSTOM_SHORT_URLS
+        ]
 
         redis_client: Redis = redis.Redis.from_url(url=redis_uri)  # type: ignore
         added = redis_client.sadd(SHORT_URLS, *short_urls_strs)

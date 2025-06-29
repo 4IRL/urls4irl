@@ -73,3 +73,9 @@ class URL_VALIDATION:
             REFERER,
         )
     }
+
+
+CUSTOM_SHORT_URLS = (
+    "share.google",
+    "share.app",
+)
