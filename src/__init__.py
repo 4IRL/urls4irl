@@ -197,4 +197,8 @@ def add_security_headers(app: Flask):
 
         response.headers[CONFIG_ENVS.X_CONTENT_TYPE_OPTIONS] = "nosniff"
         response.headers[CONFIG_ENVS.X_FRAME_OPTIONS] = "DENY"
+        response.headers[CONFIG_ENVS.REFERRER_POLICY] = (
+            "strict-origin-when-cross-origin"
+        )
+        response.headers[CONFIG_ENVS.CROSS_ORIGIN_RESOURCE_POLICY] = "same-origin"
         return response
