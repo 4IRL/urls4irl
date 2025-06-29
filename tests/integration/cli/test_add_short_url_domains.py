@@ -71,3 +71,12 @@ def test_validate_short_url(runner):
 
     assert LONG_URL == final_url
     assert is_validated
+
+    VALID_SHARE_GOOGLE_URL = "https://share.google/pgpkvcPWym6rP8LDz"
+    IN_FINAL_URL = "https://www.etsy.com"
+
+    with app.app_context():
+        final_url, is_validated = url_validator.validate_url(VALID_SHARE_GOOGLE_URL)
+
+    assert IN_FINAL_URL in final_url
+    assert is_validated

@@ -40,15 +40,6 @@ from url_normalize.tools import deconstruct_url
 
 from flask import Flask
 
-from src.app_logger import (
-    critical_log,
-    error_log,
-    info_log,
-    safe_add_log,
-    safe_add_many_logs,
-    warning_log,
-)
-
 
 if __name__ == "__main__":
     # TODO: Change imports when running as standalone module
@@ -58,12 +49,28 @@ if __name__ == "__main__":
         COMMON_REDIRECTS,
         USER_AGENTS,
     )
+
+    critical_log = None
+    error_log = None
+    info_log = None
+    safe_add_log = None
+    safe_add_many_logs = None
+    warning_log = None
+
 else:
     from src.utils.strings.config_strs import CONFIG_ENVS as ENV
     from src.utils.strings.url_validation_strs import URL_VALIDATION as VALIDATION_STRS
     from src.extensions.url_validation.constants import (
         COMMON_REDIRECTS,
         USER_AGENTS,
+    )
+    from src.app_logger import (
+        critical_log,
+        error_log,
+        info_log,
+        safe_add_log,
+        safe_add_many_logs,
+        warning_log,
     )
 
 
@@ -80,12 +87,13 @@ class WaybackRateLimited(Exception):
 
 
 class UrlValidator:
-    def __init__(self, is_testing: bool = False) -> None:
+    def __init__(self, is_testing: bool = False, skip_logs: bool = False) -> None:
         self._ui_testing = False
         self._is_testing = is_testing
         self._redis_uri = os.environ.get(ENV.REDIS_URI, None)
         self.timer = None
         self._has_app = False
+        self._skip_logs = skip_logs
 
     def init_app(self, app: Flask) -> None:
         app.extensions[VALIDATION_STRS.URL_VALIDATION_MODULE] = self
@@ -102,7 +110,7 @@ class UrlValidator:
         self._has_app = is_testing or is_production or is_ui_testing or is_debug
 
     def _log(self, log_fn, log):
-        log_fn(log) if self._has_app else None
+        log_fn(log) if self._has_app and not self._skip_logs else None
 
     def _normalize_url(self, url: str) -> str:
         """
@@ -741,16 +749,29 @@ class UrlValidator:
                 if response.status_code == 404:
                     raise InvalidURLError("Invalid shortened URL.")
 
+                deconstructed_url = deconstruct_url(response.url)
                 if response.status_code == 200:
                     # Sometimes initial attempts at lengthening a URL produces the same URL
                     # Retry again to see if next attempt will put out long URL
-                    deconstructed_url = deconstruct_url(response.url)
                     if self._check_if_is_short_url(deconstructed_url.host):
                         continue
                     return response.url, True
 
                 if response.status_code in range(300, 400):
-                    if response.next is not None and response.next.url:
+                    if response.next is not None and isinstance(response.next.url, str):
+                        if deconstructed_url.host in response.next.url:
+                            """
+                            For cases where google provides `share.google` or `share.app`
+                            The returned next URL will be a google.com URL with the shortened
+                            URL host (share.google or share.app) as a query string.
+                            We need to follow the google.com URL and replace the host in the headers
+                            with google's host to get the final URL.
+                            """
+                            deconstructed_next_url = deconstruct_url(response.next.url)
+                            headers[VALIDATION_STRS.HOST] = deconstructed_next_url.host
+                            url = response.next.url
+                            continue
+
                         self._log(
                             safe_add_many_logs,
                             [
@@ -761,7 +782,9 @@ class UrlValidator:
                         )
                         return response.next.url, True
 
-                    if VALIDATION_STRS.LOCATION in response.headers:
+                    if isinstance(
+                        response.headers.get(VALIDATION_STRS.LOCATION, None), str
+                    ):
                         self._log(
                             safe_add_many_logs,
                             [
@@ -953,7 +976,7 @@ class UrlValidator:
 
 
 if __name__ == "__main__":
-    validator = UrlValidator(is_testing=True)
+    validator = UrlValidator(is_testing=True, skip_logs=True)
     INVALID_URLS = (
         "https://www.lowes.com/pd/ReliaBilt-ReliaBilt-3-1-2-in-Zinc-Plated-Flat-Corner-Brace-4-Pack/5003415919",
         "https://www.upgrad.com/blog/top-artificial-intelligence-project-ideas-topics-for-beginners/",
@@ -967,9 +990,13 @@ if __name__ == "__main__":
         "https://www.lenovo.com/us/en/p/laptops/thinkpad/thinkpadt/thinkpad-t16-gen-2-16-inch-amd/len101t0076#ports_slots",
         "https://www.stackoverflow.com/",
         "yahoo.com",
+        "https://bit.ly/test-u4i-link",
+        "https://a.co/d/5RojlXu",
+        "https://www.google.com/share.google?q=pgpkvcPWym6rP8LDz",
+        "https://share.google/pgpkvcPWym6rP8LDz",
     )
 
     print(validator.validate_url(INVALID_URLS[-1]))
-    # for invalid_url in INVALID_URLS:
-    #    print(validator.validate_url(invalid_url))
+    # for invalid_url in (INVALID_URLS[-1], INVALID_URLS[-2], INVALID_URLS[-3]):
+    #   print(validator.validate_url(invalid_url))
     print("Trying to run as script")
