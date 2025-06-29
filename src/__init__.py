@@ -183,12 +183,18 @@ def add_security_headers(app: Flask):
         valid_imgs = "img-src 'self' data:;"
 
         response.headers[CONFIG_ENVS.CONTENT_SECURITY_POLICY] = (
-            "default-src 'self';"
+            "default-src 'none'; "
+            + "connect-src 'self'; "
             + valid_scripts
             + valid_styles
             + valid_style_elems
             + valid_fonts
             + valid_imgs
+            + "form-action 'self'; "
+            + "base-uri 'none'; "
+            + "frame-ancestors 'none'; "
         )
 
+        response.headers[CONFIG_ENVS.X_CONTENT_TYPE_OPTIONS] = "nosniff"
+        response.headers[CONFIG_ENVS.X_FRAME_OPTIONS] = "DENY"
         return response

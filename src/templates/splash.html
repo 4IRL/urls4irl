@@ -3,8 +3,12 @@
 
 <!-- SPLASH PAGE INTRO -->
 {% if not current_user.is_authenticated or not current_user.email_validated %}
-<main class="bg-img">
+<main>
     <div class="container-fluid bg-cover">
+    <!-- 
+            https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80
+    -->
+        <img id="BG-img" src="/static/styles/splash.jpg" alt="" fetchpriority="high" />
         <div class="container-fluid jumbotron-holder">
             <div class="jumbotron jumbotron-fluid">
                 <h1 class="display-4" id="splash-major-text">Welcome to URLS4IRL</h1>

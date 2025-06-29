@@ -24,3 +24,5 @@ class CONFIG_ENVS:
     NOTIFICATION_MODULE = "NOTIFICATION_MODULE"
     LOG_DIR = "LOG_DIR"
     CONTENT_SECURITY_POLICY = "Content-Security-Policy"
+    X_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options"
+    X_FRAME_OPTIONS = "X-Frame-Options"

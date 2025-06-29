@@ -12,19 +12,18 @@ form {
     /* So the width will be 100% + 17px */
 }
 
-img {
-    max-width: 50%;
-}
-
 /** Class specific **/
 
 /* Splash */
 
-.bg-img {
-    /* https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80 */
-    background: url("splash.jpg");
-    background-size: cover;
-    min-height: 380px;
+#BG-img {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
 }
 
 .email-container {
@@ -43,12 +42,17 @@ img {
 }
 
 .bg-cover {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    align-content: center;
-    justify-content: center;
-    height: 100%;
+  position: relative;
+  width: 100%;
+  height: calc(100vh - 50px);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.jumbotron-holder {
+    z-index: 1;
 }
 
 .jumbotron {
