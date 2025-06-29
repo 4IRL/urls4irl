@@ -26,3 +26,5 @@ class CONFIG_ENVS:
     CONTENT_SECURITY_POLICY = "Content-Security-Policy"
     X_CONTENT_TYPE_OPTIONS = "X-Content-Type-Options"
     X_FRAME_OPTIONS = "X-Frame-Options"
+    REFERRER_POLICY = "Referrer-Policy"
+    CROSS_ORIGIN_RESOURCE_POLICY = "Cross-Origin-Resource-Policy"
