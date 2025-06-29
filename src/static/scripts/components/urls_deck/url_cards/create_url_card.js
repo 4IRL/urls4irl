@@ -120,7 +120,12 @@ function createURLSuccess(response) {
   currentNumOfURLs === 0
     ? null
     : updateColorOfFollowingURLCardsAfterURLCreated();
-  selectURLCard(newUrlCard);
+
+  // Only select the URL when no tags are selected
+  // If a tag is selected, new URLs have no Tags associated, so they should be hidden after added
+  isATagSelected()
+    ? newUrlCard.attr({ filterable: false })
+    : selectURLCard(newUrlCard);
 }
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL

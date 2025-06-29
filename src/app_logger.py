@@ -2,6 +2,7 @@ from datetime import datetime
 import logging
 import os
 import time
+from typing import Optional
 import uuid
 
 from flask import Flask, Request, Response, current_app, g, has_request_context, request
@@ -235,7 +236,11 @@ def setup_before_request_logging(app: Flask):
         log_with_detailed_info(app, logging.INFO, message)
 
     @app.after_request
-    def after_request(response: Response):
+    def after_request(response: Optional[Response]):
+        if response is None:
+            warning_log("Received no response object")
+            return response
+
         duration_ms = (
             (time.time() - g.request_start_time) * 1000
             if hasattr(g, "request_start_time")
