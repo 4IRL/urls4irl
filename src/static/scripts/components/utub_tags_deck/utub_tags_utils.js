@@ -21,3 +21,7 @@ function isTagInUTub(tagBadges, utubTagID) {
   });
   return tagExistsInUTub;
 }
+
+function isATagSelected() {
+  return $(".tagFilter.selected").length > 0;
+}

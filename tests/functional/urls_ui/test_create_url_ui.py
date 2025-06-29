@@ -9,11 +9,13 @@ from src.cli.mock_constants import (
     MOCK_URL_STRINGS,
 )
 from src.models.users import Users
+from src.models.utub_tags import Utub_Tags
 from src.models.utub_urls import Utub_Urls
 from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.url_strs import URL_FAILURE
 from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.tags_ui.utils_for_test_tag_ui import apply_tag_based_on_id
 from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_not_visible_css_selector,
@@ -749,3 +751,50 @@ def test_create_url_invalid_csrf_token(
     )
     assert not create_utub_name_input.is_displayed()
     assert_login_with_username(browser, user.username)
+
+
+def test_create_url_when_utub_tag_applied(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests a user's ability to create a new URL in a selected UTub when a tag is selected.
+    If a tag is selected, a newly created URL shouldn't be shown since it has no tags applied!
+
+    GIVEN a user and selected UTub
+    WHEN they submit a new URL using the submit button
+    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    with app.app_context():
+        tag_in_utub: Utub_Tags = Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_user_created.id
+        ).first()
+        tag_id_in_utub = tag_in_utub.id
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    apply_tag_based_on_id(browser, tag_id_in_utub)
+
+    url_title = MOCK_URL_TITLES[0]
+    url_string = MOCK_URL_STRINGS[0] + "extraextra"
+
+    fill_create_url_form(browser, url_title, url_string)
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE, time=3)
+
+    # Wait for HTTP request to complete
+    wait_until_hidden(browser, HPL.INPUT_URL_STRING_CREATE, timeout=3)
+    url_creation_row = browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE)
+    assert not url_creation_row.is_displayed()
+
+    # Extract URL title and string from new row in URL deck
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(
+        app, utub_user_created.id, url_string
+    )
+    assert_not_visible_css_selector(
+        browser, HPL.ROWS_URLS + f'[utuburlid="{utub_url_id}"]'
+    )

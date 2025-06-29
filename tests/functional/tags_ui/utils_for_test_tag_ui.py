@@ -210,12 +210,15 @@ def add_tag_to_utub_user_created(
         return Utub_Tags.query.filter(Utub_Tags.tag_string == tag_string).first()
 
 
-def apply_tag_based_on_id_and_get_shown_urls(
-    browser: WebDriver, utub_tag_id: int
-) -> list[WebElement]:
+def apply_tag_based_on_id(browser: WebDriver, utub_tag_id: int):
     utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
     wait_then_click_element(browser, utub_tag_badge_selector, time=3)
 
+
+def apply_tag_based_on_id_and_get_shown_urls(
+    browser: WebDriver, utub_tag_id: int
+) -> list[WebElement]:
+    apply_tag_based_on_id(browser, utub_tag_id)
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     return [url_row for url_row in url_row_elements if url_row.is_displayed()]
 
