@@ -215,6 +215,10 @@
     gap: 2px;
 }
 
+.gap-5p {
+    gap: 5px;
+}
+
 .gap-8p {
     gap: 8px;
 }
@@ -270,6 +274,18 @@
 
 .ninetyfive-width {
     width: 95%;
+}
+
+.fourty-p-width {
+    width: 40px;
+}
+
+.sixty-p-width {
+    width: 60px;
+}
+
+.fourty-p-height {
+    height: 40px;
 }
 
 .border-radius-5px {
@@ -563,15 +579,14 @@
 }
 
 .urlTags,
-.urlOptions,
-.urlOptionsInner {
+.urlOptions {
     height: 0;
     transition: padding 0.2s ease-in-out, opacity 0.2s ease-in-out;
     padding: 0;
     opacity: 0;
 }
 
-.urlOptionsInner>button {
+.urlOptions>button {
     opacity: 0;
     height: 0;
     font-size: 0;
@@ -602,8 +617,7 @@
 }
 
 .urlRow[filterable="true"][urlSelected="true"] .urlTags,
-.urlRow[filterable="true"][urlSelected="true"] .urlOptions,
-.urlRow[filterable="true"][urlSelected="true"] .urlOptionsInner {
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions {
     height: auto;
     opacity: 1;
 }
@@ -614,10 +628,11 @@
 
 .urlRow[filterable="true"][urlSelected="true"] .urlOptions {
     padding: 15px 0 0 0;
+    align-items: center;
 }
 
-.urlRow[filterable="true"][urlSelected="true"] .urlOptionsInner>button {
-    height: auto;
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions>button {
+    height: 40px;
     font-size: initial;
     opacity: 1;
     pointer-events: initial;
@@ -723,6 +738,55 @@ a.urlString:hover {
 .hiddenBtn#updateUTubDescriptionBtn,
 .hiddenBtn#utubNameBtnUpdate {
     display: none !important;
+}
+
+.urlBtnAccess {
+    background-color: var(--accessLinkColor);
+    border-width: 1px;
+    border-color: var(--accessLinkColor);
+}
+
+.urlBtnAccess:hover {
+    background-color: var(--accessLinkColorHover);
+    border-color: var(--accessLinkColorBorderHover);
+}
+
+.urlTagBtnCreate {
+    background-color: var(--addTagColor);
+    border-width: 1px;
+    border-color: var(--addTagColor);
+}
+
+.urlTagBtnCreate:hover {
+    background-color: var(--addTagColorHover);
+    border-color: var(--addTagColorBorderHover);
+}
+
+.urlStringBtnUpdate {
+    background-color: var(--editURLColor);
+    border-width: 1px;
+    border-color: var(--editURLColor);
+}
+
+.urlStringBtnUpdate:hover {
+    background-color: var(--editURLColorHover);
+    border-width: 1px;
+    border-color: var(--editURLColorBorderHover);
+}
+
+.urlBtnDelete {
+    color: black;
+}
+
+.urlBtnDelete:hover {
+    color: black;
+}
+
+.urlBtnAccess,
+.urlTagBtnCreate,
+.urlStringBtnUpdate,
+.urlBtnDelete {
+    align-items: center;
 }
 
 /* Members */
@@ -1069,30 +1133,7 @@ a.urlString:hover {
 }
 
 @media (min-width: 465px) {
-
-    .urlTagBtnCreate {
-        margin-right: 15px;
-    }
 }
 
 @media (max-width: 464.98px) {
-    .urlOptions {
-        flex-direction: column;
-    }
-
-    .urlOptionsInner {
-        width: 100%;
-    }
-
-    .urlBtnAccess,
-    .urlTagBtnCreate,
-    .urlStringBtnUpdate,
-    .urlBtnDelete {
-        width: 50%;
-    }
-
-    .urlRow[filterable="true"][urlSelected="true"] .urlOptionsInner:nth-child(2) {
-        padding-top: 15px;
-    }
-
 }
