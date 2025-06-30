@@ -25,18 +25,13 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
 
   // Update URL Button text to exit editing
   urlStringBtnUpdate
-    .removeClass("btn-light urlStringBtnUpdate fourty-p-width")
-    .addClass("btn-warning urlStringCancelBigBtnUpdate")
+    .removeClass("urlStringBtnUpdate fourty-p-width")
+    .addClass("urlStringCancelBigBtnUpdate")
     .text("Cancel")
     .offAndOn("click", function (e) {
       e.stopPropagation();
       hideAndResetUpdateURLStringForm(urlCard);
     });
-
-  // For tablets, change some of the sizing
-  if ($(window).width() < TABLET_WIDTH) {
-    urlStringBtnUpdate.addClass("full-width");
-  }
 
   disableTagRemovalInURLCard(urlCard);
   disableClickOnSelectedURLCardToHide(urlCard);
@@ -57,8 +52,8 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   // Make the Update URL button now allow updating again
   const urlStringBtnUpdate = urlCard.find(".urlStringCancelBigBtnUpdate");
   urlStringBtnUpdate
-    .removeClass("btn-warning urlStringCancelBigBtnUpdate")
-    .addClass("btn-light urlStringBtnUpdate")
+    .removeClass("urlStringCancelBigBtnUpdate")
+    .addClass("urlStringBtnUpdate")
     .offAndOn("click", function (e) {
       e.stopPropagation();
       showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
@@ -67,7 +62,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
     .append(createEditURLIcon());
 
   // For tablets or in case of resize, change some of the sizing
-  urlStringBtnUpdate.removeClass("full-width").addClass("fourty-p-width");
+  urlStringBtnUpdate.addClass("fourty-p-width");
 
   // Enable URL Buttons
   urlCard.find(".urlBtnAccess").showClassFlex();

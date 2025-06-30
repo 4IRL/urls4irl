@@ -84,8 +84,8 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
 
   // Modify add tag button
   urlTagBtnCreate
-    .removeClass("btn-info fourty-p-width")
-    .addClass("btn-warning cancel urlTagCancelBigBtnCreate")
+    .removeClass("fourty-p-width")
+    .addClass("cancel urlTagCancelBigBtnCreate")
     .text("Cancel")
     .offAndOn("click", function (e) {
       e.stopPropagation();
@@ -93,9 +93,6 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
     });
 
   // For tablets, change some of the sizing
-  if ($(window).width() < TABLET_WIDTH) {
-    urlTagBtnCreate.addClass("full-width");
-  }
 
   disableTagRemovalInURLCard(urlCard);
   disableEditingURLTitle(urlCard);
@@ -129,8 +126,8 @@ function hideAndResetCreateURLTagForm(urlCard) {
   // Modify add tag button
   const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
   urlTagBtnCreate
-    .removeClass("btn-warning cancel urlTagCancelBigBtnCreate")
-    .addClass("btn-info")
+    .removeClass("cancel urlTagCancelBigBtnCreate")
+    .addClass("fourty-p-width")
     .offAndOn("click", function (e) {
       e.stopPropagation();
       showCreateURLTagForm(urlCard, urlTagBtnCreate);
@@ -142,9 +139,6 @@ function hideAndResetCreateURLTagForm(urlCard) {
   urlCard.find(".urlBtnAccess").showClassFlex();
   urlCard.find(".urlStringBtnUpdate").showClassFlex();
   urlCard.find(".urlBtnDelete").showClassFlex();
-
-  // For tablets or in case of resize, change some of the sizing
-  urlTagBtnCreate.removeClass("full-width").addClass("fourty-p-width");
 
   // Enable hovering on tags for deletion
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
