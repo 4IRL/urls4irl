@@ -34,7 +34,7 @@ EOF
   # Send database backup using rclone
   if [ "$database_success" = "true" ]; then
     echo "Copying daily database backup to Cloudflare R2..."
-    rclone --config="$CONFIG_FILE" copy "${COMPRESSED_BACKUP_FILE}" "remote:u4i-backups/" --progress --s3-no-check-bucket
+    rclone --config="$CONFIG_FILE" copy "${COMPRESSED_DB_BACKUP_FILE}" "remote:u4i-backups/" --progress --s3-no-check-bucket
     if [ "$?" -ne 0 ]; then
       echo "Error: Failure in sending daily database backup to Cloudflare R2"
     else
@@ -46,8 +46,8 @@ EOF
     CURRENT_DAY=$(date +%d)
     if [ "$CURRENT_DAY" -eq 1 ]; then
       # First day of the month, send a monthly backup
-      monthly_file="${COMPRESSED_BACKUP_FILE}/daily/monthly}"
-      cp "${COMPRESSED_BACKUP_FILE}" "${monthly_file}"
+      monthly_file="${COMPRESSED_BACKUP_FILE/daily/monthly}"     
+      cp "${COMPRESSED_DB_BACKUP_FILE}" "${monthly_file}"
       rclone --config="$CONFIG_FILE" copy "${monthly_file}" "remote:u4i-backups/" --progress --s3-no-check-bucket
       if [ "$?" -ne 0 ]; then
         echo "Error: Failure in sending monthly database backup to Cloudflare R2"

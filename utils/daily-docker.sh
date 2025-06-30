@@ -53,7 +53,7 @@ send_notification_msg() {
         output="IGNORE, IN DEVELOPMENT: $output"
     fi
     #TODO: Remove DOCKER prefix once we verify this is working in prod
-    if [[ "$DEV_SERVER" == "true" ]]; then
+    if [[ "$DEV_SERVER" == "true" || "$PRODUCTION" != "true" ]]; then
           echo "DOCKER: $output"
     else
         restricted_curl "POST" "$NOTIFICATION_URL" "DOCKER: $output"
@@ -111,7 +111,7 @@ fi
 
 send_notification_msg "Success: Backups saved and exported to cloud"
 unset ACCESS_KEY SECRET_ACCESS_KEY R2_ENDPOINT
-unset DB_BACKUP_DIR COMPRESSED_BACKUP_FILE
+unset DB_BACKUP_DIR COMPRESSED_DB_BACKUP_FILE
 unset COMPRESSED_LOG_FILE
 unset NOTIFICATION_URL
 

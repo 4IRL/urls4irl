@@ -74,6 +74,9 @@ services:
       - POSTGRES_USER
       - POSTGRES_PASSWORD
       - NOTIFICATION_URL
+      - ACCESS_KEY
+      - SECRET_ACCESS_KEY
+      - R2_ENDPOINT
     environment:
       - PRODUCTION=true
       - DEV_SERVER=false
@@ -103,6 +106,12 @@ secrets:
     file: ./secrets/SECRET_KEY
   NOTIFICATION_URL:
     file: ./secrets/NOTIFICATION_URL
+  ACCESS_KEY:
+    file: ./secrets/ACCESS_KEY
+  SECRET_ACCESS_KEY:
+    file: ./secrets/SECRET_ACCESS_KEY
+  R2_ENDPOINT:
+    file: ./secrets/R2_ENDPOINT
 
 volumes:
   pgdata:
