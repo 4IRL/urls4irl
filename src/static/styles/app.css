@@ -62,6 +62,18 @@
     --oddUrlCardsBackgroundColor: rgba(61, 71, 71, 1.0);
     --evenUrlCardsBackgroundColor: rgba(51, 61, 61, 1.0);
 
+    /* URL Card Button Colors */
+    --accessLinkColor: rgba(57, 255, 20, 1.0);
+    --accessLinkColorHover: rgba(57, 255, 20, 0.5);
+    --accessLinkColorBorderHover: rgba(57, 255, 20, 0);
+    --addTagColor: rgba(91, 192, 235, 1.0);
+    --addTagColorHover: rgba(91, 192, 235, 0.5);
+    --addTagColorBorderHover: rgba(91, 192, 235, 0);
+    --editURLColor: rgba(253, 231, 76, 1.0);
+    --editURLColorHover: rgba(253, 231, 76, 0.5);
+    --editURLColorBorderHover: rgba(253, 231, 76, 0);
+    --deleteURLColor: rgba(255, 32, 82, 1.0);
+
     /* #aaaaaa */
     --grayBadgeSelection: rgba(170, 170, 170, 1.0);
     /* #bbbbbb */

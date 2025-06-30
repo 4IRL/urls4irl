@@ -4,9 +4,7 @@ function createTagInputBlock(urlCard) {
   const urlTagCreateTextInputContainer = makeTextInput(
     "urlTag",
     METHOD_TYPES.CREATE.description,
-  )
-    .addClass("createUrlTagWrap")
-    .css("display", "none");
+  ).addClass("createUrlTagWrap hidden");
 
   urlTagCreateTextInputContainer.find("label").text("Tag");
 
@@ -69,7 +67,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   // Show form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   enableTabbableChildElements(tagInputFormContainer);
-  $(tagInputFormContainer).showClassNormal();
+  $(tagInputFormContainer).showClassFlex();
 
   // Focus on the input to add a tag - with delay in case user opened by pressing enter
   setTimeout(function () {
@@ -86,7 +84,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
 
   // Modify add tag button
   urlTagBtnCreate
-    .removeClass("btn-info")
+    .removeClass("btn-info fourty-p-width")
     .addClass("btn-warning cancel urlTagCancelBigBtnCreate")
     .text("Cancel")
     .offAndOn("click", function (e) {
@@ -97,7 +95,6 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   // For tablets, change some of the sizing
   if ($(window).width() < TABLET_WIDTH) {
     urlTagBtnCreate.addClass("full-width");
-    urlTagBtnCreate.closest(".urlOptionsInner").addClass("half-width");
   }
 
   disableTagRemovalInURLCard(urlCard);
@@ -134,20 +131,20 @@ function hideAndResetCreateURLTagForm(urlCard) {
   urlTagBtnCreate
     .removeClass("btn-warning cancel urlTagCancelBigBtnCreate")
     .addClass("btn-info")
-    .text("Add Tag")
     .offAndOn("click", function (e) {
       e.stopPropagation();
       showCreateURLTagForm(urlCard, urlTagBtnCreate);
-    });
+    })
+    .text("")
+    .append(createAddTagIcon());
 
   // Enable URL Buttons as url Tag creation form is hidden
-  urlCard.find(".urlBtnAccess").showClassNormal();
-  urlCard.find(".urlStringBtnUpdate").showClassNormal();
-  urlCard.find(".urlBtnDelete").showClassNormal();
+  urlCard.find(".urlBtnAccess").showClassFlex();
+  urlCard.find(".urlStringBtnUpdate").showClassFlex();
+  urlCard.find(".urlBtnDelete").showClassFlex();
 
   // For tablets or in case of resize, change some of the sizing
-  urlTagBtnCreate.removeClass("full-width");
-  urlTagBtnCreate.closest(".urlOptionsInner").removeClass("half-width");
+  urlTagBtnCreate.removeClass("full-width").addClass("fourty-p-width");
 
   // Enable hovering on tags for deletion
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");

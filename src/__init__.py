@@ -185,6 +185,7 @@ def add_security_headers(app: Flask):
         response.headers[CONFIG_ENVS.CONTENT_SECURITY_POLICY] = (
             "default-src 'none'; "
             + "connect-src 'self'; "
+            + "manifest-src 'self'; "
             + valid_scripts
             + valid_styles
             + valid_style_elems

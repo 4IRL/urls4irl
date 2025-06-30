@@ -50,9 +50,7 @@ function createTagInputBlock(urlCard) {
   const urlTagCreateTextInputContainer = makeTextInput(
     "urlTag",
     METHOD_TYPES.CREATE.description,
-  )
-    .addClass("createUrlTagWrap")
-    .css("display", "none");
+  ).addClass("createUrlTagWrap hidden gap-5p");
 
   urlTagCreateTextInputContainer.find("label").text("Tag");
 

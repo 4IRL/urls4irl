@@ -39,9 +39,7 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     "urlString",
     METHOD_TYPES.UPDATE.description,
     INPUT_TYPES.URL.description,
-  )
-    .addClass("updateUrlStringWrap")
-    .css("display", "none");
+  ).addClass("updateUrlStringWrap hidden gap-5p");
 
   urlStringUpdateTextInputContainer.find("label").text("URL");
 
