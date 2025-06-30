@@ -767,11 +767,22 @@ a.urlString:hover {
     border-width: 1px;
     border-color: var(--editURLColor);
 }
+.urlStringCancelBigBtnUpdate {
+    background-color: var(--editURLColor) !important;
+    border-width: 1px;
+    border-color: var(--editURLColor) !important;
+}
 
 .urlStringBtnUpdate:hover {
     background-color: var(--editURLColorHover);
     border-width: 1px;
     border-color: var(--editURLColorBorderHover);
+}
+
+.urlStringCancelBigBtnUpdate:hover {
+    background-color: var(--editURLColorHover); !important
+    border-width: 1px;
+    border-color: var(--editURLColorBorderHover); !important
 }
 
 .urlBtnDelete {
