@@ -46,7 +46,7 @@ EOF
     CURRENT_DAY=$(date +%d)
     if [ "$CURRENT_DAY" -eq 1 ]; then
       # First day of the month, send a monthly backup
-      monthly_file="${COMPRESSED_DB_BACKUP_FILE//\/daily\//\/monthly\/}"
+      monthly_file="${COMPRESSED_BACKUP_FILE/daily/monthly}"     
       cp "${COMPRESSED_DB_BACKUP_FILE}" "${monthly_file}"
       rclone --config="$CONFIG_FILE" copy "${monthly_file}" "remote:u4i-backups/" --progress --s3-no-check-bucket
       if [ "$?" -ne 0 ]; then
