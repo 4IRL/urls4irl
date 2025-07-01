@@ -10,6 +10,11 @@ from src.models.users import Users
 from src.models.utub_members import Utub_Members
 from src.models.utubs import Utubs
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from src.utils.strings.utub_strs import (
+    UTUB_CREATE_MSG,
+    UTUB_DELETE_WARNING,
+    UTUB_SELECT,
+)
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.urls_ui.utils_for_test_url_ui import get_selected_utub_id
@@ -62,7 +67,7 @@ def test_open_delete_utub_modal(
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == UTS.BODY_MODAL_UTUB_DELETE
+    assert confirmation_modal_body_text == UTUB_DELETE_WARNING
 
 
 def test_dismiss_delete_utub_modal_x(
@@ -249,11 +254,11 @@ def test_delete_last_utub_no_urls_no_tags_no_members(
 
     assert (
         browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK).text
-        == "Select a UTub"
+        == UTUB_SELECT
     )
     assert (
         browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_UTUB_DECK).text
-        == UTS.MESSAGE_NO_UTUBS
+        == UTUB_CREATE_MSG
     )
 
 
@@ -297,11 +302,11 @@ def test_delete_last_utub_with_urls_tags_members(
 
     assert (
         browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_URL_DECK).text
-        == "Select a UTub"
+        == UTUB_SELECT
     )
     assert (
         browser.find_element(By.CSS_SELECTOR, HPL.SUBHEADER_UTUB_DECK).text
-        == UTS.MESSAGE_NO_UTUBS
+        == UTUB_CREATE_MSG
     )
 
     assert len(browser.find_elements(By.CSS_SELECTOR, HPL.SELECTORS_UTUB)) == 0

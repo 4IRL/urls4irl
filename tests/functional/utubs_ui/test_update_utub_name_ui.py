@@ -9,8 +9,7 @@ from src.cli.mock_constants import MOCK_UTUB_NAME_BASE
 from src.models.users import Users
 from src.models.utubs import Utubs
 from src.utils.constants import CONSTANTS
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from src.utils.strings.utub_strs import UTUB_FAILURE
+from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_UPDATE_SAME_NAME
 from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_not_visible_css_selector,
@@ -372,7 +371,7 @@ def test_update_utub_name_similar(
     assert warning_modal_body is not None
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
-    utub_name_update_check_text = UTS.BODY_MODAL_UTUB_UPDATE_SAME_NAME
+    utub_name_update_check_text = UTUB_UPDATE_SAME_NAME
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == utub_name_update_check_text

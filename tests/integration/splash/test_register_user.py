@@ -5,6 +5,7 @@ import pytest
 from werkzeug.security import check_password_hash
 
 from src.utils.constants import USER_CONSTANTS
+from src.utils.strings.email_validation_strs import VALIDATE_YOUR_EMAIL
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
 from tests.utils_for_test import get_csrf_token, is_string_in_logs
@@ -44,7 +45,7 @@ def test_register_new_user(app, load_register_page):
     # Correctly sends URL to email validation modal
     assert response.status_code == 201
     assert (
-        b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
+        f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'.encode()
         in response.data
     )
 
@@ -329,7 +330,7 @@ def test_register_modal_logs_user_in(app_with_server_name, client):
 
         assert response.status_code == 201
         assert (
-            b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
+            f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'.encode()
             in response.data
         )
 
@@ -415,7 +416,7 @@ def test_register_new_user_log(app, load_register_page, caplog):
     # Correctly sends URL to email validation modal
     assert response.status_code == 201
     assert (
-        b'<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
+        f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'.encode()
         in response.data
     )
 

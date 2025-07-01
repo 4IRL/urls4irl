@@ -1,10 +1,13 @@
 from datetime import datetime
+from flask_session.redis.redis import RedisSessionInterface
+from flask_sqlalchemy.extension import SQLAlchemy
 import requests
 
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 import redis
 from redis.client import Redis
+from sqlalchemy.engine.base import Engine
 
 from src.utils.strings.config_strs import CONFIG_ENVS as ENV
 from src.utils.strings.url_validation_strs import SHORT_URLS
@@ -86,6 +89,28 @@ def starting_log_for_u4i():
     !!------------------------------------------------------------------------------------------------------!!\n
     """
         + f"!!----------------------------------------{start_time}----------------------------------------!!\n"
+    )
+    current_app.raw_logger.info(  # type: ignore
+        "Redis successfully attached to U4I"
+        if isinstance(current_app.session_interface, RedisSessionInterface)
+        else "Redis instance not found"
+    )
+
+    sqlalchemy = "sqlalchemy"
+    has_db_connection = (
+        sqlalchemy in current_app.extensions
+        and isinstance(current_app.extensions[sqlalchemy], SQLAlchemy)
+        and isinstance(current_app.extensions[sqlalchemy].get_engine(), Engine)
+        and hasattr(current_app.extensions[sqlalchemy].get_engine(), "has_table")
+        and current_app.extensions[sqlalchemy]
+        .get_engine()
+        .has_table(table_name="Utubs")
+    )
+
+    current_app.raw_logger.info(  # type: ignore
+        "PostgreSQL successfully attached to U4I"
+        if has_db_connection
+        else "PostgreSQL instance not found"
     )
 
 

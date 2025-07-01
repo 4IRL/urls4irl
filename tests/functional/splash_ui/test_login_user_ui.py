@@ -3,8 +3,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.utils.strings.email_validation_strs import EMAILS
+from src.utils.strings.email_validation_strs import EMAILS, VALIDATE_MY_EMAIL
 from src.utils.strings.html_identifiers import IDENTIFIERS
+from src.utils.strings.splash_form_strs import LOGIN_TITLE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
 from tests.functional.locators import ModalLocators as ML
@@ -50,7 +51,7 @@ def test_open_login_modal_center_btn(browser: WebDriver):
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
-    assert modal_title.text == "Login!"
+    assert modal_title.text == LOGIN_TITLE
 
 
 def test_open_login_modal_RHS_btn(browser: WebDriver):
@@ -76,7 +77,7 @@ def test_open_login_modal_RHS_btn(browser: WebDriver):
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
-    assert modal_title.text == "Login!"
+    assert modal_title.text == LOGIN_TITLE
 
 
 def test_register_to_login_modal_btn(browser: WebDriver):
@@ -96,7 +97,7 @@ def test_register_to_login_modal_btn(browser: WebDriver):
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
-    assert modal_title.text == "Login!"
+    assert modal_title.text == LOGIN_TITLE
 
 
 def test_dismiss_login_modal_btn(browser: WebDriver):
@@ -229,7 +230,7 @@ def test_login_user_unconfirmed_email_shows_alert(
     )
     assert (
         splash_modal_alert_elem.find_element(By.CSS_SELECTOR, "button").text
-        == "Validate My Email"
+        == VALIDATE_MY_EMAIL
     )
 
 

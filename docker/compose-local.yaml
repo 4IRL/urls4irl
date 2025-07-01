@@ -12,6 +12,7 @@ services:
     depends_on:
       - db
       - test-db
+      - redis
     env_file:
       - .env
     environment:

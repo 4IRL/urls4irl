@@ -119,7 +119,7 @@ function setURLDeckWhenNoUTubSelected() {
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
 
   const urlDeckSubheader = $("#URLDeckSubheader");
-  urlDeckSubheader.text("Select a UTub");
+  urlDeckSubheader.text(`${STRINGS.UTUB_SELECT}`);
   urlDeckSubheader.show();
 
   // Prevent on-hover of URL Deck Header to show update UTub name button in case of back button

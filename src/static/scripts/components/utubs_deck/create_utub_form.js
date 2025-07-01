@@ -112,7 +112,7 @@ function handleOnFocusEventListenersForCreateUTub(e) {
 
 function sameUTubNameOnNewUTubWarningShowModal() {
   const modalTitle = "Create a new UTub with this name?";
-  const modalBody = "You already have a UTub with a similar name.";
+  const modalBody = `${STRINGS.UTUB_CREATE_SAME_NAME}`;
   const buttonTextDismiss = "Go Back to Editing";
   const buttonTextSubmit = "Create";
 

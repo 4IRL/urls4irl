@@ -21,6 +21,7 @@ URL_OR_TITLE_MODIFIED = "URL and/or URL title modified."
 URL_MODIFIED = "URL modified."
 URL_FOUND_IN_UTUB = "URL found in UTub."
 TAG_IN_UTUB = "tagInUTub"
+DELETE_URL_WARNING = "You can always add it back again!"
 
 
 class URL_GENERAL:

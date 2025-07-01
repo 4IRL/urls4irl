@@ -5,6 +5,8 @@ remote_backup() {
 
   local database_success="$1"
   local log_success="$2"
+  local failure=0
+  REMOTE_BACKUP_ERROR=""
 
   if [[ "$PRODUCTION" != "true" ]]; then
     database_success="false"
@@ -37,6 +39,8 @@ EOF
     rclone --config="$CONFIG_FILE" copy "${COMPRESSED_DB_BACKUP_FILE}" "remote:u4i-backups/" --progress --s3-no-check-bucket
     if [ "$?" -ne 0 ]; then
       echo "Error: Failure in sending daily database backup to Cloudflare R2"
+      REMOTE_BACKUP_ERROR="Error: Failure in sending daily database backup to Cloudflare R2"
+      failure=1
     else
       echo "Success: Sent daily database backup to Cloudflare R2"
     fi
@@ -46,11 +50,13 @@ EOF
     CURRENT_DAY=$(date +%d)
     if [ "$CURRENT_DAY" -eq 1 ]; then
       # First day of the month, send a monthly backup
-      monthly_file="${COMPRESSED_BACKUP_FILE/daily/monthly}"     
+      monthly_file="${COMPRESSED_DB_BACKUP_FILE/daily/monthly}"     
       cp "${COMPRESSED_DB_BACKUP_FILE}" "${monthly_file}"
       rclone --config="$CONFIG_FILE" copy "${monthly_file}" "remote:u4i-backups/" --progress --s3-no-check-bucket
       if [ "$?" -ne 0 ]; then
         echo "Error: Failure in sending monthly database backup to Cloudflare R2"
+        REMOTE_BACKUP_ERROR="Error: Failure in sending monthly database backup to Cloudflare R2"
+        failure=1
       else
       echo "Success: Sent monthly database backup to Cloudflare R2"
       fi
@@ -58,6 +64,8 @@ EOF
     fi
   else
     echo "Skipping database remote backup due to local backup failure"
+    REMOTE_BACKUP_ERROR="Skipping database remote backup due to local backup failure"
+    failure=1
   fi
 
   # Send logs backup using rclone
@@ -66,11 +74,15 @@ EOF
     rclone --config="$CONFIG_FILE" copy "${COMPRESSED_LOG_FILE}" "remote:u4i-logs/" --progress --s3-no-check-bucket
     if [ "$?" -ne 0 ]; then
       echo "Error: Failure in sending daily app logs to Cloudflare R2"
+      REMOTE_BACKUP_ERROR="Error: Failure in sending daily app logs to Cloudflare R2"
+      failure=1
     else
       echo "Success: Sent daily app logs to Cloudflare R2"
     fi
   else
     echo "Skipping log remote backup due to local backup failure"
+    REMOTE_BACKUP_ERROR="Skipping log remote backup due to local backup failure"
+    failure=1
   fi
 
   rm "$CONFIG_FILE"
@@ -78,4 +90,6 @@ EOF
 
   echo -e "\n\n FINISH REMOTE OBJECT STORAGE SESSION $(date +%Y%m%d_%H%M%S)\n\n"
   echo "----------------------------------------------------"
+
+  return $failure
 }
