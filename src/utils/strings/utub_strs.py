@@ -8,6 +8,11 @@ UTUB_NAME = "utubName"
 UTUB_USERS = "utubUsers"
 UTUB_CREATOR_ID = "utubCreatorID"
 UTUB_DELETED = "UTub deleted."
+UTUB_CREATE_SAME_NAME = "You already have a UTub with a similar name."
+UTUB_UPDATE_SAME_NAME = "You are a member of a UTub with an identical name."
+UTUB_DELETE_WARNING = "This action is irreversible!"
+UTUB_CREATE_MSG = "Create a UTub"
+UTUB_SELECT = "Select a UTub"
 
 
 class UTUB_GENERAL:

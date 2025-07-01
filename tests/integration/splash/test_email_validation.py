@@ -15,12 +15,16 @@ from src.utils.datetime_utils import utc_now
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
-from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
+from src.utils.strings.email_validation_strs import (
+    EMAILS,
+    EMAILS_FAILURE,
+    VALIDATE_YOUR_EMAIL,
+)
 from src.utils.strings.user_strs import USER_FAILURE
 
 pytestmark = pytest.mark.splash
 
-VALIDATE_EMAIL_MODAL_TITLE = '<h1 class="modal-title validate-email-text validate-email-title">Validate Your Email!</h1>'
+VALIDATE_EMAIL_MODAL_TITLE = f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'
 
 
 def test_registered_user_is_not_email_validated(app, load_register_page):

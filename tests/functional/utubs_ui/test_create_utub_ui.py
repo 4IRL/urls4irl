@@ -7,7 +7,7 @@ from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from src.models.users import Users
 from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from src.utils.strings.utub_strs import UTUB_FAILURE
+from src.utils.strings.utub_strs import UTUB_CREATE_SAME_NAME, UTUB_FAILURE
 from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
@@ -240,7 +240,7 @@ def test_create_utub_name_similar(
     confirmation_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     assert confirmation_modal_body is not None
     confirmation_modal_body_text = confirmation_modal_body.get_attribute("innerText")
-    utub_same_name_check_text = UTS.BODY_MODAL_UTUB_CREATE_SAME_NAME
+    utub_same_name_check_text = UTUB_CREATE_SAME_NAME
 
     # Assert modal prompts user to consider duplicate UTub naming
     assert confirmation_modal_body_text == utub_same_name_check_text

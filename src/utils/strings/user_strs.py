@@ -9,6 +9,10 @@ MEMBER_ID_ADDED = "userID"
 MEMBER_ID_REMOVED = MEMBER_ID_ADDED
 USER_REGISTERED = "User registered."
 MEMBER = "member"
+MEMBER_DELETE_WARNING = (
+    "This member will no longer have access to the URLs in this UTub."
+)
+MEMBER_LEAVE_WARNING = "You will no longer have access to the URLs in this UTub."
 
 
 class MEMBER_SUCCESS(URL_GENERAL, UTUB_GENERAL):

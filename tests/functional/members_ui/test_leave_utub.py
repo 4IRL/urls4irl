@@ -7,7 +7,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from locators import HomePageLocators as HPL
 from src.models.users import Users
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from src.utils.strings.user_strs import MEMBER_LEAVE_WARNING
 from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
@@ -59,7 +59,7 @@ def test_open_leave_utub_modal(
     confirmation_modal_body_text = warning_modal_body.text
 
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == UTS.BODY_MODAL_LEAVE_UTUB
+    assert confirmation_modal_body_text == MEMBER_LEAVE_WARNING
 
 
 def test_dismiss_leave_utub_modal_btn(

@@ -9,7 +9,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from locators import HomePageLocators as HPL
 from src.models.users import Users
 from src.models.utub_members import Member_Role, Utub_Members
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from src.utils.strings.user_strs import MEMBER_DELETE_WARNING
 from tests.functional.members_ui.utils_for_test_members_ui import (
     delete_member_active_utub,
     get_all_member_usernames,
@@ -63,7 +63,7 @@ def test_open_delete_member_modal(
     warning_modal_body = warning_modal.find_element(By.CSS_SELECTOR, HPL.BODY_MODAL)
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
-    member_delete_check_text = UTS.BODY_MODAL_MEMBER_DELETE
+    member_delete_check_text = MEMBER_DELETE_WARNING
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == member_delete_check_text

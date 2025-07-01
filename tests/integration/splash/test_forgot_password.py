@@ -12,14 +12,14 @@ from src.models.utils import verify_token
 from src.utils import constants as U4I_CONSTANTS
 from src.utils.all_routes import ROUTES
 from src.utils.datetime_utils import utc_now
-from src.utils.strings.splash_form_strs import REGISTER_FORM
+from src.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD, REGISTER_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 
 pytestmark = pytest.mark.splash
 
 USER_CONSTANTS = U4I_CONSTANTS.USER_CONSTANTS
-FORGOT_PASSWORD_MODAL_TITLE = '<h4 class="modal-title">Forgot your password?</h4>'
+FORGOT_PASSWORD_MODAL_TITLE = f'<h4 class="modal-title">{FORGOT_YOUR_PASSWORD}</h4>'
 
 
 def test_user_logged_in_email_validated_cannot_access_forgot_password(

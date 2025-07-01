@@ -12,6 +12,7 @@ from src.cli.mock_constants import MOCK_URL_STRINGS
 from src.models.users import Users
 from src.models.utub_urls import Utub_Urls
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from src.utils.strings.url_strs import DELETE_URL_WARNING
 from tests.functional.urls_ui.utils_for_test_url_ui import (
     login_select_utub_select_url_click_delete_get_modal_url,
 )
@@ -64,7 +65,7 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
     confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
+    assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT)
@@ -106,7 +107,7 @@ def test_delete_url_cancel_click_cancel_btn(
     confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
+    assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
     wait_until_hidden(browser, HPL.BUTTON_MODAL_DISMISS)
@@ -145,7 +146,7 @@ def test_delete_url_cancel_click_x_btn(
     confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
+    assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     wait_then_click_element(browser, HPL.BUTTON_X_CLOSE)
     wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
@@ -184,7 +185,7 @@ def test_delete_url_cancel_press_esc_key(
     confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
+    assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
     wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
@@ -223,7 +224,7 @@ def test_delete_url_cancel_click_outside_modal(
     confirmation_modal_body_text = delete_modal.text
 
     # Assert warning modal appears with appropriate text
-    assert confirmation_modal_body_text == UTS.BODY_MODAL_URL_DELETE
+    assert confirmation_modal_body_text == DELETE_URL_WARNING
 
     dismiss_modal_with_click_out(browser)
     wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)

@@ -8,7 +8,7 @@ function deleteURLHideModal() {
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function deleteURLShowModal(utubUrlID, urlCard) {
   let modalTitle = "Are you sure you want to delete this URL from the UTub?";
-  let modalText = "You can always add it back again!";
+  let modalText = `${STRINGS.DELETE_URL_WARNING}`;
   let buttonTextDismiss = "Just kidding";
   let buttonTextSubmit = "Delete URL";
 

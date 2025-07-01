@@ -62,8 +62,8 @@ function removeMemberShowModal(memberID, isCreator) {
     ? "Are you sure you want to remove this member from the UTub?"
     : "Are you sure you want to leave this UTub?";
   const modalBody = isCreator
-    ? "This member will no longer have access to the URLs in this UTub."
-    : "You will no longer have access to the URLs in this UTub.";
+    ? `${STRINGS.MEMBER_DELETE_WARNING}`
+    : `${STRINGS.MEMBER_LEAVE_WARNING}`;
   const buttonTextDismiss = isCreator ? "Keep member" : "Stay in UTub";
   const buttonTextSubmit = isCreator ? "Remove member" : "Leave UTub";
 

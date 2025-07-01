@@ -4,7 +4,11 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-from src.utils.strings.email_validation_strs import EMAILS
+from src.utils.strings.email_validation_strs import (
+    EMAILS,
+    VALIDATE_MY_EMAIL,
+    VALIDATE_YOUR_EMAIL,
+)
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
@@ -188,7 +192,7 @@ def test_register_new_user_btn(browser: WebDriver):
     modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL, time=3)
     assert modal_title is not None
 
-    assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
+    assert modal_title.text == VALIDATE_YOUR_EMAIL
 
 
 def test_register_new_user_key(browser: WebDriver):
@@ -211,7 +215,7 @@ def test_register_new_user_key(browser: WebDriver):
     modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL, time=3)
     assert modal_title is not None
 
-    assert modal_title.text == UTS.HEADER_MODAL_EMAIL_VALIDATION
+    assert modal_title.text == VALIDATE_YOUR_EMAIL
 
 
 def test_register_existing_username(browser: WebDriver, create_test_users):
@@ -361,7 +365,7 @@ def test_register_user_unconfirmed_email_shows_alert(
     )
     assert (
         unconfirmed_email_feedback.find_element(By.CSS_SELECTOR, "button").text
-        == "Validate My Email"
+        == VALIDATE_MY_EMAIL
     )
 
 

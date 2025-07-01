@@ -13,7 +13,8 @@ from src.utils.datetime_utils import utc_now
 from src.utils.strings.email_validation_strs import EMAILS_FAILURE
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import FAILURE_GENERAL
-from src.utils.strings.reset_password_strs import FORGOT_PASSWORD
+from src.utils.strings.reset_password_strs import EMAIL_SENT_MESSAGE, FORGOT_PASSWORD
+from src.utils.strings.splash_form_strs import LOGIN_TITLE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
@@ -57,10 +58,7 @@ def test_open_forgot_password_modal(browser: WebDriver):
     modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
     assert modal_alert is not None
 
-    assert (
-        modal_alert.text
-        == "If you entered a valid email, you should receive a reset password link soon."
-    )
+    assert modal_alert.text == EMAIL_SENT_MESSAGE
 
     submit_btn = wait_then_get_element(browser, SPL.BUTTON_SUBMIT)
     assert submit_btn is not None
@@ -181,7 +179,7 @@ def test_forgot_password_to_login_modal_btn(browser: WebDriver):
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
-    assert modal_title.text == "Login!"
+    assert modal_title.text == LOGIN_TITLE
 
 
 def test_forgot_password_empty_field(browser: WebDriver):

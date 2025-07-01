@@ -50,7 +50,7 @@
 <div class="titleElement pad-in-15p height-2p5rem">
     <div id="UTubDeckSubheaderWrap" class="flex-column">
         {% if utubs_for_this_user|length == 0 %}
-        <h5 id="UTubDeckSubheader">Create a UTub</h5>
+        <h5 id="UTubDeckSubheader">{{ CONSTANTS.STRINGS.UTUB_CREATE_MSG }}</h5>
         {% else %}
         <h5 id="UTubDeckSubheader">{{ utubs_for_this_user|length }} UTubs</h5>
         {% endif %}

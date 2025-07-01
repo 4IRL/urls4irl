@@ -92,7 +92,7 @@ function handleUserHasAccountNotEmailValidated(message) {
     .append($("<div>" + message + "</div>"))
     .append(
       $(
-        '<button type="button" class="btn btn-link btn-block">Validate My Email</button>',
+        `<button type="button" class="btn btn-link btn-block">${STRINGS.VALIDATE_MY_EMAIL}</button>`,
       ).offAndOn("click", () => {
         $("#SplashModal").off("hide.bs.modal", logoutOnExit);
         emailValidationModalOpener();

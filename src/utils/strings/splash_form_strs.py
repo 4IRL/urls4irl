@@ -11,7 +11,9 @@ PASSWORD_TEXT = "Password"
 CONFIRM_PASSWORD_TEXT = "Confirm Password"
 REGISTER = "Register"
 LOGIN = "Login"
+LOGIN_TITLE = "Login!"
 SEND_EMAIL_VALIDATION = "Resend Validation Email"
+FORGOT_YOUR_PASSWORD = "Forgot your password?"
 
 
 class REGISTER_LOGIN_FORM(GENERAL_FORM):

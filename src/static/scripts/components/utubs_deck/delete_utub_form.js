@@ -32,7 +32,7 @@ function deleteUTubHideModal() {
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal() {
   const modalTitle = "Are you sure you want to delete this UTub?";
-  const modalBody = "This action is irreversible!";
+  const modalBody = `${STRINGS.UTUB_DELETE_WARNING}`;
   const buttonTextDismiss = "Nevermind...";
   const buttonTextSubmit = "Delete this sucka!";
 
