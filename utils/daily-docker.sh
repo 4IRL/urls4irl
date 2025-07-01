@@ -68,8 +68,8 @@ echo -e "\n\nPREPARING TO RUN DAILY TASKS... $(date +%Y%m%d_%H%M%S)\n\n"
 
 # Build variables for database backup
 DB_BACKUP_DIR="/backups/"
-DB_BACKUP_FILE="${DB_BACKUP_DIR}${POSTGRES_DB}_$(date +%Y%m%d_%H%M%S).sql"
-COMPRESSED_DB_BACKUP_FILE="${DB_BACKUP_FILE}_daily.gz"
+DB_BACKUP_FILE="${DB_BACKUP_DIR}${POSTGRES_DB}_$(date +%Y%m%d_%H%M%S)_daily.sql"
+COMPRESSED_DB_BACKUP_FILE="${DB_BACKUP_FILE}.gz"
 DB_USER=${POSTGRES_USER}
 DB_PASS=${POSTGRES_PASSWORD}
 DB_NAME=${POSTGRES_DB}
@@ -86,8 +86,8 @@ unset DB_BACKUP_FILE DB_USER DB_PASS DB_NAME
 
 # Build variables for logging backup
 LOG_DIR="/app/volume/logs"
-LOG_FILE="${LOG_DIR}/$(date -d "yesterday" +%Y-%m-%d).log"
-COMPRESSED_LOG_FILE="${LOG_FILE}_daily.gz"
+LOG_FILE="${LOG_DIR}/$(date -d "yesterday" +%Y-%m-%d)_daily.log"
+COMPRESSED_LOG_FILE="${LOG_FILE}.gz"
 export LOG_FILE COMPRESSED_LOG_FILE
 
 logs_backed_up="true"
@@ -105,7 +105,7 @@ source "$SCRIPT_DIR/remote-object-storage.sh"
 remote_backup "$database_backed_up" "$logs_backed_up"
 if [ "$?" -ne 0 ]; then
   echo "Error: Failure in daily export of backups to remote object storage"
-  send_notification_msg "Error: Failure in daily export of backups to remote object storage"
+  send_notification_msg "Remote Backup Failure: $REMOTE_BACKUP_ERROR"
   exit 1
 fi
 
