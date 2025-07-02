@@ -92,6 +92,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     from src.urls.routes import urls
     from src.tags.url_tag_routes import utub_url_tags
     from src.tags.utub_tag_routes import utub_tags
+    from src.debug.routes import debug as debug_routes
 
     @app.context_processor
     def asset_processor():
@@ -105,6 +106,8 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     app.register_blueprint(urls)
     app.register_blueprint(utub_url_tags)
     app.register_blueprint(utub_tags)
+    if not (testing or production):
+        app.register_blueprint(debug_routes)
     register_mocks_db_cli(app)
     register_short_urls_cli(app)
     register_utils_cli(app)

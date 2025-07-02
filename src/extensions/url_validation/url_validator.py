@@ -994,6 +994,7 @@ if __name__ == "__main__":
         "https://a.co/d/5RojlXu",
         "https://www.google.com/share.google?q=pgpkvcPWym6rP8LDz",
         "https://share.google/pgpkvcPWym6rP8LDz",
+        "https://fb.watch/AAhi54Gdyh/?mibextid=rS40aB7S9Ucbxw6v",
     )
 
     print(validator.validate_url(INVALID_URLS[-1]))

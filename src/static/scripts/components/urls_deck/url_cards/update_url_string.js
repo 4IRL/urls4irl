@@ -7,6 +7,11 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
   enableTabbableChildElements(updateURLStringWrap);
   updateURLStringWrap.showClassFlex();
 
+  // Handle case where iOS needs a direct focus not in a timeout, even with animation
+  if (isMobile()) {
+    updateURLStringWrap.find("input").focus();
+  }
+
   // Set timeout in case user pressed enter to avoid propagation through to URL string update
   setTimeout(function () {
     highlightInput(updateURLStringWrap.find("input"));

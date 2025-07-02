@@ -69,6 +69,11 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   enableTabbableChildElements(tagInputFormContainer);
   $(tagInputFormContainer).showClassFlex();
 
+  // Handle case where iOS needs a direct focus not in a timeout, even with animation
+  if (isMobile()) {
+    tagInputFormContainer.find("input").focus();
+  }
+
   // Focus on the input to add a tag - with delay in case user opened by pressing enter
   setTimeout(function () {
     tagInputFormContainer.find("input").trigger("focus");

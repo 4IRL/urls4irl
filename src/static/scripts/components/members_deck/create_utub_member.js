@@ -97,7 +97,7 @@ function resetNewMemberForm() {
 // Shows new Member input fields
 function createMemberShowInput() {
   $("#createMemberWrap").showClassFlex();
-  $("#displayMemberWrap").showClassNormal();
+  $("#displayMemberWrap").hideClass();
   $("#memberBtnCreate").hideClass();
   setupCreateMemberEventListeners();
   $("#memberCreate").trigger("focus");
@@ -106,7 +106,7 @@ function createMemberShowInput() {
 // Hides new Member input fields
 function createMemberHideInput() {
   $("#createMemberWrap").hideClass();
-  $("#displayMemberWrap").showClassNormal();
+  $("#displayMemberWrap").showClassFlex();
   $("#memberBtnCreate").showClassNormal();
   removeCreateMemberEventListeners();
   resetCreateMemberFailErrors();
