@@ -68,7 +68,7 @@ def get_log_file_path(log_dir: str) -> str:
 
     # Generate filename with current date
     today = datetime.now().strftime("%Y-%m-%d")
-    return os.path.join(log_dir, f"{today}.log")
+    return os.path.join(log_dir, f"{today}_daily.log")
 
 
 def get_remote_addr(request: Request):

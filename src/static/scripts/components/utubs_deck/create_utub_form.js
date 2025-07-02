@@ -164,12 +164,12 @@ function createUTubShowInput() {
 // Hides new UTub input fields
 function createUTubHideInput() {
   $("#createUTubWrap").hideClass();
-  $("#listUTubs").showClassNormal();
+  $("#listUTubs").showClassFlex();
   $("#utubNameCreate").val(null);
   $("#utubDescriptionCreate").val(null);
   removeNewUTubEventListeners();
   resetUTubFailErrors();
-  $("#UTubDeck").find(".button-container").showClassNormal();
+  $("#UTubDeck").find(".button-container").showClassFlex();
   setCreateDeleteUTubEventListeners();
 }
 

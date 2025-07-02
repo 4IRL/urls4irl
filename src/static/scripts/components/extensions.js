@@ -34,6 +34,17 @@ function ajaxCall(type, url, data, timeout = 1000) {
   }));
 }
 
+function debugCall(msg) {
+  $.ajax({
+    type: "POST",
+    url: "/debug",
+    data: JSON.stringify({
+      msg: `${msg}`,
+    }),
+    contentType: "application/json",
+  });
+}
+
 // Enable all child elements to be tabbable
 function enableTabbableChildElements(parent) {
   $(parent).find(".tabbable").enableTab();
