@@ -101,7 +101,8 @@ def create_utub_tag(utub_id: int):
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_UTUB,
                     TAGS_SUCCESS.UTUB_TAG: new_utub_tag.serialized_on_add_delete,
-                }
+                    TAGS_SUCCESS.TAG_COUNTS_MODIFIED: 0,  # No URLs associated yet
+                },
             ),
             200,
         )

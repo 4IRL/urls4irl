@@ -95,6 +95,10 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
             Utub_Tags.utub_id == utub_id, Utub_Tags.tag_string == tag_to_add
         ).first()
 
+        utub_tag_id: int = (
+            utub_tag_already_created.id if utub_tag_already_created else None
+        )
+
         if utub_tag_already_created:
             # Check if tag already on url
             this_tag_is_already_on_this_url = utub_tag_already_created.id in [
@@ -135,9 +139,16 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
             utub_url_tag = Utub_Url_Tags(
                 utub_id=utub_id, utub_url_id=utub_url_id, utub_tag_id=new_utub_tag.id
             )
+            utub_tag_id = new_utub_tag.id
             tag_model = new_utub_tag
 
         db.session.add(utub_url_tag)
+
+        # Count instances of particular tag in UTub that is to be deleted
+        updated_tag_id_count: int = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_tag_id == utub_tag_id
+        ).count()
+
         utub.set_last_updated()
         db.session.commit()
 
@@ -159,6 +170,7 @@ def create_utub_url_tag(utub_id: int, utub_url_id: int):
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_URL,
                     TAGS_SUCCESS.UTUB_URL_TAG_IDS: utub_url_association.associated_tag_ids,
                     TAGS_SUCCESS.UTUB_TAG: tag_model.serialized_on_add_delete,
+                    TAGS_SUCCESS.TAG_COUNTS_MODIFIED: updated_tag_id_count,
                 }
             ),
             200,
@@ -238,6 +250,12 @@ def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_tag_id: int):
     tag_to_remove: Utub_Tags = tag_for_url_in_utub.utub_tag_item
 
     db.session.delete(tag_for_url_in_utub)
+
+    # Count instances of particular tag in UTub that is to be deleted
+    updated_tag_id_count: int = Utub_Url_Tags.query.filter(
+        Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_tag_id == utub_tag_id
+    ).count()
+
     utub.set_last_updated()
     db.session.commit()
 
@@ -261,6 +279,7 @@ def delete_utub_url_tag(utub_id: int, utub_url_id: int, utub_tag_id: int):
                 STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
                 TAGS_SUCCESS.UTUB_URL_TAG_IDS: url_utub_association.associated_tag_ids,
                 TAGS_SUCCESS.UTUB_TAG: tag_to_remove.serialized_on_add_delete,
+                TAGS_SUCCESS.TAG_COUNTS_MODIFIED: updated_tag_id_count,
             }
         ),
         200,
