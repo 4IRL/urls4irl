@@ -60,6 +60,7 @@ class HomePageLocators(GenericPageLocator):
     INPUT_UTUB_TAG_CREATE = "#utubTagCreate"
     BUTTON_UTUB_TAG_SUBMIT_CREATE = "#utubTagSubmitBtnCreate"
     BUTTON_UTUB_TAG_CANCEL_CREATE = "#utubTagCancelBtnCreate"
+    BUTTON_UTUB_TAG_DELETE = ".utubTagBtnDelete"
     UNSELECTED = ".unselected"
     SELECTED = ".selected"
 

@@ -168,8 +168,8 @@ function createTagBadgeInURL(utubTagID, tagString, urlCard) {
 }
 
 // Dynamically generates the delete URL-Tag icon when needed
-function createTagDeleteIcon() {
-  const WIDTH_HEIGHT_PX = "15px";
+function createTagDeleteIcon(pixelSize = 15) {
+  const WIDTH_HEIGHT_PX = pixelSize + "px";
   const SVG_NS = "http://www.w3.org/2000/svg";
   const deleteURLTagOuterIconSvg = $(document.createElementNS(SVG_NS, "svg"));
   const deleteURLTagInnerIconPath = $(document.createElementNS(SVG_NS, "path"));
