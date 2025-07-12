@@ -22,6 +22,9 @@ URL_MODIFIED = "URL modified."
 URL_FOUND_IN_UTUB = "URL found in UTub."
 TAG_IN_UTUB = "tagInUTub"
 DELETE_URL_WARNING = "You can always add it back again!"
+COPY_URL_TOOLTIP = "Copy URL"
+COPIED_URL_TOOLTIP = "Copied!"
+COPIED_URL_FAILURE_TOOLIP = "Copy failed!"
 
 
 class URL_GENERAL:

@@ -4,7 +4,12 @@ from src.utils.strings.email_validation_strs import (
     VALIDATE_YOUR_EMAIL,
 )
 from src.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD, LOGIN_TITLE
-from src.utils.strings.url_strs import DELETE_URL_WARNING
+from src.utils.strings.url_strs import (
+    COPIED_URL_FAILURE_TOOLIP,
+    COPIED_URL_TOOLTIP,
+    COPY_URL_TOOLTIP,
+    DELETE_URL_WARNING,
+)
 from src.utils.strings.user_strs import MEMBER_DELETE_WARNING, MEMBER_LEAVE_WARNING
 from src.utils.strings.utub_strs import (
     UTUB_CREATE_MSG,
@@ -73,6 +78,9 @@ class STRINGS:
     UTUB_SELECT = UTUB_SELECT
     FORGOT_YOUR_PASSWORD = FORGOT_YOUR_PASSWORD
     LOGIN_TITLE = LOGIN_TITLE
+    COPY_URL_TOOLTIP = COPY_URL_TOOLTIP
+    COPIED_URL_TOOLTIP = COPIED_URL_TOOLTIP
+    COPIED_URL_FAILURE_TOOLIP = COPIED_URL_FAILURE_TOOLIP
 
 
 class CONSTANTS:

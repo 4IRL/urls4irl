@@ -21,6 +21,7 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
   urlCard.find(".urlBtnAccess").hideClass();
   urlCard.find(".urlTagBtnCreate").hideClass();
   urlCard.find(".urlBtnDelete").hideClass();
+  urlCard.find(".urlBtnCopy").hideClass();
 
   // Disable Go To URL Icon
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
@@ -73,6 +74,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   urlCard.find(".urlBtnAccess").showClassFlex();
   urlCard.find(".urlTagBtnCreate").showClassFlex();
   urlCard.find(".urlBtnDelete").showClassFlex();
+  urlCard.find(".urlBtnCopy").showClassFlex();
 
   // Enable Go To URL Icon
   const selected = urlCard.attr("urlSelected");
@@ -150,9 +152,6 @@ function updateURLSuccess(response, urlCard) {
   // Extract response data
   const updatedURLString = response.URL.urlString;
 
-  // If update URL action, rebind the ability to select/deselect URL by clicking it
-  //rebindSelectBehavior();
-
   // Update URL body with latest published data
   urlCard
     .find(".urlString")
@@ -168,6 +167,11 @@ function updateURLSuccess(response, urlCard) {
   urlCard.find(".goToUrlIcon").offAndOn("click", function (e) {
     e.stopPropagation();
     accessLink(updatedURLString);
+  });
+
+  urlCard.find(".urlBtnCopy").offAndOn("click", function (e) {
+    e.stopPropagation();
+    copyURLString(updatedURLString, this);
   });
 
   hideAndResetUpdateURLStringForm(urlCard);

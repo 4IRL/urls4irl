@@ -83,6 +83,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   urlCard.find(".urlBtnAccess").hideClass();
   urlCard.find(".urlStringBtnUpdate").hideClass();
   urlCard.find(".urlBtnDelete").hideClass();
+  urlCard.find(".urlBtnCopy").hideClass();
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
@@ -144,6 +145,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
   urlCard.find(".urlBtnAccess").showClassFlex();
   urlCard.find(".urlStringBtnUpdate").showClassFlex();
   urlCard.find(".urlBtnDelete").showClassFlex();
+  urlCard.find(".urlBtnCopy").showClassFlex();
 
   // Enable hovering on tags for deletion
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
