@@ -12,9 +12,10 @@ from src.utils.strings.tag_strs import TAGS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    create_tag,
+    add_tag_to_url,
     get_tag_string_already_on_url_in_utub_and_delete,
     open_url_tag_input,
+    show_and_fill_create_tag_input,
     verify_btns_shown_on_cancel_url_tag_input_creator,
     verify_btns_shown_on_cancel_url_tag_input_member,
 )
@@ -296,7 +297,7 @@ def test_create_tag_btn(browser: WebDriver, create_test_urls, provide_app: Flask
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, tag_text)
+    add_tag_to_url(browser, url_in_utub.id, tag_text)
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -343,7 +344,7 @@ def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, tag_text)
+    add_tag_to_url(browser, url_in_utub.id, tag_text)
 
     # Submit
     browser.switch_to.active_element.send_keys(Keys.ENTER)
@@ -388,7 +389,7 @@ def test_create_existing_tag(browser: WebDriver, create_test_tags, provide_app: 
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, existing_tag)
+    add_tag_to_url(browser, url_in_utub.id, existing_tag)
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -426,7 +427,7 @@ def test_create_existing_tag_with_whitespace(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, f" {existing_tag} ")
+    add_tag_to_url(browser, url_in_utub.id, f" {existing_tag} ")
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -458,7 +459,7 @@ def test_create_sixth_tag(browser: WebDriver, create_test_tags, provide_app: Fla
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, UTS.TEST_TAG_NAME_1)
+    add_tag_to_url(browser, url_in_utub.id, UTS.TEST_TAG_NAME_1)
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -493,7 +494,7 @@ def test_create_tag_text_length_exceeded(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, "a" * (CONSTANTS.TAGS.MAX_TAG_LENGTH + 1))
+    add_tag_to_url(browser, url_in_utub.id, "a" * (CONSTANTS.TAGS.MAX_TAG_LENGTH + 1))
 
     create_url_tag_input = wait_then_get_element(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_CREATE}", time=3
@@ -524,7 +525,7 @@ def test_create_tag_text_sanitized(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, '<img src="evl.jpg">')
+    add_tag_to_url(browser, url_in_utub.id, '<img src="evl.jpg">')
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -560,7 +561,7 @@ def test_create_tag_text_invalid_csrf_token(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, '<img src="evl.jpg">')
+    show_and_fill_create_tag_input(browser, url_in_utub.id, '<img src="evl.jpg">')
 
     # Submit
     invalidate_csrf_token_on_page(browser)

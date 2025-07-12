@@ -75,6 +75,9 @@ def ping_server(url: str, timeout: float = 2) -> bool:
         except requests.ConnectTimeout:
             sleep(timeout)
             total_time += timeout
+        except requests.ReadTimeout:
+            sleep(timeout)
+            total_time += timeout
         else:
             is_server_ready = status_code == 200
 
