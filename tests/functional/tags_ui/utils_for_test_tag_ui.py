@@ -23,7 +23,7 @@ from tests.functional.utils_for_test import (
 
 
 # CREATE
-def add_tag_to_url(browser: WebDriver, selected_url_id: int, tag_string: str = ""):
+def add_tag_to_url(browser: WebDriver, selected_url_id: int, tag_string: str) -> None:
     """
     Once logged in, with users, UTub, and URLs this function initiates the action to create one tag applied to the selected URL in the selected UTub.
     """
@@ -102,7 +102,7 @@ def get_tag_badge_selector_on_selected_url(url_tag_id: int) -> str:
     return f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}[{HPL.TAG_BADGE_ID_ATTRIB}='{url_tag_id}']"
 
 
-def get_utub_tag_filter(utub_tag_id: int) -> str:
+def get_utub_tag_filter_selector(utub_tag_id: int) -> str:
     return f"{HPL.TAG_FILTERS}[data-utub-tag-id='{utub_tag_id}']"
 
 
@@ -181,7 +181,7 @@ def open_url_tag_input(browser: WebDriver, selected_url_id: int):
 
 
 def apply_tag_filter_based_on_id(browser: WebDriver, utub_tag_id: int):
-    utub_tag_filter = get_utub_tag_filter(utub_tag_id)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
     wait_then_click_element(browser, utub_tag_filter, time=3)
 
 

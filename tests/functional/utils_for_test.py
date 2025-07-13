@@ -875,7 +875,9 @@ def get_all_utub_ids_accessible_by_user(app: Flask, user_id: int) -> list[int]:
         list[int]: A list of UTub IDs accessible by the user.
     """
     with app.app_context():
-        utub_memberships = Utub_Members.query.filter_by(user_id=user_id).all()
+        utub_memberships = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id
+        ).all()
         return [membership.utub_id for membership in utub_memberships]
 
 
@@ -902,7 +904,9 @@ def get_tag_id_by_name(app: Flask, utub_id: int, tag_string: str) -> int | None:
         int | None: The ID of the tag if found, otherwise None.
     """
     with app.app_context():
-        tag = Utub_Tags.query.filter(tag_string=tag_string, utub_id=utub_id).first()
+        tag = Utub_Tags.query.filter(
+            Utub_Tags.tag_string == tag_string, Utub_Tags.utub_id == utub_id
+        ).first()
         return tag.id if tag else None
 
 

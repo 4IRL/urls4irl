@@ -159,7 +159,12 @@ class ConfigTest(Config):
     SQLALCHEMY_DATABASE_URI = TEST_DB_URI
     UI_TESTING = False
 
-    SESSION_TYPE = "redis"
+    SESSION_TYPE = (
+        "redis"
+        if (TEST_REDIS_URI is not None and TEST_REDIS_URI != "memory://")
+        else "cachelib"
+    )
+
     SESSION_REDIS = (
         Redis.from_url(TEST_REDIS_URI)
         if (TEST_REDIS_URI is not None and TEST_REDIS_URI != "memory://")

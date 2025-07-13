@@ -15,7 +15,7 @@ from tests.functional.tags_ui.utils_for_test_tag_ui import (
     add_two_tags_across_urls_in_utub,
     apply_tag_filter_by_id_and_get_shown_urls,
     count_urls_with_tag_applied_by_tag_id,
-    get_utub_tag_filter,
+    get_utub_tag_filter_selector,
 )
 from tests.functional.urls_ui.utils_for_test_url_ui import get_url_in_utub
 from tests.functional.utils_for_test import (
@@ -52,7 +52,7 @@ def test_tag_filter_count_on_tag_badge_creation(
     )
 
     # Create tag badge
-    add_tag_to_url(app, utub_user_created.id, url_in_utub.url_id, UTS.TEST_TAG_NAME_1)
+    add_tag_to_url(browser, url_in_utub.url_id, UTS.TEST_TAG_NAME_1)
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
     wait_then_click_element(browser, btn_selector, time=3)
@@ -63,7 +63,8 @@ def test_tag_filter_count_on_tag_badge_creation(
     tag_id = get_tag_id_by_name(app, utub_user_created.id, UTS.TEST_TAG_NAME_1)
 
     # Extract the tag filter element count
-    utub_tag_filter = get_utub_tag_filter(tag_id)
+    utub_tag_filter_selector = get_utub_tag_filter_selector(tag_id)
+    utub_tag_filter = browser.find_element(By.CSS_SELECTOR, utub_tag_filter_selector)
     tag_filter_count = int(
         utub_tag_filter.find_element(By.CSS_SELECTOR, HPL.TAG_COUNT).innerHTML
     )
@@ -98,7 +99,7 @@ def test_tag_filter_count_update_on_tag_badge_addition(
     tag_id = get_tag_id_by_name(app, utub_user_created.id, UTS.TEST_TAG_NAME_1)
 
     # Extract the tag filter element count
-    utub_tag_filter = get_utub_tag_filter(tag_id)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_id)
     tag_filter_count = int(
         utub_tag_filter.find_element(By.CSS_SELECTOR, HPL.TAG_COUNT).innerHTML
     )
@@ -287,7 +288,7 @@ def test_tag_filter_count_update_on_url_deletion(
     ) == len(utub_tag_ids)
 
     for utub_tag_id in utub_tag_ids:
-        utub_tag_filter = get_utub_tag_filter(utub_tag_id)
+        utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
         wait_then_click_element(browser, utub_tag_filter, time=3)
 
     assert (

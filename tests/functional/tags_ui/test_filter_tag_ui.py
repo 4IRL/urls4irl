@@ -17,7 +17,7 @@ from tests.functional.tags_ui.utils_for_test_tag_ui import (
     add_tag_to_utub_user_created,
     add_two_tags_across_urls_in_utub,
     apply_tag_filter_by_id_and_get_shown_urls,
-    get_utub_tag_filter,
+    get_utub_tag_filter_selector,
 )
 from tests.functional.utils_for_test import (
     get_utub_this_user_created,
@@ -49,7 +49,7 @@ def test_filter_tag_with_all_urls_filtered(
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_created.id
     )
-    utub_tag_filter = get_utub_tag_filter(tag_in_utub.id)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
     wait_then_click_element(browser, utub_tag_filter, time=3)
 
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
@@ -210,7 +210,7 @@ def test_unselect_button_toggle_when_filter_selected(
     ):
         unselect_filters_btn.click()
 
-    utub_tag_filter = get_utub_tag_filter(tag_in_utub.id)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
     wait_then_click_element(browser, utub_tag_filter, time=3)
 
     unselect_filters_btn = browser.find_element(
@@ -251,7 +251,7 @@ def test_unselect_button_unselects_all_tags_when_clicked(
     ) == len(utub_tag_ids)
 
     for utub_tag_id in utub_tag_ids:
-        utub_tag_filter = get_utub_tag_filter(utub_tag_id)
+        utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
         wait_then_click_element(browser, utub_tag_filter, time=3)
 
     assert (
@@ -297,7 +297,7 @@ def test_unfilter_tag_with_all_urls_filtered(
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_created.id
     )
-    utub_tag_filter = get_utub_tag_filter(tag_in_utub.id)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
     wait_then_click_element(browser, utub_tag_filter, time=3)
 
     # Click again to unselect the tag and show all filtered URLs
@@ -346,7 +346,7 @@ def test_unfilter_multiple_tags_with_some_urls_filtered(
 
     assert len(filtered_urls) == num_urls_for_second_tag
 
-    utub_tag_filter = get_utub_tag_filter(second_tag_id)
+    utub_tag_filter = get_utub_tag_filter_selector(second_tag_id)
     wait_then_click_element(browser, utub_tag_filter, time=3)
 
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
@@ -355,7 +355,7 @@ def test_unfilter_multiple_tags_with_some_urls_filtered(
         == num_urls_for_first_tag
     )
 
-    utub_tag_filter = get_utub_tag_filter(first_tag_id)
+    utub_tag_filter = get_utub_tag_filter_selector(first_tag_id)
     wait_then_click_element(browser, utub_tag_filter, time=3)
 
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
@@ -405,10 +405,10 @@ def test_filter_tag_attempt_with_tag_limit_reached(
     )
 
     for utub_tag_id in utub_tag_ids:
-        utub_tag_filter = get_utub_tag_filter(utub_tag_id)
+        utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
         wait_then_click_element(browser, utub_tag_filter, time=3)
 
-    utub_tag_filter = get_utub_tag_filter(tag_in_utub.id)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
 
     utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_filter)
     with pytest.raises(
@@ -458,14 +458,14 @@ def test_filter_tag_clickable_after_unclicking_from_tag_limit(
 
     utub_tag_id = -1
     for utub_tag_id in utub_tag_ids:
-        utub_tag_filter = get_utub_tag_filter(utub_tag_id)
+        utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
         wait_then_click_element(browser, utub_tag_filter, time=3)
 
     # Click the last UTub tag id again to unselect it
-    utub_tag_filter = get_utub_tag_filter(utub_tag_id)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
     wait_then_click_element(browser, utub_tag_filter, time=3)
 
-    utub_tag_filter = get_utub_tag_filter(tag_in_utub.id)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
 
     utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_filter)
     utub_tag_badge.click()
