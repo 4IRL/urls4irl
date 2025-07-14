@@ -13,6 +13,7 @@ TAG_STILL_IN_UTUB = "tagInUTub"
 PREVIOUS_TAG = "previousTag"
 URL_IDS = "urlIDs"
 UTUB_URL_IDS = "utubUrlIDs"
+ADD_URL_TAG_TOOLTIP = "Add Tag"
 
 
 class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):

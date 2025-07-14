@@ -806,15 +806,42 @@ a.urlString:hover {
     display: none !important;
 }
 
+#accessAllURLsBtn,
 .urlBtnAccess {
     background-color: var(--accessLinkColor);
     border-width: 1px;
     border-color: var(--accessLinkColor);
 }
 
+#accessAllURLsBtn:hover,
 .urlBtnAccess:hover {
     background-color: var(--accessLinkColorHover);
     border-color: var(--accessLinkColorBorderHover);
+    transition: background-color 0.3s ease;
+}
+
+#accessAllURLsBtn:active,
+.urlBtnAccess:active {
+    background-color: var(--accessLinkColor) !important;
+    border-width: 1px !important;
+    border-color: var(--accessLinkColor) !important;
+}
+
+.urlBtnCopy {
+    background-color: var(--copyURLColor);
+    border-width: 1px;
+    border-color: var(--copyURLColor);
+}
+
+.urlBtnCopy:hover {
+    background-color: var(--copyURLColorHover);
+    border-color: var(--copyURLColorBorderHover);
+    transition: background-color 0.1s ease;
+}
+
+.urlBtnCopy:active {
+    background-color: var(--copyURLColor) !important;
+    border-color: var(--copyURLColor) !important;
 }
 
 .urlTagBtnCreate {
@@ -834,22 +861,35 @@ a.urlString:hover {
     border-color: var(--editURLColor);
 }
 
-.urlStringCancelBigBtnUpdate {
-    background-color: var(--editURLColor) !important;
-    border-width: 1px;
-    border-color: var(--editURLColor) !important;
-}
-
 .urlStringBtnUpdate:hover {
     background-color: var(--editURLColorHover);
     border-width: 1px;
     border-color: var(--editURLColorBorderHover);
 }
 
+.urlStringCancelBigBtnUpdate {
+    background-color: var(--editURLColor);
+    border-width: 1px;
+    border-color: var(--editURLColor);
+    transition: background-color 0.1s ease;
+}
+
 .urlStringCancelBigBtnUpdate:hover {
     background-color: var(--editURLColorHover) !important;
     border-width: 1px;
     border-color: var(--editURLColorBorderHover) !important;
+    transition: background-color 0.1s ease;
+}
+
+.urlStringCancelBigBtnUpdate:active {
+    background-color: var(--editURLColor) !important;
+    border-width: 1px;
+    border-color: var(--editURLColor) !important;
+    transition: background-color 0.1s ease;
+}
+
+#accessAllURLsBtn {
+    color: var(--panelBackgroundColor);
 }
 
 .urlBtnDelete {

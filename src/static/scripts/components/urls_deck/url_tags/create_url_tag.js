@@ -83,9 +83,16 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
   urlCard.find(".urlBtnAccess").hideClass();
   urlCard.find(".urlStringBtnUpdate").hideClass();
   urlCard.find(".urlBtnDelete").hideClass();
+  urlCard.find(".urlBtnCopy").hideClass();
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
+
+  const tooltip = bootstrap.Tooltip.getInstance(urlTagBtnCreate);
+  if (tooltip) {
+    tooltip.hide();
+    tooltip.disable();
+  }
 
   // Modify add tag button
   urlTagBtnCreate
@@ -95,9 +102,8 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
     .offAndOn("click", function (e) {
       e.stopPropagation();
       hideAndResetCreateURLTagForm(urlCard);
+      if (tooltip) tooltip.enable();
     });
-
-  // For tablets, change some of the sizing
 
   disableTagRemovalInURLCard(urlCard);
   disableEditingURLTitle(urlCard);
@@ -144,6 +150,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
   urlCard.find(".urlBtnAccess").showClassFlex();
   urlCard.find(".urlStringBtnUpdate").showClassFlex();
   urlCard.find(".urlBtnDelete").showClassFlex();
+  urlCard.find(".urlBtnCopy").showClassFlex();
 
   // Enable hovering on tags for deletion
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
