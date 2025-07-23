@@ -110,10 +110,10 @@ def add_invalid_url_header_for_ui_test(browser: WebDriver):
 
 
 class ClipboardMockHelper:
-    def __init__(self, driver):
-        self.driver = driver
+    def __init__(self, driver: WebDriver):
+        self.driver: WebDriver = driver
 
-    def setup_enhanced_mock(self):
+    def setup_clipboard_mock(self):
         """Setup a comprehensive clipboard mock with logging and verification"""
         self.driver.execute_script(
             """
@@ -126,24 +126,107 @@ class ClipboardMockHelper:
                 lastReadTime: null,
                 errors: [],
                 isHeadless: true,
+                // Failure simulation configuration
+                failureConfig: {
+                    writeText: {
+                        shouldFail: false,
+                        failureType: 'generic', // 'generic', 'permission', 'network', 'timeout'
+                        failureRate: 0, // 0-1, probability of failure
+                        failureDelay: 0, // delay before failure in ms
+                        customError: null
+                    },
+                    readText: {
+                        shouldFail: false,
+                        failureType: 'generic',
+                        failureRate: 0,
+                        failureDelay: 0,
+                        customError: null
+                    },
+                    execCommand: {
+                        shouldFail: false,
+                        failureRate: 0
+                    }
+                },
+                // Helper to generate appropriate error based on failure type
+                generateError: function(failureType, operation) {
+                    const errorMessages = {
+                        generic: `Failed to ${operation} clipboard data`,
+                        permission: 'Document is not focused',
+                        network: 'Network error during clipboard operation',
+                        timeout: 'Clipboard operation timed out',
+                        security: 'Clipboard access denied due to security policy'
+                    };
+                    const errorName = {
+                        generic: 'Error',
+                        permission: 'NotAllowedError',
+                        network: 'NetworkError',
+                        timeout: 'TimeoutError',
+                        security: 'SecurityError'
+                    };
+                    const error = new Error(errorMessages[failureType] || errorMessages.generic);
+                    error.name = errorName[failureType] || errorName.generic;
+                    return error;
+                },
+                // Check if operation should fail based on configuration
+                shouldOperationFail: function(operation) {
+                    const config = this.failureConfig[operation];
+                    if (!config) return false;
+                    if (config.shouldFail) return true;
+                    if (config.failureRate > 0 && Math.random() < config.failureRate) return true;
+                    return false;
+                },
                 writeText: function(text) {
                     console.log('Mock clipboard writeText called with:', text);
-                    this.data = text;
-                    this.writeCount++;
-                    this.lastWriteTime = Date.now();
-                    // Simulate async behavior even in headless
-                    return new Promise(function(resolve) {
-                        setTimeout(resolve, 1);
+                    const self = this;
+                    return new Promise(function(resolve, reject) {
+                        const config = self.failureConfig.writeText;
+                        const delay = Math.max(config.failureDelay, 1);
+                        setTimeout(function() {
+                            if (self.shouldOperationFail('writeText')) {
+                                const error = config.customError ||
+                                            self.generateError(config.failureType, 'write to');
+                                self.errors.push({
+                                    operation: 'writeText',
+                                    error: error.message,
+                                    timestamp: Date.now(),
+                                    data: text
+                                });
+                                console.error('Mock clipboard writeText failed:', error.message);
+                                reject(error);
+                            } else {
+                                self.data = text;
+                                self.writeCount++;
+                                self.lastWriteTime = Date.now();
+                                console.log('Mock clipboard writeText succeeded');
+                                resolve();
+                            }
+                        }, delay);
                     });
                 },
                 readText: function() {
-                    console.log('Mock clipboard readText called, returning:', this.data);
-                    this.readCount++;
-                    this.lastReadTime = Date.now();
-                    return new Promise(function(resolve) {
+                    console.log('Mock clipboard readText called, current data:', this.data);
+                    const self = this;
+                    return new Promise(function(resolve, reject) {
+                        const config = self.failureConfig.readText;
+                        const delay = Math.max(config.failureDelay, 1);
                         setTimeout(function() {
-                            resolve(window.mockClipboard.data);
-                        }, 1);
+                            if (self.shouldOperationFail('readText')) {
+                                const error = config.customError ||
+                                            self.generateError(config.failureType, 'read from');
+                                self.errors.push({
+                                    operation: 'readText',
+                                    error: error.message,
+                                    timestamp: Date.now()
+                                });
+                                console.error('Mock clipboard readText failed:', error.message);
+                                reject(error);
+                            } else {
+                                self.readCount++;
+                                self.lastReadTime = Date.now();
+                                console.log('Mock clipboard readText succeeded, returning:', self.data);
+                                resolve(self.data);
+                            }
+                        }, delay);
                     });
                 },
                 getStats: function() {
@@ -154,8 +237,27 @@ class ClipboardMockHelper:
                         lastWriteTime: this.lastWriteTime,
                         lastReadTime: this.lastReadTime,
                         errors: this.errors,
-                        isHeadless: this.isHeadless
+                        isHeadless: this.isHeadless,
+                        failureConfig: this.failureConfig
                     };
+                },
+                // Configuration methods
+                setWriteFailure: function(options) {
+                    Object.assign(this.failureConfig.writeText, options);
+                },
+                setReadFailure: function(options) {
+                    Object.assign(this.failureConfig.readText, options);
+                },
+                setExecCommandFailure: function(options) {
+                    Object.assign(this.failureConfig.execCommand, options);
+                },
+                clearFailures: function() {
+                    this.failureConfig.writeText.shouldFail = false;
+                    this.failureConfig.readText.shouldFail = false;
+                    this.failureConfig.execCommand.shouldFail = false;
+                    this.failureConfig.writeText.failureRate = 0;
+                    this.failureConfig.readText.failureRate = 0;
+                    this.failureConfig.execCommand.failureRate = 0;
                 }
             };
             // Store original clipboard if it exists
@@ -172,6 +274,17 @@ class ClipboardMockHelper:
             document.execCommand = function(command, showUI, value) {
                 console.log('Mock execCommand called with:', command, showUI, value);
                 if (command === 'copy') {
+                    // Check if execCommand should fail
+                    if (window.mockClipboard.shouldOperationFail('execCommand')) {
+                        console.error('Mock execCommand failed');
+                        window.mockClipboard.errors.push({
+                            operation: 'execCommand',
+                            error: 'execCommand copy failed',
+                            timestamp: Date.now(),
+                            command: command
+                        });
+                        return false;
+                    }
                     var textToCopy = '';
                     // Try multiple methods to get text in headless
                     var selection = window.getSelection();
@@ -211,6 +324,26 @@ class ClipboardMockHelper:
         """
         )
 
+    def setup_clipboard_failure(self):
+        """Setup clipboard to fail on write operations"""
+        self.setup_clipboard_mock()
+        self.driver.execute_script(
+            """
+            window.mockClipboard.setWriteFailure({
+                shouldFail: true,
+                failureType: 'permission',
+                failureRate: 0,
+                failureDelay: 1,
+                customError: null
+            });
+            window.mockClipboard.setExecCommandFailure({
+                shouldFail: true,
+                failureRate: 0
+            });
+        """
+        )
+        return True
+
     def wait_for_async_clipboard(self, timeout=5):
         """Wait for async clipboard operations to complete in headless"""
         self.driver.execute_script(
@@ -230,6 +363,7 @@ class ClipboardMockHelper:
                 hasNavigatorClipboard: typeof navigator.clipboard !== 'undefined',
                 hasWriteText: typeof navigator.clipboard.writeText === 'function',
                 hasReadText: typeof navigator.clipboard.readText === 'function',
+                hasFailureConfig: typeof window.mockClipboard.failureConfig !== 'undefined',
                 mockStats: window.mockClipboard ? window.mockClipboard.getStats() : null
             };
         """

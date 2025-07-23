@@ -57,6 +57,7 @@ def test_copy_url_btn_click_fail(
     browser: WebDriver,
     create_test_urls,
     provide_app: Flask,
+    clipboard_mock: ClipboardMockHelper,
 ):
     """
     Tests a User's ability to copy the URL when clicking on URL button, and that
@@ -91,6 +92,9 @@ def test_copy_url_btn_click_fail(
     )
     assert tooltip_on_hvr
     assert tooltip_on_hvr.text == STRINGS.COPY_URL_TOOLTIP
+
+    clipboard_mock.setup_clipboard_failure()
+    assert clipboard_mock.verify_mock_setup()
 
     wait_then_click_element(browser, copy_btn)
 
@@ -155,7 +159,7 @@ def test_copy_url_btn_click(
     assert tooltip_on_hvr
     assert tooltip_on_hvr.text == STRINGS.COPY_URL_TOOLTIP
 
-    clipboard_mock.setup_enhanced_mock()
+    clipboard_mock.setup_clipboard_mock()
     assert clipboard_mock.verify_mock_setup()
 
     wait_then_click_element(browser, copy_btn)
@@ -224,7 +228,7 @@ def test_copy_url_btn_key(
     assert tooltip_on_hvr
     assert tooltip_on_hvr.text == STRINGS.COPY_URL_TOOLTIP
 
-    clipboard_mock.setup_enhanced_mock()
+    clipboard_mock.setup_clipboard_mock()
     assert clipboard_mock.verify_mock_setup()
 
     url_copy_btn = wait_then_get_element(browser, copy_btn)
