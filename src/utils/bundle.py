@@ -41,6 +41,7 @@ def prepare_bundler_for_js_files(
         assets_url_prefix (str | None): The Blueprint URL prefix serving the JS file
         is_testing_or_prod (bool): Whether this is testing/production, or development
     """
+    BUNDLE_NAME = "logged_in_js"
     BUNDLED_JS_FILE = "logged_in.js"
 
     logged_in_js_files = glob.glob(abs_js_path, recursive=True)
@@ -65,6 +66,11 @@ def prepare_bundler_for_js_files(
         assets.directory = os.path.join(app.root_path, "gen")
         assets.auto_build = not is_testing_or_prod
         assets.url = assets_url_prefix
-        assets.register("logged_in_js", logged_in_js)
+
+        # Clear existing bundle if it exists and register new one
+        if BUNDLE_NAME in assets._named_bundles:
+            del assets._named_bundles[BUNDLE_NAME]
+        assets.register(BUNDLE_NAME, logged_in_js)
+
         if is_testing_or_prod:
             logged_in_js.build(force=True)

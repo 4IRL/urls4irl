@@ -8,13 +8,15 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.splash_form_strs import LOGIN_TITLE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
-from tests.functional.locators import ModalLocators as ML
-from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
     assert_login,
     assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.locators import ModalLocators as ML
+from tests.functional.locators import SplashPageLocators as SPL
+from tests.functional.login_utils import login_user
+from tests.functional.selenium_utils import (
     invalidate_csrf_token_in_form,
-    login_user,
     wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,

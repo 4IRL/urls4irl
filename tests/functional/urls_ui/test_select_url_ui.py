@@ -1,24 +1,22 @@
-# External libraries
 from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-# Internal libraries
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.db_utils import get_utub_url_id_for_added_url_in_utub_as_member
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.urls_ui.utils_for_test_url_ui import (
-    get_selected_utub_id,
-    get_utub_url_id_for_added_url_in_utub_as_member,
-    verify_keyed_url_is_selected,
-    verify_select_url_as_non_utub_owner_and_non_url_adder,
-    verify_select_url_as_utub_owner_or_url_creator,
+from tests.functional.login_utils import login_user_and_select_utub_by_name
+from tests.functional.urls_ui.assert_utils import (
+    assert_keyed_url_is_selected,
+    assert_select_url_as_non_utub_owner_and_non_url_adder,
+    assert_select_url_as_utub_owner_or_url_creator,
 )
-from tests.functional.utils_for_test import (
+from tests.functional.selenium_utils import (
     get_all_url_ids_in_selected_utub,
     get_selected_url,
-    login_user_and_select_utub_by_name,
+    get_selected_utub_id,
     wait_for_animation_to_end,
     wait_for_web_element_and_click,
     wait_then_get_elements,
@@ -62,7 +60,7 @@ def test_select_urls_as_utub_owner(
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         assert get_selected_url(browser) == url_row
-        verify_select_url_as_utub_owner_or_url_creator(browser, url_selector)
+        assert_select_url_as_utub_owner_or_url_creator(browser, url_selector)
 
 
 def test_select_non_added_urls_as_utub_member(
@@ -111,7 +109,7 @@ def test_select_non_added_urls_as_utub_member(
         current_utub_url_id = url_row.get_attribute("utuburlid")
         assert current_utub_url_id and current_utub_url_id.isnumeric()
         if url_utub_id != utub_url_id_user_added:
-            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
+            assert_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
 
 
 def test_select_urls_as_url_creator_and_utub_member(
@@ -160,7 +158,7 @@ def test_select_urls_as_url_creator_and_utub_member(
         current_utub_url_id = url_row.get_attribute("utuburlid")
         assert current_utub_url_id and current_utub_url_id.isnumeric()
         if url_utub_id != utub_url_id_user_added:
-            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
+            assert_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
 
 
 def test_select_urls_using_down_key(
@@ -199,7 +197,7 @@ def test_select_urls_using_down_key(
         selected_url.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
         == first_url_string
     )
-    verify_keyed_url_is_selected(browser, url_rows[0])
+    assert_keyed_url_is_selected(browser, url_rows[0])
 
     for idx in range(1, num_of_urls + 1):
         next_url_idx = idx % num_of_urls
@@ -214,7 +212,7 @@ def test_select_urls_using_down_key(
             selected_url.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
             == next_url_string
         )
-        verify_keyed_url_is_selected(browser, url_rows[next_url_idx])
+        assert_keyed_url_is_selected(browser, url_rows[next_url_idx])
 
 
 def test_select_urls_using_up_key(
@@ -253,7 +251,7 @@ def test_select_urls_using_up_key(
         selected_url.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
         == first_url_string
     )
-    verify_keyed_url_is_selected(browser, url_rows[0])
+    assert_keyed_url_is_selected(browser, url_rows[0])
 
     for idx in range(num_of_urls - 1, -1, -1):
         next_url_string = (
@@ -265,4 +263,4 @@ def test_select_urls_using_up_key(
             selected_url.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
             == next_url_string
         )
-        verify_keyed_url_is_selected(browser, url_rows[idx])
+        assert_keyed_url_is_selected(browser, url_rows[idx])

@@ -9,10 +9,10 @@ from src.models.users import Users
 from src.utils.all_routes import ROUTES
 from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.assert_utils import assert_login
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.splash_ui.utils_for_test_splash_ui import register_user_ui
-from tests.functional.utils_for_test import (
-    assert_login,
+from tests.functional.splash_ui.selenium_utils import register_user_ui
+from tests.functional.selenium_utils import (
     wait_then_click_element,
     wait_then_get_element,
 )

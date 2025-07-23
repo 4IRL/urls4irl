@@ -73,16 +73,24 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
 
     limiter.init_app(app)
 
-    email_sender.init_app(app)
-    if production:
-        email_sender.in_production()
-
     if production or app.config.get(CONFIG_ENVS.DEV_SERVER, False):
         # NOTE: Handle both the nginx reverse proxy, and Cloudflare as a reverse proxy
         app.wsgi_app = ProxyFix(app.wsgi_app, x_for=2, x_proto=2, x_host=2, x_prefix=2)
 
-    url_validator.init_app(app)
-    notification_sender.init_app(app)
+    if testing:
+        test_url_val = UrlValidator()
+        test_notif_send = NotificationSender()
+        test_email_sender = EmailSender()
+        test_url_val.init_app(app)
+        test_notif_send.init_app(app)
+        test_email_sender.init_app(app)
+    else:
+        url_validator.init_app(app)
+        notification_sender.init_app(app)
+        email_sender.init_app(app)
+
+    if production:
+        email_sender.in_production()
 
     from src.assets.routes import assets_bp
     from src.splash.routes import splash

@@ -8,34 +8,68 @@ from selenium.webdriver.remote.webelement import WebElement
 from src.models.users import Users
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
-from src.utils.constants import CONSTANTS
+from src.utils.constants import CONSTANTS, STRINGS
 from src.utils.strings.tag_strs import TAGS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    add_tag_to_url,
+from tests.functional.assert_utils import (
+    assert_login_with_username,
+    assert_tooltip_animates,
+    assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.db_utils import (
     count_urls_with_tag_applied_by_tag_string,
     get_tag_string_already_on_url_in_utub_and_delete,
-    get_urls_count_with_tag_applied_from_tag_filter_by_tag_id,
-    open_url_tag_input,
-    verify_btns_shown_on_cancel_url_tag_input_creator,
-    verify_btns_shown_on_cancel_url_tag_input_member,
-)
-from tests.functional.utils_for_test import (
-    assert_login_with_username,
-    assert_visited_403_on_invalid_csrf_and_reload,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
+    get_url_in_utub,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by_id
+from tests.functional.tags_ui.assert_utils import (
+    assert_btns_shown_on_cancel_url_tag_input_creator,
+    assert_btns_shown_on_cancel_url_tag_input_member,
+)
+from tests.functional.tags_ui.selenium_utils import (
+    add_tag_to_url,
+    open_url_tag_input,
+    get_urls_count_with_tag_applied_from_tag_filter_by_tag_id
+)
+from tests.functional.selenium_utils import (
     invalidate_csrf_token_on_page,
-    login_user_select_utub_by_id_and_url_by_id,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
     wait_until_hidden,
 )
-from tests.functional.urls_ui.utils_for_test_url_ui import get_url_in_utub
 
 pytestmark = pytest.mark.tags_ui
+
+
+def test_create_tag_btn_tooltip_animates(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a member's ability to see the tooltip animate when hovering over the add URL tag button.
+
+    GIVEN a user in a UTub with URLs
+    WHEN the user selects a URL, and hovers over the add URL tag button
+    THEN ensure the tooltip for the add URL tag button is animated properly
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    url_in_utub = get_url_in_utub(app, utub_user_created.id)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+    )
+
+    assert_tooltip_animates(
+        browser=browser,
+        parent_css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}",
+        tooltip_parent_class=HPL.BUTTON_TAG_CREATE,
+        tooltip_text=STRINGS.ADD_URL_TAG_TOOLTIP,
+    )
 
 
 def test_open_input_create_tag_creator(
@@ -166,7 +200,7 @@ def test_cancel_input_create_tag_btn_creator(
     create_tag_input = wait_until_hidden(browser, HPL.INPUT_TAG_CREATE, timeout=3)
     assert not create_tag_input.is_displayed()
 
-    verify_btns_shown_on_cancel_url_tag_input_creator(browser)
+    assert_btns_shown_on_cancel_url_tag_input_creator(browser)
 
 
 def test_cancel_input_create_tag_btn_member(
@@ -204,7 +238,7 @@ def test_cancel_input_create_tag_btn_member(
     create_tag_input = wait_until_hidden(browser, HPL.INPUT_TAG_CREATE, timeout=3)
     assert not create_tag_input.is_displayed()
 
-    verify_btns_shown_on_cancel_url_tag_input_member(browser)
+    assert_btns_shown_on_cancel_url_tag_input_member(browser)
 
 
 def test_cancel_input_create_tag_key_creator(
@@ -233,7 +267,7 @@ def test_cancel_input_create_tag_key_creator(
     create_tag_input = wait_until_hidden(browser, HPL.INPUT_TAG_CREATE, timeout=3)
     assert not create_tag_input.is_displayed()
 
-    verify_btns_shown_on_cancel_url_tag_input_creator(browser)
+    assert_btns_shown_on_cancel_url_tag_input_creator(browser)
 
 
 def test_cancel_input_create_tag_key_member(
@@ -271,7 +305,7 @@ def test_cancel_input_create_tag_key_member(
     create_tag_input = wait_until_hidden(browser, HPL.INPUT_TAG_CREATE, timeout=3)
     assert not create_tag_input.is_displayed()
 
-    verify_btns_shown_on_cancel_url_tag_input_member(browser)
+    assert_btns_shown_on_cancel_url_tag_input_member(browser)
 
 
 def test_create_tag_btn(browser: WebDriver, create_test_urls, provide_app: Flask):
@@ -328,7 +362,10 @@ def test_create_tag_btn(browser: WebDriver, create_test_urls, provide_app: Flask
     # Confirm Tag Deck counter incremented
     # Get tag ID
     new_tag_badge = [elem for elem in badge_elems if elem.text == tag_text]
-    tag_id = int(new_tag_badge[0].get_attribute(HPL.TAG_BADGE_ID_ATTRIB))
+    tag_id_str = new_tag_badge[0].get_attribute(HPL.TAG_BADGE_ID_ATTRIB)
+    assert tag_id_str
+
+    tag_id = int(tag_id_str)
 
     assert (
         init_tag_count_in_utub + 1
@@ -390,7 +427,10 @@ def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask
     # Confirm Tag Deck counter incremented
     # Get tag ID
     new_tag_badge = [elem for elem in badge_elems if elem.text == tag_text]
-    tag_id = int(new_tag_badge[0].get_attribute(HPL.TAG_BADGE_ID_ATTRIB))
+    tag_id_str = new_tag_badge[0].get_attribute(HPL.TAG_BADGE_ID_ATTRIB)
+    assert tag_id_str
+
+    tag_id = int(tag_id_str)
 
     assert (
         init_tag_count_in_utub + 1

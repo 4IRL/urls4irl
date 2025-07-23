@@ -10,26 +10,30 @@ from locators import HomePageLocators as HPL
 from src.models.users import Users
 from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.strings.user_strs import MEMBER_DELETE_WARNING
-from tests.functional.members_ui.utils_for_test_members_ui import (
-    delete_member_active_utub,
-    get_all_member_usernames,
-    get_other_member_in_utub,
-)
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
+    assert_active_utub,
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
-    dismiss_modal_with_click_out,
+)
+from tests.functional.db_utils import (
+    get_other_member_in_utub,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
+)
+from tests.functional.login_utils import login_user_and_select_utub_by_name
+from tests.functional.members_ui.selenium_utils import (
+    delete_member_active_utub,
+    get_all_member_usernames,
+)
+from tests.functional.selenium_utils import (
+    dismiss_modal_with_click_out,
     invalidate_csrf_token_on_page,
-    login_user_and_select_utub_by_name,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import assert_active_utub
 
 pytestmark = pytest.mark.members_ui
 

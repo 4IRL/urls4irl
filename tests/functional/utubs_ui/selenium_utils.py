@@ -1,18 +1,10 @@
-# External libraries
-from flask import Flask
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src import db
-from src.models.users import Users
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utubs import Utubs
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.functional.assert_utils import assert_visible_css_selector
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.utils_for_test import (
-    assert_not_visible_css_selector,
-    assert_visible_css_selector,
+from tests.functional.selenium_utils import (
     clear_then_send_keys,
     wait_for_animation_to_end,
     wait_then_click_element,
@@ -21,13 +13,6 @@ from tests.functional.utils_for_test import (
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
-
-
-def update_utub_to_empty_desc(app: Flask, utub_id: int):
-    with app.app_context():
-        utub: Utubs = Utubs.query.get(utub_id)
-        utub.utub_description = ""
-        db.session.commit()
 
 
 def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
@@ -56,62 +41,6 @@ def create_utub(browser: WebDriver, utub_name: str, utub_description: str):
     )
     assert create_utub_description_input is not None
     clear_then_send_keys(create_utub_description_input, utub_description)
-
-
-def assert_active_utub(browser: WebDriver, utub_name: str):
-    """
-    Streamlines actions needed to confirm the UTub named utub_name is active.
-
-    Args:
-        WebDriver open to U4I Home Page
-
-    Returns:
-        Boolean True, if new UTub was created
-    """
-
-    # Extract new UTub selector. Selector should be active.
-    selector_utub = wait_then_get_element(browser, HPL.SELECTOR_SELECTED_UTUB)
-    assert selector_utub is not None
-
-    # Assert new UTub is now active and displayed to user
-    class_attrib = selector_utub.get_attribute("class")
-    assert class_attrib is not None
-    assert "active" in class_attrib
-
-    # Assert new UTub selector was created with input UTub Name
-    assert selector_utub.text == utub_name
-
-    current_url_deck_header = wait_then_get_element(browser, HPL.HEADER_URL_DECK)
-    assert current_url_deck_header is not None
-
-    # Assert new UTub name is displayed as the URL Deck header
-    assert current_url_deck_header.text == utub_name
-
-
-def assert_elems_hidden_after_utub_deleted(browser: WebDriver):
-    non_visible_elems = (
-        HPL.BUTTON_UTUB_DELETE,
-        HPL.BUTTON_MEMBER_CREATE,
-        HPL.BUTTON_UTUB_TAG_CREATE,
-        HPL.BUTTON_CORNER_URL_CREATE,
-        HPL.SUBHEADER_TAG_DECK,
-    )
-
-    for elem in non_visible_elems:
-        assert not browser.find_element(By.CSS_SELECTOR, elem).is_displayed()
-
-    update_utub_desc_btn = browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE
-    )
-    assert HPL.HIDDEN_BTN_CLASS in update_utub_desc_btn.get_dom_attribute("class")
-
-    update_utub_name_btn = browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_UTUB_NAME_UPDATE
-    )
-    assert (
-        HPL.HIDDEN_BTN_CLASS in update_utub_name_btn.get_dom_attribute("class")
-        or not update_utub_name_btn.is_displayed()
-    )
 
 
 def open_update_utub_name_input(browser: WebDriver):
@@ -233,26 +162,6 @@ def hover_over_utub_title_to_show_add_utub_description(browser: WebDriver):
     assert not utub_desc_elem.is_displayed()
 
 
-def assert_in_created_utub(browser: WebDriver):
-    assert_visible_css_selector(browser, HPL.BUTTON_MEMBER_CREATE)
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_DELETE)
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_CREATE)
-    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_LEAVE)
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_TAG_CREATE)
-    assert_visible_css_selector(browser, HPL.BUTTON_UNSELECT_ALL)
-    assert_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)
-
-
-def assert_in_member_utub(browser: WebDriver):
-    assert_not_visible_css_selector(browser, HPL.BUTTON_MEMBER_CREATE)
-    assert_not_visible_css_selector(browser, HPL.BUTTON_UTUB_DELETE)
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_CREATE)
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_LEAVE)
-    assert_visible_css_selector(browser, HPL.BUTTON_UTUB_TAG_CREATE)
-    assert_visible_css_selector(browser, HPL.BUTTON_UNSELECT_ALL)
-    assert_visible_css_selector(browser, HPL.BUTTON_CORNER_URL_CREATE)
-
-
 def open_utub_search_box(browser: WebDriver):
     wait_until_visible_css_selector(browser, HPL.UTUB_OPEN_SEARCH_ICON, timeout=3)
     assert_visible_css_selector(browser, HPL.UTUB_OPEN_SEARCH_ICON)
@@ -265,27 +174,3 @@ def open_utub_search_box(browser: WebDriver):
     assert_visible_css_selector(browser, HPL.UTUB_CLOSE_SEARCH_ICON, time=3)
     utub_search_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT, time=3)
     assert browser.switch_to.active_element == utub_search_elem
-
-
-def create_test_searchable_utubs(app: Flask, test_user_id: int) -> dict[str, int]:
-    """
-    Assumes users created. Creates sample UTubs, each user owns one.
-    """
-    utub_names = UI_TEST_STRINGS.UTUB_SEARCH_NAMES
-    utub_ids = {key: 0 for key in utub_names}
-    with app.app_context():
-        user: Users = Users.query.get(test_user_id)
-        for utub_name in utub_names:
-            new_utub = Utubs(name=utub_name, utub_description="", utub_creator=user.id)
-            db.session.add(new_utub)
-            db.session.commit()
-            utub_ids[utub_name] = new_utub.id
-
-            utub_member = Utub_Members(utub_id=new_utub.id, user_id=test_user_id)
-            utub_member.utub_id = new_utub.id
-            utub_member.user_id = test_user_id
-            utub_member.member_role = Member_Role.CREATOR
-            db.session.add(utub_member)
-            db.session.commit()
-
-    return utub_ids

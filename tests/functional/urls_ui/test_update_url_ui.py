@@ -16,33 +16,75 @@ from src.cli.mock_constants import (
 from src.models.users import Users
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
-from src.utils.constants import URL_CONSTANTS
+from src.utils.constants import STRINGS, URL_CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.url_strs import URL_FAILURE
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.utils_for_test import (
-    add_mock_urls,
+from tests.functional.assert_utils import (
     assert_login_with_username,
+    assert_tooltip_animates,
+    assert_update_url_state_is_hidden,
+    assert_update_url_state_is_shown,
     assert_visited_403_on_invalid_csrf_and_reload,
-    get_selected_url,
-    invalidate_csrf_token_on_page,
+)
+from tests.functional.db_utils import (
+    add_mock_urls,
+    get_utub_this_user_created,
+    get_url_in_utub,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.login_utils import (
+    login_user_select_utub_by_id_and_url_by_id,
     login_user_select_utub_by_name_and_url_by_string,
     login_user_select_utub_by_name_and_url_by_title,
-    verify_update_url_state_is_hidden,
-    verify_update_url_state_is_shown,
+)
+from tests.functional.selenium_utils import (
+    get_selected_url,
+    invalidate_csrf_token_on_page,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
-from tests.functional.urls_ui.utils_for_test_url_ui import (
+from tests.functional.urls_ui.selenium_utils import (
     add_invalid_url_header_for_ui_test,
     update_url_title,
     update_url_string,
 )
 
 pytestmark = pytest.mark.urls_ui
+
+
+def test_update_url_string_tooltip_animates(
+    browser: WebDriver,
+    create_test_urls,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests a tooltip showing when user hovers over the edit URL button .
+
+    GIVEN a user has access to a URL
+    WHEN the user hover over the edit URL button
+    THEN ensure a tooltip is shown appropriately
+    """
+
+    _, cli_runner = runner
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    utub_url = get_url_in_utub(app, utub_id=utub_user_created.id)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_user_created.id, utub_url.id
+    )
+
+    assert_tooltip_animates(
+        browser=browser,
+        parent_css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}",
+        tooltip_parent_class=HPL.BUTTON_URL_STRING_UPDATE,
+        tooltip_text=STRINGS.EDIT_URL_TOOLTIP,
+    )
 
 
 def test_update_url_string_submit_btn(
@@ -77,11 +119,11 @@ def test_update_url_string_submit_btn(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
-    verify_update_url_state_is_shown(url_row)
+    assert_update_url_state_is_shown(url_row)
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
 
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    verify_update_url_state_is_hidden(url_row)
+    assert_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
@@ -138,11 +180,11 @@ def test_update_url_string_press_enter_key(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
-    verify_update_url_state_is_shown(url_row)
+    assert_update_url_state_is_shown(url_row)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    verify_update_url_state_is_hidden(url_row)
+    assert_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
@@ -203,7 +245,7 @@ def test_update_url_string_big_cancel_btn(
     init_url_row_string_display = url_row_string_elem.text
 
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    verify_update_url_state_is_shown(url_row)
+    assert_update_url_state_is_shown(url_row)
 
     cancel_update_btn = wait_then_get_element(
         browser, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
@@ -211,7 +253,7 @@ def test_update_url_string_big_cancel_btn(
     assert cancel_update_btn is not None
     cancel_update_btn.click()
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    verify_update_url_state_is_hidden(url_row)
+    assert_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
@@ -265,7 +307,7 @@ def test_update_url_string_cancel_btn(
     init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    verify_update_url_state_is_shown(url_row)
+    assert_update_url_state_is_shown(url_row)
 
     cancel_update_btn = wait_then_get_element(
         browser, HPL.BUTTON_URL_STRING_CANCEL_UPDATE
@@ -273,7 +315,7 @@ def test_update_url_string_cancel_btn(
     assert cancel_update_btn is not None
     cancel_update_btn.click()
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    verify_update_url_state_is_hidden(url_row)
+    assert_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 
@@ -327,14 +369,14 @@ def test_update_url_string_escape_key(
     init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
     url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    verify_update_url_state_is_shown(url_row)
+    assert_update_url_state_is_shown(url_row)
 
     wait_until_in_focus(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
     )
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
-    verify_update_url_state_is_hidden(url_row)
+    assert_update_url_state_is_hidden(url_row)
 
     url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
 

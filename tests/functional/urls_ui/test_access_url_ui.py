@@ -1,8 +1,6 @@
-# Standard library
 import random
 from urllib.parse import urlsplit
 
-# External libraries
 from typing import Tuple
 from flask import Flask
 from flask.testing import FlaskCliRunner
@@ -14,25 +12,31 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-# Internal libraries
 from src.cli.mock_constants import MOCK_URL_STRINGS
-from src.utils.constants import URL_CONSTANTS
+from src.utils.constants import STRINGS, URL_CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.urls_ui.utils_for_test_url_ui import (
-    get_selected_utub_id,
-    get_utub_url_id_for_added_url_in_utub_as_member,
-    verify_select_url_as_non_utub_owner_and_non_url_adder,
-    verify_select_url_as_utub_owner_or_url_creator,
-)
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import assert_tooltip_animates
+from tests.functional.db_utils import (
     add_mock_urls,
+    get_url_in_utub,
+    get_utub_this_user_created,
+    get_utub_url_id_for_added_url_in_utub_as_member,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.login_utils import (
+    login_user_and_select_utub_by_name,
+    login_user_select_utub_by_name_and_url_by_title,
+)
+from tests.functional.urls_ui.assert_utils import (
+    assert_select_url_as_non_utub_owner_and_non_url_adder,
+    assert_select_url_as_utub_owner_or_url_creator,
+)
+from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
     get_all_url_ids_in_selected_utub,
     get_num_url_rows,
+    get_selected_utub_id,
     get_selected_url,
-    login_user_and_select_utub_by_name,
-    login_user_select_utub_by_name_and_url_by_title,
     wait_for_web_element_and_click,
     wait_then_get_element,
     wait_then_get_elements,
@@ -46,6 +50,32 @@ MOCK_TEST_URL_STRINGS = [
     f"https://www.u4i.test/{idx}"
     for idx in range(URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS + 5)
 ]
+
+
+def test_access_url_by_access_btn_while_selected_tooltip_animates(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a member's ability to see the tooltip animate when hovering over the big access URL button.
+
+    GIVEN a user in a UTub with URLs
+    WHEN the user selects a URL, and hovers over the big access URL button
+    THEN ensure the tooltip for the big access URL button is animated properly
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub = get_utub_this_user_created(app, user_id=user_id_for_test)
+    utub_url = get_url_in_utub(app, utub_id=utub.id)
+
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, utub.name, utub_url.url_title
+    )
+    assert_tooltip_animates(
+        browser=browser,
+        parent_css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}",
+        tooltip_parent_class=HPL.BUTTON_URL_ACCESS,
+        tooltip_text=STRINGS.ACCESS_URL_TOOLTIP,
+    )
 
 
 def test_access_url_by_access_btn_while_selected(
@@ -479,7 +509,7 @@ def test_access_to_urls_as_utub_owner(
         assert selected_urlid and selected_urlid.isdigit()
         assert url_utub_id == int(selected_urlid)
 
-        verify_select_url_as_utub_owner_or_url_creator(browser, url_selector)
+        assert_select_url_as_utub_owner_or_url_creator(browser, url_selector)
 
 
 def test_access_to_non_added_urls_as_utub_member(
@@ -533,7 +563,7 @@ def test_access_to_non_added_urls_as_utub_member(
         assert url_utub_id == int(selected_urlid)
 
         if url_utub_id != utub_url_id_user_added:
-            verify_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
+            assert_select_url_as_non_utub_owner_and_non_url_adder(browser, url_selector)
 
 
 def test_access_to_urls_as_url_creator_and_utub_member(
@@ -586,4 +616,4 @@ def test_access_to_urls_as_url_creator_and_utub_member(
         assert url_utub_id == int(selected_urlid)
 
         if url_utub_id == utub_url_id_user_added:
-            verify_select_url_as_utub_owner_or_url_creator(browser, url_selector)
+            assert_select_url_as_utub_owner_or_url_creator(browser, url_selector)

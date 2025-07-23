@@ -11,17 +11,24 @@ from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from src.models.users import Users
 from src.utils.constants import CONSTANTS
 from src.utils.strings.utub_strs import UTUB_FAILURE
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
-    clear_then_send_keys,
+)
+from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
-    invalidate_csrf_token_on_page,
+    update_utub_to_empty_desc,
+)
+from tests.functional.login_utils import (
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
     login_user_to_home_page,
+)
+from tests.functional.selenium_utils import (
+    clear_then_send_keys,
+    invalidate_csrf_token_on_page,
     select_utub_by_id,
     select_utub_by_name,
     wait_then_click_element,
@@ -32,12 +39,11 @@ from tests.functional.utils_for_test import (
     wait_until_visible,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import (
+from tests.functional.utubs_ui.selenium_utils import (
     create_utub,
     hover_over_utub_title_to_show_add_utub_description,
     open_update_utub_desc_input,
     update_utub_description,
-    update_utub_to_empty_desc,
 )
 
 pytestmark = pytest.mark.utubs_ui

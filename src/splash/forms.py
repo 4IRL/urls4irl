@@ -145,6 +145,9 @@ class ForgotPasswordForm(FlaskForm):
 
     submit = SubmitField(FORGOT_PASSWORD.SEND_PASSWORD_RESET_EMAIL)
 
+    def get_email(self) -> str:
+        return self.email.data if self.email.data is not None else ""
+
 
 class ResetPasswordForm(FlaskForm):
     new_password = PasswordField(

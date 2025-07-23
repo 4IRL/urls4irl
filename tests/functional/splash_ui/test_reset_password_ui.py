@@ -16,10 +16,12 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import FAILURE_GENERAL
 from src.utils.strings.reset_password_strs import RESET_PASSWORD
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import ModalLocators, SplashPageLocators as SPL
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
     assert_on_404_page,
     assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.locators import ModalLocators, SplashPageLocators as SPL
+from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
     wait_for_page_complete_and_dom_stable,

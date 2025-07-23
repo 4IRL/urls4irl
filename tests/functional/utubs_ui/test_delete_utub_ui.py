@@ -15,24 +15,26 @@ from src.utils.strings.utub_strs import (
     UTUB_DELETE_WARNING,
     UTUB_SELECT,
 )
-from tests.functional.locators import ModalLocators as ML
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.urls_ui.utils_for_test_url_ui import get_selected_utub_id
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
+    assert_active_utub,
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.locators import ModalLocators as ML
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.login_utils import login_user_and_select_utub_by_name
+from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
-    get_utub_this_user_created,
+    get_selected_utub_id,
     invalidate_csrf_token_on_page,
-    login_user_and_select_utub_by_name,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import (
-    assert_active_utub,
+from tests.functional.utubs_ui.assert_utils import (
     assert_elems_hidden_after_utub_deleted,
 )
 

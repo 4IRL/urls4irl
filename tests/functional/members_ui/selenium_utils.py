@@ -1,26 +1,15 @@
-from flask import Flask
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
-from src.models.users import Users
-from src.models.utub_members import Utub_Members
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.utils_for_test import (
+from tests.functional.selenium_utils import (
     clear_then_send_keys,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
 )
-
-
-def get_other_member_in_utub(app: Flask, utub_id: int, current_user_id: int) -> Users:
-    with app.app_context():
-        other_member: Utub_Members = Utub_Members.query.filter(
-            Utub_Members.user_id != current_user_id, Utub_Members.utub_id == utub_id
-        ).first()
-        return other_member.to_user
 
 
 def get_all_member_badges(browser: WebDriver) -> list[WebElement]:
