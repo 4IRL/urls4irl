@@ -13,7 +13,7 @@ from src.models.utub_urls import Utub_Urls
 from src.utils.all_routes import ROUTES
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_validation_strs import URL_VALIDATION
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.utubs
 
@@ -305,7 +305,12 @@ def test_get_valid_utub_with_members_urls_tags(
         assert url_dict in response_json[MODELS.URLS]
 
     for tag in all_tags:
-        tag_dict = {MODELS.ID: tag.id, MODELS.TAG_STRING: tag.tag_string}
+        tag_id = tag.id
+        tag_dict = {
+            MODELS.ID: tag_id,
+            MODELS.TAG_STRING: tag.tag_string,
+            MODELS.TAG_APPLIED: count_tag_instances_in_utub(id_of_utub, tag_id),
+        }
         assert tag_dict in response_json[MODELS.TAGS]
 
     with app.app_context():
