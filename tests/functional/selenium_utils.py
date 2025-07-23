@@ -278,7 +278,7 @@ def wait_for_element_with_text(
     browser: WebDriver, selector: str, expected_text: str, timeout=10
 ):
     """
-    Wait for aan element with specific CSS selector to contain expected text
+    Wait for an element with specific CSS selector to contain expected text
 
     Args:
         tooltip_class: CSS class of the element
@@ -288,6 +288,32 @@ def wait_for_element_with_text(
     return WebDriverWait(browser, timeout).until(
         EC.text_to_be_present_in_element((By.CSS_SELECTOR, selector), expected_text)
     )
+
+
+def wait_for_any_element_with_text(
+    browser: WebDriver, selector: str, expected_text: str, timeout=10
+):
+    """
+    Wait for any element with specific CSS selector to contain expected text
+
+    Args:
+        tooltip_class: CSS class of the element
+        expected_text: The text to wait for
+        timeout: Maximum time to wait
+    """
+
+    def check_any_element_contains_text(driver):
+        elements = driver.find_elements(By.CSS_SELECTOR, selector)
+        for element in elements:
+            try:
+                if expected_text in element.text:
+                    return element
+            except StaleElementReferenceException:
+                # Element became stale, continue checking others
+                continue
+        return False
+
+    return WebDriverWait(browser, timeout).until(check_any_element_contains_text)
 
 
 def wait_for_class_to_be_removed(

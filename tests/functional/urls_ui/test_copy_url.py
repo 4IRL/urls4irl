@@ -17,6 +17,7 @@ from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by
 from tests.functional.selenium_utils import (
     set_focus_on_element,
     wait_for_animation_to_end,
+    wait_for_any_element_with_text,
     wait_for_element_with_text,
     wait_then_click_element,
     wait_then_get_element,
@@ -98,7 +99,7 @@ def test_copy_url_btn_click_fail(
 
     wait_then_click_element(browser, copy_btn)
 
-    wait_for_element_with_text(
+    wait_for_any_element_with_text(
         browser,
         f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}",
         STRINGS.COPIED_URL_FAILURE_TOOLIP,
