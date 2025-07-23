@@ -455,12 +455,16 @@
 
 .tagFilter {
     display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    color: var(--deckSelectionGreen);
+    font-weight: bold;
+
     margin-top: 5px;
     border-radius: 25px;
-    transition: background-color 0.3s ease-in-out, border-color 0.3s ease-in-out, color 0.3s ease-in-out;
-}
-
-.tagFilter {
+    transition: background-color 0.3s ease-in-out,
+        border-color 0.3s ease-in-out, color 0.3s ease-in-out;
     border: 2px solid var(--tagBorderColor);
     background-color: var(--tagBackgroundColorSelected);
 }
@@ -477,16 +481,78 @@
 .tagFilter.unselected:active,
 .tagFilter:active {
     background-color: var(--grayBadgeSelectionFocus);
-    color: var(--tagBackgroundColor);
+    color: var(--grayBadgeSelection);
 }
 
 .tagFilter.unselected {
+    color: var(--grayBadgeSelection);
     background-color: var(--tagBackgroundColor);
     border: 2px solid var(--tagBorderColor);
     border-radius: 25px;
-    color: white;
 }
 
+.tagFilter>.tagCountHoverable>.tagAppliedToUrlsCount {
+    color: black;
+    background-color: var(--deckSelectionGreen);
+}
+
+.tagFilter.unselected>.tagCountHoverable>.tagAppliedToUrlsCount {
+    color: var(--darkSplashGreen);
+    background: var(--cardBackgroundColor);
+}
+
+.tagCountHoverable {
+  position: relative;
+  display: flex;
+  align-items: center;
+  /* gap: 0.25em; */
+}
+
+/* .tagCountHoverable:hover .tagAppliedToUrlsCount {
+  width: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.tagCountHoverable:hover .utubTagBtnDelete {
+  width: 2em;
+  aspect-ratio: 1;
+  opacity: 1;
+  pointer-events: auto;
+} */
+
+.tagAppliedToUrlsCount {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 2em;
+  aspect-ratio: 1;
+  font-size: 1rem;
+  border: 1px solid var(--borderColor);
+  border-radius: 50%;
+}
+
+/* .utubTagBtnDelete {
+    width: 0;
+    opacity: 0;
+    padding: 0;
+    color: var(--tagBadgeDeleteBtnColor);
+    transition: width 0.1s ease-in, opacity 0.1s ease-in, color 0.1s ease-in, padding 0.1s ease-in;
+} */
+.utubTagBtnDelete {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 0;
+  opacity: 0;
+  pointer-events: none; 
+  transition: opacity 0.1s ease-in;
+  color: var(--tagBadgeDeleteBtnColor);
+}
+
+.utubTagBtnDelete:hover {
+    color: var(--tagBadgeDeleteBtnColorHover);
+}
 
 .urlTags:has(.tagBadge) {
     gap: 2rem;
@@ -767,6 +833,7 @@ a.urlString:hover {
     border-width: 1px;
     border-color: var(--editURLColor);
 }
+
 .urlStringCancelBigBtnUpdate {
     background-color: var(--editURLColor) !important;
     border-width: 1px;
@@ -780,9 +847,9 @@ a.urlString:hover {
 }
 
 .urlStringCancelBigBtnUpdate:hover {
-    background-color: var(--editURLColorHover); !important
+    background-color: var(--editURLColorHover) !important;
     border-width: 1px;
-    border-color: var(--editURLColorBorderHover); !important
+    border-color: var(--editURLColorBorderHover) !important;
 }
 
 .urlBtnDelete {
@@ -1143,8 +1210,6 @@ a.urlString:hover {
 
 }
 
-@media (min-width: 465px) {
-}
+@media (min-width: 465px) {}
 
-@media (max-width: 464.98px) {
-}
+@media (max-width: 464.98px) {}

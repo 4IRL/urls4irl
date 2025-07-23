@@ -55,11 +55,13 @@ class HomePageLocators(GenericPageLocator):
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
     LIST_TAGS = "#listTags"
     TAG_FILTERS = ".tagFilter"
+    TAG_COUNT = ".tagAppliedToUrlsCount"
     BUTTON_UNSELECT_ALL = "#unselectAllTagFilters"
     BUTTON_UTUB_TAG_CREATE = "#utubTagBtnCreate"
     INPUT_UTUB_TAG_CREATE = "#utubTagCreate"
     BUTTON_UTUB_TAG_SUBMIT_CREATE = "#utubTagSubmitBtnCreate"
     BUTTON_UTUB_TAG_CANCEL_CREATE = "#utubTagCancelBtnCreate"
+    BUTTON_UTUB_TAG_DELETE = ".utubTagBtnDelete"
     UNSELECTED = ".unselected"
     SELECTED = ".selected"
 

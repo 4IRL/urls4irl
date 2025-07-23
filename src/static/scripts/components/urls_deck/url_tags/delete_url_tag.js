@@ -2,9 +2,9 @@
 
 // Prepares post request inputs for removal of a URL - tag
 function deleteURLTagSetup(utubID, utubUrlID, utubTagID) {
-  const deleteURL = routes.deleteURLTag(utubID, utubUrlID, utubTagID);
+  const deleteURLTag = routes.deleteURLTag(utubID, utubUrlID, utubTagID);
 
-  return deleteURL;
+  return deleteURLTag;
 }
 
 // Remove tag from selected URL
@@ -30,7 +30,7 @@ async function deleteURLTag(utubTagID, tagBadge, urlCard) {
     // Handle response
     request.done(function (response, _, xhr) {
       if (xhr.status === 200) {
-        deleteURLTagSuccess(tagBadge);
+        deleteURLTagSuccess(response, tagBadge);
       }
     });
 
@@ -51,8 +51,13 @@ async function deleteURLTag(utubTagID, tagBadge, urlCard) {
 }
 
 // Displays changes related to a successful removal of a URL
-function deleteURLTagSuccess(tagBadge) {
-  // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, do nothing.
+function deleteURLTagSuccess(response, tagBadge) {
+  // Update tag filter in Tag Deck
+  // If the removed tag is the last instance in the UTub, remove it from the Tag Deck. Else, reapply counter from response.
+  const tagID = tagBadge.attr("data-utub-tag-id");
+  updateTagFilterCount(tagID, response.tagCountsInUtub);
+
+  // Remove the tag badge from the URL card
   tagBadge.remove();
 
   // Hide the URL if selected tag is filtering

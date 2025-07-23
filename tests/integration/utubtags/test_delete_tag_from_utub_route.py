@@ -11,11 +11,12 @@ from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.tags
 
 
+# Happy Path Tests
 def test_delete_tag_from_utub_with_no_url_associations(
     every_user_in_every_utub,
     add_one_tag_to_each_utub_after_one_url_added,
@@ -36,7 +37,8 @@ def test_delete_tag_from_utub_with_no_url_associations(
                 MODELS.UTUB_TAG_ID: Integer representing ID of deleted tag,
                 TAG_FORM.TAG_STRING: String representing the tag just deleted
             }
-        TAGS_SUCCESS.UTUB_URL_IDS : Array of integers representing URLs that has this tag removed
+        TAGS_SUCCESS.UTUB_URL_IDS : Array of integers representing URLs that has this tag removed,
+        TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Should be 0.
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -88,6 +90,16 @@ def test_delete_tag_from_utub_with_no_url_associations(
         assert Utub_Tags.query.get(utub_tag_id) is None
         assert Utub_Url_Tags.query.count() == num_of_utub_url_tags
 
+        # Count instances of added tag applied to URLs in UTub. Should be 0.
+        num_of_urls_tag_applied_to_in_utub = count_tag_instances_in_utub(
+            utub.id, utub_tag_id
+        )
+        assert num_of_urls_tag_applied_to_in_utub == 0
+        assert (
+            delete_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
+            == num_of_urls_tag_applied_to_in_utub
+        )
+
 
 def test_delete_tag_from_utub_with_url_associations(
     every_user_in_every_utub,
@@ -109,7 +121,8 @@ def test_delete_tag_from_utub_with_url_associations(
                 MODELS.UTUB_TAG_ID: Integer representing ID of deleted tag,
                 TAG_FORM.TAG_STRING: String representing the tag just deleted
             }
-        TAGS_SUCCESS.UTUB_URL_IDS : Array of integers representing URLs that has this tag removed
+        TAGS_SUCCESS.UTUB_URL_IDS : Array of integers representing URLs that has this tag removed,
+        TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Should be 0.
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -168,7 +181,18 @@ def test_delete_tag_from_utub_with_url_associations(
         assert Utub_Tags.query.get(utub_tag_id) is None
         assert Utub_Url_Tags.query.count() == total_utub_url_tags - num_of_utub_url_tags
 
+        # Count instances of added tag applied to URLs in UTub. Should be 0.
+        num_of_urls_tag_applied_to_in_utub = count_tag_instances_in_utub(
+            utub.id, utub_tag_id
+        )
+        assert num_of_urls_tag_applied_to_in_utub == 0
+        assert (
+            delete_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
+            == num_of_urls_tag_applied_to_in_utub
+        )
 
+
+# Sad Path Tests
 def test_delete_tag_from_utub_not_member_of(
     add_one_url_to_each_utub_one_tag_to_each_url_all_tags_in_utub,
     login_first_user_without_register,

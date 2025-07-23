@@ -11,12 +11,13 @@ from src import db
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
     add_tag_to_utub_user_created,
     add_two_tags_across_urls_in_utub,
-    apply_tag_based_on_id_and_get_shown_urls,
-    get_utub_tag_badge_selector,
+    apply_tag_filter_by_id_and_get_shown_urls,
+    get_utub_tag_filter_selector,
 )
 from tests.functional.utils_for_test import (
     get_utub_this_user_created,
@@ -28,6 +29,7 @@ from tests.functional.utils_for_test import (
 pytestmark = pytest.mark.tags_ui
 
 
+# Happy Path Tests
 def test_filter_tag_with_all_urls_filtered(
     browser: WebDriver, create_test_urls, provide_app: Flask
 ):
@@ -42,14 +44,14 @@ def test_filter_tag_with_all_urls_filtered(
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
     tag_in_utub = add_tag_to_utub_user_created(
-        app, utub_user_created.id, user_id_for_test, "TestTag"
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
     )
 
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_created.id
     )
-    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
+    wait_then_click_element(browser, utub_tag_filter, time=3)
 
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     for url_row in url_row_elements:
@@ -70,7 +72,7 @@ def test_filter_tag_with_some_urls_filtered(
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
     tag_in_utub = add_tag_to_utub_user_created(
-        app, utub_user_created.id, user_id_for_test, "TestTag"
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
     )
     tag_id = tag_in_utub.id
 
@@ -92,7 +94,7 @@ def test_filter_tag_with_some_urls_filtered(
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_created.id
     )
-    displayed_urls = apply_tag_based_on_id_and_get_shown_urls(browser, tag_id)
+    displayed_urls = apply_tag_filter_by_id_and_get_shown_urls(browser, tag_id)
     assert len(displayed_urls) == urls_tag_applied_to
 
 
@@ -110,7 +112,7 @@ def test_filter_tag_with_no_urls_filtered(
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
     tag_in_utub = add_tag_to_utub_user_created(
-        app, utub_user_created.id, user_id_for_test, "TestTag"
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
     )
     tag_id = tag_in_utub.id
 
@@ -131,7 +133,7 @@ def test_filter_tag_with_no_urls_filtered(
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_created.id
     )
-    displayed_urls = apply_tag_based_on_id_and_get_shown_urls(browser, tag_id)
+    displayed_urls = apply_tag_filter_by_id_and_get_shown_urls(browser, tag_id)
     assert len(displayed_urls) == urls_tag_applied_to
 
 
@@ -168,12 +170,12 @@ def test_filter_multiple_tags_with_some_urls_filtered(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    displayed_urls_for_first_tag = apply_tag_based_on_id_and_get_shown_urls(
+    displayed_urls_for_first_tag = apply_tag_filter_by_id_and_get_shown_urls(
         browser, first_tag_id
     )
     assert len(displayed_urls_for_first_tag) == num_urls_for_first_tag
 
-    displayed_urls_for_second_tag = apply_tag_based_on_id_and_get_shown_urls(
+    displayed_urls_for_second_tag = apply_tag_filter_by_id_and_get_shown_urls(
         browser, second_tag_id
     )
     assert len(displayed_urls_for_second_tag) == num_urls_for_second_tag
@@ -193,7 +195,7 @@ def test_unselect_button_toggle_when_filter_selected(
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
     tag_in_utub = add_tag_to_utub_user_created(
-        app, utub_user_created.id, user_id_for_test, "TestTag"
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
     )
 
     login_user_and_select_utub_by_utubid(
@@ -209,8 +211,8 @@ def test_unselect_button_toggle_when_filter_selected(
     ):
         unselect_filters_btn.click()
 
-    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
+    wait_then_click_element(browser, utub_tag_filter, time=3)
 
     unselect_filters_btn = browser.find_element(
         By.CSS_SELECTOR, HPL.BUTTON_UNSELECT_ALL
@@ -250,8 +252,8 @@ def test_unselect_button_unselects_all_tags_when_clicked(
     ) == len(utub_tag_ids)
 
     for utub_tag_id in utub_tag_ids:
-        utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
-        wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+        utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
+        wait_then_click_element(browser, utub_tag_filter, time=3)
 
     assert (
         len(
@@ -290,17 +292,17 @@ def test_unfilter_tag_with_all_urls_filtered(
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
     tag_in_utub = add_tag_to_utub_user_created(
-        app, utub_user_created.id, user_id_for_test, "TestTag"
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
     )
 
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_created.id
     )
-    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
-    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
+    wait_then_click_element(browser, utub_tag_filter, time=3)
 
     # Click again to unselect the tag and show all filtered URLs
-    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+    wait_then_click_element(browser, utub_tag_filter, time=3)
 
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     for url_row in url_row_elements:
@@ -340,13 +342,13 @@ def test_unfilter_multiple_tags_with_some_urls_filtered(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    apply_tag_based_on_id_and_get_shown_urls(browser, first_tag_id)
-    filtered_urls = apply_tag_based_on_id_and_get_shown_urls(browser, second_tag_id)
+    apply_tag_filter_by_id_and_get_shown_urls(browser, first_tag_id)
+    filtered_urls = apply_tag_filter_by_id_and_get_shown_urls(browser, second_tag_id)
 
     assert len(filtered_urls) == num_urls_for_second_tag
 
-    utub_tag_badge_selector = get_utub_tag_badge_selector(second_tag_id)
-    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(second_tag_id)
+    wait_then_click_element(browser, utub_tag_filter, time=3)
 
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     assert (
@@ -354,8 +356,8 @@ def test_unfilter_multiple_tags_with_some_urls_filtered(
         == num_urls_for_first_tag
     )
 
-    utub_tag_badge_selector = get_utub_tag_badge_selector(first_tag_id)
-    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(first_tag_id)
+    wait_then_click_element(browser, utub_tag_filter, time=3)
 
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     assert (
@@ -364,6 +366,7 @@ def test_unfilter_multiple_tags_with_some_urls_filtered(
     )
 
 
+# Sad Path Tests
 def test_filter_tag_attempt_with_tag_limit_reached(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
@@ -393,7 +396,7 @@ def test_filter_tag_attempt_with_tag_limit_reached(
 
     # Add the extra tag above the limit
     tag_in_utub = add_tag_to_utub_user_created(
-        app, utub_user_created.id, user_id_for_test, "TestTag"
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
     )
 
     login_user_and_select_utub_by_utubid(
@@ -404,12 +407,12 @@ def test_filter_tag_attempt_with_tag_limit_reached(
     )
 
     for utub_tag_id in utub_tag_ids:
-        utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
-        wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+        utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
+        wait_then_click_element(browser, utub_tag_filter, time=3)
 
-    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
 
-    utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_badge_selector)
+    utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_filter)
     with pytest.raises(
         (ElementNotInteractableException, ElementClickInterceptedException)
     ):
@@ -445,7 +448,7 @@ def test_filter_tag_clickable_after_unclicking_from_tag_limit(
 
     # Add the extra tag above the limit
     tag_in_utub = add_tag_to_utub_user_created(
-        app, utub_user_created.id, user_id_for_test, "TestTag"
+        app, utub_user_created.id, user_id_for_test, UTS.TEST_TAG_NAME_1
     )
 
     login_user_and_select_utub_by_utubid(
@@ -457,16 +460,16 @@ def test_filter_tag_clickable_after_unclicking_from_tag_limit(
 
     utub_tag_id = -1
     for utub_tag_id in utub_tag_ids:
-        utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
-        wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+        utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
+        wait_then_click_element(browser, utub_tag_filter, time=3)
 
     # Click the last UTub tag id again to unselect it
-    utub_tag_badge_selector = get_utub_tag_badge_selector(utub_tag_id)
-    wait_then_click_element(browser, utub_tag_badge_selector, time=3)
+    utub_tag_filter = get_utub_tag_filter_selector(utub_tag_id)
+    wait_then_click_element(browser, utub_tag_filter, time=3)
 
-    utub_tag_badge_selector = get_utub_tag_badge_selector(tag_in_utub.id)
+    utub_tag_filter = get_utub_tag_filter_selector(tag_in_utub.id)
 
-    utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_badge_selector)
+    utub_tag_badge = browser.find_element(By.CSS_SELECTOR, utub_tag_filter)
     utub_tag_badge.click()
 
 

@@ -17,11 +17,12 @@ from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.tags
 
 
+# Happy Path Tests :)
 def test_add_fresh_tag_to_valid_url_as_utub_creator(
     add_one_url_to_each_utub_no_tags, login_first_user_without_register
 ):
@@ -41,12 +42,13 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
-            }
-        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
+            },
+        TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Integer representing the updated number of URLs that have this tag applied, modified by this operation by incrementing previous value by 1.
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -100,17 +102,18 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
 
     # Ensure json response from server is valid
     add_tag_response_json = add_tag_response.json
+
     new_tag_id = int(
         add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID]
     )
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
+    assert sorted(add_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
+        associated_tags + [new_tag_id]
+    )
     assert (
         add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.TAG_STRING]
         == tag_to_add
-    )
-    assert sorted(add_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
-        associated_tags + [new_tag_id]
     )
 
     with app.app_context():
@@ -132,6 +135,11 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         # Ensure correct total count of Url-Tag associations
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations + 1
 
+        # Count instances of added tag applied to URLs in UTub. Should be 1 for new applied and created tag.
+        assert add_tag_response_json[
+            TAGS_SUCCESS.TAG_COUNTS_MODIFIED
+        ] == count_tag_instances_in_utub(utub_id_user_is_creator_of, new_tag_id)
+
 
 def test_add_fresh_tag_to_valid_url_as_utub_member(
     add_all_urls_and_users_to_each_utub_no_tags, login_first_user_without_register
@@ -151,12 +159,13 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
-            }
-        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
+            },
+         TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Integer representing the updated number of URLs that have this tag applied, modified by this operation by incrementing previous value by 1.
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -199,17 +208,19 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
 
     # Ensure json response from server is valid
     add_tag_response_json = add_tag_response.json
+
     new_tag_id = int(
         add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID]
     )
+
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
+    assert sorted(add_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
+        associated_tags + [new_tag_id]
+    )
     assert (
         add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.TAG_STRING]
         == tag_to_add
-    )
-    assert sorted(add_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
-        associated_tags + [new_tag_id]
     )
 
     with app.app_context():
@@ -230,6 +241,11 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
 
         # Ensure correct count of Url-Tag associations
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations + 1
+
+        # Count instances of added tag applied to URLs in UTub. Should be 1 for new applied and created tag.
+        assert add_tag_response_json[
+            TAGS_SUCCESS.TAG_COUNTS_MODIFIED
+        ] == count_tag_instances_in_utub(utub_id_user_is_member_of, new_tag_id)
 
 
 def test_add_existing_tag_to_valid_url_as_utub_creator(
@@ -253,12 +269,13 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
-            }
-        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
+            },
+         TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Integer representing the updated number of URLs that have this tag applied, modified by this operation by incrementing previous value by 1.
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -289,6 +306,12 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
 
+        # Get initial num of existing tag applied to URLs in UTub.
+        initial_num_urls_with_tag_in_utub = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_tag_id == tag_id_that_exists,
+        ).count()
+
     # Add tag to this URL
     add_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
@@ -308,16 +331,15 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
 
     # Ensure json response from server is valid
     add_tag_response_json = add_tag_response.json
+    tag_id = int(add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID])
+
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
     assert (
         add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.TAG_STRING]
         == tag_to_add
     )
-    assert (
-        int(add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID])
-        == tag_id_that_exists
-    )
+    assert tag_id == tag_id_that_exists
     assert sorted(add_tag_response_json[TAGS_SUCCESS.UTUB_URL_TAG_IDS]) == sorted(
         associated_tags + [tag_id_that_exists]
     )
@@ -328,13 +350,23 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
                 Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
-                Utub_Url_Tags.utub_tag_id == tag_that_exists.id,
+                Utub_Url_Tags.utub_tag_id == tag_id,
             ).count()
             == 1
         )
 
         # Ensure correct count of Url-Tag associations
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations + 1
+
+        # Count instances of added tag applied to URLs in UTub.
+        num_urls_with_tag_in_utub = count_tag_instances_in_utub(
+            utub_id_user_is_creator_of, tag_id
+        )
+        assert initial_num_urls_with_tag_in_utub + 1 == num_urls_with_tag_in_utub
+        assert (
+            add_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
+            == num_urls_with_tag_in_utub
+        )
 
 
 def test_add_existing_tag_to_valid_url_as_utub_member(
@@ -358,12 +390,13 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.SUCCESS,
         STD_JSON.MESSAGE : TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
         TAGS_SUCCESS.TAG : Serialization representing the new tag object:
             {
                 "id": Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
-            }
-        TAGS_SUCCESS.URL_TAG_IDS : Array of integers representing all IDs (including new tag ID) of tags associated with this URL in this UTub,
+            },
+         TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Integer representing the updated number of URLs that have this tag applied, modified by this operation by incrementing previous value by 1.
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -393,6 +426,12 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
 
+        # Get initial num of existing tag applied to URLs in UTub.
+        initial_num_urls_with_tag_in_utub = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
+            Utub_Url_Tags.utub_tag_id == tag_id_that_exists,
+        ).count()
+
     # Add tag to this URL
     add_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
@@ -412,6 +451,8 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
 
     # Ensure json response from server is valid
     add_tag_response_json = add_tag_response.json
+    tag_id = int(add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID])
+
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_URL
     assert (
@@ -432,7 +473,7 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
             Utub_Url_Tags.query.filter(
                 Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
                 Utub_Url_Tags.utub_url_id == url_id_to_add_tag_to,
-                Utub_Url_Tags.utub_tag_id == tag_that_exists.id,
+                Utub_Url_Tags.utub_tag_id == tag_id,
             ).count()
             == 1
         )
@@ -440,7 +481,18 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
         # Ensure correct count of Url-Tag associations
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations + 1
 
+        # Count instances of added tag applied to URLs in UTub.
+        num_urls_with_tag_in_utub = count_tag_instances_in_utub(
+            utub_id_user_is_member_of, tag_id
+        )
+        assert initial_num_urls_with_tag_in_utub + 1 == num_urls_with_tag_in_utub
+        assert (
+            add_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
+            == num_urls_with_tag_in_utub
+        )
 
+
+# Sad Path Tests
 def test_add_duplicate_tag_to_valid_url_as_utub_creator(
     add_all_urls_and_users_to_each_utub_with_one_tag, login_first_user_without_register
 ):
@@ -493,11 +545,18 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
 
         tag_on_url_in_utub: Utub_Tags = tag_on_url_in_utub_association.utub_tag_item
         tag_to_add = tag_on_url_in_utub.tag_string
+        tag_id = tag_on_url_in_utub.id
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
         initial_num_utub_tags = Utub_Tags.query.filter(
             Utub_Tags.utub_id == utub_id_user_is_creator_of
+        ).count()
+
+        # Get initial num of duplicate tag applied to URLs in UTub.
+        initial_num_urls_with_tag_in_utub = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_tag_id == tag_id,
         ).count()
 
     # Add tag to this URL
@@ -555,6 +614,11 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
         # Ensure correct count of Url-Tag associations
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations
 
+        # Count instances of duplicate tag applied to URLs in UTub. Should be unchanged.
+        assert initial_num_urls_with_tag_in_utub == count_tag_instances_in_utub(
+            utub_id_user_is_creator_of, tag_id
+        )
+
 
 def test_add_duplicate_tag_to_valid_url_as_utub_member(
     add_all_urls_and_users_to_each_utub_with_one_tag, login_first_user_without_register
@@ -608,11 +672,18 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
 
         tag_on_url_in_utub: Utub_Tags = tag_on_url_in_utub_association.utub_tag_item
         tag_to_add = tag_on_url_in_utub.tag_string
+        tag_id = tag_on_url_in_utub.id
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
         initial_num_utub_tags = Utub_Tags.query.filter(
             Utub_Tags.utub_id == utub_id_user_is_member_of
+        ).count()
+
+        # Get initial num of duplicate tag applied to URLs in UTub.
+        initial_num_urls_with_tag_in_utub = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
+            Utub_Url_Tags.utub_tag_id == tag_id,
         ).count()
 
     # Add tag to this URL
@@ -670,6 +741,11 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         # Ensure correct count of Url-Tag associations
         assert Utub_Url_Tags.query.count() == initial_num_url_tag_associations
 
+        # Count instances of duplicate tag applied to URLs in UTub. Should be unchanged.
+        assert initial_num_urls_with_tag_in_utub == count_tag_instances_in_utub(
+            utub_id_user_is_member_of, tag_id
+        )
+
 
 def test_add_duplicate_tag_not_in_utub_to_existing_url_in_utub(
     add_one_tag_to_each_utub_after_one_url_added, login_first_user_without_register
@@ -679,17 +755,26 @@ def test_add_duplicate_tag_not_in_utub_to_existing_url_in_utub(
     WHEN a user adds a tag that is contained within another UTub to a URL
     THEN verify that a new UTubTag item is created, the response is 200, and the tag gets added appropriately
         to both the UtubUrl and the UtubTags
+
+
+    Proper JSON response is as follows:
+    {
+
+    }
     """
     client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
-        utub_user_is_creator: Utubs = Utubs.query.filter(
+        utub_user_is_creator_of: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
+        utub_id_user_is_creator_of = utub_user_is_creator_of.id
+
         tag_in_another_utub: Utub_Tags = Utub_Tags.query.filter(
-            Utub_Tags.utub_id != utub_user_is_creator.id
+            Utub_Tags.utub_id != utub_id_user_is_creator_of
         ).first()
         tag_string_to_add = tag_in_another_utub.tag_string
+        tag_id_in_another_utub = tag_in_another_utub.id
 
         init_num_utub_tags: int = Utub_Tags.query.count()
         init_count_of_tag_string: int = Utub_Tags.query.filter(
@@ -698,9 +783,15 @@ def test_add_duplicate_tag_not_in_utub_to_existing_url_in_utub(
         init_count_of_utub_url_tags: int = Utub_Url_Tags.query.count()
 
         url_to_add_to: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub_user_is_creator.id
+            Utub_Urls.utub_id == utub_id_user_is_creator_of
         ).first()
         url_id_to_add_to = url_to_add_to.id
+
+        # Get initial num of duplicate tag applied to URLs in UTub. Should be 0.
+        initial_num_urls_with_tag_in_utub = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
+            Utub_Url_Tags.utub_tag_id == tag_id_in_another_utub,
+        ).count()
 
     # Add tag to this URL
     add_tag_form = {
@@ -711,13 +802,16 @@ def test_add_duplicate_tag_not_in_utub_to_existing_url_in_utub(
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
-            utub_id=utub_user_is_creator.id,
+            utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_to,
         ),
         data=add_tag_form,
     )
 
     assert add_tag_response.status_code == 200
+
+    add_tag_response_json = add_tag_response.json
+    tag_id = add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID]
 
     with app.app_context():
         # Verify new tag item created for tag string
@@ -727,6 +821,11 @@ def test_add_duplicate_tag_not_in_utub_to_existing_url_in_utub(
             == init_count_of_tag_string + 1
         )
         assert Utub_Url_Tags.query.count() == init_count_of_utub_url_tags + 1
+
+        # Count instances of added tag applied to URLs in UTub. Should be 1 for new applied and created tag.
+        assert initial_num_urls_with_tag_in_utub + 1 == count_tag_instances_in_utub(
+            utub_id_user_is_creator_of, tag_id
+        )
 
 
 def test_add_tag_to_nonexistent_url_as_utub_creator(

@@ -213,6 +213,10 @@ function createURLTagSuccess(response, urlCard) {
   // Extract response data
   const utubTagID = response.utubTag.utubTagID;
   const string = response.utubTag.tagString;
+  const tagCount = response.tagCountsInUtub;
+
+  // Update tag filter in Tag Deck
+  updateTagFilterCount(utubTagID, tagCount);
 
   // Update tags in URL
   urlCard
@@ -223,7 +227,7 @@ function createURLTagSuccess(response, urlCard) {
   $("#unselectAllTagFilters").showClassNormal();
 
   if (!isTagInUTubTagDeck(utubTagID)) {
-    const newTag = buildTagFilterInDeck(utubTagID, string);
+    const newTag = buildTagFilterInDeck(utubTagID, string, tagCount);
     // If max number of tags already selected
     $(".tagFilter.selected") === CONSTANTS.TAGS_MAX_ON_URL
       ? newTag.addClass("disabled").off(".tagFilterSelected")

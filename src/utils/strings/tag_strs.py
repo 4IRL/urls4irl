@@ -1,5 +1,5 @@
 from src.utils.strings.json_strs import FAILURE_GENERAL
-from src.utils.strings.model_strs import UTUB_TAG
+from src.utils.strings.model_strs import UTUB_TAG, TAG_COUNTS_MODIFIED
 from src.utils.strings.url_strs import URL_GENERAL
 from src.utils.strings.utub_strs import UTUB_GENERAL
 
@@ -26,6 +26,7 @@ class TAGS_SUCCESS(URL_GENERAL, UTUB_GENERAL):
     PREVIOUS_TAG = PREVIOUS_TAG
     URL_IDS = URL_IDS
     UTUB_URL_IDS = UTUB_URL_IDS
+    TAG_COUNTS_MODIFIED = TAG_COUNTS_MODIFIED
 
 
 # Strings for tags failure

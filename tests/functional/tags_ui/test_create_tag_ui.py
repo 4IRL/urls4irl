@@ -3,6 +3,7 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.remote.webelement import WebElement
 
 from src.models.users import Users
 from src.models.utub_url_tags import Utub_Url_Tags
@@ -12,8 +13,10 @@ from src.utils.strings.tag_strs import TAGS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    create_tag,
+    add_tag_to_url,
+    count_urls_with_tag_applied_by_tag_string,
     get_tag_string_already_on_url_in_utub_and_delete,
+    get_urls_count_with_tag_applied_from_tag_filter_by_tag_id,
     open_url_tag_input,
     verify_btns_shown_on_cancel_url_tag_input_creator,
     verify_btns_shown_on_cancel_url_tag_input_member,
@@ -35,6 +38,7 @@ from tests.functional.urls_ui.utils_for_test_url_ui import get_url_in_utub
 pytestmark = pytest.mark.tags_ui
 
 
+# Happy Path Tests :)
 def test_open_input_create_tag_creator(
     browser: WebDriver, create_test_urls, provide_app: Flask
 ):
@@ -285,18 +289,23 @@ def test_create_tag_btn(browser: WebDriver, create_test_urls, provide_app: Flask
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
-    url_in_utub = get_url_in_utub(app, utub_user_created.id)
+    utub_id = utub_user_created.id
+    url_in_utub = get_url_in_utub(app, utub_id)
     with app.app_context():
-        init_tag_count: Utub_Url_Tags = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_user_created.id,
+        init_tag_count_on_url: int = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id,
             Utub_Url_Tags.utub_url_id == url_in_utub.id,
         ).count()
+
+        init_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_string(
+            app, utub_id, tag_text
+        )
 
     login_user_select_utub_by_id_and_url_by_id(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, tag_text)
+    add_tag_to_url(browser, url_in_utub.id, tag_text)
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -309,15 +318,25 @@ def test_create_tag_btn(browser: WebDriver, create_test_urls, provide_app: Flask
     badge_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}"
     badge_elems = wait_then_get_elements(browser, badge_selector, time=3)
     assert badge_elems
-    assert len(badge_elems) == init_tag_count + 1
+    assert len(badge_elems) == init_tag_count_on_url + 1
     assert all([badge.is_displayed() for badge in badge_elems])
 
     badge_text_elems_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGE_NAME_READ}"
-    badge_text_elems = wait_then_get_elements(
+    badge_text_elems: list[WebElement] = wait_then_get_elements(
         browser, badge_text_elems_selector, time=3
     )
     assert badge_text_elems
     assert any([elem.text == tag_text for elem in badge_text_elems])
+
+    # Confirm Tag Deck counter incremented
+    # Get tag ID
+    new_tag_badge = [elem for elem in badge_elems if elem.text == tag_text]
+    tag_id = int(new_tag_badge[0].get_attribute(HPL.TAG_BADGE_ID_ATTRIB))
+
+    assert (
+        init_tag_count_in_utub + 1
+        == get_urls_count_with_tag_applied_from_tag_filter_by_tag_id(browser, tag_id)
+    )
 
 
 def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask):
@@ -332,18 +351,23 @@ def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
-    url_in_utub = get_url_in_utub(app, utub_user_created.id)
+    utub_id = utub_user_created.id
+    url_in_utub = get_url_in_utub(app, utub_id)
     with app.app_context():
-        init_tag_count: Utub_Url_Tags = Utub_Url_Tags.query.filter(
-            Utub_Url_Tags.utub_id == utub_user_created.id,
+        init_tag_count_on_url: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id,
             Utub_Url_Tags.utub_url_id == url_in_utub.id,
         ).count()
+
+        init_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_string(
+            app, utub_id, tag_text
+        )
 
     login_user_select_utub_by_id_and_url_by_id(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, tag_text)
+    add_tag_to_url(browser, url_in_utub.id, tag_text)
 
     # Submit
     browser.switch_to.active_element.send_keys(Keys.ENTER)
@@ -356,7 +380,7 @@ def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask
     badge_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}"
     badge_elems = wait_then_get_elements(browser, badge_selector, time=3)
     assert badge_elems
-    assert len(badge_elems) == init_tag_count + 1
+    assert len(badge_elems) == init_tag_count_on_url + 1
     assert all([badge.is_displayed() for badge in badge_elems])
 
     badge_text_elems_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGE_NAME_READ}"
@@ -366,7 +390,18 @@ def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask
     assert badge_text_elems
     assert any([elem.text == tag_text for elem in badge_text_elems])
 
+    # Confirm Tag Deck counter incremented
+    # Get tag ID
+    new_tag_badge = [elem for elem in badge_elems if elem.text == tag_text]
+    tag_id = int(new_tag_badge[0].get_attribute(HPL.TAG_BADGE_ID_ATTRIB))
 
+    assert (
+        init_tag_count_in_utub + 1
+        == get_urls_count_with_tag_applied_from_tag_filter_by_tag_id(browser, tag_id)
+    )
+
+
+# Sad Path Tests
 def test_create_existing_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     """
     Tests the site error response to a user's attempt to create a tag with the same name as another already on the selected URL.
@@ -388,7 +423,7 @@ def test_create_existing_tag(browser: WebDriver, create_test_tags, provide_app: 
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, existing_tag)
+    add_tag_to_url(browser, url_in_utub.id, existing_tag)
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -426,7 +461,7 @@ def test_create_existing_tag_with_whitespace(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, f" {existing_tag} ")
+    add_tag_to_url(browser, url_in_utub.id, f" {existing_tag} ")
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -458,7 +493,7 @@ def test_create_sixth_tag(browser: WebDriver, create_test_tags, provide_app: Fla
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, UTS.TEST_TAG_NAME_1)
+    add_tag_to_url(browser, url_in_utub.id, UTS.TEST_TAG_NAME_1)
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -493,7 +528,7 @@ def test_create_tag_text_length_exceeded(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, "a" * (CONSTANTS.TAGS.MAX_TAG_LENGTH + 1))
+    add_tag_to_url(browser, url_in_utub.id, "a" * (CONSTANTS.TAGS.MAX_TAG_LENGTH + 1))
 
     create_url_tag_input = wait_then_get_element(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_CREATE}", time=3
@@ -524,7 +559,7 @@ def test_create_tag_text_sanitized(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, '<img src="evl.jpg">')
+    add_tag_to_url(browser, url_in_utub.id, '<img src="evl.jpg">')
 
     # Submit
     btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
@@ -560,7 +595,7 @@ def test_create_tag_text_invalid_csrf_token(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    create_tag(browser, url_in_utub.id, '<img src="evl.jpg">')
+    add_tag_to_url(browser, url_in_utub.id, '<img src="evl.jpg">')
 
     # Submit
     invalidate_csrf_token_on_page(browser)

@@ -11,6 +11,7 @@ from src.utils.strings.tag_strs import TAGS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
+    count_urls_with_tag_applied_by_tag_string,
     login_user_select_utub_by_id_open_create_utub_tag,
     verify_create_utub_tag_input_form_is_hidden,
     verify_new_utub_tag_created,
@@ -32,6 +33,7 @@ from tests.functional.utils_for_test import (
 pytestmark = pytest.mark.tags_ui
 
 
+# Happy Path Tests :)
 def test_open_input_create_utub_tag(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
@@ -204,6 +206,11 @@ def test_open_input_create_utub_tag_click_submit_btn(
         utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
         init_num_of_utub_tags = len(utub.utub_tags)
 
+        # Count urls with new tag in UTub. Should be 0.
+        init_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_string(
+            app, utub.id, new_tag
+        )
+
     login_user_select_utub_by_id_open_create_utub_tag(
         app, browser, user_id_for_test, utub_user_created.id
     )
@@ -216,6 +223,11 @@ def test_open_input_create_utub_tag_click_submit_btn(
 
     verify_create_utub_tag_input_form_is_hidden(browser)
     verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
+
+    # Assert Tag Deck counter initialized at 0
+    assert init_tag_count_in_utub == count_urls_with_tag_applied_by_tag_string(
+        app, utub.id, new_tag
+    )
 
 
 def test_open_input_create_utub_tag_press_enter_key(
@@ -237,6 +249,11 @@ def test_open_input_create_utub_tag_press_enter_key(
         utub: Utubs = Utubs.query.filter(Utubs.name == UTS.TEST_UTUB_NAME_1).first()
         init_num_of_utub_tags = len(utub.utub_tags)
 
+        # Count urls with new tag in UTub. Should be 0.
+        init_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_string(
+            app, utub.id, new_tag
+        )
+
     login_user_select_utub_by_id_open_create_utub_tag(
         app, browser, user_id_for_test, utub_user_created.id
     )
@@ -250,7 +267,13 @@ def test_open_input_create_utub_tag_press_enter_key(
     verify_create_utub_tag_input_form_is_hidden(browser)
     verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
 
+    # Assert Tag Deck counter initialized at 0
+    assert init_tag_count_in_utub == count_urls_with_tag_applied_by_tag_string(
+        app, utub.id, new_tag
+    )
 
+
+# Sad Path Tests
 def test_create_utub_tag_empty_field(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):

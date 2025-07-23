@@ -1,9 +1,12 @@
 "use strict";
 
 // Creates tag filter for addition to Tag deck
-function buildTagFilterInDeck(tagID, string) {
+function buildTagFilterInDeck(tagID, string, urlCount = 0) {
   const container = $(document.createElement("div"));
-  const span = $(document.createElement("span"));
+  const tagStringSpan = $(document.createElement("span"));
+  const rightContainer = $(document.createElement("div"));
+  const urlCountSpan = $(document.createElement("span"));
+  const deleteTagButton = $(document.createElement("div"));
 
   container
     .addClass("tagFilter pointerable unselected col-12")
@@ -23,9 +26,34 @@ function buildTagFilterInDeck(tagID, string) {
       $(document).off("keyup.tagFilterSelected");
     });
 
-  span.text(string);
+  tagStringSpan.text(string);
 
-  container.append(span);
+  // TODO: addClass("tagCountHoverable") only if utubUserID == utubOwnerID
+  rightContainer.addClass("tagCountHoverable");
+
+  urlCountSpan.addClass("tagAppliedToUrlsCount").text(urlCount);
+
+  deleteTagButton
+    .addClass("utubTagBtnDelete align-center pointerable tabbable")
+    .on("click", function (e) {
+      e.stopPropagation();
+      deleteUtubTag(utubTagID, tagSpan, urlCard);
+    })
+    .offAndOn("focus.removeUtubTag", function () {
+      $(document).on("keyup.removeUtubTag", function (e) {
+        if (e.which === 13) deleteUtubTag(utubTagID, tagSpan, urlCard);
+      });
+    })
+    .offAndOn("blur.removeUtubTag", function () {
+      $(document).off("keyup.removeUtubTag");
+    });
+
+  deleteTagButton.append(createTagDeleteIcon(22));
+
+  container.append(tagStringSpan);
+  rightContainer.append(urlCountSpan);
+  // rightContainer.append(deleteTagButton);
+  container.append(rightContainer);
 
   return container;
 }
@@ -135,5 +163,18 @@ function updateTagFilteringOnURLOrURLTagDeletion() {
     default:
       // Reapply filters based on tag removed
       updateURLsAndTagSubheaderWhenTagSelected();
+  }
+}
+
+function updateTagFilterCount(tagID, count) {
+  const tagFilter = $(`.tagFilter[data-utub-tag-id="${tagID}"]`);
+  const urlCountSpan = tagFilter.find(".tagAppliedToUrlsCount");
+
+  if (count === 0) {
+    // Remove the tag filter if no URLs are associated with it
+    tagFilter.remove();
+  } else {
+    // Update the count of URLs associated with the tag
+    urlCountSpan.text(count);
   }
 }

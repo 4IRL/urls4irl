@@ -7,7 +7,8 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.models.users import Users
 from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    get_tag_badge_selector_on_selected_url,
+    count_urls_with_tag_applied_by_tag_id,
+    get_tag_badge_selector_on_selected_url_by_tag_id,
     get_tag_on_url_in_utub,
     get_delete_tag_button_on_hover,
 )
@@ -31,6 +32,7 @@ from locators import HomePageLocators as HPL
 pytestmark = pytest.mark.tags_ui
 
 
+# Happy Path Tests
 def test_get_delete_tag_button_on_hover(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
@@ -51,7 +53,7 @@ def test_get_delete_tag_button_on_hover(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url(url_tag.id)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
     delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
 
     assert delete_tag_button.is_displayed()
@@ -77,7 +79,7 @@ def test_hide_delete_tag_button_after_hover(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url(url_tag.id)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
     delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
 
     assert delete_tag_button.is_displayed()
@@ -106,14 +108,20 @@ def test_delete_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
-    url_in_utub = get_url_in_utub(app, utub_user_created.id)
-    url_tag = get_tag_on_url_in_utub(app, utub_user_created.id, url_in_utub.id)
+    utub_id = utub_user_created.id
+    url_in_utub = get_url_in_utub(app, utub_id)
+    url_id = url_in_utub.id
+    url_tag = get_tag_on_url_in_utub(app, utub_id, url_id)
+    tag_id = url_tag.utub_tag_id
+
+    with app.app_context():
+        init_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_id(app, tag_id)
 
     login_user_select_utub_by_id_and_url_by_id(
-        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+        app, browser, user_id_for_test, utub_id, url_id
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url(url_tag.id)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_id)
     delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
 
     tag_badge = browser.find_element(By.CSS_SELECTOR, tag_badge_selector)
@@ -126,7 +134,15 @@ def test_delete_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, tag_badge_selector)
 
+    # Assert URL count in Tag Deck is decremented
+    with app.app_context():
+        updated_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_id(
+            app, tag_id
+        )
+        assert updated_tag_count_in_utub == init_tag_count_in_utub - 1
 
+
+# Sad Path Tests
 def test_no_get_delete_tag_button_on_hover_update_url_title(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
@@ -149,7 +165,7 @@ def test_no_get_delete_tag_button_on_hover_update_url_title(
 
     open_update_url_title(browser, get_selected_url(browser))
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url(url_tag.id)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
     delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
     assert not delete_tag_button.is_displayed()
 
@@ -177,7 +193,7 @@ def test_no_get_delete_tag_button_on_hover_update_url_string(
     edit_url_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
     wait_then_click_element(browser, edit_url_selector, time=3)
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url(url_tag.id)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
     delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
     assert not delete_tag_button.is_displayed()
 
@@ -205,7 +221,7 @@ def test_no_get_delete_tag_button_on_hover_add_tag(
     add_tag_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_CREATE}"
     wait_then_click_element(browser, add_tag_selector, time=3)
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url(url_tag.id)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
     delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
     assert not delete_tag_button.is_displayed()
 
@@ -234,7 +250,7 @@ def test_delete_tag_invalid_csrf(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
     )
 
-    tag_badge_selector = get_tag_badge_selector_on_selected_url(url_tag.id)
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_tag.id)
     delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
 
     invalidate_csrf_token_on_page(browser)

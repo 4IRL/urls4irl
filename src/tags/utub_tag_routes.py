@@ -101,7 +101,8 @@ def create_utub_tag(utub_id: int):
                     STD_JSON.STATUS: STD_JSON.SUCCESS,
                     STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_UTUB,
                     TAGS_SUCCESS.UTUB_TAG: new_utub_tag.serialized_on_add_delete,
-                }
+                    TAGS_SUCCESS.TAG_COUNTS_MODIFIED: 0,  # No URLs associated yet
+                },
             ),
             200,
         )
@@ -182,6 +183,12 @@ def delete_utub_tag(utub_id: int, utub_tag_id: int):
     serialized_tag = utub_tag.serialized_on_add_delete
 
     db.session.delete(utub_tag)
+
+    # Count instances of particular tag in UTub that is to be deleted
+    updated_tag_id_count: int = Utub_Url_Tags.query.filter(
+        Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_tag_id == utub_tag_id
+    ).count()
+
     utub.set_last_updated()
     db.session.commit()
     safe_add_many_logs(
@@ -200,6 +207,7 @@ def delete_utub_tag(utub_id: int, utub_tag_id: int):
                 STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_UTUB,
                 TAGS_SUCCESS.UTUB_TAG: serialized_tag,
                 TAGS_SUCCESS.UTUB_URL_IDS: utub_url_ids_with_utub_tag,
+                TAGS_SUCCESS.TAG_COUNTS_MODIFIED: updated_tag_id_count,
             }
         ),
         200,

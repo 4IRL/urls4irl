@@ -13,7 +13,13 @@ function buildTagDeck(dictTags) {
 
   // Loop through all tags and provide checkbox input for filtering
   for (let i in dictTags) {
-    parent.append(buildTagFilterInDeck(dictTags[i].id, dictTags[i].tagString));
+    parent.append(
+      buildTagFilterInDeck(
+        dictTags[i].id,
+        dictTags[i].tagString,
+        dictTags[i].tagApplied,
+      ),
+    );
   }
 
   $("#utubTagBtnCreate").showClassNormal();
