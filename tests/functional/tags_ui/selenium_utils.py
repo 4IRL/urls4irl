@@ -11,6 +11,7 @@ from tests.functional.selenium_utils import (
     wait_until_visible_css_selector,
 )
 
+
 def add_tag_to_url(browser: WebDriver, selected_url_id: int, tag_string: str) -> None:
     """
     Once logged in, with users, UTub, and URLs this function initiates the action to create one tag applied to the selected URL in the selected UTub.
@@ -21,6 +22,7 @@ def add_tag_to_url(browser: WebDriver, selected_url_id: int, tag_string: str) ->
     create_tag_input = browser.find_element(By.CSS_SELECTOR, input_url_tag_selector)
     assert create_tag_input.is_displayed()
     clear_then_send_keys(create_tag_input, tag_string)
+
 
 def open_url_tag_input(browser: WebDriver, selected_url_id: int):
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{selected_url_id}']"
@@ -77,6 +79,7 @@ def apply_tag_filter_by_id_and_get_shown_urls(
     apply_tag_filter_based_on_id(browser, utub_tag_id)
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     return [url_row for url_row in url_row_elements if url_row.is_displayed()]
+
 
 def get_urls_count_with_tag_applied_from_tag_filter_by_tag_id(
     browser: WebDriver, tag_id: int

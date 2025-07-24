@@ -21,7 +21,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_and_select_utub_by_utubid
 from tests.functional.tags_ui.selenium_utils import (
     apply_tag_filter_by_id_and_get_shown_urls,
-    get_utub_tag_filter_selector
+    get_utub_tag_filter_selector,
 )
 from tests.functional.selenium_utils import (
     wait_then_click_element,

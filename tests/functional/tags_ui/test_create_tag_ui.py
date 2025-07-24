@@ -32,7 +32,7 @@ from tests.functional.tags_ui.assert_utils import (
 from tests.functional.tags_ui.selenium_utils import (
     add_tag_to_url,
     open_url_tag_input,
-    get_urls_count_with_tag_applied_from_tag_filter_by_tag_id
+    get_urls_count_with_tag_applied_from_tag_filter_by_tag_id,
 )
 from tests.functional.selenium_utils import (
     invalidate_csrf_token_on_page,

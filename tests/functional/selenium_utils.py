@@ -671,6 +671,7 @@ def get_url_row_by_id(browser: WebDriver, utuburlid: int) -> WebElement:
     assert url_row is not None
     return url_row
 
+
 def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
     """
     Streamlines actions required to updated a URL in the selected URL.
@@ -706,6 +707,7 @@ def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
 
     update_url_title_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_TITLE_UPDATE}"
     wait_until_visible_css_selector(browser, update_url_title_selector)
+
 
 # Misc
 def wait_for_tooltip_with_hover_retry(

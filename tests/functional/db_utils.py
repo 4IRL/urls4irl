@@ -162,6 +162,7 @@ def add_two_tags_across_urls_in_utub(
         db.session.commit()
         return num_utub_urls, num_urls_for_first_tag, num_urls_for_second_tag
 
+
 def count_urls_with_tag_applied_by_tag_id(
     app: Flask,
     tag_id: int,
