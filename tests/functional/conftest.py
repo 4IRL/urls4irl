@@ -16,6 +16,7 @@ from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.utils.all_routes import ROUTES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.functional.selenium_utils import ChromeRemoteWebDriver
 from tests.functional.urls_ui.selenium_utils import ClipboardMockHelper
 from tests.ui_test_utils import clear_db, find_open_port, ping_server, run_app
 
@@ -97,7 +98,7 @@ def build_driver(
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
 
-        driver = webdriver.Remote(
+        driver = ChromeRemoteWebDriver(
             command_executor=config.TEST_SELENIUM_URI, options=options
         )
         url = UI_TEST_STRINGS.DOCKER_BASE_URL

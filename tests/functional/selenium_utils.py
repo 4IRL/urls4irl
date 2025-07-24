@@ -30,6 +30,26 @@ class Decks(Enum):
     URLS = HPL.URL_DECK
 
 
+class ChromeRemoteWebDriver(WebDriver):
+    def __init__(self, command_executor, options=None):
+        super().__init__(command_executor=command_executor, options=options)
+
+    def execute_cdp_cmd(self, cmd, cmd_args=None):
+        if cmd_args is None:
+            cmd_args = {}
+        return self.execute("executeCdpCommand", {"cmd": cmd, "params": cmd_args})[
+            "value"
+        ]
+
+
+def cpu_throttle_for_testing(browser: ChromeRemoteWebDriver, rate: int):
+    """
+    Throttles cpu by rate value, i.e. if rate is 4, then CPU is 4x slower.
+    Helpful for determining how to fix flaky tests.
+    DO NOT REMOVE even if not being used in tests.
+    """
+    browser.execute_cdp_cmd("Emulation.setCPUThrottlingRate", {"rate": rate})
+
 
 def click_on_navbar(browser: WebDriver):
     wait_then_click_element(browser, HPL.NAVBAR_TOGGLER)
@@ -272,6 +292,13 @@ def wait_for_animation_to_end(
         return initial_position == new_position
 
     WebDriverWait(browser, timeout).until(element_stopped_moving)
+
+
+def wait_for_element_visible(browser: WebDriver, locator: str, timeout=10):
+    """Wait until an element stops moving by checking its position."""
+    WebDriverWait(browser, timeout).until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, locator))
+    )
 
 
 def wait_for_element_with_text(
@@ -681,6 +708,39 @@ def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
     wait_until_visible_css_selector(browser, update_url_title_selector)
 
 # Misc
+def wait_for_tooltip_with_hover_retry(
+    browser: WebDriver, element: WebElement, tooltip_selector: str, max_attempts=5
+) -> WebElement | None:
+    """
+    Attempts to rehover over a given parent element, and checks if a tooltip shows on each hover.
+    If tooltip shows, return tooltip Web Element - else return None.
+
+    Args:
+        browser: WebDriver for running Selenium
+        element: WebElement, parent element for tooltip interaction
+        tooltip_selector: str - The CSS selector for the given tooltip
+        max_attempts: int - How many times to retry hovering
+
+    Returns:
+        WebElement of tooltip if Tooltip found, else None
+    """
+    for _ in range(max_attempts):
+        ActionChains(browser).move_to_element(element).perform()
+
+        for _ in range(10):
+            try:
+                tooltip = browser.find_element(By.CSS_SELECTOR, tooltip_selector)
+                if tooltip.is_displayed():
+                    return tooltip
+            except Exception:
+                pass
+            time.sleep(0.1)
+
+        ActionChains(browser).move_by_offset(10, 10).perform()
+
+    return
+
+
 def invalidate_csrf_token_on_page(browser: WebDriver):
     browser.execute_script(
         """

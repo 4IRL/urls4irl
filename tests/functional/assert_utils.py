@@ -21,7 +21,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     Decks,
-    wait_for_animation_to_end,
+    wait_for_tooltip_with_hover_retry,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
@@ -90,12 +90,12 @@ def assert_tooltip_animates(
 
     url_access_btn = wait_then_get_element(browser, parent_css_selector)
     assert url_access_btn
-    ActionChains(browser).move_to_element(url_access_btn).perform()
 
-    wait_for_animation_to_end(browser, tooltip_selector)
-    assert_visible_css_selector(browser, tooltip_selector)
-    tooltip = wait_then_get_element(browser, tooltip_selector)
+    tooltip = wait_for_tooltip_with_hover_retry(
+        browser, url_access_btn, tooltip_selector
+    )
     assert tooltip
+    assert tooltip.is_displayed()
     assert tooltip.text == tooltip_text
 
     logo = wait_then_get_element(browser, outside_elem)

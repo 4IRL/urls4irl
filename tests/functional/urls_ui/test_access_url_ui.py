@@ -7,7 +7,7 @@ from flask.testing import FlaskCliRunner
 import pytest
 from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.action_chains import ActionChains
-from selenium.webdriver.remote.webdriver import WebDriver
+from selenium.webdriver.chrome.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
@@ -53,7 +53,7 @@ MOCK_TEST_URL_STRINGS = [
 
 
 def test_access_url_by_access_btn_while_selected_tooltip_animates(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    browser, create_test_urls, provide_app: Flask
 ):
     """
     Tests a member's ability to see the tooltip animate when hovering over the big access URL button.
@@ -70,6 +70,7 @@ def test_access_url_by_access_btn_while_selected_tooltip_animates(
     login_user_select_utub_by_name_and_url_by_title(
         app, browser, user_id_for_test, utub.name, utub_url.url_title
     )
+
     assert_tooltip_animates(
         browser=browser,
         parent_css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}",

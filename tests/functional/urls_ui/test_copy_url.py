@@ -2,7 +2,6 @@ from flask import Flask
 import pytest
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
-from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.models.urls import Urls
 from src.utils.constants import STRINGS
@@ -15,6 +14,7 @@ from tests.functional.db_utils import get_utub_this_user_created, get_url_in_utu
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by_id
 from tests.functional.selenium_utils import (
+    ChromeRemoteWebDriver,
     set_focus_on_element,
     wait_for_animation_to_end,
     wait_for_any_element_with_text,
@@ -28,7 +28,7 @@ pytestmark = pytest.mark.urls_ui
 
 
 def test_copy_url_btn_tooltip_animates_hvr(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    browser: ChromeRemoteWebDriver, create_test_urls, provide_app: Flask
 ):
     """
     Tests a member's ability to see the tooltip animate when hovering over the copy URL button.
@@ -55,7 +55,7 @@ def test_copy_url_btn_tooltip_animates_hvr(
 
 
 def test_copy_url_btn_click_fail(
-    browser: WebDriver,
+    browser: ChromeRemoteWebDriver,
     create_test_urls,
     provide_app: Flask,
     clipboard_mock: ClipboardMockHelper,
@@ -117,7 +117,7 @@ def test_copy_url_btn_click_fail(
 
 
 def test_copy_url_btn_click(
-    browser: WebDriver,
+    browser: ChromeRemoteWebDriver,
     create_test_urls,
     provide_app: Flask,
     clipboard_mock: ClipboardMockHelper,
@@ -185,7 +185,7 @@ def test_copy_url_btn_click(
 
 
 def test_copy_url_btn_key(
-    browser: WebDriver,
+    browser: ChromeRemoteWebDriver,
     create_test_urls,
     provide_app: Flask,
     clipboard_mock: ClipboardMockHelper,
