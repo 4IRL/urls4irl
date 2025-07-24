@@ -56,11 +56,23 @@ invalid_user_1 = {
 """
 Valid tags used for testing
 """
-valid_tag_1 = {MODEL_STRS.ID: 1, MODEL_STRS.TAG_STRING: "Exciting!"}
+valid_tag_1 = {
+    MODEL_STRS.ID: 1,
+    MODEL_STRS.TAG_STRING: "Exciting!",
+    MODEL_STRS.TAG_APPLIED: 3,
+}
 
-valid_tag_2 = {MODEL_STRS.ID: 2, MODEL_STRS.TAG_STRING: "Funny"}
+valid_tag_2 = {
+    MODEL_STRS.ID: 2,
+    MODEL_STRS.TAG_STRING: "Funny",
+    MODEL_STRS.TAG_APPLIED: 3,
+}
 
-valid_tag_3 = {MODEL_STRS.ID: 3, MODEL_STRS.TAG_STRING: "Ugh"}
+valid_tag_3 = {
+    MODEL_STRS.ID: 3,
+    MODEL_STRS.TAG_STRING: "Ugh",
+    MODEL_STRS.TAG_APPLIED: 3,
+}
 
 all_tags = (
     valid_tag_1,
@@ -275,6 +287,7 @@ for idx, utub in enumerate(all_empty_utubs):
                 {
                     MODEL_STRS.ID: tag[MODEL_STRS.ID] + (idx * len(all_tags)),
                     MODEL_STRS.TAG_STRING: tag[MODEL_STRS.TAG_STRING],
+                    MODEL_STRS.TAG_APPLIED: tag[MODEL_STRS.TAG_APPLIED],
                 }
                 for tag in all_tags
             ],

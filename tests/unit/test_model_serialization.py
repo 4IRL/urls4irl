@@ -13,6 +13,9 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
+from tests.functional.tags_ui.utils_for_test_tag_ui import (
+    count_urls_with_tag_applied_by_tag_id,
+)
 import tests.models_for_test as v_models
 
 pytestmark = pytest.mark.unit
@@ -38,7 +41,8 @@ def test_tag_serialization(app: Flask, every_user_makes_a_unique_utub):
     The tag JSON data is output in the following format:
     {
         MODEL_STRS.ID: Integer representing the ID of the tag,
-        MODEL_STRS.TAG_STRING: String representing the tag itself
+        MODEL_STRS.TAG_STRING: String representing the tag itself,
+        MODEL_STRS.TAG_APPLIED: Integer representing the number of URLs in UTub with the tag applied
     }
     """
     input_tags = (v_models.valid_tag_1, v_models.valid_tag_2, v_models.valid_tag_3)
@@ -59,10 +63,17 @@ def test_tag_serialization(app: Flask, every_user_makes_a_unique_utub):
             utub: Utubs
             for idx, tag in enumerate(utub.utub_tags):
                 json_tag = json.dumps(tag.serialized)
+
+                tag_id = tag.id
+                tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_id(
+                    app, tag_id
+                )
+
                 valid_json_tag = json.dumps(
                     {
-                        MODEL_STRS.ID: tag.id,
+                        MODEL_STRS.ID: tag_id,
                         MODEL_STRS.TAG_STRING: input_tags[idx][MODEL_STRS.TAG_STRING],
+                        MODEL_STRS.TAG_APPLIED: tag_count_in_utub,
                     }
                 )
 
@@ -319,7 +330,8 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
         [
             {
                 MODEL_STRS.ID: Integer representing the tag ID,
-                MODEL_STRS.TAG_STRING: "String representing the tag itself
+                MODEL_STRS.TAG_STRING: "String representing the tag itself,
+                MODEL_STRS.TAG_APPLIED: Integer representing the number of URLs in UTub with the tag applied
             }
         ]
     }
@@ -382,7 +394,8 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
         [
             {
                 MODEL_STRS.ID: Integer representing the tag ID,
-                MODEL_STRS.TAG_STRING: "String representing the tag itself
+                MODEL_STRS.TAG_STRING: "String representing the tag itself,
+                MODEL_STRS.TAG_APPLIED: Integer representing the number of URLs in UTub with the tag applied
             }
         ]
     }
@@ -455,7 +468,8 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
         [
             {
                 MODEL_STRS.ID: Integer representing the tag ID,
-                MODEL_STRS.TAG_STRING: "String representing the tag itself
+                MODEL_STRS.TAG_STRING: "String representing the tag itself,
+                MODEL_STRS.TAG_APPLIED: Integer representing the number of URLs in UTub with the tag applied
             }
         ]
     }
@@ -539,7 +553,8 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
         [
             {
                 MODEL_STRS.ID: Integer representing the tag ID,
-                MODEL_STRS.TAG_STRING: "String representing the tag itself
+                MODEL_STRS.TAG_STRING: "String representing the tag itself,
+                MODEL_STRS.TAG_APPLIED: Integer representing the number of URLs in UTub with the tag applied
             }
         ]
     }

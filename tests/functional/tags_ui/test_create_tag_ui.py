@@ -38,7 +38,6 @@ from tests.functional.urls_ui.utils_for_test_url_ui import get_url_in_utub
 pytestmark = pytest.mark.tags_ui
 
 
-# Happy Path Tests :)
 def test_open_input_create_tag_creator(
     browser: WebDriver, create_test_urls, provide_app: Flask
 ):
@@ -61,7 +60,6 @@ def test_open_input_create_tag_creator(
     open_url_tag_input(browser, url_in_utub.id)
     selected_url_create_tag_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_CREATE}"
 
-    # Verify input is shown properly
     url_tag_input = wait_then_get_element(
         browser, selected_url_create_tag_selector, time=3
     )
@@ -121,7 +119,6 @@ def test_open_input_create_tag_member(
     open_url_tag_input(browser, utub_url_user_did_not_add.id)
     selected_url_create_tag_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_TAG_CREATE}"
 
-    # Verify input is shown properly
     url_tag_input = wait_then_get_element(
         browser, selected_url_create_tag_selector, time=3
     )
@@ -401,7 +398,6 @@ def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask
     )
 
 
-# Sad Path Tests
 def test_create_existing_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     """
     Tests the site error response to a user's attempt to create a tag with the same name as another already on the selected URL.
