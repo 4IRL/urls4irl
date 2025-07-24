@@ -10,10 +10,10 @@ from tests.functional.assert_utils import (
     assert_panel_visibility_mobile,
 )
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.login_utils import input_login_fields
 from tests.functional.selenium_utils import (
     Decks,
     click_on_navbar,
+    input_login_fields,
     wait_then_click_element,
 )
 

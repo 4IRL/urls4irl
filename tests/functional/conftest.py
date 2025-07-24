@@ -2,7 +2,7 @@ import threading
 from time import sleep
 from typing import Generator, Tuple
 
-from flask import Flask, url_for
+from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
 from selenium import webdriver
@@ -14,12 +14,12 @@ from src.config import ConfigTest
 from src.models.email_validations import Email_Validations
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
-from src.utils.all_routes import ROUTES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.selenium_utils import ChromeRemoteWebDriver
 from tests.functional.ui_test_setup import (
     clear_db,
     find_open_port,
+    hide_logs_for_app,
     ping_server,
     run_app,
 )
@@ -64,7 +64,7 @@ def parallelize_app(provide_port, flask_logs):
     open_port = provide_port
 
     thread = threading.Thread(
-        target=run_app,  # Use the threaded version
+        target=run_app,
         args=(
             open_port,
             flask_logs,
@@ -80,7 +80,11 @@ def provide_app() -> Generator[Flask | None, None, None]:
     # Clear bundles to avoid re-registering
     environment_assets._named_bundles = {}
 
-    yield create_app(ConfigTest())
+    config = ConfigTest()
+    app = create_app(config)  # type: ignore
+    assert app
+    hide_logs_for_app(app)
+    yield app
 
 
 @pytest.fixture(scope="session")
@@ -270,12 +274,7 @@ def create_user_unconfirmed_email(
 
         db.session.add(new_user)
         db.session.commit()
-
-        with app.test_request_context():
-            return url_for(
-                ROUTES.SPLASH.VALIDATE_EMAIL,
-                token=new_email_validation.validation_token,
-            )
+        return f"/validate/{new_email_validation.validation_token}"
 
 
 @pytest.fixture
@@ -306,12 +305,7 @@ def create_user_resetting_password(
         new_user.forgot_password = new_password_reset
         db.session.add(new_user)
         db.session.commit()
-
-        with app.test_request_context():
-            return url_for(
-                ROUTES.SPLASH.RESET_PASSWORD,
-                token=new_password_reset.reset_token,
-            )
+        return f"/reset-password/{new_password_reset.reset_token}"
 
 
 @pytest.fixture

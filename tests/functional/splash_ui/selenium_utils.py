@@ -2,8 +2,9 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
-    wait_for_animation_to_end,
+    ChromeRemoteWebDriver,
     wait_for_element_presence,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     clear_then_send_keys,
@@ -12,7 +13,7 @@ from tests.functional.selenium_utils import (
 
 
 def register_user_ui(
-    browser: WebDriver,
+    browser: ChromeRemoteWebDriver,
     username: str,
     email: str,
     password: str,
@@ -35,9 +36,7 @@ def register_user_ui(
     # Identify and load register modal
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
 
-    wait_for_element_presence(browser, SPL.SPLASH_MODAL)
-    wait_for_animation_to_end(browser, SPL.SPLASH_MODAL)
-    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
+    wait_for_modal_ready(browser, SPL.SPLASH_MODAL)
 
     wait_for_element_presence(browser, SPL.INPUT_USERNAME)
     wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME)

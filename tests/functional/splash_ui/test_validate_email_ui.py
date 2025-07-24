@@ -13,6 +13,7 @@ from tests.functional.assert_utils import assert_login
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.splash_ui.selenium_utils import register_user_ui
 from tests.functional.selenium_utils import (
+    ChromeRemoteWebDriver,
     wait_then_click_element,
     wait_then_get_element,
 )
@@ -32,6 +33,11 @@ def test_email_validation_routes_user_properly(
     """
     app = provide_app
     validation_url_suffix = create_user_unconfirmed_email
+    validation_url_suffix = (
+        validation_url_suffix[1:]
+        if validation_url_suffix[0] == "/"
+        else validation_url_suffix
+    )
     validation_url = browser.current_url + validation_url_suffix
 
     browser.get(validation_url)
@@ -87,7 +93,7 @@ def test_expired_email_validation_routes_user_properly(
     assert alert_modal_banner.text == EMAILS.TOKEN_EXPIRED
 
 
-def test_email_validation_rate_limits(browser: WebDriver):
+def test_email_validation_rate_limits(browser: ChromeRemoteWebDriver):
     """
     Tests that the email validation service appropriately rate limits a user
 

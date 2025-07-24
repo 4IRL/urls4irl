@@ -18,11 +18,12 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.login_utils import (
     create_user_session_and_provide_session_id,
-    login_user,
     login_user_and_select_utub_by_name,
     login_user_with_cookie_from_session,
 )
 from tests.functional.selenium_utils import (
+    ChromeRemoteWebDriver,
+    login_user_ui,
     select_utub_by_id,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -328,7 +329,7 @@ def test_access_utub_id_via_url_logged_in(
 
 
 def test_access_utub_id_via_url_logged_out(
-    browser: WebDriver, create_test_tags, provide_app: Flask
+    browser: ChromeRemoteWebDriver, create_test_tags, provide_app: Flask
 ):
     """
     GIVEN a set of UTubs with URLs, member, and tags within that UTub, and the user has no session cookie
@@ -346,7 +347,7 @@ def test_access_utub_id_via_url_logged_out(
 
     utub_url = f"{browser.current_url}home?UTubID={utub_id_to_select}"
     browser.get(utub_url)
-    login_user(browser)
+    login_user_ui(browser)
 
     # Find submit button to login
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
