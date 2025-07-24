@@ -196,3 +196,22 @@ def count_urls_with_tag_applied_by_tag_string(
             if utub_tag
             else 0
         )
+
+
+def get_tag_id_by_name(app: Flask, utub_id: int, tag_string: str) -> int:
+    """
+    Fetches the ID of a tag by its name for a specific user.
+
+    Args:
+        app (Flask): The Flask application instance.
+        user_id (int): The ID of the user.
+        tag_name (str): The name of the tag to search for.
+
+    Returns:
+        int | None: The ID of the tag if found, otherwise None.
+    """
+    with app.app_context():
+        tag = Utub_Tags.query.filter(
+            Utub_Tags.tag_string == tag_string, Utub_Tags.utub_id == utub_id
+        ).first()
+        return tag.id
