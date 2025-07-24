@@ -14,7 +14,6 @@ from src.models.utub_urls import Utub_Urls
 from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.url_strs import URL_FAILURE
-from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
