@@ -1,9 +1,7 @@
-# Standard library
-import multiprocessing
+import threading
 from time import sleep
 from typing import Generator, Tuple
 
-# External libraries
 from flask import Flask, url_for
 from flask.testing import FlaskCliRunner
 import pytest
@@ -11,16 +9,21 @@ from selenium import webdriver
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
-# Internal libraries
 from src import create_app, db, environment_assets
 from src.config import ConfigTest
 from src.models.email_validations import Email_Validations
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
-from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from tests.ui_test_utils import clear_db, find_open_port, ping_server, run_app
+from tests.functional.selenium_utils import ChromeRemoteWebDriver
+from tests.functional.ui_test_setup import (
+    clear_db,
+    find_open_port,
+    ping_server,
+    run_app,
+)
+from tests.functional.urls_ui.selenium_utils import ClipboardMockHelper
 
 
 # CLI commands
@@ -40,14 +43,6 @@ def flask_logs(request):
 
 
 @pytest.fixture(scope="session")
-def init_multiprocessing():
-    """
-    Creates a process separate from pytest to run the app in parallel
-    """
-    multiprocessing.set_start_method("spawn")
-
-
-@pytest.fixture(scope="session")
 def provide_config() -> Generator[ConfigTest | None, None, None]:
     yield ConfigTest()
 
@@ -62,24 +57,22 @@ def provide_port(flask_logs: bool) -> int:
 
 
 @pytest.fixture(scope="session")
-def parallelize_app(provide_port, init_multiprocessing, flask_logs):
+def parallelize_app(provide_port, flask_logs):
     """
     Starts a parallel process, runs Flask app
     """
     open_port = provide_port
-    process = multiprocessing.Process(
-        target=run_app,
+
+    thread = threading.Thread(
+        target=run_app,  # Use the threaded version
         args=(
             open_port,
             flask_logs,
         ),
+        daemon=True,
     )
-
-    process.start()
+    thread.start()
     sleep(5)
-    yield process
-    process.kill()
-    process.join()
 
 
 @pytest.fixture(scope="session")
@@ -110,7 +103,7 @@ def build_driver(
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
 
-        driver = webdriver.Remote(
+        driver = ChromeRemoteWebDriver(
             command_executor=config.TEST_SELENIUM_URI, options=options
         )
         url = UI_TEST_STRINGS.DOCKER_BASE_URL
@@ -125,7 +118,10 @@ def build_driver(
     yield driver
 
     # Teardown: Quit the browser after tests
-    driver.quit()
+    try:
+        driver.quit()
+    except Exception:
+        pass
 
 
 @pytest.fixture(scope="session")
@@ -331,23 +327,6 @@ def create_test_utubs(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
 
 
 @pytest.fixture
-def create_test_searchable_utubs(
-    create_test_users, runner: Tuple[Flask, FlaskCliRunner], debug_strings
-):
-    """
-    Assumes users created. Creates sample UTubs, each user owns one.
-    """
-    app, _ = runner
-    utub_names = UI_TEST_STRINGS.UTUB_SEARCH_NAMES
-    with app.app_context():
-        user: Users = Users.query.get(1)
-        for utub_name in utub_names:
-            new_utub = Utubs(name=utub_name, utub_description="", utub_creator=user.id)
-            db.session.add(new_utub)
-        db.session.commit()
-
-
-@pytest.fixture
 def create_test_utubmembers(runner, debug_strings):
     """
     Assumes users created, and each own one UTub. Creates all users as members of each UTub.
@@ -381,3 +360,12 @@ def create_test_tags(runner, debug_strings):
 
     if debug_strings:
         print("\nusers, utubs, members, urls, and tags created")
+
+
+@pytest.fixture(scope="function")
+def clipboard_mock(browser):
+    """Pytest fixture that sets up clipboard mock for headless testing"""
+    mock_helper = ClipboardMockHelper(browser)
+
+    yield mock_helper
+    mock_helper.cleanup_mock()

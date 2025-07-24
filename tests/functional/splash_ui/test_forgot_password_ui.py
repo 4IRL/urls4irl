@@ -16,15 +16,17 @@ from src.utils.strings.json_strs import FAILURE_GENERAL
 from src.utils.strings.reset_password_strs import EMAIL_SENT_MESSAGE, FORGOT_PASSWORD
 from src.utils.strings.splash_form_strs import LOGIN_TITLE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from tests.functional.assert_utils import assert_visited_403_on_invalid_csrf_and_reload
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.splash_ui.utils_for_test_splash_ui import (
+from tests.functional.splash_ui.assert_utils import (
     assert_forgot_password_modal_open,
     assert_forgot_password_submission,
+)
+from tests.functional.splash_ui.selenium_utils import (
     open_forgot_password_modal,
 )
-from tests.functional.utils_for_test import (
-    assert_visited_403_on_invalid_csrf_and_reload,
+from tests.functional.selenium_utils import (
     clear_then_send_keys,
     invalidate_csrf_token_in_form,
     wait_then_click_element,

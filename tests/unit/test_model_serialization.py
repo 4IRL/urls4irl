@@ -13,9 +13,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
-from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    count_urls_with_tag_applied_by_tag_id,
-)
+from tests.functional.db_utils import count_urls_with_tag_applied_by_tag_id
 import tests.models_for_test as v_models
 
 pytestmark = pytest.mark.unit

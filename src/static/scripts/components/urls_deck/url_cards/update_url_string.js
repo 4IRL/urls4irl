@@ -21,12 +21,19 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
   urlCard.find(".urlBtnAccess").hideClass();
   urlCard.find(".urlTagBtnCreate").hideClass();
   urlCard.find(".urlBtnDelete").hideClass();
+  urlCard.find(".urlBtnCopy").hideClass();
 
   // Disable Go To URL Icon
   urlCard.find(".goToUrlIcon").removeClass("visible-flex").addClass("hidden");
 
   // Prevent hovering on tags from adding padding
   urlCard.find(".tagBadge").removeClass("tagBadgeHoverable");
+
+  const tooltip = bootstrap.Tooltip.getInstance(urlStringBtnUpdate);
+  if (tooltip) {
+    tooltip.hide();
+    tooltip.disable();
+  }
 
   // Update URL Button text to exit editing
   urlStringBtnUpdate
@@ -36,6 +43,7 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
     .offAndOn("click", function (e) {
       e.stopPropagation();
       hideAndResetUpdateURLStringForm(urlCard);
+      if (tooltip) tooltip.enable();
     });
 
   disableTagRemovalInURLCard(urlCard);
@@ -73,6 +81,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   urlCard.find(".urlBtnAccess").showClassFlex();
   urlCard.find(".urlTagBtnCreate").showClassFlex();
   urlCard.find(".urlBtnDelete").showClassFlex();
+  urlCard.find(".urlBtnCopy").showClassFlex();
 
   // Enable Go To URL Icon
   const selected = urlCard.attr("urlSelected");
@@ -150,9 +159,6 @@ function updateURLSuccess(response, urlCard) {
   // Extract response data
   const updatedURLString = response.URL.urlString;
 
-  // If update URL action, rebind the ability to select/deselect URL by clicking it
-  //rebindSelectBehavior();
-
   // Update URL body with latest published data
   urlCard
     .find(".urlString")
@@ -162,12 +168,17 @@ function updateURLSuccess(response, urlCard) {
   // Update URL options
   urlCard.find(".urlBtnAccess").offAndOn("click", function (e) {
     e.stopPropagation();
-    accessLink(updatedURLString);
+    accessLink(updatedURLString, this);
   });
 
   urlCard.find(".goToUrlIcon").offAndOn("click", function (e) {
     e.stopPropagation();
-    accessLink(updatedURLString);
+    accessLink(updatedURLString, null);
+  });
+
+  urlCard.find(".urlBtnCopy").offAndOn("click", function (e) {
+    e.stopPropagation();
+    copyURLString(updatedURLString, this);
   });
 
   hideAndResetUpdateURLStringForm(urlCard);

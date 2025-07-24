@@ -4,16 +4,20 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.models.utubs import Utubs
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.utils_for_test import (
-    Decks,
+from tests.functional.assert_utils import (
     assert_not_visible_css_selector,
+    assert_panel_visibility_mobile,
     assert_visible_css_selector,
-    click_on_navbar,
-    get_utub_this_user_created,
+)
+from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.login_utils import (
     login_user_and_select_utub_by_utubid_mobile,
     login_user_to_home_page,
-    verify_panel_visibility_mobile,
+)
+from tests.functional.selenium_utils import (
+    Decks,
+    click_on_navbar,
     wait_for_class_to_be_removed,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -70,7 +74,7 @@ def test_navbar_after_utub_deleted_mobile(
     # Travel back to UTub panel from URLs panel
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_UTUB_DECK, time=10)
-    verify_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
+    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
 
     # Delete the UTub
     wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=10)
@@ -143,10 +147,10 @@ def test_navbar_after_reselect_utub_mobile(
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_UTUB_DECK)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=Decks.UTUBS)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.UTUBS)
 
     wait_then_click_element(browser, HPL.SELECTOR_SELECTED_UTUB)
-    verify_panel_visibility_mobile(browser, visible_deck=Decks.URLS)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.URLS)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(browser)
@@ -181,7 +185,7 @@ def test_navbar_after_open_tag_deck_mobile(
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_TAGS_DECK)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=Decks.TAGS)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.TAGS)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(browser)
@@ -216,7 +220,7 @@ def test_nav_on_url_panel_after_open_member_deck_mobile(
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_MEMBER_DECK)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=Decks.MEMBERS)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.MEMBERS)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(browser)
@@ -251,7 +255,7 @@ def test_nav_on_url_panel_after_selected_utub_on_utub_deck_mobile(
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_UTUB_DECK)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=Decks.UTUBS)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.UTUBS)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(browser)
@@ -298,7 +302,7 @@ def test_nav_from_url_deck_to_other_deck_mobile(
     click_on_navbar(browser)
     wait_then_click_element(browser, selected_navbar_option)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=visible_deck)
+    assert_panel_visibility_mobile(browser, visible_deck=visible_deck)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(browser)
@@ -343,13 +347,13 @@ def test_nav_from_utub_deck_to_other_deck_with_utub_selected_mobile(
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_UTUB_DECK)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=Decks.UTUBS)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.UTUBS)
 
     # Travel to other decks
     click_on_navbar(browser)
     wait_then_click_element(browser, selected_navbar_option)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=visible_deck)
+    assert_panel_visibility_mobile(browser, visible_deck=visible_deck)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(browser)
@@ -394,13 +398,13 @@ def test_nav_from_tag_deck_to_other_deck_mobile(
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_TAGS_DECK)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=Decks.TAGS)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.TAGS)
 
     # Travel to other decks
     click_on_navbar(browser)
     wait_then_click_element(browser, selected_navbar_option)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=visible_deck)
+    assert_panel_visibility_mobile(browser, visible_deck=visible_deck)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(browser)
@@ -445,13 +449,13 @@ def test_nav_from_member_deck_to_other_deck_mobile(
     click_on_navbar(browser)
     wait_then_click_element(browser, HPL.NAVBAR_MEMBER_DECK)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=Decks.MEMBERS)
+    assert_panel_visibility_mobile(browser, visible_deck=Decks.MEMBERS)
 
     # Travel to other decks
     click_on_navbar(browser)
     wait_then_click_element(browser, selected_navbar_option)
     wait_for_class_to_be_removed(browser, HPL.NAVBAR_DROPDOWN, class_name="collapsing")
-    verify_panel_visibility_mobile(browser, visible_deck=visible_deck)
+    assert_panel_visibility_mobile(browser, visible_deck=visible_deck)
 
     # Click on navbar and verify proper menus are shown
     click_on_navbar(browser)

@@ -11,29 +11,69 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from src.cli.mock_constants import MOCK_URL_STRINGS
 from src.models.users import Users
 from src.models.utub_urls import Utub_Urls
+from src.utils.constants import STRINGS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.url_strs import DELETE_URL_WARNING
-from tests.functional.urls_ui.utils_for_test_url_ui import (
+from tests.functional.assert_utils import (
+    assert_active_utub,
+    assert_elem_with_url_string_exists,
+    assert_login_with_username,
+    assert_tooltip_animates,
+    assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.db_utils import (
+    add_mock_urls,
+    get_utub_this_user_created,
+    get_url_in_utub,
+)
+from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by_id
+from tests.functional.urls_ui.login_utils import (
     login_select_utub_select_url_click_delete_get_modal_url,
 )
-from tests.functional.utils_for_test import (
-    add_mock_urls,
-    assert_login_with_username,
-    assert_visited_403_on_invalid_csrf_and_reload,
+from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
     get_num_url_rows,
-    get_utub_this_user_created,
     invalidate_csrf_token_on_page,
-    verify_elem_with_url_string_exists,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
 )
 from locators import HomePageLocators as HPL
-from tests.functional.utubs_ui.utils_for_test_utub_ui import assert_active_utub
 
 pytestmark = pytest.mark.urls_ui
+
+
+def test_delete_url_tooltip_animates(
+    browser: WebDriver,
+    create_test_urls,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests a tooltip showing when user hovers over the edit URL button .
+
+    GIVEN a user has access to a URL
+    WHEN the user hover over the edit URL button
+    THEN ensure a tooltip is shown appropriately
+    """
+
+    _, cli_runner = runner
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    utub_url = get_url_in_utub(app, utub_id=utub_user_created.id)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_user_created.id, utub_url.id
+    )
+
+    assert_tooltip_animates(
+        browser=browser,
+        parent_css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_DELETE}",
+        tooltip_parent_class=HPL.BUTTON_URL_DELETE,
+        tooltip_text=STRINGS.DELETE_URL_TOOLTIP,
+    )
 
 
 def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Flask):
@@ -113,7 +153,7 @@ def test_delete_url_cancel_click_cancel_btn(
     wait_until_hidden(browser, HPL.BUTTON_MODAL_DISMISS)
 
     # Assert URL no longer exists in UTub
-    assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
+    assert_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
     assert init_num_url_rows == get_num_url_rows(browser)
     assert url_elem_to_delete.is_displayed()
 
@@ -152,7 +192,7 @@ def test_delete_url_cancel_click_x_btn(
     wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
 
     # Assert URL no longer exists in UTub
-    assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
+    assert_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
     assert init_num_url_rows == get_num_url_rows(browser)
     assert url_elem_to_delete.is_displayed()
 
@@ -191,7 +231,7 @@ def test_delete_url_cancel_press_esc_key(
     wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
 
     # Assert URL no longer exists in UTub
-    assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
+    assert_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
     assert init_num_url_rows == get_num_url_rows(browser)
     assert url_elem_to_delete.is_displayed()
 
@@ -230,7 +270,7 @@ def test_delete_url_cancel_click_outside_modal(
     wait_until_hidden(browser, HPL.BUTTON_X_CLOSE)
 
     # Assert URL still exists in UTub
-    assert verify_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
+    assert_elem_with_url_string_exists(browser, UTS.TEST_URL_STRING_CREATE)
     assert init_num_url_rows == get_num_url_rows(browser)
     assert url_elem_to_delete.is_displayed()
 

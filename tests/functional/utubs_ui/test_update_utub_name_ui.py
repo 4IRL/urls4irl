@@ -10,19 +10,24 @@ from src.models.users import Users
 from src.models.utubs import Utubs
 from src.utils.constants import CONSTANTS
 from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_UPDATE_SAME_NAME
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
+    assert_active_utub,
     assert_login_with_username,
     assert_not_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.db_utils import get_utub_this_user_created
+from tests.functional.login_utils import (
     create_user_session_and_provide_session_id,
-    get_all_url_ids_in_selected_utub,
-    get_all_utub_selector_names,
-    get_selected_utub_name,
-    get_utub_this_user_created,
-    invalidate_csrf_token_on_page,
     login_user_and_select_utub_by_name,
     login_user_and_select_utub_by_utubid,
     login_user_with_cookie_from_session,
+)
+from tests.functional.selenium_utils import (
+    get_all_url_ids_in_selected_utub,
+    get_all_utub_selector_names,
+    get_selected_utub_name,
+    invalidate_csrf_token_on_page,
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,
@@ -30,8 +35,7 @@ from tests.functional.utils_for_test import (
     wait_until_update_btn_has_hidden_class,
     wait_until_utub_name_appears,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import (
-    assert_active_utub,
+from tests.functional.utubs_ui.selenium_utils import (
     open_update_utub_name_input,
     update_utub_name,
 )

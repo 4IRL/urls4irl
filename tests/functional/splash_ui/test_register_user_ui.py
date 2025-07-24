@@ -12,13 +12,13 @@ from src.utils.strings.email_validation_strs import (
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
+from tests.functional.assert_utils import assert_visited_403_on_invalid_csrf_and_reload
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import ModalLocators as ML
-from tests.functional.splash_ui.utils_for_test_splash_ui import (
+from tests.functional.splash_ui.selenium_utils import (
     register_user_ui,
 )
-from tests.functional.utils_for_test import (
-    assert_visited_403_on_invalid_csrf_and_reload,
+from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
     wait_for_web_element_and_click,

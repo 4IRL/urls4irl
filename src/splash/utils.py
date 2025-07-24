@@ -1,8 +1,9 @@
-from flask import jsonify, url_for, Response
+from flask import current_app, jsonify, url_for, Response
 import requests
 
-from src import db, email_sender
+from src import db
 from src.app_logger import error_log, safe_add_log, warning_log
+from src.extensions.extension_utils import safe_get_email_sender
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.splash.forms import ForgotPasswordForm, ResetPasswordForm, UserRegistrationForm
@@ -78,7 +79,7 @@ def _handle_after_forgot_password_form_validated(
     forgot_password_form: ForgotPasswordForm,
 ) -> tuple[Response, int]:
     user_with_email: Users = Users.query.filter(
-        Users.email == forgot_password_form.email.data.lower()
+        Users.email == forgot_password_form.get_email().lower()
     ).first()
 
     if user_with_email is not None:
@@ -106,6 +107,7 @@ def _handle_after_forgot_password_form_validated(
             forgot_password_obj.increment_attempts()
             db.session.commit()
 
+            email_sender = safe_get_email_sender(current_app)
             if not email_sender.is_production() and not email_sender.is_testing():
                 print(
                     f"Sending this to the user's email:\n{url_for(ROUTES.SPLASH.RESET_PASSWORD, token=forgot_password_obj.reset_token, _external=True)}",
@@ -117,7 +119,9 @@ def _handle_after_forgot_password_form_validated(
                 _external=True,
             )
             email_send_result = email_sender.send_password_reset_email(
-                forgot_password_form.email.data, user_with_email.username, url_for_reset
+                forgot_password_form.get_email(),
+                user_with_email.username,
+                url_for_reset,
             )
             if email_send_result.status_code >= 500:
                 return _handle_mailjet_failure(email_send_result, error_code=3)

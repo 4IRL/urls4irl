@@ -14,30 +14,36 @@ from src.models.utub_urls import Utub_Urls
 from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.url_strs import URL_FAILURE
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.tags_ui.utils_for_test_tag_ui import apply_tag_filter_based_on_id
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
+    assert_url_coloring_is_correct,
     assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.db_utils import (
+    get_utub_this_user_created,
+    get_newly_added_utub_url_id_by_url_string,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.login_utils import (
+    login_user_and_select_utub_by_name,
+    login_user_and_select_utub_by_utubid,
+)
+from tests.functional.tags_ui.selenium_utils import apply_tag_filter_based_on_id
+from tests.functional.selenium_utils import (
     clear_then_send_keys,
     get_selected_url,
     get_url_row_by_id,
-    get_utub_this_user_created,
     invalidate_csrf_token_on_page,
-    login_user_and_select_utub_by_name,
-    login_user_and_select_utub_by_utubid,
-    verify_url_coloring_is_correct,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
-from tests.functional.urls_ui.utils_for_test_url_ui import (
+from tests.functional.urls_ui.selenium_utils import (
     add_invalid_url_header_for_ui_test,
     create_url,
     fill_create_url_form,
-    get_newly_added_utub_url_id_by_url_string,
 )
 
 pytestmark = pytest.mark.urls_ui
@@ -265,7 +271,7 @@ def test_create_url_submit_btn_no_urls(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
     ).is_displayed()
 
-    verify_url_coloring_is_correct(browser)
+    assert_url_coloring_is_correct(browser)
 
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
     wait_until_visible_css_selector(browser, url_selector)
@@ -277,7 +283,9 @@ def test_create_url_submit_btn_no_urls(
 
 
 def test_create_url_submit_btn_some_urls(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    browser: WebDriver,
+    provide_app: Flask,
+    create_test_urls,
 ):
     """
     Tests a user's ability to create a new URL in a selected UTub
@@ -328,7 +336,7 @@ def test_create_url_submit_btn_some_urls(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
     ).is_displayed()
 
-    verify_url_coloring_is_correct(browser)
+    assert_url_coloring_is_correct(browser)
 
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
     wait_until_visible_css_selector(browser, url_selector)
@@ -391,7 +399,7 @@ def test_create_url_using_enter_key_no_urls(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
     ).is_displayed()
 
-    verify_url_coloring_is_correct(browser)
+    assert_url_coloring_is_correct(browser)
 
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
     wait_until_visible_css_selector(browser, url_selector)
@@ -454,7 +462,7 @@ def test_create_url_using_enter_key_some_urls(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
     ).is_displayed()
 
-    verify_url_coloring_is_correct(browser)
+    assert_url_coloring_is_correct(browser)
 
     url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
     wait_until_visible_css_selector(browser, url_selector)

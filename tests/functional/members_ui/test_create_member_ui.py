@@ -8,18 +8,22 @@ from src.cli.mock_constants import USERNAME_BASE
 from src.models.users import Users
 from src.models.utub_members import Utub_Members
 from src.utils.strings.user_strs import MEMBER_FAILURE, USER_FAILURE
+from tests.functional.assert_utils import (
+    assert_login_with_username,
+    assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.db_utils import (
+    get_utub_this_user_created,
+    get_utub_this_user_did_not_create,
+)
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.members_ui.utils_for_test_members_ui import (
+from tests.functional.login_utils import login_user_and_select_utub_by_name
+from tests.functional.members_ui.selenium_utils import (
     create_member_active_utub,
     get_all_member_usernames,
 )
-from tests.functional.utils_for_test import (
-    assert_login_with_username,
-    assert_visited_403_on_invalid_csrf_and_reload,
-    get_utub_this_user_created,
-    get_utub_this_user_did_not_create,
+from tests.functional.selenium_utils import (
     invalidate_csrf_token_on_page,
-    login_user_and_select_utub_by_name,
     select_utub_by_name,
     wait_then_click_element,
     wait_then_get_element,

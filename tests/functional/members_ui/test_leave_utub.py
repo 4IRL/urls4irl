@@ -8,15 +8,19 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from locators import HomePageLocators as HPL
 from src.models.users import Users
 from src.utils.strings.user_strs import MEMBER_LEAVE_WARNING
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
-    dismiss_modal_with_click_out,
-    get_num_utubs,
+)
+from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
+)
+from tests.functional.login_utils import login_user_and_select_utub_by_name
+from tests.functional.selenium_utils import (
+    dismiss_modal_with_click_out,
+    get_num_utubs,
     invalidate_csrf_token_on_page,
-    login_user_and_select_utub_by_name,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,

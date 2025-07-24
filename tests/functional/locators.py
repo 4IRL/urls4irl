@@ -10,6 +10,7 @@ class HomePageLocators(GenericPageLocator):
 
     INVALID_FIELD_SUFFIX = "-error"
     HIDDEN_BTN_CLASS = "hiddenBtn"
+    TOOLTIP_SUFFIX = "-tooltip"
 
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
@@ -131,6 +132,8 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_BIG_URL_STRING_CANCEL_UPDATE = ".urlStringCancelBigBtnUpdate"
 
     BUTTON_URL_DELETE = ".urlBtnDelete"
+
+    BUTTON_URL_COPY = ".urlBtnCopy"
 
     URL_STRING_IN_DATA = "href"
     GO_TO_URL_ICON = ".goToUrlIcon"

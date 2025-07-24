@@ -2,16 +2,22 @@ from flask import Flask
 import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
+    assert_url_coloring_is_correct,
+    assert_utub_selected,
+)
+from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
+)
+from tests.functional.login_utils import (
     login_user_and_select_utub_by_utubid,
     login_user_to_home_page,
-    select_utub_by_id,
-    verify_url_coloring_is_correct,
-    verify_utub_selected,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import (
+from tests.functional.selenium_utils import (
+    select_utub_by_id,
+)
+from tests.functional.utubs_ui.assert_utils import (
     assert_in_created_utub,
     assert_in_member_utub,
 )
@@ -34,8 +40,8 @@ def test_select_member_utub_from_home_page(
 
     login_user_to_home_page(app, browser, user_id_for_test)
     select_utub_by_id(browser, utub_user_did_not_create.id)
-    verify_utub_selected(browser, app, utub_user_did_not_create.id)
-    verify_url_coloring_is_correct(browser)
+    assert_utub_selected(browser, app, utub_user_did_not_create.id)
+    assert_url_coloring_is_correct(browser)
     assert_in_member_utub(browser)
 
 
@@ -54,8 +60,8 @@ def test_select_created_utub_from_home_page(
 
     login_user_to_home_page(app, browser, user_id_for_test)
     select_utub_by_id(browser, utub_user_did_not_create.id)
-    verify_utub_selected(browser, app, utub_user_did_not_create.id)
-    verify_url_coloring_is_correct(browser)
+    assert_utub_selected(browser, app, utub_user_did_not_create.id)
+    assert_url_coloring_is_correct(browser)
     assert_in_created_utub(browser)
 
 
@@ -77,11 +83,11 @@ def test_select_member_utub_from_created_utub(
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_did_create.id
     )
-    verify_utub_selected(browser, app, utub_user_did_create.id)
+    assert_utub_selected(browser, app, utub_user_did_create.id)
 
     select_utub_by_id(browser, utub_user_did_not_create.id)
-    verify_utub_selected(browser, app, utub_user_did_not_create.id)
-    verify_url_coloring_is_correct(browser)
+    assert_utub_selected(browser, app, utub_user_did_not_create.id)
+    assert_url_coloring_is_correct(browser)
     assert_in_member_utub(browser)
 
 
@@ -102,9 +108,9 @@ def test_select_created_utub_from_member_utub(
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_did_not_create.id
     )
-    verify_utub_selected(browser, app, utub_user_did_not_create.id)
+    assert_utub_selected(browser, app, utub_user_did_not_create.id)
 
     select_utub_by_id(browser, utub_user_did_create.id)
-    verify_utub_selected(browser, app, utub_user_did_create.id)
-    verify_url_coloring_is_correct(browser)
+    assert_utub_selected(browser, app, utub_user_did_create.id)
+    assert_url_coloring_is_correct(browser)
     assert_in_created_utub(browser)

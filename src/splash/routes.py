@@ -1,6 +1,7 @@
 from urllib.parse import parse_qs, urlencode, urlparse
 from flask import (
     Blueprint,
+    current_app,
     jsonify,
     redirect,
     url_for,
@@ -11,12 +12,13 @@ from flask import (
 )
 from flask_login import current_user, login_user
 
-from src import db, email_sender, notification_sender
+from src import db
 from src.app_logger import (
     critical_log,
     safe_add_log,
     warning_log,
 )
+from src.extensions.extension_utils import safe_get_email_sender, safe_get_notif_sender
 from src.models.email_validations import Email_Validations
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
@@ -327,6 +329,7 @@ def send_validation_email():
             429,
         )
 
+    email_sender = safe_get_email_sender(current_app)
     if not email_sender.is_production() and not email_sender.is_testing():
         print(
             f"Sending this to the user's email:\n{url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=current_email_validation.validation_token, _external=True)}",
@@ -413,6 +416,7 @@ def validate_email(token: str):
     login_user(user_to_validate)
     session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
     safe_add_log(f"User={user_to_validate.id} email has been validated")
+    notification_sender = safe_get_notif_sender(current_app)
     notification_sender.send_notification(
         f"Welcome! New user: {user_to_validate.username}"
     )

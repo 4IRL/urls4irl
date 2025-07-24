@@ -73,6 +73,9 @@
     --editURLColorHover: rgba(253, 231, 76, 0.5);
     --editURLColorBorderHover: rgba(253, 231, 76, 0);
     --deleteURLColor: rgba(255, 32, 82, 1.0);
+    --copyURLColor: rgba(179, 102, 255, 1.0);
+    --copyURLColorHover: rgba(179, 102, 255, 0.5);
+    --copyURLColorBorderHover: rgba(179, 102, 255, 0.0);
 
     /* #aaaaaa */
     --grayBadgeSelection: rgba(170, 170, 170, 1.0);

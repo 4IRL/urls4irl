@@ -3,21 +3,25 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
     assert_not_visible_css_selector,
     assert_visible_css_selector,
+    assert_active_utub,
+)
+from tests.functional.db_utils import create_test_searchable_utubs
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.login_utils import (
     login_user_and_select_utub_by_utubid,
     login_user_to_home_page,
+)
+from tests.functional.selenium_utils import (
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
-from tests.functional.utubs_ui.utils_for_test_utub_ui import (
-    assert_active_utub,
-    create_test_searchable_utubs,
+from tests.functional.utubs_ui.selenium_utils import (
     create_utub,
     open_utub_search_box,
 )

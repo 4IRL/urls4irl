@@ -16,7 +16,7 @@ def run_app(port: int, show_flask_logs: bool):
     Runs app
     """
     config = ConfigTestUI()
-    app_for_test = create_app(config)
+    app_for_test = create_app(config)  # type: ignore
     assert app_for_test is not None
     if not show_flask_logs:
         # Hide all possible logs from showing when running tests
@@ -38,10 +38,17 @@ def run_app(port: int, show_flask_logs: bool):
 
         import flask.cli
 
-        flask.cli.show_server_banner = lambda *args: None
+        flask.cli.show_server_banner = lambda *_: None
 
     host = "0.0.0.0" if config.DOCKER else "127.0.0.1"
-    app_for_test.run(host=host, debug=False, port=port)
+    app_for_test.run(
+        host=host,
+        debug=False,
+        port=port,
+        use_reloader=False,  # Prevents child process creation
+        threaded=True,  # Use threading instead of processes
+        processes=1,  # Explicitly set to 1 process
+    )
 
 
 def clear_db(runner: Tuple[Flask, FlaskCliRunner], debug_strings):

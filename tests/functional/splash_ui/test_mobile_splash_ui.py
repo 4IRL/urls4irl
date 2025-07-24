@@ -4,14 +4,16 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.utils_for_test import (
-    Decks,
+from tests.functional.assert_utils import (
     assert_not_visible_css_selector,
     assert_visible_css_selector,
+    assert_panel_visibility_mobile,
+)
+from tests.functional.locators import SplashPageLocators as SPL
+from tests.functional.login_utils import input_login_fields
+from tests.functional.selenium_utils import (
+    Decks,
     click_on_navbar,
-    input_login_fields,
-    verify_panel_visibility_mobile,
     wait_then_click_element,
 )
 
@@ -89,7 +91,7 @@ def test_mobile_email_validation_brings_user_to_utub_panel(
     validation_url = browser.current_url + validation_url_suffix
 
     browser.get(validation_url)
-    verify_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
+    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
 
     with app.app_context():
         user: Users = Users.query.filter(Users.username == UTS.TEST_USERNAME_1).first()
@@ -116,4 +118,4 @@ def test_mobile_login_brings_user_to_utub_panel(
 
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
-    verify_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
+    assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)

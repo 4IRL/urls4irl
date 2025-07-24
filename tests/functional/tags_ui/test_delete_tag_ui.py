@@ -6,23 +6,25 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src.models.users import Users
-from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    count_urls_with_tag_applied_by_tag_id,
-    get_tag_badge_selector_on_selected_url_by_tag_id,
-    get_tag_on_url_in_utub,
-    get_delete_tag_button_on_hover,
-)
-from tests.functional.urls_ui.utils_for_test_url_ui import (
-    get_url_in_utub,
-    open_update_url_title,
-)
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
-    get_selected_url,
+)
+from tests.functional.db_utils import (
+    count_urls_with_tag_applied_by_tag_id,
     get_utub_this_user_created,
+    get_url_in_utub,
+    get_tag_on_url_in_utub,
+)
+from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by_id
+from tests.functional.tags_ui.selenium_utils import (
+    get_tag_badge_selector_on_selected_url_by_tag_id,
+    get_delete_tag_button_on_hover,
+)
+from tests.functional.selenium_utils import (
+    get_selected_url,
     invalidate_csrf_token_on_page,
-    login_user_select_utub_by_id_and_url_by_id,
+    open_update_url_title,
     wait_for_animation_to_end,
     wait_for_element_to_be_removed,
     wait_then_click_element,
@@ -32,7 +34,6 @@ from locators import HomePageLocators as HPL
 pytestmark = pytest.mark.tags_ui
 
 
-# Happy Path Tests
 def test_get_delete_tag_button_on_hover(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):

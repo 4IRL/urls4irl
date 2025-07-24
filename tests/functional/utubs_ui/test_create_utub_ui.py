@@ -8,18 +8,21 @@ from src.models.users import Users
 from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.utub_strs import UTUB_CREATE_SAME_NAME, UTUB_FAILURE
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
+    assert_active_utub,
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.login_utils import login_user_to_home_page
+from tests.functional.selenium_utils import (
     invalidate_csrf_token_on_page,
-    login_user_to_home_page,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
     wait_until_hidden,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from utils_for_test_utub_ui import assert_active_utub, create_utub
+from selenium_utils import create_utub
 
 pytestmark = pytest.mark.utubs_ui
 

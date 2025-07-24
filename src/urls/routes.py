@@ -1,10 +1,10 @@
 import time
 
-from flask import abort, Blueprint, jsonify, request
+from flask import abort, Blueprint, current_app, jsonify, request
 from flask_login import current_user
 from sqlalchemy import case, func
 
-from src import db, notification_sender, url_validator
+from src import db
 from src.app_logger import (
     critical_log,
     safe_add_log,
@@ -13,6 +13,7 @@ from src.app_logger import (
     turn_form_into_str_for_log,
     warning_log,
 )
+from src.extensions.extension_utils import safe_get_notif_sender, safe_get_url_validator
 from src.extensions.url_validation.url_validator import (
     InvalidURLError,
     WaybackRateLimited,
@@ -193,6 +194,7 @@ def create_url(utub_id: int):
 
         try:
             headers = request.headers
+            url_validator = safe_get_url_validator(current_app)
             normalized_url, is_validated = url_validator.validate_url(
                 url_string, headers
             )
@@ -207,7 +209,7 @@ def create_url(utub_id: int):
                 + f"[{request_id}] url_string={url_string}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
-
+            notification_sender = safe_get_notif_sender(current_app)
             notification_sender.send_notification(
                 f"Failed validating {url_string} | Exception={str(e)}"
             )
@@ -233,6 +235,7 @@ def create_url(utub_id: int):
                 + f"[{request_id}] url_string={url_string}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
+            notification_sender = safe_get_notif_sender(current_app)
             notification_sender.send_notification(
                 f"Wayback failed validating {url_string} | Exception={str(e)}"
             )
@@ -258,6 +261,7 @@ def create_url(utub_id: int):
                 + f"[{request_id}] url_string={url_string}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
+            notification_sender = safe_get_notif_sender(current_app)
             notification_sender.send_notification(
                 f"Unexpected exception validating {url_string} | Exception={str(e)}"
             )
@@ -306,6 +310,7 @@ def create_url(utub_id: int):
                     + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                     + f"[{request_id}] url_string={normalized_url}\n"
                 )
+                notification_sender = safe_get_notif_sender(current_app)
                 notification_sender.send_notification(
                     f"Unable to completely validate {url_string} | URL.id={new_url.id}"
                 )
@@ -567,6 +572,7 @@ def update_url(utub_id: int, utub_url_id: int):
         start = time.perf_counter()
         try:
             headers = request.headers
+            url_validator = safe_get_url_validator(current_app)
             normalized_url, is_validated = url_validator.validate_url(
                 url_to_change_to, headers
             )
@@ -580,6 +586,7 @@ def update_url(utub_id: int, utub_url_id: int):
                 + f"[{request_id}] url_string={url_to_change_to}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
+            notification_sender = safe_get_notif_sender(current_app)
             notification_sender.send_notification(
                 f"Failed to validate {url_to_change_to} | Exception={str(e)}"
             )
@@ -605,6 +612,7 @@ def update_url(utub_id: int, utub_url_id: int):
                 + f"[{request_id}] url_string={url_to_change_to}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
+            notification_sender = safe_get_notif_sender(current_app)
             notification_sender.send_notification(
                 f"Wayback failed validating {url_to_change_to} | Exception={str(e)}"
             )
@@ -631,6 +639,7 @@ def update_url(utub_id: int, utub_url_id: int):
                 + f"[{request_id}] url_string={url_to_change_to}\n"
                 + f"[{request_id}] Exception={str(e)}"
             )
+            notification_sender = safe_get_notif_sender(current_app)
             notification_sender.send_notification(
                 f"Unexpected exception validating {url_to_change_to} | Exception={str(e)}"
             )
@@ -682,6 +691,7 @@ def update_url(utub_id: int, utub_url_id: int):
                     + f"[{request_id}] url_string={normalized_url}\n"
                     + f"[{request_id}] request_headers={request.headers}\n"
                 )
+                notification_sender = safe_get_notif_sender(current_app)
                 notification_sender.send_notification(
                     f"Unable to completely validate {url_to_change_to} | URL.id={new_url.id}"
                 )

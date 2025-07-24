@@ -9,19 +9,25 @@ from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.utils.strings.tag_strs import TAGS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.tags_ui.utils_for_test_tag_ui import (
-    count_urls_with_tag_applied_by_tag_string,
-    login_user_select_utub_by_id_open_create_utub_tag,
-    verify_create_utub_tag_input_form_is_hidden,
-    verify_new_utub_tag_created,
-)
-from tests.functional.utils_for_test import (
+from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_visited_403_on_invalid_csrf_and_reload,
+)
+from tests.functional.db_utils import (
+    count_urls_with_tag_applied_by_tag_string,
     get_utub_this_user_created,
-    invalidate_csrf_token_on_page,
+)
+from tests.functional.locators import HomePageLocators as HPL
+from tests.functional.login_utils import (
     login_user_and_select_utub_by_utubid,
+    login_user_select_utub_by_id_open_create_utub_tag,
+)
+from tests.functional.tags_ui.assert_utils import (
+    assert_create_utub_tag_input_form_is_hidden,
+    assert_new_utub_tag_created,
+)
+from tests.functional.selenium_utils import (
+    invalidate_csrf_token_on_page,
     set_focus_on_element,
     wait_then_click_element,
     wait_then_get_element,
@@ -55,7 +61,6 @@ def test_open_input_create_utub_tag(
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CREATE, time=3)
     wait_until_visible_css_selector(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
 
-    # Ensure input is focused
     assert browser.switch_to.active_element == browser.find_element(
         By.CSS_SELECTOR, HPL.INPUT_UTUB_TAG_CREATE
     )
@@ -111,7 +116,6 @@ def test_open_input_create_utub_tag_tab_focus(
 
     wait_until_visible_css_selector(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
 
-    # Ensure input is focused
     assert browser.switch_to.active_element == browser.find_element(
         By.CSS_SELECTOR, HPL.INPUT_UTUB_TAG_CREATE
     )
@@ -159,7 +163,7 @@ def test_open_input_create_utub_tag_click_cancel_btn(
 
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
     wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
-    verify_create_utub_tag_input_form_is_hidden(browser)
+    assert_create_utub_tag_input_form_is_hidden(browser)
 
 
 def test_open_input_create_utub_tag_press_esc_key(
@@ -180,11 +184,10 @@ def test_open_input_create_utub_tag_press_esc_key(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Ensure input is focused
     wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
     wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_CANCEL_CREATE)
-    verify_create_utub_tag_input_form_is_hidden(browser)
+    assert_create_utub_tag_input_form_is_hidden(browser)
 
 
 def test_open_input_create_utub_tag_click_submit_btn(
@@ -215,14 +218,13 @@ def test_open_input_create_utub_tag_click_submit_btn(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Ensure input is focused
     wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys(new_tag)
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
     wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
 
-    verify_create_utub_tag_input_form_is_hidden(browser)
-    verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
+    assert_create_utub_tag_input_form_is_hidden(browser)
+    assert_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
 
     # Assert Tag Deck counter initialized at 0
     assert init_tag_count_in_utub == count_urls_with_tag_applied_by_tag_string(
@@ -258,14 +260,13 @@ def test_open_input_create_utub_tag_press_enter_key(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Ensure input is focused
     wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys(new_tag)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
     wait_until_hidden(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
 
-    verify_create_utub_tag_input_form_is_hidden(browser)
-    verify_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
+    assert_create_utub_tag_input_form_is_hidden(browser)
+    assert_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
 
     # Assert Tag Deck counter initialized at 0
     assert init_tag_count_in_utub == count_urls_with_tag_applied_by_tag_string(
@@ -292,7 +293,6 @@ def test_create_utub_tag_empty_field(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Ensure input is focused
     wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys("")
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
@@ -327,7 +327,6 @@ def test_create_utub_tag_duplicate_tag(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Ensure input is focused
     wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys(utub_tag_duplicate)
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
@@ -362,7 +361,6 @@ def test_create_utub_tag_tag_with_whitespace(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Ensure input is focused
     wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys(f" {utub_tag_duplicate} ")
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
@@ -392,7 +390,6 @@ def test_create_utub_tag_sanitized_tag(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Ensure input is focused
     wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys('<img src="evl.jpg">')
     wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
@@ -425,7 +422,6 @@ def test_create_utub_tag_invalid_csrf(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    # Ensure input is focused
     wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
     browser.switch_to.active_element.send_keys("New tag123")
     invalidate_csrf_token_on_page(browser)

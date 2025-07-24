@@ -8,18 +8,22 @@ from selenium.webdriver.support import expected_conditions as EC
 from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utubs import Utubs
 from src.utils.strings.html_identifiers import IDENTIFIERS
+from tests.functional.assert_utils import (
+    assert_login,
+    assert_no_utub_selected,
+    assert_utub_icon,
+    assert_utub_selected,
+)
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.utils_for_test import (
-    assert_login,
+from tests.functional.login_utils import (
     create_user_session_and_provide_session_id,
     login_user,
     login_user_and_select_utub_by_name,
     login_user_with_cookie_from_session,
+)
+from tests.functional.selenium_utils import (
     select_utub_by_id,
-    verify_no_utub_selected,
-    verify_utub_icon,
-    verify_utub_selected,
     wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
@@ -114,19 +118,19 @@ def test_back_and_forward_history(
         utub_idx = len(utub_ids) - idx - 1
         utub_id = utub_ids[utub_idx]
 
-        verify_utub_selected(browser, app, utub_id)
-        verify_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(browser, app, utub_id)
+        assert_utub_icon(browser, app, user_id, utub_id)
 
         browser.back()
 
-    verify_no_utub_selected(browser)
+    assert_no_utub_selected(browser)
 
     # Go forwards
     for utub_id in utub_ids:
         browser.forward()
 
-        verify_utub_selected(browser, app, utub_id)
-        verify_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(browser, app, utub_id)
+        assert_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_back_and_forward_history_with_one_utub_deleted(
@@ -176,7 +180,7 @@ def test_back_and_forward_history_with_one_utub_deleted(
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, css_selector)
 
-    verify_no_utub_selected(browser)
+    assert_no_utub_selected(browser)
 
     # Start at the end of the selected UTubs again
     utub_ids.append(utub_id_to_delete)
@@ -188,30 +192,30 @@ def test_back_and_forward_history_with_one_utub_deleted(
         utub_id = utub_ids[utub_idx]
 
         if utub_id == utub_id_to_delete:
-            verify_no_utub_selected(browser)
+            assert_no_utub_selected(browser)
             continue
 
         with app.app_context():
             utub: Utubs = Utubs.query.get(utub_id)
             wait_until_utub_name_appears(browser, utub.name)
 
-        verify_utub_selected(browser, app, utub_id)
-        verify_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(browser, app, utub_id)
+        assert_utub_icon(browser, app, user_id, utub_id)
 
     # Go back to the home page when no UTubs were selected
     browser.back()
-    verify_no_utub_selected(browser)
+    assert_no_utub_selected(browser)
 
     # Go forwards
     for utub_id in utub_ids:
         browser.forward()
 
         if utub_id == utub_id_to_delete:
-            verify_no_utub_selected(browser)
+            assert_no_utub_selected(browser)
             continue
 
-        verify_utub_selected(browser, app, utub_id)
-        verify_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(browser, app, utub_id)
+        assert_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_back_and_forward_history_with_leaving_one_utub(
@@ -258,7 +262,7 @@ def test_back_and_forward_history_with_leaving_one_utub(
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, utub_css_selector)
 
-    verify_no_utub_selected(browser)
+    assert_no_utub_selected(browser)
 
     # Start at the end of the selected UTubs again
     utub_ids.append(utub_id_to_delete)
@@ -270,30 +274,30 @@ def test_back_and_forward_history_with_leaving_one_utub(
         utub_id = utub_ids[utub_idx]
 
         if utub_id == utub_id_to_delete:
-            verify_no_utub_selected(browser)
+            assert_no_utub_selected(browser)
             continue
 
         with app.app_context():
             utub: Utubs = Utubs.query.get(utub_id)
             wait_until_utub_name_appears(browser, utub.name)
 
-        verify_utub_selected(browser, app, utub_id)
-        verify_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(browser, app, utub_id)
+        assert_utub_icon(browser, app, user_id, utub_id)
 
     # Go back to the home page when no UTubs were selected
     browser.back()
-    verify_no_utub_selected(browser)
+    assert_no_utub_selected(browser)
 
     # Go forwards
     for utub_id in utub_ids:
         browser.forward()
 
         if utub_id == utub_id_to_delete:
-            verify_no_utub_selected(browser)
+            assert_no_utub_selected(browser)
             continue
 
-        verify_utub_selected(browser, app, utub_id)
-        verify_utub_icon(browser, app, user_id, utub_id)
+        assert_utub_selected(browser, app, utub_id)
+        assert_utub_icon(browser, app, user_id, utub_id)
 
 
 def test_access_utub_id_via_url_logged_in(
@@ -320,7 +324,7 @@ def test_access_utub_id_via_url_logged_in(
     utub_url = f"{browser.current_url}?UTubID={utub_id_to_select}"
     browser.get(utub_url)
     wait_until_utub_name_appears(browser, utub_name_to_select)
-    verify_utub_selected(browser, app, utub_id_to_select)
+    assert_utub_selected(browser, app, utub_id_to_select)
 
 
 def test_access_utub_id_via_url_logged_out(
@@ -348,7 +352,7 @@ def test_access_utub_id_via_url_logged_out(
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
     wait_until_utub_name_appears(browser, utub_name_to_select)
 
-    verify_utub_selected(browser, app, utub_id_to_select)
+    assert_utub_selected(browser, app, utub_id_to_select)
 
 
 def test_utub_member_icon(browser: WebDriver, create_test_tags, provide_app: Flask):
