@@ -11,11 +11,12 @@ from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
-from tests.utils_for_test import is_string_in_logs
+from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.tags
 
 
+# Happy Path Tests :)
 def test_add_tag_to_utub(every_user_in_every_utub, login_first_user_without_register):
     """
     GIVEN UTubs with members in every UTub, but no tags
@@ -31,7 +32,8 @@ def test_add_tag_to_utub(every_user_in_every_utub, login_first_user_without_regi
             {
                 MODEL_STRS.UTUB_TAG_ID: Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
-            }
+            },
+         TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Integer representing the updated number of URLs that have this tag applied, modified by this operation by instantiating field at 0.
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -56,15 +58,18 @@ def test_add_tag_to_utub(every_user_in_every_utub, login_first_user_without_regi
     assert add_tag_response.status_code == 200
     add_tag_response_json = add_tag_response.json
 
+    utub_to_add_tag_to_id = utub_to_add_tag_to.id
+    new_tag_id = int(
+        add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID]
+    )
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_SUCCESS.TAG_ADDED_TO_UTUB
     assert (
         add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.TAG_STRING] == NEW_TAG
     )
-
     with app.app_context():
         new_tag: Utub_Tags = Utub_Tags.query.filter(
-            Utub_Tags.utub_id == utub_to_add_tag_to.id, Utub_Tags.tag_string == NEW_TAG
+            Utub_Tags.utub_id == utub_to_add_tag_to_id, Utub_Tags.tag_string == NEW_TAG
         ).first()
         assert (
             new_tag.id
@@ -73,12 +78,22 @@ def test_add_tag_to_utub(every_user_in_every_utub, login_first_user_without_regi
 
         assert (
             Utub_Tags.query.filter(
-                Utub_Tags.utub_id == utub_to_add_tag_to.id,
+                Utub_Tags.utub_id == utub_to_add_tag_to_id,
                 Utub_Tags.tag_string == NEW_TAG,
             ).count()
             == num_of_tag_in_utub + 1
         )
         assert Utub_Tags.query.count() == num_of_utub_tags + 1
+
+        # Count instances of added tag applied to URLs in UTub. Should be 0.
+        num_of_urls_tag_applied_to_in_utub = count_tag_instances_in_utub(
+            utub_to_add_tag_to_id, new_tag_id
+        )
+        assert num_of_tag_in_utub == num_of_urls_tag_applied_to_in_utub
+        assert (
+            add_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
+            == num_of_urls_tag_applied_to_in_utub
+        )
 
 
 def test_add_same_tag_to_multiple_utubs(
@@ -98,7 +113,8 @@ def test_add_same_tag_to_multiple_utubs(
             {
                 MODEL_STRS.UTUB_TAG_ID: Integer representing ID of tag newly added,
                 TAG_FORM.TAG_STRING: String representing the tag just added
-            }
+            },
+         TAGS_SUCCESS.TAG_COUNTS_MODIFIED : Integer representing the updated number of URLs that have this tag applied, modified by this operation by instantiating field at 0.
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -136,8 +152,10 @@ def test_add_same_tag_to_multiple_utubs(
             new_tag: Utub_Tags = Utub_Tags.query.filter(
                 Utub_Tags.utub_id == utub_id, Utub_Tags.tag_string == NEW_TAG
             ).first()
+            new_tag_id = new_tag.id
+
             assert (
-                new_tag.id
+                new_tag_id
                 == add_tag_response_json[TAGS_SUCCESS.UTUB_TAG][MODEL_STRS.UTUB_TAG_ID]
             )
 
@@ -149,9 +167,20 @@ def test_add_same_tag_to_multiple_utubs(
             )
             assert Utub_Tags.query.count() == utub_tag_count + 1
 
+            # Count instances of added tag applied to URLs in UTub. Should be 0.
+        num_of_urls_tag_applied_to_in_utub = count_tag_instances_in_utub(
+            utub_id, new_tag_id
+        )
+        assert num_of_tag_in_utub == num_of_urls_tag_applied_to_in_utub
+        assert (
+            add_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
+            == num_of_urls_tag_applied_to_in_utub
+        )
+
         utub_tag_count += 1
 
 
+# Sad Path Tests
 def test_add_duplicate_tag_to_utub(
     add_one_tag_to_each_utub_after_all_users_added, login_first_user_without_register
 ):
@@ -172,10 +201,16 @@ def test_add_duplicate_tag_to_utub(
         utub_of_user: Utubs = Utubs.query.filter(
             Utubs.utub_creator == current_user.id
         ).first()
+        utub_id = utub_of_user.id
+
         tag_already_added: Utub_Tags = Utub_Tags.query.filter(
-            Utub_Tags.utub_id == utub_of_user.id
+            Utub_Tags.utub_id == utub_id
         ).first()
         tag_string_already_added = tag_already_added.tag_string
+        tag_id = tag_already_added.id
+
+        # Get initial num of URLs with this Tag in the UTub
+        initial_num_urls_with_tag = count_tag_instances_in_utub(utub_id, tag_id)
 
     new_tag_form = {
         TAG_FORM.CSRF_TOKEN: csrf_token,
@@ -183,7 +218,7 @@ def test_add_duplicate_tag_to_utub(
     }
 
     add_tag_response = client.post(
-        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
+        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_id),
         data=new_tag_form,
     )
 
@@ -192,6 +227,9 @@ def test_add_duplicate_tag_to_utub(
 
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.TAG_ALREADY_IN_UTUB
+
+    # Count instances of added tag applied to URLs in UTub. Should be unchanged
+    assert initial_num_urls_with_tag == count_tag_instances_in_utub(utub_id, tag_id)
 
 
 def test_add_empty_tag_to_utub(

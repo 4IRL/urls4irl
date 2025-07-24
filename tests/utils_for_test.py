@@ -4,6 +4,7 @@ from logging import LogRecord
 import sqlalchemy
 
 from src.config import ConfigTest
+from src.models.utub_url_tags import Utub_Url_Tags
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:
@@ -72,3 +73,9 @@ def is_string_in_logs(needle: str, log_records: list[LogRecord]) -> bool:
 def is_string_in_logs_regex(needle: str, log_records: list[LogRecord]) -> bool:
     logs = trim_and_parse_logs(log_records)
     return any([re.match(needle, haystack) is not None for haystack in logs])
+
+
+def count_tag_instances_in_utub(utub_id: int, utub_tag_id: int) -> int:
+    return Utub_Url_Tags.query.filter(
+        Utub_Url_Tags.utub_id == utub_id, Utub_Url_Tags.utub_tag_id == utub_tag_id
+    ).count()

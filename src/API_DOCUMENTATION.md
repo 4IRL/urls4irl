@@ -1832,7 +1832,8 @@ Required form data:
 >     "utubTag": {
 >         "utubTagID": 1,
 >         "tagString": "Hello",
->     }
+>     },
+>     "tagCountsInUtub": 0
 > }
 > ```
 
@@ -1995,7 +1996,8 @@ Required form data:
 >     "utubTag": {
 >         "utubTagID": 4,
 >         "tagString": "Hello",
->     }
+>     },
+>     "tagCountsInUtub": 1                // Assumes no other URLs have utubTagID: 4 applied
 > }
 > ```
 
@@ -2097,7 +2099,8 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 >     "utubTag": {
 >         "utubTagID": 4,
 >         "tagString": "Hello",
->     }
+>     },
+>     "tagCountsInUtub": 0                // Assumes no other URLs have utubTagID: 4 applied
 > }
 > ```
 

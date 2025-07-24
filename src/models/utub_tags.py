@@ -41,7 +41,11 @@ class Utub_Tags(db.Model):
     @property
     def serialized(self):
         """Returns serialized object."""
-        return {MODEL_STRS.ID: self.id, MODEL_STRS.TAG_STRING: self.tag_string}
+        return {
+            MODEL_STRS.ID: self.id,
+            MODEL_STRS.TAG_STRING: self.tag_string,
+            MODEL_STRS.TAG_APPLIED: 0,
+        }
 
     @property
     def serialized_on_add_delete(self):

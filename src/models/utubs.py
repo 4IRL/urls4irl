@@ -5,6 +5,7 @@ from sqlalchemy import Column, DateTime, ForeignKey, Integer, String
 from src import db
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
+from src.models.utub_tags import Utub_Tags
 from src.utils.constants import UTUB_CONSTANTS
 from src.utils.datetime_utils import utc_now
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
@@ -33,7 +34,7 @@ class Utubs(db.Model):
         nullable=True,
         name="utubDescription",
     )
-    utub_tags = db.relationship(
+    utub_tags: list[Utub_Tags] = db.relationship(
         "Utub_Tags", cascade="all, delete, delete-orphan", passive_deletes=True
     )
     utub_url_tags = db.relationship(
@@ -56,6 +57,22 @@ class Utubs(db.Model):
 
     def serialized(self, current_user_id: int) -> dict[str, list | int | str]:
         """Return object in serialized form."""
+        tags = [tag.serialized for tag in self.utub_tags]
+
+        urls = [
+            url_in_utub.serialized(current_user_id, self.utub_creator)
+            for url_in_utub in self.utub_urls
+        ]
+
+        for tag in tags:
+            tag[MODEL_STRS.TAG_APPLIED] += len(
+                [
+                    None
+                    for url in urls
+                    if tag[MODEL_STRS.ID] in url[MODEL_STRS.URL_TAG_IDS]
+                ]
+            )
+
         return {
             MODEL_STRS.ID: self.id,
             MODEL_STRS.NAME: self.name,
@@ -65,11 +82,8 @@ class Utubs(db.Model):
                 self.utub_description if self.utub_description is not None else ""
             ),
             MODEL_STRS.MEMBERS: [member.serialized for member in self.members],
-            MODEL_STRS.URLS: [
-                url_in_utub.serialized(current_user_id, self.utub_creator)
-                for url_in_utub in self.utub_urls
-            ],
-            MODEL_STRS.TAGS: [tag.serialized for tag in self.utub_tags],
+            MODEL_STRS.URLS: urls,
+            MODEL_STRS.TAGS: tags,
             MODEL_STRS.IS_CREATOR: self.utub_creator == current_user_id,
             MODEL_STRS.CURRENT_USER: str(current_user_id),
         }

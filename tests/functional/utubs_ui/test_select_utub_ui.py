@@ -96,7 +96,7 @@ def test_select_created_utub_from_member_utub(
 
     app = provide_app
     user_id_for_test = 1
-    utub_user_did_not_create = get_utub_this_user_created(app, user_id_for_test)
+    utub_user_did_not_create = get_utub_this_user_did_not_create(app, user_id_for_test)
     utub_user_did_create = get_utub_this_user_created(app, user_id_for_test)
 
     login_user_and_select_utub_by_utubid(

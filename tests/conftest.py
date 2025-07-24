@@ -163,6 +163,7 @@ def app(build_app: Tuple[Flask, ConfigTest], caplog) -> Generator[Flask, None, N
     app, testing_config = build_app
     yield app
     clear_database(testing_config)
+
     if isinstance(app.session_interface, RedisSessionInterface):
         app.session_interface.client.flushdb()
 

@@ -15,7 +15,7 @@ from src.utils.constants import CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.url_strs import URL_FAILURE
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.tags_ui.utils_for_test_tag_ui import apply_tag_based_on_id
+from tests.functional.tags_ui.utils_for_test_tag_ui import apply_tag_filter_based_on_id
 from tests.functional.utils_for_test import (
     assert_login_with_username,
     assert_not_visible_css_selector,
@@ -778,7 +778,7 @@ def test_create_url_when_utub_tag_applied(
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    apply_tag_based_on_id(browser, tag_id_in_utub)
+    apply_tag_filter_based_on_id(browser, tag_id_in_utub)
 
     url_title = MOCK_URL_TITLES[0]
     url_string = MOCK_URL_STRINGS[0] + "extraextra"
