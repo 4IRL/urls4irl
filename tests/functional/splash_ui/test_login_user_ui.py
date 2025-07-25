@@ -14,12 +14,12 @@ from tests.functional.assert_utils import (
 )
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.login_utils import login_user
 from tests.functional.selenium_utils import (
     invalidate_csrf_token_in_form,
     wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
+    login_user_ui,
     dismiss_modal_with_click_out,
     wait_then_get_elements,
     wait_until_hidden,
@@ -182,7 +182,7 @@ def test_login_test_user_btn(browser: WebDriver, create_test_users):
     THEN U4I will login user and display the home page
     """
 
-    login_user(browser)
+    login_user_ui(browser)
 
     # Find submit button to login
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
@@ -199,7 +199,7 @@ def test_login_test_user_key(browser: WebDriver, create_test_users):
     THEN U4I will login user and display the home page
     """
 
-    password_input = login_user(browser)
+    password_input = login_user_ui(browser)
 
     # Submit form
     password_input.send_keys(Keys.ENTER)
@@ -218,7 +218,7 @@ def test_login_user_unconfirmed_email_shows_alert(
     THEN U4I responds with a failure message and prompts user to confirm email
     """
 
-    login_user(browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1)
+    login_user_ui(browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1)
 
     # Find submit button to login
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
@@ -247,7 +247,7 @@ def test_login_user_unconfirmed_email_validate_btn_shows_validate_modal(
     THEN U4I responds with the Validate My Email modal, alert shows with "Email Sent!"
     """
 
-    login_user(browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1)
+    login_user_ui(browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1)
 
     # Find submit button to login
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
@@ -273,7 +273,7 @@ def test_login_with_nonexistent_user(browser: WebDriver, create_test_users):
     THEN U4I will respond with error message
     """
 
-    login_user(
+    login_user_ui(
         browser, username=UTS.TEST_PASSWORD_1 + "a", password=UTS.TEST_PASSWORD_1 + "a"
     )
 
@@ -296,7 +296,7 @@ def test_login_with_invalid_password(browser: WebDriver, create_test_users):
     THEN U4I will respond with error message
     """
 
-    login_user(
+    login_user_ui(
         browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1 + "a"
     )
 
@@ -320,7 +320,7 @@ def test_invalid_username_error_dismissed_on_modal_reload(browser: WebDriver):
     THEN login modal no longer shows nonexistent user error
     """
 
-    login_user(
+    login_user_ui(
         browser, username=UTS.TEST_PASSWORD_1 + "a", password=UTS.TEST_PASSWORD_1 + "a"
     )
 
@@ -332,7 +332,7 @@ def test_invalid_username_error_dismissed_on_modal_reload(browser: WebDriver):
 
     wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
 
-    login_user(
+    login_user_ui(
         browser, username=UTS.TEST_PASSWORD_1 + "a", password=UTS.TEST_PASSWORD_1 + "a"
     )
     error_elem = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
@@ -349,7 +349,7 @@ def test_invalid_password_error_dismissed_on_modal_reload(browser: WebDriver):
     THEN login modal no longer shows invalid password error
     """
 
-    login_user(
+    login_user_ui(
         browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1 + "a"
     )
 
@@ -361,7 +361,7 @@ def test_invalid_password_error_dismissed_on_modal_reload(browser: WebDriver):
 
     wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
 
-    login_user(
+    login_user_ui(
         browser, username=UTS.TEST_PASSWORD_1 + "a", password=UTS.TEST_PASSWORD_1 + "a"
     )
     error_elem = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
@@ -376,7 +376,7 @@ def test_login_with_empty_fields(browser: WebDriver):
     WHEN user attempts login with an empty login field form
     THEN login modal shows field required errors
     """
-    login_user(browser, username="", password="")
+    login_user_ui(browser, username="", password="")
     # Find submit button to login
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
@@ -393,7 +393,7 @@ def test_login_user_invalid_csrf(browser: WebDriver):
     WHEN user attempts login with an invalid CSRF token
     THEN browser redirects user to error page, where user can refresh
     """
-    login_user(browser, username="", password="")
+    login_user_ui(browser, username="", password="")
 
     # Find submit button to login
     invalidate_csrf_token_in_form(browser)

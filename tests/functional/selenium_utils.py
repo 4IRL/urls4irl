@@ -19,8 +19,10 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 from src.config import ConfigTest
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as MP
+from tests.functional.locators import SplashPageLocators as SPL
 
 
 class Decks(Enum):
@@ -432,7 +434,109 @@ def wait_for_page_complete_and_dom_stable(browser: WebDriver, timeout: int = 10)
     assert wait_for_dom_stable(browser, timeout=timeout)
 
 
+def login_user_ui(
+    browser: WebDriver,
+    username: str = UTS.TEST_USERNAME_1,
+    password: str = UTS.TEST_PASSWORD_1,
+):
+    """
+    Streamlines actions needed to login a user.
+
+    Args:
+        WebDriver open to U4I Splash Page
+        (Optional) Username of user to login as, defaults to u4i_test1
+        (Optional) Password, defaults to u4i_test1@urls4irl.app
+
+    Returns:
+        N/A
+    """
+
+    # Find and click login button to open modal
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+
+    wait_for_modal_ready(browser, SPL.SPLASH_MODAL)
+
+    wait_for_element_presence(browser, SPL.INPUT_USERNAME)
+    wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME)
+
+    return input_login_fields(browser, username, password)
+
+
+def input_login_fields(
+    browser: WebDriver,
+    username: str = UTS.TEST_USERNAME_1,
+    password: str = UTS.TEST_PASSWORD_1,
+):
+    # Input login details
+    username_input = wait_then_get_element(browser, SPL.INPUT_USERNAME)
+    assert username_input is not None
+    clear_then_send_keys(username_input, username)
+
+    password_input = wait_then_get_element(browser, SPL.INPUT_PASSWORD)
+    assert password_input is not None
+    clear_then_send_keys(password_input, password)
+
+    return password_input
+
+
 # Modal
+def wait_for_modal_ready(browser, modal_selector, timeout=10):
+    '''
+    """Wait for Bootstrap modal to be fully loaded and interactive"""
+
+    wait = WebDriverWait(browser, timeout)
+
+    modal = wait.until(
+        EC.visibility_of_element_located((By.CSS_SELECTOR, modal_selector))
+    )
+
+    wait.until(lambda _: "show" in modal.get_attribute("class"))  # type: ignore
+    time.sleep(0.2)
+    return modal
+    '''
+    wait = WebDriverWait(browser, timeout)
+
+    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, modal_selector)))
+    wait.until(
+        lambda driver: "show"
+        in driver.find_element(By.CSS_SELECTOR, modal_selector).get_attribute("class")
+    )
+    wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
+
+    # Ensure modal is not in transition state
+    max_transition_wait = 10  # 10 attempts
+    for _ in range(max_transition_wait):
+        try:
+            modal_element = browser.find_element(By.CSS_SELECTOR, modal_selector)
+            classes = modal_element.get_attribute("class")
+
+            # Check if transition is complete
+            if "show" in classes and "fade" in classes:
+                # For Bootstrap fade modals, check opacity
+                opacity = browser.execute_script(
+                    "return window.getComputedStyle(arguments[0]).opacity;",
+                    modal_element,
+                )
+                if float(opacity) >= 1.0:
+                    break
+            elif "show" in classes:
+                print("Modal show class present")
+                break
+
+            time.sleep(0.1)
+        except StaleElementReferenceException:
+            time.sleep(0.1)
+            continue
+
+    # Clickability is a final verification that modal is interactive
+    final_modal = wait.until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, modal_selector))
+    )
+
+    time.sleep(0.2)
+    return final_modal
+
+
 def dismiss_modal_with_click_out(browser: WebDriver):
     action = ActionChains(browser)
     modal_element = wait_then_get_element(browser, MP.ELEMENT_MODAL)

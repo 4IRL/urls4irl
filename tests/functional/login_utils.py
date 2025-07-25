@@ -5,23 +5,18 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 
 from src.models.users import Users
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_panel_visibility_mobile,
 )
-from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     Decks,
-    clear_then_send_keys,
     select_url_by_title,
     select_url_by_url_string,
     select_utub_by_name,
     wait_for_animation_to_end,
-    wait_for_element_presence,
     wait_then_click_element,
-    wait_then_get_element,
     wait_until_visible_css_selector,
 )
 
@@ -138,53 +133,6 @@ def login_user_select_utub_by_name_and_url_by_string(
 ):
     login_user_and_select_utub_by_name(app, browser, user_id, utub_name)
     select_url_by_url_string(browser, url_string)
-
-
-def login_user(
-    browser: WebDriver,
-    username: str = UTS.TEST_USERNAME_1,
-    password: str = UTS.TEST_PASSWORD_1,
-):
-    """
-    Streamlines actions needed to login a user.
-
-    Args:
-        WebDriver open to U4I Splash Page
-        (Optional) Username of user to login as, defaults to u4i_test1
-        (Optional) Password, defaults to u4i_test1@urls4irl.app
-
-    Returns:
-        N/A
-    """
-
-    # Find and click login button to open modal
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
-
-    wait_for_element_presence(browser, SPL.SPLASH_MODAL)
-    wait_for_animation_to_end(browser, SPL.SPLASH_MODAL)
-    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
-
-    wait_for_element_presence(browser, SPL.INPUT_USERNAME)
-    wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME)
-
-    return input_login_fields(browser, username, password)
-
-
-def input_login_fields(
-    browser: WebDriver,
-    username: str = UTS.TEST_USERNAME_1,
-    password: str = UTS.TEST_PASSWORD_1,
-):
-    # Input login details
-    username_input = wait_then_get_element(browser, SPL.INPUT_USERNAME)
-    assert username_input is not None
-    clear_then_send_keys(username_input, username)
-
-    password_input = wait_then_get_element(browser, SPL.INPUT_PASSWORD)
-    assert password_input is not None
-    clear_then_send_keys(password_input, password)
-
-    return password_input
 
 
 def login_user_select_utub_by_id_open_create_utub_tag(

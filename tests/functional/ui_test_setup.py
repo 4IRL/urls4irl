@@ -19,26 +19,7 @@ def run_app(port: int, show_flask_logs: bool):
     app_for_test = create_app(config)  # type: ignore
     assert app_for_test is not None
     if not show_flask_logs:
-        # Hide all possible logs from showing when running tests
-        # https://stackoverflow.com/a/72145406
-        log = logging.getLogger("werkzeug")
-        log.disabled = True
-        app_for_test.logger.disabled = True
-
-        # Remove all StreamHandlers from the app logger to prevent console output
-        handlers_to_remove = []
-        for handler in app_for_test.logger.handlers:
-            if isinstance(handler, logging.StreamHandler) and not isinstance(
-                handler, logging.NullHandler
-            ):
-                handlers_to_remove.append(handler)
-
-        for handler in handlers_to_remove:
-            app_for_test.logger.removeHandler(handler)
-
-        import flask.cli
-
-        flask.cli.show_server_banner = lambda *_: None
+        hide_logs_for_app(app_for_test)
 
     host = "0.0.0.0" if config.DOCKER else "127.0.0.1"
     app_for_test.run(
@@ -46,9 +27,32 @@ def run_app(port: int, show_flask_logs: bool):
         debug=False,
         port=port,
         use_reloader=False,  # Prevents child process creation
-        threaded=True,  # Use threading instead of processes
+        threaded=True,
         processes=1,  # Explicitly set to 1 process
     )
+
+
+def hide_logs_for_app(app: Flask):
+    # Hide all possible logs from showing when running tests
+    # https://stackoverflow.com/a/72145406
+    log = logging.getLogger("werkzeug")
+    log.disabled = True
+    app.logger.disabled = True
+
+    # Remove all StreamHandlers from the app logger to prevent console output
+    handlers_to_remove = []
+    for handler in app.logger.handlers:
+        if isinstance(handler, logging.StreamHandler) and not isinstance(
+            handler, logging.NullHandler
+        ):
+            handlers_to_remove.append(handler)
+
+    for handler in handlers_to_remove:
+        app.logger.removeHandler(handler)
+
+    import flask.cli
+
+    flask.cli.show_server_banner = lambda *_: None
 
 
 def clear_db(runner: Tuple[Flask, FlaskCliRunner], debug_strings):
