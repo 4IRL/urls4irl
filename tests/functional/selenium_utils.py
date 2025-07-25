@@ -481,6 +481,7 @@ def input_login_fields(
 
 # Modal
 def wait_for_modal_ready(browser, modal_selector, timeout=10):
+    '''
     """Wait for Bootstrap modal to be fully loaded and interactive"""
 
     wait = WebDriverWait(browser, timeout)
@@ -492,6 +493,48 @@ def wait_for_modal_ready(browser, modal_selector, timeout=10):
     wait.until(lambda _: "show" in modal.get_attribute("class"))  # type: ignore
     time.sleep(0.2)
     return modal
+    '''
+    wait = WebDriverWait(browser, timeout)
+
+    wait.until(EC.presence_of_element_located((By.CSS_SELECTOR, modal_selector)))
+    wait.until(
+        lambda driver: "show"
+        in driver.find_element(By.CSS_SELECTOR, modal_selector).get_attribute("class")
+    )
+    wait.until(EC.visibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
+
+    # Ensure modal is not in transition state
+    max_transition_wait = 10  # 10 attempts
+    for _ in range(max_transition_wait):
+        try:
+            modal_element = browser.find_element(By.CSS_SELECTOR, modal_selector)
+            classes = modal_element.get_attribute("class")
+
+            # Check if transition is complete
+            if "show" in classes and "fade" in classes:
+                # For Bootstrap fade modals, check opacity
+                opacity = browser.execute_script(
+                    "return window.getComputedStyle(arguments[0]).opacity;",
+                    modal_element,
+                )
+                if float(opacity) >= 1.0:
+                    break
+            elif "show" in classes:
+                print("Modal show class present")
+                break
+
+            time.sleep(0.1)
+        except StaleElementReferenceException:
+            time.sleep(0.1)
+            continue
+
+    # Clickability is a final verification that modal is interactive
+    final_modal = wait.until(
+        EC.element_to_be_clickable((By.CSS_SELECTOR, modal_selector))
+    )
+
+    time.sleep(0.2)
+    return final_modal
 
 
 def dismiss_modal_with_click_out(browser: WebDriver):
