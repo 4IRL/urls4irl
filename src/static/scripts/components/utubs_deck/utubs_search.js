@@ -64,9 +64,7 @@ function setUTubSelectorSearchEventListener() {
   });
 
   searchInput
-    // Use namespacing like in the example (.searchInputEsc)
     .offAndOn("focus.searchInputEsc", function () {
-      // When the input gains focus, attach a keyup listener to the document
       $(document).offAndOn("keyup.searchInputEsc", function (e) {
         if (e.which === 27) {
           searchInput.blur();
@@ -79,7 +77,6 @@ function setUTubSelectorSearchEventListener() {
     .offAndOn("input", function () {
       const searchTerm = searchInput.val().toLowerCase();
       if (searchTerm.length < CONSTANTS.UTUBS_MIN_NAME_LENGTH) {
-        // Show all UTubs
         updatedUTubSelectorDisplay([]);
         return;
       }
