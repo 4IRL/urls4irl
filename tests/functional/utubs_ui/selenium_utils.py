@@ -6,7 +6,7 @@ from tests.functional.assert_utils import assert_visible_css_selector
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
-    wait_for_animation_to_end,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -168,7 +168,9 @@ def open_utub_search_box(browser: WebDriver):
 
     wait_then_click_element(browser, HPL.UTUB_OPEN_SEARCH_ICON, time=3)
     browser.get_screenshot_as_file("p1.png")
-    wait_for_animation_to_end(browser, HPL.UTUB_SEARCH_INPUT, timeout=3)
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, HPL.UTUB_SEARCH_INPUT, timeout=3
+    )
     wait_until_in_focus(browser, HPL.UTUB_SEARCH_INPUT)
 
     assert_visible_css_selector(browser, HPL.UTUB_CLOSE_SEARCH_ICON, time=3)

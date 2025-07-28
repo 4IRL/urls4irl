@@ -25,7 +25,7 @@ from tests.functional.selenium_utils import (
     get_selected_url,
     invalidate_csrf_token_on_page,
     open_update_url_title,
-    wait_for_animation_to_end,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_element_to_be_removed,
     wait_then_click_element,
 )
@@ -91,7 +91,7 @@ def test_hide_delete_tag_button_after_hover(
     actions.move_to_element(url_title).pause(3).perform()
 
     delete_tag_btn_selector = f"{tag_badge_selector} > {HPL.BUTTON_TAG_DELETE}"
-    wait_for_animation_to_end(browser, delete_tag_btn_selector)
+    wait_for_animation_to_end_check_top_lhs_corner(browser, delete_tag_btn_selector)
     assert not browser.find_element(
         By.CSS_SELECTOR, delete_tag_btn_selector
     ).is_displayed()

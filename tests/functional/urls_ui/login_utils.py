@@ -11,7 +11,7 @@ from tests.functional.login_utils import (
 )
 from tests.functional.selenium_utils import (
     get_selected_url,
-    wait_for_animation_to_end,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_visible_css_selector,
@@ -30,7 +30,7 @@ def login_select_utub_select_url_click_delete_get_modal_url(
         app, browser, user_id, utub_name, url_string
     )
     url_row = get_selected_url(browser)
-    wait_for_animation_to_end(
+    wait_for_animation_to_end_check_top_lhs_corner(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
 

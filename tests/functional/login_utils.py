@@ -15,7 +15,7 @@ from tests.functional.selenium_utils import (
     select_url_by_title,
     select_url_by_url_string,
     select_utub_by_name,
-    wait_for_animation_to_end,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_then_click_element,
     wait_until_visible_css_selector,
 )
@@ -110,7 +110,7 @@ def login_user_select_utub_by_id_and_url_by_id(
     wait_then_click_element(browser, url_row_selector, time=10)
     selected_url_access_btn = f"{url_row_selector} {HPL.BUTTON_URL_ACCESS}"
     wait_until_visible_css_selector(browser, selected_url_access_btn, timeout=3)
-    wait_for_animation_to_end(browser, selected_url_access_btn)
+    wait_for_animation_to_end_check_top_lhs_corner(browser, selected_url_access_btn)
 
 
 def login_user_and_select_utub_by_name(

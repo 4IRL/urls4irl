@@ -7,7 +7,7 @@ from selenium.webdriver.remote.webelement import WebElement
 
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
-    wait_for_animation_to_end,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_then_get_element,
     wait_until_visible,
 )
@@ -49,7 +49,7 @@ def assert_select_url_as_non_utub_owner_and_non_url_adder(
     assert url_title.is_enabled()
 
     # Wait for element to fully get in view
-    wait_for_animation_to_end(
+    wait_for_animation_to_end_check_top_lhs_corner(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
 
@@ -92,7 +92,7 @@ def assert_select_url_as_utub_owner_or_url_creator(
     assert url_title.is_enabled()
 
     # Wait for element to fully get in view
-    wait_for_animation_to_end(
+    wait_for_animation_to_end_check_top_lhs_corner(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
 

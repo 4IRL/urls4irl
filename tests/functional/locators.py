@@ -31,6 +31,7 @@ class HomePageLocators(GenericPageLocator):
     )
 
     # UTub Deck
+    HEADER_UTUB_DECK = "#UTubDeckHeader"
     SUBHEADER_UTUB_DECK = "#UTubDeckSubheader"
     LIST_UTUB = "#listUTubs"
     SELECTORS_UTUB = ".UTubSelector"
@@ -53,6 +54,7 @@ class HomePageLocators(GenericPageLocator):
     UTUB_SEARCH_INPUT = "#UTubNameSearch"
 
     # Tag Deck
+    HEADER_TAG_DECK = "#TagDeckHeader"
     SUBHEADER_TAG_DECK = "#TagDeckSubheader"
     LIST_TAGS = "#listTags"
     TAG_FILTERS = ".tagFilter"
@@ -139,7 +141,7 @@ class HomePageLocators(GenericPageLocator):
     GO_TO_URL_ICON = ".goToUrlIcon"
 
     # Members Deck
-    SUBHEADER_MEMBER_DECK = "#memberDeckSubheader"
+    HEADER_MEMBER_DECK = "#MemberDeckHeader"
     BUTTON_MEMBER_CREATE = "#memberBtnCreate"
     INPUT_MEMBER_CREATE = "#memberCreate"
     BUTTON_MEMBER_CANCEL_CREATE = "#memberCancelBtnCreate"
@@ -148,7 +150,6 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_MEMBER_DELETE = ".memberOtherBtnDelete"
     INPUT_MEMBER_CREATE_ERROR = INPUT_MEMBER_CREATE + INVALID_FIELD_SUFFIX
 
-    SUBHEADER_UTUB = "#MemberDeckSubheader"
     LIST_MEMBERS = "#listMembers"
     BADGES_MEMBERS = ".member"
     BADGE_OWNER = "#UTubOwner > .member"

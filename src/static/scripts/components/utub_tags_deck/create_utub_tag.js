@@ -25,15 +25,6 @@ function resetNewUTubTagForm() {
   $("#utubTagCreate").val(null);
 }
 
-// Shows new UTub Tag input fields
-function createUTubTagShowInput() {
-  $("#createUTubTagWrap").showClassFlex();
-  $("#listTags").hideClass();
-  $("#utubTagBtnCreate").hideClass();
-  setupCreateUTubTagEventListeners();
-  $("#utubTagCreate").trigger("focus");
-}
-
 function setupCreateUTubTagEventListeners() {
   const utubTagSubmitBtnCreate = $("#utubTagSubmitBtnCreate");
   const utubTagCancelBtnCreate = $("#utubTagCancelBtnCreate");
@@ -103,7 +94,14 @@ function unbindCreateUTubTagFocusEventListeners() {
   $(document).off(".createUTubTagSubmitEscape");
 }
 
-// Hides new UTubTag input fields
+function createUTubTagShowInput() {
+  $("#createUTubTagWrap").showClassFlex();
+  $("#listTags").hideClass();
+  $("#utubTagBtnCreate").hideClass();
+  setupCreateUTubTagEventListeners();
+  $("#utubTagCreate").trigger("focus");
+}
+
 function createUTubTagHideInput() {
   $("#createUTubTagWrap").hideClass();
   $("#listTags").showClassNormal();
