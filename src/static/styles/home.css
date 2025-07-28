@@ -1265,6 +1265,16 @@ a.urlString:hover {
     .urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap>.text-input-container {
         width: 100%;
     }
+
+    .title-caret {
+        display: none;
+    }
+
+    #MemberDeckHeader,
+    #TagDeckHeader,
+    #UTubDeckHeader {
+        pointer-events: none;
+    }
 }
 
 @media (max-width: 767.98px) {
@@ -1287,7 +1297,6 @@ a.urlString:hover {
     #accessAllURLsBtn {
         width: 100% !important;
     }
-
 }
 
 @media (min-width: 465px) {}

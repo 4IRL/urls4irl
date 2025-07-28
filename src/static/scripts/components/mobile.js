@@ -21,10 +21,12 @@ $(document).ready(function () {
       } else {
         setMobileUIWhenUTubNotSelectedOrUTubDeleted();
       }
+      removeCollapsibleClickableHeaderClass();
     } else {
       // Set full screen navbar
       // Show all panels and decks
       revertMobileUIToFullScreenUI();
+      addCollapsibleClickableHeaderClass();
     }
   });
 });
