@@ -17,7 +17,7 @@ from tests.functional.selenium_utils import (
     get_all_url_ids_in_selected_utub,
     get_selected_url,
     get_selected_utub_id,
-    wait_for_animation_to_end,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_web_element_and_click,
     wait_then_get_elements,
     wait_until_visible_css_selector,
@@ -189,7 +189,7 @@ def test_select_urls_using_down_key(
     first_url_string = (
         url_rows[0].find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
     )
-    wait_for_animation_to_end(
+    wait_for_animation_to_end_check_top_lhs_corner(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
     selected_url = get_selected_url(browser)
@@ -243,7 +243,7 @@ def test_select_urls_using_up_key(
     first_url_string = (
         url_rows[0].find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
     )
-    wait_for_animation_to_end(
+    wait_for_animation_to_end_check_top_lhs_corner(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
     )
     selected_url = get_selected_url(browser)

@@ -275,10 +275,10 @@ def wait_until_in_focus(browser: WebDriver, css_selector: str, timeout=10):
     )
 
 
-def wait_for_animation_to_end(
+def wait_for_animation_to_end_check_top_lhs_corner(
     browser: WebDriver, locator: str, timeout=10, interval=0.1
 ):
-    """Wait until an element stops moving by checking its position."""
+    """Wait until an element stops moving by checking its position via the top LHS corner."""
 
     def element_stopped_moving(browser: WebDriver):
         element = browser.find_element(By.CSS_SELECTOR, locator)
@@ -289,6 +289,27 @@ def wait_for_animation_to_end(
         time.sleep(interval)  # Wait a bit before checking again
         new_position = browser.execute_script(
             "return [arguments[0].getBoundingClientRect().left, arguments[0].getBoundingClientRect().top];",
+            element,
+        )
+        return initial_position == new_position
+
+    WebDriverWait(browser, timeout).until(element_stopped_moving)
+
+
+def wait_for_animation_to_end_check_height(
+    browser: WebDriver, locator: str, timeout=10, interval=0.1
+):
+    """Wait until an element stops moving by checking its height."""
+
+    def element_stopped_moving(browser: WebDriver):
+        element = browser.find_element(By.CSS_SELECTOR, locator)
+        initial_position = browser.execute_script(
+            "return [arguments[0].getBoundingClientRect().height];",
+            element,
+        )
+        time.sleep(interval)  # Wait a bit before checking again
+        new_position = browser.execute_script(
+            "return [arguments[0].getBoundingClientRect().height];",
             element,
         )
         return initial_position == new_position

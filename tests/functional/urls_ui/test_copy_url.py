@@ -16,7 +16,7 @@ from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
     set_focus_on_element,
-    wait_for_animation_to_end,
+    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_any_element_with_text,
     wait_for_element_with_text,
     wait_then_click_element,
@@ -85,7 +85,9 @@ def test_copy_url_btn_click_fail(
     url_copy_btn = wait_then_get_element(browser, copy_btn)
     assert url_copy_btn
     ActionChains(browser).move_to_element(url_copy_btn).perform()
-    wait_for_animation_to_end(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
+    )
     assert_visible_css_selector(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
 
     tooltip_on_hvr = wait_then_get_element(
@@ -110,7 +112,9 @@ def test_copy_url_btn_click_fail(
     assert tooltip_on_click
     assert tooltip_on_click.text == STRINGS.COPIED_URL_FAILURE_TOOLIP
 
-    wait_for_animation_to_end(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
+    )
     assert_not_visible_css_selector(
         browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
     )
@@ -151,7 +155,9 @@ def test_copy_url_btn_click(
     url_copy_btn = wait_then_get_element(browser, copy_btn)
     assert url_copy_btn
     ActionChains(browser).move_to_element(url_copy_btn).perform()
-    wait_for_animation_to_end(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
+    )
     assert_visible_css_selector(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
 
     tooltip_on_hvr = wait_then_get_element(
@@ -178,7 +184,9 @@ def test_copy_url_btn_click(
 
     assert clipboard_mock.get_clipboard_content() == url_string
 
-    wait_for_animation_to_end(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
+    )
     assert_not_visible_css_selector(
         browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
     )
@@ -220,7 +228,9 @@ def test_copy_url_btn_key(
     assert url_copy_btn
     set_focus_on_element(browser, url_copy_btn)
 
-    wait_for_animation_to_end(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
+    )
     assert_visible_css_selector(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
 
     tooltip_on_hvr = wait_then_get_element(
@@ -249,7 +259,9 @@ def test_copy_url_btn_key(
 
     assert clipboard_mock.get_clipboard_content() == url_string
 
-    wait_for_animation_to_end(browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}")
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
+    )
     assert_not_visible_css_selector(
         browser, f"{HPL.BUTTON_URL_COPY}{HPL.TOOLTIP_SUFFIX}"
     )
