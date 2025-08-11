@@ -6,7 +6,7 @@ from flask.cli import AppGroup, with_appcontext
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import MetaData
 
-from src.cli.utils import TABLE_NAMES
+from src.utils.db_table_names import TABLE_NAMES
 from src.db import db
 from src.cli.mock_constants import TEST_USER_COUNT
 from src.cli.mock_data.tags import generate_mock_tags
