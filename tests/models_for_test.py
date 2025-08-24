@@ -86,7 +86,7 @@ Valid URLs used for testing, without tags
 """
 valid_url_without_tag_1 = {
     MODEL_STRS.UTUB_URL_ID: 1,
-    MODEL_STRS.URL_STRING: "https://www.google.com/",
+    MODEL_STRS.URL_STRING: "https://www.abc.com/",
     MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
@@ -94,7 +94,7 @@ valid_url_without_tag_1 = {
 
 valid_url_without_tag_2 = {
     MODEL_STRS.UTUB_URL_ID: 2,
-    MODEL_STRS.URL_STRING: "https://github.com/",
+    MODEL_STRS.URL_STRING: "https://xyz.com/",
     MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
@@ -102,7 +102,7 @@ valid_url_without_tag_2 = {
 
 valid_url_without_tag_3 = {
     MODEL_STRS.UTUB_URL_ID: 3,
-    MODEL_STRS.URL_STRING: "https://www.microsoft.com/",
+    MODEL_STRS.URL_STRING: "https://www.efg.com/",
     MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
@@ -128,7 +128,7 @@ Valid URLs used for testing, with tags
 """
 valid_url_with_tag_1 = {
     MODEL_STRS.UTUB_URL_ID: 1,
-    MODEL_STRS.URL_STRING: "https://www.google.com/",
+    MODEL_STRS.URL_STRING: "https://www.abc.com/",
     MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
@@ -136,7 +136,7 @@ valid_url_with_tag_1 = {
 
 valid_url_with_tag_2 = {
     MODEL_STRS.UTUB_URL_ID: 2,
-    MODEL_STRS.URL_STRING: "https://github.com/",
+    MODEL_STRS.URL_STRING: "https://xyz.com/",
     MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,
@@ -144,7 +144,7 @@ valid_url_with_tag_2 = {
 
 valid_url_with_tag_3 = {
     MODEL_STRS.UTUB_URL_ID: 3,
-    MODEL_STRS.URL_STRING: "https://www.microsoft.com/",
+    MODEL_STRS.URL_STRING: "https://www.efg.com/",
     MODEL_STRS.URL_TAG_IDS: [],
     MODEL_STRS.URL_TITLE: "",
     MODEL_STRS.CAN_DELETE: True,

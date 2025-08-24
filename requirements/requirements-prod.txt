@@ -1,3 +1,4 @@
+ada-url==1.26.0
 alembic==1.13.2
 async-timeout==4.0.3
 blinker==1.6.2
@@ -44,7 +45,6 @@ requests==2.32.4
 rich==13.7.0
 SQLAlchemy==1.4.31
 typing_extensions==4.9.0
-url-normalize==1.4.3
 urllib3==2.5.0
 webassets==2.0
 Werkzeug==3.0.6

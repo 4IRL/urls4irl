@@ -181,6 +181,10 @@
 
 /* Utility */
 
+.white-space-pre-line {
+    white-space: pre-line;
+}
+
 .flex-row {
     display: flex;
     flex-direction: row;

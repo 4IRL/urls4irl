@@ -3,7 +3,6 @@ import pytest
 import redis
 from redis import Redis
 
-from src import url_validator
 from src.utils.strings.config_strs import CONFIG_ENVS as ENV
 from src.utils.strings.url_validation_strs import SHORT_URLS
 
@@ -42,41 +41,3 @@ def test_add_short_url_domains(runner):
 
     for short_domain in VALID_SHORT_DOMAINS:
         assert redis_client.sismember(name=SHORT_URLS, value=short_domain) == 1
-
-
-def test_validate_short_url(runner):
-    """
-    GIVEN a developer wanting to add mock users to the database
-    WHEN the developer provides the following CLI command:
-        `flask shorturls add`
-    THEN verify that the short urls can be properly validated
-
-    Args:
-        runner (pytest.fixture): Provides a Flask application, and a FlaskCLIRunner
-    """
-    app, cli_runner = runner
-    redis_uri = app.config.get(ENV.REDIS_URI, None)
-
-    # Do not test unless valid Redis URI is added
-    if not redis_uri or redis_uri == "memory://":
-        return
-
-    cli_runner.invoke(args=["shorturls", "add"])
-
-    VALID_BITLY_URL = "https://bit.ly/test-u4i-link"
-    LONG_URL = "https://www.youtube.com/watch?v=b0fv54xGOwY&pp=0gcJCb0Ag7Wk3p_U"
-
-    with app.app_context():
-        final_url, is_validated = url_validator.validate_url(VALID_BITLY_URL)
-
-    assert LONG_URL == final_url
-    assert is_validated
-
-    VALID_SHARE_GOOGLE_URL = "https://share.google/pgpkvcPWym6rP8LDz"
-    IN_FINAL_URL = "https://www.etsy.com"
-
-    with app.app_context():
-        final_url, is_validated = url_validator.validate_url(VALID_SHARE_GOOGLE_URL)
-
-    assert IN_FINAL_URL in final_url
-    assert is_validated

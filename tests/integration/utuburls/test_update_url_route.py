@@ -1,16 +1,13 @@
 import threading
 from unittest import mock
 
+import ada_url
 from flask import url_for
 from flask_login import current_user
 import pytest
-import redis
-import requests
 
 from src.extensions.url_validation.url_validator import (
     InvalidURLError,
-    UrlValidator,
-    WaybackRateLimited,
 )
 from src.models.urls import Urls
 from src.models.utub_url_tags import Utub_Url_Tags
@@ -23,14 +20,288 @@ from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from tests.unit.test_url_validation import (
+    FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
+    FLATTENED_URLS_WITH_DIFFERENT_PATH,
+    INVALID_URLS_TO_VALIDATE,
+)
 from tests.utils_for_test import is_string_in_logs, is_string_in_logs_regex
 
 pytestmark = pytest.mark.urls
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+@pytest.mark.parametrize(
+    "validated_url,input_url",
+    [
+        (validated_url, input_url)
+        for (validated_url, input_url) in FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS
+    ],
+)
+def test_update_valid_url_with_fresh_valid_url(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    validated_url,
+    input_url,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with a URL not already in the database via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify that the new URL is stored in the database with same title, the url-utub-user associations and url-tag are
+        modified correctly, all other URL associations are kept consistent,
+        the server sends back a 200 HTTP status code, and the server sends back the appropriate JSON response
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: URL_SUCCESS.URL_MODIFIED,
+        URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
+        {
+            MODEL_STRS.URL_ID: ID of URL that was modified,
+            MODEL_STRS.URL_STRING: The URL that was newly modified,
+            MODEL_STRS.URL_TITLE: The title of the URL that was newly modified,
+            MODEL_STRS.URL_TAGS: An array of tag objects associated with this URL
+        }
+    }
+    """
+    NORMALIZED_URL = ada_url.URL(validated_url).href
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_title = url_in_this_utub.url_title
+        current_url_id = url_in_this_utub.url_id
+
+        # Find associated tags with this url
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == url_in_this_utub.id,
+        ).all()
+        associated_tag_objs = [
+            {
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
+            }
+            for tag in associated_tags
+        ]
+
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: input_url,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 200
+
+    # Assert JSON response from server is valid
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
+        == url_in_this_utub.id
+    )
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == NORMALIZED_URL
+    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
+    assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
+
+    with app.app_context():
+        # Assert database is consistent after newly modified URL
+        assert num_of_urls + 1 == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+
+        # Assert previous entity no longer exists
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.id == url_in_this_utub.id,
+                Utub_Urls.utub_id == utub_creator_of.id,
+                Utub_Urls.url_title == current_title,
+                Utub_Urls.url_id == current_url_id,
+            ).count()
+            == 0
+        )
+
+        # Assert newest entity exist
+        new_url_object: Urls = Urls.query.filter(
+            Urls.url_string == NORMALIZED_URL
+        ).first()
+        new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.id == new_url_id,
+                Utub_Urls.utub_id == utub_creator_of.id,
+                Utub_Urls.url_title == current_title,
+                Utub_Urls.url_id == new_url_object.id,
+            ).count()
+            == 1
+        )
+
+        # Check associated tags
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == new_url_id,
+        ).count() == len(associated_tags)
+
+
+@pytest.mark.parametrize(
+    "lowercase_url,valid_url",
+    [
+        (lowercase_url, valid_url)
+        for (lowercase_url, valid_url) in FLATTENED_URLS_WITH_DIFFERENT_PATH
+    ],
+)
+def test_update_valid_url_with_fresh_valid_url_with_diff_paths(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+    lowercase_url,
+    valid_url,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with a URL not already in the database via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            "csrf_token": String containing CSRF token for validation
+            "urlString": String of URL to add
+    THEN verify that the new URL is stored in the database with same title, the url-utub-user associations and url-tag are
+        modified correctly, all other URL associations are kept consistent,
+        the server sends back a 200 HTTP status code, and the server sends back the appropriate JSON response
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        STD_JSON.MESSAGE: URL_SUCCESS.URL_MODIFIED,
+        URL_SUCCESS.URL : Object representing a Utub_Urls, with the following fields
+        {
+            MODEL_STRS.URL_ID: ID of URL that was modified,
+            MODEL_STRS.URL_STRING: The URL that was newly modified,
+            MODEL_STRS.URL_TITLE: The title of the URL that was newly modified,
+            MODEL_STRS.URL_TAGS: An array of tag objects associated with this URL
+        }
+    }
+    """
+    NORMALIZED_URL = ada_url.URL(valid_url).href
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Get the URL in this UTub
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id
+        ).first()
+        current_title = url_in_this_utub.url_title
+        current_url_id = url_in_this_utub.url_id
+
+        # Find associated tags with this url
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == url_in_this_utub.id,
+        ).all()
+        associated_tag_objs = [
+            {
+                MODEL_STRS.UTUB_TAG_ID: tag.utub_tag_id,
+                MODEL_STRS.TAG_STRING: tag.utub_tag_item.tag_string,
+            }
+            for tag in associated_tags
+        ]
+
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: valid_url,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=url_in_this_utub.id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 200
+
+    # Assert JSON response from server is valid
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert json_response[STD_JSON.MESSAGE] == URL_SUCCESS.URL_MODIFIED
+    assert (
+        int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
+        == url_in_this_utub.id
+    )
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == NORMALIZED_URL
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] != lowercase_url
+    assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
+    assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
+
+    with app.app_context():
+        # Assert database is consistent after newly modified URL
+        assert num_of_urls + 1 == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+
+        # Assert previous entity no longer exists
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.id == url_in_this_utub.id,
+                Utub_Urls.utub_id == utub_creator_of.id,
+                Utub_Urls.url_title == current_title,
+                Utub_Urls.url_id == current_url_id,
+            ).count()
+            == 0
+        )
+
+        # Assert newest entity exist
+        new_url_object: Urls = Urls.query.filter(
+            Urls.url_string == NORMALIZED_URL
+        ).first()
+        new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.id == new_url_id,
+                Utub_Urls.utub_id == utub_creator_of.id,
+                Utub_Urls.url_title == current_title,
+                Utub_Urls.url_id == new_url_object.id,
+            ).count()
+            == 1
+        )
+
+        # Check associated tags
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == new_url_id,
+        ).count() == len(associated_tags)
+
+
 def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
-    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -57,8 +328,8 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         }
     }
     """
-    UPDATED_URL = "https://www.yahoo.com/"
-    mock_validate_url.return_value = UPDATED_URL, True
+    URL_FOR_TEST = "https://yahoo.com"
+    NORMALIZED_URL = ada_url.URL(URL_FOR_TEST).href
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -67,7 +338,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         ).first()
 
         # Verify URL to modify to is not already in database
-        assert Urls.query.filter(Urls.url_string == UPDATED_URL).first() is None
+        assert Urls.query.filter(Urls.url_string == NORMALIZED_URL).first() is None
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -117,7 +388,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         == url_in_this_utub.id
     )
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == UPDATED_URL
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == NORMALIZED_URL
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
 
@@ -139,7 +410,9 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         )
 
         # Assert newest entity exist
-        new_url_object: Urls = Urls.query.filter(Urls.url_string == UPDATED_URL).first()
+        new_url_object: Urls = Urls.query.filter(
+            Urls.url_string == NORMALIZED_URL
+        ).first()
         new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         assert (
             Utub_Urls.query.filter(
@@ -158,9 +431,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
-    mock_validate_url,
     add_all_urls_and_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -187,9 +458,9 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         }
     }
     """
-    NEW_FINAL_URL = "https://www.yahoo.com/"
+    URL_FOR_TEST = "https://yahoo.com"
+    NORMALIZED_URL = ada_url.URL(URL_FOR_TEST).href
     client, csrf_token_string, _, app = login_first_user_without_register
-    mock_validate_url.return_value = NEW_FINAL_URL, True
 
     NEW_RAW_URL = "yahoo.com"
     with app.app_context():
@@ -199,7 +470,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         ).first()
 
         # Verify URL to modify to is not already in database
-        assert Urls.query.filter(Urls.url_string == NEW_FINAL_URL).first() is None
+        assert Urls.query.filter(Urls.url_string == NORMALIZED_URL).first() is None
 
         # Get the URL in this UTub
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -249,7 +520,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         == url_in_this_utub.id
     )
-    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == NEW_FINAL_URL
+    assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == NORMALIZED_URL
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
 
     with app.app_context():
@@ -271,7 +542,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
 
         # Assert newest entity exist
         new_url_object: Urls = Urls.query.filter(
-            Urls.url_string == NEW_FINAL_URL
+            Urls.url_string == NORMALIZED_URL
         ).first()
         new_url_id = int(json_response[URL_SUCCESS.URL][MODEL_STRS.UTUB_URL_ID])
         assert (
@@ -291,9 +562,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         ).count() == len(associated_tags)
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_previously_added_url_as_utub_creator(
-    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -332,7 +601,6 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         ).first()
 
         url_string_of_url_not_in_utub = url_not_in_utub.standalone_url.url_string
-        mock_validate_url.return_value = url_string_of_url_not_in_utub, True
 
         url_id_of_url_not_in_utub = url_not_in_utub.id
 
@@ -426,9 +694,7 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_previously_added_url_as_url_adder(
-    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -473,7 +739,6 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
             Utub_Urls.url_id != current_url_id, Utub_Urls.utub_id != utub_id
         ).first()
         url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
-        mock_validate_url.return_value = url_string_of_url_not_in_utub, True
 
         url_id_of_url_not_in_utub = url_not_in_utub.url_id
 
@@ -777,113 +1042,14 @@ def test_update_valid_url_with_same_url_as_url_adder(
         ).count() == len(associated_tags)
 
 
-@mock.patch("src.extensions.notifications.notifications.threading.Thread")
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator", autospec=UrlValidator
+@pytest.mark.parametrize(
+    "invalid_url",
+    [invalid_url for invalid_url in INVALID_URLS_TO_VALIDATE if "@" not in invalid_url],
 )
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator._is_wayback_rate_limited"
-)
-@mock.patch("redis.Redis.from_url")
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator._perform_get_request"
-)
-@mock.patch(
-    "src.extensions.url_validation.url_validator.UrlValidator._perform_head_request"
-)
-def test_update_url_when_wayback_ratelimited(
-    mock_head_request,
-    mock_get_request,
-    mock_redis_from_url,
-    mock_wayback_rate_limited,
-    mock_validator,
-    mock_thread,
-    add_two_url_and_all_users_to_each_utub_no_tags,
-    login_first_user_without_register,
-):
-    """
-    GIVEN 3 users and 3 UTubs, with all users in each UTub, a valid user currently logged in, and no URLs
-        currently in the database or associated with the UTubs
-    WHEN the user tries to update a URL in a UTub they are a creator of, but the HEAD and GET request fail,
-        and Wayback is locally rate limited
-    THEN ensure that the server responds with a 400 HTTP status code, that the proper JSON response
-        is sent by the server, and that no new URLs are added
-
-    Proper JSON response is as follows:
-    {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : "Too many attempts, please try again in one minute.",
-        STD_JSON.ERROR_CODE : 6
-    }
-    """
-    mock_thread_response = mock.MagicMock()
-    mock_thread_response.start.return_value = None
-    mock_thread.return_value = mock_thread_response
-
-    mock_head_request.return_value = None
-    mock_get_response = mock.Mock(spec=requests.Response)
-    mock_get_response.status_code = 400
-    mock_get_request.return_value = mock_get_response
-
-    mock_redis_client = mock.MagicMock(spec=redis.Redis)
-    mock_redis_from_url.return_value = mock_redis_client
-
-    mock_wayback_rate_limited.return_value = True
-    mock_validator.return_value._redis_uri = "fake://redis_uri"
-
-    client, csrf_token_string, _, app = login_first_user_without_register
-
-    with app.app_context():
-        # Get this user's UTub
-        utub_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-        id_of_utub_that_is_creator_of = utub_creator_of.id
-        url_to_update: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == id_of_utub_that_is_creator_of
-        ).first()
-        utub_url_id = url_to_update.id
-
-        # Get initial number of UTub-URL associations
-        initial_urls = Urls.query.count()
-
-    # Add the URL to the UTub
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "yahoo.com",
-    }
-
-    update_url_string_response = client.patch(
-        url_for(
-            ROUTES.URLS.UPDATE_URL,
-            utub_id=id_of_utub_that_is_creator_of,
-            utub_url_id=utub_url_id,
-        ),
-        data=update_url_string_form,
-    )
-
-    assert update_url_string_response.status_code == 400
-
-    update_url_string_response_json = update_url_string_response.json
-    assert update_url_string_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        update_url_string_response_json[STD_JSON.MESSAGE]
-        == URL_FAILURE.TOO_MANY_WAYBACK_ATTEMPTS
-    )
-    assert update_url_string_response_json[STD_JSON.ERROR_CODE] == 6
-
-    with app.app_context():
-        # Ensure new URL exists
-        assert Urls.query.count() == initial_urls
-
-
-@mock.patch("src.extensions.notifications.notifications.threading.Thread")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_invalid_url_as_utub_creator(
-    mock_validate_url,
-    mock_thread,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
+    invalid_url,
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
@@ -901,11 +1067,6 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         STD_JSON.ERROR_CODE: 3
     }
     """
-    mock_thread_response = mock.MagicMock()
-    mock_thread_response.start.return_value = None
-    mock_thread.return_value = mock_thread_response
-
-    mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -934,7 +1095,7 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "AAAAA",
+        URL_FORM.URL_STRING: str(invalid_url),
     }
 
     update_url_string_form = client.patch(
@@ -978,13 +1139,14 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         ).count() == len(associated_tags)
 
 
-@mock.patch("src.extensions.notifications.notifications.threading.Thread")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+@pytest.mark.parametrize(
+    "invalid_url",
+    [invalid_url for invalid_url in INVALID_URLS_TO_VALIDATE if "@" not in invalid_url],
+)
 def test_update_valid_url_with_invalid_url_as_url_adder(
-    mock_validate_url,
-    mock_thread,
     add_two_url_and_all_users_to_each_utub_no_tags,
     login_first_user_without_register,
+    invalid_url,
 ):
     """
     GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
@@ -1002,14 +1164,8 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         STD_JSON.ERROR_CODE: 3
     }
     """
-    mock_thread_response = mock.MagicMock()
-    mock_thread_response.start.return_value = None
-    mock_thread.return_value = mock_thread_response
-
-    mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    INVALID_URL = "AAAAA"
     with app.app_context():
         utub_member_of_not_created_utub: Utub_Members = Utub_Members.query.filter(
             Utub_Members.member_role != Member_Role.CREATOR
@@ -1034,7 +1190,7 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: INVALID_URL,
+        URL_FORM.URL_STRING: str(invalid_url),
     }
 
     update_url_string_form = client.patch(
@@ -1053,6 +1209,194 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
     assert int(json_response[STD_JSON.ERROR_CODE]) == 3
+
+    with app.app_context():
+        # Assert database is consistent after newly modified URL
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+
+        # Assert previous entity exists
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.id == url_in_this_utub_id,
+                Utub_Urls.utub_id == utub_id,
+                Utub_Urls.url_id == current_url_id,
+                Utub_Urls.url_title == current_title,
+            ).first()
+            is not None
+        )
+
+        # Check associated tags
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id,
+            Utub_Url_Tags.utub_url_id == url_in_this_utub_id,
+        ).count() == len(associated_tags)
+
+
+def test_update_valid_url_with_credentials_url_as_utub_creator(
+    add_one_url_and_all_users_to_each_utub_with_all_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the creator attempts to modify the URL with an invalid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add
+    THEN verify that the url-utub-user associations and url-tag are not modified, all other URL associations are kept consistent,
+        the server sends back a 400 HTTP status code, and the server sends back the appropriate JSON response
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_VALIDATE_URL,
+        STD_JSON.ERROR_CODE: 3
+    }
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_creator_of: Utubs = Utubs.query.filter(
+            Utubs.utub_creator == current_user.id
+        ).first()
+
+        # Grab URL that already exists in this UTub
+        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_creator_of.id,
+            Utub_Urls.user_id == current_user.id,
+        ).first()
+        id_of_url_in_utub = url_already_in_utub.id
+        current_title = url_already_in_utub.url_title
+        current_url_id = url_already_in_utub.url_id
+
+        # Find associated tags with this url already in UTub
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == id_of_url_in_utub,
+        ).all()
+
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    url_with_credentials = "https://user:password@example.com"
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_with_credentials,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_creator_of.id,
+            utub_url_id=id_of_url_in_utub,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 400
+
+    # Assert JSON response from server is valid
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        json_response[STD_JSON.MESSAGE] == URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION
+    )
+    assert int(json_response[STD_JSON.ERROR_CODE]) == 7
+
+    with app.app_context():
+        # Assert database is consistent after newly modified URL
+        assert num_of_urls == Urls.query.count()
+        assert num_of_url_tag_assocs == Utub_Url_Tags.query.count()
+        assert num_of_url_utubs_assocs == Utub_Urls.query.count()
+
+        # Assert previous entity exists
+        assert (
+            Utub_Urls.query.filter(
+                Utub_Urls.id == id_of_url_in_utub,
+                Utub_Urls.utub_id == utub_creator_of.id,
+                Utub_Urls.url_id == current_url_id,
+                Utub_Urls.url_title == current_title,
+            ).first()
+            is not None
+        )
+
+        # Check associated tags
+        assert Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_creator_of.id,
+            Utub_Url_Tags.utub_url_id == id_of_url_in_utub,
+        ).count() == len(associated_tags)
+
+
+def test_update_valid_url_with_url_with_credentials_as_url_adder(
+    add_two_url_and_all_users_to_each_utub_no_tags,
+    login_first_user_without_register,
+):
+    """
+    GIVEN a valid member of a UTub that has members, a single URL, and tags associated with that URL
+    WHEN the url adder attempts to modify the URL with an invalid URL, via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
+            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
+            URL_FORM.URL_STRING: String of URL to add
+    THEN verify that the url-utub-user associations and url-tag are not modified, all other URL associations are kept consistent,
+        the server sends back a 400 HTTP status code, and the server sends back the appropriate JSON response
+
+    Proper JSON is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_VALIDATE_URL,
+        STD_JSON.ERROR_CODE: 3
+    }
+    """
+    client, csrf_token_string, _, app = login_first_user_without_register
+
+    with app.app_context():
+        utub_member_of_not_created_utub: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.member_role != Member_Role.CREATOR
+        ).first()
+        utub_id = utub_member_of_not_created_utub.utub_id
+        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.user_id == current_user.id, Utub_Urls.utub_id == utub_id
+        ).first()
+        current_title = url_in_this_utub.url_title
+        current_url_id = url_in_this_utub.url_id
+        url_in_this_utub_id = url_in_this_utub.id
+
+        # Find associated tags with this url
+        associated_tags: list[Utub_Url_Tags] = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == utub_id,
+            Utub_Url_Tags.utub_url_id == url_in_this_utub_id,
+        ).all()
+
+        num_of_url_tag_assocs = Utub_Url_Tags.query.count()
+        num_of_urls = Urls.query.count()
+        num_of_url_utubs_assocs = Utub_Urls.query.count()
+
+    url_with_credentials = "https://user:password@example.com"
+    update_url_string_form = {
+        URL_FORM.CSRF_TOKEN: csrf_token_string,
+        URL_FORM.URL_STRING: url_with_credentials,
+    }
+
+    update_url_string_form = client.patch(
+        url_for(
+            ROUTES.URLS.UPDATE_URL,
+            utub_id=utub_id,
+            utub_url_id=url_in_this_utub_id,
+        ),
+        data=update_url_string_form,
+    )
+
+    assert update_url_string_form.status_code == 400
+
+    # Assert JSON response from server is valid
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        json_response[STD_JSON.MESSAGE] == URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION
+    )
+    assert int(json_response[STD_JSON.ERROR_CODE]) == 7
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1791,9 +2135,7 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         ).count() == len(associated_tags)
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_updates_utub_last_updated(
-    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -1819,7 +2161,6 @@ def test_update_valid_url_updates_utub_last_updated(
             Utub_Urls.utub_id != utub_creator_of.id
         ).first()
         url_string_of_url_not_in_utub: str = url_not_in_utub.standalone_url.url_string
-        mock_validate_url.return_value = url_string_of_url_not_in_utub, True
 
         # Grab URL that already exists in this UTub
         url_in_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1872,7 +2213,6 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
     mock_validate_url.side_effect = InvalidURLError
     client, csrf_token_string, _, app = login_first_user_without_register
 
-    INVALID_URL = "AAAAA"
     with app.app_context():
         utub_member_of_not_created_utub: Utub_Members = Utub_Members.query.filter(
             Utub_Members.member_role != Member_Role.CREATOR
@@ -1887,9 +2227,10 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: INVALID_URL,
+        URL_FORM.URL_STRING: "aaa",
     }
 
+    mock_validate_url.side_effect = InvalidURLError
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
@@ -1906,9 +2247,7 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
         assert current_utub.last_updated == initial_last_updated
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_utub_url_with_url_already_in_utub(
-    mock_validate_url,
     add_all_urls_and_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
 ):
@@ -1942,7 +2281,6 @@ def test_update_utub_url_with_url_already_in_utub(
         ).first()
         current_url_id = url_in_this_utub.url_id
         current_url_string = url_in_this_utub.standalone_url.url_string
-        mock_validate_url.return_value = current_url_string, True
 
         # Find another URL in this UTub that doesn't match given URL
         other_url_in_utub: Utub_Urls = Utub_Urls.query.filter(
@@ -1993,9 +2331,7 @@ def test_update_utub_url_with_url_already_in_utub(
         )
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_fresh_valid_url_log(
-    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
     caplog,
@@ -2008,8 +2344,8 @@ def test_update_valid_url_with_fresh_valid_url_log(
             "urlString": String of URL to add
     THEN verify the server sends back a 200 HTTP status code, and the logs are valid
     """
-    UPDATED_URL = "https://www.yahoo.com/"
-    mock_validate_url.return_value = UPDATED_URL, True
+    URL_FOR_TEST = "https://yahoo.com"
+    UPDATED_URL = ada_url.URL(URL_FOR_TEST).href
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -2054,9 +2390,7 @@ def test_update_valid_url_with_fresh_valid_url_log(
     assert is_string_in_logs(f"URL.id={new_url.id}", caplog.records)
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_existing_url_log(
-    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
     caplog,
@@ -2086,8 +2420,6 @@ def test_update_valid_url_with_existing_url_log(
         url_string = url_not_in_this_utub.standalone_url.url_string
         url_id = url_not_in_this_utub.url_id
 
-    mock_validate_url.return_value = url_string, True
-
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
         URL_FORM.URL_STRING: url_string,
@@ -2116,9 +2448,7 @@ def test_update_valid_url_with_existing_url_log(
     assert is_string_in_logs(f"URL.id={url_id}", caplog.records)
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_same_url_log(
-    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
     caplog,
@@ -2145,11 +2475,10 @@ def test_update_valid_url_with_same_url_log(
         url_string = url_in_this_utub.standalone_url.url_string
         url_id = url_in_this_utub.url_id
 
-    mock_validate_url.return_value = url_string, True
-
+    url_to_change_to = url_string.replace("https://", "")
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "yahoo.com",
+        URL_FORM.URL_STRING: url_to_change_to,
     }
 
     update_url_string_form = client.patch(
@@ -2163,7 +2492,7 @@ def test_update_valid_url_with_same_url_log(
 
     assert update_url_string_form.status_code == 409
     assert is_string_in_logs(
-        "Finished checks for url_to_change_to='yahoo.com'", caplog.records
+        f"Finished checks for url_to_change_to='{url_to_change_to}'", caplog.records
     )
     assert is_string_in_logs_regex(r"(.*)Took (\d).(\d+) ms(.*)", caplog.records)
 
@@ -2176,9 +2505,7 @@ def test_update_valid_url_with_same_url_log(
     )
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_same_url_before_normalization_url_log(
-    mock_validate_url,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
     login_first_user_without_register,
     caplog,
@@ -2205,8 +2532,6 @@ def test_update_valid_url_with_same_url_before_normalization_url_log(
         url_string = url_in_this_utub.standalone_url.url_string
         url_id = url_in_this_utub.url_id
         url_string_before_normalize = url_string.replace("https://", "")
-
-    mock_validate_url.return_value = url_string, True
 
     update_url_string_form = {
         URL_FORM.CSRF_TOKEN: csrf_token_string,
@@ -2261,67 +2586,6 @@ def test_update_to_invalid_url_log(
 
     client, csrf_token_string, user, app = login_first_user_without_register
     mock_validate_url.side_effect = InvalidURLError("Invalid URL error")
-
-    with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-
-        # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub_creator_of.id
-        ).first()
-        url_string = url_in_this_utub.standalone_url.url_string.replace("https://", "")
-
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string,
-    }
-
-    update_url_string_form = client.patch(
-        url_for(
-            ROUTES.URLS.UPDATE_URL,
-            utub_id=utub_creator_of.id,
-            utub_url_id=url_in_this_utub.id,
-        ),
-        data=update_url_string_form,
-    )
-
-    assert update_url_string_form.status_code == 400
-    assert is_string_in_logs(
-        f"Unable to validate the URL given by User={user.id}", caplog.records
-    )
-    assert is_string_in_logs_regex(
-        r"(.*)[\s](.*)Took (\d).(\d+) ms to fail validation[\s](.*)[\s](.*)",
-        caplog.records,
-    )
-    assert is_string_in_logs(f"url_string={url_string}", caplog.records)
-    assert is_string_in_logs("Exception=Invalid URL error", caplog.records)
-
-
-@mock.patch("src.extensions.notifications.notifications.threading.Thread")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
-def test_update_to_wayback_ratelimited_url_log(
-    mock_validate_url,
-    mock_thread,
-    add_one_url_and_all_users_to_each_utub_with_all_tags,
-    login_first_user_without_register,
-    caplog,
-):
-    """
-    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with an invalid URL via a PATCH to
-        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "urlString": String of URL to add
-    THEN verify the server sends back a 400 HTTP status code, and the logs are valid
-    """
-    mock_thread_response = mock.MagicMock()
-    mock_thread_response.start.return_value = None
-    mock_thread.return_value = mock_thread_response
-
-    client, csrf_token_string, user, app = login_first_user_without_register
-    mock_validate_url.side_effect = WaybackRateLimited("Invalid URL error")
 
     with app.app_context():
         utub_creator_of: Utubs = Utubs.query.filter(
@@ -2681,7 +2945,7 @@ def test_update_url_with_invalid_form_log(
 
 @mock.patch("src.extensions.notifications.notifications.requests.post")
 @mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
-def test_update_invalid_url_sends_notification(
+def test_update_url_unknown_exception_sends_notification(
     mock_validate_url,
     mock_request_post,
     add_one_url_and_all_users_to_each_utub_with_all_tags,
@@ -2703,7 +2967,7 @@ def test_update_invalid_url_sends_notification(
         return mock_response
 
     mock_request_post.side_effect = mock_post_with_event
-    mock_validate_url.side_effect = InvalidURLError
+    mock_validate_url.side_effect = Exception
     client, csrf_token_string, _, app = login_first_user_without_register
 
     with app.app_context():
@@ -2738,131 +3002,5 @@ def test_update_invalid_url_sends_notification(
     ), "Notification was not sent within timeout"
 
     assert update_url_string_form.status_code == 400
-
-    mock_request_post.assert_called_once()
-
-
-@mock.patch("src.extensions.notifications.notifications.requests.post")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
-def test_update_waybacked_limited_url_sends_notification(
-    mock_validate_url,
-    mock_request_post,
-    add_one_url_and_all_users_to_each_utub_with_all_tags,
-    login_first_user_without_register,
-):
-    """
-    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with an invalid URL, via a PATCH to
-        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
-            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
-            URL_FORM.URL_STRING: String of URL to add that contains an invalid URL
-    THEN verify that server sends back a 400 HTTP status code and a notification is sent
-    """
-    notification_sent = threading.Event()
-
-    def mock_post_with_event(*args, **kwargs):
-        mock_response = type("MockResponse", (), {"status_code": 200})()
-        notification_sent.set()  # Signal that the request was made
-        return mock_response
-
-    mock_request_post.side_effect = mock_post_with_event
-    mock_validate_url.side_effect = WaybackRateLimited
-    client, csrf_token_string, _, app = login_first_user_without_register
-
-    with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-
-        # Grab URL that already exists in this UTub
-        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub_creator_of.id,
-            Utub_Urls.user_id == current_user.id,
-        ).first()
-        id_of_url_in_utub = url_already_in_utub.id
-
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "AAAAA",
-    }
-
-    update_url_string_form = client.patch(
-        url_for(
-            ROUTES.URLS.UPDATE_URL,
-            utub_id=utub_creator_of.id,
-            utub_url_id=id_of_url_in_utub,
-        ),
-        data=update_url_string_form,
-    )
-
-    # Wait for notification to be sent (with timeout)
-    assert notification_sent.wait(
-        timeout=5.0
-    ), "Notification was not sent within timeout"
-
-    assert update_url_string_form.status_code == 400
-
-    mock_request_post.assert_called_once()
-
-
-@mock.patch("src.extensions.notifications.notifications.requests.post")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
-def test_update_invalidated_url_sends_notification(
-    mock_validate_url,
-    mock_request_post,
-    add_one_url_and_all_users_to_each_utub_with_all_tags,
-    login_first_user_without_register,
-):
-    """
-    GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN the creator attempts to modify the URL with an invalid URL, via a PATCH to
-        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
-            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
-            URL_FORM.URL_STRING: String of URL to add that contains an invalid URL
-    THEN verify that server sends back a 400 HTTP status code and a notification is sent
-    """
-    notification_sent = threading.Event()
-
-    def mock_post_with_event(*args, **kwargs):
-        mock_response = type("MockResponse", (), {"status_code": 200})()
-        notification_sent.set()  # Signal that the request was made
-        return mock_response
-
-    mock_request_post.side_effect = mock_post_with_event
-    mock_validate_url.return_value = "AAAA", False
-    client, csrf_token_string, _, app = login_first_user_without_register
-
-    with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-
-        # Grab URL that already exists in this UTub
-        url_already_in_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub_creator_of.id,
-            Utub_Urls.user_id == current_user.id,
-        ).first()
-        id_of_url_in_utub = url_already_in_utub.id
-
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "AAAAA",
-    }
-
-    update_url_string_form = client.patch(
-        url_for(
-            ROUTES.URLS.UPDATE_URL,
-            utub_id=utub_creator_of.id,
-            utub_url_id=id_of_url_in_utub,
-        ),
-        data=update_url_string_form,
-    )
-
-    # Wait for notification to be sent (with timeout)
-    assert notification_sent.wait(
-        timeout=5.0
-    ), "Notification was not sent within timeout"
-
-    assert update_url_string_form.status_code == 200
 
     mock_request_post.assert_called_once()

@@ -1,7 +1,7 @@
 from flask_sqlalchemy import SQLAlchemy
 
 from src.cli.mock_constants import MOCK_URL_STRINGS
-from src.models.urls import Possible_Url_Validation, Urls
+from src.models.urls import Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
@@ -28,7 +28,6 @@ def generate_mock_urls(db: SQLAlchemy):
                 url_to_add = Urls(
                     normalized_url=url,
                     current_user_id=member.user_id,
-                    is_validated=Possible_Url_Validation.VALIDATED.value,
                 )
                 db.session.add(url_to_add)
                 print(f"Adding {url} to database")
@@ -73,7 +72,6 @@ def generate_custom_mock_url(db: SQLAlchemy, urls_to_add: list[str]):
                 url_to_add = Urls(
                     normalized_url=url,
                     current_user_id=utub.utub_creator,
-                    is_validated=Possible_Url_Validation.VALIDATED.value,
                 )
                 db.session.add(url_to_add)
                 print(f"Adding {url} to database")

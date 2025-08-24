@@ -7,10 +7,10 @@ function deleteURLHideModal() {
 
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function deleteURLShowModal(utubUrlID, urlCard) {
-  let modalTitle = "Are you sure you want to delete this URL from the UTub?";
-  let modalText = `${STRINGS.DELETE_URL_WARNING}`;
-  let buttonTextDismiss = "Just kidding";
-  let buttonTextSubmit = "Delete URL";
+  const modalTitle = "Are you sure you want to delete this URL from the UTub?";
+  const modalText = `${STRINGS.DELETE_URL_WARNING}`;
+  const buttonTextDismiss = "Just kidding";
+  const buttonTextSubmit = "Delete URL";
 
   $("#confirmModalTitle").text(modalTitle);
   $("#confirmModalBody").text(modalText);

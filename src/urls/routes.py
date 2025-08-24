@@ -15,10 +15,11 @@ from src.app_logger import (
 )
 from src.extensions.extension_utils import safe_get_notif_sender, safe_get_url_validator
 from src.extensions.url_validation.url_validator import (
+    AdaUrlParsingError,
     InvalidURLError,
-    WaybackRateLimited,
+    URLWithCredentialsError,
 )
-from src.models.urls import Possible_Url_Validation, Urls
+from src.models.urls import Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_url_tags import Utub_Url_Tags
@@ -191,12 +192,36 @@ def create_url(utub_id: int):
     if utub_new_url_form.validate_on_submit():
         url_string = utub_new_url_form.url_string.data
         start = time.perf_counter()
+        url_validator = safe_get_url_validator(current_app)
 
         try:
-            headers = request.headers
-            url_validator = safe_get_url_validator(current_app)
-            normalized_url, is_validated = url_validator.validate_url(
-                url_string, headers
+            normalized_url = url_validator.normalize_url(url_string)
+
+            normalized_time = (time.perf_counter() - start) * 1000
+
+            validated_ada_url = url_validator.validate_url(normalized_url)
+
+            validation_time = (time.perf_counter() - start) * 1000
+
+        except URLWithCredentialsError as e:
+            end = (time.perf_counter() - start) * 1000
+            request_id = safe_get_request_id()
+            warning_log(
+                f"[{request_id}] URL with crendentials passed by User={current_user.id}\n"
+                + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
+                + f"[{request_id}] Exception={str(e)}"
+            )
+
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION,
+                        STD_JSON.DETAILS: str(e),
+                        STD_JSON.ERROR_CODE: 6,
+                    }
+                ),
+                400,
             )
 
         except InvalidURLError as e:
@@ -208,10 +233,6 @@ def create_url(utub_id: int):
                 + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                 + f"[{request_id}] url_string={url_string}\n"
                 + f"[{request_id}] Exception={str(e)}"
-            )
-            notification_sender = safe_get_notif_sender(current_app)
-            notification_sender.send_notification(
-                f"Failed validating {url_string} | Exception={str(e)}"
             )
 
             return (
@@ -225,33 +246,8 @@ def create_url(utub_id: int):
                 ),
                 400,
             )
-        except WaybackRateLimited as e:
-            end = (time.perf_counter() - start) * 1000
-            request_id = safe_get_request_id()
 
-            warning_log(
-                f"[{request_id}] Unable to validate the URL given by User={current_user.id}\n"
-                + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
-                + f"[{request_id}] url_string={url_string}\n"
-                + f"[{request_id}] Exception={str(e)}"
-            )
-            notification_sender = safe_get_notif_sender(current_app)
-            notification_sender.send_notification(
-                f"Wayback failed validating {url_string} | Exception={str(e)}"
-            )
-
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: URL_FAILURE.TOO_MANY_WAYBACK_ATTEMPTS,
-                        STD_JSON.DETAILS: str(e),
-                        STD_JSON.ERROR_CODE: 6,
-                    }
-                ),
-                400,
-            )
-        except Exception as e:
+        except (AdaUrlParsingError, Exception) as e:
             end = (time.perf_counter() - start) * 1000
             request_id = safe_get_request_id()
 
@@ -279,41 +275,31 @@ def create_url(utub_id: int):
             )
 
         end = (time.perf_counter() - start) * 1000
-        safe_add_many_logs([f"Finished checks for {url_string=}", f"Took {end:.3f} ms"])
+        safe_add_many_logs(
+            [
+                f"Finished checks for {url_string=}",
+                f"Took {normalized_time:.3f} ms for normalization",
+                f"Took {(validation_time - normalized_time):.3f} ms total for validation",
+                f"Took {end:.3f} ms total",
+            ]
+        )
 
         # Check if URL already exists
         already_created_url: Urls = Urls.query.filter(
-            Urls.url_string == normalized_url
+            Urls.url_string == validated_ada_url
         ).first()
 
         if not already_created_url:
             # If URL does not exist, add it and then associate it with the UTub
-            validated_str = (
-                Possible_Url_Validation.VALIDATED.value
-                if is_validated
-                else Possible_Url_Validation.UNKNOWN.value
-            )
             new_url = Urls(
-                normalized_url=normalized_url,
+                normalized_url=validated_ada_url,
                 current_user_id=current_user.id,
-                is_validated=validated_str,
             )
 
             # Commit new URL to the database
             db.session.add(new_url)
             db.session.commit()
             safe_add_log(f"Added new URL, URL.id={new_url.id}")
-            if not is_validated:
-                request_id = safe_get_request_id()
-                warning_log(
-                    f"[{request_id}] INVALID. Finished but unable to validate the URL given by User={current_user.id}\n"
-                    + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
-                    + f"[{request_id}] url_string={normalized_url}\n"
-                )
-                notification_sender = safe_get_notif_sender(current_app)
-                notification_sender.send_notification(
-                    f"Unable to completely validate {url_string} | URL.id={new_url.id}"
-                )
 
             url_id = new_url.id
 
@@ -369,7 +355,7 @@ def create_url(utub_id: int):
                     URL_SUCCESS.UTUB_ID: utub_id,
                     URL_SUCCESS.ADDED_BY: current_user.id,
                     URL_SUCCESS.URL: {
-                        URL_SUCCESS.URL_STRING: normalized_url,
+                        URL_SUCCESS.URL_STRING: validated_ada_url,
                         URL_SUCCESS.UTUB_URL_ID: url_utub_user_add.id,
                         URL_SUCCESS.URL_TITLE: utub_new_url_form.url_title.data,
                     },
@@ -570,12 +556,37 @@ def update_url(utub_id: int, utub_url_id: int):
 
         # Here the user wants to try to change or modify the URL
         start = time.perf_counter()
+        url_validator = safe_get_url_validator(current_app)
         try:
-            headers = request.headers
-            url_validator = safe_get_url_validator(current_app)
-            normalized_url, is_validated = url_validator.validate_url(
-                url_to_change_to, headers
+            normalized_url = url_validator.normalize_url(url_to_change_to)
+
+            normalized_time = (time.perf_counter() - start) * 1000
+
+            validated_ada_url = url_validator.validate_url(normalized_url)
+
+            validation_time = (time.perf_counter() - start) * 1000
+
+        except URLWithCredentialsError as e:
+            end = (time.perf_counter() - start) * 1000
+            request_id = safe_get_request_id()
+            warning_log(
+                f"[{request_id}] URL with crendentials passed by User={current_user.id}\n"
+                + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
+                + f"[{request_id}] Exception={str(e)}"
             )
+
+            return (
+                jsonify(
+                    {
+                        STD_JSON.STATUS: STD_JSON.FAILURE,
+                        STD_JSON.MESSAGE: URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION,
+                        STD_JSON.DETAILS: str(e),
+                        STD_JSON.ERROR_CODE: 7,
+                    }
+                ),
+                400,
+            )
+
         except InvalidURLError as e:
             end = (time.perf_counter() - start) * 1000
             request_id = safe_get_request_id()
@@ -585,10 +596,6 @@ def update_url(utub_id: int, utub_url_id: int):
                 + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
                 + f"[{request_id}] url_string={url_to_change_to}\n"
                 + f"[{request_id}] Exception={str(e)}"
-            )
-            notification_sender = safe_get_notif_sender(current_app)
-            notification_sender.send_notification(
-                f"Failed to validate {url_to_change_to} | Exception={str(e)}"
             )
 
             return (
@@ -602,34 +609,8 @@ def update_url(utub_id: int, utub_url_id: int):
                 ),
                 400,
             )
-        except WaybackRateLimited as e:
-            end = (time.perf_counter() - start) * 1000
-            request_id = safe_get_request_id()
 
-            warning_log(
-                f"[{request_id}] Unable to validate the URL given by User={current_user.id}\n"
-                + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
-                + f"[{request_id}] url_string={url_to_change_to}\n"
-                + f"[{request_id}] Exception={str(e)}"
-            )
-            notification_sender = safe_get_notif_sender(current_app)
-            notification_sender.send_notification(
-                f"Wayback failed validating {url_to_change_to} | Exception={str(e)}"
-            )
-
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: URL_FAILURE.TOO_MANY_WAYBACK_ATTEMPTS,
-                        STD_JSON.DETAILS: str(e),
-                        STD_JSON.ERROR_CODE: 6,
-                    }
-                ),
-                400,
-            )
-
-        except Exception as e:
+        except (AdaUrlParsingError, Exception) as e:
             end = (time.perf_counter() - start) * 1000
             request_id = safe_get_request_id()
 
@@ -658,43 +639,29 @@ def update_url(utub_id: int, utub_url_id: int):
 
         end = (time.perf_counter() - start) * 1000
         safe_add_many_logs(
-            [f"Finished checks for {url_to_change_to=}", f"Took {end:.3f} ms"]
+            [
+                f"Finished checks for {url_to_change_to=}",
+                f"Took {normalized_time:.3f} ms for normalization",
+                f"Took {(validation_time - normalized_time):.3f} ms total for validation",
+                f"Took {end:.3f} ms total",
+            ]
         )
 
         # Now check if url already in database
         url_already_in_database: Urls | None = Urls.query.filter(
-            Urls.url_string == normalized_url
+            Urls.url_string == validated_ada_url
         ).first()
 
         if url_already_in_database is None:
             # Make a new URL since URL is not already in the database
-            validated_str = (
-                Possible_Url_Validation.VALIDATED.value
-                if is_validated
-                else Possible_Url_Validation.UNKNOWN.value
-            )
             new_url = Urls(
-                normalized_url=normalized_url,
+                normalized_url=validated_ada_url,
                 current_user_id=current_user.id,
-                is_validated=validated_str,
             )
             db.session.add(new_url)
             db.session.commit()
 
             safe_add_log(f"Added new URL, URL.id={new_url.id}")
-            if not is_validated:
-                request_id = safe_get_request_id()
-
-                warning_log(
-                    f"[{request_id}] INVALID. Finished but unable to validate the URL given by User={current_user.id}\n"
-                    + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
-                    + f"[{request_id}] url_string={normalized_url}\n"
-                    + f"[{request_id}] request_headers={request.headers}\n"
-                )
-                notification_sender = safe_get_notif_sender(current_app)
-                notification_sender.send_notification(
-                    f"Unable to completely validate {url_to_change_to} | URL.id={new_url.id}"
-                )
 
             url_in_database = new_url
             url_id = url_in_database.id

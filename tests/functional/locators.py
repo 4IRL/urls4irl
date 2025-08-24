@@ -163,6 +163,7 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_MODAL_SUBMIT = "#modalSubmit"
     BUTTON_X_CLOSE = ".btn-close"
     ACCESS_ALL_URL_MODAL = "#confirmModal.accessAllUrlModal"
+    ACCESS_EXTERNAL_URL_MODAL = "#confirmModal.accessExternalURLModal"
     DELETE_URL_MODAL = ".deleteUrlModal"
 
     # Decks

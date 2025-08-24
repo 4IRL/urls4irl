@@ -101,7 +101,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
 function updateURLSetup(urlStringUpdateInput, utubID, utubUrlID) {
   const postURL = routes.updateURL(utubID, utubUrlID);
 
-  const updatedURL = urlStringUpdateInput.val();
+  const updatedURL = urlStringUpdateInput.val().trim();
 
   const data = { urlString: updatedURL };
 
@@ -117,17 +117,21 @@ async function updateURL(urlStringUpdateInput, urlCard) {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
     await getUpdatedURL(utubID, utubUrlID, urlCard);
 
-    if (
-      urlStringUpdateInput.val() === urlCard.find(".urlString").attr("href")
-    ) {
+    // Extract data to submit in POST request
+    let patchURL, data;
+    [patchURL, data] = updateURLSetup(urlStringUpdateInput, utubID, utubUrlID);
+
+    if (data.urlString === urlCard.find(".urlString").attr("href")) {
       hideAndResetUpdateURLStringForm(urlCard);
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
 
-    // Extract data to submit in POST request
-    let patchURL, data;
-    [patchURL, data] = updateURLSetup(urlStringUpdateInput, utubID, utubUrlID);
+    if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+      displayUpdateURLErrors("urlString", STRINGS.INVALID_URL, urlCard);
+      clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
+      return;
+    }
 
     const request = ajaxCall("patch", patchURL, data, 35000);
 
@@ -168,12 +172,12 @@ function updateURLSuccess(response, urlCard) {
   // Update URL options
   urlCard.find(".urlBtnAccess").offAndOn("click", function (e) {
     e.stopPropagation();
-    accessLink(updatedURLString, this);
+    accessLink(updatedURLString);
   });
 
   urlCard.find(".goToUrlIcon").offAndOn("click", function (e) {
     e.stopPropagation();
-    accessLink(updatedURLString, null);
+    accessLink(updatedURLString);
   });
 
   urlCard.find(".urlBtnCopy").offAndOn("click", function (e) {

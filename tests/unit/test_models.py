@@ -2,7 +2,7 @@ import pytest
 
 from src.extensions.url_validation.url_validator import UrlValidator
 from src.models.utub_tags import Utub_Tags
-from src.models.urls import Possible_Url_Validation, Urls
+from src.models.urls import Urls
 from src.models.users import Users
 from src.models.utubs import Utubs
 
@@ -74,16 +74,12 @@ def test_url_model(app):
     url_validator = UrlValidator()
     with app.app_context():
         new_url_object = Urls(
-            normalized_url=url_validator.validate_url(
-                new_url["url_string"],
-            )[0],
+            normalized_url=url_validator.normalize_url(new_url["url_string"]),
             current_user_id=new_url["creator"],
-            is_validated=Possible_Url_Validation.VALIDATED.value,
         )
 
-        assert (
-            new_url_object.url_string
-            == url_validator.validate_url(new_url["url_string"])[0]
+        assert new_url_object.url_string == url_validator.normalize_url(
+            new_url["url_string"]
         )
         assert new_url_object.created_by == new_url["creator"]
 

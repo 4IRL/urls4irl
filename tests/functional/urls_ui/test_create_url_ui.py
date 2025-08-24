@@ -1,3 +1,4 @@
+import ada_url
 from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
@@ -41,12 +42,15 @@ from tests.functional.selenium_utils import (
     wait_until_visible_css_selector,
 )
 from tests.functional.urls_ui.selenium_utils import (
-    add_invalid_url_header_for_ui_test,
     create_url,
     fill_create_url_form,
 )
+from tests.unit.test_url_validation import (
+    FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
+    INVALID_URLS_TO_VALIDATE,
+)
 
-pytestmark = pytest.mark.urls_ui
+pytestmark = pytest.mark.add_update_urls_ui
 
 
 def test_create_url_open_input_no_urls_corner_btn(
@@ -331,6 +335,88 @@ def test_create_url_submit_btn_some_urls(
     assert url_title == url_row_title
     assert url_row_string == url_string_visible
     assert url_string == url_row_href
+
+    assert browser.find_element(
+        By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
+    ).is_displayed()
+
+    assert_url_coloring_is_correct(browser)
+
+    url_selector = f"{HPL.ROWS_URLS}[utuburlid='{utub_url_id}']"
+    wait_until_visible_css_selector(browser, url_selector)
+    selected_url = get_selected_url(browser)
+    selected_utub_url_id = selected_url.get_attribute("utuburlid")
+
+    assert selected_utub_url_id and selected_utub_url_id.isnumeric()
+    assert int(selected_utub_url_id) == utub_url_id
+
+
+@pytest.mark.parametrize(
+    "validated_url,input_url",
+    [
+        (validated_url, input_url)
+        for (validated_url, input_url) in FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS
+    ],
+)
+def test_valid_url_input(
+    browser: WebDriver,
+    provide_app: Flask,
+    create_test_urls,
+    validated_url: str,
+    input_url: str,
+):
+    """
+    Tests a user's ability to create a new URL in a selected UTub
+
+    GIVEN a user and selected UTub
+    WHEN they submit a new URL using the submit button
+    THEN ensure the URL is added, input is hidden, and access all URLs button is shown
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    ada_validated_url = ada_url.URL(validated_url).href
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    if input_url.startswith(("\t", "\n")):
+        # This is needed to insert escaped characters via Selenium into input fields
+        input_url = input_url.encode("unicode_escape").decode("utf-8")
+
+    url_title = MOCK_URL_TITLES[0]
+
+    fill_create_url_form(browser, url_title, input_url)
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE, time=3)
+
+    # Wait for HTTP request to complete
+    wait_until_hidden(browser, HPL.INPUT_URL_STRING_CREATE, timeout=3)
+    url_creation_row = browser.find_element(By.CSS_SELECTOR, HPL.WRAP_URL_CREATE)
+    assert not url_creation_row.is_displayed()
+
+    # Extract URL title and string from new row in URL deck
+    utub_url_id = get_newly_added_utub_url_id_by_url_string(
+        app, utub_user_created.id, ada_validated_url
+    )
+    url_row = get_url_row_by_id(browser, utub_url_id)
+    assert url_row is not None
+
+    url_row_title = url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).text
+    url_row_string = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).text
+    url_row_href = url_row.find_element(
+        By.CSS_SELECTOR, HPL.URL_STRING_READ
+    ).get_attribute(HPL.URL_STRING_IN_DATA)
+
+    url_string_visible = ada_validated_url
+    url_string_visible = url_string_visible.removeprefix("https://")
+    url_string_visible = url_string_visible.removeprefix("http://")
+    url_string_visible = url_string_visible.removeprefix("www.")
+
+    assert url_title == url_row_title
+    assert url_row_string == url_string_visible
+    assert url_row_href is not None
+    assert url_row_href == ada_validated_url
 
     assert browser.find_element(
         By.CSS_SELECTOR, HPL.BUTTON_ACCESS_ALL_URLS
@@ -635,7 +721,13 @@ def test_create_url_empty_string(
     assert invalid_url_string_error.text == URL_FAILURE.FIELD_REQUIRED_STR
 
 
-def test_invalid_url_input(browser: WebDriver, create_test_utubs, provide_app: Flask):
+@pytest.mark.parametrize(
+    "invalid_url",
+    [invalid_url for invalid_url in INVALID_URLS_TO_VALIDATE if "@" not in invalid_url],
+)
+def test_invalid_url_input(
+    browser: WebDriver, create_test_utubs, provide_app: Flask, invalid_url: str
+):
     """
     Tests the site error response to a user's attempt to create an invalid URL
 
@@ -652,9 +744,7 @@ def test_invalid_url_input(browser: WebDriver, create_test_utubs, provide_app: F
         app, browser, user_id_for_test, utub_user_created.id
     )
 
-    add_invalid_url_header_for_ui_test(browser)
-
-    create_url(browser, url_title="Test", url_string="Test")
+    create_url(browser, url_title="Test", url_string=invalid_url)
 
     wait_until_visible_css_selector(
         browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, timeout=3
@@ -665,6 +755,39 @@ def test_invalid_url_input(browser: WebDriver, create_test_utubs, provide_app: F
     )
     assert invalid_url_string_error is not None
     assert invalid_url_string_error.text == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
+
+
+def test_invalid_credentials_url_input(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests the site error response to a user's attempt to create an invalid URL
+
+    GIVEN a user and selected UTub
+    WHEN the createURL form is submitted with an invalid URL
+    THEN ensure the appropriate error and prompt is shown to user.
+    """
+    # Login test user and select first test UTub
+    app = provide_app
+
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    invalid_url = "https://user:password@example.com"
+    create_url(browser, url_title="Test", url_string=invalid_url)
+
+    wait_until_visible_css_selector(
+        browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, timeout=3
+    )
+
+    invalid_url_string_error = wait_then_get_element(
+        browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
+    )
+    assert invalid_url_string_error is not None
+    assert invalid_url_string_error.text == URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION
 
 
 def test_create_url_sanitized_title(

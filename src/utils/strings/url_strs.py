@@ -29,6 +29,7 @@ COPIED_URL_FAILURE_TOOLIP = "Copy failed!"
 ACCESS_URL_TOOLTIP = "Access URL"
 EDIT_URL_TOOLTIP = "Edit URL"
 DELETE_URL_TOOLTIP = "Delete URL"
+ACCESS_URL_WARNING = "This URL is a bit unusual — it could launch an app, not a webpage. Still want to access?"
 
 
 class URL_GENERAL:
@@ -58,7 +59,7 @@ class URL_SUCCESS(URL_GENERAL, UTUB_GENERAL):
 # Strings for URL failure
 UNABLE_TO_DELETE_URL = "Unable to remove this URL."
 UNABLE_TO_ADD_URL = "Unable to add this URL."
-UNABLE_TO_VALIDATE_THIS_URL = "Unable to validate this URL."
+UNABLE_TO_VALIDATE_THIS_URL = "This is not a valid URL."
 URL_IN_UTUB = "URL already in UTub."
 UNABLE_TO_ADD_URL_FORM = "Unable to add this URL, please check inputs."
 UNABLE_TO_MODIFY_URL_FORM = "Unable to update, please check inputs."
@@ -67,6 +68,7 @@ UNABLE_TO_RETRIEVE_URL = "Unable to retrieve this URL."
 EMPTY_URL = "URL cannot be empty."
 TOO_MANY_WAYBACK_ATTEMPTS = "Too many attempts, please try again in one minute."
 UNEXPECTED_VALIDATION_EXCEPTION = "Unexpected exception while validating the URL."
+URLS_WITH_CREDENTIALS_EXCEPTION = "URLs with credentials not allowed."
 
 
 class URL_FAILURE(FAILURE_GENERAL):
@@ -83,6 +85,7 @@ class URL_FAILURE(FAILURE_GENERAL):
     URL_STRING = URL_STRING
     TOO_MANY_WAYBACK_ATTEMPTS = TOO_MANY_WAYBACK_ATTEMPTS
     UNEXPECTED_VALIDATION_EXCEPTION = UNEXPECTED_VALIDATION_EXCEPTION
+    URLS_WITH_CREDENTIALS_EXCEPTION = URLS_WITH_CREDENTIALS_EXCEPTION
 
 
 # Strings for URL no change

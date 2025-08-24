@@ -30,15 +30,9 @@ function updateURLBasedOnGetData(urlUpdateResponse, urlCard) {
     : null;
 
   if (urlStringElem.attr("href") !== urlUpdateResponse.urlString) {
-    let urlDisplayString = urlUpdateResponse.urlString.replace(
-      /^https:\/\//,
-      "",
-    );
-    urlDisplayString = urlDisplayString.replace(/^www\./, "");
+    const displayURL = modifyURLStringForDisplay(urlUpdateResponse.urlString);
 
-    urlStringElem
-      .attr({ href: urlUpdateResponse.urlString })
-      .text(urlDisplayString);
+    urlStringElem.attr({ href: urlUpdateResponse.urlString }).text(displayURL);
   }
 
   updateURLTagsAndUTubTagsBasedOnGetURLData(

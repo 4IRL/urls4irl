@@ -68,7 +68,7 @@ function createAccessLinkBtn(url) {
       e.stopPropagation();
       const tooltip = bootstrap.Tooltip.getInstance(this);
       if (tooltip) tooltip.hide();
-      accessLink(url.urlString, this);
+      accessLink(url.urlString);
     });
 
   urlBtnAccess.append(createAccessLinkIcon());

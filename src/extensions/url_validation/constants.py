@@ -1,25 +1,83 @@
-USER_AGENTS = (
-    # "PostmanRuntime/7.40.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14.7; rv:133.0) Gecko/20100101 Firefox/133.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36 OPR/115.0.0.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:128.0) Gecko/20100101 Firefox/128.0",
-    "Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:133.0) Gecko/20100101 Firefox/133.0",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 14_7_2) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4.1 Safari/605.1.15",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/108.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 13_1) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.1 Safari/605.1.15",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.3.1 Safari/605.1.1",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (Windows NT 6.1; WOW64; Trident/7.0; rv:11.0) like Gecko",
-    "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/104.0.5112.79 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36",
-    "Mozilla/5.0 (X11; Linux x86_64; rv:109.0) Gecko/20100101 Firefox/115.0",
+PROTOCOL = "protocol"
+HOSTNAME = "hostname"
+HREF = "href"
+
+INVALID_SCHEME_PREFIXES = (
+    "javascript",
+    "data",
+    "vbscript",
+    "moz",
+    "about",
+    "resource",
+    "jar",
+    "chrome",
+    "edge",
+    "view-source",
+    "safari",
+    "webkit",
+    "ms-browser",
+    "file",  # Do not leak local file paths of users to other, consider only for private UTubs
 )
 
-COMMON_REDIRECTS = {
-    "https://www.facebook.com/login/?next=",
-    "https://www.youtube.com/supported_browsers?next_url=",
+CORE_SCHEMES = {
+    "https",
+    "http",
+    "mailto",
+    "ftp",
+    "ftps",
+    "tel",
+    "sms",
+    "ws",
+    "wss",
+    "feed",
+    "urn",
+    "magnet",
+    "webcal",
+    "geo",
 }
+
+OTHER_VALID_SCHEMES = {
+    # Might be considered for private UTubs only
+    "ssh",
+    "sftp",
+    "git",
+    "irc",
+    "ircs",
+    "xmpp",
+    "sip",
+    "sips",
+    "rtsp",
+    "ldap",
+    "mms",
+    # App schemes
+    "zoom",
+    "slack",
+    "discord",
+    "spotify",
+    "steam",
+    "vscode",
+    "obsidian",
+    "notion",
+    "figma",
+    "miro",
+    "itms",
+    "itms-apps",
+    "market",
+    "intent",
+    "youtube",
+    "netflix",
+    "twitch",
+    # Niche
+    "ipfs",
+    "ipns",
+    "news",
+    "nntp",
+    "gopher",
+    "gemini",
+}
+
+DEV_URLS = (
+    "localhost",
+    "127.0.0.1",
+    "0.0.0.0",
+)
