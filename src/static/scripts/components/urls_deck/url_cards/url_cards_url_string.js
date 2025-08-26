@@ -2,8 +2,7 @@
 
 // Element to displayu the URL string
 function createURLString(urlStringText) {
-  let displayURL = urlStringText.replace(/^https:\/\//, "");
-  displayURL = displayURL.replace(/^www\./, "");
+  const displayURL = modifyURLStringForDisplay(urlStringText);
   return $(document.createElement("a"))
     .addClass("urlString long-text-ellipsis tabbable")
     .attr({
@@ -13,8 +12,9 @@ function createURLString(urlStringText) {
     .text(displayURL)
     .offAndOn("click.defaultlinkbehavior", function (e) {
       // Only allow a URL to be clickable when the Card is selected
-      if ($(e.target).closest(".urlRow").attr("urlSelected") !== "true") {
-        e.preventDefault();
+      e.preventDefault();
+      if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") {
+        accessLink(urlStringText);
       }
     });
 }
@@ -119,4 +119,9 @@ function setFocusEventListenersOnUpdateURLStringInput(urlStringInput, urlCard) {
   urlStringInput.offAndOn("blur.updateURLStringFocus", function () {
     $(document).off("keyup.updateURLStringFocus");
   });
+}
+
+function modifyURLStringForDisplay(urlString) {
+  // Remove https://, http://, and www. (in any combination) from the start
+  return urlString.replace(/^(?:https?:\/\/)?(?:www\.)?/, "");
 }

@@ -39,6 +39,17 @@ def add_mock_urls(runner: FlaskCliRunner, urls: list[str]):
     runner.invoke(args=args)
 
 
+def get_utub_url_id_by_url_string(app: Flask, utub_id: int, url: str) -> int:
+    with app.app_context():
+        raw_url: Urls = Urls.query.filter(Urls.url_string == url).first()
+        url_in_utub: Utub_Urls = Utub_Urls.query.filter(
+            Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == raw_url.id
+        ).first()
+        url_in_utub_id = url_in_utub.id
+
+    return url_in_utub_id
+
+
 def update_utub_to_empty_desc(app: Flask, utub_id: int):
     with app.app_context():
         utub: Utubs = Utubs.query.get(utub_id)

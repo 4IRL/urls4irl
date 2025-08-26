@@ -1351,7 +1351,6 @@ Required form data:
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 > | `409`         | `application/json`                | `See below.` | URL already in UTub. |
-> | `429`         | `application/json`                | `See below.` | Too many requests to the Wayback Machine in one minute. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1428,20 +1427,6 @@ URL already in UTub.
 >     "message": "URL already in UTub.",
 >     "errorCode": 3,
 >     "urlString": "https://www.google.com/"  
-> }
-> ```
-
-###### 429 HTTP Code Response Body
-
-A 429 might also be given in the response if the user performs too many requests from their own browser.
-The following 429 example indicates when all users have attempted to provide URLs that require validation
-through the Wayback Machine, which implements its own rate limiting system.
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Too many attempts, please try again in a minute.",
->     "errorCode": 6,
 > }
 > ```
 
@@ -1543,7 +1528,6 @@ Required form data:
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 > | `409`         | `application/json`                | `See below.` | URL already in UTub. |
-> | `429`         | `application/json`                | `See below.` | Too many requests to the Wayback Machine in one minute. |
 
 ###### 200 HTTP Code Response Body
 
@@ -1639,20 +1623,6 @@ URL already in UTub.
 >     "message": "URL already in UTub.",
 >     "errorCode": 4,
 >     "urlString": "https://www.google.com/"  
-> }
-> ```
-
-###### 429 HTTP Code Response Body
-
-A 429 might also be given in the response if the user performs too many requests from their own browser.
-The following 429 example indicates when all users have attempted to provide URLs that require validation
-through the Wayback Machine, which implements its own rate limiting system.
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Too many attempts, please try again in a minute.",
->     "errorCode": 6,
 > }
 > ```
 

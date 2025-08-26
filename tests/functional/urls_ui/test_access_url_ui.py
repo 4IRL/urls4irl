@@ -12,7 +12,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.cli.mock_constants import MOCK_URL_STRINGS
+from src.cli.mock_constants import MOCK_TEST_URL_STRINGS
 from src.utils.constants import STRINGS, URL_CONSTANTS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import assert_tooltip_animates
@@ -20,11 +20,15 @@ from tests.functional.db_utils import (
     add_mock_urls,
     get_url_in_utub,
     get_utub_this_user_created,
+    get_utub_url_id_by_url_string,
     get_utub_url_id_for_added_url_in_utub_as_member,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import (
     login_user_and_select_utub_by_name,
+    login_user_and_select_utub_by_utubid,
+    login_user_select_utub_by_id_and_url_by_id,
+    login_user_select_utub_by_name_and_url_by_string,
     login_user_select_utub_by_name_and_url_by_title,
 )
 from tests.functional.urls_ui.assert_utils import (
@@ -37,23 +41,18 @@ from tests.functional.selenium_utils import (
     get_num_url_rows,
     get_selected_utub_id,
     get_selected_url,
+    get_url_row_by_id,
     wait_for_web_element_and_click,
     wait_then_get_element,
-    wait_then_get_elements,
     wait_until_hidden,
     wait_until_visible_css_selector,
 )
 
 pytestmark = pytest.mark.urls_ui
 
-MOCK_TEST_URL_STRINGS = [
-    f"https://www.u4i.test/{idx}"
-    for idx in range(URL_CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS + 5)
-]
-
 
 def test_access_url_by_access_btn_while_selected_tooltip_animates(
-    browser, create_test_urls, provide_app: Flask
+    browser, create_test_access_urls, provide_app: Flask
 ):
     """
     Tests a member's ability to see the tooltip animate when hovering over the big access URL button.
@@ -80,7 +79,7 @@ def test_access_url_by_access_btn_while_selected_tooltip_animates(
 
 
 def test_access_url_by_access_btn_while_selected(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    browser: WebDriver, create_test_access_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -91,8 +90,13 @@ def test_access_url_by_access_btn_while_selected(
     """
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+
+    url_to_select = random.sample(MOCK_TEST_URL_STRINGS, 1)[0]
+    utub = get_utub_this_user_created(app, user_id_for_test)
+    utub_url_id = get_utub_url_id_by_url_string(app, utub.id, url_to_select)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub.id, utub_url_id
     )
 
     url_row = get_selected_url(browser)
@@ -109,11 +113,11 @@ def test_access_url_by_access_btn_while_selected(
     for handle in curr_tabs:
         if handle != init_tab:
             browser.switch_to.window(handle)
-            assert browser.current_url in MOCK_URL_STRINGS
+            assert browser.current_url in MOCK_TEST_URL_STRINGS
 
 
 def test_access_url_by_goto_btn_while_selected(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    browser: WebDriver, create_test_access_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -124,8 +128,12 @@ def test_access_url_by_goto_btn_while_selected(
     """
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+
+    url_to_select = random.sample(MOCK_TEST_URL_STRINGS, 1)[0]
+    utub = get_utub_this_user_created(app, user_id_for_test)
+    utub_url_id = get_utub_url_id_by_url_string(app, utub.id, url_to_select)
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub.id, utub_url_id
     )
 
     url_row = get_selected_url(browser)
@@ -142,11 +150,11 @@ def test_access_url_by_goto_btn_while_selected(
     for handle in curr_tabs:
         if handle != init_tab:
             browser.switch_to.window(handle)
-            assert browser.current_url in MOCK_URL_STRINGS
+            assert browser.current_url in MOCK_TEST_URL_STRINGS
 
 
 def test_access_url_by_goto_btn_while_hover(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    browser: WebDriver, create_test_access_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the URLOptions button.
@@ -157,16 +165,20 @@ def test_access_url_by_goto_btn_while_hover(
     """
     app = provide_app
     user_id_for_test = 1
-    login_user_and_select_utub_by_name(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+
+    url_to_add = random.sample(MOCK_TEST_URL_STRINGS, 1)[0]
+    utub = get_utub_this_user_created(app, user_id_for_test)
+    utub_url_id = get_utub_url_id_by_url_string(app, utub.id, url_to_add)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_id=utub.id
     )
 
     init_num_of_tabs = len(browser.window_handles)
     init_tab = browser.current_window_handle
 
-    url_row = wait_then_get_elements(browser, HPL.ROWS_URLS)
+    url_row = get_url_row_by_id(browser, utub_url_id)
     assert url_row is not None
-    url_row = url_row[0]
 
     actions = ActionChains(browser)
     actions.move_to_element(url_row).perform()
@@ -179,11 +191,11 @@ def test_access_url_by_goto_btn_while_hover(
     for handle in curr_tabs:
         if handle != init_tab:
             browser.switch_to.window(handle)
-            assert browser.current_url in MOCK_URL_STRINGS
+            assert browser.current_url in MOCK_TEST_URL_STRINGS
 
 
 def test_access_url_by_clicking_url_string(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    browser: WebDriver, create_test_access_urls, provide_app: Flask
 ):
     """
     Tests a user's ability to navigate to a URL using the displayed URL string.
@@ -195,8 +207,10 @@ def test_access_url_by_clicking_url_string(
 
     app = provide_app
     user_id_for_test = 1
-    login_user_select_utub_by_name_and_url_by_title(
-        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+
+    url_to_click = random.sample(MOCK_TEST_URL_STRINGS, 1)
+    login_user_select_utub_by_name_and_url_by_string(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, url_to_click[0]
     )
 
     init_num_of_tabs = len(browser.window_handles)
@@ -214,9 +228,107 @@ def test_access_url_by_clicking_url_string(
     assert init_num_of_tabs + 1 == len(curr_tabs)
 
     for handle in curr_tabs:
-        if handle != init_tab:
-            browser.switch_to.window(handle)
-            assert browser.current_url in MOCK_URL_STRINGS
+        if handle == init_tab:
+            continue
+
+        browser.switch_to.window(handle)
+        assert browser.current_url in MOCK_TEST_URL_STRINGS
+
+
+def test_access_non_http_url_by_clicking_url_string_submit(
+    browser: WebDriver,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_access_urls,
+    provide_app: Flask,
+):
+    """
+    Tests a user's ability to navigate to a URL using the displayed URL string.
+
+    GIVEN access to UTubs and URLs
+    WHEN a user clicks the URL text
+    THEN ensure the URL opens in a new tab
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+
+    _, cli_runner = runner
+    mailto_url = "mailto:fakeemail@fake.email"
+    utub = get_utub_this_user_created(app, user_id_for_test)
+    add_mock_urls(
+        cli_runner,
+        [
+            mailto_url,
+        ],
+    )
+    url_in_utub_id = get_utub_url_id_by_url_string(app, utub.id, mailto_url)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_id=utub.id, utub_url_id=url_in_utub_id
+    )
+
+    url_row = get_selected_url(browser)
+
+    init_num_of_tabs = len(browser.window_handles)
+    url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).click()
+
+    access_modal = wait_then_get_element(browser, HPL.ACCESS_EXTERNAL_URL_MODAL)
+    assert access_modal is not None
+    assert access_modal.is_displayed()
+    access_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_SUBMIT).click()
+
+    curr_tabs = browser.window_handles
+
+    assert init_num_of_tabs + 1 == len(curr_tabs)
+
+
+def test_access_non_http_url_by_clicking_url_string_cancel(
+    browser: WebDriver,
+    runner: Tuple[Flask, FlaskCliRunner],
+    create_test_access_urls,
+    provide_app: Flask,
+):
+    """
+    Tests a user's ability to navigate to a URL using the displayed URL string.
+
+    GIVEN access to UTubs and URLs
+    WHEN a user clicks the URL text
+    THEN ensure the URL opens in a new tab
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+
+    _, cli_runner = runner
+    mailto_url = "mailto:fakeemail@fake.email"
+    add_mock_urls(
+        cli_runner,
+        [
+            mailto_url,
+        ],
+    )
+    utub = get_utub_this_user_created(app, user_id_for_test)
+    url_in_utub_id = get_utub_url_id_by_url_string(app, utub.id, mailto_url)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_id=utub.id, utub_url_id=url_in_utub_id
+    )
+
+    url_row = get_selected_url(browser)
+    init_num_of_tabs = len(browser.window_handles)
+
+    url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).click()
+
+    access_modal = wait_then_get_element(browser, HPL.ACCESS_EXTERNAL_URL_MODAL)
+    assert access_modal is not None
+    assert access_modal.is_displayed()
+    access_modal.find_element(By.CSS_SELECTOR, HPL.BUTTON_MODAL_DISMISS).click()
+
+    curr_tabs = browser.window_handles
+    assert init_num_of_tabs == len(curr_tabs)
+
+    wait_until_hidden(browser, HPL.HOME_MODAL)
+    assert not access_modal.is_displayed()
 
 
 def test_access_all_urls_at_limit(
@@ -467,7 +579,7 @@ def test_access_all_urls_above_limit_cancel_modal_by_clicking_outside_modal(
 
 
 def test_access_to_urls_as_utub_owner(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+    browser: WebDriver, create_test_access_urls, provide_app: Flask
 ):
     """
     Tests a UTub owner's ability to have all capabilities available when selecting a URL

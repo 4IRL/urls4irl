@@ -99,16 +99,6 @@ def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title
     clear_then_send_keys(url_title_input_field, url_title)
 
 
-def add_invalid_url_header_for_ui_test(browser: WebDriver):
-    browser.execute_script(
-        """
-        $(document).ajaxSend(function(event, xhr, settings) {
-            xhr.setRequestHeader('X-U4I-Testing-Invalid', 'true');
-        });
-    """
-    )
-
-
 class ClipboardMockHelper:
     def __init__(self, driver: WebDriver):
         self.driver: WebDriver = driver

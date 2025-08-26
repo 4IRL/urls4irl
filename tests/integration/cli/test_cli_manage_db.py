@@ -7,7 +7,7 @@ from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 
 from src import db, migrate
-from src.cli.utils import TABLE_NAMES
+from src.utils.db_table_names import TABLE_NAMES
 from src.models.utub_tags import Utub_Tags
 from src.models.urls import Urls
 from src.models.users import Users

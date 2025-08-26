@@ -10,11 +10,13 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
 from src import create_app, db, environment_assets
+from src.cli.mock_constants import MOCK_TEST_URL_STRINGS
 from src.config import ConfigTest
 from src.models.email_validations import Email_Validations
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from tests.functional.db_utils import add_mock_urls
 from tests.functional.selenium_utils import ChromeRemoteWebDriver
 from tests.functional.ui_test_setup import (
     clear_db,
@@ -342,6 +344,18 @@ def create_test_urls(runner, debug_strings):
 
     if debug_strings:
         print("\nusers, utubs, members, and urls created")
+
+
+@pytest.fixture
+def create_test_access_urls(runner, debug_strings):
+    """
+    Assumes users created, each own one UTub, and all users are members of each UTub. Creates URLs in each UTub.
+    """
+    _, cli_runner = runner
+    add_mock_urls(cli_runner, MOCK_TEST_URL_STRINGS)
+
+    if debug_strings:
+        print("\nusers, utubs, members, and acces urls created")
 
 
 @pytest.fixture

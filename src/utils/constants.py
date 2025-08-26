@@ -7,12 +7,14 @@ from src.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD, LOGIN_TITLE
 from src.utils.strings.tag_strs import ADD_URL_TAG_TOOLTIP
 from src.utils.strings.url_strs import (
     ACCESS_URL_TOOLTIP,
+    ACCESS_URL_WARNING,
     COPIED_URL_FAILURE_TOOLIP,
     COPIED_URL_TOOLTIP,
     COPY_URL_TOOLTIP,
     DELETE_URL_TOOLTIP,
     DELETE_URL_WARNING,
     EDIT_URL_TOOLTIP,
+    UNABLE_TO_VALIDATE_THIS_URL,
 )
 from src.utils.strings.user_strs import MEMBER_DELETE_WARNING, MEMBER_LEAVE_WARNING
 from src.utils.strings.utub_strs import (
@@ -89,6 +91,8 @@ class STRINGS:
     ADD_URL_TAG_TOOLTIP = ADD_URL_TAG_TOOLTIP
     EDIT_URL_TOOLTIP = EDIT_URL_TOOLTIP
     DELETE_URL_TOOLTIP = DELETE_URL_TOOLTIP
+    UNABLE_TO_VALIDATE_THIS_URL = UNABLE_TO_VALIDATE_THIS_URL
+    ACCESS_URL_WARNING = ACCESS_URL_WARNING
 
 
 class CONSTANTS:

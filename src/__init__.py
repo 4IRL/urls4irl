@@ -17,7 +17,8 @@ from src.config import Config, ConfigProd
 from src.extensions.email_sender.email_sender import EmailSender
 from src.extensions.notifications.notifications import NotificationSender
 from src.extensions.url_validation.url_validator import UrlValidator
-from src.cli.cli_options import register_short_urls_cli, register_utils_cli
+from src.cli.short_urls import register_short_urls_cli
+from src.cli.utils import register_utils_cli
 from src.cli.mock_options import register_mocks_db_cli
 from src.utils.bundle import prepare_bundler_for_js_files
 from src.utils.error_handler import (

@@ -2,6 +2,10 @@
 
 const SHOW_LOADING_ICON_AFTER_MS = 50;
 
+function isEmptyString(str) {
+  return !str || !str.trim();
+}
+
 function updateColorOfFollowingURLCardsAfterURLCreated() {
   const urlCards = $(".urlRow[filterable=true]").toArray();
   let urlCard;

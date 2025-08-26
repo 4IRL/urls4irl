@@ -1,34 +1,24 @@
-from datetime import datetime
-from flask_session.redis.redis import RedisSessionInterface
-from flask_sqlalchemy.extension import SQLAlchemy
 import requests
 
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 import redis
 from redis.client import Redis
-from sqlalchemy.engine.base import Engine
 
 from src.utils.strings.config_strs import CONFIG_ENVS as ENV
 from src.utils.strings.url_validation_strs import SHORT_URLS
 from src.utils.strings.url_validation_strs import CUSTOM_SHORT_URLS
 
 HELP_SUMMARY_SHORT_URL = """Add list of short URL domains to redis."""
-HELP_SUMMARY_UTILS = """General CLI Utils for U4I."""
 SHORT_URL_DOMAINS_LIST = (
     "https://raw.githubusercontent.com/PeterDaveHello/url-shorteners/master/list"
 )
+
 
 short_urls_cli = AppGroup(
     "shorturls",
     context_settings={"ignore_unknown_options": True},
     help=HELP_SUMMARY_SHORT_URL,
-)
-
-utils_cli = AppGroup(
-    "utils",
-    context_settings={"ignore_unknown_options": True},
-    help=HELP_SUMMARY_UTILS,
 )
 
 
@@ -77,46 +67,5 @@ def add_short_url_domains_to_redis():
         print(f"Unknown exception when generating short URL domain list. {str(e)}")
 
 
-@utils_cli.command("start-log", help="Log to indicate application start")
-@with_appcontext
-def starting_log_for_u4i():
-    now = datetime.now()
-    start_time = now.strftime("[%Y-%m-%d  %H:%M:%S]")
-    current_app.raw_logger.info(  # type: ignore
-        """
-    !!------------------------------------------------------------------------------------------------------!!\n
-    !!-------------------------------------------- STARTING U4I --------------------------------------------!!\n
-    !!------------------------------------------------------------------------------------------------------!!\n
-    """
-        + f"!!----------------------------------------{start_time}----------------------------------------!!\n"
-    )
-    current_app.raw_logger.info(  # type: ignore
-        "Redis successfully attached to U4I"
-        if isinstance(current_app.session_interface, RedisSessionInterface)
-        else "Redis instance not found"
-    )
-
-    sqlalchemy = "sqlalchemy"
-    has_db_connection = (
-        sqlalchemy in current_app.extensions
-        and isinstance(current_app.extensions[sqlalchemy], SQLAlchemy)
-        and isinstance(current_app.extensions[sqlalchemy].get_engine(), Engine)
-        and hasattr(current_app.extensions[sqlalchemy].get_engine(), "has_table")
-        and current_app.extensions[sqlalchemy]
-        .get_engine()
-        .has_table(table_name="Utubs")
-    )
-
-    current_app.raw_logger.info(  # type: ignore
-        "PostgreSQL successfully attached to U4I"
-        if has_db_connection
-        else "PostgreSQL instance not found"
-    )
-
-
 def register_short_urls_cli(app: Flask):
     app.cli.add_command(short_urls_cli)
-
-
-def register_utils_cli(app: Flask):
-    app.cli.add_command(utils_cli)

@@ -1,7 +1,9 @@
+import os
 import random
 from typing import Tuple
 from urllib.parse import urlsplit
 
+import ada_url
 from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
@@ -47,12 +49,21 @@ from tests.functional.selenium_utils import (
     wait_until_visible_css_selector,
 )
 from tests.functional.urls_ui.selenium_utils import (
-    add_invalid_url_header_for_ui_test,
     update_url_title,
     update_url_string,
 )
+from tests.unit.test_url_validation import (
+    FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
+    INVALID_URLS_TO_VALIDATE,
+)
 
-pytestmark = pytest.mark.urls_ui
+pytestmark = pytest.mark.update_urls_ui
+
+# For CI/CD testing, pull only 30 random values to run in pipeline to avoid timeouts
+if (int(os.getenv("GITHUB_WORKER_ID", -1)) - 1) >= 0:
+    FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = random.sample(
+        list(FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS), 30
+    )
 
 
 def test_update_url_string_tooltip_animates(
@@ -85,6 +96,75 @@ def test_update_url_string_tooltip_animates(
         tooltip_parent_class=HPL.BUTTON_URL_STRING_UPDATE,
         tooltip_text=STRINGS.EDIT_URL_TOOLTIP,
     )
+
+
+@pytest.mark.parametrize(
+    "validated_url,input_url",
+    [
+        (validated_url, input_url)
+        for (validated_url, input_url) in FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS
+    ],
+)
+def test_update_url_with_valid_url(
+    browser: WebDriver,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+    validated_url: str,
+    input_url: str,
+):
+    """
+    Tests a user's ability to update the URL string of the selected URL.
+
+    GIVEN a user has access to a URL
+    WHEN the updateURL form is populated with a new URL and user presses submit
+    THEN ensure the URL is updated accordingly
+    """
+    VALIDATED_URL = ada_url.URL(validated_url).href
+
+    _, cli_runner = runner
+    app = provide_app
+    random_url_to_add = random.sample(MOCK_URL_STRINGS, 1)[0]
+    add_mock_urls(
+        cli_runner,
+        [
+            random_url_to_add,
+        ],
+    )
+
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_string(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+    )
+
+    url_row = get_selected_url(browser)
+
+    if input_url.startswith(("\t", "\n")):
+        # This is needed to insert escaped characters via Selenium into input fields
+        input_url = input_url.encode("unicode_escape").decode("utf-8")
+
+    update_url_string(browser, url_row, input_url)
+    assert_update_url_state_is_shown(url_row)
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
+
+    wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
+    assert_update_url_state_is_hidden(url_row)
+
+    url_row_string_elem = url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ)
+
+    # Extract URL string from updated URL row
+    url_row_string_display = url_row_string_elem.text
+    url_row_data_attrib = url_row_string_elem.get_attribute("href")
+
+    assert url_row_data_attrib == url_row_string_display
+    assert url_row_data_attrib == VALIDATED_URL
+
+    with pytest.raises(NoSuchElementException):
+        browser.find_element(By.CSS_SELECTOR, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE)
+
+    assert not browser.find_element(
+        By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
+    ).is_displayed()
 
 
 def test_update_url_string_submit_btn(
@@ -697,8 +777,12 @@ def test_update_url_string_duplicate_url(
     assert invalid_url_string_error.text == URL_FAILURE.URL_IN_UTUB
 
 
-def test_update_url_string_invalid_url(
-    browser: WebDriver, create_test_urls, provide_app: Flask
+@pytest.mark.parametrize(
+    "invalid_url",
+    [invalid_url for invalid_url in INVALID_URLS_TO_VALIDATE if "@" not in invalid_url],
+)
+def test_update_url_string_invalid_urls(
+    browser: WebDriver, create_test_urls, provide_app: Flask, invalid_url: str
 ):
     """
     GIVEN a user and selected UTub
@@ -713,9 +797,8 @@ def test_update_url_string_invalid_url(
     )
 
     url_row = get_selected_url(browser)
-    update_url_string(browser, url_row, "Test")
+    update_url_string(browser, url_row, invalid_url)
 
-    add_invalid_url_header_for_ui_test(browser)
     wait_then_click_element(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
     )
@@ -728,6 +811,39 @@ def test_update_url_string_invalid_url(
     )
     assert invalid_url_string_error is not None
     assert invalid_url_string_error.text == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
+
+
+def test_update_url_string_credentials_url(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    GIVEN a user and selected UTub
+    WHEN the updateURL string form is submitted with an invalid URL
+    THEN ensure the appropriate error and prompt is shown to user.
+    """
+    app = provide_app
+    user_id_for_test = 1
+
+    login_user_select_utub_by_name_and_url_by_title(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, UTS.TEST_URL_TITLE_1
+    )
+
+    invalid_url = "https://user:password@example.com"
+    url_row = get_selected_url(browser)
+    update_url_string(browser, url_row, invalid_url)
+
+    wait_then_click_element(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}", time=3
+    )
+
+    error_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX}"
+    wait_until_visible_css_selector(browser, error_css_selector, timeout=3)
+
+    invalid_url_string_error = wait_then_get_element(
+        browser, error_css_selector, time=3
+    )
+    assert invalid_url_string_error is not None
+    assert invalid_url_string_error.text == URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION
 
 
 def test_update_url_sanitized_title(

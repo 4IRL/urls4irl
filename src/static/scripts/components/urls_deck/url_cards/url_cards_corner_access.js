@@ -26,12 +26,12 @@ function createGoToURLIcon(urlString) {
     .append(goToUrlInnerIconPath)
     .on("click", (e) => {
       e.stopPropagation();
-      accessLink(urlString, null);
+      accessLink(urlString);
     })
     .on("focus", () => {
       $(document).on("keyup.accessURL", function (e) {
         if (e.which === 13) {
-          accessLink(urlString, null);
+          accessLink(urlString);
           goToUrlOuterIconSvg.trigger("focus");
         }
       });

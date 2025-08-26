@@ -75,6 +75,13 @@ function createURL(createURLTitleInput, createURLInput) {
   let postURL, data;
   [postURL, data] = createURLSetup(createURLTitleInput, createURLInput, utubID);
 
+  if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
+    createURLShowFormErrors({
+      urlString: [STRINGS.INVALID_URL],
+    });
+    return;
+  }
+
   // Show loading icon when creating a URL
   const timeoutId = setTimeout(function () {
     $("#urlCreateDualLoadingRing").addClass("dual-loading-ring");
