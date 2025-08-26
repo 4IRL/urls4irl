@@ -52,9 +52,10 @@ jobs:
           - [10, 'UI UTub Functional Tests']
           - [11, 'UI Member Functional Tests']
           - [12, 'UI URL Functional Tests']
-          - [13, 'UI Add/Update URL Functional Tests']
-          - [14, 'UI Tags Functional Tests']
-          - [15, 'UI Mobile Functional Tests']
+          - [13, 'UI Create URL Functional Tests']
+          - [14, 'UI Update URL Functional Tests']
+          - [15, 'UI Tags Functional Tests']
+          - [16, 'UI Mobile Functional Tests']
 
     name: ${{ format('{0}', matrix.worker[1]) }}
 
