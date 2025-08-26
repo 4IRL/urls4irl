@@ -60,7 +60,7 @@ from tests.unit.test_url_validation import (
 pytestmark = pytest.mark.add_update_urls_ui
 
 # For CI/CD testing, pull only 50 random values to run in pipeline to avoid timeouts
-if int(os.getenv("GITHUB_WORKER_ID", -1)) - 1:
+if (int(os.getenv("GITHUB_WORKER_ID", -1)) - 1) >= 0:
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = random.sample(
         list(FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS), 50
     )

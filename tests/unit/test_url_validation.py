@@ -337,17 +337,17 @@ URLS_WITH_DIFFERENT_PATH = {
 
 VALID_MOCK_URLS_FOR_VALIDATE = VALID_MOCK_URLS_FOR_NORMALIZE.keys()
 
-FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = (
+FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = [
     (valid_url, input_url)
     for valid_url, urls in VALID_MOCK_URLS_FOR_NORMALIZE.items()
     for input_url in urls
-)
+]
 
-FLATTENED_URLS_WITH_DIFFERENT_PATH = (
+FLATTENED_URLS_WITH_DIFFERENT_PATH = [
     (lowercase_url, valid_url)
     for lowercase_url, urls in URLS_WITH_DIFFERENT_PATH.items()
     for valid_url in urls
-)
+]
 
 INVALID_MOCK_URLS_FOR_NORMALIZED = (
     "javascript:alert(1)",
