@@ -48,7 +48,8 @@ TEST_SPLIT = (
     "utubs_ui",
     "members_ui",
     "urls_ui",
-    "add_update_urls_ui",
+    "create_urls_ui",
+    "update_urls_ui",
     "tags_ui",
     "mobile_ui",
 )
