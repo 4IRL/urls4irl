@@ -1,6 +1,6 @@
 "use strict";
 
-function buildTagDeck(dictTags) {
+function setTagDeckOnUTubSelected(dictTags) {
   resetTagDeck();
   const parent = $("#listTags");
 

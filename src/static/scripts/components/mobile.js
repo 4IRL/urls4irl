@@ -13,6 +13,7 @@ $(document).ready(function () {
 
     // Handle size changes when tablet or smaller
     if (width < TABLET_WIDTH) {
+      resetAllDecksIfCollapsed();
       // If UTub selected, show URL Deck
       // If no UTub selected, show UTub deck
       // Set tablet-mobile navbar depending on UTub selected or not

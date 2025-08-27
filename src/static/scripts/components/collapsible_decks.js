@@ -35,6 +35,34 @@ function setupCollapsibleLeftDecks() {
   setupTagHeaderForMaximizeMinimize();
 }
 
+function resetAllDecksIfCollapsed() {
+  const caretUTubDeck = $("#UTubDeckHeaderAndCaret .title-caret");
+  if (caretUTubDeck.hasClass("closed")) {
+    caretUTubDeck.removeClass("closed");
+    $(UTUB_DECK_CSS_SELECTOR).removeClass("collapsed");
+  }
+
+  const caretMemberDeck = $("#MemberDeckHeaderAndCaret .title-caret");
+  if (caretMemberDeck.hasClass("closed")) {
+    caretMemberDeck.removeClass("closed");
+    $(MEMBER_DECK_CSS_SELECTOR).removeClass("collapsed");
+    !isUTubSelected()
+      ? $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem")
+      : null;
+    return;
+  }
+
+  const caretTagDeck = $("#TagDeckHeaderAndCaret .title-caret");
+  if (caretTagDeck.hasClass("closed")) {
+    caretTagDeck.removeClass("closed");
+    $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("collapsed");
+    !isUTubSelected()
+      ? $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem")
+      : null;
+    return;
+  }
+}
+
 function setupUTubHeaderForMaximizeMinimize() {
   const headerAndCaret = $("#UTubDeckHeaderAndCaret");
   if (!headerAndCaret.hasClass("clickable"))
@@ -54,7 +82,7 @@ function setupUTubHeaderForMaximizeMinimize() {
     $(UTUB_DECK_CSS_SELECTOR).addClass("collapsed");
 
     closeUTubSearchAndEraseInput();
-    createUTubHideInput();
+    isUTubSelected() ? createUTubHideInput() : null;
 
     if (numDecksAlreadyCollapsed >= 2) {
       ensureOnlyTwoDecksCollapsedAtOnce(UTUB_DECK_CSS_SELECTOR);
@@ -74,6 +102,9 @@ function setupMemberHeaderForMaximizeMinimize() {
     if (caret.hasClass("closed")) {
       caret.removeClass("closed");
       $(MEMBER_DECK_CSS_SELECTOR).removeClass("collapsed");
+      !isUTubSelected()
+        ? $("#MemberDeck > .sidePanelTitle").addClass("pad-b-0-25rem")
+        : null;
       return;
     }
 
@@ -81,7 +112,8 @@ function setupMemberHeaderForMaximizeMinimize() {
     caret.addClass("closed");
     $(MEMBER_DECK_CSS_SELECTOR).addClass("collapsed");
 
-    createMemberHideInput();
+    isUTubSelected() ? createMemberHideInput() : null;
+    $("#MemberDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
 
     if (numDecksAlreadyCollapsed >= 2) {
       ensureOnlyTwoDecksCollapsedAtOnce(MEMBER_DECK_CSS_SELECTOR);
@@ -101,6 +133,9 @@ function setupTagHeaderForMaximizeMinimize() {
     if (caret.hasClass("closed")) {
       caret.removeClass("closed");
       $(UTUB_TAG_DECK_CSS_SELECTOR).removeClass("collapsed");
+      !isUTubSelected()
+        ? $("#TagDeck > .sidePanelTitle").addClass("pad-b-0-25rem")
+        : null;
       return;
     }
 
@@ -108,7 +143,8 @@ function setupTagHeaderForMaximizeMinimize() {
     caret.addClass("closed");
     $(UTUB_TAG_DECK_CSS_SELECTOR).addClass("collapsed");
 
-    createUTubTagHideInput();
+    isUTubSelected() ? createUTubTagHideInput() : null;
+    $("#TagDeck > .sidePanelTitle").removeClass("pad-b-0-25rem");
 
     if (numDecksAlreadyCollapsed >= 2) {
       ensureOnlyTwoDecksCollapsedAtOnce(UTUB_TAG_DECK_CSS_SELECTOR);

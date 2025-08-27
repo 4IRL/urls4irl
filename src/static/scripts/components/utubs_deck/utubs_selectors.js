@@ -47,11 +47,11 @@ function buildSelectedUTub(selectedUTub) {
   setUTubDeckOnUTubSelected(selectedUTub.id, isCurrentUserOwner);
 
   // Tag deck
-  buildTagDeck(dictTags);
+  setTagDeckOnUTubSelected(dictTags);
 
   // Center panel
   // URL deck
-  buildURLDeck(utubName, dictURLs, dictTags);
+  setURLDeckOnUTubSelected(utubName, dictURLs, dictTags);
 
   // UTub Description
   const utubDescriptionHeader = $("#URLDeckSubheader");
@@ -84,7 +84,12 @@ function buildSelectedUTub(selectedUTub) {
   }
 
   // Members deck
-  buildMemberDeck(dictMembers, utubOwnerID, isCurrentUserOwner, currentUserID);
+  setMemberDeckOnUTubSelected(
+    dictMembers,
+    utubOwnerID,
+    isCurrentUserOwner,
+    currentUserID,
+  );
 }
 
 // Handles progagating changes across page related to a UTub selection
