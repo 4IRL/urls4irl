@@ -39,7 +39,7 @@ function updateMemberDeck(newMembers, isCurrentUserOwner) {
 }
 
 // Build center panel URL list for selectedUTub
-function buildMemberDeck(
+function setMemberDeckOnUTubSelected(
   dictMembers,
   utubOwnerUserID,
   isCurrentUserOwner,
@@ -96,7 +96,7 @@ function setMemberDeckWhenNoUTubSelected() {
 function setMemberDeckForUTub(isCurrentUserOwner) {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
   const memberDeckSubheader = $("#MemberDeckSubheader");
-  memberDeckSubheader.parent().addClass("height-2p5rem");
+  memberDeckSubheader.parent().addClass("height-2rem");
   // Ability to add members is restricted to UTub owner
   if (isCurrentUserOwner) {
     $("#memberSelfBtnDelete").hideClass();

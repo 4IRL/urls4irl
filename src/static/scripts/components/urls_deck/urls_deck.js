@@ -76,7 +76,7 @@ function updateURLDeck(updatedUTubUrls, updatedUTubTags) {
 }
 
 // Build center panel URL list for selectedUTub
-function buildURLDeck(utubName, dictURLs, dictTags) {
+function setURLDeckOnUTubSelected(utubName, dictURLs, dictTags) {
   resetURLDeck();
   const parent = $("#listURLs");
   const numOfURLs = dictURLs.length ? dictURLs.length : 0;

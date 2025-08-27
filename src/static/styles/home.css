@@ -51,6 +51,7 @@
 .deck#MemberDeck.collapsed,
 .deck#TagDeck.collapsed {
     flex: 0 0 48px;
+    padding-top: 0.15rem;
     padding-bottom: 0;
 }
 
@@ -255,6 +256,11 @@
     padding-inline: 15px;
 }
 
+.pad-b-0-25rem {
+    padding-bottom: 0.25rem;
+
+}
+
 .gap-2p {
     gap: 2px;
 }
@@ -293,6 +299,10 @@
 
 .pad-bot-5p {
     padding-bottom: 5px;
+}
+
+.height-2rem {
+    height: 2rem;
 }
 
 .height-2p5rem {
@@ -1128,16 +1138,18 @@ a.urlString:hover {
 #MemberDeckHeader,
 #TagDeckHeader,
 #UTubDeckHeader,
+#UTubDeckSubheader,
+#MemberDeckSubheader,
 #UTubDescriptionDeckHeader,
+#TagDeckSubheader,
 #URLDeckHeader {
     margin-bottom: 0px;
 }
 
-#MemberDeckSubheader,
-#TagDeckSubheader,
 #URLDeckSubheader {
     margin-top: 3px;
 }
+
 
 #UTubDeckSubheaderWrap {
     width: 100%;
