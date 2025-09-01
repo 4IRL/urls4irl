@@ -149,6 +149,8 @@ function updateUTubNameShowInput() {
 
   // Show update fields
   const utubNameUpdate = $("#utubNameUpdate");
+  const parentTitleElem = utubNameUpdate.closest(".titleElement");
+  parentTitleElem.addClass("m-top-bot-0-5rem");
   utubNameUpdate.val(getCurrentUTubName());
   showInput("#utubNameUpdate");
   utubNameUpdate.trigger("focus");
@@ -170,6 +172,9 @@ function updateUTubNameShowInput() {
 function updateUTubNameHideInput() {
   // Hide update fields
   hideInput("#utubNameUpdate");
+  const utubNameUpdate = $("#utubNameUpdate");
+  const parentTitleElem = utubNameUpdate.closest(".titleElement");
+  parentTitleElem.removeClass("m-top-bot-0-5rem");
 
   // Show values and update button
   $("#URLDeckHeader").showClassNormal();
