@@ -1217,6 +1217,15 @@ a.urlString:hover {
     transition: height 0.2s ease-in-out, opacity 0.1s ease-in-out, padding 0.1s ease-in-out, border 0.1s ease-in-out, font-size 0.1s ease-in-out;
 }
 
+
+#UTubNameOuterUpdateWrap {
+    width: 85%;
+}
+
+#UTubDescriptionInnerUpdateWrap {
+    width: 65%;
+}
+
 .URLDeckErrorIndicatorShow {
     height: auto !important;
     padding: 5px !important;
@@ -1294,6 +1303,15 @@ a.urlString:hover {
     #TagDeckHeader,
     #UTubDeckHeader {
         pointer-events: none;
+    }
+
+    #UTubDescriptionInnerUpdateWrap,
+    #UTubNameOuterUpdateWrap {
+        width: 100%;
+    }
+
+    #UTubNameOuterUpdateWrap ~ .button-container {
+        width: 0% !important;
     }
 }
 
