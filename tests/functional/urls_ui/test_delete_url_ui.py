@@ -58,7 +58,7 @@ def test_delete_url_tooltip_animates(
     THEN ensure a tooltip is shown appropriately
     """
 
-    _, cli_runner = runner
+    _, _ = runner
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
@@ -86,7 +86,6 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
     """
     user_id_for_test = 1
 
-    # Login as test user, select first test UTub, and select first test URL
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
             browser=browser,
@@ -131,7 +130,6 @@ def test_delete_url_cancel_click_cancel_btn(
     """
     user_id_for_test = 1
 
-    # Login as test user, select first test UTub, and select first test URL
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
             browser=browser,
@@ -170,7 +168,6 @@ def test_delete_url_cancel_click_x_btn(
     """
     user_id_for_test = 1
 
-    # Login as test user, select first test UTub, and select first test URL
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
             browser=browser,
@@ -209,7 +206,6 @@ def test_delete_url_cancel_press_esc_key(
     """
     user_id_for_test = 1
 
-    # Login as test user, select first test UTub, and select first test URL
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
             browser=browser,
@@ -248,7 +244,6 @@ def test_delete_url_cancel_click_outside_modal(
     """
     user_id_for_test = 1
 
-    # Login as test user, select first test UTub, and select first test URL
     delete_modal, url_elem_to_delete = (
         login_select_utub_select_url_click_delete_get_modal_url(
             browser=browser,
@@ -301,7 +296,6 @@ def test_delete_last_url(
 
     user_id_for_test = 1
 
-    # Login as test user, select first test UTub, and select first test URL
     _, url_elem_to_delete = login_select_utub_select_url_click_delete_get_modal_url(
         browser=browser,
         app=provide_app,

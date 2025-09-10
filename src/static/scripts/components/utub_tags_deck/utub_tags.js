@@ -18,8 +18,9 @@ function buildTagFilterInDeck(tagID, string, urlCount = 0) {
       toggleTagFilterSelected(container);
     })
     .on("focus.tagFilterSelected", function () {
-      $(document).on("keyup.tagFilterSelected", function (e) {
-        if (e.which === 13) toggleTagFilterSelected(container);
+      $(document).offAndOn("keyup.tagFilterSelected", function (e) {
+        if (e.which === 13 && $(e.target).hasClass("tagFilter"))
+          toggleTagFilterSelected(container);
       });
     })
     .on("blur.tagFilterSelected", function () {
@@ -28,10 +29,12 @@ function buildTagFilterInDeck(tagID, string, urlCount = 0) {
 
   tagStringSpan.text(string);
 
-  // TODO: addClass("tagCountHoverable") only if utubUserID == utubOwnerID
-  rightContainer.addClass("tagCountHoverable");
+  // TODO: addClass("tagCountWrap") only if utubUserID == utubOwnerID
+  rightContainer.addClass("tagCountWrap");
 
-  urlCountSpan.addClass("tagAppliedToUrlsCount").text(urlCount);
+  urlCountSpan
+    .addClass("tagAppliedToUrlsCount")
+    .text(`${urlCount}` + " / " + `${urlCount}`);
 
   deleteTagButton
     .addClass("utubTagBtnDelete align-center pointerable tabbable")
@@ -40,7 +43,7 @@ function buildTagFilterInDeck(tagID, string, urlCount = 0) {
       deleteUtubTag(utubTagID, tagSpan, urlCard);
     })
     .offAndOn("focus.removeUtubTag", function () {
-      $(document).on("keyup.removeUtubTag", function (e) {
+      $(document).offAndOn("keyup.removeUtubTag", function (e) {
         if (e.which === 13) deleteUtubTag(utubTagID, tagSpan, urlCard);
       });
     })
@@ -163,18 +166,5 @@ function updateTagFilteringOnURLOrURLTagDeletion() {
     default:
       // Reapply filters based on tag removed
       updateURLsAndTagSubheaderWhenTagSelected();
-  }
-}
-
-function updateTagFilterCount(tagID, count) {
-  const tagFilter = $(`.tagFilter[data-utub-tag-id="${tagID}"]`);
-  const urlCountSpan = tagFilter.find(".tagAppliedToUrlsCount");
-
-  if (count === 0) {
-    // Remove the tag filter if no URLs are associated with it
-    tagFilter.remove();
-  } else {
-    // Update the count of URLs associated with the tag
-    urlCountSpan.text(count);
   }
 }

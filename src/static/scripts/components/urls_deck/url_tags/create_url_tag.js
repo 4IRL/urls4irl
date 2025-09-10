@@ -222,13 +222,16 @@ function createURLTagSuccess(response, urlCard) {
   const string = response.utubTag.tagString;
   const tagCount = response.tagCountsInUtub;
 
-  // Update tag filter in Tag Deck
-  updateTagFilterCount(utubTagID, tagCount);
-
   // Update tags in URL
   urlCard
     .find(".urlTagsContainer")
     .append(createTagBadgeInURL(utubTagID, string, urlCard));
+
+  const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
+
+  currentURLTagIDs.trim()
+    ? urlCard.attr("data-utub-url-tag-ids", currentURLTagIDs + `,${utubTagID}`)
+    : urlCard.attr("data-utub-url-tag-ids", utubTagID);
 
   // Add SelectAll button if not yet there
   $("#unselectAllTagFilters").showClassNormal();
@@ -236,10 +239,13 @@ function createURLTagSuccess(response, urlCard) {
   if (!isTagInUTubTagDeck(utubTagID)) {
     const newTag = buildTagFilterInDeck(utubTagID, string, tagCount);
     // If max number of tags already selected
-    $(".tagFilter.selected") === CONSTANTS.TAGS_MAX_ON_URL
+    $(".tagFilter.selected").length === CONSTANTS.TAGS_MAX_ON_URL
       ? newTag.addClass("disabled").off(".tagFilterSelected")
       : null;
     $("#listTags").append(newTag);
+  } else {
+    // Update tag filter in Tag Deck
+    updateTagFilterCount(utubTagID, tagCount, TagCountOperation.INCREMENT);
   }
 }
 

@@ -65,6 +65,7 @@ function createURLBlock(url, tagArray) {
     utubUrlID: url.utubUrlID,
     urlSelected: false,
     filterable: true,
+    "data-utub-url-tag-ids": url.utubUrlTagIDs.join(","),
   });
 
   // Append update URL form if user can edit the URL

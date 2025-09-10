@@ -61,23 +61,24 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
 
   // Based on IDs, find if tag still exists in UTub - if not, remove from tag deck
   for (let i = 0; i < removedTagIDs.length; i++) {
-    if (!isTagInUTubTagDeck(receivedTag.utubTagID)) {
+    if (!isTagInUTubTagDeck(tag.utubTagID)) {
       removeTagFromTagDeckGivenTagID(removedTagIDs[i]);
     }
   }
 
   // Add tags that are in received tags but not in current tags
-  let exists, receivedTag;
+  let exists, receivedTag, currentTag;
   for (let i = 0; i < receivedTags.length; i++) {
     exists = false;
     receivedTag = receivedTags[i];
-    currentTags.each(function () {
-      if (
-        parseInt($(this).attr("data-utub-tag-id")) === receivedTag.utubTagID
-      ) {
-        exists = true;
-      }
-    });
+
+    for (let j = 0; j < currentTags.length; j++) {
+      currentTag = currentTags[j];
+      exists =
+        parseInt($(currentTag).attr("data-utub-tag-id")) ===
+        receivedTag.utubTagID;
+      if (exists) break;
+    }
 
     if (!exists) {
       // Add tag to URL

@@ -15,6 +15,7 @@ from tests.functional.assert_utils import (
 )
 from tests.functional.db_utils import (
     count_urls_with_tag_applied_by_tag_string,
+    get_tag_in_utub_by_tag_string,
     get_utub_this_user_created,
 )
 from tests.functional.locators import HomePageLocators as HPL
@@ -34,6 +35,9 @@ from tests.functional.selenium_utils import (
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
+)
+from tests.functional.tags_ui.selenium_utils import (
+    get_visible_urls_and_urls_with_tag_text_by_tag_id,
 )
 
 pytestmark = pytest.mark.tags_ui
@@ -227,9 +231,16 @@ def test_open_input_create_utub_tag_click_submit_btn(
     assert_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
 
     # Assert Tag Deck counter initialized at 0
-    assert init_tag_count_in_utub == count_urls_with_tag_applied_by_tag_string(
-        app, utub.id, new_tag
+    utub_tag = get_tag_in_utub_by_tag_string(app, utub_user_created.id, new_tag)
+    utub_tag_selector = f'{HPL.TAG_FILTERS}[data-utub-tag-id="{utub_tag.id}"]'
+    utub_tag_elem = wait_then_get_element(browser, utub_tag_selector)
+    assert utub_tag_elem
+
+    visible_urls, total_urls = get_visible_urls_and_urls_with_tag_text_by_tag_id(
+        browser, utub_tag.id
     )
+    assert visible_urls == 0
+    assert total_urls == init_tag_count_in_utub
 
 
 def test_open_input_create_utub_tag_press_enter_key(
@@ -269,9 +280,16 @@ def test_open_input_create_utub_tag_press_enter_key(
     assert_new_utub_tag_created(browser, new_tag, init_num_of_utub_tags)
 
     # Assert Tag Deck counter initialized at 0
-    assert init_tag_count_in_utub == count_urls_with_tag_applied_by_tag_string(
-        app, utub.id, new_tag
+    utub_tag = get_tag_in_utub_by_tag_string(app, utub_user_created.id, new_tag)
+    utub_tag_selector = f'{HPL.TAG_FILTERS}[data-utub-tag-id="{utub_tag.id}"]'
+    utub_tag_elem = wait_then_get_element(browser, utub_tag_selector)
+    assert utub_tag_elem
+
+    visible_urls, total_urls = get_visible_urls_and_urls_with_tag_text_by_tag_id(
+        browser, utub_tag.id
     )
+    assert visible_urls == 0
+    assert total_urls == init_tag_count_in_utub
 
 
 # Sad Path Tests

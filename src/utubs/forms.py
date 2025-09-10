@@ -14,7 +14,7 @@ class UTubForm(FlaskForm):
     Form to create a UTub. Inherits from FlaskForm. All fields require data.
 
     Fields:
-        name (Stringfield): Maximum 30 chars? TODO
+        name (Stringfield): Maximum 30 chars?
     """
 
     name = StringFieldV2(

@@ -925,3 +925,7 @@ def set_focus_on_element(driver: WebDriver, element: WebElement):
     from tests.functional.assert_utils import assert_element_in_focus
 
     assert_element_in_focus(driver, element)
+
+
+def get_css_selector_for_url_by_id(url_id: int) -> str:
+    return f"{HPL.ROWS_URLS}[utuburlid='{url_id}']"

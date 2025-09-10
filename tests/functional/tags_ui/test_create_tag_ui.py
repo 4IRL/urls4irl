@@ -17,7 +17,9 @@ from tests.functional.assert_utils import (
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
+    add_tag_to_utub_user_created,
     count_urls_with_tag_applied_by_tag_string,
+    get_tag_in_utub_by_tag_string,
     get_tag_string_already_on_url_in_utub_and_delete,
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
@@ -31,8 +33,8 @@ from tests.functional.tags_ui.assert_utils import (
 )
 from tests.functional.tags_ui.selenium_utils import (
     add_tag_to_url,
+    get_visible_urls_and_urls_with_tag_text_by_tag_id,
     open_url_tag_input,
-    get_urls_count_with_tag_applied_from_tag_filter_by_tag_id,
 )
 from tests.functional.selenium_utils import (
     invalidate_csrf_token_on_page,
@@ -310,11 +312,11 @@ def test_cancel_input_create_tag_key_member(
 
 def test_create_tag_btn(browser: WebDriver, create_test_urls, provide_app: Flask):
     """
-    Tests a user's ability to create a tag to a URL.
+    Tests a user's ability to create a fresh tag to a URL.
 
     GIVEN a user has access to UTubs with URLs
-    WHEN the createTag form is populated with a tag value that is not yet present and submitted
-    THEN ensure the appropriate tag is applied and displayed
+    WHEN the createTag form is populated with a tag value that is not yet in the UTub
+    THEN ensure the appropriate tag is applied and displayed and the counter is incremented
     """
     tag_text = UTS.TEST_TAG_NAME_1
     app = provide_app
@@ -360,22 +362,21 @@ def test_create_tag_btn(browser: WebDriver, create_test_urls, provide_app: Flask
     assert any([elem.text == tag_text for elem in badge_text_elems])
 
     # Confirm Tag Deck counter incremented
-    # Get tag ID
-    new_tag_badge = [elem for elem in badge_elems if elem.text == tag_text]
-    tag_id_str = new_tag_badge[0].get_attribute(HPL.TAG_BADGE_ID_ATTRIB)
-    assert tag_id_str
+    utub_tag = get_tag_in_utub_by_tag_string(app, utub_id, tag_text)
+    utub_tag_selector = f'{HPL.TAG_FILTERS}[data-utub-tag-id="{utub_tag.id}"]'
+    utub_tag_elem = wait_then_get_element(browser, utub_tag_selector)
+    assert utub_tag_elem
 
-    tag_id = int(tag_id_str)
-
-    assert (
-        init_tag_count_in_utub + 1
-        == get_urls_count_with_tag_applied_from_tag_filter_by_tag_id(browser, tag_id)
+    visible_urls, total_urls = get_visible_urls_and_urls_with_tag_text_by_tag_id(
+        browser, utub_tag.id
     )
+    assert visible_urls == init_tag_count_on_url + 1
+    assert total_urls == init_tag_count_in_utub + 1
 
 
 def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask):
     """
-    Tests a user's ability to create a tag to a URL.
+    Tests a user's ability to create a fresh tag to a URL.
 
     GIVEN a user has access to UTubs with URLs
     WHEN the createTag form is populated with a tag value that is not yet present and submitted
@@ -392,10 +393,6 @@ def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask
             Utub_Url_Tags.utub_id == utub_id,
             Utub_Url_Tags.utub_url_id == url_in_utub.id,
         ).count()
-
-        init_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_string(
-            app, utub_id, tag_text
-        )
 
     login_user_select_utub_by_id_and_url_by_id(
         app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
@@ -425,17 +422,61 @@ def test_create_tag_key(browser: WebDriver, create_test_urls, provide_app: Flask
     assert any([elem.text == tag_text for elem in badge_text_elems])
 
     # Confirm Tag Deck counter incremented
-    # Get tag ID
-    new_tag_badge = [elem for elem in badge_elems if elem.text == tag_text]
-    tag_id_str = new_tag_badge[0].get_attribute(HPL.TAG_BADGE_ID_ATTRIB)
-    assert tag_id_str
+    utub_tag = get_tag_in_utub_by_tag_string(app, utub_id, tag_text)
+    utub_tag_selector = f'{HPL.TAG_FILTERS}[data-utub-tag-id="{utub_tag.id}"]'
+    utub_tag_elem = wait_then_get_element(browser, utub_tag_selector)
+    assert utub_tag_elem
 
-    tag_id = int(tag_id_str)
 
-    assert (
-        init_tag_count_in_utub + 1
-        == get_urls_count_with_tag_applied_from_tag_filter_by_tag_id(browser, tag_id)
+def test_create_non_fresh_tag(browser: WebDriver, create_test_urls, provide_app: Flask):
+    """
+    Tests a user's ability to create a non-fresh tag to a URL.
+
+    GIVEN a user has access to UTubs with URLs
+    WHEN the createTag form is populated with a tag value that is already in the UTub
+    THEN ensure the appropriate tag is applied and displayed and the counter is incremented
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    utub_id = utub_user_created.id
+    url_in_utub = get_url_in_utub(app, utub_id)
+    tag_already_in_utub_str = "Another"
+
+    add_tag_to_utub_user_created(
+        app=app,
+        tag_string=tag_already_in_utub_str,
+        utub_id=utub_id,
+        user_id=user_id_for_test,
     )
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_id, url_in_utub.id
+    )
+
+    badge_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGES}"
+    badge_elems = wait_then_get_elements(browser, badge_selector, time=3)
+    assert len(badge_elems) == 0
+
+    add_tag_to_url(browser, url_in_utub.id, tag_already_in_utub_str)
+
+    # Submit
+    btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
+    wait_then_click_element(browser, btn_selector, time=3)
+
+    # Wait for POST request
+    wait_until_hidden(browser, btn_selector, timeout=3)
+
+    # Count badges for increase
+    badge_elems = wait_then_get_elements(browser, badge_selector, time=3)
+    assert len(badge_elems) == 1
+    assert all([badge.is_displayed() for badge in badge_elems])
+
+    badge_text_elems_selector = f"{HPL.ROW_SELECTED_URL} {HPL.TAG_BADGE_NAME_READ}"
+    badge_text_elems: list[WebElement] = wait_then_get_elements(
+        browser, badge_text_elems_selector, time=3
+    )
+    assert any([elem.text == tag_already_in_utub_str for elem in badge_text_elems])
 
 
 def test_create_existing_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
