@@ -1,3 +1,4 @@
+from typing import Tuple
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
@@ -7,6 +8,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
     wait_then_click_element,
+    wait_then_get_element,
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
@@ -81,15 +83,16 @@ def apply_tag_filter_by_id_and_get_shown_urls(
     return [url_row for url_row in url_row_elements if url_row.is_displayed()]
 
 
-def get_urls_count_with_tag_applied_from_tag_filter_by_tag_id(
+def get_visible_urls_and_urls_with_tag_text_by_tag_id(
     browser: WebDriver, tag_id: int
-) -> int:
+) -> Tuple[int, int]:
     """
-    Extracts the count of URLs that have a specific tag applied from the Tag Deck assocaited tag filter based on the tag ID.
+    Extracts the visible URLs and total count of URLs that have a specific tag from the Tag Deck associated with the tag filter based on the tag ID.
     """
-    tag_filter = browser.find_element(
-        By.CSS_SELECTOR, get_utub_tag_filter_selector(tag_id)
+    utub_tag_selector = (
+        f'{HPL.TAG_FILTERS}[data-utub-tag-id="{tag_id}"] {HPL.TAG_COUNT}'
     )
-    tag_filter_count_elem = tag_filter.find_element(By.CSS_SELECTOR, f"{HPL.TAG_COUNT}")
-    tag_filter_count = int(tag_filter_count_elem.text)
-    return tag_filter_count if tag_filter_count else 0
+    tag_filter_count_elem = wait_then_get_element(browser, utub_tag_selector)
+    assert tag_filter_count_elem
+    visible, total = tag_filter_count_elem.text.split(" / ")
+    return int(visible), int(total)

@@ -11,7 +11,6 @@ from tests.functional.assert_utils import (
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
-    count_urls_with_tag_applied_by_tag_id,
     get_utub_this_user_created,
     get_url_in_utub,
     get_tag_on_url_in_utub,
@@ -20,6 +19,7 @@ from tests.functional.login_utils import login_user_select_utub_by_id_and_url_by
 from tests.functional.tags_ui.selenium_utils import (
     get_tag_badge_selector_on_selected_url_by_tag_id,
     get_delete_tag_button_on_hover,
+    get_visible_urls_and_urls_with_tag_text_by_tag_id,
 )
 from tests.functional.selenium_utils import (
     get_selected_url,
@@ -115,11 +115,12 @@ def test_delete_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     url_tag = get_tag_on_url_in_utub(app, utub_id, url_id)
     tag_id = url_tag.utub_tag_id
 
-    with app.app_context():
-        init_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_id(app, tag_id)
-
     login_user_select_utub_by_id_and_url_by_id(
         app, browser, user_id_for_test, utub_id, url_id
+    )
+
+    init_vis, init_total = get_visible_urls_and_urls_with_tag_text_by_tag_id(
+        browser, tag_id
     )
 
     tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_id)
@@ -136,14 +137,13 @@ def test_delete_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
         browser.find_element(By.CSS_SELECTOR, tag_badge_selector)
 
     # Assert URL count in Tag Deck is decremented
-    with app.app_context():
-        updated_tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_id(
-            app, tag_id
-        )
-        assert updated_tag_count_in_utub == init_tag_count_in_utub - 1
+    final_vis, final_total = get_visible_urls_and_urls_with_tag_text_by_tag_id(
+        browser, tag_id
+    )
+    assert final_vis == init_vis - 1
+    assert final_total == init_total - 1
 
 
-# Sad Path Tests
 def test_no_get_delete_tag_button_on_hover_update_url_title(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):

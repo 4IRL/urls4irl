@@ -59,7 +59,7 @@ async function deleteURL(utubUrlID, urlCard) {
     // Handle response
     request.done(function (response, textStatus, xhr) {
       if (xhr.status === 200) {
-        deleteURLSuccessOnDelete(response, urlCard);
+        deleteURLSuccess(response, urlCard);
       }
     });
 
@@ -73,9 +73,28 @@ async function deleteURL(utubUrlID, urlCard) {
 }
 
 // Displays changes related to a successful removal of a URL
-function deleteURLSuccessOnDelete(response, urlCard) {
+function deleteURLSuccess(response, urlCard) {
   // Close modal
   $("#confirmModal").modal("hide");
+  const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
+  if (currentURLTagIDs.trim()) {
+    let tagIDs = currentURLTagIDs.split(",").map((s) => s.trim());
+    let tagCountElem, tagID, tagCountText;
+    for (let i = 0; i < tagIDs.length; i++) {
+      tagID = tagIDs[i];
+      tagCountElem = $(
+        `.tagFilter[data-utub-tag-id=${tagID}]` + " .tagAppliedToUrlsCount",
+      );
+      tagCountText = tagCountElem.text().split(" / ");
+      if (!tagCountText || tagCountText.length !== 2) continue;
+      tagCountElem.text(
+        `${parseInt(tagCountText[0]) - 1}` +
+          " / " +
+          `${parseInt(tagCountText[1]) - 1}`,
+      );
+    }
+  }
+
   urlCard.fadeOut("slow", function () {
     urlCard.remove();
     if ($("#listURLs .urlRow").length === 0) {

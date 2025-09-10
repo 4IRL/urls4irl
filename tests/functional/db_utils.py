@@ -132,6 +132,15 @@ def get_tag_on_url_in_utub(app: Flask, utub_id: int, utub_url_id: int) -> Utub_U
         ).first()
 
 
+def get_tag_in_utub_by_tag_string(
+    app: Flask, utub_id: int, tag_string: str
+) -> Utub_Tags:
+    with app.app_context():
+        return Utub_Tags.query.filter(
+            Utub_Tags.utub_id == utub_id, Utub_Tags.tag_string == tag_string
+        ).first()
+
+
 def add_tag_to_utub_user_created(
     app: Flask, utub_id: int, user_id: int, tag_string: str
 ) -> Utub_Tags:

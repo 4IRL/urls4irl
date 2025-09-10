@@ -49,7 +49,7 @@ def test_select_utub(browser: WebDriver, create_test_urls, provide_app: Flask):
 
     GIVEN a fresh load of the U4I Home page
     WHEN user selects a UTub, then selects another UTub
-    THEN ensure the URL deck header changes and TODO: displayed URLs change
+    THEN ensure the URL deck header changes and displayed URLs change
     """
     app = provide_app
     user_id = 1
