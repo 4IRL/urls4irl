@@ -7,7 +7,7 @@ from typing import Generator, Tuple
 from src import db
 from src.models.users import Users
 from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
+from src.models.utub_members import Member_Role, Utub_Members
 from src.utils.strings import model_strs
 from tests.models_for_test import (
     valid_empty_utub_1,
@@ -41,7 +41,7 @@ def add_single_utub_as_user_after_logging_in(
             utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
         )
 
-        creator_to_utub = Utub_Members()
+        creator_to_utub = Utub_Members(member_role=Member_Role.CREATOR)
         creator_to_utub.to_user = current_user
         new_utub.members.append(creator_to_utub)
         db.session.commit()

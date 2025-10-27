@@ -417,7 +417,7 @@ def add_single_utub_as_user_without_logging_in(
             utub_creator=1,
             utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
         )
-        creator_to_utub = Utub_Members()
+        creator_to_utub = Utub_Members(member_role=Member_Role.CREATOR)
         creator_to_utub.to_user = first_user_object
         new_utub.members.append(creator_to_utub)
         db.session.add(new_utub)
@@ -445,7 +445,7 @@ def add_all_utubs_as_user_without_logging_in(
                 utub_description=utub_data[model_strs.UTUB_DESCRIPTION],
             )
 
-            creator_to_utub = Utub_Members()
+            creator_to_utub = Utub_Members(member_role=Member_Role.CREATOR)
             creator_to_utub.to_user = user
             new_utub.members.append(creator_to_utub)
             db.session.commit()

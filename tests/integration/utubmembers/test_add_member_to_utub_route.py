@@ -273,7 +273,6 @@ def test_add_valid_users_to_utub_as_member(
     {
         STD_JSON.STATUS : "Failure",
         STD_JSON.MESSAGE : "Not authorized",
-        STD_JSON.ERROR_CODE: 1
     }
     """
     client, csrf_token, _, app = login_second_user_without_register
@@ -319,7 +318,6 @@ def test_add_valid_users_to_utub_as_member(
 
     assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.NOT_AUTHORIZED
-    assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 1
 
     with app.app_context():
         assert Utub_Members.query.get((only_utub.id, missing_user_id)) is None
@@ -343,7 +341,6 @@ def test_add_duplicate_user_to_utub(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : "User already in UTub",
-        STD_JSON.ERROR_CODE: 2
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -392,7 +389,6 @@ def test_add_duplicate_user_to_utub(
         add_user_response_json[STD_JSON.MESSAGE]
         == MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB
     )
-    assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure the user is only associated with the UTub once
@@ -461,7 +457,7 @@ def test_add_user_to_nonexistant_utub(
         )
 
 
-def test_add_nonexistant_user_to_utub(
+def test_add_nonexistent_user_to_utub(
     add_single_utub_as_user_without_logging_in, login_first_user_without_register
 ):
     """
@@ -521,7 +517,6 @@ def test_add_user_to_another_users_utub(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : MEMBER_FAILURE.NOT_AUTHORIZED,
-        STD_JSON.ERROR_CODE: 1
     }
     """
 
@@ -554,13 +549,7 @@ def test_add_user_to_another_users_utub(
         data=add_user_form,
     )
 
-    assert add_user_response.status_code == 403
-
-    add_user_response_json = add_user_response.json
-
-    assert add_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.NOT_AUTHORIZED
-    assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 1
+    assert add_user_response.status_code == 404
 
     # Confirm third user not in second user's UTub
     with app.app_context():
@@ -584,7 +573,6 @@ def test_add_user_to_utub_invalid_form(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : "Unable to add that user to this UTub",
-        STD_JSON.ERROR_CODE: 3,
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing username field:
             {
@@ -619,7 +607,6 @@ def test_add_user_to_utub_invalid_form(
     assert (
         add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER
     )
-    assert int(add_user_response_json[STD_JSON.ERROR_CODE]) == 3
     assert (
         add_user_response_json[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME]
         == MEMBER_FAILURE.FIELD_REQUIRED
@@ -927,6 +914,6 @@ def test_add_user_as_member_invalid_log(
     # Assert correct status code
     assert added_user_response.status_code == 403
     assert is_string_in_logs(
-        f"User={user.id} tried adding a member to UTub.id={utub_id_of_current_user}",
+        f"User={user.id} not creator: UTub.id={utub_id_of_current_user}",
         caplog.records,
     )

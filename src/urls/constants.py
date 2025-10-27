@@ -1,0 +1,15 @@
+from enum import IntEnum
+
+
+class URLErrorCodes(IntEnum):
+    UNKNOWN_ERROR = 1
+    INVALID_FORM_INPUT = 2
+    URL_WITH_CREDENTIALS_ERROR = 3
+    INVALID_URL_ERROR = 4
+    UNEXPECTED_VALIDATION_ERROR = 5
+    URL_ALREADY_IN_UTUB_ERROR = 6
+
+
+class URLState(IntEnum):
+    FRESH_URL = 1
+    EXISTING_URL = 2

@@ -11,7 +11,6 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
-from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.utils_for_test import is_string_in_logs
@@ -229,8 +228,7 @@ def test_get_utubs_without_ajax_request(
         url_for(ROUTES.UTUBS.GET_UTUBS),
     )
 
-    assert response.status_code == 404
-    assert IDENTIFIERS.HTML_404.encode() in response.data
+    assert response.status_code == 302
 
 
 def test_get_utubs_success_logs(
@@ -270,7 +268,7 @@ def test_get_utubs_without_ajax_request_logs(
         url_for(ROUTES.UTUBS.GET_UTUBS),
     )
 
-    assert response.status_code == 404
+    assert response.status_code == 302
     assert is_string_in_logs(
         f"User={user.id} did not make an AJAX request", caplog.records
     )

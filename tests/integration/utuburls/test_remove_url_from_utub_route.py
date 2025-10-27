@@ -10,7 +10,7 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from src.utils.strings.url_strs import URL_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.urls
@@ -199,14 +199,7 @@ def test_delete_url_from_utub_not_member_of(
     """
     GIVEN a logged-in member of a UTub, with two other UTub the user is not a part of that also contains URLs
     WHEN the user wishes to remove the URL from another UTub by making a DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
-    THEN the server responds with a 403 HTTP status code, the UTub-User-URL association is not removed from the database,
-        and the server sends back the correct JSON reponse
-
-    Proper JSON response is as follows:
-    {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : URL_FAILURE.UNABLE_TO_DELETE_URL
-    }
+    THEN the server responds with a 404 HTTP status code and the UTub-User-URL association is not removed from the database
     """
     client, csrf_token_string, _, app = login_first_user_without_register
 
@@ -238,15 +231,7 @@ def test_delete_url_from_utub_not_member_of(
         data={URL_FORM.CSRF_TOKEN: csrf_token_string},
     )
 
-    # Ensure 200 HTTP status code response
-    assert delete_url_response.status_code == 403
-
-    # Ensure JSON response is correct
-    delete_url_response_json = delete_url_response.json
-    assert delete_url_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        delete_url_response_json[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_DELETE_URL
-    )
+    assert delete_url_response.status_code == 404
 
     # Ensure database is not affected
     with app.app_context():
@@ -842,46 +827,7 @@ def test_delete_url_not_in_utub_logs(
     # Ensure 200 HTTP status code response
     assert delete_url_response.status_code == 404
     assert is_string_in_logs(
-        f"User={current_user_utub.id} tried removing UTubURL.id={utub_url_id_to_remove} which is in UTub.id={url_utub_user_association.utub_id}",
-        caplog.records,
-    )
-
-
-def test_delete_url_user_not_in_utub_logs(
-    add_one_url_to_each_utub_no_tags, login_first_user_without_register, caplog
-):
-    """
-    GIVEN a logged-in member of a UTub
-    WHEN the member tries to remove a URL from another UTub by DELETE to "/utubs/<int:utub_id>/urls/<int:url_id>"
-    THEN the server responds with a 403 HTTP status code and the logs are valid
-    """
-    client, csrf_token_string, user, app = login_first_user_without_register
-
-    # Get UTub of current user
-    with app.app_context():
-        another_user_utub: Utubs = Utubs.query.filter(
-            Utubs.utub_creator != user.id
-        ).first()
-
-        url_utub_user_association: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == another_user_utub.id
-        ).first()
-        utub_url_id_to_remove = url_utub_user_association.id
-
-    # Remove URL from UTub as UTub creator
-    delete_url_response = client.delete(
-        url_for(
-            ROUTES.URLS.DELETE_URL,
-            utub_id=another_user_utub.id,
-            utub_url_id=utub_url_id_to_remove,
-        ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
-    )
-
-    # Ensure 200 HTTP status code response
-    assert delete_url_response.status_code == 403
-    assert is_string_in_logs(
-        f"User={user.id} tried removing UTubURL.id={utub_url_id_to_remove} from UTub.id={another_user_utub.id} and they aren't a member",
+        f"Invalid UTubURL.id={utub_url_id_to_remove} for UTub.id={current_user_utub.id} by UTubUser={current_user.id}",
         caplog.records,
     )
 

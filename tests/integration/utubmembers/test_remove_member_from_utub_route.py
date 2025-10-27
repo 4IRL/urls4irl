@@ -724,14 +724,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     WHEN the logged in user tries to remove the other member (not the creator) from the other UTub by DELETE to
         "/utubs/<int:utub_id>/members/<int:user_id>" with valid information and a valid CSRF token
     THEN ensure the other member does not get removed from the UTub by checking UTub-User associations,
-        that the server responds with a 403 HTTP status code, and that the server sends back the proper JSON response
-
-    Proper JSON response is as follows:
-    {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
-        STD_JSON.ERROR_CODE: 2
-    }
+        that the server responds with a 404 HTTP status code
     """
 
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -765,16 +758,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
     )
 
     # Ensure 403 HTTP status code response
-    assert remove_user_response.status_code == 403
-
-    # Ensure proper JSON response
-    remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        remove_user_response_json[STD_JSON.MESSAGE]
-        == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
-    )
-    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert remove_user_response.status_code == 404
 
     # Ensure database still shows user 3 is member of utub 2
     with app.app_context():
@@ -806,14 +790,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
     WHEN the logged in user tries to remove the other member (not the creator) from the other UTub by DELETE to
         "/utubs/<int:utub_id>/members/<int:user_id>" with valid information and a valid CSRF token
     THEN ensure the other member does not get removed from the UTub by checking UTub-User associations,
-        that the server responds with a 403 HTTP status code, and that the server sends back the proper JSON response
-
-    Proper JSON response is as follows:
-    {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE : MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
-        STD_JSON.ERROR_CODE: 2
-    }
+        that the server responds with a 404 HTTP status code
     """
     client, csrf_token_string, _, app = login_second_user_without_register
 
@@ -860,16 +837,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
     )
 
     # Ensure 403 HTTP status code response
-    assert remove_user_response.status_code == 403
-
-    # Ensure proper JSON response
-    remove_user_response_json = remove_user_response.json
-    assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        remove_user_response_json[STD_JSON.MESSAGE]
-        == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
-    )
-    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert remove_user_response.status_code == 404
 
     # Ensure database still shows user 1 is member of utub 2
     with app.app_context():
@@ -1075,37 +1043,6 @@ def test_remove_user_from_utub_as_member_log(
     assert remove_user_response.status_code == 403
     assert is_string_in_logs(
         f"User={user.id} tried removing another member from UTub.id={utub.id}",
-        caplog.records,
-    )
-
-
-def test_remove_self_from_utub_not_in_log(
-    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
-):
-    """
-    GIVEN a logged in user
-    WHEN the logged in user tries to remove themselves from a UTub they aren't a member of
-    THEN ensure the server responds with a 403 HTTP code, and the logs are valid
-    """
-    client, csrf_token_string, user, app = login_first_user_without_register
-
-    with app.app_context():
-        utub: Utubs = Utubs.query.filter(Utubs.utub_creator != user.id).first()
-
-    # Remove second user
-    remove_user_response = client.delete(
-        url_for(
-            ROUTES.MEMBERS.REMOVE_MEMBER,
-            utub_id=utub.id,
-            user_id=user.id,
-        ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
-    )
-
-    # Ensure HTTP response code is correct
-    assert remove_user_response.status_code == 403
-    assert is_string_in_logs(
-        f"User={user.id} tried removing themselves from UTub.id={utub.id} they aren't in",
         caplog.records,
     )
 

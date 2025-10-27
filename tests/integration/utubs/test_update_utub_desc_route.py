@@ -396,7 +396,6 @@ def test_update_utub_description_fully_sanitized(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESCRIPTION
-        STD_JSON.ERROR_CODE: 3
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing name field:
             {
@@ -429,7 +428,6 @@ def test_update_utub_description_fully_sanitized(
     update_utub_name_json_response = update_utub_name_response.json
 
     assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 3
     assert (
         update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
@@ -454,7 +452,6 @@ def test_update_utub_description_partially_sanitized(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESCRIPTION
-        STD_JSON.ERROR_CODE: 2
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing name field:
             {
@@ -491,7 +488,6 @@ def test_update_utub_description_partially_sanitized(
         update_utub_name_json_response = update_utub_name_response.json
 
         assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-        assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 3
         assert (
             update_utub_name_json_response[STD_JSON.MESSAGE]
             == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
@@ -519,7 +515,6 @@ def test_update_utub_description_as_member(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE: "You do not have permission to edit this UTub's description",
-        STD_JSON.ERROR_CODE: 1,
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's description
     }
     """
@@ -565,7 +560,6 @@ def test_update_utub_description_as_member(
     update_utub_desc_json_response = update_utub_desc_response.json
 
     assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
     assert (
         update_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
     )
@@ -612,7 +606,6 @@ def test_update_utub_description_as_creator_of_other_utub(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
-        STD_JSON.ERROR_CODE: 1,
         UTUB_SUCCESS.UTUB_DESCRIPTION: String representing the current UTub's description
     }
     """
@@ -658,7 +651,6 @@ def test_update_utub_description_as_creator_of_other_utub(
     update_utub_desc_json_response = update_utub_desc_response.json
 
     assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 1
     assert (
         update_utub_desc_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
     )
@@ -768,7 +760,6 @@ def test_update_utub_description_too_long(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
-        STD_JSON.ERROR_CODE: 3,
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing or empty utub_description field:
             {
@@ -824,7 +815,6 @@ def test_update_utub_description_too_long(
         update_utub_desc_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
     )
-    assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 3
     assert (
         update_utub_desc_json_response[STD_JSON.ERRORS][
             UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM
@@ -874,7 +864,6 @@ def test_update_utub_description_missing_description_field(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE: "Invalid form",
-        STD_JSON.ERROR_CODE: 2,
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -921,7 +910,6 @@ def test_update_utub_description_missing_description_field(
         update_utub_desc_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
     )
-    assert int(update_utub_desc_json_response[STD_JSON.ERROR_CODE]) == 2
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -1295,5 +1283,5 @@ def test_update_utub_description_invalid_permissions_logs(
 
     # Ensure valid reponse
     assert update_utub_desc_response.status_code == 403
-    assert is_string_in_logs(f"User={user.id} not creator | ", caplog.records)
+    assert is_string_in_logs(f"User={user.id} not creator: ", caplog.records)
     assert is_string_in_logs(f"UTub.id={current_utub_id}", caplog.records)

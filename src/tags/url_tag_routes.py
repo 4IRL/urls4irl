@@ -15,11 +15,11 @@ from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.tags.forms import NewTagForm
+from src.utils.auth_decorators import email_validation_required
 from src.utils.constants import TAG_CONSTANTS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
-from src.utils.email_validation import email_validation_required
 
 utub_url_tags = Blueprint("utub_url_tags", __name__)
 

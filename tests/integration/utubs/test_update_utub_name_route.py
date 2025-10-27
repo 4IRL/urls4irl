@@ -219,7 +219,6 @@ def test_update_utub_empty_name_as_creator(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-        STD_JSON.ERROR_CODE: 2
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing name field:
             {
@@ -268,7 +267,6 @@ def test_update_utub_empty_name_as_creator(
     update_utub_name_json_response = update_utub_name_response.json
 
     assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
         update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
@@ -322,7 +320,6 @@ def test_update_utub_name_fully_sanitized(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-        STD_JSON.ERROR_CODE: 2
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing name field:
             {
@@ -355,7 +352,6 @@ def test_update_utub_name_fully_sanitized(
     update_utub_name_json_response = update_utub_name_response.json
 
     assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
         update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
@@ -380,7 +376,6 @@ def test_update_utub_name_partially_sanitized(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-        STD_JSON.ERROR_CODE: 2
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the missing name field:
             {
@@ -418,7 +413,6 @@ def test_update_utub_name_partially_sanitized(
         update_utub_name_json_response = update_utub_name_response.json
 
         assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-        assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
         assert (
             update_utub_name_json_response[STD_JSON.MESSAGE]
             == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
@@ -445,7 +439,6 @@ def test_update_utub_name_only_spaces_as_creator(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-        STD_JSON.ERROR_CODE: 2
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the name containing only spaces:
             {
@@ -494,7 +487,6 @@ def test_update_utub_name_only_spaces_as_creator(
     update_utub_name_json_response = update_utub_name_response.json
 
     assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
         update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
@@ -549,7 +541,6 @@ def test_update_utub_name_as_member(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: "You do not have permission to edit this UTub's name"
-        STD_JSON.ERROR_CODE: 1
     }
     """
     client, csrf_token_string, logged_in_user, app = login_second_user_without_register
@@ -594,7 +585,6 @@ def test_update_utub_name_as_member(
     update_utub_name_json_response = update_utub_name_response.json
 
     assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
     assert (
         update_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
     )
@@ -639,7 +629,6 @@ def test_update_utub_name_as_creator_of_another_utub(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: "You do not have permission to edit this UTub's name"
-        STD_JSON.ERROR_CODE: 1
     }
     """
     client, csrf_token_string, _, app = login_second_user_without_register
@@ -684,7 +673,6 @@ def test_update_utub_name_as_creator_of_another_utub(
     update_utub_name_json_response = update_utub_name_response.json
 
     assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 1
     assert (
         update_utub_name_json_response[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
     )
@@ -809,7 +797,6 @@ def test_update_name_of_utub_too_long_name(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-        STD_JSON.ERROR_CODE: 2
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the name being too long:
             {
@@ -861,7 +848,6 @@ def test_update_name_of_utub_too_long_name(
     update_utub_name_json_response = update_utub_name_response.json
 
     assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
         update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
@@ -916,7 +902,6 @@ def test_update_name_of_utub_missing_name_field_form(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
-        STD_JSON.ERROR_CODE: 2
         STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
             For example, with the name containing only spaces:
             {
@@ -963,7 +948,6 @@ def test_update_name_of_utub_missing_name_field_form(
     update_utub_name_json_response = update_utub_name_response.json
 
     assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(update_utub_name_json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
         update_utub_name_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
