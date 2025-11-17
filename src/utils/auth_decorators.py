@@ -8,7 +8,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
-from src.utils.request_utils import is_current_utub_creator
+from src.utils.request_utils import is_adder_of_utub_url, is_current_utub_creator
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_validation_strs import URL_VALIDATION
@@ -103,16 +103,27 @@ def utub_membership_with_valid_url_in_utub_required(func: Callable):
         if utub_url_id is None:
             abort(404)
 
-        utub_url: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
-        if utub_url.utub_id != g.utub_id:
+        current_utub_url: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
+        if current_utub_url.utub_id != g.utub_id:
             critical_log(
                 f"Invalid UTubURL.id={utub_url_id} for UTub.id={g.utub_id} by UTubUser={current_user.id}"
             )
             abort(404)
 
-        current_utub_url: Utub_Urls = Utub_Urls.query.get_or_404(utub_url_id)
-        kwargs["current_utub_url"] = Utub_Urls.query.get_or_404(utub_url_id)
+        kwargs["current_utub_url"] = current_utub_url
         g.user_added_url = current_utub_url.user_id == current_user.id
+
+        return func(*args, **kwargs)
+
+    return decorated_view
+
+
+def utub_membership_and_utub_url_creator_required(func: Callable):
+    @wraps(func)
+    @utub_membership_with_valid_url_in_utub_required
+    def decorated_view(*args, **kwargs):
+        if not is_adder_of_utub_url():
+            abort(404)
 
         return func(*args, **kwargs)
 

@@ -8,6 +8,7 @@ class URLErrorCodes(IntEnum):
     INVALID_URL_ERROR = 4
     UNEXPECTED_VALIDATION_ERROR = 5
     URL_ALREADY_IN_UTUB_ERROR = 6
+    EMPTY_URL = 7
 
 
 class URLState(IntEnum):
