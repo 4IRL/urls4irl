@@ -1,31 +1,34 @@
-from itertools import islice
+from typing import Tuple
+
 from flask import (
     Blueprint,
+    Response,
     abort,
-    current_app,
-    jsonify,
     redirect,
     request,
-    render_template,
     url_for,
 )
-from flask_login import current_user
-from sqlalchemy.exc import DataError
 
-from src import db
-from src.app_logger import (
-    critical_log,
-    safe_add_log,
-    safe_add_many_logs,
-    turn_form_into_str_for_log,
-    warning_log,
-)
 from src.models.utubs import Utubs
-from src.models.utub_members import Member_Role, Utub_Members
-from src.utils.strings.config_strs import CONFIG_ENVS
-from src.utils.strings.model_strs import MODELS
-from src.utubs.forms import UTubForm, UTubDescriptionForm, UTubNewNameForm
-from src.utubs.utils import build_form_errors
+from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
+from src.utubs.forms import UTubDescriptionForm, UTubNewNameForm
+from src.utubs.services.create_utubs import create_new_utub
+from src.utubs.services.delete_utubs import delete_utub_for_user
+from src.utubs.services.home_page import (
+    render_home_page,
+    validate_query_param_is_utub_id,
+    validate_user_is_member_of_utub_on_home_page_with_query_param,
+)
+from src.utubs.services.read_utubs import (
+    get_all_utubs_of_user,
+    get_single_utub_for_user,
+)
+from src.utubs.services.update_utubs import (
+    handle_invalid_update_utub_description_form_input,
+    handle_invalid_update_utub_name_form_input,
+    update_utub_desc_if_new,
+    update_utub_name_if_new,
+)
 from src.utils.all_routes import ROUTES
 from src.utils.auth_decorators import (
     email_validation_required,
@@ -34,13 +37,8 @@ from src.utils.auth_decorators import (
     xml_http_request_only,
 )
 from src.utils.constants import CONSTANTS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE
-from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM, UTUB_SUCCESS, UTUB_FAILURE
 
 utubs = Blueprint("utubs", __name__)
-
-# Standard response for JSON messages
-STD_JSON = STD_JSON_RESPONSE
 
 
 @utubs.context_processor
@@ -70,198 +68,47 @@ def home():
         - All UTubIDs and names
     """
     if not request.args:
-        utub_details = current_user.serialized_on_initial_load
-        safe_add_log("Returning user's UTubs on home page load")
+        return render_home_page()
 
-        return render_template(
-            "home.html",
-            utubs_for_this_user=utub_details[MODELS.UTUBS],
-            is_prod_or_testing=current_app.config.get(
-                CONFIG_ENVS.TESTING_OR_PROD, True
-            ),
-        )
-
-    # Count total number of query param keys/values, even for repeats
-    query_param_pairs = list(islice(request.args.items(multi=True), 2))
-
-    if len(query_param_pairs) != 1 or UTUB_ID_QUERY_PARAM not in request.args.keys():
-        log_msg = (
-            "Too many query parameters"
-            if len(query_param_pairs) != 1
-            else "Does not contain 'UTubID' as a query parameter"
-        )
-        log_msg = f"User={current_user.id} | " + log_msg
-        warning_log(log_msg)
+    if not validate_query_param_is_utub_id():
         abort(404)
 
     utub_id = request.args.get(UTUB_ID_QUERY_PARAM, "")
-    try:
-        if (
-            Utubs.query.get_or_404(int(utub_id))
-            and Utub_Members.query.get((int(utub_id), current_user.id)) is None
-        ):
-            warning_log(f"User={current_user.id} not a member of UTub.id={utub_id}")
-            return redirect(url_for(ROUTES.UTUBS.HOME))
 
-        safe_add_log(f"Retrieving UTub.id={utub_id} from query parameter")
-        utub_details = current_user.serialized_on_initial_load
-        return render_template(
-            "home.html",
-            utubs_for_this_user=utub_details[MODELS.UTUBS],
-            is_prod_or_testing=current_app.config.get(
-                CONFIG_ENVS.TESTING_OR_PROD, True
-            ),
-        )
+    valid_member = validate_user_is_member_of_utub_on_home_page_with_query_param(
+        utub_id
+    )
 
-    except (ValueError, DataError):
-        # Handle invalid UTubID passed as query parameter
-        warning_log(f"Invalid UTub.id={utub_id} for User={current_user.id}")
-        abort(404)
+    if not valid_member:
+        return redirect(url_for(ROUTES.UTUBS.HOME))
+
+    return render_home_page()
+
+
+@utubs.route("/utubs", methods=["POST"])
+@email_validation_required
+def create_utub() -> Tuple[Response, int]:
+    return create_new_utub()
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["GET"])
 @xml_http_request_only
 @utub_membership_required
-def get_single_utub(utub_id: int, current_utub: Utubs):
+def get_single_utub(utub_id: int, current_utub: Utubs) -> Response:
     """
     Retrieves data for a single UTub, and returns it in a serialized format
     """
-    utub_data_serialized = current_utub.serialized(current_user.id)
-
-    current_utub.set_last_updated()
-    db.session.commit()
-
-    safe_add_log(f"Retrieving UTub.id={utub_id} from direct route")
-    return jsonify(utub_data_serialized)
+    return get_single_utub_for_user(current_utub)
 
 
 @utubs.route("/utubs", methods=["GET"])
 @xml_http_request_only
 @email_validation_required
-def get_utubs():
+def get_utubs() -> Response:
     """
     User wants a summary of their UTubs in JSON format.
     """
-    # TODO: Should serialized summary be utubID and utubName
-    # instead of id and name?
-    safe_add_log(f"Returning UTubs for User={current_user.id}")
-    return jsonify(current_user.serialized_on_initial_load)
-
-
-@utubs.route("/utubs", methods=["POST"])
-@email_validation_required
-def create_utub():
-    """
-    User wants to create a new utub.
-    Assocation Object:
-    https://docs.sqlalchemy.org/en/14/orm/basic_relationships.html#many-to-many
-
-    """
-    utub_form: UTubForm = UTubForm()
-
-    if utub_form.validate_on_submit():
-        name = utub_form.name.get()
-        description = utub_form.description.get()
-
-        new_utub = Utubs(
-            name=name, utub_creator=current_user.id, utub_description=description
-        )
-        db.session.add(new_utub)
-        db.session.commit()
-
-        creator_to_utub = Utub_Members()
-        creator_to_utub.user_id = current_user.id
-        creator_to_utub.utub_id = new_utub.id
-        creator_to_utub.member_role = Member_Role.CREATOR
-        db.session.add(creator_to_utub)
-        db.session.commit()
-
-        safe_add_many_logs(
-            [
-                "Created UTub",
-                f"UTub.id={new_utub.id}",
-                f"UTub.name={name}",
-            ]
-        )
-        # Add time made?
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    UTUB_SUCCESS.UTUB_ID: new_utub.id,
-                    UTUB_SUCCESS.UTUB_NAME: new_utub.name,
-                    UTUB_SUCCESS.UTUB_DESCRIPTION: description,
-                    UTUB_SUCCESS.UTUB_CREATOR_ID: current_user.id,
-                }
-            ),
-            200,
-        )
-
-    # Invalid form inputs
-    if utub_form.errors is not None:
-        warning_log(
-            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_form.errors)}"  # type: ignore
-        )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
-                    STD_JSON.ERROR_CODE: 1,
-                    STD_JSON.ERRORS: build_form_errors(utub_form),
-                }
-            ),
-            400,
-        )
-
-    critical_log(f"User={current_user.id} failed to make UTub")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
-                STD_JSON.ERROR_CODE: 2,
-            }
-        ),
-        404,
-    )
-
-
-@utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])
-@utub_creator_required
-def delete_utub(utub_id: int, current_utub: Utubs):
-    """
-    Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
-    URLS, tags, and users.
-
-    https://docs.sqlalchemy.org/en/13/orm/cascades.html#delete
-
-    Args:
-        utub_id (int): The ID of the UTub to be deleted
-    """
-    db.session.delete(current_utub)
-    db.session.commit()
-
-    safe_add_many_logs(
-        [
-            "Deleted UTub",
-            f"UTub.id={utub_id}",
-            f"UTub.name={current_utub.name}",
-        ]
-    )
-
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
-                UTUB_SUCCESS.UTUB_ID: current_utub.id,
-                UTUB_SUCCESS.UTUB_NAME: current_utub.name,
-                UTUB_SUCCESS.UTUB_DESCRIPTION: current_utub.utub_description,
-            }
-        ),
-        200,
-    )
+    return get_all_utubs_of_user()
 
 
 @utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])
@@ -281,65 +128,13 @@ def update_utub_name(utub_id: int, current_utub: Utubs):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub_name = current_utub.name
-
     utub_name_form: UTubNewNameForm = UTubNewNameForm()
 
-    if utub_name_form.validate_on_submit():
-        new_utub_name = utub_name_form.name.get()
+    if not utub_name_form.validate_on_submit():
+        return handle_invalid_update_utub_name_form_input(utub_name_form)
 
-        if new_utub_name != current_utub_name:
-            current_utub.name = new_utub_name
-            current_utub.set_last_updated()
-            db.session.commit()
-
-            safe_add_many_logs(
-                [
-                    "User updated UTub name",
-                    f"UTub.id={utub_id}",
-                    f"OLD UTub.name={current_utub_name}",
-                    f"NEW UTub.name={new_utub_name}",
-                ]
-            )
-
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    UTUB_SUCCESS.UTUB_ID: current_utub.id,
-                    UTUB_SUCCESS.UTUB_NAME: current_utub.name,
-                }
-            ),
-            200,
-        )
-
-    # Invalid form errors
-    if utub_name_form.errors is not None:
-        warning_log(
-            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_name_form.errors)}"  # type: ignore
-        )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
-                    STD_JSON.ERROR_CODE: 1,
-                    STD_JSON.ERRORS: build_form_errors(utub_name_form),
-                }
-            ),
-            400,
-        )
-
-    critical_log(f"User={current_user.id} | Unable to update UTub name")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
-                STD_JSON.ERROR_CODE: 2,
-            }
-        ),
-        404,
+    return update_utub_name_if_new(
+        current_utub=current_utub, utub_name_form=utub_name_form
     )
 
 
@@ -361,80 +156,25 @@ def update_utub_desc(utub_id: int, current_utub: Utubs):
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-    current_utub_description = (
-        "" if current_utub.utub_description is None else current_utub.utub_description
-    )
 
     utub_desc_form: UTubDescriptionForm = UTubDescriptionForm()
 
-    if utub_desc_form.validate_on_submit():
-        new_utub_description = utub_desc_form.description.data
+    if not utub_desc_form.validate_on_submit():
+        return handle_invalid_update_utub_description_form_input(utub_desc_form)
 
-        if new_utub_description is None:
-            warning_log(f"User={current_user.id} | UTub description was None")
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
-                        STD_JSON.ERROR_CODE: 1,
-                    }
-                ),
-                400,
-            )
-
-        if new_utub_description != current_utub_description:
-            current_utub.utub_description = new_utub_description
-            current_utub.set_last_updated()
-            db.session.commit()
-
-            safe_add_many_logs(
-                [
-                    "Updated UTub description",
-                    f"UTub.id={utub_id}",
-                    f"OLD UTub.description={current_utub_description}",
-                    f"NEW UTub.description={new_utub_description}",
-                ]
-            )
-        else:
-            safe_add_log("No change in UTub description")
-
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.SUCCESS,
-                    UTUB_SUCCESS.UTUB_ID: current_utub.id,
-                    UTUB_SUCCESS.UTUB_DESCRIPTION: current_utub.utub_description,
-                }
-            ),
-            200,
-        )
-
-    # Invalid form input
-    if utub_desc_form.errors is not None:
-        warning_log(
-            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_desc_form.errors)}"  # type: ignore
-        )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
-                    STD_JSON.ERROR_CODE: 2,
-                    STD_JSON.ERRORS: build_form_errors(utub_desc_form),
-                }
-            ),
-            400,
-        )
-
-    critical_log(f"User={current_user.id} | Unable to update UTub description")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
-                STD_JSON.ERROR_CODE: 3,
-            }
-        ),
-        404,
+    return update_utub_desc_if_new(
+        current_utub=current_utub, utub_desc_form=utub_desc_form
     )
+
+
+@utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])
+@utub_creator_required
+def delete_utub(utub_id: int, current_utub: Utubs) -> tuple[Response, int]:
+    """
+    Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
+    URLS, tags, and users.
+
+    Args:
+        utub_id (int): The ID of the UTub to be deleted
+    """
+    return delete_utub_for_user(current_utub)

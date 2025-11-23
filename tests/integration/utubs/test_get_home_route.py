@@ -117,22 +117,32 @@ def test_get_home_page_when_not_in_utub(
     )
 
 
-def test_get_home_page_success_logs(
+def test_get_home_page_when_in_utub(
     every_user_makes_a_unique_utub,
     login_first_user_without_register: Tuple[FlaskClient, str, Users, Flask],
-    caplog,
 ):
     """
     GIVEN a user who is not a member a newly formed UTub
     WHEN the user requests the details of that newly formed UTub
-    THEN verify the logs are correct
+    THEN verify the server responds with appropriate HTML
+
+    Args:
+        every_user_makes_a_unique_utub (None): Fixture to create a new UTub for every user, with no members but the creators
+        login_second_user_without_register: Tuple[FlaskClient, str, Users, Flask]): Fixture to login in the member instead of UTub creator
     """
-    client, _, user, _ = login_first_user_without_register
-    url_to_get = url_for(ROUTES.UTUBS.HOME)
+    client, _, user, app = login_first_user_without_register
+    with app.app_context():
+        member: Utub_Members = Utub_Members.query.filter(
+            Utub_Members.user_id == user.id
+        ).first()
+        utub_id_not_member_of = member.utub_id
+
+    url_to_get = (
+        url_for(ROUTES.UTUBS.HOME) + f"?{UTUB_ID_QUERY_PARAM}={utub_id_not_member_of}"
+    )
 
     response = client.get(url_to_get)
     assert response.status_code == 200
-    assert is_string_in_logs("Returning user's UTubs on home page load", caplog.records)
 
 
 def test_get_invalid_utub_on_home_page_logs(

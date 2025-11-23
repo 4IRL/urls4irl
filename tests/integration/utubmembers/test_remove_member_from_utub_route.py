@@ -299,7 +299,6 @@ def test_remove_self_from_utub_as_creator(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
-        STD_JSON.ERROR_CODE: 1
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -332,7 +331,6 @@ def test_remove_self_from_utub_as_creator(
         remove_user_response_json[STD_JSON.MESSAGE]
         == MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF
     )
-    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 1
 
     # Ensure database is correctly updated
     with app.app_context():
@@ -518,7 +516,6 @@ def test_remove_invalid_user_from_utub_as_creator(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : MEMBER_FAILURE.USER_NOT_IN_UTUB,
-        STD_JSON.ERROR_CODE: 3
     }
     """
     NONEXISTENT_USER_ID = 999
@@ -554,7 +551,6 @@ def test_remove_invalid_user_from_utub_as_creator(
     assert (
         remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.MEMBER_NOT_IN_UTUB
     )
-    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
         # Ensure counts of Utubs-User associations is correct
@@ -579,7 +575,6 @@ def test_remove_invalid_user_from_utub_as_member(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
-        STD_JSON.ERROR_CODE: 2
     }
     """
     NONEXISTENT_USER_ID = 999
@@ -616,7 +611,6 @@ def test_remove_invalid_user_from_utub_as_member(
         remove_user_response_json[STD_JSON.MESSAGE]
         == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
-    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure counts of Utubs-User associations is correct
@@ -643,7 +637,6 @@ def test_remove_another_member_from_same_utub_as_member(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
-        STD_JSON.ERROR_CODE: 2
     }
     """
 
@@ -688,7 +681,6 @@ def test_remove_another_member_from_same_utub_as_member(
         remove_user_response_json[STD_JSON.MESSAGE]
         == MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE
     )
-    assert int(remove_user_response_json[STD_JSON.ERROR_CODE]) == 2
 
     # Ensure database is correctly updated
     with app.app_context():

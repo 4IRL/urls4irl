@@ -10,6 +10,7 @@ from redis.client import Redis
 
 from src.utils.strings.config_strs import CONFIG_ENVS
 from src.utils.strings.html_identifiers import IDENTIFIERS
+from src.utubs.constants import UTubErrorCodes
 from tests.models_for_test import (
     valid_empty_utub_1,
     valid_empty_utub_2,
@@ -242,7 +243,10 @@ def test_add_utub_with_valid_form_name_partially_sanitized(
         assert (
             new_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MAKE_UTUB
         )
-        assert int(new_utub_response_json[STD_JSON.ERROR_CODE]) == 1
+        assert (
+            int(new_utub_response_json[STD_JSON.ERROR_CODE])
+            == UTubErrorCodes.INVALID_FORM_INPUT
+        )
         assert new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
             UTUB_FAILURE.INVALID_INPUT
         ]
@@ -285,7 +289,10 @@ def test_add_utub_with_valid_form_name_fully_sanitized(login_first_user_with_reg
     new_utub_response_json = new_utub_response.json
     assert new_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert new_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MAKE_UTUB
-    assert int(new_utub_response_json[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        int(new_utub_response_json[STD_JSON.ERROR_CODE])
+        == UTubErrorCodes.INVALID_FORM_INPUT
+    )
     assert new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
         UTUB_FAILURE.INVALID_INPUT
     ]
@@ -336,7 +343,10 @@ def test_add_utub_with_valid_form_description_partially_sanitized(
         assert (
             new_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MAKE_UTUB
         )
-        assert int(new_utub_response_json[STD_JSON.ERROR_CODE]) == 1
+        assert (
+            int(new_utub_response_json[STD_JSON.ERROR_CODE])
+            == UTubErrorCodes.INVALID_FORM_INPUT
+        )
         assert new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_DESCRIPTION] == [
             UTUB_FAILURE.INVALID_INPUT
         ]
@@ -381,7 +391,10 @@ def test_add_utub_with_valid_form_description_fully_sanitized(
     new_utub_response_json = new_utub_response.json
     assert new_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert new_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MAKE_UTUB
-    assert int(new_utub_response_json[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        int(new_utub_response_json[STD_JSON.ERROR_CODE])
+        == UTubErrorCodes.INVALID_FORM_INPUT
+    )
     assert new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_DESCRIPTION] == [
         UTUB_FAILURE.INVALID_INPUT
     ]
@@ -530,7 +543,10 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
     # Validate the JSON response from the backend indicating bad form inputs
     invalid_new_utub_response_json = invalid_new_utub_response.json
     assert invalid_new_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert invalid_new_utub_response_json[STD_JSON.ERROR_CODE] == 1
+    assert (
+        invalid_new_utub_response_json[STD_JSON.ERROR_CODE]
+        == UTubErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         invalid_new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
         == UTUB_FAILURE.FIELD_REQUIRED
