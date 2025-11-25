@@ -4,6 +4,7 @@ import pytest
 
 from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
+from src.tags.constants import UTubTagErrorCodes
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.all_routes import ROUTES
 from src.utils.constants import TAG_CONSTANTS
@@ -436,7 +437,6 @@ def test_add_tag_to_utub_not_member_of(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
-        STD_JSON.ERROR_CODE : 1
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -458,15 +458,7 @@ def test_add_tag_to_utub_not_member_of(
         data=new_tag_form,
     )
 
-    assert add_tag_response.status_code == 403
-    add_tag_response_json = add_tag_response.json
-
-    assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        add_tag_response_json[STD_JSON.MESSAGE]
-        == TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB
-    )
-    assert add_tag_response_json[STD_JSON.ERROR_CODE] == 1
+    assert add_tag_response.status_code == 404
 
     with app.app_context():
         assert num_of_utub_tags == Utub_Tags.query.count()
@@ -563,7 +555,7 @@ def test_add_tag_to_utub_missing_tag_field(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
-        STD_JSON.ERROR_CODE : 3,
+        STD_JSON.ERROR_CODE : UTubTagErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: {
             TAG_FORM.TAG_STRING: ["This field is required."]
         }
@@ -597,7 +589,10 @@ def test_add_tag_to_utub_missing_tag_field(
         add_tag_response_json[STD_JSON.MESSAGE]
         == TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB
     )
-    assert add_tag_response_json[STD_JSON.ERROR_CODE] == 3
+    assert (
+        add_tag_response_json[STD_JSON.ERROR_CODE]
+        == UTubTagErrorCodes.INVALID_FORM_INPUT
+    )
     assert STD_JSON.ERRORS in add_tag_response_json
     assert (
         add_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING]
@@ -719,37 +714,6 @@ def test_add_duplicate_tag_to_utub_log(
     )
 
 
-def test_add_tag_to_utub_not_member_of_log(
-    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
-):
-    """
-    GIVEN UTubs with only a single member in every UTub, and no tags
-    WHEN a user tries to add a tag to a UTub they aren't a member of
-    THEN verify that no new UtubTag item exists, the server responds with a 403 HTTP status code,
-        and logs are valid
-    """
-    client, csrf_token, user, app = login_first_user_without_register
-    NEW_TAG = "Funny!"
-
-    with app.app_context():
-        utub_to_add_tag_to: Utubs = Utubs.query.filter(
-            Utubs.utub_creator != current_user.id
-        ).first()
-
-    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
-
-    add_tag_response = client.post(
-        url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
-        data=new_tag_form,
-    )
-
-    assert add_tag_response.status_code == 403
-    assert is_string_in_logs(
-        f"User={user.id} tried adding UTubTag to UTub.id={utub_to_add_tag_to.id} but user not in UTub",
-        caplog.records,
-    )
-
-
 def test_add_tag_to_utub_missing_tag_field_log(
     every_user_in_every_utub, login_first_user_without_register, caplog
 ):
@@ -821,7 +785,6 @@ def test_add_tag_with_whitespace_to_utub(
 
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.TAG_ALREADY_IN_UTUB
-    assert add_tag_response_json[STD_JSON.ERROR_CODE] == 2
 
     with app.app_context():
         assert (

@@ -5,6 +5,8 @@ from functools import wraps
 
 from src.app_logger import critical_log, warning_log
 from src.models.utub_members import Member_Role, Utub_Members
+from src.models.utub_tags import Utub_Tags
+from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
@@ -15,7 +17,7 @@ from src.utils.strings.url_validation_strs import URL_VALIDATION
 from src.utils.strings.utub_strs import UTUB_FAILURE
 
 
-def xml_http_request_only(func: Callable):
+def xml_http_request_only(func: Callable) -> Callable:
     """Ensures JSON not viewed in browser by verifying the request is an XMLHTTPRequest"""
 
     @wraps(func)
@@ -31,7 +33,7 @@ def xml_http_request_only(func: Callable):
     return decorated_view
 
 
-def email_validation_required(func: Callable):
+def email_validation_required(func: Callable) -> Callable:
     @wraps(func)
     @login_required
     def decorated_view(*args, **kwargs):
@@ -49,7 +51,7 @@ def email_validation_required(func: Callable):
     return decorated_view
 
 
-def utub_membership_required(func: Callable):
+def utub_membership_required(func: Callable) -> Callable:
     @wraps(func)
     @email_validation_required
     def decorated_view(*args, **kwargs):
@@ -95,7 +97,7 @@ def utub_creator_required(func: Callable):
     return decorated_view
 
 
-def utub_membership_with_valid_url_in_utub_required(func: Callable):
+def utub_membership_with_valid_url_in_utub_required(func: Callable) -> Callable:
     @wraps(func)
     @utub_membership_required
     def decorated_view(*args, **kwargs):
@@ -118,12 +120,65 @@ def utub_membership_with_valid_url_in_utub_required(func: Callable):
     return decorated_view
 
 
-def utub_membership_and_utub_url_creator_required(func: Callable):
+def utub_membership_and_utub_url_creator_required(func: Callable) -> Callable:
     @wraps(func)
     @utub_membership_with_valid_url_in_utub_required
     def decorated_view(*args, **kwargs):
         if not is_adder_of_utub_url():
             abort(404)
+
+        return func(*args, **kwargs)
+
+    return decorated_view
+
+
+def _verify_and_get_utub_tag(**kwargs) -> Utub_Tags:
+    utub_tag_id: int | None = kwargs.get("utub_tag_id")
+    if utub_tag_id is None:
+        abort(404)
+
+    current_utub_tag: Utub_Tags = Utub_Tags.query.get_or_404(utub_tag_id)
+    if current_utub_tag.utub_id != g.utub_id:
+        critical_log(
+            f"Invalid UTubTag.id={utub_tag_id} for UTub.id={g.utub_id} by UTubUser={current_user.id}"
+        )
+        abort(404)
+
+    return current_utub_tag
+
+
+def utub_membership_with_valid_utub_tag(func: Callable) -> Callable:
+    @wraps(func)
+    @utub_membership_required
+    def decorated_view(*args, **kwargs):
+        kwargs["current_utub_tag"] = _verify_and_get_utub_tag(**kwargs)
+
+        return func(*args, **kwargs)
+
+    return decorated_view
+
+
+def utub_membership_with_valid_url_tag(func: Callable) -> Callable:
+    @wraps(func)
+    @utub_membership_with_valid_url_in_utub_required
+    def decorated_view(*args, **kwargs):
+        current_utub_tag = _verify_and_get_utub_tag(**kwargs)
+        utub_url_id: int | None = kwargs.get("utub_url_id")
+        kwargs["current_utub_tag"] = current_utub_tag
+
+        current_url_tag: Utub_Url_Tags = Utub_Url_Tags.query.filter(
+            Utub_Url_Tags.utub_id == g.utub_id,
+            Utub_Url_Tags.utub_url_id == utub_url_id,
+            Utub_Url_Tags.utub_tag_id == current_utub_tag.id,
+        ).first_or_404()
+
+        if current_url_tag.utub_id != g.utub_id:
+            critical_log(
+                f"Invalid UTubURLTag.id={current_url_tag.id} for UTub.id={g.utub_id} by UTubUser={current_user.id}"
+            )
+            abort(404)
+
+        kwargs["current_url_tag"] = current_url_tag
 
         return func(*args, **kwargs)
 

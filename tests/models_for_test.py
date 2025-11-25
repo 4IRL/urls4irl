@@ -1,3 +1,4 @@
+from src.utils.constants import TAG_CONSTANTS
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.splash_form_strs import REGISTER_FORM
 
@@ -80,6 +81,19 @@ all_tags = (
     valid_tag_3,
 )
 all_tag_strings = [tag[MODEL_STRS.TAG_STRING] for tag in all_tags]
+
+max_tag_strings = [
+    all_tag_strings[i % len(all_tag_strings)] for i in range(TAG_CONSTANTS.MAX_URL_TAGS)
+]
+
+maximum_tags = [
+    {
+        MODEL_STRS.ID: idx + 1,
+        MODEL_STRS.TAG_STRING: f"{tag_string}{idx}",  # Add idx for unique string
+        MODEL_STRS.TAG_APPLIED: TAG_CONSTANTS.MAX_URL_TAGS,
+    }
+    for idx, tag_string in enumerate(max_tag_strings)
+]
 
 """
 Valid URLs used for testing, without tags
