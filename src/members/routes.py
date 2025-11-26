@@ -1,8 +1,12 @@
 from flask import (
     Blueprint,
-    Response,
 )
 
+from src.api_common.auth_decorators import (
+    utub_creator_required,
+    utub_membership_required,
+)
+from src.api_common.responses import FlaskResponse
 from src.members.forms import (
     UTubNewMemberForm,
 )
@@ -12,10 +16,6 @@ from src.members.services.create_members import (
 )
 from src.members.services.delete_members import remove_member_or_self_from_utub
 from src.models.utubs import Utubs
-from src.utils.auth_decorators import (
-    utub_creator_required,
-    utub_membership_required,
-)
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
 
 members = Blueprint("members", __name__)
@@ -26,9 +26,7 @@ STD_JSON = STD_JSON_RESPONSE
 
 @members.route("/utubs/<int:utub_id>/members/<int:user_id>", methods=["DELETE"])
 @utub_membership_required
-def remove_member(
-    utub_id: int, user_id: int, current_utub: Utubs
-) -> tuple[Response, int]:
+def remove_member(utub_id: int, user_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Remove a user from a Utubs. The creator of the Utubs can remove anyone but themselves.
     Any user can remove themselves from a UTub they did not create.
@@ -42,7 +40,7 @@ def remove_member(
 
 @members.route("/utubs/<int:utub_id>/members", methods=["POST"])
 @utub_creator_required
-def create_member(utub_id: int, current_utub: Utubs) -> tuple[Response, int]:
+def create_member(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Creator of utub wants to add a user to the utub.
 

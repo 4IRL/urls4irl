@@ -1,14 +1,19 @@
-from typing import Tuple
-
 from flask import (
     Blueprint,
-    Response,
     abort,
     redirect,
     request,
     url_for,
 )
+from werkzeug.wrappers import Response as WerkzeugResponse
 
+from src.api_common.auth_decorators import (
+    email_validation_required,
+    utub_creator_required,
+    utub_membership_required,
+    xml_http_request_only,
+)
+from src.api_common.responses import FlaskResponse
 from src.models.utubs import Utubs
 from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from src.utubs.forms import UTubDescriptionForm, UTubNewNameForm
@@ -30,12 +35,6 @@ from src.utubs.services.update_utubs import (
     update_utub_name_if_new,
 )
 from src.utils.all_routes import ROUTES
-from src.utils.auth_decorators import (
-    email_validation_required,
-    utub_creator_required,
-    utub_membership_required,
-    xml_http_request_only,
-)
 from src.utils.constants import CONSTANTS
 
 utubs = Blueprint("utubs", __name__)
@@ -48,7 +47,7 @@ def provide_constants():
 
 @utubs.route("/home", methods=["GET"])
 @email_validation_required
-def home():
+def home() -> str | WerkzeugResponse:
     """
     Home page for logged in user. Loads and displays all UTubs, and contained URLs.
     If the query param UTubID is included, the user may be trying to directly access
@@ -87,14 +86,14 @@ def home():
 
 @utubs.route("/utubs", methods=["POST"])
 @email_validation_required
-def create_utub() -> Tuple[Response, int]:
+def create_utub() -> FlaskResponse:
     return create_new_utub()
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["GET"])
 @xml_http_request_only
 @utub_membership_required
-def get_single_utub(utub_id: int, current_utub: Utubs) -> Response:
+def get_single_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Retrieves data for a single UTub, and returns it in a serialized format
     """
@@ -104,7 +103,7 @@ def get_single_utub(utub_id: int, current_utub: Utubs) -> Response:
 @utubs.route("/utubs", methods=["GET"])
 @xml_http_request_only
 @email_validation_required
-def get_utubs() -> Response:
+def get_utubs() -> FlaskResponse:
     """
     User wants a summary of their UTubs in JSON format.
     """
@@ -113,7 +112,7 @@ def get_utubs() -> Response:
 
 @utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])
 @utub_creator_required
-def update_utub_name(utub_id: int, current_utub: Utubs):
+def update_utub_name(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Creator wants to update their UTub name.
     Name limit is 30 characters.
@@ -140,7 +139,7 @@ def update_utub_name(utub_id: int, current_utub: Utubs):
 
 @utubs.route("/utubs/<int:utub_id>/description", methods=["PATCH"])
 @utub_creator_required
-def update_utub_desc(utub_id: int, current_utub: Utubs):
+def update_utub_desc(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Creator wants to update their UTub description.
     Description limit is 500 characters.
@@ -169,7 +168,7 @@ def update_utub_desc(utub_id: int, current_utub: Utubs):
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])
 @utub_creator_required
-def delete_utub(utub_id: int, current_utub: Utubs) -> tuple[Response, int]:
+def delete_utub(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     Creator wants to delete their UTub. It deletes all associations between this UTub and its contained
     URLS, tags, and users.

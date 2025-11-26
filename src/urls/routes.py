@@ -1,5 +1,11 @@
 from flask import Blueprint, jsonify, Response
 
+from src.api_common.auth_decorators import (
+    utub_membership_required,
+    utub_membership_with_valid_url_in_utub_required,
+    xml_http_request_only,
+)
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import (
     safe_add_many_logs,
 )
@@ -27,13 +33,8 @@ from src.urls.services.update_urls import (
     handle_invalid_update_url_form_input,
     update_url_in_utub,
 )
-from src.utils.auth_decorators import (
-    utub_membership_required,
-    utub_membership_with_valid_url_in_utub_required,
-    xml_http_request_only,
-)
 from src.utils.strings.json_strs import STD_JSON_RESPONSE
-from src.utils.strings.url_strs import URL_SUCCESS
+from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
 urls = Blueprint("urls", __name__)
 
@@ -43,7 +44,7 @@ STD_JSON = STD_JSON_RESPONSE
 
 @urls.route("/utubs/<int:utub_id>/urls", methods=["POST"])
 @utub_membership_required
-def create_url(utub_id: int, current_utub: Utubs) -> tuple[Response, int]:
+def create_url(utub_id: int, current_utub: Utubs) -> FlaskResponse:
     """
     User wants to add URL to UTub. On success, adds the URL to the UTub.
 
@@ -110,13 +111,16 @@ def update_url(
         current_utub: (Utubs): The UTub for this URL
         current_utub_url: (Utub_Urls): The UTub_Urls to update
     """
-    utub_creator_or_url_adder_response = (
+    is_utub_creator_or_url_adder_response = (
         check_if_is_url_adder_or_utub_creator_on_url_update(
             utub_id=utub_id, utub_url_id=utub_url_id
         )
     )
-    if utub_creator_or_url_adder_response is not None:
-        return utub_creator_or_url_adder_response
+    if not is_utub_creator_or_url_adder_response:
+        return APIResponse(
+            status_code=403,
+            message=URL_FAILURE.UNABLE_TO_MODIFY_URL,
+        ).to_response()
 
     update_url_form: UpdateURLForm = UpdateURLForm()
 
@@ -146,13 +150,14 @@ def update_url_title(
         current_utub: (Utubs): The UTub for this URL
         current_utub_url: (Utub_Urls): The UTub_Urls to update
     """
-    utub_creator_or_url_adder_response = (
-        check_if_is_url_adder_or_utub_creator_on_url_update(
-            utub_id=utub_id, utub_url_id=utub_url_id
-        )
+    is_utub_creator_or_url_adder = check_if_is_url_adder_or_utub_creator_on_url_update(
+        utub_id=utub_id, utub_url_id=utub_url_id
     )
-    if utub_creator_or_url_adder_response is not None:
-        return utub_creator_or_url_adder_response
+    if not is_utub_creator_or_url_adder:
+        return APIResponse(
+            status_code=403,
+            message=URL_FAILURE.UNABLE_TO_MODIFY_URL,
+        ).to_response()
 
     update_url_title_form: UpdateURLTitleForm = UpdateURLTitleForm()
 

@@ -1,17 +1,16 @@
-from flask import Response, jsonify
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import safe_add_many_logs
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.tag_strs import TAGS_SUCCESS
 
 
 def delete_url_tag(
     utub: Utubs, utub_url: Utub_Urls, utub_tag: Utub_Tags, utub_url_tag: Utub_Url_Tags
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Handles deleting a UTub URL Tag. Provides the count of the associated UTub Tag in the database.
 
@@ -31,7 +30,7 @@ def delete_url_tag(
     utub.set_last_updated()
     db.session.commit()
 
-    return _handle_delete_url_tag_response(
+    return _build_delete_url_tag_response(
         # Count instances of particular tag in UTub that is to be deleted
         utub_tag_id_count=_count_tag_in_utub_after_url_tag_delete(utub, utub_tag),
         utub=utub,
@@ -57,13 +56,13 @@ def _count_tag_in_utub_after_url_tag_delete(utub: Utubs, utub_tag: Utub_Tags) ->
     ).count()
 
 
-def _handle_delete_url_tag_response(
+def _build_delete_url_tag_response(
     utub_tag_id_count: int,
     utub: Utubs,
     utub_url: Utub_Urls,
     utub_tag: Utub_Tags,
     utub_url_tag: Utub_Url_Tags,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Builds the JSON response on successful URL Tag delete.
 
@@ -90,15 +89,11 @@ def _handle_delete_url_tag_response(
         ]
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
-                TAGS_SUCCESS.UTUB_URL_TAG_IDS: utub_url.associated_tag_ids,
-                TAGS_SUCCESS.UTUB_TAG: utub_tag.serialized_on_add_delete,
-                TAGS_SUCCESS.TAG_COUNTS_MODIFIED: utub_tag_id_count,
-            }
-        ),
-        200,
-    )
+    return APIResponse(
+        message=TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
+        data={
+            TAGS_SUCCESS.UTUB_URL_TAG_IDS: utub_url.associated_tag_ids,
+            TAGS_SUCCESS.UTUB_TAG: utub_tag.serialized_on_add_delete,
+            TAGS_SUCCESS.TAG_COUNTS_MODIFIED: utub_tag_id_count,
+        },
+    ).to_response()

@@ -13,4 +13,13 @@ class URLErrorCodes(IntEnum):
 
 class URLState(IntEnum):
     FRESH_URL = 1
-    EXISTING_URL = 2
+    EXISTING_URL_IN_U4I = 2
+    EXISTING_URL_IN_UTUB = 3
+    INVALID_URL_STRING = 4
+
+
+class URLNormalizationResult(IntEnum):
+    VALID_URL = 1
+    INVALID_CREDENTIALS_URL = 2
+    INVALID_URL = 3
+    UNKNOWN_FAILURE_URL = 4

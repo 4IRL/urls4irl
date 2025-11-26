@@ -11,6 +11,7 @@ from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import UTUB_FORM
+from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.utils_for_test import is_string_in_logs
@@ -36,7 +37,10 @@ def test_get_utubs_if_has_no_utubs(
 
     assert response.status_code == 200
     response_json = response.json
-    assert response_json == {MODELS.UTUBS: []}
+    assert response_json == {
+        MODELS.UTUBS: [],
+        STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
+    }
 
 
 def test_get_utubs_if_has_one_utub(
@@ -63,7 +67,8 @@ def test_get_utubs_if_has_one_utub(
                     MODELS.MEMBER_ROLE: member.member_role.value,
                 }
                 for member in all_utubs_in
-            ]
+            ],
+            STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
         }
 
     response = client.get(
@@ -192,7 +197,7 @@ def test_get_utubs_sorted_based_on_last_updated(
     assert utub_summary[MODELS.UTUBS][0][MODELS.ID] == middle_utub_id
 
 
-def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]]]:
+def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]] | str]:
     all_utubs: list[Tuple[Utubs, Member_Role]] = (
         db.session.query(Utubs, Utub_Members.member_role)
         .join(Utub_Members, Utubs.id == Utub_Members.utub_id)
@@ -201,6 +206,7 @@ def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]]]:
         .all()
     )
     return {
+        STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.SUCCESS,
         MODELS.UTUBS: [
             {
                 MODELS.ID: utub.id,
@@ -208,7 +214,7 @@ def _get_ordered_utub_summary() -> dict[str, list[dict[str, int | str]]]:
                 MODELS.MEMBER_ROLE: member.value,
             }
             for utub, member in all_utubs
-        ]
+        ],
     }
 
 

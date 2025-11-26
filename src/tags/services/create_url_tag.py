@@ -1,6 +1,6 @@
-from flask import Response, jsonify
 from flask_login import current_user
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import (
     critical_log,
     safe_add_log,
@@ -15,14 +15,13 @@ from src.models.utubs import Utubs
 from src.tags.constants import URLTagErrorCodes
 from src.tags.forms import NewTagForm
 from src.utils.constants import TAG_CONSTANTS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 
 
 def handle_invalid_form_input_for_create_url_tag(
     url_tag_form: NewTagForm, utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Handles invalid form inputs or unknown exceptions when a URL Tag is being added.
 
@@ -40,36 +39,26 @@ def handle_invalid_form_input_for_create_url_tag(
         warning_log(
             f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(url_tag_form.errors)}"  # type: ignore
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-                    STD_JSON.ERROR_CODE: URLTagErrorCodes.INVALID_FORM_INPUT,
-                    STD_JSON.ERRORS: errors,
-                }
-            ),
-            400,
-        )
+        return APIResponse(
+            status_code=400,
+            message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+            error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+            errors=errors,
+        ).to_response()
 
     critical_log(
         f"User={current_user.id} failed to add tag to UTubURL.id={utub_url.id} in UTub.id={utub_url.utub_id}"
     )
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-                STD_JSON.ERROR_CODE: URLTagErrorCodes.UNKNOWN_EXCEPTION,
-            }
-        ),
-        404,
-    )
+    return APIResponse(
+        status_code=404,
+        message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+        error_code=URLTagErrorCodes.UNKNOWN_EXCEPTION,
+    ).to_response()
 
 
 def add_tag_to_url_if_valid(
     url_tag_form: NewTagForm, utub: Utubs, utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Adds a tag to a URL, but only if the URL does not already have the maximum number of tags, and if the URL does not have the tag already on it.
 
@@ -115,18 +104,15 @@ def add_tag_to_url_if_valid(
             f"UTubURLTag.id={utub_url_tag.id}",
         ]
     )
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_URL,
-                TAGS_SUCCESS.UTUB_URL_TAG_IDS: utub_url.associated_tag_ids,
-                TAGS_SUCCESS.UTUB_TAG: utub_tag.serialized_on_add_delete,
-                TAGS_SUCCESS.TAG_COUNTS_MODIFIED: updated_tag_id_count,
-            }
-        ),
-        200,
-    )
+
+    return APIResponse(
+        message=TAGS_SUCCESS.TAG_ADDED_TO_URL,
+        data={
+            TAGS_SUCCESS.UTUB_URL_TAG_IDS: utub_url.associated_tag_ids,
+            TAGS_SUCCESS.UTUB_TAG: utub_tag.serialized_on_add_delete,
+            TAGS_SUCCESS.TAG_COUNTS_MODIFIED: updated_tag_id_count,
+        },
+    ).to_response()
 
 
 def _url_is_at_url_tag_limit(utub: Utubs, utub_url: Utub_Urls) -> bool:
@@ -147,7 +133,7 @@ def _url_is_at_url_tag_limit(utub: Utubs, utub_url: Utub_Urls) -> bool:
     return len(tags_already_on_this_url) >= TAG_CONSTANTS.MAX_URL_TAGS
 
 
-def _build_url_at_tag_limit_response(utub_url: Utub_Urls) -> tuple[Response, int]:
+def _build_url_at_tag_limit_response(utub_url: Utub_Urls) -> FlaskResponse:
     """
         Builds JSON response for when a URL is at the tag limit
 
@@ -162,15 +148,10 @@ def _build_url_at_tag_limit_response(utub_url: Utub_Urls) -> tuple[Response, int
     warning_log(
         f"User={current_user.id} tried adding tag to UTubURL.id={utub_url.id} but tag limited"
     )
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: TAGS_FAILURE.FIVE_TAGS_MAX,
-            }
-        ),
-        400,
-    )
+    return APIResponse(
+        status_code=400,
+        message=TAGS_FAILURE.FIVE_TAGS_MAX,
+    ).to_response()
 
 
 def _get_or_create_utub_tag(tag: str, utub: Utubs) -> Utub_Tags:
@@ -217,7 +198,7 @@ def _tag_is_already_on_url(utub_tag: Utub_Tags, utub_url: Utub_Urls) -> bool:
 
 def _build_tag_already_on_url_response(
     utub_url: Utub_Urls, utub_tag: Utub_Tags
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Builds JSON response for when a UTub URL already contains a given tag.
 
@@ -233,15 +214,10 @@ def _build_tag_already_on_url_response(
     warning_log(
         f"User={current_user.id} tried adding UTubTag.tag_string={utub_tag.tag_string} to UTubURL.id={utub_url.id} but already on UTubURL"
     )
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: TAGS_FAILURE.TAG_ALREADY_ON_URL,
-            }
-        ),
-        400,
-    )
+    return APIResponse(
+        status_code=400,
+        message=TAGS_FAILURE.TAG_ALREADY_ON_URL,
+    ).to_response()
 
 
 def _add_url_tag(utub_url: Utub_Urls, utub_tag: Utub_Tags) -> Utub_Url_Tags:

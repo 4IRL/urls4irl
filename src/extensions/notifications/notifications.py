@@ -8,7 +8,7 @@ from src.app_logger import safe_get_request_id
 from src.utils.strings.config_strs import CONFIG_ENVS
 
 
-def _send_msg(url: str, msg: str, timeout: int, request_id: str):
+def _send_msg(url: str, msg: str, timeout: int, request_id: str, testing: bool = False):
     payload = {"content": msg}
     headers = {"Content-Type": "application/json"}
     response = None
@@ -77,7 +77,7 @@ class NotificationSender:
                 + "\n--------------- TESTING NOTIFICATION - DISREGARD---------------"
             )
 
-        args = [url, msg, self.timeout, request_id]
+        args = [url, msg, self.timeout, request_id, self._is_testing]
 
         thread = threading.Thread(target=_send_msg, args=args, daemon=True)
         thread.start()

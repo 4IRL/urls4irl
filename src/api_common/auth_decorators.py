@@ -3,6 +3,7 @@ from flask import abort, g, jsonify, request, session, url_for, redirect
 from flask_login import login_required, current_user
 from functools import wraps
 
+from src.api_common.request_utils import is_adder_of_utub_url, is_current_utub_creator
 from src.app_logger import critical_log, warning_log
 from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_tags import Utub_Tags
@@ -10,7 +11,6 @@ from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
-from src.utils.request_utils import is_adder_of_utub_url, is_current_utub_creator
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_validation_strs import URL_VALIDATION

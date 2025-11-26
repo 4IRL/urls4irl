@@ -1,7 +1,7 @@
-from flask import Response, jsonify
 from flask_login import current_user
 
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import (
     critical_log,
     safe_add_many_logs,
@@ -17,7 +17,7 @@ from src.utubs.utils import build_form_errors
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 
 
-def create_new_utub() -> tuple[Response, int]:
+def create_new_utub() -> FlaskResponse:
     """
     Creates a new UTub with the current user as the Creator.
 
@@ -49,18 +49,16 @@ def create_new_utub() -> tuple[Response, int]:
         ]
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                UTUB_SUCCESS.UTUB_ID: utub.id,
-                UTUB_SUCCESS.UTUB_NAME: utub.name,
-                UTUB_SUCCESS.UTUB_DESCRIPTION: utub.utub_description,
-                UTUB_SUCCESS.UTUB_CREATOR_ID: current_user.id,
-            }
-        ),
-        200,
-    )
+    return APIResponse(
+        status=STD_JSON.SUCCESS,
+        status_code=200,
+        data={
+            UTUB_SUCCESS.UTUB_ID: utub.id,
+            UTUB_SUCCESS.UTUB_NAME: utub.name,
+            UTUB_SUCCESS.UTUB_DESCRIPTION: utub.utub_description,
+            UTUB_SUCCESS.UTUB_CREATOR_ID: current_user.id,
+        },
+    ).to_response()
 
 
 def _create_new_utub(create_utub_form: UTubForm) -> Utubs:
@@ -98,32 +96,25 @@ def _create_new_utub_member_for_utub_creator(utub: Utubs):
     db.session.commit()
 
 
-def _handle_create_utub_form_input(create_utub_form: UTubForm) -> tuple[Response, int]:
+def _handle_create_utub_form_input(create_utub_form: UTubForm) -> FlaskResponse:
     # Invalid form inputs
     if create_utub_form.errors is not None:
         warning_log(
             f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(create_utub_form.errors)}"  # type: ignore
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
-                    STD_JSON.ERROR_CODE: UTubErrorCodes.INVALID_FORM_INPUT,
-                    STD_JSON.ERRORS: build_form_errors(create_utub_form),
-                }
-            ),
-            400,
-        )
+        return APIResponse(
+            status=STD_JSON.FAILURE,
+            status_code=400,
+            message=UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
+            error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+            errors=build_form_errors(create_utub_form),
+        ).to_response()
 
     critical_log(f"User={current_user.id} failed to make UTub")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
-                STD_JSON.ERROR_CODE: UTubErrorCodes.UNKNOWN_ERROR,
-            }
-        ),
-        404,
-    )
+
+    return APIResponse(
+        status=STD_JSON.FAILURE,
+        status_code=404,
+        message=UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
+        error_code=UTubErrorCodes.UNKNOWN_ERROR,
+    ).to_response()

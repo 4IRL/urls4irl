@@ -1,7 +1,7 @@
-from flask import Response, jsonify
 from flask_login import current_user
 
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import (
     critical_log,
     safe_add_many_logs,
@@ -13,13 +13,12 @@ from src.models.utubs import Utubs
 from src.tags.constants import UTubTagErrorCodes
 from src.tags.forms import NewTagForm
 from src.utils.strings.model_strs import MODELS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 
 
 def handle_invalid_form_input_for_create_utub_tag(
     utub_tag_form: NewTagForm, current_utub: Utubs
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Handles an invalid form input or unknown exception when creating a new UTub Tag.
 
@@ -33,40 +32,28 @@ def handle_invalid_form_input_for_create_utub_tag(
         - int: HTTP status code 400 (Invalid input) / 404 (Unknown exception)
     """
     if utub_tag_form.errors is not None:
-        errors = {MODELS.TAG_STRING: utub_tag_form.tag_string.errors}
         warning_log(
             f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_tag_form.errors)}"  # type: ignore
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
-                    STD_JSON.ERROR_CODE: UTubTagErrorCodes.INVALID_FORM_INPUT,
-                    STD_JSON.ERRORS: errors,
-                }
-            ),
-            400,
-        )
+
+        return APIResponse(
+            status_code=400,
+            message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
+            error_code=UTubTagErrorCodes.INVALID_FORM_INPUT,
+            errors={MODELS.TAG_STRING: utub_tag_form.tag_string.errors},
+        ).to_response()
 
     critical_log(
         f"User={current_user.id} failed to add UTubTag to UTub.id={current_utub.id}"
     )
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
-                STD_JSON.ERROR_CODE: UTubTagErrorCodes.UNKNOWN_EXCEPTION,
-            }
-        ),
-        404,
-    )
+    return APIResponse(
+        status_code=404,
+        message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
+        error_code=UTubTagErrorCodes.UNKNOWN_EXCEPTION,
+    ).to_response()
 
 
-def create_tag_in_utub(
-    utub_tag_form: NewTagForm, current_utub: Utubs
-) -> tuple[Response, int]:
+def create_tag_in_utub(utub_tag_form: NewTagForm, current_utub: Utubs) -> FlaskResponse:
     """
     Handles creating a new UTub tag in a UTub, not necessarily associated with a URL.
     Verifies that the tag is not already in the UTub.
@@ -82,18 +69,18 @@ def create_tag_in_utub(
     """
     tag_to_add = utub_tag_form.tag_string.get()
 
-    duplicate_utub_tag_response = _check_if_duplicate_utub_tag_response(
-        tag_to_add, current_utub
-    )
-    if duplicate_utub_tag_response is not None:
-        return duplicate_utub_tag_response
+    is_duplicate_utub_tag = _check_if_duplicate_utub_tag(tag_to_add, current_utub)
+
+    if is_duplicate_utub_tag:
+        return APIResponse(
+            status_code=400,
+            message=TAGS_FAILURE.TAG_ALREADY_IN_UTUB,
+        ).to_response()
 
     return _create_new_utub_tag(tag_to_add, current_utub)
 
 
-def _check_if_duplicate_utub_tag_response(
-    tag: str, utub: Utubs
-) -> tuple[Response, int] | None:
+def _check_if_duplicate_utub_tag(tag: str, utub: Utubs) -> bool:
     """
     Checks if the tag string is already a tag in this UTub.
 
@@ -115,18 +102,11 @@ def _check_if_duplicate_utub_tag_response(
         warning_log(
             f"User={current_user.id} tried adding UTubTag.tag_string={tag} but UTubTag already exists in UTub.id={utub.id}"
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: TAGS_FAILURE.TAG_ALREADY_IN_UTUB,
-                }
-            ),
-            400,
-        )
+
+    return utub_tag_already_created
 
 
-def _create_new_utub_tag(tag: str, utub: Utubs) -> tuple[Response, int]:
+def _create_new_utub_tag(tag: str, utub: Utubs) -> FlaskResponse:
     """
     Creates a new UTub tag and associates it with the UTub.
 
@@ -156,14 +136,10 @@ def _create_new_utub_tag(tag: str, utub: Utubs) -> tuple[Response, int]:
             f"UTubTag.tag_string={tag}",
         ]
     )
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_ADDED_TO_UTUB,
-                TAGS_SUCCESS.UTUB_TAG: new_utub_tag.serialized_on_add_delete,
-                TAGS_SUCCESS.TAG_COUNTS_MODIFIED: 0,  # No URLs associated yet
-            },
-        ),
-        200,
-    )
+    return APIResponse(
+        message=TAGS_SUCCESS.TAG_ADDED_TO_UTUB,
+        data={
+            TAGS_SUCCESS.UTUB_TAG: new_utub_tag.serialized_on_add_delete,
+            TAGS_SUCCESS.TAG_COUNTS_MODIFIED: 0,  # No URLs associated yet
+        },
+    ).to_response()

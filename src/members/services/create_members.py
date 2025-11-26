@@ -1,7 +1,7 @@
-from flask import Response, jsonify
 from flask_login import current_user
 
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import (
     critical_log,
     safe_add_many_logs,
@@ -14,46 +14,35 @@ from src.members.forms import UTubNewMemberForm
 from src.models.users import Users
 from src.models.utub_members import Utub_Members
 from src.models.utubs import Utubs
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 
 
 def handle_invalid_form_on_create_utub_member(
     member_form: UTubNewMemberForm,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     if member_form.errors is not None:
         warning_log(
             f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(member_form.errors)}"  # type: ignore
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
-                    STD_JSON.ERROR_CODE: UTubMembersErrorCodes.INVALID_FORM_INPUT,
-                    STD_JSON.ERRORS: member_form.errors,
-                }
-            ),
-            400,
-        )
+        return APIResponse(
+            status_code=400,
+            message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
+            error_code=UTubMembersErrorCodes.INVALID_FORM_INPUT,
+            errors=member_form.errors,
+        ).to_response()
 
     critical_log(f"User={current_user.id} failed to add member to UTub")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
-                STD_JSON.ERROR_CODE: UTubMembersErrorCodes.UNKNOWN_EXCEPTION,
-            }
-        ),
-        404,
-    )
+    return APIResponse(
+        status_code=404,
+        message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
+        error_code=UTubMembersErrorCodes.UNKNOWN_EXCEPTION,
+    ).to_response()
 
 
 def create_utub_member(
     member_form: UTubNewMemberForm, current_utub: Utubs
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Adds a user to a UTub. Handles if the user already exists in the UTub.
 
@@ -70,7 +59,10 @@ def create_utub_member(
 
     member_in_utub = _validate_if_member_already_in_utub(username, current_utub)
     if member_in_utub.in_utub:
-        return _handle_member_already_in_utub_response()
+        return APIResponse(
+            status_code=400,
+            message=MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB,
+        ).to_response()
 
     return _add_user_to_utub(user=member_in_utub.user, current_utub=current_utub)
 
@@ -101,28 +93,7 @@ def _validate_if_member_already_in_utub(
     return ValidatedMember(user=new_user, in_utub=already_in_utub)
 
 
-def _handle_member_already_in_utub_response() -> tuple[Response, int]:
-    """
-    Builds response for when the user is being added to a UTub but is already a member of the UTub.
-
-    Returns:
-        tuple[Response, int]:
-        - Response: JSON response for member already in UTub
-        - int: HTTP status code 400 (User already member in UTub)
-    """
-
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB,
-            }
-        ),
-        400,
-    )
-
-
-def _add_user_to_utub(user: Users, current_utub: Utubs) -> tuple[Response, int]:
+def _add_user_to_utub(user: Users, current_utub: Utubs) -> FlaskResponse:
     """
     Handles adding the user to the UTub as a new UTub member.
 
@@ -147,17 +118,13 @@ def _add_user_to_utub(user: Users, current_utub: Utubs) -> tuple[Response, int]:
         ["Added member to UTub", f"UTub.id={current_utub.id}", f"Added User={user.id}"]
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: MEMBER_SUCCESS.MEMBER_ADDED,
-                MEMBER_SUCCESS.UTUB_ID: current_utub.id,
-                MEMBER_SUCCESS.MEMBER: {
-                    MODELS.USERNAME: user.username,
-                    MODELS.ID: user.id,
-                },
-            }
-        ),
-        200,
-    )
+    return APIResponse(
+        message=MEMBER_SUCCESS.MEMBER_ADDED,
+        data={
+            MEMBER_SUCCESS.UTUB_ID: current_utub.id,
+            MEMBER_SUCCESS.MEMBER: {
+                MODELS.USERNAME: user.username,
+                MODELS.ID: user.id,
+            },
+        },
+    ).to_response()

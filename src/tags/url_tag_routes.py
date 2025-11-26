@@ -1,5 +1,10 @@
-from flask import Response, Blueprint
+from flask import Blueprint
 
+from src.api_common.auth_decorators import (
+    utub_membership_with_valid_url_in_utub_required,
+    utub_membership_with_valid_url_tag,
+)
+from src.api_common.responses import FlaskResponse
 from src.models.utub_tags import Utub_Tags
 from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
@@ -10,10 +15,6 @@ from src.tags.services.create_url_tag import (
     handle_invalid_form_input_for_create_url_tag,
 )
 from src.tags.services.delete_url_tag import delete_url_tag
-from src.utils.auth_decorators import (
-    utub_membership_with_valid_url_in_utub_required,
-    utub_membership_with_valid_url_tag,
-)
 
 utub_url_tags = Blueprint("utub_url_tags", __name__)
 
@@ -24,7 +25,7 @@ utub_url_tags = Blueprint("utub_url_tags", __name__)
 @utub_membership_with_valid_url_in_utub_required
 def create_utub_url_tag(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     User wants to add a tag to a URL. 5 tags per URL.
 
@@ -57,7 +58,7 @@ def delete_utub_url_tag(
     current_utub_url: Utub_Urls,
     current_utub_tag: Utub_Tags,
     current_url_tag: Utub_Url_Tags,
-):
+) -> FlaskResponse:
     """
     User wants to delete a tag from a URL contained in a UTub.
 

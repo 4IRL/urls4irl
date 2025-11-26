@@ -4,11 +4,11 @@ from flask_login import current_user
 from sqlalchemy import case, func
 
 from src import db
+from src.api_common.request_utils import is_adder_of_utub_url, is_current_utub_creator
 from src.app_logger import critical_log, safe_add_many_logs
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
-from src.utils.request_utils import is_adder_of_utub_url, is_current_utub_creator
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 

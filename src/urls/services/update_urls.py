@@ -1,6 +1,7 @@
-from flask import Response, jsonify
 from flask_login import current_user
 from src import db
+from src.api_common.request_utils import is_adder_of_utub_url, is_current_utub_creator
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import (
     critical_log,
     safe_add_many_logs,
@@ -10,19 +11,20 @@ from src.app_logger import (
 from src.models.urls import Urls
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
-from src.urls.constants import URLErrorCodes
-from src.urls.data_models import ValidatedUrl
+from src.urls.constants import URLErrorCodes, URLState
 from src.urls.forms import UpdateURLForm
-from src.urls.services.create_urls import validate_new_url_for_utub
+from src.urls.services.create_urls import (
+    build_response_for_invalidated_url,
+    validate_new_url_for_utub,
+)
 from src.urls.utils import build_form_errors
-from src.utils.request_utils import is_adder_of_utub_url, is_current_utub_creator
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 
 
 def check_if_is_url_adder_or_utub_creator_on_url_update(
     utub_id: int, utub_url_id: int
-) -> tuple[Response, int] | None:
+) -> bool:
     """
     Verify that the current user has permission to delete a URL from a UTub.
 
@@ -35,10 +37,7 @@ def check_if_is_url_adder_or_utub_creator_on_url_update(
         utub_url_id (int): The ID of the Utub_Urls association to be deleted.
 
     Returns:
-        tuple[Response, int] | None: If the user lacks permission, returns:
-        - Response: JSON response indicating deletion is not allowed
-        - int: HTTP status code 403 (Forbidden)
-        If the user has permission, returns None to allow deletion to proceed.
+        (bool): True if is UTub Creator URL adder
     """
     is_utub_creator_or_adder_of_utub_url = (
         is_current_utub_creator() or is_adder_of_utub_url()
@@ -48,20 +47,12 @@ def check_if_is_url_adder_or_utub_creator_on_url_update(
             f"User={current_user.id} not allowed to modify UTubURL.id={utub_url_id} in UTub.id={utub_id}"
         )
 
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                }
-            ),
-            403,
-        )
+    return is_utub_creator_or_adder_of_utub_url
 
 
 def update_url_in_utub(
     update_url_form: UpdateURLForm, current_utub: Utubs, current_utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Updates the given Utub_Urls in the UTub.
 
@@ -78,30 +69,40 @@ def update_url_in_utub(
     url_to_change_to: str = update_url_form.get_url_string().replace(" ", "")
 
     # Check for empty URL string to update to
-    empty_url_string_response = _check_for_empty_url_string_on_update(
+    is_empty_url = _check_for_empty_url_string_on_update(
         url_to_change_to, current_utub_url.id
     )
 
-    if empty_url_string_response is not None:
-        return empty_url_string_response
+    if is_empty_url:
+        return APIResponse(
+            status_code=400,
+            message=URL_FAILURE.EMPTY_URL,
+            error_code=URLErrorCodes.EMPTY_URL,
+        ).to_response()
 
     # Check for updating the URL to the same URL
-    equivalent_url_response = _check_for_equivalent_url_on_update(
+    is_equivalent_url = _check_for_equivalent_url_on_update(
         url_to_change_to, current_utub_url
     )
-    if equivalent_url_response is not None:
-        return equivalent_url_response
 
-    validate_new_url_response = validate_new_url_for_utub(
-        url_to_change_to, current_utub.id
-    )
-    if not isinstance(validate_new_url_response, ValidatedUrl):
-        return validate_new_url_response
+    if is_equivalent_url:
+        return APIResponse(
+            status=STD_JSON.NO_CHANGE,
+            message=URL_NO_CHANGE.URL_NOT_MODIFIED,
+            data={
+                URL_SUCCESS.URL: current_utub_url.serialized_on_get_or_update,
+            },
+        ).to_response()
 
-    validated_url_obj: ValidatedUrl = validate_new_url_response
+    validated_new_url = validate_new_url_for_utub(url_to_change_to, current_utub.id)
+    if (
+        validated_new_url.url_state == URLState.INVALID_URL_STRING
+        or validated_new_url.url is None
+    ):
+        return build_response_for_invalidated_url(validated_new_url.normalized_url)
 
     return _associate_updated_url_with_utub(
-        url=validated_url_obj.url,
+        url=validated_new_url.url,
         current_utub=current_utub,
         current_utub_url=current_utub_url,
     )
@@ -110,7 +111,7 @@ def update_url_in_utub(
 def _check_for_empty_url_string_on_update(
     url_string: str,
     utub_url_id: int,
-) -> tuple[Response, int] | None:
+) -> bool:
     """
     Checks if the provided URL to update to is an empty string.
 
@@ -119,28 +120,19 @@ def _check_for_empty_url_string_on_update(
         utub_url_id (int): The ID of the UTub URL
 
     Returns:
-        tuple[Response, int]: On empty string, returns a response with error code.
-        None: On a non-empty string, returns None
+        (bool): True if url string is empty
     """
-    if not url_string:
+    is_empty_url = not url_string
+    if is_empty_url:
         warning_log(
             f"User={current_user.id} tried changing UTubURL.id={utub_url_id} to a URL with only spaces"
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.EMPTY_URL,
-                    STD_JSON.ERROR_CODE: URLErrorCodes.EMPTY_URL,
-                }
-            ),
-            400,
-        )
+    return is_empty_url
 
 
 def _check_for_equivalent_url_on_update(
     url_to_change_to: str, current_utub_url: Utub_Urls
-) -> tuple[Response, int] | None:
+) -> bool:
     """
     Checks if the provided URL to update to is equivalent to the current URL.
 
@@ -149,33 +141,23 @@ def _check_for_equivalent_url_on_update(
         utub_url_id (int): The ID of the UTub URL
 
     Returns:
-        tuple[Response, int]: On the URLs being equivalent, returns a response with code.
-        None: On a non-equivalent URL, returns None
+        (bool): True if url string is equivalent to given URL
     """
 
-    serialized_url_in_utub = current_utub_url.serialized_on_get_or_update
+    is_equivalent_url = url_to_change_to == current_utub_url.standalone_url.url_string
 
-    if url_to_change_to == current_utub_url.standalone_url.url_string:
+    if is_equivalent_url:
         warning_log(
             f"User={current_user.id} tried changing UTubURL.id={current_utub_url.id} to the same URL"
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.NO_CHANGE,
-                    STD_JSON.MESSAGE: URL_NO_CHANGE.URL_NOT_MODIFIED,
-                    URL_SUCCESS.URL: serialized_url_in_utub,
-                }
-            ),
-            200,
-        )
+    return is_equivalent_url
 
 
 def _associate_updated_url_with_utub(
     url: Urls,
     current_utub: Utubs,
     current_utub_url: Utub_Urls,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Associates the updated UTub_Url with the UTub.
 
@@ -202,23 +184,19 @@ def _associate_updated_url_with_utub(
         ["Added URL to UTub", f"UTub.id={current_utub.id}", f"URL.id={url.id}"]
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: URL_SUCCESS.URL_MODIFIED,
-                URL_SUCCESS.UTUB_ID: current_utub.id,
-                URL_SUCCESS.UTUB_NAME: current_utub.name,
-                URL_SUCCESS.URL: new_serialized_url,
-            }
-        ),
-        200,
-    )
+    return APIResponse(
+        message=URL_SUCCESS.URL_MODIFIED,
+        data={
+            URL_SUCCESS.UTUB_ID: current_utub.id,
+            URL_SUCCESS.UTUB_NAME: current_utub.name,
+            URL_SUCCESS.URL: new_serialized_url,
+        },
+    ).to_response()
 
 
 def handle_invalid_update_url_form_input(
     update_url_form: UpdateURLForm,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Handle invalid form input when updating a URL in a UTub.
 
@@ -235,27 +213,17 @@ def handle_invalid_update_url_form_input(
     """
     if update_url_form.errors is not None:
         warning_log(f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(update_url_form.errors)}")  # type: ignore
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-                    STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
-                    STD_JSON.ERRORS: build_form_errors(update_url_form),
-                }
-            ),
-            400,
-        )
+        return APIResponse(
+            status_code=400,
+            message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+            error_code=URLErrorCodes.INVALID_FORM_INPUT,
+            errors=build_form_errors(update_url_form),
+        ).to_response()
 
     # Something else went wrong
     critical_log("Unable to update URL to UTub")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                STD_JSON.ERROR_CODE: URLErrorCodes.UNKNOWN_ERROR,
-            }
-        ),
-        404,
-    )
+    return APIResponse(
+        status_code=404,
+        message=URL_FAILURE.UNABLE_TO_MODIFY_URL,
+        error_code=URLErrorCodes.UNKNOWN_ERROR,
+    ).to_response()

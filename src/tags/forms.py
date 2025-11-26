@@ -2,8 +2,8 @@ from flask_wtf import FlaskForm
 from wtforms import SubmitField
 from wtforms.validators import Length, InputRequired, ValidationError
 
+from src.api_common.input_sanitization import sanitize_user_input
 from src.utils.constants import TAG_CONSTANTS
-from src.utils.input_sanitization import sanitize_user_input
 from src.utils.string_field_v2 import StringFieldV2
 from src.utils.strings import model_strs as MODEL_STRS
 from src.utils.strings.tag_strs import TAGS_FAILURE

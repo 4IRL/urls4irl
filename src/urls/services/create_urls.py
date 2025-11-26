@@ -1,10 +1,11 @@
 import time
 from typing import cast
 
-from flask import Response, current_app, jsonify
+from flask import current_app
 from flask_login import current_user
 
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import (
     critical_log,
     safe_add_log,
@@ -22,20 +23,19 @@ from src.extensions.url_validation.url_validator import (
 from src.models.urls import Urls
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
-from src.urls.constants import URLErrorCodes, URLState
-from src.urls.data_models import ValidatedUrl
+from src.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
+from src.urls.data_models import NormalizedUrl, ValidatedUrl
 from src.urls.forms import NewURLForm
 from src.urls.utils import build_form_errors
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
 
 def create_url_in_utub(
     create_url_form: NewURLForm,
     current_utub: Utubs,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
-    Creates a new URL in  UTub.
+    Creates a new URL in a UTub.
 
     Args:
         create_url_form (NewURLForm): Form containing new URL data
@@ -48,13 +48,27 @@ def create_url_in_utub(
     """
     url_string = create_url_form.url_string.data
 
-    validate_new_url_response = validate_new_url_for_utub(url_string, current_utub.id)
-    if not isinstance(validate_new_url_response, ValidatedUrl):
-        return validate_new_url_response
+    validated_new_url = validate_new_url_for_utub(url_string, current_utub.id)
+    if (
+        validated_new_url.url_state == URLState.INVALID_URL_STRING
+        or validated_new_url.url is None
+    ):
+        return build_response_for_invalidated_url(validated_new_url.normalized_url)
 
-    validated_url_obj: ValidatedUrl = validate_new_url_response
+    if validated_new_url.url_state == URLState.EXISTING_URL_IN_UTUB:
+        warning_log(
+            f"User={current_user.id} tried adding URL.id={validated_new_url.url.id} but already exists in UTub.id={current_utub.id}"
+        )
+        return APIResponse(
+            status_code=409,
+            message=URL_FAILURE.URL_IN_UTUB,
+            error_code=URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
+            data={
+                URL_FAILURE.URL_STRING: validated_new_url.url.url_string,
+            },
+        ).to_response()
 
-    url, url_state = validated_url_obj.url, validated_url_obj.url_state
+    url, url_state = validated_new_url.url, validated_new_url.url_state
 
     # Associate URL with given UTub
     return _associate_url_with_utub(
@@ -66,9 +80,7 @@ def create_url_in_utub(
     )
 
 
-def validate_new_url_for_utub(
-    url_string: str | None, utub_id: int
-) -> tuple[Response, int] | ValidatedUrl:
+def validate_new_url_for_utub(url_string: str | None, utub_id: int) -> ValidatedUrl:
     """
     Validates a URL to be ADA compliant, and ensures it is new for a UTub.
 
@@ -87,25 +99,38 @@ def validate_new_url_for_utub(
 
     """
     # Check for a valid and ADA compliant URL
-    validated_url_response = _normalize_and_validate_url(url_string)
-    if not isinstance(validated_url_response, str):
-        return validated_url_response
-
-    validated_ada_url: str = validated_url_response
-
-    url, url_state = get_or_create_url(validated_ada_url)
-
-    # If the URL exists and is already in the UTub, return early
-    if url_state == URLState.EXISTING_URL:
-        safe_add_log(f"URL already exists in U4I, URL.id={url.id}")
-        url_already_in_utub_response = check_url_already_in_utub(
-            utub_id, url.id, validated_ada_url
+    normalized_url = _normalize_and_validate_url(url_string)
+    if normalized_url.status != URLNormalizationResult.VALID_URL:
+        return ValidatedUrl(
+            url_state=URLState.INVALID_URL_STRING, normalized_url=normalized_url
         )
 
-        if url_already_in_utub_response is not None:
-            return url_already_in_utub_response
+    url, url_state = get_or_create_url(normalized_url.validated_url)
 
-    return ValidatedUrl(url=url, url_state=url_state)
+    # If the URL exists and is already in the UTub, return early
+    if url_state == URLState.EXISTING_URL_IN_U4I:
+        safe_add_log(f"URL already exists in U4I, URL.id={url.id}")
+        breakpoint()
+        url_already_in_utub = check_url_already_in_utub(utub_id, url.id)
+
+        if url_already_in_utub:
+            return ValidatedUrl(
+                url=url,
+                url_state=URLState.EXISTING_URL_IN_UTUB,
+                normalized_url=normalized_url,
+            )
+
+    return ValidatedUrl(url=url, url_state=url_state, normalized_url=normalized_url)
+
+
+def build_response_for_invalidated_url(normalized_url: NormalizedUrl) -> FlaskResponse:
+    if normalized_url.status == URLNormalizationResult.INVALID_CREDENTIALS_URL:
+        return handle_url_with_credentials_error(normalized_url)
+
+    if normalized_url.status == URLNormalizationResult.INVALID_URL:
+        return handle_invalid_url_error(normalized_url)
+
+    return handle_unexpected_url_validation_error(normalized_url)
 
 
 def get_or_create_url(url_string: str) -> tuple[Urls, URLState]:
@@ -127,7 +152,7 @@ def get_or_create_url(url_string: str) -> tuple[Urls, URLState]:
     already_created_url: Urls = Urls.query.filter(Urls.url_string == url_string).first()
 
     if already_created_url:
-        return already_created_url, URLState.EXISTING_URL
+        return already_created_url, URLState.EXISTING_URL_IN_U4I
 
     new_url = Urls(
         normalized_url=url_string,
@@ -142,9 +167,7 @@ def get_or_create_url(url_string: str) -> tuple[Urls, URLState]:
     return new_url, URLState.FRESH_URL
 
 
-def check_url_already_in_utub(
-    utub_id: int, url_id: int, url_string: str
-) -> tuple[Response, int] | None:
+def check_url_already_in_utub(utub_id: int, url_id: int) -> bool:
     """
     Check if a URL is already associated with a specific UTub.
 
@@ -155,39 +178,23 @@ def check_url_already_in_utub(
     Args:
         utub_id (int): The ID of the UTub to check.
         url_id (int): The ID of the URL to check.
-        url_string (str): The URL string for error response purposes.
 
     Returns:
-        tuple[Response, int] | None: If the URL already exists in the UTub, returns:
-        - Response: JSON response indicating the URL is already in the UTub
-        - int: HTTP status code 409 (Conflict)
-        If the URL is not in the UTub, returns None.
+        (bool): True if the URL is already in the UTub
     """
     utub_url = Utub_Urls.query.filter(
         Utub_Urls.utub_id == utub_id, Utub_Urls.url_id == url_id
     ).first()
 
     if not utub_url:
-        return
+        warning_log(
+            f"User={current_user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_id}"
+        )
 
-    warning_log(
-        f"User={current_user.id} tried adding URL.id={url_id} but already exists in UTub.id={utub_id}"
-    )
-
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: URL_FAILURE.URL_IN_UTUB,
-                STD_JSON.ERROR_CODE: URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
-                URL_FAILURE.URL_STRING: url_string,
-            }
-        ),
-        409,
-    )
+    return bool(utub_url)
 
 
-def _normalize_and_validate_url(url_string: str | None) -> str | tuple[Response, int]:
+def _normalize_and_validate_url(url_string: str | None) -> NormalizedUrl:
     """
     Normalize and validate a URL string using the application's URL validator.
 
@@ -206,6 +213,7 @@ def _normalize_and_validate_url(url_string: str | None) -> str | tuple[Response,
     """
     start = time.perf_counter()
     url_validator = safe_get_url_validator(current_app)
+    input_url = "" if not url_string else url_string
 
     try:
         normalized_url = url_validator.normalize_url(url_string)
@@ -217,29 +225,47 @@ def _normalize_and_validate_url(url_string: str | None) -> str | tuple[Response,
         validation_time = (time.perf_counter() - start) * 1000
 
     except URLWithCredentialsError as e:
-        return handle_url_with_credentials_error(start, e)
+        return NormalizedUrl(
+            input_url_string=input_url,
+            time_to_validate=(time.perf_counter() - start) * 1000,
+            status=URLNormalizationResult.INVALID_CREDENTIALS_URL,
+            exception=e,
+        )
 
     except InvalidURLError as e:
-        return handle_invalid_url_error(start, url_string, e)
+        return NormalizedUrl(
+            input_url_string=input_url,
+            time_to_validate=(time.perf_counter() - start) * 1000,
+            status=URLNormalizationResult.INVALID_URL,
+            exception=e,
+        )
 
     except (AdaUrlParsingError, Exception) as e:
-        return handle_unexpected_url_validation_error(start, url_string, e)
+        return NormalizedUrl(
+            input_url_string=input_url,
+            time_to_validate=(time.perf_counter() - start) * 1000,
+            status=URLNormalizationResult.UNKNOWN_FAILURE_URL,
+            exception=e,
+        )
 
-    end = (time.perf_counter() - start) * 1000
+    total_time = (time.perf_counter() - start) * 1000
     safe_add_many_logs(
         [
             f"Finished checks for {url_string=}",
             f"Took {normalized_time:.3f} ms for normalization",
             f"Took {(validation_time - normalized_time):.3f} ms total for validation",
-            f"Took {end:.3f} ms total",
+            f"Took {total_time:.3f} ms total",
         ]
     )
-    return validated_ada_url
+    return NormalizedUrl(
+        input_url_string=input_url,
+        time_to_validate=total_time,
+        status=URLNormalizationResult.VALID_URL,
+        validated_url=validated_ada_url,
+    )
 
 
-def handle_url_with_credentials_error(
-    start_time: float, exception: URLWithCredentialsError
-) -> tuple[Response, int]:
+def handle_url_with_credentials_error(normalized_url: NormalizedUrl) -> FlaskResponse:
     """
     Handle the case where a URL containing credentials (username/password) is detected.
 
@@ -247,38 +273,29 @@ def handle_url_with_credentials_error(
     indicating that URLs with credentials are not allowed.
 
     Args:
-        start_time (float): The timestamp when URL processing began (from time.perf_counter()).
-        exception (URLWithCredentialsError): The exception raised when credentials were detected.
+        normalized_url (NormalizedUrl): DTO with information from URL normalization/validation.
 
     Returns:
         tuple[Response, int]: A tuple containing:
         - Response: JSON response with error message and details
         - int: HTTP status code 400
     """
-    end = (time.perf_counter() - start_time) * 1000
     request_id = safe_get_request_id()
     warning_log(
         f"[{request_id}] URL with crendentials passed by User={current_user.id}\n"
-        + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
-        + f"[{request_id}] Exception={str(exception)}"
+        + f"[{request_id}] Took {normalized_url.time_to_validate:.3f} ms to fail validation\n"
+        + f"[{request_id}] Exception={str(normalized_url.exception)}"
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION,
-                STD_JSON.DETAILS: str(exception),
-                STD_JSON.ERROR_CODE: URLErrorCodes.URL_WITH_CREDENTIALS_ERROR,
-            }
-        ),
-        400,
-    )
+    return APIResponse(
+        status_code=400,
+        message=URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION,
+        details=str(normalized_url.exception),
+        error_code=URLErrorCodes.URL_WITH_CREDENTIALS_ERROR,
+    ).to_response()
 
 
-def handle_invalid_url_error(
-    start_time: float, url_string: str | None, exception: InvalidURLError
-) -> tuple[Response, int]:
+def handle_invalid_url_error(normalized_url: NormalizedUrl) -> FlaskResponse:
     """
     Handle validation errors for malformed or invalid URLs.
 
@@ -286,41 +303,33 @@ def handle_invalid_url_error(
     with details about why the URL failed validation.
 
     Args:
-        start_time (float): The timestamp when URL processing began (from time.perf_counter()).
-        url_string (str | None): The URL string that failed validation.
-        exception (InvalidURLError): The exception raised during URL validation.
+        normalized_url (NormalizedUrl): DTO with information from URL normalization/validation.
 
     Returns:
         tuple[Response, int]: A tuple containing:
         - Response: JSON response with error message and exception details
         - int: HTTP status code 400
     """
-    end = (time.perf_counter() - start_time) * 1000
     request_id = safe_get_request_id()
 
     warning_log(
         f"[{request_id}] Unable to validate the URL given by User={current_user.id}\n"
-        + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
-        + f"[{request_id}] url_string={url_string}\n"
-        + f"[{request_id}] Exception={str(exception)}"
+        + f"[{request_id}] Took {normalized_url.time_to_validate:.3f} ms to fail validation\n"
+        + f"[{request_id}] url_string={normalized_url.input_url_string}\n"
+        + f"[{request_id}] Exception={str(normalized_url.exception)}"
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL,
-                STD_JSON.DETAILS: str(exception),
-                STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_URL_ERROR,
-            }
-        ),
-        400,
-    )
+    return APIResponse(
+        status_code=400,
+        message=URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL,
+        details=str(normalized_url.exception),
+        error_code=URLErrorCodes.INVALID_URL_ERROR,
+    ).to_response()
 
 
 def handle_unexpected_url_validation_error(
-    start_time: float, url_string: str | None, exception: AdaUrlParsingError | Exception
-) -> tuple[Response, int]:
+    normalized_url: NormalizedUrl,
+) -> FlaskResponse:
     """
     Handle unexpected exceptions that occur during URL validation.
 
@@ -329,40 +338,32 @@ def handle_unexpected_url_validation_error(
     that don't fall into known error categories.
 
     Args:
-        start_time (float): The timestamp when URL processing began (from time.perf_counter()).
-        url_string (str | None): The URL string being validated when the error occurred.
-        exception (AdaUrlParsingError | Exception): The unexpected exception that was raised.
+        normalized_url (NormalizedUrl): DTO with information from URL normalization/validation.
 
     Returns:
         tuple[Response, int]: A tuple containing:
         - Response: JSON response with error message and exception details
         - int: HTTP status code 400
     """
-    end = (time.perf_counter() - start_time) * 1000
     request_id = safe_get_request_id()
 
     critical_log(
         f"[{request_id}] Unexpected exception validating the URL given by User={current_user.id}\n"
-        + f"[{request_id}] Took {end:.3f} ms to fail validation\n"
-        + f"[{request_id}] url_string={url_string}\n"
-        + f"[{request_id}] Exception={str(exception)}"
+        + f"[{request_id}] Took {normalized_url.time_to_validate:.3f} ms to fail validation\n"
+        + f"[{request_id}] url_string={normalized_url.input_url_string}\n"
+        + f"[{request_id}] Exception={str(normalized_url.exception)}"
     )
     notification_sender = safe_get_notif_sender(current_app)
     notification_sender.send_notification(
-        f"Unexpected exception validating {url_string} | Exception={str(exception)}"
+        f"Unexpected exception validating {normalized_url.input_url_string} | Exception={str(normalized_url.exception)}"
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: URL_FAILURE.UNEXPECTED_VALIDATION_EXCEPTION,
-                STD_JSON.DETAILS: str(exception),
-                STD_JSON.ERROR_CODE: URLErrorCodes.UNEXPECTED_VALIDATION_ERROR,
-            }
-        ),
-        400,
-    )
+    return APIResponse(
+        status_code=400,
+        message=URL_FAILURE.UNEXPECTED_VALIDATION_EXCEPTION,
+        error_code=URLErrorCodes.UNEXPECTED_VALIDATION_ERROR,
+        details=str(normalized_url.exception),
+    ).to_response()
 
 
 def _associate_url_with_utub(
@@ -371,7 +372,7 @@ def _associate_url_with_utub(
     url_title: str,
     url_string: str,
     url_state: URLState,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Create an association between a URL and a UTub, adding the URL to the UTub.
 
@@ -404,31 +405,28 @@ def _associate_url_with_utub(
     safe_add_many_logs(
         ["Added URL to UTub", f"UTub.id={current_utub.id}", f"URL.id={url_id}"]
     )
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: (
-                    URL_SUCCESS.URL_CREATED_ADDED
-                    if url_state == URLState.FRESH_URL
-                    else URL_SUCCESS.URL_ADDED
-                ),
-                URL_SUCCESS.UTUB_ID: current_utub.id,
-                URL_SUCCESS.ADDED_BY: current_user.id,
-                URL_SUCCESS.URL: {
-                    URL_SUCCESS.URL_STRING: url_string,
-                    URL_SUCCESS.UTUB_URL_ID: url_utub_user_add.id,
-                    URL_SUCCESS.URL_TITLE: url_title,
-                },
-            }
-        ),
-        200,
-    )
+
+    message = URL_SUCCESS.URL_ADDED
+    if url_state == URLState.FRESH_URL:
+        message = URL_SUCCESS.URL_CREATED_ADDED
+
+    return APIResponse(
+        message=message,
+        data={
+            URL_SUCCESS.UTUB_ID: current_utub.id,
+            URL_SUCCESS.ADDED_BY: current_user.id,
+            URL_SUCCESS.URL: {
+                URL_SUCCESS.URL_STRING: url_string,
+                URL_SUCCESS.UTUB_URL_ID: url_utub_user_add.id,
+                URL_SUCCESS.URL_TITLE: url_title,
+            },
+        },
+    ).to_response()
 
 
 def handle_invalid_url_form_input(
     utub_new_url_form: NewURLForm,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Handle invalid form input when adding a new URL to a UTub.
 
@@ -449,27 +447,17 @@ def handle_invalid_url_form_input(
         warning_log(
             f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(errors)}"
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
-                    STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
-                    STD_JSON.ERRORS: build_form_errors(utub_new_url_form),
-                }
-            ),
-            400,
-        )
+        return APIResponse(
+            status_code=400,
+            message=URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
+            error_code=URLErrorCodes.INVALID_FORM_INPUT,
+            errors=build_form_errors(utub_new_url_form),
+        ).to_response()
 
     # Something else went wrong
     critical_log("Unable to add URL to UTub")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL,
-                STD_JSON.ERROR_CODE: URLErrorCodes.UNKNOWN_ERROR,
-            }
-        ),
-        404,
-    )
+    return APIResponse(
+        status_code=404,
+        message=URL_FAILURE.UNABLE_TO_ADD_URL,
+        error_code=URLErrorCodes.UNKNOWN_ERROR,
+    ).to_response()

@@ -12,6 +12,11 @@ from flask_wtf.csrf import CSRFError, CSRFProtect
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 from src import app_logger
+from src.api_common.error_handler import (
+    handle_403_response_from_csrf,
+    handle_404_response,
+    handle_429_response_default_ratelimit,
+)
 from src.db import db
 from src.config import Config, ConfigProd
 from src.extensions.email_sender.email_sender import EmailSender
@@ -21,11 +26,6 @@ from src.cli.short_urls import register_short_urls_cli
 from src.cli.utils import register_utils_cli
 from src.cli.mock_options import register_mocks_db_cli
 from src.utils.bundle import prepare_bundler_for_js_files
-from src.utils.error_handler import (
-    handle_403_response_from_csrf,
-    handle_404_response,
-    handle_429_response_default_ratelimit,
-)
 from src.utils.strings.config_strs import CONFIG_ENVS
 
 sess = Session()

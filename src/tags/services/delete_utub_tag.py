@@ -1,18 +1,16 @@
-from flask import Response, jsonify
-
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import safe_add_many_logs
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.utils.strings.model_strs import MODELS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.tag_strs import TAGS_SUCCESS
 
 
 def delete_utub_tag_from_utub_and_utub_urls(
     utub: Utubs, utub_tag: Utub_Tags
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Deletes a UTub tag from a UTub. Provides a list of all URL IDs that had this tag associated withit.
 
@@ -42,17 +40,13 @@ def delete_utub_tag_from_utub_and_utub_urls(
         ]
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: TAGS_SUCCESS.TAG_REMOVED_FROM_UTUB,
-                TAGS_SUCCESS.UTUB_TAG: serialized_tag,
-                TAGS_SUCCESS.UTUB_URL_IDS: utub_url_ids_with_utub_tag,
-            }
-        ),
-        200,
-    )
+    return APIResponse(
+        message=TAGS_SUCCESS.TAG_REMOVED_FROM_UTUB,
+        data={
+            TAGS_SUCCESS.UTUB_TAG: serialized_tag,
+            TAGS_SUCCESS.UTUB_URL_IDS: utub_url_ids_with_utub_tag,
+        },
+    ).to_response()
 
 
 def _get_utub_url_ids_for_utub_tag(utub: Utubs, utub_tag: Utub_Tags) -> list[int]:
