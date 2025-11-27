@@ -1,4 +1,4 @@
-from flask import Blueprint, jsonify, Response
+from flask import Blueprint
 
 from src.api_common.auth_decorators import (
     utub_membership_required,
@@ -66,7 +66,7 @@ def create_url(utub_id: int, current_utub: Utubs) -> FlaskResponse:
 @utub_membership_with_valid_url_in_utub_required
 def get_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Allows a user to read a URL in a UTub. Only users who are a member of the
     UTub can GET this URL.
@@ -83,23 +83,19 @@ def get_url(
             f"UTubURL.id={utub_url_id}",
         ]
     )
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: URL_SUCCESS.URL_FOUND_IN_UTUB,
-                URL_SUCCESS.URL: current_utub_url.serialized_on_get_or_update,
-            }
-        ),
-        200,
-    )
+    return APIResponse(
+        message=URL_SUCCESS.URL_FOUND_IN_UTUB,
+        data={
+            URL_SUCCESS.URL: current_utub_url.serialized_on_get_or_update,
+        },
+    ).to_response()
 
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["PATCH"])
 @utub_membership_with_valid_url_in_utub_required
 def update_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Allows a user to update a URL without updating the title.
     Only the user who added the URL, or who created the UTub containing
@@ -138,7 +134,7 @@ def update_url(
 @utub_membership_with_valid_url_in_utub_required
 def update_url_title(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Allows a user to update a URL title without updating the url.
     Only the user who added the URL, or who created the UTub containing
@@ -175,7 +171,7 @@ def update_url_title(
 @utub_membership_with_valid_url_in_utub_required
 def delete_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     User wants to remove a URL from a UTub. Only available to owner of that utub,
     or whoever added the URL into that Utubs.
@@ -184,14 +180,15 @@ def delete_url(
         utub_id (int): The ID of the UTub that contains the URL to be removed
         utub_url_id (int): The ID of the UtubUrl to be removed
     """
-    utub_creator_or_url_adder_response = (
-        check_if_is_url_adder_or_utub_creator_on_url_delete(
-            utub_id=utub_id, utub_url_id=utub_url_id
-        )
+    is_utub_creator_or_url_adder = check_if_is_url_adder_or_utub_creator_on_url_delete(
+        utub_id=utub_id, utub_url_id=utub_url_id
     )
 
-    if utub_creator_or_url_adder_response is not None:
-        return utub_creator_or_url_adder_response
+    if not is_utub_creator_or_url_adder:
+        return APIResponse(
+            status_code=403,
+            message=URL_FAILURE.UNABLE_TO_DELETE_URL,
+        ).to_response()
 
     return delete_url_in_utub(
         current_utub=current_utub, current_utub_url=current_utub_url

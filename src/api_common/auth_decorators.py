@@ -1,9 +1,10 @@
 from typing import Callable
-from flask import abort, g, jsonify, request, session, url_for, redirect
+from flask import abort, g, request, session, url_for, redirect
 from flask_login import login_required, current_user
 from functools import wraps
 
 from src.api_common.request_utils import is_adder_of_utub_url, is_current_utub_creator
+from src.api_common.responses import APIResponse
 from src.app_logger import critical_log, warning_log
 from src.models.utub_members import Member_Role, Utub_Members
 from src.models.utub_tags import Utub_Tags
@@ -12,7 +13,6 @@ from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
 from src.utils.all_routes import ROUTES
 from src.utils.strings.email_validation_strs import EMAILS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.url_validation_strs import URL_VALIDATION
 from src.utils.strings.utub_strs import UTUB_FAILURE
 
@@ -33,10 +33,27 @@ def xml_http_request_only(func: Callable) -> Callable:
     return decorated_view
 
 
+def no_authenticated_users_allowed(func: Callable) -> Callable:
+    @wraps(func)
+    def decorated_view(*args, **kwargs) -> Callable:
+        if current_user.is_authenticated:
+            if not current_user.email_validated:
+                warning_log(
+                    f"User={current_user.id} registered but not email validated"
+                )
+                return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
+            warning_log(f"User={current_user.id} already logged in")
+            return redirect(url_for(ROUTES.UTUBS.HOME))
+
+        return func(*args, **kwargs)
+
+    return decorated_view
+
+
 def email_validation_required(func: Callable) -> Callable:
     @wraps(func)
     @login_required
-    def decorated_view(*args, **kwargs):
+    def decorated_view(*args, **kwargs) -> Callable:
         is_email_validated: bool | None = session.get(EMAILS.EMAIL_VALIDATED_SESS_KEY)
 
         if is_email_validated is None:
@@ -83,15 +100,12 @@ def utub_creator_required(func: Callable):
             critical_log(
                 f"User={current_user.id} not creator: UTub.id={utub_id} | UTub.name={current_utub.name}"
             )
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: UTUB_FAILURE.NOT_AUTHORIZED,
-                    }
-                ),
-                403,
-            )
+
+            return APIResponse(
+                status_code=403,
+                message=UTUB_FAILURE.NOT_AUTHORIZED,
+            ).to_response()
+
         return func(*args, **kwargs)
 
     return decorated_view

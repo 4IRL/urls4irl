@@ -2,13 +2,14 @@ from datetime import datetime, timedelta
 from flask import url_for
 import pytest
 
+from src.models.utils import VerifyTokenResponse
+from src.splash.utils import verify_token
 from src.utils.strings.email_validation_strs import EMAILS_FAILURE
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
 from src import db
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
-from src.models.utils import verify_token
 from src.utils import constants as U4I_CONSTANTS
 from src.utils.all_routes import ROUTES
 from src.utils.datetime_utils import utc_now
@@ -455,9 +456,10 @@ def test_forgot_password_generates_token_correctly(
         ).first()
 
         token = new_forgot_password.reset_token
-        assert verify_token(token, RESET_PASSWORD.RESET_PASSWORD_KEY) == (
-            registered_user,
-            False,
+        assert verify_token(
+            token, RESET_PASSWORD.RESET_PASSWORD_KEY
+        ) == VerifyTokenResponse(
+            user=registered_user, is_expired=False, failed_due_to_exception=False
         )
 
 

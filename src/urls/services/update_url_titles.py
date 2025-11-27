@@ -1,7 +1,7 @@
-from flask import Response, jsonify
 from flask_login import current_user
 
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import (
     critical_log,
     safe_add_log,
@@ -19,7 +19,7 @@ from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 
 def update_url_title_if_new(
     new_url_title: str, current_utub: Utubs, current_utub_url: Utub_Urls
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Verify that the current user has permission to delete a URL from a UTub.
 
@@ -38,9 +38,9 @@ def update_url_title_if_new(
         - int: HTTP status code 200 (Success)
     """
     serialized_url_in_utub = current_utub_url.serialized_on_get_or_update
-    title_diff = new_url_title != current_utub_url.url_title
+    is_different_title = new_url_title != current_utub_url.url_title
 
-    if title_diff:
+    if is_different_title:
         current_utub_url.url_title = new_url_title  # Updates the title
 
         serialized_url_in_utub = current_utub_url.serialized_on_get_or_update
@@ -50,25 +50,20 @@ def update_url_title_if_new(
     else:
         warning_log(f"User={current_user.id} tried updating to identical URL title")
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS if title_diff else STD_JSON.NO_CHANGE,
-                STD_JSON.MESSAGE: (
-                    URL_SUCCESS.URL_TITLE_MODIFIED
-                    if title_diff
-                    else URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED
-                ),
-                URL_SUCCESS.URL: serialized_url_in_utub,
-            }
-        ),
-        200,
-    )
+    message = URL_SUCCESS.URL_TITLE_MODIFIED
+
+    return APIResponse(
+        status=STD_JSON.SUCCESS if is_different_title else STD_JSON.NO_CHANGE,
+        message=message if is_different_title else URL_NO_CHANGE.URL_TITLE_NOT_MODIFIED,
+        data={
+            URL_SUCCESS.URL: serialized_url_in_utub,
+        },
+    ).to_response()
 
 
 def handle_invalid_update_url_title_form_input(
     update_url_title_form: UpdateURLTitleForm,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Handle invalid form input when updating a URL Title in a UTub.
 
@@ -87,45 +82,28 @@ def handle_invalid_update_url_title_form_input(
     # Missing URL title field
     if update_url_title_form.url_title.data is None:
         warning_log(f"User={current_user.id} missing URL title field")
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-                    STD_JSON.ERRORS: {
-                        URL_FAILURE.URL_TITLE: URL_FAILURE.FIELD_REQUIRED
-                    },
-                }
-            ),
-            400,
-        )
+        return APIResponse(
+            status_code=400,
+            message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+            errors={URL_FAILURE.URL_TITLE: URL_FAILURE.FIELD_REQUIRED},
+        ).to_response()
 
     # Invalid form input
     if update_url_title_form.errors is not None:
         warning_log(
             f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(update_url_title_form.errors)}"  # type: ignore
         )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-                    STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
-                    STD_JSON.ERRORS: build_form_errors(update_url_title_form),
-                }
-            ),
-            400,
-        )
+        return APIResponse(
+            status_code=400,
+            message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+            error_code=URLErrorCodes.INVALID_FORM_INPUT,
+            errors=build_form_errors(update_url_title_form),
+        ).to_response()
 
     # Something else went wrong
     critical_log("Unable to update URL title in UTub")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL,
-                STD_JSON.ERROR_CODE: URLErrorCodes.UNKNOWN_ERROR,
-            }
-        ),
-        404,
-    )
+    return APIResponse(
+        status_code=404,
+        message=URL_FAILURE.UNABLE_TO_MODIFY_URL,
+        error_code=URLErrorCodes.UNKNOWN_ERROR,
+    ).to_response()

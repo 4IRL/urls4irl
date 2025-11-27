@@ -59,8 +59,6 @@ function handleValidateEmailFailure(xhr, _, error) {
       showSplashModalAlertBanner(xhr.responseJSON.message, "danger");
       break;
     case 2:
-      showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
-      break;
     case 3:
     case 4:
       showSplashModalAlertBanner(xhr.responseJSON.message, "warning");

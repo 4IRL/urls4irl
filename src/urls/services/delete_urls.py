@@ -1,21 +1,19 @@
-from typing import Tuple
-from flask import Response, jsonify
 from flask_login import current_user
 from sqlalchemy import case, func
 
 from src import db
 from src.api_common.request_utils import is_adder_of_utub_url, is_current_utub_creator
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import critical_log, safe_add_many_logs
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
 from src.models.utubs import Utubs
-from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from src.utils.strings.url_strs import URL_SUCCESS
 
 
 def check_if_is_url_adder_or_utub_creator_on_url_delete(
     utub_id: int, utub_url_id: int
-) -> tuple[Response, int] | None:
+) -> bool:
     """
     Verify that the current user has permission to delete a URL from a UTub.
 
@@ -28,6 +26,7 @@ def check_if_is_url_adder_or_utub_creator_on_url_delete(
         utub_url_id (int): The ID of the Utub_Urls association to be deleted.
 
     Returns:
+        (bool): True if is URL adder or creator
         tuple[Response, int] | None: If the user lacks permission, returns:
         - Response: JSON response indicating deletion is not allowed
         - int: HTTP status code 403 (Forbidden)
@@ -42,21 +41,13 @@ def check_if_is_url_adder_or_utub_creator_on_url_delete(
             f"User={current_user.id} tried removing UTubURL.id={utub_url_id} from UTub.id={utub_id} and they aren't the URL adder or UTub creator"
         )
 
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_DELETE_URL,
-                }
-            ),
-            403,
-        )
+    return is_utub_creator_or_adder_of_utub_url
 
 
 def delete_url_in_utub(
     current_utub: Utubs,
     current_utub_url: Utub_Urls,
-) -> tuple[Response, int]:
+) -> FlaskResponse:
     """
     Deletes a URL from a UTub. Returns associated tag data for the UTub.
 
@@ -93,22 +84,18 @@ def delete_url_in_utub(
         ]
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: URL_SUCCESS.URL_REMOVED,
-                URL_SUCCESS.UTUB_ID: current_utub.id,
-                URL_SUCCESS.URL: {
-                    URL_SUCCESS.URL_STRING: url_string_to_remove,
-                    URL_SUCCESS.UTUB_URL_ID: utub_url_id,
-                    URL_SUCCESS.URL_TITLE: current_utub_url.url_title,
-                },
-                URL_SUCCESS.TAG_COUNTS_MODIFIED: tag_ids_and_updated_count,
-            }
-        ),
-        200,
-    )
+    return APIResponse(
+        message=URL_SUCCESS.URL_REMOVED,
+        data={
+            URL_SUCCESS.UTUB_ID: current_utub.id,
+            URL_SUCCESS.URL: {
+                URL_SUCCESS.URL_STRING: url_string_to_remove,
+                URL_SUCCESS.UTUB_URL_ID: utub_url_id,
+                URL_SUCCESS.URL_TITLE: current_utub_url.url_title,
+            },
+            URL_SUCCESS.TAG_COUNTS_MODIFIED: tag_ids_and_updated_count,
+        },
+    ).to_response()
 
 
 def _update_tag_counts_on_url_delete(
@@ -148,7 +135,7 @@ def _update_tag_counts_on_url_delete(
 
 def _get_utub_url_tag_ids_and_utub_tag_ids_on_utub_url(
     utub_id: int, utub_url_id: int
-) -> Tuple[list[int], list[int]]:
+) -> tuple[list[int], list[int]]:
     primary_key_and_tag_ids = (
         db.session.query(Utub_Url_Tags)
         .filter(
@@ -163,7 +150,7 @@ def _get_utub_url_tag_ids_and_utub_tag_ids_on_utub_url(
 
 def _parse_utub_url_tag_ids_and_utub_tag_ids(
     primary_key_and_tag_ids: list[Utub_Url_Tags],
-) -> Tuple[list[int], list[int]]:
+) -> tuple[list[int], list[int]]:
     utub_tag_ids = []
     utub_url_tag_ids = []
 

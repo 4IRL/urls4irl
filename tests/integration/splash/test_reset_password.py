@@ -5,7 +5,8 @@ import pytest
 from src import db
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
-from src.models.utils import verify_token
+from src.models.utils import VerifyTokenResponse
+from src.splash.utils import verify_token
 from src.utils.all_routes import ROUTES
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -51,9 +52,8 @@ def test_reset_password_token_can_expire(app, register_first_user):
 
         assert verify_token(
             quick_expiring_token, RESET_PASSWORD.RESET_PASSWORD_KEY
-        ) == (
-            None,
-            True,
+        ) == VerifyTokenResponse(
+            user=None, is_expired=True, failed_due_to_exception=False
         )
 
 

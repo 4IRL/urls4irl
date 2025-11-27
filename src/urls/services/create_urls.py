@@ -110,7 +110,6 @@ def validate_new_url_for_utub(url_string: str | None, utub_id: int) -> Validated
     # If the URL exists and is already in the UTub, return early
     if url_state == URLState.EXISTING_URL_IN_U4I:
         safe_add_log(f"URL already exists in U4I, URL.id={url.id}")
-        breakpoint()
         url_already_in_utub = check_url_already_in_utub(utub_id, url.id)
 
         if url_already_in_utub:

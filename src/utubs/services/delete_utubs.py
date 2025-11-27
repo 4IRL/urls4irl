@@ -1,13 +1,11 @@
-from flask import Response, jsonify
-
 from src import db
+from src.api_common.responses import APIResponse, FlaskResponse
 from src.app_logger import safe_add_many_logs
 from src.models.utubs import Utubs
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.utub_strs import UTUB_SUCCESS
 
 
-def delete_utub_for_user(current_utub: Utubs) -> tuple[Response, int]:
+def delete_utub_for_user(current_utub: Utubs) -> FlaskResponse:
     """
     Deletes a UTub for the UTub's creator.
 
@@ -34,15 +32,11 @@ def delete_utub_for_user(current_utub: Utubs) -> tuple[Response, int]:
         ]
     )
 
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.SUCCESS,
-                STD_JSON.MESSAGE: UTUB_SUCCESS.UTUB_DELETED,
-                UTUB_SUCCESS.UTUB_ID: utub_id,
-                UTUB_SUCCESS.UTUB_NAME: utub_name,
-                UTUB_SUCCESS.UTUB_DESCRIPTION: utub_description,
-            }
-        ),
-        200,
-    )
+    return APIResponse(
+        message=UTUB_SUCCESS.UTUB_DELETED,
+        data={
+            UTUB_SUCCESS.UTUB_ID: utub_id,
+            UTUB_SUCCESS.UTUB_NAME: utub_name,
+            UTUB_SUCCESS.UTUB_DESCRIPTION: utub_description,
+        },
+    ).to_response()

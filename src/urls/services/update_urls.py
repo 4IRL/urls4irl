@@ -101,6 +101,19 @@ def update_url_in_utub(
     ):
         return build_response_for_invalidated_url(validated_new_url.normalized_url)
 
+    if validated_new_url.url_state == URLState.EXISTING_URL_IN_UTUB:
+        warning_log(
+            f"User={current_user.id} tried adding URL.id={validated_new_url.url.id} but already exists in UTub.id={current_utub.id}"
+        )
+        return APIResponse(
+            status_code=409,
+            message=URL_FAILURE.URL_IN_UTUB,
+            error_code=URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
+            data={
+                URL_FAILURE.URL_STRING: validated_new_url.url.url_string,
+            },
+        ).to_response()
+
     return _associate_updated_url_with_utub(
         url=validated_new_url.url,
         current_utub=current_utub,
