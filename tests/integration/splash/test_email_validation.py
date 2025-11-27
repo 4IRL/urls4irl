@@ -262,9 +262,11 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
 
-        assert verify_token(quick_expiring_token, EMAILS.VALIDATE_EMAIL) == (
-            None,
-            True,
+        assert verify_token(
+            quick_expiring_token, EMAILS.VALIDATE_EMAIL
+        ) == VerifyTokenResponse(
+            user=None,
+            is_expired=True,
         )
 
 

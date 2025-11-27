@@ -108,7 +108,7 @@ def _create_or_reset_forgot_password_object_for_user(
         forgot_password.initial_attempt = utc_now()
         db.session.commit()
 
-    else:
+    if not forgot_password:
         new_token = user.get_password_reset_token()
         forgot_password = Forgot_Passwords(reset_token=new_token)
         user.forgot_password = forgot_password
