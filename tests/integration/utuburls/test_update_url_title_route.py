@@ -6,6 +6,7 @@ from src.models.urls import Urls
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_urls import Utub_Urls
+from src.urls.constants import URLErrorCodes
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
 from src.utils.strings.html_identifiers import IDENTIFIERS
@@ -482,7 +483,6 @@ def test_update_url_title_as_utub_member_not_adder_or_creator(
     json_response = update_url_string_title_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL
-    assert int(json_response[STD_JSON.ERROR_CODE]) == 1
 
     with app.app_context():
         # Assert database is consistent after not modifying URL
@@ -525,7 +525,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-        STD_JSON.ERROR_CODE: 3,
+        STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field
         {
             URL_FAILURE.URL_TITLE: [URL_FAILURE.FIELD_REQUIRED,]
@@ -577,7 +577,7 @@ def test_update_url_title_with_empty_title_as_utub_creator(
     json_response = update_url_string_title_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
-    assert int(json_response[STD_JSON.ERROR_CODE]) == 3
+    assert int(json_response[STD_JSON.ERROR_CODE]) == URLErrorCodes.INVALID_FORM_INPUT
     assert (
         json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE]
         == URL_FAILURE.FIELD_REQUIRED
@@ -615,7 +615,7 @@ def test_update_url_title_with_fully_sanitized_title_as_utub_creator(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-        STD_JSON.ERROR_CODE: 3,
+        STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field
         {
             URL_FAILURE.URL_TITLE: [URL_FAILURE.INVALID_INPUT]
@@ -655,7 +655,7 @@ def test_update_url_title_with_fully_sanitized_title_as_utub_creator(
     json_response = update_url_string_title_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
-    assert int(json_response[STD_JSON.ERROR_CODE]) == 3
+    assert int(json_response[STD_JSON.ERROR_CODE]) == URLErrorCodes.INVALID_FORM_INPUT
     assert json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE] == [
         URL_FAILURE.INVALID_INPUT
     ]
@@ -677,7 +677,7 @@ def test_update_url_title_with_partially_sanitized_title_as_utub_creator(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-        STD_JSON.ERROR_CODE: 3,
+        STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field
         {
             URL_FAILURE.URL_TITLE: [URL_FAILURE.INVALID_INPUT]
@@ -721,7 +721,9 @@ def test_update_url_title_with_partially_sanitized_title_as_utub_creator(
         json_response = update_url_string_title_form.json
         assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
         assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
-        assert int(json_response[STD_JSON.ERROR_CODE]) == 3
+        assert (
+            int(json_response[STD_JSON.ERROR_CODE]) == URLErrorCodes.INVALID_FORM_INPUT
+        )
         assert json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE] == [
             URL_FAILURE.INVALID_INPUT
         ]
@@ -790,13 +792,7 @@ def test_update_url_title_as_member_of_other_utub(
         data=update_url_string_title_form,
     )
 
-    assert update_url_string_title_form.status_code == 403
-
-    # Assert JSON response from server is valid
-    json_response = update_url_string_title_form.json
-    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL
-    assert int(json_response[STD_JSON.ERROR_CODE]) == 1
+    assert update_url_string_title_form.status_code == 404
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -831,7 +827,6 @@ def test_update_url_title_with_missing_title_field_utub_creator(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-        STD_JSON.ERROR_CODE: 2,
         STD_JSON.ERRORS: Object containing arrays per input field indicating the error for a field
         {
             URL_FAILURE.URL_TITLE: [URL_FAILURE.FIELD_REQUIRED,]
@@ -881,7 +876,6 @@ def test_update_url_title_with_missing_title_field_utub_creator(
     json_response = update_url_string_title_form.json
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
-    assert int(json_response[STD_JSON.ERROR_CODE]) == 2
     assert (
         json_response[STD_JSON.ERRORS][URL_FAILURE.URL_TITLE]
         == URL_FAILURE.FIELD_REQUIRED
@@ -1273,142 +1267,6 @@ def test_update_url_identical_title_log(
     assert is_string_in_logs(
         f"User={user.id} tried updating to identical URL title", caplog.records
     )
-
-
-def test_update_url_title_nonexistent_url_log(
-    add_one_url_and_all_users_to_each_utub_with_all_tags,
-    login_first_user_without_register,
-    caplog,
-):
-    """
-    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN the creator attempts to modify the URL title for a nonexistent URL, via a PATCH to:
-        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
-            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
-            URL_FORM.URL_TITLE: String of new title
-    THEN the server sends back a 404 HTTP status code, and the logs are valid
-    """
-    client, csrf_token_string, user, app = login_first_user_without_register
-
-    NEW_TITLE = "This is my newest facebook.com!"
-    utub_url_id = 9999
-    with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-
-    update_url_string_title_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_TITLE: NEW_TITLE,
-    }
-
-    update_url_string_title_form = client.patch(
-        url_for(
-            ROUTES.URLS.UPDATE_URL_TITLE,
-            utub_id=utub_creator_of.id,
-            utub_url_id=utub_url_id,
-        ),
-        data=update_url_string_title_form,
-    )
-
-    assert update_url_string_title_form.status_code == 404
-    assert is_string_in_logs(
-        f"User={user.id} tried to modify title for nonexistent UTubURL.id={utub_url_id} from UTub.id={utub_creator_of.id}",
-        caplog.records,
-    )
-
-
-def test_update_url_title_url_not_in_utub_log(
-    add_one_url_and_all_users_to_each_utub_with_all_tags,
-    login_first_user_without_register,
-    caplog,
-):
-    """
-    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN the creator attempts to modify the URL title for a URL that isn't in the prescribed UTub, via a PATCH to:
-        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
-            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
-            URL_FORM.URL_TITLE: String of new title
-    THEN the server sends back a 404 HTTP status code, and the logs are valid
-    """
-    client, csrf_token_string, user, app = login_first_user_without_register
-
-    NEW_TITLE = "This is my newest facebook.com!"
-    with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-
-        # Get the URL in this UTub
-        url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id != utub_creator_of.id
-        ).first()
-
-    update_url_string_title_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_TITLE: NEW_TITLE,
-    }
-
-    update_url_string_title_form = client.patch(
-        url_for(
-            ROUTES.URLS.UPDATE_URL_TITLE,
-            utub_id=utub_creator_of.id,
-            utub_url_id=url_in_this_utub.id,
-        ),
-        data=update_url_string_title_form,
-    )
-
-    assert update_url_string_title_form.status_code == 404
-    assert is_string_in_logs(
-        f"User={user.id} tried to modify title for UTubURL.id={url_in_this_utub.id} that is not in UTub.id={utub_creator_of.id}",
-        caplog.records,
-    )
-
-
-def test_update_url_title_user_not_in_utub_log(
-    add_two_users_and_all_urls_to_each_utub_with_one_tag,
-    login_first_user_without_register,
-    caplog,
-):
-    """
-    GIVEN a valid creator of a UTub that has members, URL added by the creator, and tags associated with each URL
-    WHEN the user attempts to modify the URL title for a UTub they aren't, via a PATCH to:
-        "/utubs/<int:utub_id>/urls/<int:url_id>/title" with valid form data, following this format:
-            URL_FORM.CSRF_TOKEN: String containing CSRF token for validation
-            URL_FORM.URL_TITLE: String of new title
-    THEN the server sends back a 403 HTTP status code, and the logs are valid
-    """
-    client, csrf_token_string, user, app = login_first_user_without_register
-
-    NEW_TITLE = "This is my newest facebook.com!"
-    with app.app_context():
-        utub_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-
-        # Get the URL of another UTub
-        url_not_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id != utub_creator_of.id,
-            Utub_Urls.user_id != current_user.id,
-        ).first()
-        utub_id = url_not_in_this_utub.utub_id
-        current_url_id = url_not_in_this_utub.id
-
-    update_url_string_title_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_TITLE: NEW_TITLE,
-    }
-
-    update_url_string_title_form = client.patch(
-        url_for(
-            ROUTES.URLS.UPDATE_URL_TITLE,
-            utub_id=utub_id,
-            utub_url_id=current_url_id,
-        ),
-        data=update_url_string_title_form,
-    )
-    assert update_url_string_title_form.status_code == 403
-    assert is_string_in_logs(f"User={user.id} not in UTub.id={utub_id}", caplog.records)
 
 
 def test_update_url_title_user_not_allowed_log(

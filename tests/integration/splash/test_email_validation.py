@@ -4,11 +4,12 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from src.models.utils import VerifyTokenResponse
+from src.splash.utils import verify_token
 from tests.models_for_test import valid_user_1
 from src import db
 from src.models.email_validations import Email_Validations
 from src.models.users import Users
-from src.models.utils import verify_token
 from src.utils.all_routes import ROUTES
 from src.utils.constants import EMAIL_CONSTANTS
 from src.utils.datetime_utils import utc_now
@@ -185,9 +186,8 @@ def test_valid_token_generated_on_user_register(
             Users.email == new_user[REGISTER_FORM.EMAIL].lower()
         ).first()
         user_token = registered_user.email_confirm.validation_token
-        assert verify_token(user_token, EMAILS.VALIDATE_EMAIL) == (
-            registered_user,
-            False,
+        assert verify_token(user_token, EMAILS.VALIDATE_EMAIL) == VerifyTokenResponse(
+            user=registered_user, is_expired=False, failed_due_to_exception=False
         )
 
 
@@ -262,9 +262,11 @@ def test_token_can_expire(app, register_first_user_without_email_validation):
         ).first()
         quick_expiring_token = user.get_email_validation_token(expires_in=0)
 
-        assert verify_token(quick_expiring_token, EMAILS.VALIDATE_EMAIL) == (
-            None,
-            True,
+        assert verify_token(
+            quick_expiring_token, EMAILS.VALIDATE_EMAIL
+        ) == VerifyTokenResponse(
+            user=None,
+            is_expired=True,
         )
 
 

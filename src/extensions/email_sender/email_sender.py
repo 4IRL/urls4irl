@@ -66,7 +66,9 @@ class EmailSender:
 
         return self._send_or_fail(message)
 
-    def send_password_reset_email(self, to_email: str, to_name: str, reset_url: str):
+    def send_password_reset_email(
+        self, to_email: str, to_name: str, reset_url: str
+    ) -> Response:
         message = {
             EMAILS.MESSAGES: [
                 self._message_builder(

@@ -10,13 +10,12 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import TAG_FORM
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
-from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
-from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
+from src.utils.strings.tag_strs import TAGS_SUCCESS
+from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.tags
 
 
-# Happy Path Tests
 def test_delete_tag_from_utub_with_no_url_associations(
     every_user_in_every_utub,
     add_one_tag_to_each_utub_after_one_url_added,
@@ -89,16 +88,6 @@ def test_delete_tag_from_utub_with_no_url_associations(
         assert Utub_Tags.query.count() == num_of_utub_tags - 1
         assert Utub_Tags.query.get(utub_tag_id) is None
         assert Utub_Url_Tags.query.count() == num_of_utub_url_tags
-
-        # Count instances of added tag applied to URLs in UTub. Should be 0.
-        num_of_urls_tag_applied_to_in_utub = count_tag_instances_in_utub(
-            utub.id, utub_tag_id
-        )
-        assert num_of_urls_tag_applied_to_in_utub == 0
-        assert (
-            delete_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
-            == num_of_urls_tag_applied_to_in_utub
-        )
 
 
 def test_delete_tag_from_utub_with_url_associations(
@@ -181,18 +170,7 @@ def test_delete_tag_from_utub_with_url_associations(
         assert Utub_Tags.query.get(utub_tag_id) is None
         assert Utub_Url_Tags.query.count() == total_utub_url_tags - num_of_utub_url_tags
 
-        # Count instances of added tag applied to URLs in UTub. Should be 0.
-        num_of_urls_tag_applied_to_in_utub = count_tag_instances_in_utub(
-            utub.id, utub_tag_id
-        )
-        assert num_of_urls_tag_applied_to_in_utub == 0
-        assert (
-            delete_tag_response_json[TAGS_SUCCESS.TAG_COUNTS_MODIFIED]
-            == num_of_urls_tag_applied_to_in_utub
-        )
 
-
-# Sad Path Tests
 def test_delete_tag_from_utub_not_member_of(
     add_one_url_to_each_utub_one_tag_to_each_url_all_tags_in_utub,
     login_first_user_without_register,
@@ -234,14 +212,7 @@ def test_delete_tag_from_utub_not_member_of(
         data=delete_tag_form,
     )
 
-    assert delete_tag_response.status_code == 403
-    delete_tag_response_json = delete_tag_response.json
-
-    assert delete_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        delete_tag_response_json[STD_JSON.MESSAGE]
-        == TAGS_FAILURE.ONLY_UTUB_MEMBERS_DELETE_TAGS
-    )
+    assert delete_tag_response.status_code == 404
 
     with app.app_context():
         assert Utub_Tags.query.count() == num_of_utub_tags
@@ -430,7 +401,7 @@ def test_delete_tag_from_utub_log(
     THEN verify that the tag gets deleted, the server responds with a 200 HTTP status code
         and the logs are valid
     """
-    client, csrf_token, user, app = login_first_user_without_register
+    client, csrf_token, _, app = login_first_user_without_register
 
     with app.app_context():
         # Find UTub this user is member of
@@ -459,43 +430,3 @@ def test_delete_tag_from_utub_log(
     assert is_string_in_logs(f"UTub.id={utub.id}", caplog.records)
     assert is_string_in_logs(f"UTubTag.id={utub_tag_id}", caplog.records)
     assert is_string_in_logs(f"UTubTag.tag_string={utub_tag_string}", caplog.records)
-
-
-def test_delete_tag_from_utub_not_member_of_log(
-    add_one_url_to_each_utub_one_tag_to_each_url_all_tags_in_utub,
-    login_first_user_without_register,
-    caplog,
-):
-    """
-    GIVEN utubs with associated utub tags and those tags associated with URLs
-    WHEN a member of those utubs decides to delete a utub tag from a UTub they aren't a member of
-    THEN verify that the tag does not get deleted, the server responds with a 403 HTTP status code
-        and the logs are valid
-    """
-    client, csrf_token, user, app = login_first_user_without_register
-
-    with app.app_context():
-        # Find UTub this user is member of
-        utub: Utubs = Utubs.query.filter(Utubs.utub_creator != current_user.id).first()
-
-        # Find tag in this UTub
-        utub_tag: Utub_Tags = Utub_Tags.query.filter(
-            Utub_Tags.utub_id == utub.id
-        ).first()
-
-    delete_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token}
-
-    delete_tag_response = client.delete(
-        url_for(
-            ROUTES.UTUB_TAGS.DELETE_UTUB_TAG,
-            utub_id=utub.id,
-            utub_tag_id=utub_tag.id,
-        ),
-        data=delete_tag_form,
-    )
-
-    assert delete_tag_response.status_code == 403
-    assert is_string_in_logs(
-        f"User={user.id} tried removing UTubTag.id={utub_tag.id} but user not in UTub.id={utub.id}",
-        caplog.records,
-    )

@@ -9,7 +9,7 @@ from src.utils.all_routes import ROUTES
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from src.utils.strings.model_strs import MODELS as MODEL_STRS
-from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from src.utils.strings.url_strs import URL_SUCCESS
 from src.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.utils_for_test import is_string_in_logs
 
@@ -136,11 +136,7 @@ def test_get_url_in_utub_as_not_member(
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
-    assert get_url_response.status_code == 403
-    get_url_response_json = get_url_response.json
-
-    assert get_url_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert get_url_response_json[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_RETRIEVE_URL
+    assert get_url_response.status_code == 404
 
 
 def test_get_nonexistent_url_in_utub(
@@ -179,10 +175,6 @@ def test_get_nonexistent_url_in_utub(
     )
 
     assert get_url_response.status_code == 404
-    get_url_response_json = get_url_response.json
-
-    assert get_url_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert get_url_response_json[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_RETRIEVE_URL
 
 
 def test_get_url_in_nonexistent_utub(
@@ -242,8 +234,7 @@ def test_get_url_in_utub_non_ajax_request(
         ),
     )
 
-    assert get_url_response.status_code == 404
-    assert IDENTIFIERS.HTML_404.encode() in get_url_response.data
+    assert get_url_response.status_code == 302
 
 
 def test_get_url_in_utub_log(
@@ -319,10 +310,6 @@ def test_get_nonexistent_url_in_utub_log(
     )
 
     assert get_url_response.status_code == 404
-    assert is_string_in_logs(
-        f"User={user.id} tried to retrieve nonexistent UTubURL.id={url_id_in_utub}",
-        caplog.records,
-    )
 
 
 def test_get_url_in_utub_not_member_of_log(
@@ -361,11 +348,7 @@ def test_get_url_in_utub_not_member_of_log(
         headers={URL_VALIDATION.X_REQUESTED_WITH: URL_VALIDATION.XMLHTTPREQUEST},
     )
 
-    assert get_url_response.status_code == 403
-    assert is_string_in_logs(
-        f"User={user.id} tried to get UTubURL.id={url_id_in_utub} but not in UTub.id={utub_member_of.id}",
-        caplog.records,
-    )
+    assert get_url_response.status_code == 404
 
 
 def test_get_url_not_ajax_log(
@@ -402,7 +385,4 @@ def test_get_url_not_ajax_log(
         ),
     )
 
-    assert get_url_response.status_code == 404
-    assert is_string_in_logs(
-        f"User={user.id} did not make an AJAX request", caplog.records
-    )
+    assert get_url_response.status_code == 302

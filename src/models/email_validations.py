@@ -45,7 +45,7 @@ class Email_Validations(db.Model):
         self.attempts += 1
         return True
 
-    def check_if_too_many_attempts(self) -> bool:
+    def has_too_many_email_attempts(self) -> bool:
         if (
             self.last_attempt is None
             or self.attempts < EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR

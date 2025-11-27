@@ -1,6 +1,6 @@
 import pytest
 
-from src.utils.input_sanitization import sanitize_user_input
+from src.api_common.input_sanitization import sanitize_user_input
 
 pytestmark = pytest.mark.unit
 

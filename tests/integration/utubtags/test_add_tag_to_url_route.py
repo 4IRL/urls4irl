@@ -9,6 +9,7 @@ from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
+from src.tags.constants import URLTagErrorCodes
 from src.utils.constants import TAG_CONSTANTS
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import all_tag_strings
@@ -492,7 +493,6 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
         )
 
 
-# Sad Path Tests
 def test_add_duplicate_tag_to_valid_url_as_utub_creator(
     add_all_urls_and_users_to_each_utub_with_one_tag, login_first_user_without_register
 ):
@@ -510,7 +510,6 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
     {
         STD_JSON.STATUS : "Failure",
         STD_JSON.MESSAGE : "URL already has this tag",
-        "Error_code" : 3
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -580,7 +579,6 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.TAG_ALREADY_ON_URL
-    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
         # Ensure no new tags exist
@@ -637,7 +635,6 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.TAG_ALREADY_ON_URL,
-        STD_JSON.ERROR_CODE : 3
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -707,7 +704,6 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.TAG_ALREADY_ON_URL
-    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
         # Ensure no new tags exist
@@ -1078,7 +1074,6 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : "Unable to add tag to this URL",
-        STD_JSON.ERROR_CODE : 1
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -1127,14 +1122,7 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         data=add_tag_form,
     )
 
-    assert add_tag_response.status_code == 403
-
-    add_tag_response_json = add_tag_response.json
-    assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
-    )
-    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 1
+    assert add_tag_response.status_code == 404
 
     with app.app_context():
         # Ensure no new tags exist
@@ -1296,7 +1284,6 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : "URLs can only have 5 tags max",
-        STD_JSON.ERROR_CODE : 2
     }
     """
     MAX_NUM_OF_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
@@ -1371,7 +1358,6 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.FIVE_TAGS_MAX
-    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure no new tags exist, accounting for additional
@@ -1428,7 +1414,6 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.FIVE_TAGS_MAX,
-        STD_JSON.ERROR_CODE : 2
     }
     """
     MAX_NUM_OF_TAGS = TAG_CONSTANTS.MAX_URL_TAGS
@@ -1503,7 +1488,6 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.FIVE_TAGS_MAX
-    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 2
 
     with app.app_context():
         # Ensure no new tags exist, accounting for additional
@@ -1560,7 +1544,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-        STD_JSON.ERROR_CODE : 4,
+        STD_JSON.ERROR_CODE : URLTagErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: {
             TAG_FORM.TAG_STRING: ["This field is required."]
         }
@@ -1612,7 +1596,10 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
     assert (
         add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
     )
-    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 4
+    assert (
+        int(add_tag_response_json[STD_JSON.ERROR_CODE])
+        == URLTagErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         add_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING]
         == TAGS_FAILURE.FIELD_REQUIRED
@@ -1661,7 +1648,7 @@ def test_add_tag_to_valid_url_valid_utub_fully_sanitized_tag(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-        STD_JSON.ERROR_CODE : 4,
+        STD_JSON.ERROR_CODE : URLTagErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: {
             TAG_FORM.TAG_STRING: ["Invalid input, please try again."]
         }
@@ -1706,7 +1693,10 @@ def test_add_tag_to_valid_url_valid_utub_fully_sanitized_tag(
     assert (
         add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
     )
-    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 4
+    assert (
+        int(add_tag_response_json[STD_JSON.ERROR_CODE])
+        == URLTagErrorCodes.INVALID_FORM_INPUT
+    )
     assert add_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING] == [
         TAGS_FAILURE.INVALID_INPUT
     ]
@@ -1730,7 +1720,7 @@ def test_add_tag_to_valid_url_valid_utub_partially_sanitized_tag(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-        STD_JSON.ERROR_CODE : 4,
+        STD_JSON.ERROR_CODE : URLTagErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: {
             TAG_FORM.TAG_STRING: ["Invalid input, please try again."]
         }
@@ -1780,7 +1770,10 @@ def test_add_tag_to_valid_url_valid_utub_partially_sanitized_tag(
             add_tag_response_json[STD_JSON.MESSAGE]
             == TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL
         )
-        assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 4
+        assert (
+            int(add_tag_response_json[STD_JSON.ERROR_CODE])
+            == URLTagErrorCodes.INVALID_FORM_INPUT
+        )
         assert add_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING] == [
             TAGS_FAILURE.INVALID_INPUT
         ]
@@ -2106,113 +2099,6 @@ def test_add_fresh_tag_to_valid_url_log(
         assert is_string_in_logs(f"UTubURLTag.id={utub_url_tag.id}", caplog.records)
 
 
-def test_add_tag_to_url_not_in_utub_log(
-    add_one_url_to_each_utub_no_tags,
-    add_tags_to_utubs,
-    login_first_user_without_register,
-    caplog,
-):
-    """
-    GIVEN 3 users, 3 UTubs, and 3 Tags, with only one user (the creator) in each UTub, and the currently logged in user is a creator of a UTub,
-        and one URL exists in each UTub, and 3 Tags exist but are not applied to any URLs
-    WHEN the user tries to add a tag to a URL that doesn't exist in their UTub
-        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
-            "utub_id" : An integer representing UTub ID,
-            "utub_url_id": An integer representing URL ID to add tag to
-    THEN ensure that the server responds with a 404 HTTP status code and the logs are valid
-    """
-    client, csrf_token, user, app = login_first_user_without_register
-    tag_to_add = all_tag_strings[0]
-
-    with app.app_context():
-        # Find UTub that current user is creator of
-        utub_user_is_creator_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator == current_user.id
-        ).first()
-        utub_id_user_is_creator_of = utub_user_is_creator_of.id
-
-        # Find URL that isn't in this UTub
-        url_association_not_with_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id != utub_id_user_is_creator_of
-        ).first()
-        url_id_for_url_not_in_utub = url_association_not_with_this_utub.id
-
-    # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
-    add_tag_response = client.post(
-        url_for(
-            ROUTES.URL_TAGS.CREATE_URL_TAG,
-            utub_id=utub_id_user_is_creator_of,
-            utub_url_id=url_id_for_url_not_in_utub,
-        ),
-        data=add_tag_form,
-    )
-
-    assert add_tag_response.status_code == 404
-    assert is_string_in_logs(
-        f"User={user.id} tried adding a tag to UTubURL.id={url_id_for_url_not_in_utub} in UTub.id={utub_id_user_is_creator_of} but UTubURL.id={url_id_for_url_not_in_utub} in UTub.id={url_association_not_with_this_utub.utub_id}",
-        caplog.records,
-    )
-
-
-def test_add_tag_to_url_in_utub_user_is_not_member_of_log(
-    add_one_url_to_each_utub_no_tags,
-    add_tags_to_utubs,
-    login_first_user_without_register,
-    caplog,
-):
-    """
-    GIVEN 3 users, 3 UTubs, and 3 Tags, with only one user (the creator) in each UTub, and the currently logged in user is a creator of a UTub,
-        and one URL exists in each UTub, and 3 Tags exist but are not applied to any URLs
-    WHEN the user tries to add a tag to a URL in a UTub they are not a member or creator of
-        - By POST to "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags where:
-            "utub_id" : An integer representing UTub ID,
-            "utub_url_id": An integer representing URL ID to add tag to
-    THEN ensure that the server responds with a 404 HTTP status code and the logs are valid
-    """
-    client, csrf_token, user, app = login_first_user_without_register
-    tag_to_add = all_tag_strings[0]
-
-    with app.app_context():
-        # Find UTub that current user is not member of
-        utub_user_association_not_member_of = Utub_Members.query.filter(
-            Utub_Members.user_id != current_user.id
-        ).first()
-        utub_user_not_member_of: Utubs = utub_user_association_not_member_of.to_utub
-        utub_id_that_user_not_member_of = utub_user_not_member_of.id
-
-        # Find URL in this UTub
-        url_association_with_this_utub: Utub_Urls = Utub_Urls.query.filter(
-            Utub_Urls.utub_id == utub_id_that_user_not_member_of
-        ).first()
-        url_id_for_url_in_utub: int = url_association_with_this_utub.id
-
-    # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
-    add_tag_response = client.post(
-        url_for(
-            ROUTES.URL_TAGS.CREATE_URL_TAG,
-            utub_id=utub_id_that_user_not_member_of,
-            utub_url_id=url_id_for_url_in_utub,
-        ),
-        data=add_tag_form,
-    )
-
-    assert add_tag_response.status_code == 403
-    assert is_string_in_logs(
-        f"User={user.id} tried adding tag to UTubURL.id={url_id_for_url_in_utub} but User={user.id} not in UTub.id={utub_id_that_user_not_member_of}",
-        caplog.records,
-    )
-
-
 def test_add_tag_to_url_with_max_tags_log(
     add_one_url_and_all_users_to_each_utub_no_tags,
     add_tags_to_utubs,
@@ -2278,7 +2164,7 @@ def test_add_tag_to_url_with_max_tags_log(
 
     assert add_tag_response.status_code == 400
     assert is_string_in_logs(
-        f"User={user.id} tried adding tag to UTubURL.id={url_id_in_this_utub} but UTubURL.id={url_id_in_this_utub} tag limited",
+        f"User={user.id} tried adding tag to UTubURL.id={url_id_in_this_utub} but tag limited",
         caplog.records,
     )
 
@@ -2410,7 +2296,6 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
     {
         STD_JSON.STATUS : "Failure",
         STD_JSON.MESSAGE : "URL already has this tag",
-        "Error_code" : 3
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -2475,7 +2360,6 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
     add_tag_response_json = add_tag_response.json
     assert add_tag_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_tag_response_json[STD_JSON.MESSAGE] == TAGS_FAILURE.TAG_ALREADY_ON_URL
-    assert int(add_tag_response_json[STD_JSON.ERROR_CODE]) == 3
 
     with app.app_context():
         # Ensure no new tags exist

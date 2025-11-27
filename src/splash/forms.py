@@ -2,9 +2,9 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, EmailField
 from wtforms.validators import Length, Email, EqualTo, InputRequired, ValidationError
 
+from src.api_common.input_sanitization import sanitize_user_input
 from src.models.users import Users
 from src.utils.constants import USER_CONSTANTS
-from src.utils.input_sanitization import sanitize_user_input
 from src.utils.string_field_v2 import StringFieldV2
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM, REGISTER_FORM

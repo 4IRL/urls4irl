@@ -2,8 +2,8 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, SubmitField, ValidationError
 from wtforms.validators import Length, InputRequired
 
+from src.api_common.input_sanitization import sanitize_user_input
 from src.utils.constants import URL_CONSTANTS
-from src.utils.input_sanitization import sanitize_user_input
 from src.utils.string_field_v2 import StringFieldV2
 from src.utils.strings.model_strs import MODELS
 from src.utils.strings.url_strs import URL_FAILURE

@@ -433,9 +433,11 @@ def test_delete_utub_as_not_member_or_creator(
     every_user_makes_a_unique_utub, login_first_user_without_register
 ):
     """
-    GIVEN three sets of users, with each user having created their own UTub
+    GIVEN three users, with each user having created their own UTub, and only the creators
+        in each UTub
     WHEN one user tries to delete the other two users' UTubs via DELETE to "/utubs/<int: utub_id>"
-    THEN ensure response status code is 403, and proper JSON response indicating error is given
+    THEN ensure response status code is 404, and proper JSON response indicating error is given
+        indicating the user is not a member of the UTubs
 
     JSON response should be formatted as follows:
     {
@@ -454,23 +456,13 @@ def test_delete_utub_as_not_member_or_creator(
         initial_num_utubs = Utubs.query.count()
         initial_num_utub_members = Utub_Members.query.count()
 
-        # Make sure that only 2 utubs-user associations exist, one for each utub/user combo
-        assert len(user_not_in_these_utubs) == 2
-
     for utub_not_in in user_not_in_these_utubs:
         delete_utub_response = client.delete(
             url_for(ROUTES.UTUBS.DELETE_UTUB, utub_id=utub_not_in.utub_id),
             data={UTUB_FORM.CSRF_TOKEN: csrf_token},
         )
 
-        assert delete_utub_response.status_code == 403
-
-        delete_utub_response_json = delete_utub_response.json
-
-        assert delete_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-        assert (
-            delete_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.NOT_AUTHORIZED
-        )
+        assert delete_utub_response.status_code == 404
 
         with app.app_context():
             user_not_in_these_utubs: list[Utub_Members] = Utub_Members.query.filter(
@@ -580,6 +572,6 @@ def test_delete_utub_as_member_logs(
 
     assert delete_utub_response.status_code == 403
     assert is_string_in_logs(
-        f"User={user.id} is not the creator of UTub.id={utub_id_member_of} | UTub.name={utub_name}",
+        f"User={user.id} not creator: UTub.id={utub_id_member_of} | UTub.name={utub_name}",
         caplog.records,
     )

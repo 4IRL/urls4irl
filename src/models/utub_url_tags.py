@@ -48,3 +48,6 @@ class Utub_Url_Tags(db.Model):
     utub_containing_this_url_tag: Utubs = db.relationship(
         "Utubs", back_populates="utub_url_tags"
     )
+
+    def __repr__(self):
+        return f"Utub Url Tag | Utub_Url_Tags.id={self.id} | Utub_Url_Tags.utub_url_id={self.utub_url_id} | Utub_Url_Tags.utub_tag_id={self.utub_tag_id} | Utub_Url_Tags.utub_id={self.utub_id} "

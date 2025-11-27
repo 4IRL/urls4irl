@@ -32,6 +32,7 @@ from tests.models_for_test import (
     valid_empty_utub_1,
     valid_url_strings,
     all_tags,
+    maximum_tags,
 )
 
 # Order matters!
@@ -417,7 +418,7 @@ def add_single_utub_as_user_without_logging_in(
             utub_creator=1,
             utub_description=valid_empty_utub_1[model_strs.UTUB_DESCRIPTION],
         )
-        creator_to_utub = Utub_Members()
+        creator_to_utub = Utub_Members(member_role=Member_Role.CREATOR)
         creator_to_utub.to_user = first_user_object
         new_utub.members.append(creator_to_utub)
         db.session.add(new_utub)
@@ -445,7 +446,7 @@ def add_all_utubs_as_user_without_logging_in(
                 utub_description=utub_data[model_strs.UTUB_DESCRIPTION],
             )
 
-            creator_to_utub = Utub_Members()
+            creator_to_utub = Utub_Members(member_role=Member_Role.CREATOR)
             creator_to_utub.to_user = user
             new_utub.members.append(creator_to_utub)
             db.session.commit()
@@ -608,6 +609,21 @@ def add_tags_to_utubs(app: Flask, every_user_makes_a_unique_utub):
                     utub_id=utub.id,
                     tag_string=tag[model_strs.TAG_STRING],
                     created_by=idx + 1,
+                )
+                db.session.add(new_tag)
+        db.session.commit()
+
+
+@pytest.fixture
+def add_max_tags_to_utubs(app: Flask, every_user_makes_a_unique_utub):
+    with app.app_context():
+        all_utubs: list[Utubs] = Utubs.query.all()
+        for utub in all_utubs:
+            for tag in maximum_tags:
+                new_tag = Utub_Tags(
+                    utub_id=utub.id,
+                    tag_string=tag[model_strs.TAG_STRING],
+                    created_by=utub.utub_creator,
                 )
                 db.session.add(new_tag)
         db.session.commit()

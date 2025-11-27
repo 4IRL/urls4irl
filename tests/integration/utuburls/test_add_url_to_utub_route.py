@@ -11,6 +11,7 @@ from src.models.urls import Urls
 from src.models.utubs import Utubs
 from src.models.utub_members import Utub_Members
 from src.models.utub_urls import Utub_Urls
+from src.urls.constants import URLErrorCodes
 from src.utils.all_routes import ROUTES
 from src.utils.strings.form_strs import URL_FORM
 from src.utils.strings.html_identifiers import IDENTIFIERS
@@ -242,7 +243,7 @@ def test_add_invalid_url_as_utub_member(
     {
         STD_JSON.STATUS : "Failure",
         STD_JSON.MESSAGE : "Unable to add this URL",
-        "Error_code": 2
+        STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_URL_ERROR
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -282,7 +283,10 @@ def test_add_invalid_url_as_utub_member(
         add_url_json_response[STD_JSON.MESSAGE]
         == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
     ), f"Failed with url={invalid_url}"
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.INVALID_URL_ERROR
+    )
 
     with app.app_context():
         # Ensure no new URL created
@@ -328,7 +332,7 @@ def test_add_invalid_urls(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : URL_FAILURE.UNABLE_TO_ADD_URL,
-        "Error_code": 2
+        STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_URL_ERROR
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -366,7 +370,10 @@ def test_add_invalid_urls(
         add_url_json_response[STD_JSON.MESSAGE]
         == URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL
     ), f"Failed with url={invalid_url}"
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.INVALID_URL_ERROR
+    )
 
     with app.app_context():
         # Ensure no new URL created
@@ -407,7 +414,7 @@ def test_add_invalid_url_with_credential_as_utub_member(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION,
-        "Error_code": 6
+        STD_JSON.ERROR_CODE: URLErrorCode.URL_WITH_CREDENTIALS_ERROR
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -448,7 +455,10 @@ def test_add_invalid_url_with_credential_as_utub_member(
         add_url_json_response[STD_JSON.MESSAGE]
         == URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION
     ), f"Failed with url={invalid_url}"
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 6
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_WITH_CREDENTIALS_ERROR
+    )
 
     with app.app_context():
         # Ensure no new URL created
@@ -489,7 +499,7 @@ def test_add_invalid_url_as_utub_creator(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION,
-        "Error_code": 6
+        STD_JSON.ERROR_CODE: URLErrorCode.URL_WITH_CREDENTIALS_ERROR
     }
     """
     client, csrf_token, _, app = login_first_user_without_register
@@ -528,7 +538,10 @@ def test_add_invalid_url_as_utub_creator(
         add_url_json_response[STD_JSON.MESSAGE]
         == URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION
     ), f"Failed with url={invalid_url}"
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 6
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_WITH_CREDENTIALS_ERROR
+    )
 
     with app.app_context():
         # Ensure no new URL created
@@ -639,12 +652,7 @@ def test_add_valid_url_to_utub_not_a_member_of(
         data=add_url_form,
     )
 
-    assert add_url_response.status_code == 403
-
-    add_url_json_response = add_url_response.json
-    assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 1
+    assert add_url_response.status_code == 404
 
     with app.app_context():
         utub_not_member_of: Utubs = Utubs.query.get(id_of_utub_not_member_of)
@@ -902,7 +910,7 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : "URL already in UTub",
-        STD_JSON.ERROR_CODE: 3
+        STD_JSON.ERROR_CODE: URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
         URLS_FAILURE.URL_STRING : "https://www.google.com",
     }
     """
@@ -951,7 +959,10 @@ def test_add_duplicate_url_to_utub_as_same_user_who_added_url(
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
     assert add_url_json_response[URL_FAILURE.URL_STRING] == url_string_to_add
 
     with app.app_context():
@@ -991,7 +1002,7 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : "URL already in UTub",
-        STD_JSON.ERROR_CODE: 3
+        STD_JSON.ERROR_CODE: URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
         URLS_FAILURE.URL_STRING : "https://www.google.com",
     }
     """
@@ -1043,7 +1054,10 @@ def test_add_duplicate_url_to_utub_as_creator_of_utub_not_url_adder(
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
     assert add_url_json_response[URL_FAILURE.URL_STRING] == url_string_to_add
 
     with app.app_context():
@@ -1082,7 +1096,7 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE : URL_FAILURE.URL_IN_UTUB,
-        STD_JSON.ERROR_CODE: 3
+        STD_JSON.ERROR_CODE: URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
         URL_FAILURE.URL_STRING : URL_FAILURE.URL_IN_UTUB,
     }
     """
@@ -1134,7 +1148,10 @@ def test_add_duplicate_url_to_utub_as_member_of_utub_not_url_adder(
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.URL_IN_UTUB
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 3
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR
+    )
     assert add_url_json_response[URL_FAILURE.URL_STRING] == url_string_to_add
 
     with app.app_context():
@@ -1216,7 +1233,10 @@ def test_add_url_missing_url(
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
         == URL_FAILURE.FIELD_REQUIRED
@@ -1245,7 +1265,7 @@ def test_add_url_missing_url_title(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
-        STD_JSON.ERROR_CODE: 4,
+        STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: {
             URL_FORM.URL_TITLE: ["This field is required."]
         }
@@ -1288,7 +1308,10 @@ def test_add_url_missing_url_title(
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE]
         == URL_FAILURE.FIELD_REQUIRED
@@ -1317,7 +1340,7 @@ def test_add_url_fully_sanitized_url_title(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
-        STD_JSON.ERROR_CODE: 4,
+        STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: {
             URL_FORM.URL_TITLE: ["Invalid input, please try again."]
         }
@@ -1352,7 +1375,10 @@ def test_add_url_fully_sanitized_url_title(
     add_url_json_response = add_url_response.json
     assert add_url_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert add_url_json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
-    assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
+    assert (
+        int(add_url_json_response[STD_JSON.ERROR_CODE])
+        == URLErrorCodes.INVALID_FORM_INPUT
+    )
     assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE] == [
         URL_FAILURE.INVALID_INPUT
     ]
@@ -1372,7 +1398,7 @@ def test_add_url_partially_sanitized_url_title(
     {
         STD_JSON.STATUS: STD_JSON.FAILURE,
         STD_JSON.MESSAGE: URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
-        STD_JSON.ERROR_CODE: 4,
+        STD_JSON.ERROR_CODE: URLErrorCodes.INVALID_FORM_INPUT,
         STD_JSON.ERRORS: {
             URL_FORM.URL_TITLE: ["Invalid input, please try again."]
         }
@@ -1415,7 +1441,10 @@ def test_add_url_partially_sanitized_url_title(
             add_url_json_response[STD_JSON.MESSAGE]
             == URL_FAILURE.UNABLE_TO_ADD_URL_FORM
         )
-        assert int(add_url_json_response[STD_JSON.ERROR_CODE]) == 4
+        assert (
+            int(add_url_json_response[STD_JSON.ERROR_CODE])
+            == URLErrorCodes.INVALID_FORM_INPUT
+        )
         assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE] == [
             URL_FAILURE.INVALID_INPUT
         ]
@@ -1802,46 +1831,6 @@ def test_add_url_unknown_exception_log(
     )
     assert is_string_in_logs(f"url_string={valid_url_to_add}", caplog.records)
     assert is_string_in_logs("Exception=Unknown exception", caplog.records)
-
-
-def test_add_url_not_in_utub_log(
-    every_user_makes_a_unique_utub, login_first_user_without_register, caplog
-):
-    """
-    GIVEN 3 users and 3 UTubs, with only the creator in each UTub
-    WHEN the user tries to add a URL to a UTub they are a not a member of
-        - By POST to "/utubs/<int:utub_id>/urls" where "utub_id" is an integer representing UTub ID
-    THEN ensure that the server responds with a 403 HTTP status code and the logs are valid
-    """
-    client, csrf_token, user, app = login_first_user_without_register
-    url_string_to_add = valid_url_strings[0]
-
-    with app.app_context():
-        # Find a UTub this current user is a member of (and not creator of)
-        current_utub_not_member_of: Utubs = Utubs.query.filter(
-            Utubs.utub_creator != current_user.id
-        ).first()
-
-        # Grab a URL to add
-        url_title_to_add = f"This is {url_string_to_add}"
-        utub_id_to_add_to = current_utub_not_member_of.id
-
-    # Add the URL to the UTub
-    add_url_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token,
-        URL_FORM.URL_STRING: url_string_to_add,
-        URL_FORM.URL_TITLE: url_title_to_add,
-    }
-
-    add_url_response = client.post(
-        url_for(ROUTES.URLS.CREATE_URL, utub_id=utub_id_to_add_to), data=add_url_form
-    )
-
-    assert add_url_response.status_code == 403
-    assert is_string_in_logs(
-        f"User={user.id} tried adding a URL to UTub.id={utub_id_to_add_to}",
-        caplog.records,
-    )
 
 
 def test_add_url_already_in_utub_log(

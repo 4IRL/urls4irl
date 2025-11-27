@@ -1,52 +1,49 @@
-from urllib.parse import parse_qs, urlencode, urlparse
 from flask import (
     Blueprint,
-    current_app,
-    jsonify,
     redirect,
     url_for,
     render_template,
     request,
     abort,
-    session,
 )
 from flask_login import current_user, login_user
+from werkzeug import Response as WerkzeugResponse
 
 from src import db
+from src.api_common.auth_decorators import no_authenticated_users_allowed
+from src.api_common.responses import FlaskResponse
 from src.app_logger import (
-    critical_log,
     safe_add_log,
     warning_log,
 )
-from src.extensions.extension_utils import safe_get_email_sender, safe_get_notif_sender
 from src.models.email_validations import Email_Validations
-from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
-from src.models.utils import verify_token
-from src.models.utub_members import Utub_Members
 from src.splash.forms import (
     LoginForm,
     UserRegistrationForm,
     ValidateEmailForm,
     ForgotPasswordForm,
-    ResetPasswordForm,
 )
-from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
-from src.utils.strings.json_strs import STD_JSON_RESPONSE
-from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
-from src.utils.strings.user_strs import USER_FAILURE
+from src.splash.services.forgot_password import (
+    handle_invalid_forgot_password_form_input,
+    send_forgot_password_email_to_user,
+)
+from src.splash.services.reset_password import reset_password_for_user
+from src.splash.services.user_login import (
+    handle_invalid_user_login_form_inputs,
+    login_user_to_u4i,
+)
+from src.splash.services.user_registration import (
+    handle_invalid_user_registration_form_inputs,
+    register_new_user,
+)
+from src.splash.services.validate_email import (
+    send_validation_email_to_user,
+    validate_email_for_user,
+)
+from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.all_routes import ROUTES
-from src.utils.constants import CONSTANTS, EMAIL_CONSTANTS
-from src.splash.utils import (
-    _handle_after_forgot_password_form_validated,
-    _handle_email_sending_result,
-    _validate_resetting_password,
-    build_form_errors,
-)
-from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
-
-# Standard response for JSON messages
-STD_JSON = STD_JSON_RESPONSE
+from src.utils.constants import CONSTANTS
 
 splash = Blueprint("splash", __name__)
 
@@ -62,7 +59,7 @@ def error_page():
 
 
 @splash.route("/", methods=["GET"])
-def splash_page():
+def splash_page() -> WerkzeugResponse | str:
     """Splash page for an unlogged in user."""
     if current_user.is_authenticated and current_user.email_validated:
         safe_add_log(f"User={current_user} already logged in")
@@ -71,204 +68,37 @@ def splash_page():
 
 
 @splash.route("/register", methods=["GET", "POST"])
-def register_user():
+@no_authenticated_users_allowed
+def register_user() -> FlaskResponse | WerkzeugResponse | str | tuple[str, int]:
     """Allows a user to register an account."""
-    if current_user.is_authenticated:
-        if not current_user.email_validated:
-            warning_log(f"User={current_user.id} registered but not email validated")
-            return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
-        warning_log(f"User={current_user.id} already logged in")
-        return redirect(url_for(ROUTES.UTUBS.HOME))
-
     register_form: UserRegistrationForm = UserRegistrationForm()
 
     if request.method == "GET":
         return render_template("register_user.html", register_form=register_form)
 
-    if register_form.validate_on_submit():
-        username = register_form.username.get()
-        email = register_form.get_email()
-        plain_password = register_form.get_password()
-        new_user = Users(
-            username=username,
-            email=email.lower(),
-            plaintext_password=plain_password,
-        )
-        email_validation_token = new_user.get_email_validation_token()
-        new_email_validation = Email_Validations(
-            validation_token=email_validation_token
-        )
-        new_user.email_confirm = new_email_validation
-        db.session.add(new_user)
-        db.session.commit()
+    if not register_form.validate_on_submit():
+        return handle_invalid_user_registration_form_inputs(register_form)
 
-        user = Users.query.filter(Users.username == username).first()
-        login_user(user)
-        safe_add_log(f"User={user.id} successfully registered but not email validated")
-        validate_email_form = ValidateEmailForm()
-        return (
-            render_template(
-                "email_validation/email_needs_validation_modal.html",
-                validate_email_form=validate_email_form,
-            ),
-            201,
-        )
-
-    # Input form errors
-    if register_form.errors is not None:
-        if EMAILS.EMAIL in register_form.errors:
-            email_errors = register_form.errors[EMAILS.EMAIL]
-            if (
-                USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED not in email_errors
-                or len(register_form.errors) != 1
-                or len(email_errors) != 1
-            ):
-                warning_log("Form errors when registering")
-                # Do not show to user that this email has not been validated if they have other form errors
-                if USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED in email_errors:
-                    warning_log("User not email validated but other form errors")
-                    email_errors.remove(  # type: ignore
-                        USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
-                    )
-                return (
-                    jsonify(
-                        {
-                            STD_JSON.STATUS: STD_JSON.FAILURE,
-                            STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
-                            STD_JSON.ERROR_CODE: 2,
-                            STD_JSON.ERRORS: build_form_errors(register_form),
-                        }
-                    ),
-                    400,
-                )
-            else:
-                user: Users = Users.query.filter(
-                    Users.email == register_form.get_email().lower()
-                ).first_or_404()
-                login_user(user)
-                warning_log(f"User={user.id} has not validated email yet")
-                return (
-                    jsonify(
-                        {
-                            STD_JSON.STATUS: STD_JSON.FAILURE,
-                            STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
-                            STD_JSON.ERROR_CODE: 1,
-                        }
-                    ),
-                    401,
-                )
-
-        warning_log("User had form errors on register")
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
-                    STD_JSON.ERROR_CODE: 2,
-                    STD_JSON.ERRORS: build_form_errors(register_form),
-                }
-            ),
-            400,
-        )
-
-    return render_template("register_user.html", register_form=register_form)
+    return register_new_user(register_form=register_form)
 
 
 @splash.route("/login", methods=["GET", "POST"])
+@no_authenticated_users_allowed
 def login():
     """Login page. Allows user to register or login."""
-    if current_user.is_authenticated:
-        if not current_user.email_validated:
-            warning_log(f"User={current_user.id} registered but not email validated")
-            return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
-        warning_log(f"User={current_user.id} already logged in")
-        return redirect(url_for(ROUTES.UTUBS.HOME))
-
     login_form = LoginForm()
 
     if request.method == "GET":
         return render_template("login.html", login_form=login_form)
 
-    if login_form.validate_on_submit():
-        username = login_form.username.data
-        user: Users = Users.query.filter(Users.username == username).first()
-        login_user(user)  # Can add Remember Me functionality here
-        if not user.email_validated:
-            warning_log(f"User={user.id} not email validated")
-            return (
-                jsonify(
-                    {
-                        STD_JSON.STATUS: STD_JSON.FAILURE,
-                        STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
-                        STD_JSON.ERROR_CODE: 1,
-                    }
-                ),
-                401,
-            )
+    if not login_form.validate_on_submit():
+        return handle_invalid_user_login_form_inputs(login_form)
 
-        safe_add_log(f"Logging User.id={user.id} in")
-        next_page = request.args.get(
-            "next"
-        )  # Takes user to the page they wanted to originally before being logged in
-        next_page = _verify_and_provide_next_page(request.args.to_dict())
-        return next_page if next_page else url_for(ROUTES.UTUBS.HOME)
-
-    # Input form errors
-    if login_form.errors is not None:
-        warning_log("User had form errors on login")
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_LOGIN,
-                    STD_JSON.ERROR_CODE: 2,
-                    STD_JSON.ERRORS: login_form.errors,
-                }
-            ),
-            400,
-        )
-
-    return render_template("login.html", login_form=login_form)
-
-
-def _verify_and_provide_next_page(request_args: dict[str, str]) -> str:
-    url = ""
-    if (
-        len(request_args) != 1
-        or "next" not in request_args
-        or not isinstance(request_args.get("next"), str)
-    ):
-        return url
-
-    rel_url = urlparse(request_args.get("next"))
-    if rel_url.path != url_for(ROUTES.UTUBS.HOME):
-        return url
-
-    query_params = parse_qs(str(rel_url.query))
-    if len(query_params) != 1 or UTUB_ID_QUERY_PARAM not in query_params:
-        return url
-
-    utub_id_vals = query_params.get(UTUB_ID_QUERY_PARAM, None)
-    if not utub_id_vals or len(utub_id_vals) != 1:
-        return url
-
-    utub_id = utub_id_vals[0]
-
-    if not utub_id.isdigit() or int(utub_id) <= 0:
-        return url
-
-    if Utub_Members.query.get((int(utub_id), current_user.id)) is None:
-        return url
-
-    url = (
-        f"{url_for(ROUTES.UTUBS.HOME)}?{urlencode({UTUB_ID_QUERY_PARAM: int(utub_id)})}"
-    )
-    safe_add_log(f"Routing user to UTub.id={utub_id}")
-    return url
+    return login_user_to_u4i(login_form)
 
 
 @splash.route("/confirm-email", methods=["GET"])
-def confirm_email_after_register():
+def confirm_email_after_register() -> WerkzeugResponse | str:
     if current_user.is_anonymous:
         safe_add_log("No user logged in")
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
@@ -282,70 +112,8 @@ def confirm_email_after_register():
 
 
 @splash.route("/send-validation-email", methods=["POST"])
-def send_validation_email():
-    current_email_validation: Email_Validations = Email_Validations.query.filter(
-        Email_Validations.user_id == current_user.id
-    ).first_or_404()
-
-    if current_user.email_validated:
-        warning_log(f"User {current_user.id} email already validated")
-        return redirect(url_for(ROUTES.UTUBS.HOME))
-
-    if current_email_validation.check_if_too_many_attempts():
-        db.session.commit()
-        warning_log(
-            f"User {current_user.id} hit max attempts on email validation, wait 1 hr"
-        )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.ERROR_CODE: 1,
-                    STD_JSON.MESSAGE: EMAILS_FAILURE.TOO_MANY_ATTEMPTS_MAX,
-                }
-            ),
-            429,
-        )
-
-    more_attempts_allowed = current_email_validation.increment_attempt()
-    db.session.commit()
-
-    if not more_attempts_allowed:
-        warning_log(
-            f"User {current_user.id} rate limited on email validation within 1 hr"
-        )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.ERROR_CODE: 2,
-                    STD_JSON.MESSAGE: str(
-                        EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR
-                        - current_email_validation.attempts
-                    )
-                    + EMAILS_FAILURE.TOO_MANY_ATTEMPTS,
-                }
-            ),
-            429,
-        )
-
-    email_sender = safe_get_email_sender(current_app)
-    if not email_sender.is_production() and not email_sender.is_testing():
-        print(
-            f"Sending this to the user's email:\n{url_for(ROUTES.SPLASH.VALIDATE_EMAIL, token=current_email_validation.validation_token, _external=True)}",
-            flush=True,
-        )
-
-    url_for_confirmation = url_for(
-        ROUTES.SPLASH.VALIDATE_EMAIL,
-        token=current_email_validation.validation_token,
-        _external=True,
-    )
-
-    email_send_result = email_sender.send_account_email_confirmation(
-        current_user.email, current_user.username, url_for_confirmation
-    )
-    return _handle_email_sending_result(email_send_result)
+def send_validation_email() -> WerkzeugResponse | FlaskResponse:
+    return send_validation_email_to_user()
 
 
 @splash.route("/validate/expired", methods=["GET"])
@@ -379,59 +147,13 @@ def validate_email_expired():
 
 
 @splash.route("/validate/<string:token>", methods=["GET"])
-def validate_email(token: str):
-    user_to_validate: Users
-    expired: bool
-    user_to_validate, expired = verify_token(token, EMAILS.VALIDATE_EMAIL)
-
-    if expired:
-        warning_log(
-            f"User={user_to_validate.id if user_to_validate else 'None'} token expired"
-        )
-        return redirect(url_for("splash.validate_email_expired", token=token))
-
-    if not user_to_validate:
-        # Link is invalid, so remove any users and email validation rows associated with this token
-        warning_log("Invalid user derived from token")
-        invalid_emails = Email_Validations.query.filter(
-            Email_Validations.validation_token == token
-        ).all()
-        if invalid_emails is not None:
-            for invalid_email in invalid_emails:
-                user_of_invalid_email = invalid_email.user
-                db.session.delete(user_of_invalid_email)
-                db.session.delete(invalid_email)
-            db.session.commit()
-        abort(404)
-
-    email_validation: Email_Validations = user_to_validate.email_confirm
-
-    if not email_validation.validation_token == token:
-        critical_log(f"Token did not match with user for User={user_to_validate.id}")
-        abort(404)
-
-    user_to_validate.validate_email()
-    db.session.delete(email_validation)
-    db.session.commit()
-    login_user(user_to_validate)
-    session[EMAILS.EMAIL_VALIDATED_SESS_KEY] = True
-    safe_add_log(f"User={user_to_validate.id} email has been validated")
-    notification_sender = safe_get_notif_sender(current_app)
-    notification_sender.send_notification(
-        f"Welcome! New user: {user_to_validate.username}"
-    )
-    return redirect(url_for(ROUTES.UTUBS.HOME))
+def validate_email(token: str) -> WerkzeugResponse:
+    return validate_email_for_user(token)
 
 
 @splash.route("/forgot-password", methods=["GET", "POST"])
-def forgot_password():
-    if current_user.is_authenticated:
-        if not current_user.email_validated:
-            warning_log(f"User={current_user.id} registered but not email validated")
-            return redirect(url_for(ROUTES.SPLASH.CONFIRM_EMAIL))
-        warning_log(f"User={current_user.id} already logged in")
-        return redirect(url_for(ROUTES.UTUBS.HOME))
-
+@no_authenticated_users_allowed
+def forgot_password() -> str | FlaskResponse:
     forgot_password_form = ForgotPasswordForm()
     if request.method == "GET":
         return render_template(
@@ -439,119 +161,12 @@ def forgot_password():
             forgot_password_form=forgot_password_form,
         )
 
-    if forgot_password_form.validate_on_submit():
-        return _handle_after_forgot_password_form_validated(forgot_password_form)
+    if not forgot_password_form.validate_on_submit():
+        return handle_invalid_forgot_password_form_input(forgot_password_form)
 
-    if forgot_password_form.errors is not None:
-        warning_log("Invalid form for forgotten password")
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: FORGOT_PASSWORD.INVALID_EMAIL,
-                    STD_JSON.ERROR_CODE: 1,
-                    STD_JSON.ERRORS: forgot_password_form.errors,
-                }
-            ),
-            401,
-        )
-
-    critical_log(f"User={current_user.id} unable to handle forgotten password")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: USER_FAILURE.SOMETHING_WENT_WRONG,
-                STD_JSON.ERROR_CODE: 2,
-            }
-        ),
-        404,
-    )
+    return send_forgot_password_email_to_user(forgot_password_form)
 
 
 @splash.route("/reset-password/<string:token>", methods=["GET", "POST"])
 def reset_password(token: str):
-    reset_password_user: Users
-    expired: bool
-    reset_password_user, expired = verify_token(
-        token, RESET_PASSWORD.RESET_PASSWORD_KEY
-    )
-
-    if expired:
-        reset_password_obj = Forgot_Passwords.query.filter(
-            Forgot_Passwords.reset_token == token
-        ).first_or_404()
-        db.session.delete(reset_password_obj)
-        db.session.commit()
-        warning_log(
-            f"User={reset_password_user.id if reset_password_user else 'None'} reset password token expired"
-        )
-        return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-
-    if not reset_password_user:
-        # Invalid token
-        critical_log("Invalid user associated with token")
-        abort(404)
-
-    if not reset_password_user.email_validated:
-        # Remove the object if it exists
-        reset_password_obj = Forgot_Passwords.query.filter(
-            Forgot_Passwords.reset_token == token
-        ).first_or_404()
-        db.session.delete(reset_password_obj)
-        db.session.commit()
-        critical_log(
-            f"User={reset_password_user.id} not email validated but received password reset token"
-        )
-        abort(404)
-
-    if (
-        reset_password_user.forgot_password is None
-        or reset_password_user.forgot_password.reset_token != token
-        or reset_password_user.forgot_password.is_more_than_hour_old()
-    ):
-        critical_log(
-            f"User={reset_password_user.id} never reset password, or token expired or invalid"
-        )
-        abort(404)
-
-    reset_password_form = ResetPasswordForm()
-
-    if request.method == "GET":
-        safe_add_log("Showing user reset password form")
-        return render_template(
-            "splash.html",
-            is_resetting_password=True,
-            reset_password_form=reset_password_form,
-        )
-
-    if reset_password_form.validate_on_submit():
-        return _validate_resetting_password(reset_password_user, reset_password_form)
-
-    if reset_password_form.errors is not None:
-        warning_log(
-            f"User={reset_password_user.id} | Invalid form for resetting password"
-        )
-        return (
-            jsonify(
-                {
-                    STD_JSON.STATUS: STD_JSON.FAILURE,
-                    STD_JSON.MESSAGE: RESET_PASSWORD.RESET_PASSWORD_INVALID,
-                    STD_JSON.ERROR_CODE: 1,
-                    STD_JSON.ERRORS: build_form_errors(reset_password_form),
-                }
-            ),
-            400,
-        )
-
-    critical_log(f"User={reset_password_user.id} unable to reset password")
-    return (
-        jsonify(
-            {
-                STD_JSON.STATUS: STD_JSON.FAILURE,
-                STD_JSON.MESSAGE: USER_FAILURE.SOMETHING_WENT_WRONG,
-                STD_JSON.ERROR_CODE: 2,
-            }
-        ),
-        404,
-    )
+    return reset_password_for_user(token)
