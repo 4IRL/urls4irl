@@ -13,6 +13,8 @@ def assert_elems_hidden_after_utub_deleted(browser: WebDriver):
         HPL.BUTTON_UTUB_DELETE,
         HPL.BUTTON_MEMBER_CREATE,
         HPL.BUTTON_UTUB_TAG_CREATE,
+        HPL.BUTTON_UPDATE_TAG_BTN_ALL_OPEN,
+        HPL.BUTTON_UNSELECT_ALL,
         HPL.BUTTON_CORNER_URL_CREATE,
         HPL.SUBHEADER_TAG_DECK,
     )

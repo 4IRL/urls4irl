@@ -9,6 +9,7 @@ function setTagDeckOnUTubSelected(dictTags) {
     const unselectAllBtn = $("#unselectAllTagFilters");
     unselectAllBtn.showClassNormal();
     unselectAllBtn.addClass("red-icon-disabled");
+    $("#utubTagBtnUpdateAllOpen").showClassNormal();
   }
 
   // Loop through all tags and provide checkbox input for filtering
@@ -33,7 +34,10 @@ function resetTagDeck() {
   disableUnselectAllButtonAfterTagFilterRemoved();
   $("#utubTagBtnCreate").hideClass();
   $("#unselectAllTagFilters").hideClass();
+  $("#utubTagBtnUpdateAllOpen").hideClass();
   createUTubTagHideInput();
+  closeUTubTagBtnMenuOnUTubTags();
+  setTagDeckBtnsOnUpdateAllUTubTagsClosed();
 }
 
 function resetTagDeckIfNoUTubSelected() {
@@ -41,6 +45,8 @@ function resetTagDeckIfNoUTubSelected() {
   $("#createUTubTagWrap").hideClass();
   $("#utubTagBtnCreate").hideClass();
   $("#unselectAllTagFilters").hideClass();
+  setTagDeckBtnsOnUpdateAllUTubTagsClosed();
+  $("#utubTagBtnUpdateAllOpen").hideClass();
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();

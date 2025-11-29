@@ -64,7 +64,7 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     })
     .on("focus.updateUrlString", function () {
       $(document).on("keyup.updateUrlString", function (e) {
-        if (e.which === 13) updateURL(urlStringTextInput, urlCard);
+        if (e.key === KEYS.ENTER) updateURL(urlStringTextInput, urlCard);
       });
     })
     .on("blur.updateUrlString", function () {
@@ -84,7 +84,7 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     })
     .offAndOn("focus.updateUrlString", function () {
       $(document).on("keyup.updateUrlString", function (e) {
-        if (e.which === 13) hideAndResetUpdateURLStringForm(urlCard);
+        if (e.key === KEYS.ENTER) hideAndResetUpdateURLStringForm(urlCard);
       });
     })
     .offAndOn("blur.updateUrlString", function () {
@@ -101,12 +101,12 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
 function setFocusEventListenersOnUpdateURLStringInput(urlStringInput, urlCard) {
   urlStringInput.offAndOn("focus.updateURLStringFocus", function () {
     $(document).offAndOn("keyup.updateURLStringFocus", function (e) {
-      switch (e.which) {
-        case 13:
+      switch (e.key) {
+        case KEYS.ENTER:
           // Handle enter key pressed
           updateURL(urlStringInput, urlCard);
           break;
-        case 27:
+        case KEYS.ESCAPE:
           // Handle escape key pressed
           hideAndResetUpdateURLStringForm(urlCard);
           break;

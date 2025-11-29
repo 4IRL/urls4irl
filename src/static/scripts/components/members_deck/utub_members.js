@@ -33,7 +33,7 @@ function createMemberBadge(
       })
       .offAndOn("focus.removeMember", function () {
         $(document).on("keyup.removeMember", function (e) {
-          if (e.which === 13)
+          if (e.key === KEYS.ENTER)
             removeMemberShowModal(utubMemberUserID, isCurrentUserOwner);
         });
       })
@@ -52,7 +52,7 @@ function createMemberBadge(
       })
       .offAndOn("focus.removeSelf", function () {
         $(document).on("keyup.removeSelf", function (e) {
-          if (e.which === 13) {
+          if (e.key === KEYS.ENTER) {
             hideInputs();
             deselectAllURLs();
             removeMemberShowModal(utubMemberUserID, isCurrentUserOwner);

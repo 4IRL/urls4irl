@@ -66,7 +66,7 @@ function setUTubSelectorSearchEventListener() {
   searchInput
     .offAndOn("focus.searchInputEsc", function () {
       $(document).offAndOn("keyup.searchInputEsc", function (e) {
-        if (e.which === 27) {
+        if (e.key === KEYS.ESCAPE) {
           searchInput.blur();
         }
       });

@@ -11,7 +11,7 @@ $(document).ready(function () {
 
   utubTagBtnCreate.on("focus", function () {
     $(document).on("keyup.createUTubTag", function (e) {
-      if (e.which === 13) createUTubTagShowInput();
+      if (e.key === KEYS.ENTER) createUTubTagShowInput();
     });
   });
 
@@ -35,8 +35,8 @@ function setupCreateUTubTagEventListeners() {
   });
 
   utubTagSubmitBtnCreate.offAndOn("focus.createUTubTagSubmit", function () {
-    $(document).on("keyup.createUTubTagSubmit", function (e) {
-      if (e.which === 13) createUTubTag();
+    $(document).offAndOn("keyup.createUTubTagSubmit", function (e) {
+      if (e.key === KEYS.ENTER) createUTubTag();
     });
   });
 
@@ -51,7 +51,7 @@ function setupCreateUTubTagEventListeners() {
 
   utubTagCancelBtnCreate.offAndOn("focus.createUTubTagEscape", function () {
     $(document).on("keyup.createUTubTagEscape", function (e) {
-      if (e.which === 13) createUTubTagHideInput();
+      if (e.key === KEYS.ENTER) createUTubTagHideInput();
     });
   });
 
@@ -60,10 +60,10 @@ function setupCreateUTubTagEventListeners() {
   });
 
   const utubTagInput = $("#utubTagCreate");
-  utubTagInput.on("focus.createUTubTagSubmitEscape", function () {
+  utubTagInput.offAndOn("focus.createUTubTagSubmitEscape", function () {
     bindCreateUTubTagFocusEventListeners();
   });
-  utubTagInput.on("blur.createUTubTagSubmitSubmitEscape", function () {
+  utubTagInput.offAndOn("blur.createUTubTagSubmitSubmitEscape", function () {
     unbindCreateUTubTagFocusEventListeners();
   });
 }
@@ -75,12 +75,12 @@ function removeCreateUTubTagEventListeners() {
 function bindCreateUTubTagFocusEventListeners() {
   // Allow closing by pressing escape key
   $(document).on("keyup.createUTubTagSubmitEscape", function (e) {
-    switch (e.which) {
-      case 13:
+    switch (e.key) {
+      case KEYS.ENTER:
         // Handle enter key pressed
         createUTubTag();
         break;
-      case 27:
+      case KEYS.ESCAPE:
         // Handle escape  key pressed
         createUTubTagHideInput();
         break;
@@ -97,7 +97,7 @@ function unbindCreateUTubTagFocusEventListeners() {
 function createUTubTagShowInput() {
   $("#createUTubTagWrap").showClassFlex();
   $("#listTags").hideClass();
-  $("#utubTagBtnCreate").hideClass();
+  $("#utubTagStandardBtns").hideClass();
   setupCreateUTubTagEventListeners();
   $("#utubTagCreate").trigger("focus");
 }
@@ -105,7 +105,7 @@ function createUTubTagShowInput() {
 function createUTubTagHideInput() {
   $("#createUTubTagWrap").hideClass();
   $("#listTags").showClassNormal();
-  if (getNumOfUTubs() !== 0) $("#utubTagBtnCreate").showClassNormal();
+  if (getNumOfUTubs() !== 0) $("#utubTagStandardBtns").showClassFlex();
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();
@@ -153,8 +153,9 @@ function createUTubTagSuccess(response) {
     ),
   );
 
-  // Show unselect all button if not already shown
+  // Show unselect all and update buttons if not already shown
   $("#unselectAllTagFilters").showClassNormal();
+  $("#utubTagBtnUpdateAllOpen").showClassNormal();
 
   createUTubTagHideInput();
 }

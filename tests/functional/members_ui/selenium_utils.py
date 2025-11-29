@@ -3,12 +3,15 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
+from src.models.utubs import Utubs
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
+    wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_then_get_elements,
+    wait_until_hidden,
 )
 
 
@@ -93,3 +96,28 @@ def delete_member_active_utub(browser: WebDriver, member_name: str):
             actions.click(member_delete_button)
 
             actions.perform()
+
+
+def leave_utub_as_member(browser: WebDriver, utub_to_leave: Utubs):
+    """
+    Performs actions to leave a UTub as a UTub Member.
+
+    Args:
+        browser (WebDriver): WebDriver open to a selected UTub
+        utub_to_leave (Utubs): UTub to leave
+
+    Returns:
+        Boolean confirmation of successful deletion of member
+        WebDriver handoff to member tests
+    """
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
+
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
+    assert warning_modal_body is not None
+
+    utub_css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_to_leave.id}"]'
+    utub_selector = browser.find_element(By.CSS_SELECTOR, utub_css_selector)
+
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_for_element_to_be_removed(browser, utub_selector)

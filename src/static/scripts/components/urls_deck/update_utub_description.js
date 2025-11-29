@@ -15,7 +15,7 @@ $(document).ready(function () {
     })
     .on("focus.updateUTubdescription", function () {
       $(document).on("keyup.updateUTubdescription", function (e) {
-        if (e.which === 13) {
+        if (e.key === KEYS.ENTER) {
           deselectAllURLs();
           updateUTubNameHideInput();
           updateUTubDescriptionShowInput();
@@ -34,7 +34,7 @@ $(document).ready(function () {
     })
     .on("focus.updateUTubdescription", function () {
       $(document).offAndOn("keyup.updateUTubdescription", function (e) {
-        if (e.which === 13) updateUTubDescription();
+        if (e.key === KEYS.ENTER) updateUTubDescription();
       });
     })
     .on("blur.updateUTubdescription", function () {
@@ -49,7 +49,7 @@ $(document).ready(function () {
     })
     .on("focus.updateUTubdescription", function () {
       $(document).offAndOn("keyup.updateUTubdescription", function (e) {
-        if (e.which === 13) updateUTubDescriptionHideInput();
+        if (e.key === KEYS.ENTER) updateUTubDescriptionHideInput();
       });
     })
     .on("blur.updateUTubdescription", function () {
@@ -66,12 +66,12 @@ function setEventListenersToEscapeUpdateUTubDescription() {
     })
     .offAndOn("focus.updateUTubDescription", function () {
       $(document).on("keyup.updateUTubDescription", function (e) {
-        switch (e.which) {
-          case 13:
+        switch (e.key) {
+          case KEYS.ENTER:
             // Handle enter key pressed
             updateUTubDescription();
             break;
-          case 27:
+          case KEYS.ESCAPE:
             // Handle escape key pressed
             updateUTubDescriptionHideInput();
             break;

@@ -25,6 +25,7 @@ from tests.functional.login_utils import (
 )
 from tests.functional.tags_ui.assert_utils import (
     assert_create_utub_tag_input_form_is_hidden,
+    assert_create_utub_tag_input_form_is_shown,
     assert_new_utub_tag_created,
 )
 from tests.functional.selenium_utils import (
@@ -43,7 +44,6 @@ from tests.functional.tags_ui.selenium_utils import (
 pytestmark = pytest.mark.tags_ui
 
 
-# Happy Path Tests :)
 def test_open_input_create_utub_tag(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):
@@ -69,27 +69,7 @@ def test_open_input_create_utub_tag(
         By.CSS_SELECTOR, HPL.INPUT_UTUB_TAG_CREATE
     )
 
-    visible_elems = (
-        HPL.INPUT_UTUB_TAG_CREATE,
-        HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
-        HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
-        HPL.BUTTON_UNSELECT_ALL,
-    )
-
-    for visible_elem_selector in visible_elems:
-        visible_elem = browser.find_element(By.CSS_SELECTOR, visible_elem_selector)
-        assert visible_elem.is_displayed()
-        assert visible_elem.is_enabled()
-
-    non_visible_elems = (
-        HPL.BUTTON_UTUB_TAG_CREATE,
-        HPL.LIST_TAGS,
-    )
-    for non_visible_elem_selector in non_visible_elems:
-        non_visible_elem = browser.find_element(
-            By.CSS_SELECTOR, non_visible_elem_selector
-        )
-        assert not non_visible_elem.is_displayed()
+    assert_create_utub_tag_input_form_is_shown(browser)
 
 
 def test_open_input_create_utub_tag_tab_focus(
@@ -120,31 +100,7 @@ def test_open_input_create_utub_tag_tab_focus(
 
     wait_until_visible_css_selector(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
 
-    assert browser.switch_to.active_element == browser.find_element(
-        By.CSS_SELECTOR, HPL.INPUT_UTUB_TAG_CREATE
-    )
-
-    visible_elems = (
-        HPL.INPUT_UTUB_TAG_CREATE,
-        HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
-        HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
-        HPL.BUTTON_UNSELECT_ALL,
-    )
-
-    for visible_elem_selector in visible_elems:
-        visible_elem = browser.find_element(By.CSS_SELECTOR, visible_elem_selector)
-        assert visible_elem.is_displayed()
-        assert visible_elem.is_enabled()
-
-    non_visible_elems = (
-        HPL.BUTTON_UTUB_TAG_CREATE,
-        HPL.LIST_TAGS,
-    )
-    for non_visible_elem_selector in non_visible_elems:
-        non_visible_elem = browser.find_element(
-            By.CSS_SELECTOR, non_visible_elem_selector
-        )
-        assert not non_visible_elem.is_displayed()
+    assert_create_utub_tag_input_form_is_shown(browser)
 
 
 def test_open_input_create_utub_tag_click_cancel_btn(

@@ -87,7 +87,7 @@ function setFocusEventListenersOnURLCard(urlCard) {
   urlCard.offAndOn("focus.focusURLCard" + utubUrlID, function () {
     urlCard.find(".goToUrlIcon").addClass("visible-on-focus");
     $(document).on("keyup.focusURLCard" + utubUrlID, function (e) {
-      if (e.which === 13) {
+      if (e.key === KEYS.ENTER) {
         selectURLCard(urlCard);
         urlCard.trigger("focusout");
       }

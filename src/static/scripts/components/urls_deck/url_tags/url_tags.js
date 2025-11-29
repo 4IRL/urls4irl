@@ -74,7 +74,7 @@ function createTagInputBlock(urlCard) {
     })
     .on("focus.createURLTag", function () {
       $(document).on("keyup.createURLTag", function (e) {
-        if (e.which === 13) createURLTag(urlTagTextInput, urlCard);
+        if (e.key === KEYS.ENTER) createURLTag(urlTagTextInput, urlCard);
       });
     })
     .on("blur.createURLTag", function () {
@@ -94,7 +94,7 @@ function createTagInputBlock(urlCard) {
     })
     .offAndOn("focus.createURLTag", function () {
       $(document).on("keyup.createURLTag", function (e) {
-        if (e.which === 13) hideAndResetCreateURLTagForm(urlCard);
+        if (e.key === KEYS.ENTER) hideAndResetCreateURLTagForm(urlCard);
       });
     })
     .offAndOn("blur.createURLTag", function () {
@@ -111,12 +111,12 @@ function createTagInputBlock(urlCard) {
 function setFocusEventListenersOnCreateURLTagInput(urlTagInput, urlCard) {
   urlTagInput.offAndOn("focus.createURLTagFocus", function () {
     $(document).offAndOn("keyup.createURLTagFocus", function (e) {
-      switch (e.which) {
-        case 13:
+      switch (e.key) {
+        case KEYS.ENTER:
           // Handle enter key pressed
           createURLTag(urlTagInput, urlCard);
           break;
-        case 27:
+        case KEYS.ESCAPE:
           // Handle escape key pressed
           hideAndResetCreateURLTagForm(urlCard);
           break;
@@ -153,7 +153,7 @@ function createTagBadgeInURL(utubTagID, tagString, urlCard) {
     })
     .offAndOn("focus.removeURLTag", function () {
       $(document).on("keyup.removeURLTag", function (e) {
-        if (e.which === 13) deleteURLTag(utubTagID, tagSpan, urlCard);
+        if (e.key === KEYS.ENTER) deleteURLTag(utubTagID, tagSpan, urlCard);
       });
     })
     .offAndOn("blur.removeURLTag", function () {

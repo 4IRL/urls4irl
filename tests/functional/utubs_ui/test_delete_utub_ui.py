@@ -28,7 +28,6 @@ from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
     get_selected_utub_id,
     invalidate_csrf_token_on_page,
-    wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -37,6 +36,7 @@ from tests.functional.selenium_utils import (
 from tests.functional.utubs_ui.assert_utils import (
     assert_elems_hidden_after_utub_deleted,
 )
+from tests.functional.utubs_ui.selenium_utils import delete_utub_as_creator
 
 pytestmark = pytest.mark.utubs_ui
 
@@ -205,16 +205,8 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Fla
     css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
 
     assert browser.find_element(By.CSS_SELECTOR, css_selector)
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
-
-    # Wait for DELETE request
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
-    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
-    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
-
-    wait_for_element_to_be_removed(browser, utub_selector, timeout=10)
+    delete_utub_as_creator(browser, utub_user_created)
 
     # Assert UTub selector no longer exists
     with pytest.raises(NoSuchElementException):
@@ -240,16 +232,7 @@ def test_delete_last_utub_no_urls_no_tags_no_members(
         app, browser, user_id_for_test, utub_user_created.name
     )
 
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
-
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
-
-    # Wait for DELETE request
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
-    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_user_created.id}"]'
-    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
-
-    wait_for_element_to_be_removed(browser, utub_selector, timeout=10)
+    delete_utub_as_creator(browser, utub_user_created)
 
     # Make sure all relevant buttons and subheaders are hidden when no UTub selected
     assert_elems_hidden_after_utub_deleted(browser)
@@ -288,16 +271,7 @@ def test_delete_last_utub_with_urls_tags_members(
         app, browser, user_id_for_test, utub_user_created.name
     )
 
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
-
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
-
-    # Wait for DELETE request
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
-    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_user_created.id}"]'
-    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
-
-    wait_for_element_to_be_removed(browser, utub_selector, timeout=10)
+    delete_utub_as_creator(browser, utub_user_created)
 
     # Make sure all relevant buttons and subheaders are hidden when no UTub selected
     assert_elems_hidden_after_utub_deleted(browser)

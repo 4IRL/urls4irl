@@ -30,7 +30,7 @@ function createGoToURLIcon(urlString) {
     })
     .on("focus", () => {
       $(document).on("keyup.accessURL", function (e) {
-        if (e.which === 13) {
+        if (e.key === KEYS.ENTER) {
           accessLink(urlString);
           goToUrlOuterIconSvg.trigger("focus");
         }

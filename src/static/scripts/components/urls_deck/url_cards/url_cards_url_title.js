@@ -72,11 +72,11 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
 
   urlTitleTextInput.offAndOn("focus.updateURLTitleInputFocus", function () {
     $(document).on("keyup.updateURLTitleSubmitEscape", function (e) {
-      switch (e.which) {
-        case 13:
+      switch (e.key) {
+        case KEYS.ENTER:
           updateURLTitle(urlTitleTextInput, urlCard);
           break;
-        case 27:
+        case KEYS.ESCAPE:
           hideAndResetUpdateURLTitleForm(urlCard);
           break;
         default:
@@ -108,7 +108,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
     })
     .offAndOn("focus.submitUpdateUrlTitle", function () {
       $(document).on("keyup.submitUpdateUrlTitle", function (e) {
-        if (e.which === 13) updateURLTitle(urlTitleTextInput, urlCard);
+        if (e.key === KEYS.ENTER) updateURLTitle(urlTitleTextInput, urlCard);
       });
     })
     .offAndOn("blur.submitUpdateUrlTitle", function () {
@@ -134,7 +134,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
     })
     .offAndOn("focus.cancelUpdateUrlTitle", function () {
       $(document).on("keyup.cancelUpdateUrlTitle", function (e) {
-        if (e.which === 13) hideAndResetUpdateURLTitleForm(urlCard);
+        if (e.key === KEYS.ENTER) hideAndResetUpdateURLTitleForm(urlCard);
       });
     })
     .offAndOn("blur.cancelUpdateUrlTitle", function () {

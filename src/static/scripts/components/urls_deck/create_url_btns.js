@@ -26,7 +26,7 @@ $(document).ready(function () {
 
 function bindCreateURLShowInputEnterKeyEventListener() {
   $(document).on("keyup.createURL", function (e) {
-    if (e.which === 13) {
+    if (e.key === KEYS.ENTER) {
       createURLShowInput();
     }
   });

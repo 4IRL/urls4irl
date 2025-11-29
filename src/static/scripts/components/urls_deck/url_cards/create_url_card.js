@@ -2,12 +2,12 @@
 
 function bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput) {
   $(document).on("keyup.createURL", function (e) {
-    switch (e.which) {
-      case 13:
+    switch (e.key) {
+      case KEYS.ENTER:
         // Handle enter key pressed
         createURL(createURLTitleInput, createURLInput);
         break;
-      case 27:
+      case KEYS.ESCAPE:
         // Handle escape key pressed
         createURLHideInput();
         break;

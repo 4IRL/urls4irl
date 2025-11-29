@@ -409,6 +409,7 @@
 .UTubSelector,
 .tagFilter {
     padding: 3px 10px;
+    height: 2.2rem;
 }
 
 /* UTubs */
@@ -507,8 +508,32 @@
     cursor: not-allowed;
 }
 
+#utubTagBtnUpdateAllOpen,
 #unselectAllTagFilters {
     transition: opacity 0.2s ease-in-out;
+}
+
+#utubTagBtnUpdateAllOpen,
+#utubTagBtnUpdateAllClose {
+    border-radius: 4px;
+    color: black;
+}
+
+#utubTagBtnUpdateAllClose>svg {
+    background: var(--updateUTubTagBtnColor);
+    border-radius: 4px;
+}
+
+#utubTagBtnUpdateAllClose>svg:hover {
+    background: var(--updateUTubTagBtnColorHover);
+}
+
+#utubTagBtnUpdateAllOpen {
+    background: var(--updateUTubTagBtnColor);
+}
+
+#utubTagBtnUpdateAllOpen:hover {
+    background: var(--updateUTubTagBtnColorHover);
 }
 
 .tagFilter {
@@ -549,6 +574,19 @@
     border-radius: 25px;
 }
 
+.tagFilter.disabled {
+    color: var(--grayBadgeSelection) !important;
+    background-color: var(--tagBackgroundColor) !important;
+    border: 2px solid var(--tagBorderColor) !important;
+    cursor: default;
+    pointer-events: none;
+}
+
+.tagFilter.disabled .utubTagBtnDelete {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
 .tagFilter>.tagCountWrap>.tagAppliedToUrlsCount {
     color: black;
     background-color: var(--tagCountBackgroundSelectedColor);
@@ -582,9 +620,6 @@
   display: flex;
   justify-content: center;
   align-items: center;
-  width: 0;
-  opacity: 0;
-  pointer-events: none; 
   transition: opacity 0.1s ease-in;
   color: var(--tagBadgeDeleteBtnColor);
 }

@@ -11,7 +11,7 @@ $(document).ready(function () {
 
   memberBtnCreate.on("focus", function () {
     $(document).on("keyup.createMember", function (e) {
-      if (e.which === 13) createMemberShowInput();
+      if (e.key === KEYS.ENTER) createMemberShowInput();
     });
   });
 
@@ -31,7 +31,7 @@ function setupCreateMemberEventListeners() {
 
   memberSubmitBtnCreate.offAndOn("focus.createMemberSubmit", function () {
     $(document).on("keyup.createMemberSubmit", function (e) {
-      if (e.which === 13) createMember();
+      if (e.key === KEYS.ENTER) createMember();
     });
   });
 
@@ -46,7 +46,7 @@ function setupCreateMemberEventListeners() {
 
   memberCancelBtnCreate.offAndOn("focus.createMemberEscape", function () {
     $(document).on("keyup.createMemberEscape", function (e) {
-      if (e.which === 13) createMemberHideInput();
+      if (e.key === KEYS.ENTER) createMemberHideInput();
     });
   });
 
@@ -70,12 +70,12 @@ function removeCreateMemberEventListeners() {
 function bindCreateMemberFocusEventListeners() {
   // Allow closing by pressing escape key
   $(document).on("keyup.createMemberSubmitEscape", function (e) {
-    switch (e.which) {
-      case 13:
+    switch (e.key) {
+      case KEYS.ENTER:
         // Handle enter key pressed
         createMember();
         break;
-      case 27:
+      case KEYS.ESCAPE:
         // Handle escape  key pressed
         createMemberHideInput();
         break;

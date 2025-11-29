@@ -42,6 +42,30 @@ def assert_btns_shown_on_cancel_url_tag_input_member(browser: WebDriver):
     assert classes and HPL.BUTTON_BIG_TAG_CANCEL_CREATE not in classes
 
 
+def assert_create_utub_tag_input_form_is_shown(browser: WebDriver):
+    visible_elems = (
+        HPL.INPUT_UTUB_TAG_CREATE,
+        HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE,
+        HPL.BUTTON_UTUB_TAG_CANCEL_CREATE,
+    )
+
+    for visible_elem_selector in visible_elems:
+        visible_elem = browser.find_element(By.CSS_SELECTOR, visible_elem_selector)
+        assert visible_elem.is_displayed()
+        assert visible_elem.is_enabled()
+
+    non_visible_elems = (
+        HPL.BUTTON_UTUB_TAG_CREATE,
+        HPL.LIST_TAGS,
+        HPL.WRAP_BUTTONS_CREATE_UNFILTER_UTUB_TAGS,
+    )
+    for non_visible_elem_selector in non_visible_elems:
+        non_visible_elem = browser.find_element(
+            By.CSS_SELECTOR, non_visible_elem_selector
+        )
+        assert not non_visible_elem.is_displayed()
+
+
 def assert_create_utub_tag_input_form_is_hidden(browser: WebDriver):
     non_visible_elems = (
         HPL.INPUT_UTUB_TAG_CREATE,

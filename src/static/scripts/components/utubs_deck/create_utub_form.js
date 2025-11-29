@@ -11,7 +11,7 @@ function setCreateUTubEventListeners() {
   // Allows user to press enter to bring up form while focusing on the add UTub icon, esp after tabbing
   utubBtnCreate.offAndOn("focus.createDeleteUTub", function () {
     $(document).offAndOn("keyup.createDeleteUTub", function (e) {
-      if (e.which === 13) {
+      if (e.key === KEYS.ENTER) {
         e.stopPropagation();
         createUTubShowInput();
       }
@@ -40,7 +40,8 @@ function createNewUTubEventListeners() {
 
   utubSubmitBtnCreate.offAndOn("focus.createUTub", function () {
     $(document).offAndOn("keyup.createUTubSubmit", function (e) {
-      if (e.which === 13) checkSameNameUTub(true, $("#utubNameCreate").val());
+      if (e.key === KEYS.ENTER)
+        checkSameNameUTub(true, $("#utubNameCreate").val());
     });
   });
 
@@ -50,7 +51,7 @@ function createNewUTubEventListeners() {
 
   utubCancelBtnCreate.offAndOn("focus.createUTub", function () {
     $(document).offAndOn("keyup.createUTubCancel", function (e) {
-      if (e.which === 13) createUTubHideInput();
+      if (e.key === KEYS.ENTER) createUTubHideInput();
     });
   });
 
@@ -94,12 +95,12 @@ function removeNewUTubEventListeners() {
 }
 
 function handleOnFocusEventListenersForCreateUTub(e) {
-  switch (e.which) {
-    case 13:
+  switch (e.key) {
+    case KEYS.ENTER:
       // Handle enter key pressed
       checkSameNameUTub(true, $("#utubNameCreate").val());
       break;
-    case 27:
+    case KEYS.ESCAPE:
       // Handle escape key pressed
       $("#utubNameCreate").trigger("blur");
       $("#utubDescriptionCreate").trigger("blur");

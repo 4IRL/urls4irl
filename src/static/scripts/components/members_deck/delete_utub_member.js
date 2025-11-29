@@ -39,7 +39,7 @@ function createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID) {
     })
     .offAndOn("focus.removeSelf", function () {
       $(document).on("keyup.removeSelf", function (e) {
-        if (e.which === 13) {
+        if (e.key === KEYS.ENTER) {
           hideInputs();
           deselectAllURLs();
           removeMemberShowModal(currentUserID, isCurrentUserOwner);

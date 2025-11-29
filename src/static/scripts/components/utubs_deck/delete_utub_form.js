@@ -11,7 +11,7 @@ function setDeleteEventListeners() {
   // Allows user to press enter to bring up form while focusing on the delete UTub icon, esp after tabbing
   utubBtnDelete.offAndOn("focus.createDeleteUTub", function () {
     $(document).offAndOn("keyup.createDeleteUTub", function (e) {
-      if (e.which === 13) {
+      if (e.key === KEYS.ENTER) {
         e.stopPropagation();
         deleteUTubShowModal();
       }

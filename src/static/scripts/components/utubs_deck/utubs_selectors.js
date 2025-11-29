@@ -141,7 +141,7 @@ function createUTubSelector(utubName, utubID, memberRole, index) {
     })
     .offAndOn("focus.selectUTub", function () {
       $(document).on("keyup.selectUTub", function (e) {
-        if (e.which === 13) selectUTub(utubID, utubSelector);
+        if (e.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
       });
     })
     .offAndOn("blur.selectUTub", function () {
@@ -165,7 +165,7 @@ function setUTubSelectorEventListeners(utub) {
     })
     .offAndOn("focus.selectUTub", function () {
       $(document).on("keyup.selectUTub", function (e) {
-        if (e.which === 13) selectUTub(utubID, utubSelector);
+        if (e.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
       });
     })
     .offAndOn("blur.selectUTub", function () {

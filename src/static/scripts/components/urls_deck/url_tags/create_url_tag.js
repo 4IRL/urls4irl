@@ -28,7 +28,7 @@ function createTagInputBlock(urlCard) {
     })
     .on("focus.createURLTag", function () {
       $(document).on("keyup.createURLTag", function (e) {
-        if (e.which === 13) createURLTag(urlTagTextInput, urlCard);
+        if (e.key === KEYS.ENTER) createURLTag(urlTagTextInput, urlCard);
       });
     })
     .on("blur.createURLTag", function () {
@@ -48,7 +48,7 @@ function createTagInputBlock(urlCard) {
     })
     .offAndOn("focus.createURLTag", function () {
       $(document).on("keyup.createURLTag", function (e) {
-        if (e.which === 13) hideAndResetCreateURLTagForm(urlCard);
+        if (e.key === KEYS.ENTER) hideAndResetCreateURLTagForm(urlCard);
       });
     })
     .offAndOn("blur.createURLTag", function () {

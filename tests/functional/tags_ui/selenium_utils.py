@@ -4,6 +4,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
+from tests.functional.assert_utils import (
+    assert_not_visible_css_selector,
+    assert_visible_css_selector,
+)
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
@@ -96,3 +100,37 @@ def get_visible_urls_and_urls_with_tag_text_by_tag_id(
     assert tag_filter_count_elem
     visible, total = tag_filter_count_elem.text.split(" / ")
     return int(visible), int(total)
+
+
+def click_open_update_utub_tags_btn(driver: WebDriver):
+    assert_visible_css_selector(
+        driver, css_selector=HPL.WRAP_BUTTONS_CREATE_UNFILTER_UTUB_TAGS
+    )
+    assert_visible_css_selector(driver, css_selector=HPL.UTUB_TAG_COUNT_WRAP)
+    assert_visible_css_selector(driver, css_selector=HPL.BUTTON_UPDATE_TAG_BTN_ALL_OPEN)
+    assert_not_visible_css_selector(driver, css_selector=HPL.UTUB_TAG_MENU_WRAP)
+    assert_not_visible_css_selector(
+        driver, css_selector=HPL.WRAP_BUTTON_UPDATE_TAG_ALL_CLOSE
+    )
+    assert_not_visible_css_selector(driver, css_selector=HPL.BUTTON_UTUB_TAG_DELETE)
+    assert_not_visible_css_selector(
+        driver, css_selector=HPL.BUTTON_UPDATE_TAG_BTN_ALL_CLOSE
+    )
+
+    wait_then_click_element(driver, css_selector=HPL.BUTTON_UPDATE_TAG_BTN_ALL_OPEN)
+
+    assert_visible_css_selector(driver, css_selector=HPL.UTUB_TAG_MENU_WRAP)
+    assert_visible_css_selector(
+        driver, css_selector=HPL.WRAP_BUTTON_UPDATE_TAG_ALL_CLOSE
+    )
+    assert_not_visible_css_selector(driver, css_selector=HPL.UTUB_TAG_COUNT_WRAP)
+    assert_not_visible_css_selector(
+        driver, css_selector=HPL.WRAP_BUTTONS_CREATE_UNFILTER_UTUB_TAGS
+    )
+    assert_not_visible_css_selector(
+        driver, css_selector=HPL.BUTTON_UPDATE_TAG_BTN_ALL_OPEN
+    )
+    assert_visible_css_selector(driver, css_selector=HPL.BUTTON_UTUB_TAG_DELETE)
+    assert_visible_css_selector(
+        driver, css_selector=HPL.BUTTON_UPDATE_TAG_BTN_ALL_CLOSE
+    )

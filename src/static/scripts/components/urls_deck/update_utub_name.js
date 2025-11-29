@@ -27,7 +27,7 @@ $(document).ready(function () {
     })
     .on("focus.updateUTubname", function () {
       $(document).on("keyup.updateUTubname", function (e) {
-        if (e.which === 13) {
+        if (e.key === KEYS.ENTER) {
           if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
             updateUTubNameHideInput();
             return;
@@ -48,7 +48,7 @@ $(document).ready(function () {
     })
     .on("focus.updateUTubname", function () {
       $(document).on("keyup.updateUTubname", function (e) {
-        if (e.which === 13) updateUTubNameHideInput();
+        if (e.key === KEYS.ENTER) updateUTubNameHideInput();
       });
     })
     .on("blur.updateUTubname", function () {
@@ -65,8 +65,8 @@ function setEventListenersToEscapeUpdateUTubName() {
     })
     .offAndOn("focus.updateUTubname", function () {
       $(document).on("keyup.updateUTubname", function (e) {
-        switch (e.which) {
-          case 13:
+        switch (e.key) {
+          case KEYS.ENTER:
             // Handle enter key pressed
             // Skip if update is identical
             if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
@@ -75,7 +75,7 @@ function setEventListenersToEscapeUpdateUTubName() {
             }
             checkSameNameUTub(false, $("#utubNameUpdate").val());
             break;
-          case 27:
+          case KEYS.ESCAPE:
             // Handle escape key pressed
             updateUTubNameHideInput();
             break;

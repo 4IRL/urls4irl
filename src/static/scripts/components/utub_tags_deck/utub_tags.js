@@ -4,9 +4,10 @@
 function buildTagFilterInDeck(tagID, string, urlCount = 0) {
   const container = $(document.createElement("div"));
   const tagStringSpan = $(document.createElement("span"));
-  const rightContainer = $(document.createElement("div"));
+  const tagCountContainer = $(document.createElement("div"));
+  const tagMenuContainer = $(document.createElement("div"));
   const urlCountSpan = $(document.createElement("span"));
-  const deleteTagButton = $(document.createElement("div"));
+  const deleteTagButton = $(document.createElement("i"));
 
   container
     .addClass("tagFilter pointerable unselected col-12")
@@ -19,7 +20,7 @@ function buildTagFilterInDeck(tagID, string, urlCount = 0) {
     })
     .on("focus.tagFilterSelected", function () {
       $(document).offAndOn("keyup.tagFilterSelected", function (e) {
-        if (e.which === 13 && $(e.target).hasClass("tagFilter"))
+        if (e.key === KEYS.ENTER && $(e.target).hasClass("tagFilter"))
           toggleTagFilterSelected(container);
       });
     })
@@ -29,8 +30,8 @@ function buildTagFilterInDeck(tagID, string, urlCount = 0) {
 
   tagStringSpan.text(string);
 
-  // TODO: addClass("tagCountWrap") only if utubUserID == utubOwnerID
-  rightContainer.addClass("tagCountWrap");
+  tagCountContainer.addClass("tagCountWrap");
+  tagMenuContainer.addClass("tagMenuWrap hidden");
 
   urlCountSpan
     .addClass("tagAppliedToUrlsCount")
@@ -44,7 +45,7 @@ function buildTagFilterInDeck(tagID, string, urlCount = 0) {
     })
     .offAndOn("focus.removeUtubTag", function () {
       $(document).offAndOn("keyup.removeUtubTag", function (e) {
-        if (e.which === 13) deleteUtubTag(utubTagID, tagSpan, urlCard);
+        if (e.key === KEYS.ENTER) deleteUtubTag(utubTagID, tagSpan, urlCard);
       });
     })
     .offAndOn("blur.removeUtubTag", function () {
@@ -54,9 +55,12 @@ function buildTagFilterInDeck(tagID, string, urlCount = 0) {
   deleteTagButton.append(createTagDeleteIcon(22));
 
   container.append(tagStringSpan);
-  rightContainer.append(urlCountSpan);
-  // rightContainer.append(deleteTagButton);
-  container.append(rightContainer);
+
+  tagCountContainer.append(urlCountSpan);
+  container.append(tagCountContainer);
+
+  tagMenuContainer.append(deleteTagButton);
+  container.append(tagMenuContainer);
 
   return container;
 }
@@ -118,7 +122,7 @@ function enableUnselectedTagsAfterDisabledDueToLimit() {
       })
       .offAndOn("focus.tagFilterSelected", function () {
         $(document).on("keyup.tagFilterSelected", function (e) {
-          if (e.which === 13) toggleTagFilterSelected($(tag));
+          if (e.key === KEYS.ENTER) toggleTagFilterSelected($(tag));
         });
       })
       .offAndOn("blur.tagFilterSelected", function () {
