@@ -36,7 +36,7 @@ function showURLDeckBannerError(errorMessage) {
 }
 
 // Update URLs in center panel based on asynchronous updates or stale data
-function updateURLDeck(updatedUTubUrls, updatedUTubTags) {
+function updateURLDeck(updatedUTubUrls, updatedUTubTags, utubID) {
   const oldURLs = $(".urlRow");
   const oldURLIDs = $.map(oldURLs, (url) => parseInt($(url).attr("utuburlid")));
   const newURLIDs = $.map(updatedUTubUrls, (newURL) => newURL.utubUrlID);
@@ -57,7 +57,9 @@ function updateURLDeck(updatedUTubUrls, updatedUTubTags) {
   const urlDeck = $("#listURLs");
   for (let i = 0; i < updatedUTubUrls.length; i++) {
     if (!oldURLIDs.includes(updatedUTubUrls[i].utubUrlID)) {
-      urlDeck.append(createURLBlock(updatedUTubUrls[i], updatedUTubTags));
+      urlDeck.append(
+        createURLBlock(updatedUTubUrls[i], updatedUTubTags, utubID),
+      );
     }
   }
 
@@ -70,14 +72,19 @@ function updateURLDeck(updatedUTubUrls, updatedUTubTags) {
         urlToUpdate,
         updatedUTubUrls.find((url) => url.utubUrlID === oldURLIDs[i]),
         updatedUTubTags,
+        utubID,
       );
     }
   }
 }
 
 // Build center panel URL list for selectedUTub
-function setURLDeckOnUTubSelected(utubName, dictURLs, dictTags) {
+function setURLDeckOnUTubSelected(utubID, utubName, dictURLs, dictTags) {
   resetURLDeck();
+  createURLShowInputEventListeners(utubID);
+  setupUpdateUTubDescriptionEventListeners(utubID);
+  setupUpdateUTubNameEventListeners(utubID);
+
   const parent = $("#listURLs");
   const numOfURLs = dictURLs.length ? dictURLs.length : 0;
 
@@ -85,7 +92,7 @@ function setURLDeckOnUTubSelected(utubName, dictURLs, dictTags) {
     // Instantiate deck with list of URLs stored in current UTub
     for (let i = 0; i < dictURLs.length; i++) {
       parent.append(
-        createURLBlock(dictURLs[i], dictTags).addClass(
+        createURLBlock(dictURLs[i], dictTags, utubID).addClass(
           i % 2 === 0 ? "even" : "odd",
         ),
       );

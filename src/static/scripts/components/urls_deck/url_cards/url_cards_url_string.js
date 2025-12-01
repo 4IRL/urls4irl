@@ -20,7 +20,7 @@ function createURLString(urlStringText) {
 }
 
 // Create the container for both displaying URL string, and updating the URL string
-function createURLStringAndUpdateBlock(urlStringText, urlCard) {
+function createURLStringAndUpdateBlock(urlStringText, urlCard, utubID) {
   // Overall container for string and updating string
   const urlStringAndUpdateWrap = $(document.createElement("div")).addClass(
     "flex-row ninetyfive-width",
@@ -28,13 +28,13 @@ function createURLStringAndUpdateBlock(urlStringText, urlCard) {
 
   urlStringAndUpdateWrap
     .append(createURLString(urlStringText))
-    .append(createUpdateURLStringInput(urlStringText, urlCard));
+    .append(createUpdateURLStringInput(urlStringText, urlCard, utubID));
 
   return urlStringAndUpdateWrap;
 }
 
 // Create form to update the URL
-function createUpdateURLStringInput(urlStringText, urlCard) {
+function createUpdateURLStringInput(urlStringText, urlCard, utubID) {
   const urlStringUpdateTextInputContainer = makeTextInput(
     "urlString",
     METHOD_TYPES.UPDATE.description,
@@ -50,7 +50,11 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
     .prop("maxLength", CONSTANTS.URLS_MAX_LENGTH)
     .val(urlStringText);
 
-  setFocusEventListenersOnUpdateURLStringInput(urlStringTextInput, urlCard);
+  setFocusEventListenersOnUpdateURLStringInput(
+    urlStringTextInput,
+    urlCard,
+    utubID,
+  );
 
   // Update Url Title submit button
   const urlStringSubmitBtnUpdate = makeSubmitButton(30).addClass(
@@ -60,11 +64,12 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
   urlStringSubmitBtnUpdate
     .find(".submitButton")
     .on("click.updateUrlString", function () {
-      updateURL(urlStringTextInput, urlCard);
+      updateURL(urlStringTextInput, urlCard, utubID);
     })
     .on("focus.updateUrlString", function () {
       $(document).on("keyup.updateUrlString", function (e) {
-        if (e.key === KEYS.ENTER) updateURL(urlStringTextInput, urlCard);
+        if (e.key === KEYS.ENTER)
+          updateURL(urlStringTextInput, urlCard, utubID);
       });
     })
     .on("blur.updateUrlString", function () {
@@ -98,13 +103,17 @@ function createUpdateURLStringInput(urlStringText, urlCard) {
   return urlStringUpdateTextInputContainer;
 }
 
-function setFocusEventListenersOnUpdateURLStringInput(urlStringInput, urlCard) {
+function setFocusEventListenersOnUpdateURLStringInput(
+  urlStringInput,
+  urlCard,
+  utubID,
+) {
   urlStringInput.offAndOn("focus.updateURLStringFocus", function () {
     $(document).offAndOn("keyup.updateURLStringFocus", function (e) {
       switch (e.key) {
         case KEYS.ENTER:
           // Handle enter key pressed
-          updateURL(urlStringInput, urlCard);
+          updateURL(urlStringInput, urlCard, utubID);
           break;
         case KEYS.ESCAPE:
           // Handle escape key pressed

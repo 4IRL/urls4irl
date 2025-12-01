@@ -30,7 +30,7 @@ window.addEventListener("popstate", function (e) {
 
 window.addEventListener("pageshow", function (e) {
   setUTubEventListenersOnInitialPageLoad();
-  setCreateDeleteUTubEventListeners();
+  setCreateUTubEventListeners();
 
   if (history.state && history.state.UTubID) {
     getUTubInfo(history.state.UTubID).then(

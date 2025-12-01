@@ -40,9 +40,8 @@ function updateURLTitleSetup(urlTitleInput, utubID, utubUrlID) {
 }
 
 // Handles update of an existing URL
-async function updateURLTitle(urlTitleInput, urlCard) {
+async function updateURLTitle(urlTitleInput, urlCard, utubID) {
   // Extract data to submit in POST request
-  const utubID = getActiveUTubID();
   const utubUrlID = parseInt(urlCard.attr("utuburlid"));
   let timeoutID;
   try {

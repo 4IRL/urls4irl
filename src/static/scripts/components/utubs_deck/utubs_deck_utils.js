@@ -54,19 +54,6 @@ function getAllUTubs() {
   });
 }
 
-// TODO: This function appears to be doing too much...
-function checkSameNameUTub(isCreatingUTub, name) {
-  if (getAllAccessibleUTubNames().includes(name)) {
-    // UTub with same name exists. Confirm action with user
-    isCreatingUTub
-      ? sameUTubNameOnNewUTubWarningShowModal()
-      : sameUTubNameOnUpdateUTubNameWarningShowModal();
-  } else {
-    // UTub name is unique. Proceed with requested action
-    isCreatingUTub ? createUTub() : updateUTubName();
-  }
-}
-
 // Hides modal for UTub same name action confirmation
 function sameNameWarningHideModal() {
   $("#confirmModal").modal("hide");

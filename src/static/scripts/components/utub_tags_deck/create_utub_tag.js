@@ -1,42 +1,41 @@
 "use strict";
 
-$(document).ready(function () {
-  /* Bind click functions */
+function setupOpenCreateUTubTagEventListeners(utubID) {
   const utubTagBtnCreate = $("#utubTagBtnCreate");
 
   // Add tag to UTub
-  utubTagBtnCreate.on("click.createUTubTag", function () {
-    createUTubTagShowInput();
+  utubTagBtnCreate.offAndOn("click.createUTubTag", function () {
+    createUTubTagShowInput(utubID);
   });
 
-  utubTagBtnCreate.on("focus", function () {
+  utubTagBtnCreate.offAndOn("focus", function () {
     $(document).on("keyup.createUTubTag", function (e) {
-      if (e.key === KEYS.ENTER) createUTubTagShowInput();
+      if (e.key === KEYS.ENTER) createUTubTagShowInput(utubID);
     });
   });
 
-  utubTagBtnCreate.on("blur", function () {
+  utubTagBtnCreate.offAndOn("blur", function () {
     $(document).off(".createUTubTag");
   });
-});
+}
 
 // Clear tag input form
 function resetNewUTubTagForm() {
   $("#utubTagCreate").val(null);
 }
 
-function setupCreateUTubTagEventListeners() {
+function setupCreateUTubTagEventListeners(utubID) {
   const utubTagSubmitBtnCreate = $("#utubTagSubmitBtnCreate");
   const utubTagCancelBtnCreate = $("#utubTagCancelBtnCreate");
 
   utubTagSubmitBtnCreate.offAndOn("click.createUTubTagSubmit", function (e) {
     if ($(e.target).closest("#utubTagSubmitBtnCreate").length > 0)
-      createUTubTag();
+      createUTubTag(utubID);
   });
 
   utubTagSubmitBtnCreate.offAndOn("focus.createUTubTagSubmit", function () {
     $(document).offAndOn("keyup.createUTubTagSubmit", function (e) {
-      if (e.key === KEYS.ENTER) createUTubTag();
+      if (e.key === KEYS.ENTER) createUTubTag(utubID);
     });
   });
 
@@ -61,7 +60,7 @@ function setupCreateUTubTagEventListeners() {
 
   const utubTagInput = $("#utubTagCreate");
   utubTagInput.offAndOn("focus.createUTubTagSubmitEscape", function () {
-    bindCreateUTubTagFocusEventListeners();
+    bindCreateUTubTagFocusEventListeners(utubID);
   });
   utubTagInput.offAndOn("blur.createUTubTagSubmitSubmitEscape", function () {
     unbindCreateUTubTagFocusEventListeners();
@@ -72,13 +71,13 @@ function removeCreateUTubTagEventListeners() {
   $("#memberCreate").off(".createUTubTagSubmitEscape");
 }
 
-function bindCreateUTubTagFocusEventListeners() {
+function bindCreateUTubTagFocusEventListeners(utubID) {
   // Allow closing by pressing escape key
   $(document).on("keyup.createUTubTagSubmitEscape", function (e) {
     switch (e.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
-        createUTubTag();
+        createUTubTag(utubID);
         break;
       case KEYS.ESCAPE:
         // Handle escape  key pressed
@@ -94,11 +93,11 @@ function unbindCreateUTubTagFocusEventListeners() {
   $(document).off(".createUTubTagSubmitEscape");
 }
 
-function createUTubTagShowInput() {
+function createUTubTagShowInput(utubID) {
   $("#createUTubTagWrap").showClassFlex();
   $("#listTags").hideClass();
   $("#utubTagStandardBtns").hideClass();
-  setupCreateUTubTagEventListeners();
+  setupCreateUTubTagEventListeners(utubID);
   $("#utubTagCreate").trigger("focus");
 }
 
@@ -111,8 +110,8 @@ function createUTubTagHideInput() {
   resetNewUTubTagForm();
 }
 
-function createUTubTagSetup() {
-  const postURL = routes.createUTubTag(getActiveUTubID());
+function createUTubTagSetup(utubID) {
+  const postURL = routes.createUTubTag(utubID);
 
   const newUTubTag = $("#utubTagCreate").val();
   const data = {
@@ -122,10 +121,10 @@ function createUTubTagSetup() {
   return [postURL, data];
 }
 
-function createUTubTag() {
+function createUTubTag(utubID) {
   // Extract data to submit in POST request
   let postURL, data;
-  [postURL, data] = createUTubTagSetup();
+  [postURL, data] = createUTubTagSetup(utubID);
   resetCreateUTubTagFailErrors();
 
   const request = ajaxCall("post", postURL, data);
@@ -133,7 +132,7 @@ function createUTubTag() {
   // Handle response
   request.done(function (response, _, xhr) {
     if (xhr.status === 200) {
-      createUTubTagSuccess(response);
+      createUTubTagSuccess(response, utubID);
     }
   });
 
@@ -142,12 +141,13 @@ function createUTubTag() {
   });
 }
 
-function createUTubTagSuccess(response) {
+function createUTubTagSuccess(response, utubID) {
   resetNewUTubTagForm();
 
   // Create and append the new tag in the tag deck
   $("#listTags").append(
     buildTagFilterInDeck(
+      utubID,
       response.utubTag.utubTagID,
       response.utubTag.tagString,
     ),

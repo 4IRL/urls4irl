@@ -1,11 +1,21 @@
 "use strict";
 
-$(document).ready(function () {
+function checkSameNameUTubOnUpdate(name, utubID) {
+  if (getAllAccessibleUTubNames().includes(name)) {
+    // UTub with same name exists. Confirm action with user
+    sameUTubNameOnUpdateUTubNameWarningShowModal(utubID);
+  } else {
+    // UTub name is unique. Proceed with requested action
+    updateUTubName(utubID);
+  }
+}
+
+function setupUpdateUTubNameEventListeners(utubID) {
   // Update UTub name
   $("#utubNameBtnUpdate").on("click", function (e) {
     deselectAllURLs();
     updateUTubDescriptionHideInput();
-    updateUTubNameShowInput();
+    updateUTubNameShowInput(utubID);
     // Prevent this event from bubbling up to the window to allow event listener creation
     e.stopPropagation();
   });
@@ -23,7 +33,7 @@ $(document).ready(function () {
         updateUTubNameHideInput();
         return;
       }
-      checkSameNameUTub(false, $("#utubNameUpdate").val());
+      checkSameNameUTubOnUpdate($("#utubNameUpdate").val(), utubID);
     })
     .on("focus.updateUTubname", function () {
       $(document).on("keyup.updateUTubname", function (e) {
@@ -32,7 +42,7 @@ $(document).ready(function () {
             updateUTubNameHideInput();
             return;
           }
-          checkSameNameUTub(false, $("#utubNameUpdate").val());
+          checkSameNameUTubOnUpdate($("#utubNameUpdate").val(), utubID);
         }
       });
     })
@@ -54,10 +64,10 @@ $(document).ready(function () {
     .on("blur.updateUTubname", function () {
       $(document).off("keyup.updateUTubname");
     });
-});
+}
 
 // Create event listeners to escape from updating UTub name
-function setEventListenersToEscapeUpdateUTubName() {
+function setEventListenersToEscapeUpdateUTubName(utubID) {
   // Allow user to still click in the text box
   $("#utubNameUpdate")
     .offAndOn("click.updateUTubname", function (e) {
@@ -73,7 +83,7 @@ function setEventListenersToEscapeUpdateUTubName() {
               updateUTubNameHideInput();
               return;
             }
-            checkSameNameUTub(false, $("#utubNameUpdate").val());
+            checkSameNameUTubOnUpdate($("#utubNameUpdate").val(), utubID);
             break;
           case KEYS.ESCAPE:
             // Handle escape key pressed
@@ -100,7 +110,7 @@ function removeEventListenersToEscapeUpdateUTubName() {
   $(document).off(".updateUTubname");
 }
 
-function sameUTubNameOnUpdateUTubNameWarningShowModal() {
+function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
   const modalTitle = "Continue with this UTub name?";
   const modalBody = `${STRINGS.UTUB_UPDATE_SAME_NAME}`;
   const buttonTextDismiss = "Go Back to Editing";
@@ -120,7 +130,7 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal() {
       e.stopPropagation();
       sameNameWarningHideModal();
       highlightInput($("#utubNameUpdate"));
-      setEventListenersToEscapeUpdateUTubName();
+      setEventListenersToEscapeUpdateUTubName(utubID);
     });
 
   $("#modalRedirect").hideClass();
@@ -132,20 +142,20 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal() {
     .text(buttonTextSubmit)
     .offAndOn("click", function (e) {
       e.preventDefault();
-      updateUTubName();
+      updateUTubName(utubID);
     });
 
   $("#confirmModal").modal("show");
   $("#confirmModal").on("hidden.bs.modal", function (e) {
     e.stopPropagation();
-    setEventListenersToEscapeUpdateUTubName();
+    setEventListenersToEscapeUpdateUTubName(utubID);
   });
 }
 
 // Shows input fields for updating an exiting UTub's name
-function updateUTubNameShowInput() {
+function updateUTubNameShowInput(utubID) {
   // Setup event listeners on window and escape/enter keys to escape the input box
-  setEventListenersToEscapeUpdateUTubName();
+  setEventListenersToEscapeUpdateUTubName(utubID);
 
   // Show update fields
   const utubNameUpdate = $("#utubNameUpdate");
@@ -164,7 +174,7 @@ function updateUTubNameShowInput() {
   $("#utubNameBtnUpdate").removeClass("visibleBtn");
 
   if ($("#URLDeckSubheader").text().length === 0) {
-    allowUserToCreateDescriptionIfEmptyOnTitleUpdate();
+    allowUserToCreateDescriptionIfEmptyOnTitleUpdate(utubID);
   }
 }
 
@@ -199,7 +209,7 @@ function updateUTubNameHideInput() {
 }
 
 // Handles post request and response for updating an existing UTub's name
-function updateUTubName() {
+function updateUTubName(utubID) {
   // Skip if update is identical
   if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
     updateUTubNameHideInput();
@@ -208,7 +218,7 @@ function updateUTubName() {
 
   // Extract data to submit in POST request
   let postURL, data;
-  [postURL, data] = updateUTubNameSetup();
+  [postURL, data] = updateUTubNameSetup(utubID);
 
   let request = ajaxCall("patch", postURL, data);
 
@@ -225,8 +235,8 @@ function updateUTubName() {
 }
 
 // Handles preparation for post request to update an existing UTub
-function updateUTubNameSetup() {
-  const postURL = routes.updateUTubName(getActiveUTubID());
+function updateUTubNameSetup(utubID) {
+  const postURL = routes.updateUTubName(utubID);
 
   const updatedUTubName = $("#utubNameUpdate").val();
   let data = { utubName: updatedUTubName };

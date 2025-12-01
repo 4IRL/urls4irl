@@ -1,11 +1,15 @@
 "use strict";
 
-function bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput) {
+function bindCreateURLFocusEventListeners(
+  createURLTitleInput,
+  createURLInput,
+  utubID,
+) {
   $(document).on("keyup.createURL", function (e) {
     switch (e.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
-        createURL(createURLTitleInput, createURLInput);
+        createURL(createURLTitleInput, createURLInput, utubID);
         break;
       case KEYS.ESCAPE:
         // Handle escape key pressed
@@ -39,14 +43,14 @@ function createURLHideInput() {
 }
 
 // Hides new URL input prompt
-function createURLShowInput() {
+function createURLShowInput(utubID) {
   if (!getNumOfURLs()) {
     $("#NoURLsSubheader").hideClass();
     $("#urlBtnDeckCreateWrap").hideClass();
   }
   const createURLInputForm = $("#createURLWrap");
   createURLInputForm.showClassFlex();
-  newURLInputAddEventListeners(createURLInputForm);
+  newURLInputAddEventListeners(createURLInputForm, utubID);
   $("#urlTitleCreate").trigger("focus");
   $("#urlBtnCreate").hideClass();
   $("#urlBtnDeckCreateWrap").hideClass();
@@ -69,8 +73,7 @@ function createURLSetup(createURLTitleInput, createURLInput, utubID) {
 }
 
 // Handles addition of new URL after user submission
-function createURL(createURLTitleInput, createURLInput) {
-  const utubID = getActiveUTubID();
+function createURL(createURLTitleInput, createURLInput, utubID) {
   // Extract data to submit in POST request
   let postURL, data;
   [postURL, data] = createURLSetup(createURLTitleInput, createURLInput, utubID);
@@ -90,7 +93,7 @@ function createURL(createURLTitleInput, createURLInput) {
 
   request.done(function (response, _, xhr) {
     if (xhr.status === 200) {
-      createURLSuccess(response);
+      createURLSuccess(response, utubID);
     }
   });
 
@@ -107,7 +110,7 @@ function createURL(createURLTitleInput, createURLInput) {
 }
 
 // Displays changes related to a successful addition of a new URL
-function createURLSuccess(response) {
+function createURLSuccess(response, utubID) {
   resetNewURLForm();
   const url = response.URL;
   url.utubUrlTagIDs = [];
@@ -118,6 +121,7 @@ function createURLSuccess(response) {
   const newUrlCard = createURLBlock(
     url,
     [], // Mimics an empty array of tags to match against
+    utubID,
   ).addClass("even");
 
   $("#accessAllURLsBtn").showClassNormal();

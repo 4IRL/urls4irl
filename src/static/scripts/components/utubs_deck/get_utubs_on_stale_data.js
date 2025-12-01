@@ -13,17 +13,22 @@ async function updateUTubOnFindingStaleData(selectedUTubID) {
 
   // Update Tags
   const utubTags = utub.tags;
-  updateTagDeck(utubTags);
+  updateTagDeck(utubTags, utub.id);
 
   // Update URLs
   const utubURLs = utub.urls;
-  updateURLDeck(utubURLs, utubTags);
+  updateURLDeck(utubURLs, utubTags, utub.id);
 
   // Update members
   const utubMembers = utub.members;
   const utubOwnerID = utub.createdByUserID;
   const isCurrentUserOwner = utub.isCreator;
-  updateMemberDeck(utubMembers, utubOwnerID, isCurrentUserOwner);
+  updateMemberDeck(
+    utubMembers,
+    utubOwnerID,
+    isCurrentUserOwner,
+    selectedUTubID,
+  );
 
   // Update filtering
   updateTagFilteringOnFindingStaleData();

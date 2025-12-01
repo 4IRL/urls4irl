@@ -1,7 +1,7 @@
 "use strict";
 
 // Create all the buttons necessary for a url card
-function createURLOptionsButtons(url, urlCard) {
+function createURLOptionsButtons(url, urlCard, utubID) {
   const urlOptions = $(document.createElement("div")).addClass(
     "urlOptions justify-content-start flex-row gap-15p",
   );
@@ -14,7 +14,7 @@ function createURLOptionsButtons(url, urlCard) {
   if (url.canDelete) {
     urlOptions
       .append(createEditURLBtn(urlCard))
-      .append(createDeleteURLBtn(url, urlCard));
+      .append(createDeleteURLBtn(url, urlCard, utubID));
   }
 
   const urlCardLoadingIcon = $(document.createElement("div")).addClass(

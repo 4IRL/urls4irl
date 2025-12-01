@@ -1,7 +1,7 @@
 "use strict";
 
 // Creates tag filter for addition to Tag deck
-function buildTagFilterInDeck(tagID, string, urlCount = 0) {
+function buildTagFilterInDeck(utubID, tagID, string, urlCount = 0) {
   const container = $(document.createElement("div"));
   const tagStringSpan = $(document.createElement("span"));
   const tagCountContainer = $(document.createElement("div"));
@@ -39,13 +39,14 @@ function buildTagFilterInDeck(tagID, string, urlCount = 0) {
 
   deleteTagButton
     .addClass("utubTagBtnDelete align-center pointerable tabbable")
-    .on("click", function (e) {
+    .on("click.removeUtubTag", function (e) {
       e.stopPropagation();
-      deleteUtubTag(utubTagID, tagSpan, urlCard);
+      deleteUTubTagShowModal(utubID, tagID);
     })
     .offAndOn("focus.removeUtubTag", function () {
       $(document).offAndOn("keyup.removeUtubTag", function (e) {
-        if (e.key === KEYS.ENTER) deleteUtubTag(utubTagID, tagSpan, urlCard);
+        if (e.key === KEYS.ENTER && $(e.target).hasClass("utubTagBtnDelete"))
+          deleteUTubTagShowModal(utubID, tagID);
       });
     })
     .offAndOn("blur.removeUtubTag", function () {

@@ -8,7 +8,7 @@ function createURLTitle(urlTitleText) {
 }
 
 // Creates a container that allows editing of the URL title for member with valid permissions
-function createURLTitleAndUpdateBlock(urlTitleText, urlCard) {
+function createURLTitleAndUpdateBlock(urlTitleText, urlCard, utubID) {
   // Overall container for title and updating title
   const urlTitleAndUpdateWrap = $(document.createElement("div")).addClass(
     "flex-row ninetyfive-width",
@@ -32,7 +32,7 @@ function createURLTitleAndUpdateBlock(urlTitleText, urlCard) {
   // Add icon + title container, and update input container to the parent container
   urlTitleAndUpdateWrap
     .append(urlTitleAndShowUpdateIconWrap)
-    .append(createUpdateURLTitleInput(urlTitleText, urlCard));
+    .append(createUpdateURLTitleInput(urlTitleText, urlCard, utubID));
 
   return urlTitleAndUpdateWrap;
 }
@@ -53,7 +53,7 @@ function createShowUpdateURLTitleIcon(urlCard) {
 }
 
 // Create the form to update the URL Title
-function createUpdateURLTitleInput(urlTitleText, urlCard) {
+function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
   // Create the update title text box
   const urlTitleUpdateInputContainer = makeTextInput(
     "urlTitle",
@@ -74,7 +74,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
     $(document).on("keyup.updateURLTitleSubmitEscape", function (e) {
       switch (e.key) {
         case KEYS.ENTER:
-          updateURLTitle(urlTitleTextInput, urlCard);
+          updateURLTitle(urlTitleTextInput, urlCard, utubID);
           break;
         case KEYS.ESCAPE:
           hideAndResetUpdateURLTitleForm(urlCard);
@@ -104,11 +104,12 @@ function createUpdateURLTitleInput(urlTitleText, urlCard) {
         $(e.target).closest(".urlRow").is(urlCard)
       )
         e.stopPropagation();
-      updateURLTitle(urlTitleTextInput, urlCard);
+      updateURLTitle(urlTitleTextInput, urlCard, utubID);
     })
     .offAndOn("focus.submitUpdateUrlTitle", function () {
       $(document).on("keyup.submitUpdateUrlTitle", function (e) {
-        if (e.key === KEYS.ENTER) updateURLTitle(urlTitleTextInput, urlCard);
+        if (e.key === KEYS.ENTER)
+          updateURLTitle(urlTitleTextInput, urlCard, utubID);
       });
     })
     .offAndOn("blur.submitUpdateUrlTitle", function () {

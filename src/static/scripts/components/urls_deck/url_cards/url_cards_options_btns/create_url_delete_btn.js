@@ -37,7 +37,7 @@ function createDeleteURLIcon() {
   return deleteURLOuterIconSvg;
 }
 
-function createDeleteURLBtn(url, urlCard) {
+function createDeleteURLBtn(url, urlCard, utubID) {
   const urlBtnDelete = $(document.createElement("button"));
   urlBtnDelete
     .addClass(
@@ -54,7 +54,7 @@ function createDeleteURLBtn(url, urlCard) {
     .disableTab()
     .on("click", function (e) {
       e.stopPropagation();
-      deleteURLShowModal(url.utubUrlID, urlCard);
+      deleteURLShowModal(url.utubUrlID, urlCard, utubID);
     })
     .append(createDeleteURLIcon());
 

@@ -29,20 +29,24 @@ function createMemberRemoveIcon() {
   return removeMemberOuterIconSvg;
 }
 
-function createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID) {
+function createLeaveUTubAsMemberIcon(
+  isCurrentUserOwner,
+  currentUserID,
+  utubID,
+) {
   $("#memberSelfBtnDelete")
     .offAndOn("click.removeMember", function (e) {
       e.stopPropagation();
       hideInputs();
       deselectAllURLs();
-      removeMemberShowModal(currentUserID, isCurrentUserOwner);
+      removeMemberShowModal(currentUserID, isCurrentUserOwner, utubID);
     })
     .offAndOn("focus.removeSelf", function () {
       $(document).on("keyup.removeSelf", function (e) {
         if (e.key === KEYS.ENTER) {
           hideInputs();
           deselectAllURLs();
-          removeMemberShowModal(currentUserID, isCurrentUserOwner);
+          removeMemberShowModal(currentUserID, isCurrentUserOwner, utubID);
         }
       });
     })
@@ -57,7 +61,7 @@ function removeMemberHideModal() {
 }
 
 // Show confirmation modal for removal of the selected member from current UTub
-function removeMemberShowModal(memberID, isCreator) {
+function removeMemberShowModal(memberID, isCreator, utubID) {
   const modalTitle = isCreator
     ? "Are you sure you want to remove this member from the UTub?"
     : "Are you sure you want to leave this UTub?";
@@ -85,7 +89,7 @@ function removeMemberShowModal(memberID, isCreator) {
     .text(buttonTextSubmit)
     .offAndOn("click", function (e) {
       e.preventDefault();
-      removeMember(memberID, isCreator);
+      removeMember(memberID, isCreator, utubID);
     })
     .text(buttonTextSubmit);
 
@@ -94,16 +98,16 @@ function removeMemberShowModal(memberID, isCreator) {
 }
 
 // This function will extract the current selection data needed for POST request (member ID)
-function removeMemberSetup(memberID) {
-  let postURL = routes.removeMember(getActiveUTubID(), memberID);
+function removeMemberSetup(memberID, utubID) {
+  let postURL = routes.removeMember(utubID, memberID);
 
   return postURL;
 }
 
 // Handles post request and response for removing a member from current UTub, after confirmation
-function removeMember(memberID, isCreator) {
+function removeMember(memberID, isCreator, utubID) {
   // Extract data to submit in POST request
-  let postURL = removeMemberSetup(memberID);
+  let postURL = removeMemberSetup(memberID, utubID);
 
   let request = ajaxCall("delete", postURL, []);
 
@@ -113,7 +117,7 @@ function removeMember(memberID, isCreator) {
       if (isCreator) {
         removeMemberSuccess(memberID);
       } else {
-        leaveUTubSuccess();
+        leaveUTubSuccess(utubID);
       }
     }
   });
@@ -132,14 +136,14 @@ function removeMemberSuccess(memberID) {
     memberListItem.remove();
   });
 
-  setMemberDeckForUTub(true);
+  setMemberDeckForUTub();
 
   if (getNumOfUTubs() === 0) {
     resetUTubDeckIfNoUTubs();
   }
 }
 
-function leaveUTubSuccess() {
+function leaveUTubSuccess(utubID) {
   // Close modal
   $("#confirmModal").modal("hide");
 
@@ -149,7 +153,7 @@ function leaveUTubSuccess() {
   setUIWhenNoUTubSelected();
 
   // UTub Deck display updates
-  const utubSelector = $(".UTubSelector[utubid=" + getActiveUTubID() + "]");
+  const utubSelector = $(".UTubSelector[utubid=" + utubID + "]");
   utubSelector.fadeOut("slow", function () {
     utubSelector.remove();
     hideInputsAndSetUTubDeckSubheader();

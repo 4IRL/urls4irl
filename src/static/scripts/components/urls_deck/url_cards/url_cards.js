@@ -1,6 +1,11 @@
 "use strict";
 
-function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
+function updateURLAfterFindingStaleData(
+  urlCard,
+  newUrl,
+  updatedUTubTags,
+  utubID,
+) {
   const urlTitle = urlCard.find(".urlTitle");
   const urlString = urlCard.find(".urlString");
 
@@ -36,14 +41,14 @@ function updateURLAfterFindingStaleData(urlCard, newUrl, updatedUTubTags) {
         (tag) => tag.id === newUrl.utubUrlTagIDs[i],
       );
       urlTagContainer.append(
-        createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString, urlCard),
+        createTagBadgeInURL(tagToAdd.id, tagToAdd.tagString, urlCard, utubID),
       );
     }
   }
 }
 
 // Create a URL block to add to current UTub/URLDeck
-function createURLBlock(url, tagArray) {
+function createURLBlock(url, tagArray, utubID) {
   const urlCard = $(document.createElement("div"))
     .addClass("urlRow flex-column full-width pad-in-15p pointerable")
     .enableTab(); // Holds everything in the URL
@@ -55,7 +60,7 @@ function createURLBlock(url, tagArray) {
   // Append update URL title form if user can edit the URL
   url.canDelete
     ? urlTitleGoToURLWrap.append(
-        createURLTitleAndUpdateBlock(url.urlTitle, urlCard),
+        createURLTitleAndUpdateBlock(url.urlTitle, urlCard, utubID),
       )
     : urlTitleGoToURLWrap.append(createURLTitle(url.urlTitle));
 
@@ -70,10 +75,14 @@ function createURLBlock(url, tagArray) {
 
   // Append update URL form if user can edit the URL
   url.canDelete
-    ? urlCard.append(createURLStringAndUpdateBlock(url.urlString, urlCard))
+    ? urlCard.append(
+        createURLStringAndUpdateBlock(url.urlString, urlCard, utubID),
+      )
     : urlCard.append(createURLString(url.urlString));
 
-  urlCard.append(createTagsAndOptionsForUrlBlock(url, tagArray, urlCard));
+  urlCard.append(
+    createTagsAndOptionsForUrlBlock(url, tagArray, urlCard, utubID),
+  );
 
   setURLCardSelectionEventListener(urlCard);
   setFocusEventListenersOnURLCard(urlCard);
@@ -106,7 +115,7 @@ function setFocusEventListenersOnURLCard(urlCard) {
 }
 
 // Create both the tag container and the button container for a URL
-function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard) {
+function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard, utubID) {
   const tagsAndButtonsWrap = $(document.createElement("div")).addClass(
     "tagsAndButtonsWrap full-width",
   );
@@ -117,20 +126,21 @@ function createTagsAndOptionsForUrlBlock(url, tagArray, urlCard) {
     tagArray,
     url.utubUrlTagIDs,
     urlCard,
+    utubID,
   );
 
   tagsAndButtonsWrap.append(tagsAndTagCreateWrap);
   tagsAndTagCreateWrap.append(tagBadgesWrap);
 
-  tagsAndTagCreateWrap.append(createTagInputBlock(urlCard));
+  tagsAndTagCreateWrap.append(createTagInputBlock(urlCard, utubID));
 
-  tagsAndButtonsWrap.append(createURLOptionsButtons(url, urlCard));
+  tagsAndButtonsWrap.append(createURLOptionsButtons(url, urlCard, utubID));
 
   return tagsAndButtonsWrap;
 }
 
 // New URL card and input text fields. Initially hidden, shown when create URL is requested. Input field recreated here to ensure at the end of list after creation of new URL
-function newURLInputAddEventListeners(urlInputForm) {
+function newURLInputAddEventListeners(urlInputForm, utubID) {
   const urlBtnCreate = urlInputForm.find("#urlSubmitBtnCreate");
   const urlBtnDelete = urlInputForm.find("#urlCancelBtnCreate");
   const createURLTitleInput = urlInputForm.find("#urlTitleCreate");
@@ -138,7 +148,7 @@ function newURLInputAddEventListeners(urlInputForm) {
 
   $(urlBtnCreate).on("click.createURL", function (e) {
     e.stopPropagation();
-    createURL(createURLTitleInput, createURLInput);
+    createURL(createURLTitleInput, createURLInput, utubID);
   });
 
   $(urlBtnDelete).on("click.createURL", function (e) {
@@ -149,7 +159,11 @@ function newURLInputAddEventListeners(urlInputForm) {
 
   for (let i = 0; i < inputArr.length; i++) {
     $(inputArr[i]).on("focus.createURL", function () {
-      bindCreateURLFocusEventListeners(createURLTitleInput, createURLInput);
+      bindCreateURLFocusEventListeners(
+        createURLTitleInput,
+        createURLInput,
+        utubID,
+      );
     });
 
     $(inputArr[i]).on("blur.createURL", function () {
