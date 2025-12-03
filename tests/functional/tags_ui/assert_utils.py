@@ -1,6 +1,7 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
+from src.utils.strings.tag_strs import DELETE_UTUB_TAG_WARNING
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     wait_then_get_element,
@@ -105,3 +106,18 @@ def assert_new_utub_tag_created(
         By.CSS_SELECTOR, HPL.TAG_FILTERS + " span"
     )
     assert new_tag_str in [tag.text for tag in utub_tag_spans]
+
+
+def assert_delete_utub_tag_modal_shown(browser: WebDriver):
+    warning_modal = wait_then_get_element(browser, HPL.HOME_MODAL)
+    assert warning_modal is not None
+
+    assert warning_modal.is_displayed()
+
+    warning_modal_body = warning_modal.find_element(By.CSS_SELECTOR, HPL.BODY_MODAL)
+    confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
+
+    utub_tag_delete_check_text = DELETE_UTUB_TAG_WARNING
+
+    # Assert warning modal appears with appropriate text
+    assert confirmation_modal_body_text == utub_tag_delete_check_text

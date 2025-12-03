@@ -189,7 +189,6 @@ async function createURLTag(urlTagCreateInput, urlCard, utubID) {
     const request = ajaxCall("post", postURL, data);
 
     // Handle response
-    debugger;
     request.done(function (response, _, xhr) {
       if (xhr.status === 200) {
         resetCreateURLTagFailErrors(urlCard);

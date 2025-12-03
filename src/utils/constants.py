@@ -3,6 +3,7 @@ from src.utils.strings.email_validation_strs import (
     VALIDATE_MY_EMAIL,
     VALIDATE_YOUR_EMAIL,
 )
+from src.utils.strings.form_strs import MAY_HAVE_ALREADY_BEEN_DELETED
 from src.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD, LOGIN_TITLE
 from src.utils.strings.tag_strs import ADD_URL_TAG_TOOLTIP, DELETE_UTUB_TAG_WARNING
 from src.utils.strings.url_strs import (
@@ -99,6 +100,7 @@ class STRINGS:
     ADD_URL_TAG_TOOLTIP = ADD_URL_TAG_TOOLTIP
     EDIT_URL_TOOLTIP = EDIT_URL_TOOLTIP
     DELETE_URL_TOOLTIP = DELETE_URL_TOOLTIP
+    MAY_HAVE_ALREADY_BEEN_DELETED = MAY_HAVE_ALREADY_BEEN_DELETED
 
 
 class CONSTANTS:

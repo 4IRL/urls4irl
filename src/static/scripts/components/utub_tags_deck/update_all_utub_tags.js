@@ -51,11 +51,13 @@ function setTagDeckBtnsOnUpdateAllUTubTagsClosed() {
 function openUTubTagBtnMenuOnUTubTags() {
   $(".tagCountWrap").hideClass();
   $(".tagMenuWrap").showClassNormal();
-  $(".tagFilter").addClass("disabled");
+  $(".tagFilter").addClass("disabled").disableTab();
+  enableTabbableChildElements($("#listTags"));
 }
 
 function closeUTubTagBtnMenuOnUTubTags() {
+  disableTabbableChildElements($("#listTags"));
   $(".tagCountWrap").showClassNormal();
   $(".tagMenuWrap").hideClass();
-  $(".tagFilter").removeClass("disabled");
+  $(".tagFilter").removeClass("disabled").enableTab();
 }

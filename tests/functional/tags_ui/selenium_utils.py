@@ -1,6 +1,7 @@
 from typing import Tuple
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
+from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
@@ -11,11 +12,15 @@ from tests.functional.assert_utils import (
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
+    wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
+    wait_then_get_elements,
+    wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
+from tests.functional.tags_ui.assert_utils import assert_delete_utub_tag_modal_shown
 
 
 def add_tag_to_url(browser: WebDriver, selected_url_id: int, tag_string: str) -> None:
@@ -71,7 +76,7 @@ def get_tag_badge_selector_on_selected_url_by_tag_id(url_tag_id: int) -> str:
 
 
 def get_utub_tag_filter_selector(utub_tag_id: int) -> str:
-    return f"{HPL.TAG_FILTERS}[data-utub-tag-id='{utub_tag_id}']"
+    return f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{utub_tag_id}']"
 
 
 def apply_tag_filter_based_on_id(browser: WebDriver, utub_tag_id: int):
@@ -94,7 +99,7 @@ def get_visible_urls_and_urls_with_tag_text_by_tag_id(
     Extracts the visible URLs and total count of URLs that have a specific tag from the Tag Deck associated with the tag filter based on the tag ID.
     """
     utub_tag_selector = (
-        f'{HPL.TAG_FILTERS}[data-utub-tag-id="{tag_id}"] {HPL.TAG_COUNT}'
+        f'{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}="{tag_id}"] {HPL.TAG_COUNT}'
     )
     tag_filter_count_elem = wait_then_get_element(browser, utub_tag_selector)
     assert tag_filter_count_elem
@@ -134,3 +139,44 @@ def click_open_update_utub_tags_btn(driver: WebDriver):
     assert_visible_css_selector(
         driver, css_selector=HPL.BUTTON_UPDATE_TAG_BTN_ALL_CLOSE
     )
+
+
+def get_first_visible_tag_in_utub(browser: WebDriver) -> WebElement:
+    tags = wait_then_get_elements(browser, HPL.TAG_FILTERS, time=3)
+    first_tag = tags[0]
+    assert first_tag.is_displayed()
+
+    return first_tag
+
+
+def get_all_utub_tags_ids_in_utub(browser: WebDriver) -> list[str]:
+    return [
+        tag_elem.get_attribute(f"{HPL.TAG_BADGE_ID_ATTRIB}") or ""
+        for tag_elem in wait_then_get_elements(browser, HPL.TAG_FILTERS)
+    ]
+
+
+def open_delete_utub_tag_confirm_modal_for_tag(browser: WebDriver, tag_id: str):
+    click_open_update_utub_tags_btn(browser)
+    delete_utub_tag_css_selector = f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}'] > {HPL.UTUB_TAG_MENU_WRAP} > {HPL.BUTTON_UTUB_TAG_DELETE}"
+
+    assert_visible_css_selector(browser, delete_utub_tag_css_selector)
+    delete_tag_btn = wait_then_get_element(
+        browser, delete_utub_tag_css_selector, time=3
+    )
+    assert delete_tag_btn
+
+    delete_tag_btn.send_keys(Keys.ENTER)
+    assert_delete_utub_tag_modal_shown(browser)
+
+
+def delete_utub_tag_elem(browser: WebDriver, tag_id: str):
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    delete_utub_tag_css_selector = (
+        f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
+    )
+    utub_tag_elem = browser.find_element(By.CSS_SELECTOR, delete_utub_tag_css_selector)
+    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
+    wait_for_element_to_be_removed(browser, utub_tag_elem)

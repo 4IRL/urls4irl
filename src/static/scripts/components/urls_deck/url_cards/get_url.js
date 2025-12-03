@@ -21,7 +21,6 @@ async function getUpdatedURL(utubID, utubUrlID, urlCard) {
 }
 
 function updateURLBasedOnGetData(urlUpdateResponse, urlCard, utubID) {
-  debugger;
   const urlTitleElem = urlCard.find(".urlTitle");
   const urlStringElem = urlCard.find(".urlString");
   const urlTags = urlCard.find(".tagBadge");

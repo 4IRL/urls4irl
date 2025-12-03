@@ -24,12 +24,14 @@ function setUnselectUpdateUTubTagEventListeners() {
     .offAndOn("click.closeUTubTagUpdate", function () {
       setTagDeckBtnsOnUpdateAllUTubTagsClosed();
       closeUTubTagBtnMenuOnUTubTags();
+      updateURLsAndTagSubheaderWhenTagSelected();
     })
     .offAndOn("focus.closeUTubTagUpdate", function () {
       $(document).offAndOn("keyup.closeUTubTagUpdate", function (e) {
         if (e.key === KEYS.ENTER) {
           setTagDeckBtnsOnUpdateAllUTubTagsClosed();
           closeUTubTagBtnMenuOnUTubTags();
+          updateURLsAndTagSubheaderWhenTagSelected();
         }
       });
     })
@@ -75,7 +77,6 @@ function deleteUTubTagShowModal(utubID, utubTagID) {
 }
 
 function deleteUTubTagSetup(utubID, utubTagID) {
-  debugger;
   let deleteURL = routes.deleteUTubTag(utubID, utubTagID);
 
   return deleteURL;
@@ -106,17 +107,46 @@ function deleteUTubTagSuccess(response) {
   const utubTagID = response.utubTag.utubTagID;
 
   const utubTagSelector = $(".tagFilter[data-utub-tag-id=" + utubTagID + "]");
-  utubTagSelector.fadeOut("slow", () => {
-    utubTagSelector.remove();
-  });
 
-  // Remove the tag from associated URLs
-  const urlTagBadges = $(".tagBadge[data-utub-tag-id=" + utubTagID + "]");
-  urlTagBadges.remove();
+  utubTagSelector.fadeOut("fast", () => {
+    // Remove the tag from associated URLs
+    const urlTagBadges = $(".tagBadge[data-utub-tag-id=" + utubTagID + "]");
+    urlTagBadges.remove();
+
+    utubTagSelector.remove();
+
+    // If no tags are left then reset back to only showing Create UTub Tag Button
+    if ($(".tagFilter").length === 0) {
+      $("#utubTagBtnUpdateAllOpen").hideClass();
+      $("#unselectAllTagFilters").hideClass();
+      $("#utubTagCloseUpdateTagBtnContainer").hideClass();
+      $("#utubTagStandardBtns").showClassFlex();
+    }
+
+    updateURLsAndTagSubheaderWhenTagSelected();
+  });
 }
 
 function deleteUTubTagFail() {
-  // Idempotent operation - on failure let nothing happen
-  $("#confirmModal").modal("hide");
+  $("#HomeModalAlertBanner")
+    .showClassNormal()
+    .append(`${STRINGS.MAY_HAVE_ALREADY_BEEN_DELETED}<br>`)
+    .append("Click ")
+    .append(
+      $(document.createElement("a"))
+        .attr({
+          href: "#",
+          id: "Reloader",
+        })
+        .text("here"),
+    )
+    .append(" to reload the UTub.");
+
+  $("#Reloader").offAndOn("click", (e) => {
+    e.preventDefault();
+    location.reload();
+  });
+
+  $("#modalSubmit").addClass("disabled");
   return;
 }

@@ -12,6 +12,7 @@ from src.utils.strings.utub_strs import UTUB_NAME
 
 # Strings for all forms
 CSRF_TOKEN = "csrf_token"
+MAY_HAVE_ALREADY_BEEN_DELETED = "This item may already have been deleted."
 
 
 class GENERAL_FORM:

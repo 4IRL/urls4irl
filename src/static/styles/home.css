@@ -180,6 +180,15 @@
     transform: rotate(-90deg);
 }
 
+#HomeModalAlertBanner {
+    margin-bottom: 0.5rem;
+    margin-top: 0.5rem;
+}
+
+#HomeModalAlertBanner > a {
+    color: var(--bs-link-color);
+}
+
 /* Utility */
 
 .white-space-pre-line {
