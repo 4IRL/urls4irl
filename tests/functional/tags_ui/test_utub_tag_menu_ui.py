@@ -258,7 +258,3 @@ def test_update_tag_menu_btn_hidden_on_utub_delete(
     assert_not_visible_css_selector(
         browser, css_selector=HPL.WRAP_BUTTON_UPDATE_TAG_ALL_CLOSE
     )
-
-
-# TODO: Test that the menu is hidden on last tag delete
-# TODO: Test delete with invalid CSRF token

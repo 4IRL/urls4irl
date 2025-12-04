@@ -131,7 +131,16 @@ function deleteUTubTagSuccess(response) {
   });
 }
 
-function deleteUTubTagFail() {
+function deleteUTubTagFail(xhr) {
+  if (
+    xhr.status === 403 &&
+    xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+  ) {
+    // Handle invalid CSRF token error response
+    $("body").html(xhr.responseText);
+    return;
+  }
+
   $("#HomeModalAlertBanner")
     .showClassNormal()
     .append(`${STRINGS.MAY_HAVE_ALREADY_BEEN_DELETED}<br>`)

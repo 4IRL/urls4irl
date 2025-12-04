@@ -5,18 +5,23 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from src import db
+from src.models.users import Users
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
 from src.models.utub_urls import Utub_Urls
 from tests.functional.assert_utils import (
+    assert_active_utub,
+    assert_login_with_username,
     assert_not_visible_css_selector,
     assert_visible_css_selector,
+    assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_and_select_utub_by_utubid
 from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
+    invalidate_csrf_token_on_page,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -374,3 +379,47 @@ def test_delete_last_utub_tag_closes_utub_tag_menu(
         browser, css_selector=HPL.WRAP_BUTTON_UPDATE_TAG_ALL_CLOSE
     )
     assert_not_visible_css_selector(browser, css_selector=HPL.BUTTON_UTUB_TAG_DELETE)
+
+
+def test_delete_utub_tag_invalid_csrf_token(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a user in a UTub with Tags
+    WHEN they delete a UTub tag in the deck with an invalid CSRF token
+    THEN ensure U4I responds with a proper error message
+    """
+
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    # Add two tags to the UTub, and then add each to a single different URL
+    with app.app_context():
+        user: Users = Users.query.get(1)
+        username = user.username
+
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+
+    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+        HPL.TAG_BADGE_ID_ATTRIB
+    )
+    assert tag_id
+
+    invalidate_csrf_token_on_page(browser)
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    assert_visited_403_on_invalid_csrf_and_reload(browser)
+
+    # Page reloads after user clicks button in CSRF 403 error page
+    assert_login_with_username(browser, username)
+
+    # Reload will bring user back to the UTub they were in before
+    assert_active_utub(browser, utub_user_created.name)
+
+    delete_utub_submit_btn_modal = wait_until_hidden(
+        browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3
+    )
+    assert not delete_utub_submit_btn_modal.is_displayed()
