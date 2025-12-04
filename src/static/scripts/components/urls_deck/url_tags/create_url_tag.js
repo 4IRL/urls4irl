@@ -1,6 +1,6 @@
 "use strict";
 
-function createTagInputBlock(urlCard) {
+function createTagInputBlock(urlCard, utubID) {
   const urlTagCreateTextInputContainer = makeTextInput(
     "urlTag",
     METHOD_TYPES.CREATE.description,
@@ -14,7 +14,7 @@ function createTagInputBlock(urlCard) {
     .prop("minLength", CONSTANTS.TAGS_MIN_LENGTH)
     .prop("maxLength", CONSTANTS.TAGS_MAX_LENGTH);
 
-  setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard);
+  setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard, utubID);
 
   // Create Url Title submit button
   const urlTagSubmitBtnCreate = makeSubmitButton(30).addClass(
@@ -24,11 +24,12 @@ function createTagInputBlock(urlCard) {
   urlTagSubmitBtnCreate
     .find(".submitButton")
     .on("click.createURLTag", function () {
-      createURLTag(urlTagTextInput, urlCard);
+      createURLTag(urlTagTextInput, urlCard, utubID);
     })
     .on("focus.createURLTag", function () {
       $(document).on("keyup.createURLTag", function (e) {
-        if (e.which === 13) createURLTag(urlTagTextInput, urlCard);
+        if (e.key === KEYS.ENTER)
+          createURLTag(urlTagTextInput, urlCard, utubID);
       });
     })
     .on("blur.createURLTag", function () {
@@ -48,7 +49,7 @@ function createTagInputBlock(urlCard) {
     })
     .offAndOn("focus.createURLTag", function () {
       $(document).on("keyup.createURLTag", function (e) {
-        if (e.which === 13) hideAndResetCreateURLTagForm(urlCard);
+        if (e.key === KEYS.ENTER) hideAndResetCreateURLTagForm(urlCard);
       });
     })
     .offAndOn("blur.createURLTag", function () {
@@ -174,8 +175,7 @@ function createURLTagSetup(urlTagCreateInput, utubID, utubUrlID) {
 }
 
 // Handles addition of new Tag to URL after user submission
-async function createURLTag(urlTagCreateInput, urlCard) {
-  const utubID = getActiveUTubID();
+async function createURLTag(urlTagCreateInput, urlCard, utubID) {
   const utubUrlID = parseInt(urlCard.attr("utuburlid"));
   // Extract data to submit in POST request
   let postURL, data;
@@ -192,7 +192,7 @@ async function createURLTag(urlTagCreateInput, urlCard) {
     request.done(function (response, _, xhr) {
       if (xhr.status === 200) {
         resetCreateURLTagFailErrors(urlCard);
-        createURLTagSuccess(response, urlCard);
+        createURLTagSuccess(response, urlCard, utubID);
       }
     });
 
@@ -213,7 +213,7 @@ async function createURLTag(urlTagCreateInput, urlCard) {
 }
 
 // Displays changes related to a successful addition of a new Tag
-function createURLTagSuccess(response, urlCard) {
+function createURLTagSuccess(response, urlCard, utubID) {
   // Clear and reset input field
   hideAndResetCreateURLTagForm(urlCard);
 
@@ -225,7 +225,7 @@ function createURLTagSuccess(response, urlCard) {
   // Update tags in URL
   urlCard
     .find(".urlTagsContainer")
-    .append(createTagBadgeInURL(utubTagID, string, urlCard));
+    .append(createTagBadgeInURL(utubTagID, string, urlCard, utubID));
 
   const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
 
@@ -237,7 +237,7 @@ function createURLTagSuccess(response, urlCard) {
   $("#unselectAllTagFilters").showClassNormal();
 
   if (!isTagInUTubTagDeck(utubTagID)) {
-    const newTag = buildTagFilterInDeck(utubTagID, string, tagCount);
+    const newTag = buildTagFilterInDeck(utubID, utubTagID, string, tagCount);
     // If max number of tags already selected
     $(".tagFilter.selected").length === CONSTANTS.TAGS_MAX_ON_URL
       ? newTag.addClass("disabled").off(".tagFilterSelected")

@@ -1,5 +1,13 @@
 "use strict";
 
+const KEYS = {
+  ENTER: "Enter",
+  ESCAPE: "Escape",
+  ARROW_UP: "ArrowUp",
+  ARROW_DOWN: "ArrowDown",
+  SPACE: " ",
+};
+
 // To differentiate between the text box types when dynamically creating input text boxes
 const METHOD_TYPES = Object.freeze({
   CREATE: Symbol("Create"),

@@ -1,6 +1,6 @@
 "use strict";
 
-$(document).ready(function () {
+function createURLShowInputEventListeners(utubID) {
   /* Bind click functions */
   const urlBtnCreateSelector = "#urlBtnCreate";
   const urlBtnDeckCreateSelector = "#urlBtnDeckCreate";
@@ -8,26 +8,39 @@ $(document).ready(function () {
   const urlBtnDeckCreate = $(urlBtnDeckCreateSelector);
 
   // Add new URL to current UTub
-  urlBtnCreate.on("click", function (e) {
-    if ($(e.target).closest("#urlBtnCreate").length > 0) createURLShowInput();
+  urlBtnCreate.offAndOn("click", function (e) {
+    if ($(e.target).closest("#urlBtnCreate").length > 0)
+      createURLShowInput(utubID);
   });
-  urlBtnDeckCreate.on("click", function (e) {
+  urlBtnDeckCreate.offAndOn("click", function (e) {
     if ($(e.target).closest("#urlBtnDeckCreate").length > 0)
-      createURLShowInput();
+      createURLShowInput(utubID);
   });
 
   // Bind enter key
-  urlBtnCreate.on("focus", bindCreateURLShowInputEnterKeyEventListener());
-  urlBtnDeckCreate.on("focus", bindCreateURLShowInputEnterKeyEventListener());
+  urlBtnCreate.offAndOn(
+    "focus",
+    bindCreateURLShowInputEnterKeyEventListener(utubID),
+  );
+  urlBtnDeckCreate.offAndOn(
+    "focus",
+    bindCreateURLShowInputEnterKeyEventListener(utubID),
+  );
 
-  urlBtnCreate.on("blur", unbindCreateURLShowInputEnterKeyEventListener());
-  urlBtnDeckCreate.on("blur", unbindCreateURLShowInputEnterKeyEventListener());
-});
+  urlBtnCreate.offAndOn(
+    "blur",
+    unbindCreateURLShowInputEnterKeyEventListener(),
+  );
+  urlBtnDeckCreate.offAndOn(
+    "blur",
+    unbindCreateURLShowInputEnterKeyEventListener(),
+  );
+}
 
-function bindCreateURLShowInputEnterKeyEventListener() {
+function bindCreateURLShowInputEnterKeyEventListener(utubID) {
   $(document).on("keyup.createURL", function (e) {
-    if (e.which === 13) {
-      createURLShowInput();
+    if (e.key === KEYS.ENTER) {
+      createURLShowInput(utubID);
     }
   });
 }

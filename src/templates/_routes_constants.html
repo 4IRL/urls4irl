@@ -51,7 +51,12 @@
                 // UTub Tag routes
                 this.createUTubTag = (utub_id) =>
                     "{{url_for('utub_tags.create_utub_tag', utub_id=-1)}}"
+                        .replace("-1", utub_id);
+
+                this.deleteUTubTag = (utub_id, utub_tag_id) =>
+                    "{{url_for('utub_tags.delete_utub_tag', utub_id=-1, utub_tag_id=-2)}}"
                         .replace("-1", utub_id)
+                        .replace("-2", utub_tag_id);
 
                 // Member routes
                 this.createMember = (utub_id) =>

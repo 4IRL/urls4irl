@@ -109,8 +109,7 @@ function updateURLSetup(urlStringUpdateInput, utubID, utubUrlID) {
 }
 
 // Handles update of an existing URL
-async function updateURL(urlStringUpdateInput, urlCard) {
-  const utubID = getActiveUTubID();
+async function updateURL(urlStringUpdateInput, urlCard, utubID) {
   const utubUrlID = parseInt(urlCard.attr("utuburlid"));
   let timeoutID;
   try {

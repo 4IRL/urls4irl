@@ -8,7 +8,7 @@ async function getUpdatedURL(utubID, utubUrlID, urlCard) {
       dataType: "json",
       success: (response, _, xhr) => {
         if (xhr.status === 200 && response.hasOwnProperty("URL")) {
-          updateURLBasedOnGetData(response.URL, urlCard);
+          updateURLBasedOnGetData(response.URL, urlCard, utubID);
           resolve();
         }
         resolve(xhr);
@@ -20,7 +20,7 @@ async function getUpdatedURL(utubID, utubUrlID, urlCard) {
   });
 }
 
-function updateURLBasedOnGetData(urlUpdateResponse, urlCard) {
+function updateURLBasedOnGetData(urlUpdateResponse, urlCard, utubID) {
   const urlTitleElem = urlCard.find(".urlTitle");
   const urlStringElem = urlCard.find(".urlString");
   const urlTags = urlCard.find(".tagBadge");
@@ -39,6 +39,7 @@ function updateURLBasedOnGetData(urlUpdateResponse, urlCard) {
     urlTags,
     urlUpdateResponse.urlTags,
     urlCard,
+    utubID,
   );
 }
 
@@ -46,6 +47,7 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
   currentTags,
   receivedTags,
   urlCard,
+  utubID,
 ) {
   const receivedTagIDs = receivedTags.map((tag) => tag.utubTagID);
   let removedTagIDs = [];
@@ -89,13 +91,18 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
             receivedTag.utubTagID,
             receivedTag.tagString,
             urlCard,
+            utubID,
           ),
         );
 
       // Add tag to UTub if it doesn't already exist
       if (!isTagInUTubTagDeck(receivedTag.utubTagID)) {
         $("#listTags").append(
-          buildTagFilterInDeck(receivedTag.utubTagID, receivedTag.tagString),
+          buildTagFilterInDeck(
+            utubID,
+            receivedTag.utubTagID,
+            receivedTag.tagString,
+          ),
         );
       }
     }

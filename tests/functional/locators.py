@@ -67,6 +67,13 @@ class HomePageLocators(GenericPageLocator):
     BUTTON_UTUB_TAG_DELETE = ".utubTagBtnDelete"
     UNSELECTED = ".unselected"
     SELECTED = ".selected"
+    BUTTON_UPDATE_TAG_BTN_ALL_OPEN = "#utubTagBtnUpdateAllOpen"
+    BUTTON_UPDATE_TAG_BTN_ALL_CLOSE = "#utubTagBtnUpdateAllClose"
+    WRAP_BUTTON_UPDATE_TAG_ALL_CLOSE = "#utubTagCloseUpdateTagBtnContainer"
+    WRAP_BUTTONS_CREATE_UNFILTER_UTUB_TAGS = "#utubTagStandardBtns"
+    UTUB_TAG_MENU_WRAP = ".tagMenuWrap"
+    UTUB_TAG_COUNT_WRAP = ".tagCountWrap"
+    BUTTON_UTUB_TAG_DELETE = ".utubTagBtnDelete"
 
     # URL Deck
     WRAP_UTUB_NAME_UPDATE = "#UTubNameUpdateWrap"

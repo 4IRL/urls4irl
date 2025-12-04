@@ -13,9 +13,8 @@ function getNumOfVisibleURLs() {
 // Keyboard navigation between selected UTubs or URLs
 function bindSwitchURLKeyboardEventListeners() {
   $(document).offAndOn("keyup.switchurls", function (e) {
-    const keycode = e.keyCode ? e.keyCode : e.which;
-    const prev = keycode === 38; // UP
-    const next = keycode === 40; // DOWN
+    const prev = e.key === KEYS.ARROW_UP;
+    const next = e.key === KEYS.ARROW_DOWN;
 
     if (!prev && !next) return;
     const selectedURLCard = getSelectedURLCard();

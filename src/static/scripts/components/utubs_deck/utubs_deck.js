@@ -12,15 +12,9 @@ function hideUTubLoadingIconAndClearTimeout(timeoutID) {
   $("#UTubSelectDualLoadingRing").removeClass("dual-loading-ring");
 }
 
-// Set event listeners for add and delete UTubs
-function setCreateDeleteUTubEventListeners() {
-  setCreateUTubEventListeners();
-  setDeleteEventListeners();
-}
-
 // Remove event listeners for add and delete UTubs
-function removeCreateDeleteUTubEventListeners() {
-  $(document).off(".createDeleteUTub");
+function removeCreateUTubEventListeners() {
+  $(document).off(".createUTub");
 }
 
 // Clear the UTub Deck
@@ -82,6 +76,7 @@ function setUTubDeckOnUTubSelected(selectedUTubID, isCurrentUserOwner) {
 
   if (isCurrentUserOwner) {
     $("#utubBtnDelete").showClassNormal();
+    setDeleteEventListeners(selectedUTubID);
   } else $("#utubBtnDelete").hideClass();
 
   const utubSelector = $(`.UTubSelector[utubid=${selectedUTubID}]`);

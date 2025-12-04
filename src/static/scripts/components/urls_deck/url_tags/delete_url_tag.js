@@ -8,8 +8,7 @@ function deleteURLTagSetup(utubID, utubUrlID, utubTagID) {
 }
 
 // Remove tag from selected URL
-async function deleteURLTag(utubTagID, tagBadge, urlCard) {
-  const utubID = getActiveUTubID();
+async function deleteURLTag(utubTagID, tagBadge, urlCard, utubID) {
   const utubUrlID = parseInt(urlCard.attr("utuburlid"));
   let timeoutID;
   try {

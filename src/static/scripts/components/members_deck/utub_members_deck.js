@@ -7,7 +7,7 @@ function resetMemberDeck() {
 }
 
 // Update member deck on asynchronous update, either due to stale data or refresh
-function updateMemberDeck(newMembers, isCurrentUserOwner) {
+function updateMemberDeck(newMembers, isCurrentUserOwner, utubID) {
   const currentMembers = $(".member");
   const currentMemberIDs = $.map(currentMembers, (member) =>
     parseInt($(member).attr("memberid")),
@@ -32,6 +32,7 @@ function updateMemberDeck(newMembers, isCurrentUserOwner) {
           newMembers[i].id,
           newMembers[i].username,
           isCurrentUserOwner,
+          utubID,
         ),
       );
     }
@@ -44,6 +45,7 @@ function setMemberDeckOnUTubSelected(
   utubOwnerUserID,
   isCurrentUserOwner,
   currentUserID,
+  utubID,
 ) {
   resetMemberDeck();
   const parent = $("#listMembers");
@@ -51,6 +53,8 @@ function setMemberDeckOnUTubSelected(
   let utubMember;
   let utubMemberUsername;
   let utubMemberUserID;
+
+  isCurrentUserOwner ? setupShowCreateMemberFormEventListeners(utubID) : null;
 
   // Instantiate deck with list of members with access to current UTub
   for (let i = 0; i < numOfMembers; i++) {
@@ -68,6 +72,7 @@ function setMemberDeckOnUTubSelected(
           utubMemberUserID,
           utubMemberUsername,
           isCurrentUserOwner,
+          utubID,
         ),
       );
     }
@@ -77,7 +82,7 @@ function setMemberDeckOnUTubSelected(
   // VERIFY where it is being used first
   isCurrentUserOwner
     ? null
-    : createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID);
+    : createLeaveUTubAsMemberIcon(isCurrentUserOwner, currentUserID, utubID);
 
   // Subheader prompt
   setMemberDeckForUTub(isCurrentUserOwner);
@@ -93,7 +98,7 @@ function setMemberDeckWhenNoUTubSelected() {
   $("#MemberDeckSubheader").text(null);
 }
 
-function setMemberDeckForUTub(isCurrentUserOwner) {
+function setMemberDeckForUTub(isCurrentUserOwner = true) {
   const numOfMembers = $("#listMembers").find("span.member").length + 1; // plus 1 for owner
   const memberDeckSubheader = $("#MemberDeckSubheader");
   memberDeckSubheader.parent().addClass("height-2rem");

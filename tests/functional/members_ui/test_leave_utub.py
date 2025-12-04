@@ -17,11 +17,11 @@ from tests.functional.db_utils import (
     get_utub_this_user_did_not_create,
 )
 from tests.functional.login_utils import login_user_and_select_utub_by_name
+from tests.functional.members_ui.selenium_utils import leave_utub_as_member
 from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
     get_num_utubs,
     invalidate_csrf_token_on_page,
-    wait_for_element_to_be_removed,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -205,18 +205,10 @@ def test_leave_utub(
 
     init_num_utubs = get_num_utubs(browser)
 
-    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
-
-    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
-    assert warning_modal_body is not None
-
     # Get UTub selector to verify it will be deleted
     utub_css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_user_member_of.id}"]'
-    utub_selector = browser.find_element(By.CSS_SELECTOR, utub_css_selector)
 
-    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
-    wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
-    wait_for_element_to_be_removed(browser, utub_selector)
+    leave_utub_as_member(browser, utub_user_member_of)
 
     # Assert UTub count is one less than before
     assert get_num_utubs(browser) == init_num_utubs - 1

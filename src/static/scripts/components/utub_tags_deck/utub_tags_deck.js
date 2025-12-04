@@ -1,7 +1,9 @@
 "use strict";
 
-function setTagDeckOnUTubSelected(dictTags) {
+function setTagDeckOnUTubSelected(dictTags, utubID) {
   resetTagDeck();
+  setupOpenCreateUTubTagEventListeners(utubID);
+  setUnselectUpdateUTubTagEventListeners();
   const parent = $("#listTags");
 
   // Select all checkbox if tags in UTub
@@ -9,12 +11,14 @@ function setTagDeckOnUTubSelected(dictTags) {
     const unselectAllBtn = $("#unselectAllTagFilters");
     unselectAllBtn.showClassNormal();
     unselectAllBtn.addClass("red-icon-disabled");
+    $("#utubTagBtnUpdateAllOpen").showClassNormal();
   }
 
   // Loop through all tags and provide checkbox input for filtering
   for (let i in dictTags) {
     parent.append(
       buildTagFilterInDeck(
+        utubID,
         dictTags[i].id,
         dictTags[i].tagString,
         dictTags[i].tagApplied,
@@ -33,7 +37,10 @@ function resetTagDeck() {
   disableUnselectAllButtonAfterTagFilterRemoved();
   $("#utubTagBtnCreate").hideClass();
   $("#unselectAllTagFilters").hideClass();
+  $("#utubTagBtnUpdateAllOpen").hideClass();
   createUTubTagHideInput();
+  closeUTubTagBtnMenuOnUTubTags();
+  setTagDeckBtnsOnUpdateAllUTubTagsClosed();
 }
 
 function resetTagDeckIfNoUTubSelected() {
@@ -41,13 +48,15 @@ function resetTagDeckIfNoUTubSelected() {
   $("#createUTubTagWrap").hideClass();
   $("#utubTagBtnCreate").hideClass();
   $("#unselectAllTagFilters").hideClass();
+  setTagDeckBtnsOnUpdateAllUTubTagsClosed();
+  $("#utubTagBtnUpdateAllOpen").hideClass();
   removeCreateUTubTagEventListeners();
   resetCreateUTubTagFailErrors();
   resetNewUTubTagForm();
 }
 
 // Update tags in LH panel based on asynchronous updates or stale data
-function updateTagDeck(updatedTags) {
+function updateTagDeck(updatedTags, utubID) {
   const oldTags = $(".tagFilter");
   const oldTagIDs = $.map(oldTags, (tag) =>
     parseInt($(tag).attr("data-utub-tag-id")),
@@ -68,7 +77,11 @@ function updateTagDeck(updatedTags) {
   for (let i = 0; i < updatedTags.length; i++) {
     if (!oldTagIDs.includes(updatedTags[i].id)) {
       tagDeck.append(
-        buildTagFilterInDeck(updatedTags[i].id, updatedTags[i].tagString),
+        buildTagFilterInDeck(
+          utubID,
+          updatedTags[i].id,
+          updatedTags[i].tagString,
+        ),
       );
     }
   }

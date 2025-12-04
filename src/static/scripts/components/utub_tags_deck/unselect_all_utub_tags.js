@@ -35,7 +35,7 @@ function unselectAllTags() {
         })
         .offAndOn("focus.tagFilterSelected", function () {
           $(document).on("keyup.tagFilterSelected", function (e) {
-            if (e.which === 13) toggleTagFilterSelected($(tag));
+            if (e.key === KEYS.ENTER) toggleTagFilterSelected($(tag));
           });
         })
         .offAndOn("blur.tagFilterSelected", function () {

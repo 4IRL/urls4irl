@@ -25,7 +25,7 @@ function isTagInURL(utubTagID, urlCard) {
 }
 
 // Create the outer container for the tag badges
-function createTagBadgesAndWrap(dictTags, tagArray, urlCard) {
+function createTagBadgesAndWrap(dictTags, tagArray, urlCard, utubID) {
   const tagBadgesWrap = $(document.createElement("div")).addClass(
     "urlTagsContainer flex-row flex-start",
   );
@@ -38,7 +38,7 @@ function createTagBadgesAndWrap(dictTags, tagArray, urlCard) {
       }
     });
 
-    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString, urlCard);
+    let tagSpan = createTagBadgeInURL(tag.id, tag.tagString, urlCard, utubID);
 
     $(tagBadgesWrap).append(tagSpan);
   }
@@ -46,77 +46,19 @@ function createTagBadgesAndWrap(dictTags, tagArray, urlCard) {
   return tagBadgesWrap;
 }
 
-function createTagInputBlock(urlCard) {
-  const urlTagCreateTextInputContainer = makeTextInput(
-    "urlTag",
-    METHOD_TYPES.CREATE.description,
-  ).addClass("createUrlTagWrap hidden gap-5p");
-
-  urlTagCreateTextInputContainer.find("label").text("Tag");
-
-  // Customize the input text box for the Url title
-  const urlTagTextInput = urlTagCreateTextInputContainer
-    .find("input")
-    .prop("minLength", CONSTANTS.TAGS_MIN_LENGTH)
-    .prop("maxLength", CONSTANTS.TAGS_MAX_LENGTH);
-
-  setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard);
-
-  // Create Url Title submit button
-  const urlTagSubmitBtnCreate = makeSubmitButton(30).addClass(
-    "urlTagSubmitBtnCreate",
-  );
-
-  urlTagSubmitBtnCreate
-    .find(".submitButton")
-    .on("click.createURLTag", function () {
-      createURLTag(urlTagTextInput, urlCard);
-    })
-    .on("focus.createURLTag", function () {
-      $(document).on("keyup.createURLTag", function (e) {
-        if (e.which === 13) createURLTag(urlTagTextInput, urlCard);
-      });
-    })
-    .on("blur.createURLTag", function () {
-      $(document).off("keyup.createURLTag");
-    });
-
-  // Create Url Title cancel button
-  const urlTagCancelBtnCreate = makeCancelButton(30).addClass(
-    "urlTagCancelBtnCreate",
-  );
-
-  urlTagCancelBtnCreate
-    .find(".cancelButton")
-    .on("click.createURLTag", function (e) {
-      e.stopPropagation();
-      hideAndResetCreateURLTagForm(urlCard);
-    })
-    .offAndOn("focus.createURLTag", function () {
-      $(document).on("keyup.createURLTag", function (e) {
-        if (e.which === 13) hideAndResetCreateURLTagForm(urlCard);
-      });
-    })
-    .offAndOn("blur.createURLTag", function () {
-      $(document).off("keyup.createURLTag");
-    });
-
-  urlTagCreateTextInputContainer
-    .append(urlTagSubmitBtnCreate)
-    .append(urlTagCancelBtnCreate);
-
-  return urlTagCreateTextInputContainer;
-}
-
-function setFocusEventListenersOnCreateURLTagInput(urlTagInput, urlCard) {
+function setFocusEventListenersOnCreateURLTagInput(
+  urlTagInput,
+  urlCard,
+  utubID,
+) {
   urlTagInput.offAndOn("focus.createURLTagFocus", function () {
     $(document).offAndOn("keyup.createURLTagFocus", function (e) {
-      switch (e.which) {
-        case 13:
+      switch (e.key) {
+        case KEYS.ENTER:
           // Handle enter key pressed
-          createURLTag(urlTagInput, urlCard);
+          createURLTag(urlTagInput, urlCard, utubID);
           break;
-        case 27:
+        case KEYS.ESCAPE:
           // Handle escape key pressed
           hideAndResetCreateURLTagForm(urlCard);
           break;
@@ -132,7 +74,7 @@ function setFocusEventListenersOnCreateURLTagInput(urlTagInput, urlCard) {
 }
 
 // Handle URL deck display changes related to creating a new tag
-function createTagBadgeInURL(utubTagID, tagString, urlCard) {
+function createTagBadgeInURL(utubTagID, tagString, urlCard, utubID) {
   const tagSpan = $(document.createElement("span"));
   const removeButton = $(document.createElement("div"));
   const tagText = $(document.createElement("span"))
@@ -149,11 +91,12 @@ function createTagBadgeInURL(utubTagID, tagString, urlCard) {
     .addClass("urlTagBtnDelete flex-row align-center pointerable tabbable")
     .on("click", function (e) {
       e.stopPropagation();
-      deleteURLTag(utubTagID, tagSpan, urlCard);
+      deleteURLTag(utubTagID, tagSpan, urlCard, utubID);
     })
     .offAndOn("focus.removeURLTag", function () {
       $(document).on("keyup.removeURLTag", function (e) {
-        if (e.which === 13) deleteURLTag(utubTagID, tagSpan, urlCard);
+        if (e.key === KEYS.ENTER)
+          deleteURLTag(utubTagID, tagSpan, urlCard, utubID);
       });
     })
     .offAndOn("blur.removeURLTag", function () {

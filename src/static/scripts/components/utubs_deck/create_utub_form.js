@@ -1,17 +1,27 @@
 "use strict";
 
+function checkSameNameUTubOnCreate(name) {
+  if (getAllAccessibleUTubNames().includes(name)) {
+    // UTub with same name exists. Confirm action with user
+    sameUTubNameOnNewUTubWarningShowModal();
+  } else {
+    // UTub name is unique. Proceed with requested action
+    createUTub();
+  }
+}
+
 function setCreateUTubEventListeners() {
   // Create new UTub
   const utubBtnCreate = $("#utubBtnCreate");
-  utubBtnCreate.offAndOn("click.createDeleteUTub", function () {
+  utubBtnCreate.offAndOn("click.createUTub", function () {
     createUTubShowInput();
     closeUTubSearchAndEraseInput();
   });
 
   // Allows user to press enter to bring up form while focusing on the add UTub icon, esp after tabbing
-  utubBtnCreate.offAndOn("focus.createDeleteUTub", function () {
-    $(document).offAndOn("keyup.createDeleteUTub", function (e) {
-      if (e.which === 13) {
+  utubBtnCreate.offAndOn("focus.createUTub", function () {
+    $(document).offAndOn("keyup.createUTub", function (e) {
+      if (e.key === KEYS.ENTER) {
         e.stopPropagation();
         createUTubShowInput();
       }
@@ -19,8 +29,8 @@ function setCreateUTubEventListeners() {
   });
 
   // Removes the keyup listener from the document once the button is blurred
-  utubBtnCreate.offAndOn("blur.createDeleteUTub", function () {
-    $(document).off("keyup.createDeleteUTub");
+  utubBtnCreate.offAndOn("blur.createUTub", function () {
+    $(document).off("keyup.createUTub");
   });
 }
 
@@ -30,7 +40,7 @@ function createNewUTubEventListeners() {
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
   utubSubmitBtnCreate.offAndOn("click.createUTub", function (e) {
     if ($(e.target).closest("#utubSubmitBtnCreate").length > 0)
-      checkSameNameUTub(true, $("#utubNameCreate").val());
+      checkSameNameUTubOnCreate($("#utubNameCreate").val());
   });
 
   utubCancelBtnCreate.offAndOn("click.createUTub", function (e) {
@@ -40,7 +50,8 @@ function createNewUTubEventListeners() {
 
   utubSubmitBtnCreate.offAndOn("focus.createUTub", function () {
     $(document).offAndOn("keyup.createUTubSubmit", function (e) {
-      if (e.which === 13) checkSameNameUTub(true, $("#utubNameCreate").val());
+      if (e.key === KEYS.ENTER)
+        checkSameNameUTubOnCreate($("#utubNameCreate").val());
     });
   });
 
@@ -50,7 +61,7 @@ function createNewUTubEventListeners() {
 
   utubCancelBtnCreate.offAndOn("focus.createUTub", function () {
     $(document).offAndOn("keyup.createUTubCancel", function (e) {
-      if (e.which === 13) createUTubHideInput();
+      if (e.key === KEYS.ENTER) createUTubHideInput();
     });
   });
 
@@ -94,12 +105,12 @@ function removeNewUTubEventListeners() {
 }
 
 function handleOnFocusEventListenersForCreateUTub(e) {
-  switch (e.which) {
-    case 13:
+  switch (e.key) {
+    case KEYS.ENTER:
       // Handle enter key pressed
-      checkSameNameUTub(true, $("#utubNameCreate").val());
+      checkSameNameUTubOnCreate($("#utubNameCreate").val());
       break;
-    case 27:
+    case KEYS.ESCAPE:
       // Handle escape key pressed
       $("#utubNameCreate").trigger("blur");
       $("#utubDescriptionCreate").trigger("blur");
@@ -158,7 +169,7 @@ function createUTubShowInput() {
   $("#utubNameCreate").trigger("focus");
   $("#listUTubs").hideClass();
   $("#UTubDeck").find(".button-container").hideClass();
-  removeCreateDeleteUTubEventListeners();
+  removeCreateUTubEventListeners();
 }
 
 // Hides new UTub input fields
@@ -170,7 +181,7 @@ function createUTubHideInput() {
   removeNewUTubEventListeners();
   resetUTubFailErrors();
   $("#UTubDeck").find(".button-container").showClassFlex();
-  setCreateDeleteUTubEventListeners();
+  setCreateUTubEventListeners();
 }
 
 // Handles preparation for post request to create a new UTub
@@ -208,24 +219,24 @@ function createUTub() {
 // Handle creation of new UTub
 function createUTubSuccess(response) {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
-  const UTubID = response.utubID;
+  const utubID = response.utubID;
 
   $("#confirmModal").modal("hide");
 
   // Remove createDiv; Reattach after addition of new UTub
-  createUTubHideInput();
+  createUTubHideInput(utubID);
 
   // Create and append newly created UTub selector
   const index = parseInt($(".UTubSelector").first().attr("position"));
   const newUTubSelector = createUTubSelector(
     response.utubName,
-    UTubID,
+    utubID,
     CONSTANTS.MEMBER_ROLES.CREATOR,
     index - 1,
   );
   $("#listUTubs").prepend(newUTubSelector);
 
-  selectUTub(UTubID, newUTubSelector);
+  selectUTub(utubID, newUTubSelector);
 }
 
 // Handle error response display to user

@@ -1,6 +1,6 @@
 "use strict";
 
-$(document).ready(function () {
+function setupUpdateUTubDescriptionEventListeners(utubID) {
   const utubDescriptionSubmitBtnUpdate = $("#utubDescriptionSubmitBtnUpdate");
   const utubDescriptionCancelBtnUpdate = $("#utubDescriptionCancelBtnUpdate");
 
@@ -9,16 +9,16 @@ $(document).ready(function () {
     .on("click", function (e) {
       deselectAllURLs();
       updateUTubNameHideInput();
-      updateUTubDescriptionShowInput();
+      updateUTubDescriptionShowInput(utubID);
       // Prevent this event from bubbling up to the window to allow event listener creation
       e.stopPropagation();
     })
     .on("focus.updateUTubdescription", function () {
       $(document).on("keyup.updateUTubdescription", function (e) {
-        if (e.which === 13) {
+        if (e.key === KEYS.ENTER) {
           deselectAllURLs();
           updateUTubNameHideInput();
-          updateUTubDescriptionShowInput();
+          updateUTubDescriptionShowInput(utubID);
         }
       });
     })
@@ -30,11 +30,11 @@ $(document).ready(function () {
     .find(".submitButton")
     .on("click", function (e) {
       e.stopPropagation();
-      updateUTubDescription();
+      updateUTubDescription(utubID);
     })
     .on("focus.updateUTubdescription", function () {
       $(document).offAndOn("keyup.updateUTubdescription", function (e) {
-        if (e.which === 13) updateUTubDescription();
+        if (e.key === KEYS.ENTER) updateUTubDescription(utubID);
       });
     })
     .on("blur.updateUTubdescription", function () {
@@ -49,16 +49,16 @@ $(document).ready(function () {
     })
     .on("focus.updateUTubdescription", function () {
       $(document).offAndOn("keyup.updateUTubdescription", function (e) {
-        if (e.which === 13) updateUTubDescriptionHideInput();
+        if (e.key === KEYS.ENTER) updateUTubDescriptionHideInput();
       });
     })
     .on("blur.updateUTubdescription", function () {
       $(document).off("keyup.updateUTubdescription");
     });
-});
+}
 
 // Create event listeners to escape from updating UTub name
-function setEventListenersToEscapeUpdateUTubDescription() {
+function setEventListenersToEscapeUpdateUTubDescription(utubID) {
   // Allow user to still click in the text box
   $("#utubDescriptionUpdate")
     .on("click.updateUTubDescription", function (e) {
@@ -66,12 +66,12 @@ function setEventListenersToEscapeUpdateUTubDescription() {
     })
     .offAndOn("focus.updateUTubDescription", function () {
       $(document).on("keyup.updateUTubDescription", function (e) {
-        switch (e.which) {
-          case 13:
+        switch (e.key) {
+          case KEYS.ENTER:
             // Handle enter key pressed
-            updateUTubDescription();
+            updateUTubDescription(utubID);
             break;
-          case 27:
+          case KEYS.ESCAPE:
             // Handle escape key pressed
             updateUTubDescriptionHideInput();
             break;
@@ -96,19 +96,19 @@ function removeEventListenersToEscapeUpdateUTubDescription() {
   $(document).off(".updateUTubDescription");
 }
 
-function allowUserToCreateDescriptionIfEmptyOnTitleUpdate() {
+function allowUserToCreateDescriptionIfEmptyOnTitleUpdate(utubID) {
   const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
   clickToCreateDesc.showClassNormal();
   clickToCreateDesc.offAndOn("click.createUTubdescription", function (e) {
     e.stopPropagation();
     clickToCreateDesc.hideClass();
     updateUTubNameHideInput();
-    updateUTubDescriptionShowInput();
+    updateUTubDescriptionShowInput(utubID);
     clickToCreateDesc.off("click.createUTubdescription");
   });
 }
 
-function allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty() {
+function allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(utubID) {
   const utubTitle = $("#URLDeckHeader");
   utubTitle.offAndOn("mouseenter.createUTubdescription", function () {
     const clickToCreateDesc = $("#URLDeckSubheaderCreateDescription");
@@ -116,7 +116,7 @@ function allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty() {
     clickToCreateDesc.offAndOn("click.createUTubdescription", function (e) {
       e.stopPropagation();
       clickToCreateDesc.hideClass();
-      updateUTubDescriptionShowInput();
+      updateUTubDescriptionShowInput(utubID);
       clickToCreateDesc.off("click.createUTubdescription");
     });
     hideCreateUTubDescriptionButtonOnMouseExit();
@@ -143,9 +143,9 @@ function removeEventListenersForShowCreateUTubDescIfEmptyDesc() {
 }
 
 // Shows input fields for updating an exiting UTub's description
-function updateUTubDescriptionShowInput() {
+function updateUTubDescriptionShowInput(utubID) {
   // Setup event listeners for window click and escape/enter keys
-  setEventListenersToEscapeUpdateUTubDescription();
+  setEventListenersToEscapeUpdateUTubDescription(utubID);
 
   // Show update fields
   const utubDescriptionUpdate = $("#utubDescriptionUpdate");
@@ -188,7 +188,7 @@ function updateUTubDescriptionHideInput() {
 }
 
 // Handles post request and response for updating an existing UTub's description
-function updateUTubDescription() {
+function updateUTubDescription(utubID) {
   // Skip if identical
   if ($("#URLDeckSubheader").text() === $("#utubDescriptionUpdate").val()) {
     updateUTubDescriptionHideInput();
@@ -197,14 +197,14 @@ function updateUTubDescription() {
 
   // Extract data to submit in POST request
   let postURL, data;
-  [postURL, data] = updateUTubDescriptionSetup();
+  [postURL, data] = updateUTubDescriptionSetup(utubID);
 
   const request = ajaxCall("patch", postURL, data);
 
   // Handle response
   request.done(function (response, textStatus, xhr) {
     if (xhr.status === 200) {
-      updateUTubDescriptionSuccess(response);
+      updateUTubDescriptionSuccess(response, utubID);
     }
   });
 
@@ -214,8 +214,8 @@ function updateUTubDescription() {
 }
 
 // Handles preparation for post request to update an existing UTub
-function updateUTubDescriptionSetup() {
-  const postURL = routes.updateUTubDescription(getActiveUTubID());
+function updateUTubDescriptionSetup(utubID) {
+  const postURL = routes.updateUTubDescription(utubID);
 
   const updatedUTubDescription = $("#utubDescriptionUpdate").val();
   let data = { utubDescription: updatedUTubDescription };
@@ -224,12 +224,12 @@ function updateUTubDescriptionSetup() {
 }
 
 // Handle updateion of UTub's description
-function updateUTubDescriptionSuccess(response) {
+function updateUTubDescriptionSuccess(response, utubID) {
   const utubDescription = response.utubDescription;
   const utubDescriptionElem = $("#URLDeckSubheader");
   const originalUTubDescriptionLength = utubDescriptionElem.text().length;
   if (utubDescription.length === 0) {
-    allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty();
+    allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(utubID);
     $("#URLDeckHeaderWrap > .dynamic-subheader").removeClass("height-2p5rem");
   } else if (originalUTubDescriptionLength === 0) {
     removeEventListenersForShowCreateUTubDescIfEmptyDesc();

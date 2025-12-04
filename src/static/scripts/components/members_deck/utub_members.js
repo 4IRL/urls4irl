@@ -16,6 +16,7 @@ function createMemberBadge(
   utubMemberUserID,
   utubMemberUsername,
   isCurrentUserOwner,
+  utubID,
 ) {
   const memberSpan = $(document.createElement("span"));
 
@@ -29,12 +30,12 @@ function createMemberBadge(
     removeIcon
       .offAndOn("click.removeMember", function (e) {
         e.stopPropagation();
-        removeMemberShowModal(utubMemberUserID, isCurrentUserOwner);
+        removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
       })
       .offAndOn("focus.removeMember", function () {
         $(document).on("keyup.removeMember", function (e) {
-          if (e.which === 13)
-            removeMemberShowModal(utubMemberUserID, isCurrentUserOwner);
+          if (e.key === KEYS.ENTER)
+            removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
         });
       })
       .offAndOn("blur.removeMember", function () {
@@ -48,14 +49,14 @@ function createMemberBadge(
         e.stopPropagation();
         hideInputs();
         deselectAllURLs();
-        removeMemberShowModal(utubMemberUserID, isCurrentUserOwner);
+        removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
       })
       .offAndOn("focus.removeSelf", function () {
         $(document).on("keyup.removeSelf", function (e) {
-          if (e.which === 13) {
+          if (e.key === KEYS.ENTER) {
             hideInputs();
             deselectAllURLs();
-            removeMemberShowModal(utubMemberUserID, isCurrentUserOwner);
+            removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
           }
         });
       })
