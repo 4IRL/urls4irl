@@ -52,6 +52,7 @@ def test_open_delete_utub_tag_modal_click(
     tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
+    assert tag_id
 
     click_open_update_utub_tags_btn(browser)
     delete_utub_tag_css_selector = f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}'] > {HPL.UTUB_TAG_MENU_WRAP} > {HPL.BUTTON_UTUB_TAG_DELETE}"
@@ -59,7 +60,7 @@ def test_open_delete_utub_tag_modal_click(
     assert_visible_css_selector(browser, delete_utub_tag_css_selector)
     wait_then_click_element(browser, delete_utub_tag_css_selector, time=3)
 
-    assert_delete_utub_tag_modal_shown(browser)
+    assert_delete_utub_tag_modal_shown(browser, int(tag_id), app)
 
 
 def test_open_delete_utub_tag_modal_key(
@@ -80,6 +81,7 @@ def test_open_delete_utub_tag_modal_key(
     tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
         HPL.TAG_BADGE_ID_ATTRIB
     )
+    assert tag_id
 
     click_open_update_utub_tags_btn(browser)
     delete_utub_tag_css_selector = f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}'] > {HPL.UTUB_TAG_MENU_WRAP} > {HPL.BUTTON_UTUB_TAG_DELETE}"
@@ -91,7 +93,7 @@ def test_open_delete_utub_tag_modal_key(
     assert delete_tag_btn
 
     delete_tag_btn.send_keys(Keys.ENTER)
-    assert_delete_utub_tag_modal_shown(browser)
+    assert_delete_utub_tag_modal_shown(browser, int(tag_id), app)
 
 
 def test_dismiss_delete_utub_tag_modal_btn_click(
@@ -114,7 +116,7 @@ def test_dismiss_delete_utub_tag_modal_btn_click(
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id)
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_DISMISS)
 
@@ -145,7 +147,7 @@ def test_dismiss_delete_utub_tag_modal_btn_key(
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id)
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
 
     close_btn = wait_then_get_element(browser, HPL.BUTTON_MODAL_DISMISS)
     assert close_btn
@@ -178,7 +180,7 @@ def test_dismiss_delete_utub_tag_modal_x(
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id)
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
 
     wait_then_click_element(browser, HPL.BUTTON_X_CLOSE)
 
@@ -208,7 +210,7 @@ def test_dismiss_delete_utub_tag_modal_click_outside_modal(
     )
     assert tag_id
 
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id)
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
     dismiss_modal_with_click_out(browser)
 
     confirm_utub_tag_del_modal = wait_until_hidden(browser, HPL.HOME_MODAL)
@@ -237,7 +239,7 @@ def test_delete_utub_tag_removes_utub_tag_elem(
     )
     assert tag_id
 
-    delete_utub_tag_elem(browser, tag_id)
+    delete_utub_tag_elem(browser, tag_id, app)
 
     # Assert utub tag no longer exists
     assert tag_id not in get_all_utub_tags_ids_in_utub(browser)
@@ -266,7 +268,7 @@ def test_delete_utub_tag_removes_url_tag_elems(
     url_tag_badge_selector = f"{HPL.TAG_BADGES}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
     assert browser.find_elements(By.CSS_SELECTOR, url_tag_badge_selector)
 
-    delete_utub_tag_elem(browser, tag_id)
+    delete_utub_tag_elem(browser, tag_id, app)
 
     assert not browser.find_elements(By.CSS_SELECTOR, url_tag_badge_selector)
 
@@ -320,7 +322,7 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
     tag_deck_subheader_txt = tag_deck_subheader.text
     assert "1 of 5" in tag_deck_subheader_txt
 
-    delete_utub_tag_elem(browser, tag_id)
+    delete_utub_tag_elem(browser, tag_id, app)
 
     url_row_elements = browser.find_elements(By.CSS_SELECTOR, HPL.ROWS_URLS)
     visible_urls = [url_row for url_row in url_row_elements if url_row.is_displayed()]
@@ -362,7 +364,7 @@ def test_delete_last_utub_tag_closes_utub_tag_menu(
     )
     assert tag_id
 
-    delete_utub_tag_elem(browser, tag_id)
+    delete_utub_tag_elem(browser, tag_id, app)
 
     assert_visible_css_selector(
         browser, css_selector=HPL.WRAP_BUTTONS_CREATE_UNFILTER_UTUB_TAGS

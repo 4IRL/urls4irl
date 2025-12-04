@@ -1,3 +1,4 @@
+from flask import Flask
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
@@ -6,6 +7,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     wait_then_get_element,
 )
+from tests.functional.tags_ui.db_utils import get_tag_in_utub
 
 
 def assert_btns_shown_on_cancel_url_tag_input_creator(browser: WebDriver):
@@ -108,7 +110,7 @@ def assert_new_utub_tag_created(
     assert new_tag_str in [tag.text for tag in utub_tag_spans]
 
 
-def assert_delete_utub_tag_modal_shown(browser: WebDriver):
+def assert_delete_utub_tag_modal_shown(browser: WebDriver, tag_id: int, app: Flask):
     warning_modal = wait_then_get_element(browser, HPL.HOME_MODAL)
     assert warning_modal is not None
 
@@ -118,6 +120,11 @@ def assert_delete_utub_tag_modal_shown(browser: WebDriver):
     confirmation_modal_body_text = warning_modal_body.get_attribute("innerText")
 
     utub_tag_delete_check_text = DELETE_UTUB_TAG_WARNING
+    utub_tag = get_tag_in_utub(app, tag_id)
+
+    utub_tag_delete_check_text = utub_tag_delete_check_text.replace(
+        "{{ tag_string }}", f"'{utub_tag.tag_string}'"
+    )
 
     # Assert warning modal appears with appropriate text
     assert confirmation_modal_body_text == utub_tag_delete_check_text

@@ -44,15 +44,19 @@ function deleteUTubTagHideModal() {
   $("#confirmModal").modal("hide");
 }
 
-function deleteUTubTagShowModal(utubID, utubTagID) {
+function deleteUTubTagShowModal(utubID, utubTagID, string) {
   const modalTitle = "Are you sure you want to delete this Tag?";
-  const modalBody = `${STRINGS.UTUB_TAG_DELETE_WARNING}`;
+  const $strong = $("<strong>").text(`'${string}'`);
+  const modalBody = `${STRINGS.UTUB_TAG_DELETE_WARNING}`.replace(
+    "{{ tag_string }}",
+    $strong.prop("outerHTML"),
+  );
   const buttonTextDismiss = "Nevermind...";
   const buttonTextSubmit = "Delete this sucka!";
 
   $("#confirmModalTitle").text(modalTitle);
 
-  $("#confirmModalBody").text(modalBody);
+  $("#confirmModalBody").html(modalBody);
 
   $("#modalDismiss")
     .removeClass()

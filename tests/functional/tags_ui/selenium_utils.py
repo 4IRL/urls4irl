@@ -1,4 +1,5 @@
 from typing import Tuple
+from flask import Flask
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
@@ -156,7 +157,9 @@ def get_all_utub_tags_ids_in_utub(browser: WebDriver) -> list[str]:
     ]
 
 
-def open_delete_utub_tag_confirm_modal_for_tag(browser: WebDriver, tag_id: str):
+def open_delete_utub_tag_confirm_modal_for_tag(
+    browser: WebDriver, tag_id: str, app: Flask
+):
     click_open_update_utub_tags_btn(browser)
     delete_utub_tag_css_selector = f"{HPL.TAG_FILTERS}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}'] > {HPL.UTUB_TAG_MENU_WRAP} > {HPL.BUTTON_UTUB_TAG_DELETE}"
 
@@ -167,11 +170,11 @@ def open_delete_utub_tag_confirm_modal_for_tag(browser: WebDriver, tag_id: str):
     assert delete_tag_btn
 
     delete_tag_btn.send_keys(Keys.ENTER)
-    assert_delete_utub_tag_modal_shown(browser)
+    assert_delete_utub_tag_modal_shown(browser, int(tag_id), app)
 
 
-def delete_utub_tag_elem(browser: WebDriver, tag_id: str):
-    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id)
+def delete_utub_tag_elem(browser: WebDriver, tag_id: str, app):
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
 
     delete_utub_tag_css_selector = (

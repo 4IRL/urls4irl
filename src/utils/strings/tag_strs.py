@@ -15,7 +15,7 @@ URL_IDS = "urlIDs"
 UTUB_URL_IDS = "utubUrlIDs"
 ADD_URL_TAG_TOOLTIP = "Add Tag"
 DELETE_UTUB_TAG_WARNING = (
-    "This will remove this tag from all associated URLs in this UTub!"
+    "This will remove {{ tag_string }} from all associated URLs in this UTub!"
 )
 
 

@@ -41,12 +41,12 @@ function buildTagFilterInDeck(utubID, tagID, string, urlCount = 0) {
     .addClass("utubTagBtnDelete align-center pointerable tabbable")
     .on("click.removeUtubTag", function (e) {
       e.stopPropagation();
-      deleteUTubTagShowModal(utubID, tagID);
+      deleteUTubTagShowModal(utubID, tagID, string);
     })
     .offAndOn("focus.removeUtubTag", function () {
       $(document).offAndOn("keyup.removeUtubTag", function (e) {
         if (e.key === KEYS.ENTER && $(e.target).hasClass("utubTagBtnDelete"))
-          deleteUTubTagShowModal(utubID, tagID);
+          deleteUTubTagShowModal(utubID, tagID, string);
       });
     })
     .offAndOn("blur.removeUtubTag", function () {
