@@ -3,19 +3,38 @@
 
 <!-- SPLASH PAGE INTRO -->
 {% if not current_user.is_authenticated or not current_user.email_validated %}
-<main>
-    <div class="container-fluid bg-cover">
+<main id="SplashMain">
     <!-- 
             https://images.unsplash.com/photo-1523240795612-9a054b0db644?ixlib=rb-1.2.1&ixid=MnwxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8&auto=format&fit=crop&w=1740&q=80
+    <img id="BG-img" src="/static/styles/splash.jpg" alt="" fetchpriority="high" />
     -->
-        <img id="BG-img" src="/static/styles/splash.jpg" alt="" fetchpriority="high" />
-        <div class="container-fluid jumbotron-holder">
-            <div class="jumbotron jumbotron-fluid">
-                <h1 class="display-4" id="splash-major-text">Welcome to URLS4IRL</h1>
-                <p id="splash-mini-text">A simple, clean way to permanently save and share URLs.</p>
-                <button type="button" class="btn btn-success to-register btn-block splash-button">Register</button>
-                <button type="button" class="btn btn-success to-login btn-block splash-button">Login</button>
-            </div>
+    <picture>
+      <!-- Small screens (mobile) - under 600px height -->
+      <source 
+        media="(max-height: 600px)" 
+        srcset="/static/styles/800x600splash.jpg 1x, 
+                /static/styles/1600x1200splash.jpg 2x">
+      
+      <!-- Medium screens (tablets) - 600px to 900px height -->
+      <source 
+        media="(min-height: 601px) and (max-height: 900px)" 
+        srcset="/static/styles/1200x900splash.jpg 1x, 
+                /static/styles/2400x1600splash.jpg 2x">
+      
+      <!-- Large screens (desktop) - over 900px height (default) -->
+      <img 
+        id="BG-img" 
+        src="/static/styles/1920x1080splash.jpg" 
+        srcset="/static/styles/3840x2160splash.jpg 2x"
+        alt="" 
+        fetchpriority="high">
+    </picture>
+    <div class="container-fluid jumbotron-holder">
+        <div class="jumbotron jumbotron-fluid">
+            <h1 class="display-4" id="splash-major-text">Welcome to URLS4IRL</h1>
+            <p id="splash-mini-text">A simple, clean way to permanently save and share URLs.</p>
+            <button type="button" class="btn btn-success to-register btn-block splash-button">Register</button>
+            <button type="button" class="btn btn-success to-login btn-block splash-button">Login</button>
         </div>
     </div>
 </main>

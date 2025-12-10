@@ -89,23 +89,42 @@
 
 /** HTML DOM Elements **/
 
-html,
 body {
-    height: 100dvh;
     min-height: 100dvh;
     width: 100%;
     margin: 0;
     padding: 0;
-    /* overflow-y: hidden; */
     display: flex;
+    flex-direction: column;
     background-color: var(--pageBackgroundColor);
 }
 
-main {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    height: calc(100dvh - 50px);
+nav {
+    height: 3rem;
+    flex-shrink: 0;
+    /*height: 50px;*/
 }
+
+main {
+    flex: 1;
+    overflow: hidden;
+    min-height: 0;
+    position: relative;
+}
+
+footer {
+    display: flex;
+    flex-direction: row;
+    height: 1.75rem;
+    justify-content: center;
+    gap: 1rem;
+    align-items: flex-start;
+}
+
+footer > p {
+    margin: 0;
+}
+
 
 h1 {
     font-weight: 300;
@@ -160,20 +179,14 @@ a {
     transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
-.nav-bar-inner-item.home,
-.nav-bar-inner-item.splash {
-    padding: 10px;
-}
-
-#mainNavbar {
-    height: 50px;
-}
-
+.nav-bar-inner-item:hover a,
+.nav-bar-inner-item:hover button,
 .nav-bar-inner-item:hover {
     cursor: pointer;
     background-color: var(--navbarBackgroundHover);
 }
 
+.nav-bar-inner-item.splash:hover a,
 .nav-bar-inner-item.splash:hover {
     color: var(--navbarTextHover);
 }
@@ -182,6 +195,20 @@ a {
     cursor: inherit;
     background-color: inherit;
     color: var(--grayBadgeSelection);
+}
+
+.nav-bar-inner-item a,
+.nav-bar-inner-item button {
+    color: inherit;
+    background: var(--navbarBackground);
+    border: none;
+    width: 100%;
+    padding: 10px;
+    display: flex;
+    flex-direction: row;
+    justify-content: flex-start;
+    align-items: center;
+    max-height: 100%;
 }
 
 
@@ -202,6 +229,11 @@ a {
 #loggedInAsHeader {
     text-wrap: nowrap;
     font-style: italic;
+    padding: 10px;
+}
+
+#backToSplashBtn > b {
+    padding-inline: 0.5rem;
 }
 
 
@@ -223,7 +255,7 @@ a {
 }
 
 @media (min-width: 768px) {
-    .nav-bar-inner-item.home {
+    .nav-bar-inner-item.home button {
         padding-inline: 10px;
     }
 
@@ -242,7 +274,7 @@ a {
         height: 100%;
     }
 
-    .nav-bar-inner-item.home {
+    .nav-bar-inner-item.home button {
         border-radius: 25px;
     }
 }
@@ -254,21 +286,32 @@ a {
         padding-top: 10px;
     }
 
+    #NavbarDropdownsHome button {
+        background-color: inherit;
+        justify-content: flex-start;
+        color: var(--grayBadgeSelection);
+        height: 3.75rem;
+        display: flex;
+        flex-direction: row;
+        gap: 0.5rem;
+        padding-inline: 0.5rem;
+        transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        border-left: 0;
+        border-top: 2px solid var(--grayBadgeSelectionFocus);
+        border-bottom: 0;
+    }
+
+    #NavbarDropdownsHome button:hover {
+        background-color: var(--navbarBackgroundHover);
+        color: var(--navbarTextHover);
+    }
+
     .nav-bar-inner-item.home {
         justify-content: flex-start;
     }
 
-    .nav-item.home {
-        border-top: 2px solid var(--grayBadgeSelectionFocus);
-    }
-
-    .nav-item.home:last-of-type {
+    .nav-item.home#logout {
         border-bottom: 2px solid var(--grayBadgeSelectionFocus);
-    }
-
-    .nav-bar-inner-item.home:hover {
-        background-color: var(--navbarBackgroundHover);
-        color: var(--navbarTextHover);
     }
 
 }
@@ -282,6 +325,7 @@ a {
 
     .nav-bar-inner-item.splash {
         justify-content: flex-start;
+        padding: 0px;
     }
 
     .nav-item.splash {

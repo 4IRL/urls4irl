@@ -192,8 +192,8 @@ class SplashPageLocators(GenericPageLocator):
     BUTTON_LOGIN = ".btn.to-login"
 
     # Navbar
-    NAVBAR_REGISTER = ".nav-bar-inner-item.to-register"
-    NAVBAR_LOGIN = ".nav-bar-inner-item.to-login"
+    NAVBAR_REGISTER = ".nav-bar-inner-item > .to-register"
+    NAVBAR_LOGIN = ".nav-bar-inner-item > .to-login"
 
     # Common
     INPUT_USERNAME = "#username"

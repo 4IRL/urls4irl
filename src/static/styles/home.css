@@ -1,5 +1,11 @@
 /** Class specific **/
 
+main {
+    display: flex;
+    flex-direction: row;
+    background-color: var(--pageBackgroundColor);
+}
+
 /* Page display */
 
 #pageContent {
@@ -13,7 +19,6 @@
 }
 
 .panel {
-    height: 100%;
     display: flex;
     flex-direction: column;
     padding-inline: 5px;
@@ -1288,7 +1293,6 @@ a.urlString:hover {
     .deck#TagDeck,
     .panel#centerPanel,
     .panel#leftPanel {
-        height: 100%;
         width: 100%;
     }
 
