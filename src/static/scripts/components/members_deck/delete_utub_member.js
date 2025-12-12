@@ -66,8 +66,8 @@ function removeMemberShowModal(memberID, isCreator, utubID) {
     ? "Are you sure you want to remove this member from the UTub?"
     : "Are you sure you want to leave this UTub?";
   const modalBody = isCreator
-    ? `${STRINGS.MEMBER_DELETE_WARNING}`
-    : `${STRINGS.MEMBER_LEAVE_WARNING}`;
+    ? `${APP_CONFIG.strings.MEMBER_DELETE_WARNING}`
+    : `${APP_CONFIG.strings.MEMBER_LEAVE_WARNING}`;
   const buttonTextDismiss = isCreator ? "Keep member" : "Stay in UTub";
   const buttonTextSubmit = isCreator ? "Remove member" : "Leave UTub";
 
@@ -99,7 +99,7 @@ function removeMemberShowModal(memberID, isCreator, utubID) {
 
 // This function will extract the current selection data needed for POST request (member ID)
 function removeMemberSetup(memberID, utubID) {
-  let postURL = routes.removeMember(utubID, memberID);
+  let postURL = APP_CONFIG.routes.removeMember(utubID, memberID);
 
   return postURL;
 }
@@ -180,6 +180,6 @@ function removeMemberFail(xhr) {
     case 403:
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }

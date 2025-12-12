@@ -74,7 +74,7 @@ function toggleTagFilterSelected(activeTagFilter) {
 
   // Prevent selecting more than tag limit
   if (
-    currentSelectedTagIDs.length >= CONSTANTS.TAGS_MAX_ON_URLS &&
+    currentSelectedTagIDs.length >= APP_CONFIG.constants.TAGS_MAX_ON_URLS &&
     activeTagFilter.hasClass("unselected")
   )
     return;
@@ -82,7 +82,7 @@ function toggleTagFilterSelected(activeTagFilter) {
   if (activeTagFilter.hasClass("selected")) {
     // Unselect the tag
     switch (currentSelectedTagIDs.length) {
-      case CONSTANTS.TAGS_MAX_ON_URLS:
+      case APP_CONFIG.constants.TAGS_MAX_ON_URLS:
         // Unselecting at this point should enable all other tags again
         enableUnselectedTagsAfterDisabledDueToLimit();
         break;
@@ -98,7 +98,7 @@ function toggleTagFilterSelected(activeTagFilter) {
     // Select the tag
     activeTagFilter.removeClass("unselected").addClass("selected");
     switch (currentSelectedTagIDs.length) {
-      case CONSTANTS.TAGS_MAX_ON_URLS - 1:
+      case APP_CONFIG.constants.TAGS_MAX_ON_URLS - 1:
         // Selecting at this point should disable all other tags
         disableUnselectedTagsAfterLimitReached();
         break;
@@ -145,7 +145,7 @@ function updateTagFilteringOnFindingStaleData() {
   const selectedTagCount = $(".tagFilter.selected").length;
 
   switch (selectedTagCount) {
-    case CONSTANTS.TAGS_MAX_ON_URLS:
+    case APP_CONFIG.constants.TAGS_MAX_ON_URLS:
       // Handle if new tags are added and limit was already reached
       disableUnselectedTagsAfterLimitReached();
       break;

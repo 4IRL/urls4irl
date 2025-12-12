@@ -12,7 +12,7 @@ from src import login_manager
 from src.app_logger import warning_log
 from src.models.users import Users
 from src.utils.all_routes import ROUTES
-from src.utils.constants import CONSTANTS
+from src.utils.constants import provide_config_for_constants
 from src.utils.strings.email_validation_strs import EMAILS
 
 users = Blueprint("users", __name__)
@@ -49,16 +49,17 @@ def logout():
     return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
 
+# TODO: Separate users context processor from home page context processor
 @users.context_processor
 def provide_constants():
-    return dict(CONSTANTS=CONSTANTS())
+    return provide_config_for_constants()
 
 
 @users.route("/privacy-policy")
 def privacy_policy():
-    return render_template("privacy_policy.html", is_privacy_or_terms=True)
+    return render_template("pages/privacy_policy.html", is_privacy_or_terms=True)
 
 
 @users.route("/terms")
 def terms_and_conditions():
-    return render_template("terms_and_conditions.html", is_privacy_or_terms=True)
+    return render_template("pages/terms_and_conditions.html", is_privacy_or_terms=True)

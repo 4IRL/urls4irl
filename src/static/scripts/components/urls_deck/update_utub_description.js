@@ -215,7 +215,7 @@ function updateUTubDescription(utubID) {
 
 // Handles preparation for post request to update an existing UTub
 function updateUTubDescriptionSetup(utubID) {
-  const postURL = routes.updateUTubDescription(utubID);
+  const postURL = APP_CONFIG.routes.updateUTubDescription(utubID);
 
   const updatedUTubDescription = $("#utubDescriptionUpdate").val();
   let data = { utubDescription: updatedUTubDescription };
@@ -254,7 +254,7 @@ function updateUTubDescriptionFail(xhr) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
@@ -268,7 +268,7 @@ function updateUTubDescriptionFail(xhr) {
       }
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

@@ -44,7 +44,7 @@ function createCopyURLBtn(url) {
       "data-bs-toggle": "tooltip",
       "data-bs-custom-class": "urlBtnCopy-tooltip",
       "data-bs-placement": "top",
-      "data-bs-title": `${STRINGS.COPY_URL_TOOLTIP}`,
+      "data-bs-title": `${APP_CONFIG.strings.COPY_URL_TOOLTIP}`,
     })
     .disableTab()
     .on("click", function (e) {

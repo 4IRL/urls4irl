@@ -3,10 +3,7 @@
 
 {% if is_privacy_or_terms %} 
 <link rel="stylesheet" href="/static/styles/privacy_terms.css?v={{ ASSET_VERSION }}">
-{% endif %}
-
-
-{% if current_user.is_authenticated and current_user.email_validated %}
+{% elif current_user.is_authenticated and current_user.email_validated %}
 <link rel="stylesheet" href="/static/styles/home.css?v={{ ASSET_VERSION }}">
 {% else %}
 <link rel="stylesheet" href="/static/styles/splash.css?v={{ ASSET_VERSION }}">

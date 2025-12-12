@@ -66,8 +66,8 @@ function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
   const urlTitleTextInput = urlTitleUpdateInputContainer.find("input");
 
   urlTitleTextInput
-    .prop("minLength", CONSTANTS.URLS_TITLE_MIN_LENGTH)
-    .prop("maxLength", CONSTANTS.URLS_TITLE_MAX_LENGTH)
+    .prop("minLength", APP_CONFIG.constants.URLS_TITLE_MIN_LENGTH)
+    .prop("maxLength", APP_CONFIG.constants.URLS_TITLE_MAX_LENGTH)
     .val(urlTitleText);
 
   urlTitleTextInput.offAndOn("focus.updateURLTitleInputFocus", function () {

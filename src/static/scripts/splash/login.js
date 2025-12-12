@@ -7,7 +7,7 @@ $(".to-forgot-password").offAndOn("click", () => openForgotPasswordModal());
 $("#submit").click((event) => handleLogin(event));
 
 function openRegisterModalFromLogin() {
-  const modalOpener = $.get(routes.register);
+  const modalOpener = $.get(APP_CONFIG.routes.register);
 
   modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
@@ -19,7 +19,7 @@ function openRegisterModalFromLogin() {
 }
 
 function openForgotPasswordModal() {
-  const modalOpener = $.get(routes.forgotPassword);
+  const modalOpener = $.get(APP_CONFIG.routes.forgotPassword);
 
   modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
@@ -38,7 +38,7 @@ function handleLogin(event) {
 
   // Allow user to attach a query param `next` if browser URL currently includes it
   // This allows for User to be given a link to a UTubID but they haven't logged in recently
-  let url = routes.login;
+  let url = APP_CONFIG.routes.login;
   const searchParams = new URLSearchParams(window.location.search);
   const nextQueryParam = searchParams.get("next");
   if (searchParams.size === 1 && nextQueryParam !== null) {
@@ -75,7 +75,7 @@ function handleLoginFailure(xhr, _, error) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 

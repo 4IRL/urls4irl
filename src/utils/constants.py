@@ -1,4 +1,5 @@
 from src.models.utub_members import Member_Role
+from src.utils.all_routes import generate_routes_js
 from src.utils.strings.email_validation_strs import (
     VALIDATE_MY_EMAIL,
     VALIDATE_YOUR_EMAIL,
@@ -111,3 +112,88 @@ class CONSTANTS:
     TAGS = TAG_CONSTANTS()
     CONFIG = CONFIG_CONSTANTS()
     STRINGS = STRINGS()
+
+
+def generate_constants_js() -> dict[str, int | dict[str, str]]:
+    """
+    Generate constants configuration for frontend JavaScript.
+    Returns a dict that can be passed to Jinja and converted to JSON.
+    """
+    return {
+        # Member roles
+        "MEMBER_ROLES": {
+            role.name: role.value for role in CONSTANTS.UTUBS.MEMBER_ROLES
+        },
+        # UTub constants
+        "UTUBS_MAX_NAME_LENGTH": CONSTANTS.UTUBS.MAX_NAME_LENGTH,
+        "UTUBS_MIN_NAME_LENGTH": CONSTANTS.UTUBS.MIN_NAME_LENGTH,
+        "UTUBS_MAX_DESCRIPTION_LENGTH": CONSTANTS.UTUBS.MAX_DESCRIPTION_LENGTH,
+        # URL constants
+        "URLS_TITLE_MIN_LENGTH": CONSTANTS.URLS.MIN_URL_TITLE_LENGTH,
+        "URLS_TITLE_MAX_LENGTH": CONSTANTS.URLS.MAX_URL_TITLE_LENGTH,
+        "URLS_MIN_LENGTH": CONSTANTS.URLS.MIN_URL_LENGTH,
+        "URLS_MAX_LENGTH": CONSTANTS.URLS.MAX_URL_LENGTH,
+        "MAX_NUM_OF_URLS_TO_ACCESS": CONSTANTS.URLS.MAX_NUM_OF_URLS_TO_ACCESS,
+        # Tag constants
+        "TAGS_MIN_LENGTH": CONSTANTS.TAGS.MIN_TAG_LENGTH,
+        "TAGS_MAX_LENGTH": CONSTANTS.TAGS.MAX_TAG_LENGTH,
+        "TAGS_MAX_ON_URLS": CONSTANTS.TAGS.MAX_URL_TAGS,
+    }
+
+
+def generate_strings_js() -> dict[str, str]:
+    """
+    Generate strings configuration for frontend JavaScript.
+    Returns a dict that can be passed to Jinja and converted to JSON.
+    """
+
+    return {
+        # Query Param Strings
+        "UTUB_QUERY_PARAM": CONSTANTS.STRINGS.UTUB_QUERY_PARAM,
+        # Splash strings
+        "VALIDATE_MY_EMAIL": CONSTANTS.STRINGS.VALIDATE_MY_EMAIL,
+        "VALIDATE_YOUR_EMAIL": CONSTANTS.STRINGS.VALIDATE_YOUR_EMAIL,
+        "FORGOT_YOUR_PASSWORD": CONSTANTS.STRINGS.FORGOT_YOUR_PASSWORD,
+        "LOGIN_TITLE": CONSTANTS.STRINGS.LOGIN_TITLE,
+        # General Strings
+        "MAY_HAVE_ALREADY_BEEN_DELETED": CONSTANTS.STRINGS.MAY_HAVE_ALREADY_BEEN_DELETED,
+        # UTub Strings
+        "UTUB_CREATE_SAME_NAME": CONSTANTS.STRINGS.UTUB_CREATE_SAME_NAME,
+        "UTUB_UPDATE_SAME_NAME": CONSTANTS.STRINGS.UTUB_UPDATE_SAME_NAME,
+        "UTUB_DELETE_WARNING": CONSTANTS.STRINGS.UTUB_DELETE_WARNING,
+        "UTUB_CREATE_MSG": CONSTANTS.STRINGS.UTUB_CREATE_MSG,
+        "UTUB_SELECT": CONSTANTS.STRINGS.UTUB_SELECT,
+        # Member Strings
+        "MEMBER_DELETE_WARNING": CONSTANTS.STRINGS.MEMBER_DELETE_WARNING,
+        "MEMBER_LEAVE_WARNING": CONSTANTS.STRINGS.MEMBER_LEAVE_WARNING,
+        # URL Strings
+        "DELETE_URL_WARNING": CONSTANTS.STRINGS.DELETE_URL_WARNING,
+        "INVALID_URL": CONSTANTS.STRINGS.UNABLE_TO_VALIDATE_THIS_URL,
+        "ACCESS_URL_WARNING": CONSTANTS.STRINGS.ACCESS_URL_WARNING,
+        # Tag Strings
+        "UTUB_TAG_DELETE_WARNING": CONSTANTS.STRINGS.UTUB_TAG_DELETE_WARNING,
+        # Tooltips
+        "COPY_URL_TOOLTIP": CONSTANTS.STRINGS.COPY_URL_TOOLTIP,
+        "COPIED_URL_TOOLTIP": CONSTANTS.STRINGS.COPIED_URL_TOOLTIP,
+        "COPIED_URL_FAILURE_TOOLIP": CONSTANTS.STRINGS.COPIED_URL_FAILURE_TOOLIP,
+        "ACCESS_URL_TOOLTIP": CONSTANTS.STRINGS.ACCESS_URL_TOOLTIP,
+        "ADD_URL_TAG_TOOLTIP": CONSTANTS.STRINGS.ADD_URL_TAG_TOOLTIP,
+        "EDIT_URL_TOOLTIP": CONSTANTS.STRINGS.EDIT_URL_TOOLTIP,
+        "DELETE_URL_TOOLTIP": CONSTANTS.STRINGS.DELETE_URL_TOOLTIP,
+    }
+
+
+def provide_config_for_constants() -> dict:
+    """
+    Provides configuration to templates:
+    - CONSTANTS: Python objects for Jinja template rendering
+    - CONFIG: JSON-serializable dict for JavaScript
+    """
+    return dict(
+        CONSTANTS=CONSTANTS(),
+        CONFIG=dict(
+            routes=generate_routes_js(),
+            constants=generate_constants_js(),
+            strings=generate_strings_js(),
+        ),
+    )

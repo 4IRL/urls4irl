@@ -32,7 +32,7 @@ function deleteUTubHideModal() {
 // Show confirmation modal for deletion of the current UTub
 function deleteUTubShowModal(utubID) {
   const modalTitle = "Are you sure you want to delete this UTub?";
-  const modalBody = `${STRINGS.UTUB_DELETE_WARNING}`;
+  const modalBody = `${APP_CONFIG.strings.UTUB_DELETE_WARNING}`;
   const buttonTextDismiss = "Nevermind...";
   const buttonTextSubmit = "Delete this sucka!";
 
@@ -84,7 +84,7 @@ function deleteUTub(utubID) {
 
 // Prepares post request inputs to delete the current UTub
 function deleteUTubSetup(utubID) {
-  let postURL = routes.deleteUTub(utubID);
+  let postURL = APP_CONFIG.routes.deleteUTub(utubID);
 
   return postURL;
 }
@@ -131,6 +131,6 @@ function deleteUTubFail(xhr) {
     $("body").html(xhr.responseText);
     return;
   }
-  window.location.assign(routes.errorPage);
+  window.location.assign(APP_CONFIG.routes.errorPage);
   return;
 }

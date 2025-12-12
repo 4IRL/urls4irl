@@ -1,5 +1,5 @@
 <div id="NavbarDropdownsHome" class="navbar-nav">
-    {% include 'components/loggedInAs.html' %}
+    {% include 'components/nav/logged_in_as.html' %}
     {% if not is_privacy_or_terms %}
     <button class="nav-item hidden home" id="toUTubs">
         <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-houses-fill"
@@ -40,6 +40,6 @@
         <b>Tags</b>
     </button>
     {% endif %}
-    {% include 'components/logoutBtn.html' %}
+    {% include 'components/nav/logout_btn.html' %}
 </div>
 

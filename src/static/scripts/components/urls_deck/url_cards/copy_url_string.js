@@ -6,7 +6,7 @@ async function copyURLString(url, urlBtnCopy) {
     await navigator.clipboard.writeText(url);
 
     urlBtnCopyTooltip.setContent({
-      ".tooltip-inner": `${STRINGS.COPIED_URL_TOOLTIP}`,
+      ".tooltip-inner": `${APP_CONFIG.strings.COPIED_URL_TOOLTIP}`,
     });
     urlBtnCopyTooltip.show();
 
@@ -16,13 +16,13 @@ async function copyURLString(url, urlBtnCopy) {
       // Reset content for next use
       setTimeout(() => {
         urlBtnCopyTooltip.setContent({
-          ".tooltip-inner": `${STRINGS.COPY_URL_TOOLTIP}`,
+          ".tooltip-inner": `${APP_CONFIG.strings.COPY_URL_TOOLTIP}`,
         });
       }, 200);
     }, 1500);
   } catch (err) {
     urlBtnCopyTooltip.setContent({
-      ".tooltip-inner": `${STRINGS.COPIED_URL_FAILURE_TOOLIP}`,
+      ".tooltip-inner": `${APP_CONFIG.strings.COPIED_URL_FAILURE_TOOLIP}`,
     });
     urlBtnCopyTooltip.show();
     console.log("Couldn't copy url", err);
@@ -32,7 +32,7 @@ async function copyURLString(url, urlBtnCopy) {
       // Reset content for next use
       setTimeout(() => {
         urlBtnCopyTooltip.setContent({
-          ".tooltip-inner": `${STRINGS.COPY_URL_TOOLTIP}`,
+          ".tooltip-inner": `${APP_CONFIG.strings.COPY_URL_TOOLTIP}`,
         });
       }, 200);
     }, 1500);

@@ -62,16 +62,17 @@ window.addEventListener("pageshow", function (e) {
     return;
   }
 
-  const utubId = searchParams.get(STRINGS.UTUB_QUERY_PARAM);
+  const utubId = searchParams.get(APP_CONFIG.strings.UTUB_QUERY_PARAM);
   if (searchParams.size > 1 || utubId === null) {
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
   }
 
-  if (!isValidUTubID(utubId)) window.location.assign(routes.errorPage);
+  if (!isValidUTubID(utubId))
+    window.location.assign(APP_CONFIG.routes.errorPage);
 
   if (!isUtubIdValidOnPageLoad(parseInt(utubId))) {
     window.history.replaceState(null, null, "/home");
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
   }
 
   getUTubInfo(parseInt(utubId)).then(
@@ -83,7 +84,7 @@ window.addEventListener("pageshow", function (e) {
       }
     },
     () => {
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
     },
   );
 });

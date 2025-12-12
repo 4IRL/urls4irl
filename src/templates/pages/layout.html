@@ -3,27 +3,27 @@
 <html>
 
 <head>
-    {% include 'head.html' %}
+    {% include 'components/head/head.html' %}
 </head>
 
 <body class="flex-column">
     <!-- Includes jinja2 generated routes globally and all backend constants for use by frontend -->
-    {% include '_routes_constants.html' %}
+    {% include '_config.html' %}
 
     <!-- Navigation Bar -->
-    {% include 'components/navbar.html' %}
+    {% include 'components/nav/navbar.html' %}
     <!-- End Navigation Bar -->
 
     {% block modal_extender %}
     <!-- Modal -->
     {% if email_token_is_expired %}
 
-    {% include 'email_validation/email_needs_validation_modal_expired.html' %}
+    {% include 'components/splash/validate_email_expired.html' %}
     {% include 'modals/splashErrorModalBase.html' %}
 
     {% elif is_resetting_password %}
 
-    {% include 'password_reset/reset_password_modal.html' %}
+    {% include 'components/splash/reset_password.html' %}
 
     {% elif current_user.is_authenticated and current_user.email_validated %}
 
@@ -45,7 +45,7 @@
     {% endblock %}
 
     {% block footer %}
-    {% include 'footer.html' %}
+    {% include 'components/footer.html' %}
     {% endblock %}
 
 </body>

@@ -18,7 +18,7 @@ function setToLoginButton() {
 }
 
 function loginModalOpener() {
-  const modalOpener = $.get(routes.login);
+  const modalOpener = $.get(APP_CONFIG.routes.login);
 
   modalOpener.done((data, _, xhr) => {
     if (xhr.status === 200) {
@@ -34,7 +34,7 @@ function loginModalOpener() {
 }
 
 function loginModalOpenerFromModal() {
-  const modalOpener = $.get(routes.login);
+  const modalOpener = $.get(APP_CONFIG.routes.login);
 
   modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
@@ -46,7 +46,7 @@ function loginModalOpenerFromModal() {
 }
 
 function registerModalOpener() {
-  const modalOpener = $.get(routes.register);
+  const modalOpener = $.get(APP_CONFIG.routes.register);
 
   modalOpener.done((data, _, xhr) => {
     if (xhr.status === 200) {
@@ -92,7 +92,7 @@ function handleUserHasAccountNotEmailValidated(message) {
     .append($("<div>" + message + "</div>"))
     .append(
       $(
-        `<button type="button" class="btn btn-link btn-block">${STRINGS.VALIDATE_MY_EMAIL}</button>`,
+        `<button type="button" class="btn btn-link btn-block">${APP_CONFIG.strings.VALIDATE_MY_EMAIL}</button>`,
       ).offAndOn("click", () => {
         $("#SplashModal").off("hide.bs.modal", logoutOnExit);
         emailValidationModalOpener();
@@ -103,14 +103,14 @@ function handleUserHasAccountNotEmailValidated(message) {
   $(".modal-footer").remove();
 
   const logoutOnExit = () => {
-    $.get(routes.logout);
+    $.get(APP_CONFIG.routes.logout);
     $("#SplashModal").off("hide.bs.modal", logoutOnExit);
   };
   $("#SplashModal").on("hide.bs.modal", logoutOnExit);
 }
 
 function emailValidationModalOpener() {
-  const modalOpener = $.get(routes.confirmEmailAfterRegister);
+  const modalOpener = $.get(APP_CONFIG.routes.confirmEmailAfterRegister);
 
   modalOpener.done((data, _, xhr) => {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;

@@ -58,7 +58,7 @@ function handleResetPasswordFailure(xhr, _, error) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 

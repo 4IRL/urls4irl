@@ -31,7 +31,7 @@ function urlStringInAccessModal(urlString) {
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function accessURLWarningShowModal(urlString) {
   const modalTitle = "🚦 Caution! 🚦";
-  const modalText = `${STRINGS.ACCESS_URL_WARNING}\n\n`;
+  const modalText = `${APP_CONFIG.strings.ACCESS_URL_WARNING}\n\n`;
   const buttonTextDismiss = "Nevermind";
   const buttonTextSubmit = "Let's go!";
 

@@ -44,7 +44,7 @@ function createEditURLBtn(urlCard) {
       "data-bs-custom-class": "urlStringBtnUpdate-tooltip",
       "data-bs-placement": "top",
       "data-bs-trigger": "hover",
-      "data-bs-title": `${STRINGS.EDIT_URL_TOOLTIP}`,
+      "data-bs-title": `${APP_CONFIG.strings.EDIT_URL_TOOLTIP}`,
     })
     .disableTab()
     .on("click", function (e) {

@@ -111,7 +111,7 @@ function createUTubTagHideInput() {
 }
 
 function createUTubTagSetup(utubID) {
-  const postURL = routes.createUTubTag(utubID);
+  const postURL = APP_CONFIG.routes.createUTubTag(utubID);
 
   const newUTubTag = $("#utubTagCreate").val();
   const data = {
@@ -170,7 +170,7 @@ function createUTubTagFail(xhr) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
@@ -191,7 +191,7 @@ function createUTubTagFail(xhr) {
     case 403:
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

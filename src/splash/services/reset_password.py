@@ -57,7 +57,7 @@ def reset_password_for_user(token: str) -> WerkzeugResponse | FlaskResponse | st
 
     if request.method == "GET":
         return render_template(
-            "splash.html",
+            "pages/splash.html",
             is_resetting_password=True,
             reset_password_form=reset_password_form,
         )

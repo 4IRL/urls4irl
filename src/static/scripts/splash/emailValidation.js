@@ -6,9 +6,9 @@ $("#SplashModal").on("hide.bs.modal", function (_) {
   $("#SplashModal").off("hide.bs.modal");
   const searchParams = new URLSearchParams(window.location.search);
   if (searchParams.has("token")) {
-    window.location.replace(routes.logout);
+    window.location.replace(APP_CONFIG.routes.logout);
   } else {
-    $.get(routes.logout);
+    $.get(APP_CONFIG.routes.logout);
   }
 });
 
@@ -16,7 +16,7 @@ function handleValidateEmail(event = null) {
   event !== null ? event.preventDefault() : null;
 
   const validateEmailRequest = $.ajax({
-    url: routes.sendValidationEmail,
+    url: APP_CONFIG.routes.sendValidationEmail,
     type: "POST",
     data: $("#ModalForm").serialize(),
   });
@@ -39,12 +39,12 @@ function handleValidateEmailSuccess(response, _, xhr) {
 
 function handleValidateEmailFailure(xhr, _, error) {
   if (xhr.status !== 400 && xhr.status !== 429) {
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
   if (!xhr.hasOwnProperty("responseJSON")) {
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
@@ -64,7 +64,7 @@ function handleValidateEmailFailure(xhr, _, error) {
       showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
       break;
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

@@ -63,6 +63,8 @@
     --selectedUrlBorder: rgba(13, 255, 0, 1.0);
     --focusedUrlBorder: rgba(13, 255, 0, 0.75);
 
+    --footerURLColor: var(--cardURLTextColor);
+
     --oddUrlCardsBackgroundColor: rgba(61, 71, 71, 1.0);
     --evenUrlCardsBackgroundColor: rgba(51, 61, 61, 1.0);
 
@@ -94,8 +96,6 @@ body {
     width: 100%;
     margin: 0;
     padding: 0;
-    display: flex;
-    flex-direction: column;
     background-color: var(--pageBackgroundColor);
 }
 
@@ -113,16 +113,20 @@ main {
 }
 
 footer {
-    display: flex;
-    flex-direction: row;
     height: 1.75rem;
     justify-content: center;
     gap: 1rem;
     align-items: flex-start;
+    color: var(--footerURLColor);
 }
 
-footer > p {
+footer p {
     margin: 0;
+}
+
+footer p,
+footer a {
+    color: var(--footerURLColor);
 }
 
 
@@ -252,6 +256,30 @@ a {
 
 #logoutIcon {
     transform: rotate(90deg);
+}
+
+/** Utility **/
+.flex-row {
+    display: flex;
+    flex-direction: row;
+}
+
+.flex-column {
+    display: flex;
+    flex-direction: column;
+}
+
+
+.p-in-1r {
+    padding-inline: 1rem;
+}
+
+.jc-sb {
+    justify-content: space-between;
+}
+
+.g-0-5r {
+    gap: 0.5rem;
 }
 
 @media (min-width: 768px) {

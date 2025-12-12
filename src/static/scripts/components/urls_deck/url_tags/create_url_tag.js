@@ -11,8 +11,8 @@ function createTagInputBlock(urlCard, utubID) {
   // Customize the input text box for the Url title
   const urlTagTextInput = urlTagCreateTextInputContainer
     .find("input")
-    .prop("minLength", CONSTANTS.TAGS_MIN_LENGTH)
-    .prop("maxLength", CONSTANTS.TAGS_MAX_LENGTH);
+    .prop("minLength", APP_CONFIG.constants.TAGS_MIN_LENGTH)
+    .prop("maxLength", APP_CONFIG.constants.TAGS_MAX_LENGTH);
 
   setFocusEventListenersOnCreateURLTagInput(urlTagTextInput, urlCard, utubID);
 
@@ -164,7 +164,7 @@ function hideAndResetCreateURLTagForm(urlCard) {
 // Prepares post request inputs for addition of a new Tag to URL
 function createURLTagSetup(urlTagCreateInput, utubID, utubUrlID) {
   // Assemble post request route
-  const postURL = routes.createURLTag(utubID, utubUrlID);
+  const postURL = APP_CONFIG.routes.createURLTag(utubID, utubUrlID);
 
   // Assemble submission data
   const data = {
@@ -239,7 +239,7 @@ function createURLTagSuccess(response, urlCard, utubID) {
   if (!isTagInUTubTagDeck(utubTagID)) {
     const newTag = buildTagFilterInDeck(utubID, utubTagID, string, tagCount);
     // If max number of tags already selected
-    $(".tagFilter.selected").length === CONSTANTS.TAGS_MAX_ON_URL
+    $(".tagFilter.selected").length === APP_CONFIG.constants.TAGS_MAX_ON_URL
       ? newTag.addClass("disabled").off(".tagFilterSelected")
       : null;
     $("#listTags").append(newTag);
@@ -260,7 +260,7 @@ function createURLTagFail(xhr, urlCard) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
@@ -276,7 +276,7 @@ function createURLTagFail(xhr, urlCard) {
     case 403:
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

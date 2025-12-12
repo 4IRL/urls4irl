@@ -16,11 +16,11 @@
     </button>
     {% if current_user.is_authenticated and current_user.email_validated %}
     <div class="navbar-collapse collapse bg-dark home" id="NavbarNavDropdown">
-        {% include 'components/navHomeItems.html' %}
+        {% include 'components/nav/nav_home_items.html' %}
     </div>
     {% else %}
     <div class="navbar-collapse collapse bg-dark splash" id="NavbarNavDropdown">
-        {% include 'components/navSplashItems.html' %}
+        {% include 'components/nav/nav_splash_items.html' %}
         {% endif %}
     </div>
 </nav>

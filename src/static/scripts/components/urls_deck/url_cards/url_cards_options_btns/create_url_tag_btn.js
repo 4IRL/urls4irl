@@ -53,7 +53,7 @@ function createAddTagBtn(urlCard) {
       "data-bs-custom-class": "urlTagBtnCreate-tooltip",
       "data-bs-placement": "top",
       "data-bs-trigger": "hover",
-      "data-bs-title": `${STRINGS.ADD_URL_TAG_TOOLTIP}`,
+      "data-bs-title": `${APP_CONFIG.strings.ADD_URL_TAG_TOOLTIP}`,
     })
     .disableTab()
     .on("click", function (e) {

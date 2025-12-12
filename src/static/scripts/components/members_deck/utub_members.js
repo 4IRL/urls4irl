@@ -22,7 +22,7 @@ function createMemberBadge(
 
   $(memberSpan)
     .attr({ memberid: utubMemberUserID })
-    .addClass("member full-width flex-row justify-space-between align-center")
+    .addClass("member full-width flex-row jc-sb align-center")
     .html("<b>" + utubMemberUsername + "</b>");
 
   if (isCurrentUserOwner) {

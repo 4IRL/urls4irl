@@ -2,7 +2,11 @@
 
 // Prepares post request inputs for removal of a URL - tag
 function deleteURLTagSetup(utubID, utubUrlID, utubTagID) {
-  const deleteURLTag = routes.deleteURLTag(utubID, utubUrlID, utubTagID);
+  const deleteURLTag = APP_CONFIG.routes.deleteURLTag(
+    utubID,
+    utubUrlID,
+    utubTagID,
+  );
 
   return deleteURLTag;
 }
@@ -88,5 +92,5 @@ function deleteURLTagFail(xhr) {
     $("body").html(xhr.responseText);
     return;
   }
-  window.location.assign(routes.errorPage);
+  window.location.assign(APP_CONFIG.routes.errorPage);
 }

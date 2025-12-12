@@ -3,7 +3,7 @@
 async function getUpdatedURL(utubID, utubUrlID, urlCard) {
   return new Promise((resolve, reject) => {
     $.ajax({
-      url: routes.getURL(utubID, utubUrlID),
+      url: APP_CONFIG.routes.getURL(utubID, utubUrlID),
       type: "GET",
       dataType: "json",
       success: (response, _, xhr) => {
@@ -113,12 +113,12 @@ function handleRejectFromGetURL(xhr, urlCard, errorMessage) {
   switch (xhr.status) {
     case 403:
       // User not authorized for this UTub
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
       break;
     case 404:
       if (xhr.getResponseHeader("content-type").indexOf("text/html") >= 0) {
         // UTub does not exist
-        window.location.assign(routes.errorPage);
+        window.location.assign(APP_CONFIG.routes.errorPage);
         break;
       }
       // URL no longer exists
@@ -129,7 +129,7 @@ function handleRejectFromGetURL(xhr, urlCard, errorMessage) {
       break;
 
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
       break;
   }
 }

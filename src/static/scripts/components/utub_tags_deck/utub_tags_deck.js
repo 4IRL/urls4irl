@@ -95,13 +95,13 @@ function updateCountOfTagFiltersApplied(selectedTagCount) {
   $("#TagDeckSubheader").text(
     selectedTagCount +
       " of " +
-      CONSTANTS.TAGS_MAX_ON_URLS +
+      APP_CONFIG.constants.TAGS_MAX_ON_URLS +
       " tag filters applied",
   );
 }
 
 function resetCountOfTagFiltersApplied() {
   $("#TagDeckSubheader").text(
-    "0 of " + CONSTANTS.TAGS_MAX_ON_URLS + " tag filters applied",
+    "0 of " + APP_CONFIG.constants.TAGS_MAX_ON_URLS + " tag filters applied",
   );
 }

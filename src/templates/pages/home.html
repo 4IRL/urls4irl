@@ -1,18 +1,18 @@
-{% extends "layout.html" %}
+{% extends "pages/layout.html" %}
 {% block mainbody %}
 <main id="mainPanel" class="mx-0 bt-4 pt-0">
     <!-- Left Panel -->
     <div id="leftPanel" class="panel">
         <!-- UTubs -->
-        {% include 'home/UTubDeck/UTubDeck.html' %}
+        {% include 'components/home/UTubDeck/UTubDeck.html' %}
         <!-- End UTubs -->
 
         <!-- Members -->
-        {% include 'home/MemberDeck/MemberDeck.html' %}
+        {% include 'components/home/MemberDeck/MemberDeck.html' %}
         <!-- End Members -->
 
         <!-- Tags -->
-        {% include 'home/TagsDeck/TagsDeck.html' %}
+        {% include 'components/home/TagsDeck/TagsDeck.html' %}
         <!-- End Tags -->
     </div>
 
@@ -20,7 +20,7 @@
 
     <!-- Center Panel -->
     <div id="centerPanel" class="panel">
-        {% include 'home/URLDeck/URLDeck.html' %}
+        {% include 'components/home/URLDeck/URLDeck.html' %}
     </div>
     <!-- End Center Panel -->
 </main>

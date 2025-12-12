@@ -200,11 +200,6 @@ main {
     white-space: pre-line;
 }
 
-.flex-row {
-    display: flex;
-    flex-direction: row;
-}
-
 .flex-row-reverse {
     display: flex;
     flex-direction: row-reverse;
@@ -256,10 +251,6 @@ main {
 
 .justify-center {
     justify-content: center;
-}
-
-.justify-space-between {
-    justify-content: space-between;
 }
 
 .justify-flex-end {

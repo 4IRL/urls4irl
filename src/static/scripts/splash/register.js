@@ -11,7 +11,7 @@ function handleRegister(event) {
   $("#submit").attr("disabled", "disabled");
 
   const registerRequest = $.ajax({
-    url: routes.register,
+    url: APP_CONFIG.routes.register,
     type: "POST",
     data: $("#ModalForm").serialize(),
   });
@@ -39,7 +39,7 @@ function handleRegisterFailure(xhr, _, error) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
