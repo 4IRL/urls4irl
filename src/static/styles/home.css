@@ -6,6 +6,13 @@ main {
     background-color: var(--pageBackgroundColor);
 }
 
+button {
+    background: inherit;
+    border: none;
+    padding: 0 0 0 0;
+    margin: 0 0 0 0;
+}
+
 /* Page display */
 
 #pageContent {
@@ -203,11 +210,6 @@ main {
 .flex-row-reverse {
     display: flex;
     flex-direction: row-reverse;
-}
-
-.flex-column {
-    display: flex;
-    flex-direction: column;
 }
 
 .titleElement {

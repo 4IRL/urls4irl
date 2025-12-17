@@ -7,7 +7,7 @@ function buildTagFilterInDeck(utubID, tagID, string, urlCount = 0) {
   const tagCountContainer = $(document.createElement("div"));
   const tagMenuContainer = $(document.createElement("div"));
   const urlCountSpan = $(document.createElement("span"));
-  const deleteTagButton = $(document.createElement("i"));
+  const deleteTagButton = $(document.createElement("button"));
 
   container
     .addClass("tagFilter pointerable unselected col-12")
