@@ -39,7 +39,9 @@
         </svg>
         <b>Tags</b>
     </button>
-    {% endif %}
     {% include 'components/nav/logout_btn.html' %}
+    {% else %}
+    {% include 'components/nav/back_home_btn.html' %}
+    {% endif %}
 </div>
 

@@ -79,6 +79,7 @@ def generate_routes_js() -> dict[str, str]:
     """
     return {
         # UTub routes
+        "home": url_for(UTUB_ROUTES.HOME),
         "createUTub": url_for(UTUB_ROUTES.CREATE_UTUB),
         "getUTubs": url_for(UTUB_ROUTES.GET_UTUBS),
         "getUTub": url_for(UTUB_ROUTES.GET_SINGLE_UTUB, utub_id=-1),

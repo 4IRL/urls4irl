@@ -27,3 +27,7 @@ li {
         padding-inline: 5%;
     }
 }
+
+#backHomeIcon {
+    transform: rotate(90deg);
+}
