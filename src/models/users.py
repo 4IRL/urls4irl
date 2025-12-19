@@ -4,7 +4,8 @@ from enum import Enum
 import jwt
 from flask_login import UserMixin
 from flask import current_app
-from sqlalchemy import Boolean, Column, DateTime, Enum as SQLEnum, Integer, String
+from sqlalchemy import Boolean, Column, DateTime, Integer, String
+from sqlalchemy.dialects.postgresql import ENUM as PostgresEnum
 from werkzeug.security import check_password_hash, generate_password_hash
 
 from src import db
@@ -19,10 +20,13 @@ from src.utils.strings.model_strs import MODELS as MODEL_STRS
 from src.utils.strings.reset_password_strs import RESET_PASSWORD
 
 
-class User_Role(Enum):
-    ADMIN = "admin"
-    USER = "user"
-    MOD = "mod"
+class User_Role(str, Enum):
+    ADMIN = "ADMIN"
+    USER = "USER"
+    MOD = "MOD"
+
+
+user_role_enum = PostgresEnum(User_Role, name="user_role", create_type=False)
 
 
 class Users(db.Model, UserMixin):
@@ -44,7 +48,8 @@ class Users(db.Model, UserMixin):
     created_at = Column(
         DateTime(timezone=True), nullable=False, default=utc_now, name="createdAt"
     )
-    role: str = Column(SQLEnum(User_Role), nullable=False, default=User_Role.USER)
+    role = Column(user_role_enum, nullable=False, default=User_Role.USER)
+
     email_validated: bool = Column(
         Boolean, default=False, name="emailValidated", nullable=False
     )

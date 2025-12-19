@@ -11,6 +11,10 @@ import warnings
 
 import redis
 from redis.client import Redis
+from alembic import command
+from alembic.config import Config
+from pathlib import Path
+
 
 from src import create_app, db, environment_assets
 from src.config import ConfigTest
@@ -126,6 +130,18 @@ def ignore_deprecation_warning():
     warnings.resetwarnings()
 
 
+def get_alembic_config() -> Config:
+    project_root = Path(__file__).resolve().parents[1]
+
+    alembic_cfg = Config(str(project_root / "migrations/alembic.ini"))
+    alembic_cfg.set_main_option(
+        "script_location",
+        str(project_root / "migrations"),
+    )
+
+    return alembic_cfg
+
+
 @pytest.fixture(scope="session")
 def build_app(
     ignore_deprecation_warning,
@@ -149,15 +165,19 @@ def build_app(
             app_for_test.logger.removeHandler(handler)
 
     app_for_test.logger.propagate = True
+    alembic_cfg = get_alembic_config()
 
     with app_for_test.app_context():
         db.init_app(app_for_test)
-        db.create_all()
+        command.upgrade(alembic_cfg, "head")
+
+        # db.create_all()
 
     yield app_for_test, config
 
     with app_for_test.app_context():
-        db.drop_all()
+        # db.drop_all()
+        command.downgrade(alembic_cfg, "base")
 
 
 @pytest.fixture

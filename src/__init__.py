@@ -124,12 +124,11 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     app.register_error_handler(404, handle_404_response)
     app.register_error_handler(CSRFError, handle_403_response_from_csrf)
 
-    if not testing:
-        # Import models to initialize migration scripts
-        from src import models  # noqa: F401
+    # Import models to initialize migration scripts
+    from src import models  # noqa: F401
 
-        assert models
-        migrate.init_app(app)
+    assert models
+    migrate.init_app(app)
 
     relative_js_path = "static/scripts/components/**/*.js"
     js_path = os.path.join(app.root_path, relative_js_path)

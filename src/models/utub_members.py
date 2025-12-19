@@ -1,15 +1,19 @@
 from enum import Enum
 
-from sqlalchemy import Column, Enum as SQLEnum, ForeignKey, Integer, UniqueConstraint
+from sqlalchemy import Column, Enum as ForeignKey, Integer, UniqueConstraint
+from sqlalchemy.dialects.postgresql import ENUM as PostgresEnum
 
 from src import db
 from src.utils.strings.model_strs import MODELS
 
 
-class Member_Role(Enum):
-    MEMBER = "member"
-    CREATOR = "creator"
-    CO_CREATOR = "cocreator"
+class Member_Role(str, Enum):
+    MEMBER = "MEMBER"
+    CREATOR = "CREATOR"
+    CO_CREATOR = "CO_CREATOR"
+
+
+member_role_enum = PostgresEnum(Member_Role, name="memberRole", create_type=False)
 
 
 class Utub_Members(db.Model):
@@ -20,11 +24,8 @@ class Utub_Members(db.Model):
     user_id: int = Column(
         Integer, ForeignKey("Users.id"), primary_key=True, name="userID"
     )
-    member_role: Member_Role = Column(
-        SQLEnum(Member_Role),
-        nullable=False,
-        default=Member_Role.MEMBER,
-        name="memberRole",
+    member_role = Column(
+        member_role_enum, name="memberRole", nullable=False, default=Member_Role.MEMBER
     )
     # TODO: Add time when member was added
 
