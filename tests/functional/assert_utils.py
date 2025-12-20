@@ -21,6 +21,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     Decks,
+    click_on_navbar,
     wait_for_tooltip_with_hover_retry,
     wait_then_click_element,
     wait_then_get_element,
@@ -139,6 +140,7 @@ def assert_login_with_username(browser: WebDriver, username: str):
 
     Args:
         WebDriver open to U4I Home Page
+        Username of user to verify
     """
 
     # Confirm user logged in
@@ -153,6 +155,19 @@ def assert_login_with_username(browser: WebDriver, username: str):
     userLoggedInText = "Logged in as " + username
 
     assert user_logged_in.text == userLoggedInText
+
+
+def assert_logged_in_on_mobile(browser: WebDriver):
+    """
+    Streamlines actions needed to confirm a user is logged in.
+
+    Args:
+        WebDriver open to U4I Home Page
+    """
+    click_on_navbar(browser)
+
+    assert_visible_css_selector(browser, HPL.LOGGED_IN_USERNAME_READ)
+    assert_visible_css_selector(browser, HPL.NAVBAR_LOGOUT)
 
 
 def assert_no_utub_selected(browser: WebDriver):

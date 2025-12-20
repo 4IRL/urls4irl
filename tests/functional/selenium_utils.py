@@ -929,3 +929,19 @@ def set_focus_on_element(driver: WebDriver, element: WebElement):
 
 def get_css_selector_for_url_by_id(url_id: int) -> str:
     return f"{HPL.ROWS_URLS}[utuburlid='{url_id}']"
+
+
+def visit_privacy_page(browser: WebDriver):
+    wait_then_click_element(browser, HPL.PRIVACY_BTN, time=3)
+    privacy_title = wait_then_get_element(browser, HPL.PRIVACY_HEADER)
+    assert privacy_title
+
+    assert privacy_title.text == "Privacy Policy"
+
+
+def visit_terms_page(browser: WebDriver):
+    wait_then_click_element(browser, HPL.TERMS_BTN, time=3)
+    terms_title = wait_then_get_element(browser, HPL.TERMS_HEADER)
+    assert terms_title
+
+    assert terms_title.text == "Terms & Conditions"

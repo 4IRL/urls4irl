@@ -18,6 +18,11 @@ li {
     color: var(--UTubDescriptionColor);
 }
 
+.collapsing#NavbarNavDropdown,
+.show#NavbarNavDropdown {
+    z-index: 9999;
+}
+
 .nav-bar-inner-item a {
     transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
 }
