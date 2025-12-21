@@ -396,10 +396,6 @@ button {
     visibility: visible !important;
 }
 
-.z9999 {
-    z-index: 9999;
-}
-
 .top-50perc {
     top: 50%;
 }
@@ -1287,26 +1283,6 @@ a.urlString:hover {
     .panel#centerPanel,
     .panel#leftPanel {
         width: 100%;
-    }
-
-    .navbar-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        z-index: 1040;
-        width: 100vw;
-        height: 100vh;
-        background-color: #000;
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out;
-    }
-
-    .navbar-backdrop-show {
-        opacity: 0.5;
-    }
-
-    .navbar-backdrop-fade {
-        opacity: 0 !important;
     }
 
     .urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap {

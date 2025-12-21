@@ -282,6 +282,11 @@ a {
     gap: 0.5rem;
 }
 
+.z9999 {
+    z-index: 9999;
+}
+
+
 @media (min-width: 768px) {
     .nav-bar-inner-item.home button {
         padding-inline: 10px;
@@ -367,5 +372,25 @@ a {
     .nav-bar-inner-item.splash:hover {
         background-color: var(--navbarBackgroundHover);
         color: var(--navbarTextHover);
+    }
+
+    .navbar-backdrop {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 1040;
+        width: 100vw;
+        height: 100vh;
+        background-color: #000;
+        opacity: 0;
+        transition: opacity 0.3s ease-in-out;
+    }
+
+    .navbar-backdrop-show {
+        opacity: 0.5;
+    }
+
+    .navbar-backdrop-fade {
+        opacity: 0 !important;
     }
 }
