@@ -81,7 +81,7 @@ function deleteUTubTagShowModal(utubID, utubTagID, string) {
 }
 
 function deleteUTubTagSetup(utubID, utubTagID) {
-  let deleteURL = routes.deleteUTubTag(utubID, utubTagID);
+  let deleteURL = APP_CONFIG.routes.deleteUTubTag(utubID, utubTagID);
 
   return deleteURL;
 }
