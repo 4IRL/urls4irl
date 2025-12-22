@@ -3,7 +3,7 @@
 // Streamline the AJAX call to db for updated info
 function getUTubInfo(selectedUTubID) {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
-  return $.getJSON(routes.getUTub(selectedUTubID))
+  return $.getJSON(APP_CONFIG.routes.getUTub(selectedUTubID))
     .fail(function () {
       window.history.replaceState(null, null, "/home");
     })
@@ -32,7 +32,7 @@ function buildSelectedUTub(selectedUTub) {
       JSON.stringify(selectedUTub.id)
   ) {
     // Push UTub state to browser history if no history, or if previous UTub history is different
-    const utubid_key = STRINGS.UTUB_QUERY_PARAM;
+    const utubid_key = APP_CONFIG.strings.UTUB_QUERY_PARAM;
     window.history.pushState(
       { UTubID: selectedUTub.id },
       "",
@@ -115,7 +115,7 @@ function getSelectedUTubInfo(selectedUTubID) {
       }
     },
     () => {
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
     },
   );
 }
@@ -128,7 +128,7 @@ function createUTubSelector(utubName, utubID, memberRole, index) {
   utubSelectorText.addClass("UTubName").text(utubName);
 
   utubSelector
-    .addClass("UTubSelector flex-row justify-space-between align-center")
+    .addClass("UTubSelector flex-row jc-sb align-center")
     .attr({
       utubid: utubID,
       position: index,
@@ -178,12 +178,12 @@ function makeUTubRoleIcon(memberRole) {
   let icon = "";
 
   switch (memberRole) {
-    case `${CONSTANTS.MEMBER_ROLES.CREATOR}`:
+    case `${APP_CONFIG.constants.MEMBER_ROLES.CREATOR}`:
       icon += `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-diamond-fill memberRole" viewBox="0 0 16 16">`;
       icon += `<path fill-rule="evenodd" d="M6.95.435c.58-.58 1.52-.58 2.1 0l6.515 6.516c.58.58.58 1.519 0 2.098L9.05 15.565c-.58.58-1.519.58-2.098 0L.435 9.05a1.48 1.48 0 0 1 0-2.098z"/>`;
 
       break;
-    case `${CONSTANTS.MEMBER_ROLES.CO_CREATOR}`:
+    case `${APP_CONFIG.constants.MEMBER_ROLES.CO_CREATOR}`:
       icon += `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-diamond-half memberRole" viewBox="0 0 16 16">`;
       icon += `<path d="M9.05.435c-.58-.58-1.52-.58-2.1 0L.436 6.95c-.58.58-.58 1.519 0 2.098l6.516 6.516c.58.58 1.519.58 2.098 0l6.516-6.516c.58-.58.58-1.519 0-2.098zM8 .989c.127 0 .253.049.35.145l6.516 6.516a.495.495 0 0 1 0 .7L8.35 14.866a.5.5 0 0 1-.35.145z"/>`;
 

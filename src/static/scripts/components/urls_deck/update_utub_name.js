@@ -112,7 +112,7 @@ function removeEventListenersToEscapeUpdateUTubName() {
 
 function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
   const modalTitle = "Continue with this UTub name?";
-  const modalBody = `${STRINGS.UTUB_UPDATE_SAME_NAME}`;
+  const modalBody = `${APP_CONFIG.strings.UTUB_UPDATE_SAME_NAME}`;
   const buttonTextDismiss = "Go Back to Editing";
   const buttonTextSubmit = "Edit Name";
 
@@ -236,7 +236,7 @@ function updateUTubName(utubID) {
 
 // Handles preparation for post request to update an existing UTub
 function updateUTubNameSetup(utubID) {
-  const postURL = routes.updateUTubName(utubID);
+  const postURL = APP_CONFIG.routes.updateUTubName(utubID);
 
   const updatedUTubName = $("#utubNameUpdate").val();
   let data = { utubName: updatedUTubName };
@@ -268,7 +268,7 @@ function updateUTubNameFail(xhr) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
@@ -282,7 +282,7 @@ function updateUTubNameFail(xhr) {
       }
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

@@ -15,7 +15,7 @@ def render_home_page() -> str:
     utub_details = current_user.serialized_on_initial_load
 
     return render_template(
-        "home.html",
+        "pages/home.html",
         utubs_for_this_user=utub_details[MODELS.UTUBS],
         is_prod_or_testing=current_app.config.get(CONFIG_ENVS.TESTING_OR_PROD, True),
     )

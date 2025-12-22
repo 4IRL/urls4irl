@@ -54,7 +54,7 @@ function createURLBlock(url, tagArray, utubID) {
     .enableTab(); // Holds everything in the URL
 
   const urlTitleGoToURLWrap = $(document.createElement("div")).addClass(
-    "flex-row full-width align-center justify-space-between",
+    "flex-row full-width align-center jc-sb",
   );
 
   // Append update URL title form if user can edit the URL

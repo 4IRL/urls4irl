@@ -59,7 +59,7 @@ function createURLShowInput(utubID) {
 // Prepares post request inputs for addition of a new URL
 function createURLSetup(createURLTitleInput, createURLInput, utubID) {
   // Assemble post request route
-  const postURL = routes.createURL(utubID);
+  const postURL = APP_CONFIG.routes.createURL(utubID);
 
   // Assemble submission data
   const newURLTitle = createURLTitleInput.val();
@@ -80,7 +80,7 @@ function createURL(createURLTitleInput, createURLInput, utubID) {
 
   if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
     createURLShowFormErrors({
-      urlString: [STRINGS.INVALID_URL],
+      urlString: [APP_CONFIG.strings.INVALID_URL],
     });
     return;
   }
@@ -182,7 +182,7 @@ function createURLFail(xhr, utubID) {
     case 403:
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

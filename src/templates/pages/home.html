@@ -1,0 +1,41 @@
+{% extends "pages/layout.html" %}
+{% block mainbody %}
+<main id="mainPanel" class="mx-0 bt-4 pt-0">
+    <!-- Left Panel -->
+    <div id="leftPanel" class="panel">
+        <!-- UTubs -->
+        {% include 'components/home/UTubDeck/UTubDeck.html' %}
+        <!-- End UTubs -->
+
+        <!-- Members -->
+        {% include 'components/home/MemberDeck/MemberDeck.html' %}
+        <!-- End Members -->
+
+        <!-- Tags -->
+        {% include 'components/home/TagsDeck/TagsDeck.html' %}
+        <!-- End Tags -->
+    </div>
+
+    <!-- End Left Panel -->
+
+    <!-- Center Panel -->
+    <div id="centerPanel" class="panel">
+        {% include 'components/home/URLDeck/URLDeck.html' %}
+    </div>
+    <!-- End Center Panel -->
+</main>
+<!-- Home Page JS -->
+<!-- Add asset version based on UNIX epoch to cache bust when updates are made -->
+{% assets "logged_in_js" %}
+    {% if '?' in ASSET_URL %}
+        <script src="{{ ASSET_URL }}&v={{ ASSET_VERSION }}"></script>
+    {% else %}
+        <script src="{{ ASSET_URL }}?v={{ ASSET_VERSION }}"></script>
+    {% endif %}
+{% endassets %}
+
+{% endblock %}
+
+{% block modal_extender %}
+{{ super() }}
+{% endblock %}

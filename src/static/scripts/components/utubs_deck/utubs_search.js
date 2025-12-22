@@ -76,7 +76,7 @@ function setUTubSelectorSearchEventListener() {
     })
     .offAndOn("input", function () {
       const searchTerm = searchInput.val().toLowerCase();
-      if (searchTerm.length < CONSTANTS.UTUBS_MIN_NAME_LENGTH) {
+      if (searchTerm.length < APP_CONFIG.constants.UTUBS_MIN_NAME_LENGTH) {
         updatedUTubSelectorDisplay([]);
         return;
       }

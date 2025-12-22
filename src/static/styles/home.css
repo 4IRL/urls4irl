@@ -1,5 +1,18 @@
 /** Class specific **/
 
+main {
+    display: flex;
+    flex-direction: row;
+    background-color: var(--pageBackgroundColor);
+}
+
+button {
+    background: inherit;
+    border: none;
+    padding: 0 0 0 0;
+    margin: 0 0 0 0;
+}
+
 /* Page display */
 
 #pageContent {
@@ -13,7 +26,6 @@
 }
 
 .panel {
-    height: 100%;
     display: flex;
     flex-direction: column;
     padding-inline: 5px;
@@ -195,19 +207,9 @@
     white-space: pre-line;
 }
 
-.flex-row {
-    display: flex;
-    flex-direction: row;
-}
-
 .flex-row-reverse {
     display: flex;
     flex-direction: row-reverse;
-}
-
-.flex-column {
-    display: flex;
-    flex-direction: column;
 }
 
 .titleElement {
@@ -251,10 +253,6 @@
 
 .justify-center {
     justify-content: center;
-}
-
-.justify-space-between {
-    justify-content: space-between;
 }
 
 .justify-flex-end {
@@ -396,10 +394,6 @@
 
 .visible-on-focus {
     visibility: visible !important;
-}
-
-.z9999 {
-    z-index: 9999;
 }
 
 .top-50perc {
@@ -1288,28 +1282,7 @@ a.urlString:hover {
     .deck#TagDeck,
     .panel#centerPanel,
     .panel#leftPanel {
-        height: 100%;
         width: 100%;
-    }
-
-    .navbar-backdrop {
-        position: fixed;
-        top: 0;
-        left: 0;
-        z-index: 1040;
-        width: 100vw;
-        height: 100vh;
-        background-color: #000;
-        opacity: 0;
-        transition: opacity 0.3s ease-in-out;
-    }
-
-    .navbar-backdrop-show {
-        opacity: 0.5;
-    }
-
-    .navbar-backdrop-fade {
-        opacity: 0 !important;
     }
 
     .urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap {

@@ -8,7 +8,7 @@ function deleteURLHideModal() {
 // Show confirmation modal for removal of the selected existing URL from current UTub
 function deleteURLShowModal(utubUrlID, urlCard, utubID) {
   const modalTitle = "Are you sure you want to delete this URL from the UTub?";
-  const modalText = `${STRINGS.DELETE_URL_WARNING}`;
+  const modalText = `${APP_CONFIG.strings.DELETE_URL_WARNING}`;
   const buttonTextDismiss = "Just kidding";
   const buttonTextSubmit = "Delete URL";
 
@@ -41,7 +41,7 @@ function deleteURLShowModal(utubUrlID, urlCard, utubID) {
 
 // Prepares post request inputs for removal of a URL
 function deleteURLSetup(utubID, utubUrlID) {
-  const deleteURL = routes.deleteURL(utubID, utubUrlID);
+  const deleteURL = APP_CONFIG.routes.deleteURL(utubID, utubUrlID);
   return deleteURL;
 }
 
@@ -121,6 +121,6 @@ function deleteURLFail(xhr) {
     case 403:
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }

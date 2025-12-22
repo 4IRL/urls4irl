@@ -49,7 +49,7 @@ function getAllAccessibleUTubNames() {
 // Utility route to get all UTub summaries
 function getAllUTubs() {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
-  return $.getJSON(routes.getUTubs).always(function () {
+  return $.getJSON(APP_CONFIG.routes.getUTubs).always(function () {
     hideUTubLoadingIconAndClearTimeout(timeoutID);
   });
 }

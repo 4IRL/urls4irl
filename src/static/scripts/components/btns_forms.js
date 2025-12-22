@@ -105,7 +105,7 @@ function hideInput(handle) {
 
 // Creates update button
 function makeUpdateButton(wh) {
-  const updateBtn = $(document.createElement("i"));
+  const updateBtn = $(document.createElement("button"));
 
   // update icon box
   const htmlString =
@@ -129,7 +129,7 @@ function makeUpdateButton(wh) {
 
 // Creates submit button
 function makeSubmitButton(wh) {
-  const submitBtn = $(document.createElement("i"));
+  const submitBtn = $(document.createElement("button"));
 
   // Submit checkbox
   const htmlString =
@@ -148,7 +148,7 @@ function makeSubmitButton(wh) {
 
 // Creates cancel button
 function makeCancelButton(wh) {
-  const cancelBtn = $(document.createElement("i"));
+  const cancelBtn = $(document.createElement("button"));
 
   // Cancel x-box
   const htmlString =

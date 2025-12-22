@@ -99,7 +99,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
 
 // Prepares post request inputs for update of a URL
 function updateURLSetup(urlStringUpdateInput, utubID, utubUrlID) {
-  const postURL = routes.updateURL(utubID, utubUrlID);
+  const postURL = APP_CONFIG.routes.updateURL(utubID, utubUrlID);
 
   const updatedURL = urlStringUpdateInput.val().trim();
 
@@ -127,7 +127,11 @@ async function updateURL(urlStringUpdateInput, urlCard, utubID) {
     }
 
     if (!isEmptyString(data.urlString) && !isValidURL(data.urlString)) {
-      displayUpdateURLErrors("urlString", STRINGS.INVALID_URL, urlCard);
+      displayUpdateURLErrors(
+        "urlString",
+        APP_CONFIG.strings.INVALID_URL,
+        urlCard,
+      );
       clearTimeoutIDAndHideLoadingIcon(timeoutID, urlCard);
       return;
     }
@@ -232,7 +236,7 @@ function updateURLFail(xhr, urlCard, utubID) {
     case 403:
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

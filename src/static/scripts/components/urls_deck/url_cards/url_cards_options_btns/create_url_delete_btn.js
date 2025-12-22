@@ -49,7 +49,7 @@ function createDeleteURLBtn(url, urlCard, utubID) {
       "data-bs-custom-class": "urlBtnDelete-tooltip",
       "data-bs-placement": "top",
       "data-bs-trigger": "hover",
-      "data-bs-title": `${STRINGS.DELETE_URL_TOOLTIP}`,
+      "data-bs-title": `${APP_CONFIG.strings.DELETE_URL_TOOLTIP}`,
     })
     .disableTab()
     .on("click", function (e) {

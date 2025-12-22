@@ -3,18 +3,17 @@
 const NAVBAR_TOGGLER = { toggler: null };
 
 $(document).ready(function () {
-  $("#logout").on("click", () => window.location.assign(routes.logout));
-  $(".home#toMembers").on("click", () => {
+  $("button#toMembers").on("click", () => {
     setMobileUIWhenMemberDeckSelected();
   });
-  $(".home#toURLs").on("click", () => {
+  $("button#toURLs").on("click", () => {
     setMobileUIWhenUTubSelectedOrURLNavSelected();
   });
-  $(".home#toUTubs").on("click", () => {
+  $("button#toUTubs").on("click", () => {
     setMobileUIWhenUTubDeckSelected();
   });
 
-  $(".home#toTags").on("click", () => {
+  $("button#toTags").on("click", () => {
     setMobileUIWhenTagDeckSelected();
   });
 

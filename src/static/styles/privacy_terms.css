@@ -1,0 +1,38 @@
+main {
+    padding-inline: 20%;
+    background: var(--pageBackgroundColor);
+}
+
+h2,
+h1 {
+    text-align: center;
+}
+
+h1,
+h4,
+h3 {
+    color: var(--deckHeaderGreen);
+}
+
+li {
+    color: var(--UTubDescriptionColor);
+}
+
+.collapsing#NavbarNavDropdown,
+.show#NavbarNavDropdown {
+    z-index: 9999;
+}
+
+.nav-bar-inner-item a {
+    transition: color 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@media (max-width: 767.98px) {
+    main {
+        padding-inline: 5%;
+    }
+}
+
+#backHomeIcon {
+    transform: rotate(90deg);
+}

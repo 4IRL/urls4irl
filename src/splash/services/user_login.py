@@ -22,7 +22,7 @@ def handle_invalid_user_login_form_inputs(login_form: LoginForm) -> FlaskRespons
             errors=login_form.errors,
         ).to_response()
 
-    return render_template("login.html", login_form=login_form)
+    return render_template("components/splash/login.html", login_form=login_form)
 
 
 def login_user_to_u4i(login_form: LoginForm) -> FlaskResponse | str:

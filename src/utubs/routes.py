@@ -35,14 +35,14 @@ from src.utubs.services.update_utubs import (
     update_utub_name_if_new,
 )
 from src.utils.all_routes import ROUTES
-from src.utils.constants import CONSTANTS
+from src.utils.constants import provide_config_for_constants
 
 utubs = Blueprint("utubs", __name__)
 
 
 @utubs.context_processor
 def provide_constants():
-    return dict(CONSTANTS=CONSTANTS())
+    return provide_config_for_constants()
 
 
 @utubs.route("/home", methods=["GET"])

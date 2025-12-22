@@ -43,14 +43,15 @@ from src.splash.services.validate_email import (
 )
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.all_routes import ROUTES
-from src.utils.constants import CONSTANTS
+from src.utils.constants import provide_config_for_constants
 
 splash = Blueprint("splash", __name__)
 
 
+# TODO: Separate splash context processor from home page context processor
 @splash.context_processor
 def provide_constants():
-    return dict(CONSTANTS=CONSTANTS())
+    return provide_config_for_constants()
 
 
 @splash.route("/invalid")
@@ -64,7 +65,7 @@ def splash_page() -> WerkzeugResponse | str:
     if current_user.is_authenticated and current_user.email_validated:
         safe_add_log(f"User={current_user} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
-    return render_template("splash.html")
+    return render_template("pages/splash.html")
 
 
 @splash.route("/register", methods=["GET", "POST"])
@@ -74,7 +75,9 @@ def register_user() -> FlaskResponse | WerkzeugResponse | str | tuple[str, int]:
     register_form: UserRegistrationForm = UserRegistrationForm()
 
     if request.method == "GET":
-        return render_template("register_user.html", register_form=register_form)
+        return render_template(
+            "components/splash/register_user.html", register_form=register_form
+        )
 
     if not register_form.validate_on_submit():
         return handle_invalid_user_registration_form_inputs(register_form)
@@ -89,7 +92,7 @@ def login():
     login_form = LoginForm()
 
     if request.method == "GET":
-        return render_template("login.html", login_form=login_form)
+        return render_template("components/splash/login.html", login_form=login_form)
 
     if not login_form.validate_on_submit():
         return handle_invalid_user_login_form_inputs(login_form)
@@ -106,7 +109,7 @@ def confirm_email_after_register() -> WerkzeugResponse | str:
         warning_log(f"User={current_user.id} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
     return render_template(
-        "email_validation/email_needs_validation_modal.html",
+        "components/splash/validate_email.html",
         validate_email_form=ValidateEmailForm(),
     )
 
@@ -137,7 +140,7 @@ def validate_email_expired():
     safe_add_log(f"User={user_with_expired_token.id} email validation token reset")
     return (
         render_template(
-            "splash.html",
+            "pages/splash.html",
             validate_email_form=ValidateEmailForm(),
             email_token_is_expired=True,
             expired_token_message=EMAILS.TOKEN_EXPIRED,
@@ -157,7 +160,7 @@ def forgot_password() -> str | FlaskResponse:
     forgot_password_form = ForgotPasswordForm()
     if request.method == "GET":
         return render_template(
-            "password_reset/forgot_password.html",
+            "components/splash/forgot_password.html",
             forgot_password_form=forgot_password_form,
         )
 

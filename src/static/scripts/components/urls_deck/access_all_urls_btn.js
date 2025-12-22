@@ -3,7 +3,8 @@
 $(document).ready(function () {
   // Open all URLs in UTub in separate tabs
   $("#accessAllURLsBtn").on("click", function (_) {
-    const ACCESS_ALL_URLS_LIMIT_WARNING = CONSTANTS.MAX_NUM_OF_URLS_TO_ACCESS;
+    const ACCESS_ALL_URLS_LIMIT_WARNING =
+      APP_CONFIG.constants.MAX_NUM_OF_URLS_TO_ACCESS;
     if (getNumOfVisibleURLs() > ACCESS_ALL_URLS_LIMIT_WARNING) {
       accessAllWarningShowModal();
     } else {

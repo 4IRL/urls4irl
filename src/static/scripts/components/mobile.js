@@ -39,10 +39,10 @@ function isMobile() {
 function setMobileUIWhenUTubSelectedOrURLNavSelected() {
   $(".panel#leftPanel").addClass("hidden");
   $(".panel#centerPanel").addClass("visible-flex");
-  $(".home#toUTubs").removeClass("hidden");
-  $(".home#toMembers").removeClass("hidden");
-  $(".home#toTags").removeClass("hidden");
-  $(".home#toURLs").addClass("hidden");
+  $("button#toUTubs").removeClass("hidden");
+  $("button#toMembers").removeClass("hidden");
+  $("button#toTags").removeClass("hidden");
+  $("button#toURLs").addClass("hidden");
 
   $(".deck#MemberDeck").removeClass("visible-flex");
   $(".deck#TagDeck").removeClass("visible-flex");
@@ -51,10 +51,10 @@ function setMobileUIWhenUTubSelectedOrURLNavSelected() {
 }
 
 function setMobileUIWhenUTubNotSelectedOrUTubDeleted() {
-  $(".home#toUTubs").addClass("hidden");
-  $(".home#toMembers").addClass("hidden");
-  $(".home#toTags").addClass("hidden");
-  $(".home#toURLs").addClass("hidden");
+  $("button#toUTubs").addClass("hidden");
+  $("button#toMembers").addClass("hidden");
+  $("button#toTags").addClass("hidden");
+  $("button#toURLs").addClass("hidden");
 
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#MemberDeck").removeClass("visible-flex");
@@ -66,10 +66,10 @@ function setMobileUIWhenUTubNotSelectedOrUTubDeleted() {
 }
 
 function setMobileUIWhenUTubDeckSelected() {
-  $(".home#toUTubs").addClass("hidden");
-  $(".home#toMembers").removeClass("hidden");
-  $(".home#toTags").removeClass("hidden");
-  $(".home#toURLs").removeClass("hidden");
+  $("button#toUTubs").addClass("hidden");
+  $("button#toMembers").removeClass("hidden");
+  $("button#toTags").removeClass("hidden");
+  $("button#toURLs").removeClass("hidden");
 
   $(".panel#leftPanel").removeClass("hidden");
 
@@ -86,7 +86,7 @@ function setMobileUIWhenUTubDeckSelected() {
 }
 
 function setMobileUIWhenMemberDeckSelected() {
-  $(".home#toMembers").addClass("hidden");
+  $("button#toMembers").addClass("hidden");
   $(".deck#MemberDeck").addClass("visible-flex").removeClass("hidden");
 
   $(".panel#leftPanel").removeClass("hidden");
@@ -94,15 +94,15 @@ function setMobileUIWhenMemberDeckSelected() {
   $(".deck#UTubDeck").addClass("hidden");
   $(".deck#TagDeck").addClass("hidden");
 
-  $(".home#toUTubs").removeClass("hidden");
-  $(".home#toTags").removeClass("hidden");
-  $(".home#toURLs").removeClass("hidden");
+  $("button#toUTubs").removeClass("hidden");
+  $("button#toTags").removeClass("hidden");
+  $("button#toURLs").removeClass("hidden");
 
   NAVBAR_TOGGLER.toggler.hide();
 }
 
 function setMobileUIWhenTagDeckSelected() {
-  $(".home#toTags").addClass("hidden");
+  $("button#toTags").addClass("hidden");
   $(".deck#TagDeck").addClass("visible-flex").removeClass("hidden");
 
   $(".panel#leftPanel").removeClass("hidden");
@@ -110,10 +110,10 @@ function setMobileUIWhenTagDeckSelected() {
   $(".deck#UTubDeck").addClass("hidden");
   $(".deck#MemberDeck").addClass("hidden");
 
-  $(".home#toUTubs").removeClass("hidden");
-  $(".home#toTags").addClass("hidden");
-  $(".home#toURLs").removeClass("hidden");
-  $(".home#toMembers").removeClass("hidden");
+  $("button#toUTubs").removeClass("hidden");
+  $("button#toTags").addClass("hidden");
+  $("button#toURLs").removeClass("hidden");
+  $("button#toMembers").removeClass("hidden");
 
   NAVBAR_TOGGLER.toggler.hide();
 }
@@ -121,10 +121,10 @@ function setMobileUIWhenTagDeckSelected() {
 function revertMobileUIToFullScreenUI() {
   NAVBAR_TOGGLER.toggler.hide();
 
-  $(".home#toUTubs").addClass("hidden");
-  $(".home#toMembers").addClass("hidden");
-  $(".home#toTags").addClass("hidden");
-  $(".home#toURLs").addClass("hidden");
+  $("button#toUTubs").addClass("hidden");
+  $("button#toMembers").addClass("hidden");
+  $("button#toTags").addClass("hidden");
+  $("button#toURLs").addClass("hidden");
 
   $(".panel#centerPanel").removeClass("hidden");
   $(".panel#leftPanel").removeClass("hidden");

@@ -55,7 +55,7 @@ function setUTubEventListenersOnInitialPageLoad() {
 
 function resetUTubDeckIfNoUTubs() {
   // Subheader to prompt user to create a UTub shown
-  $("#UTubDeckSubheader").text(`${STRINGS.UTUB_CREATE_MSG}`);
+  $("#UTubDeckSubheader").text(`${APP_CONFIG.strings.UTUB_CREATE_MSG}`);
 
   // Hide delete UTub button
   $("#utubBtnDelete").hideClass();

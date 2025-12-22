@@ -47,7 +47,7 @@ function deleteUTubTagHideModal() {
 function deleteUTubTagShowModal(utubID, utubTagID, string) {
   const modalTitle = "Are you sure you want to delete this Tag?";
   const $strong = $("<strong>").text(`'${string}'`);
-  const modalBody = `${STRINGS.UTUB_TAG_DELETE_WARNING}`.replace(
+  const modalBody = `${APP_CONFIG.strings.UTUB_TAG_DELETE_WARNING}`.replace(
     "{{ tag_string }}",
     $strong.prop("outerHTML"),
   );
@@ -81,7 +81,7 @@ function deleteUTubTagShowModal(utubID, utubTagID, string) {
 }
 
 function deleteUTubTagSetup(utubID, utubTagID) {
-  let deleteURL = routes.deleteUTubTag(utubID, utubTagID);
+  let deleteURL = APP_CONFIG.routes.deleteUTubTag(utubID, utubTagID);
 
   return deleteURL;
 }
@@ -143,7 +143,7 @@ function deleteUTubTagFail(xhr) {
 
   $("#HomeModalAlertBanner")
     .showClassNormal()
-    .append(`${STRINGS.MAY_HAVE_ALREADY_BEEN_DELETED}<br>`)
+    .append(`${APP_CONFIG.strings.MAY_HAVE_ALREADY_BEEN_DELETED}<br>`)
     .append("Click ")
     .append(
       $(document.createElement("a"))

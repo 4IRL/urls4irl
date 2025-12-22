@@ -115,7 +115,7 @@ function createMemberHideInput() {
 
 // This function will extract the current selection data needed for POST request (member ID)
 function createMemberSetup(utubID) {
-  const postURL = routes.createMember(utubID);
+  const postURL = APP_CONFIG.routes.createMember(utubID);
 
   const newMemberUsername = $("#memberCreate").val();
   const data = {
@@ -172,7 +172,7 @@ function createMemberFail(xhr) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
@@ -193,7 +193,7 @@ function createMemberFail(xhr) {
     case 403:
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

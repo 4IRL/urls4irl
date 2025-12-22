@@ -3,6 +3,17 @@ class GenericPageLocator:
     ERROR_PAGE_REFRESH_BTN = f"{ERROR_PAGE_HANDLER} .refresh-button"
     NAVBAR_TOGGLER = ".navbar-toggler"
     NAVBAR_DROPDOWN = "#NavbarNavDropdown"
+    U4I_LOGO = ".navbar-brand"
+
+    # Footer
+    PRIVACY_BTN = "#PrivacyBtn"
+    TERMS_BTN = "#TermsBtn"
+
+    # Privacy Terms Pages
+    PRIVACY_HEADER = "#PrivacyTitle"
+    TERMS_HEADER = "#TermsTitle"
+    BACK_HOME_BTN = "#backHomeBtn"
+    BACK_SPLASH_BTN = "#backToSplashBtn"
 
 
 class HomePageLocators(GenericPageLocator):
@@ -15,7 +26,6 @@ class HomePageLocators(GenericPageLocator):
     # Navbar
     BUTTON_LOGOUT = "#logout > .nav-bar-inner-item"
     LOGGED_IN_USERNAME_READ = "#userLoggedIn"
-    U4I_LOGO = ".navbar-brand"
     NAVBAR_UTUB_DECK = "#NavbarDropdownsHome #toUTubs"
     NAVBAR_URLS_DECK = "#NavbarDropdownsHome #toURLs"
     NAVBAR_MEMBER_DECK = "#NavbarDropdownsHome #toMembers"
@@ -192,8 +202,8 @@ class SplashPageLocators(GenericPageLocator):
     BUTTON_LOGIN = ".btn.to-login"
 
     # Navbar
-    NAVBAR_REGISTER = ".nav-bar-inner-item.to-register"
-    NAVBAR_LOGIN = ".nav-bar-inner-item.to-login"
+    NAVBAR_REGISTER = ".nav-bar-inner-item > .to-register"
+    NAVBAR_LOGIN = ".nav-bar-inner-item > .to-login"
 
     # Common
     INPUT_USERNAME = "#username"

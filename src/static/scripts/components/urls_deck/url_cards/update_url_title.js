@@ -30,7 +30,7 @@ function hideAndResetUpdateURLTitleForm(urlCard) {
 
 // Prepares post request inputs for update of a URL
 function updateURLTitleSetup(urlTitleInput, utubID, utubUrlID) {
-  const patchURL = routes.updateURLTitle(utubID, utubUrlID);
+  const patchURL = APP_CONFIG.routes.updateURLTitle(utubID, utubUrlID);
 
   const updatedURLTitle = urlTitleInput.val();
 
@@ -108,7 +108,7 @@ function updateURLTitleFail(xhr, urlCard) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 
@@ -123,7 +123,7 @@ function updateURLTitleFail(xhr, urlCard) {
     case 403:
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

@@ -61,7 +61,7 @@ function createAccessLinkBtn(url) {
       "data-bs-placement": "top",
       "data-bs-offset": "10,0",
       "data-bs-trigger": "hover",
-      "data-bs-title": `${STRINGS.ACCESS_URL_TOOLTIP}`,
+      "data-bs-title": `${APP_CONFIG.strings.ACCESS_URL_TOOLTIP}`,
     })
     .disableTab()
     .on("click", function (e) {

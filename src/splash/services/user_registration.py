@@ -43,7 +43,9 @@ def handle_invalid_user_registration_form_inputs(
             errors=build_form_errors(register_form),
         ).to_response()
 
-    return render_template("register_user.html", register_form=register_form)
+    return render_template(
+        "components/splash/register_user.html", register_form=register_form
+    )
 
 
 def _build_response_for_email_errors(
@@ -188,7 +190,7 @@ def register_new_user(register_form: UserRegistrationForm) -> tuple[str, int]:
     validate_email_form = ValidateEmailForm()
     return (
         render_template(
-            "email_validation/email_needs_validation_modal.html",
+            "components/splash/validate_email.html",
             validate_email_form=validate_email_form,
         ),
         201,

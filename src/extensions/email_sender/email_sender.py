@@ -50,11 +50,11 @@ class EmailSender:
                     to_name=to_name,
                     subject=EMAILS.ACCOUNT_CONFIRMATION_SUBJECT,
                     textpart=render_template(
-                        "email_validation/email_confirmation.txt",
+                        "email_templates/email_validation_email.txt",
                         email_confirmation_url=confirmation_url,
                     ),
                     htmlpart=render_template(
-                        "email_validation/email_confirmation.html",
+                        "email_templates/email_validation_email.html",
                         email_confirmation_url=confirmation_url,
                     ),
                 )
@@ -76,11 +76,11 @@ class EmailSender:
                     to_name=to_name,
                     subject=EMAILS.PASSWORD_RESET_SUBJECT,
                     textpart=render_template(
-                        "password_reset/reset_password_text_email.txt",
+                        "email_templates/reset_password_email.txt",
                         password_reset_url=reset_url,
                     ),
                     htmlpart=render_template(
-                        "password_reset/reset_password_html_email.html",
+                        "email_templates/reset_password_email.html",
                         password_reset_url=reset_url,
                     ),
                 )

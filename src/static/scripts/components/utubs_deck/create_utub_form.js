@@ -123,7 +123,7 @@ function handleOnFocusEventListenersForCreateUTub(e) {
 
 function sameUTubNameOnNewUTubWarningShowModal() {
   const modalTitle = "Create a new UTub with this name?";
-  const modalBody = `${STRINGS.UTUB_CREATE_SAME_NAME}`;
+  const modalBody = `${APP_CONFIG.strings.UTUB_CREATE_SAME_NAME}`;
   const buttonTextDismiss = "Go Back to Editing";
   const buttonTextSubmit = "Create";
 
@@ -186,7 +186,7 @@ function createUTubHideInput() {
 
 // Handles preparation for post request to create a new UTub
 function createUTubSetup() {
-  const postURL = routes.createUTub;
+  const postURL = APP_CONFIG.routes.createUTub;
   const newUTubName = $("#utubNameCreate").val();
   const newUTubDescription = $("#utubDescriptionCreate").val();
   let data = { utubName: newUTubName, utubDescription: newUTubDescription };
@@ -231,7 +231,7 @@ function createUTubSuccess(response) {
   const newUTubSelector = createUTubSelector(
     response.utubName,
     utubID,
-    CONSTANTS.MEMBER_ROLES.CREATOR,
+    APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
     index - 1,
   );
   $("#listUTubs").prepend(newUTubSelector);
@@ -250,7 +250,7 @@ function createUTubFail(xhr) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
   switch (xhr.status) {
@@ -263,7 +263,7 @@ function createUTubFail(xhr) {
       }
     case 404:
     default:
-      window.location.assign(routes.errorPage);
+      window.location.assign(APP_CONFIG.routes.errorPage);
   }
 }
 

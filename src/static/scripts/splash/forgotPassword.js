@@ -11,7 +11,7 @@ function handleForgotPassword(event) {
   $("#submit").attr("disabled", "disabled");
 
   const forgotPasswordRequest = $.ajax({
-    url: routes.forgotPassword,
+    url: APP_CONFIG.routes.forgotPassword,
     type: "POST",
     data: $("#ModalForm").serialize(),
   });
@@ -52,7 +52,7 @@ function handleForgotPasswordFailure(xhr, _, error) {
       $("body").html(xhr.responseText);
       return;
     }
-    window.location.assign(routes.errorPage);
+    window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
 

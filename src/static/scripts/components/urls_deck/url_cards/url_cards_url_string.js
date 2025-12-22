@@ -46,8 +46,8 @@ function createUpdateURLStringInput(urlStringText, urlCard, utubID) {
   // Customize the input text box for the Url title
   const urlStringTextInput = urlStringUpdateTextInputContainer
     .find("input")
-    .prop("minLength", CONSTANTS.URLS_MIN_LENGTH)
-    .prop("maxLength", CONSTANTS.URLS_MAX_LENGTH)
+    .prop("minLength", APP_CONFIG.constants.URLS_MIN_LENGTH)
+    .prop("maxLength", APP_CONFIG.constants.URLS_MAX_LENGTH)
     .val(urlStringText);
 
   setFocusEventListenersOnUpdateURLStringInput(
