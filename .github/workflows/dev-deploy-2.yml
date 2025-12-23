@@ -120,10 +120,8 @@ jobs:
               sleep 5;
               done
 
-              docker exec u4i-dev-flask bash -c ". /code/venv/bin/activate && cd /code/u4i && flask addmock all";
-
               echo "Adding mock data for development..."
-              docker exec u4i-dev-flask flask addmock all;
+              docker exec u4i-dev-flask bash -c ". /code/venv/bin/activate && cd /code/u4i && flask addmock all";
 
               echo "Cleaning up docker login files..."
               rm -f ~/.docker/config.json

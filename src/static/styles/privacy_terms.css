@@ -1,6 +1,6 @@
 main {
     padding-inline: 20%;
-    background: var(--pageBackgroundColor);
+    background: var(--defaultPageBackgroundColor);
 }
 
 h2,

@@ -17,6 +17,8 @@
     /* #797c7e */
     --navbarBackgroundFocus: rgba(121, 124, 126, 1.0);
 
+    /*#262b2b*/
+    --defaultPageBackgroundColor: #262b2b;
     --pageBackgroundColor: rgba(31, 36, 36, 0.81);
     --searchInputBackgroundColor: rgba(111, 123, 123, 1.0);
     --panelBackgroundColor: rgba(31, 36, 36, 1.0);
@@ -96,13 +98,12 @@ body {
     width: 100%;
     margin: 0;
     padding: 0;
-    background-color: var(--pageBackgroundColor);
+    background-color: var(--navbarBackground);
 }
 
 nav {
     height: 3rem;
     flex-shrink: 0;
-    /*height: 50px;*/
 }
 
 main {
@@ -110,6 +111,7 @@ main {
     overflow: hidden;
     min-height: 0;
     position: relative;
+    background-color: var(--defaultPageBackgroundColor);
 }
 
 footer {
