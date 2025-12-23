@@ -3,7 +3,7 @@
 main {
     display: flex;
     flex-direction: row;
-    background-color: var(--pageBackgroundColor);
+    background-color: var(--defaultPageBackgroundColor);
 }
 
 button {

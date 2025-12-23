@@ -21,6 +21,7 @@ jobs:
         needs: 'build-dev'
         name: 'CD Dev - Deploy'
         uses: ./.github/workflows/dev-deploy.yml
+        permissions: read-all
         with:
             branch_ref: ${{ github.ref }}
         secrets:
@@ -30,6 +31,29 @@ jobs:
             DEV_SSH_PRIVATE_KEY_VALUE: ${{ secrets.DEV_SSH_PRIVATE_KEY_VALUE }}
             DEV_SERVICE_TOKEN_ID: ${{ secrets.DEV_SERVICE_TOKEN_ID }}
             DEV_SERVICE_TOKEN_SECRET: ${{ secrets.DEV_SERVICE_TOKEN_SECRET }}
+            DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
+            DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
+            DEV_DB_PASSWORD: ${{ secrets.DEV_DB_PASSWORD }}
+            MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY_INF }}
+            MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY_INF }}
+            BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}
+            NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL_INF }}
+
+    deploy-dev-2:
+        if: github.event.pull_request.merged == true
+        needs: 'build-dev'
+        name: 'CD Dev - Deploy 2'
+        uses: ./.github/workflows/dev-deploy-2.yml
+        permissions: read-all
+        with:
+            branch_ref: ${{ github.ref }}
+        secrets:
+            DEV_SSH_HOST: ${{ secrets.DEV_SSH_HOST_2 }}
+            DEV_SSH_USERNAME: ${{ secrets.DEV_SSH_USERNAME_2 }}
+            DEV_SSH_PRIVATE_KEY_FILENAME: ${{ secrets.DEV_SSH_PRIVATE_KEY_FILENAME_2 }}
+            DEV_SSH_PRIVATE_KEY_VALUE: ${{ secrets.DEV_SSH_PRIVATE_KEY_VALUE_2 }}
+            DEV_SERVICE_TOKEN_ID: ${{ secrets.DEV_SERVICE_TOKEN_ID_2 }}
+            DEV_SERVICE_TOKEN_SECRET: ${{ secrets.DEV_SERVICE_TOKEN_SECRET_2 }}
             DEV_DB_NAME: ${{ secrets.DEV_DB_NAME }}
             DEV_DB_USER: ${{ secrets.DEV_DB_USER }}
             DEV_DB_PASSWORD: ${{ secrets.DEV_DB_PASSWORD }}

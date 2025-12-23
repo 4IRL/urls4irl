@@ -15,63 +15,52 @@ jobs:
 
         steps:
         - uses: actions/checkout@v4
-        - name: Build flask dev and workflow images
-          run: |
-            DATE=$(date +%Y%m%d) # Generate current date in YYYYMMDD format
-            SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
-            FULL_TAG="$DATE-$SHORT_SHA"
 
-            docker build . --file docker/Dockerfile --tag $IMAGE_NAME --tag $FULL_TAG --label "runnumber=${GITHUB_RUN_ID}"
-            docker build . --file docker/Dockerfile_Workflow --tag $WORKFLOW_IMAGE_NAME --tag $FULL_TAG --label "runnumber=${GITHUB_RUN_ID}"
-
+        - name: Set up QEMU
+          uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
+        
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
+        
         - name: Log in to registry
           run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-        - name: Push flask dev image
+        - name: Build flask dev image
           run: |
             IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
-
             IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-
             VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
             [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
             [ "$VERSION" == "main" ] && VERSION=latest
-
-            DATE=$(date +%Y%m%d) # Generate current date in YYYYMMDD format
-            SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
+            DATE=$(date +%Y%m%d)
+            SHORT_SHA=$(git rev-parse --short HEAD)
             FULL_TAG="$DATE-$SHORT_SHA"
+            
+            docker buildx build . \
+              --file docker/Dockerfile \
+              --platform linux/amd64,linux/arm64 \
+              --tag ${IMAGE_ID}:${VERSION} \
+              --tag ${IMAGE_ID}:${FULL_TAG} \
+              --tag ${IMAGE_ID}:latest \
+              --label "runnumber=${GITHUB_RUN_ID}" \
+              --push
 
-            echo IMAGE_ID=$IMAGE_ID
-            echo VERSION=$VERSION
-            docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
-            docker tag $IMAGE_NAME $IMAGE_ID:$FULL_TAG
-            docker tag $IMAGE_NAME $IMAGE_ID:latest
-            docker push $IMAGE_ID:$VERSION
-            docker push $IMAGE_ID:$FULL_TAG
-            docker push $IMAGE_ID:latest
-
-        - name: Push workflow image
+        - name: Build flask workflow image
           run: |
             IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ env.WORKFLOW_IMAGE_NAME }}
-
             IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-
             VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
             [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
             [ "$VERSION" == "main" ] && VERSION=latest
-
-            DATE=$(date +%Y%m%d) # Generate current date in YYYYMMDD format
-            SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
+            DATE=$(date +%Y%m%d)
+            SHORT_SHA=$(git rev-parse --short HEAD)
             FULL_TAG="$DATE-$SHORT_SHA"
-
-            echo IMAGE_ID=$IMAGE_ID
-            echo VERSION=$VERSION
-            docker tag $WORKFLOW_IMAGE_NAME $IMAGE_ID:$VERSION
-            docker tag $WORKFLOW_IMAGE_NAME $IMAGE_ID:$FULL_TAG
-            docker tag $WORKFLOW_IMAGE_NAME $IMAGE_ID:latest
-            docker push $IMAGE_ID:$VERSION
-            docker push $IMAGE_ID:$FULL_TAG
-            docker push $IMAGE_ID:latest
-
+            
+            docker buildx build . \
+              --file docker/Dockerfile_Workflow \
+              --platform linux/amd64,linux/arm64 \
+              --tag ${IMAGE_ID}:${VERSION} \
+              --tag ${IMAGE_ID}:${FULL_TAG} \
+              --tag ${IMAGE_ID}:latest \
+              --label "runnumber=${GITHUB_RUN_ID}" \
+              --push

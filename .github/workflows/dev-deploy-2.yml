@@ -110,6 +110,7 @@ jobs:
               docker compose -f compose-dev.yaml up --force-recreate --build -d;
               rm -rf ./secrets;
               docker image prune -f;
+              mkdir -p ~/static;
               docker exec u4i-dev-flask tar -cf - -C /code/u4i/src/static . | tar -xf - -C ~/static;
 
               echo "Waiting for bundled JS file to be built...";
@@ -122,7 +123,8 @@ jobs:
               sleep 5;
               done
 
-              docker exec u4i-dev-flask tar -cf - -C /code/u4i/src/gen logged_in.js | tar -xf - -C ~/static;
+              echo "Adding mock data for development..."
+              docker exec u4i-dev-flask bash -c ". /code/venv/bin/activate && cd /code/u4i && flask addmock all";
 
               echo "Cleaning up docker login files..."
               rm -f ~/.docker/config.json
