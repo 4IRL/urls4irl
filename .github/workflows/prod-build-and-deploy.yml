@@ -18,6 +18,7 @@ jobs:
         needs: 'build-prod'
         name: 'CD Prod - Deploy'
         uses: ./.github/workflows/prod-deploy.yml
+        permissions: read-all
         with:
             branch_ref: ${{  github.event.release.target_commitish }}
         secrets:
