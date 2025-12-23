@@ -70,7 +70,7 @@ jobs:
           - name: Checkout code
             uses: actions/checkout@v4
             with:
-              ref: ${{ inputs.branch_ref }}
+              ref: main
 
           - name: SCP Compose File Into Development Server
             run: |
