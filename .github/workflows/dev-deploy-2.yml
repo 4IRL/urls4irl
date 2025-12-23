@@ -1,5 +1,8 @@
 
 name: Deploy to development server
+permissions:
+  contents: read
+  packages: read
 
 on:
   workflow_call:
