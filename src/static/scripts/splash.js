@@ -29,9 +29,17 @@ function loginModalOpener() {
     }
   });
 
-  modalOpener.fail(() => {
-    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
-    $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
+  modalOpener.fail((xhr) => {
+    switch (xhr.status) {
+      case 429: {
+        rewriteDocument(xhr.responseText);
+        return;
+      }
+      default: {
+        bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+        $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
+      }
+    }
   });
 }
 
@@ -42,8 +50,17 @@ function loginModalOpenerFromModal() {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
   });
 
-  modalOpener.fail(() => {
-    showSplashModalAlertBanner("Unable to load login form...", "danger");
+  modalOpener.fail((xhr) => {
+    switch (xhr.status) {
+      case 429: {
+        rewriteDocument(xhr.responseText);
+        return;
+      }
+      default: {
+        bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+        $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
+      }
+    }
   });
 }
 
@@ -57,9 +74,19 @@ function registerModalOpener() {
     }
   });
 
-  modalOpener.fail(() => {
-    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
-    $("#SplashErrorModalAlertBanner").text("Unable to load register form...");
+  modalOpener.fail((xhr) => {
+    switch (xhr.status) {
+      case 429: {
+        rewriteDocument(xhr.responseText);
+        return;
+      }
+      default: {
+        bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+        $("#SplashErrorModalAlertBanner").text(
+          "Unable to load register form...",
+        );
+      }
+    }
   });
 }
 
@@ -118,12 +145,20 @@ function emailValidationModalOpener() {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
   });
 
-  modalOpener.fail(() => {
-    showSplashModalAlertBanner(
-      "Unable to load email validation modal...",
-      "danger",
-    );
+  modalOpener.fail((xhr) => {
+    switch (xhr.status) {
+      case 429: {
+        rewriteDocument(xhr.responseText);
+        return;
+      }
+      default:
+        showSplashModalAlertBanner(
+          "Unable to load email validation modal...",
+          "danger",
+        );
+    }
   });
+  modalOpener.fail(() => {});
 }
 
 function handleImproperFormErrors(errorResponse) {
@@ -209,6 +244,15 @@ function displayFormErrors(key, errorMessage) {
     .insertAfter("#" + key)
     .show();
   $("#" + key).addClass("is-invalid");
+}
+
+function rewriteDocument(htmlText) {
+  $("body").fadeOut(150, function () {
+    document.open();
+    document.write(htmlText);
+    document.close();
+    $("body").hide().fadeIn(150);
+  });
 }
 
 // jQuery plugins

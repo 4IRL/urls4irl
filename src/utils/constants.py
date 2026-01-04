@@ -1,4 +1,5 @@
 from src.models.utub_members import Member_Role
+from src.splash.constants import EmailValidationErrorCodes
 from src.utils.all_routes import generate_routes_js
 from src.utils.strings.email_validation_strs import (
     VALIDATE_MY_EMAIL,
@@ -72,6 +73,10 @@ class CONFIG_CONSTANTS:
     SESSION_LIFETIME = 31 * 86400  # 31 days before session and CSRF expiration
 
 
+class SPLASH_CONSTANTS:
+    EMAIL_VALIDATION_ERROR_CODES = EmailValidationErrorCodes
+
+
 class STRINGS:
     UTUB_QUERY_PARAM = UTUB_ID_QUERY_PARAM
     VALIDATE_MY_EMAIL = VALIDATE_MY_EMAIL
@@ -112,9 +117,10 @@ class CONSTANTS:
     TAGS = TAG_CONSTANTS()
     CONFIG = CONFIG_CONSTANTS()
     STRINGS = STRINGS()
+    SPLASH = SPLASH_CONSTANTS()
 
 
-def generate_constants_js() -> dict[str, int | dict[str, str]]:
+def generate_constants_js() -> dict[str, int | dict[str, str] | dict[str, int]]:
     """
     Generate constants configuration for frontend JavaScript.
     Returns a dict that can be passed to Jinja and converted to JSON.
@@ -138,6 +144,11 @@ def generate_constants_js() -> dict[str, int | dict[str, str]]:
         "TAGS_MIN_LENGTH": CONSTANTS.TAGS.MIN_TAG_LENGTH,
         "TAGS_MAX_LENGTH": CONSTANTS.TAGS.MAX_TAG_LENGTH,
         "TAGS_MAX_ON_URLS": CONSTANTS.TAGS.MAX_URL_TAGS,
+        # Splash constants
+        "VALIDATE_EMAIL_ERROR_CODES": {
+            error_code.name: error_code.value
+            for error_code in CONSTANTS.SPLASH.EMAIL_VALIDATION_ERROR_CODES
+        },
     }
 
 

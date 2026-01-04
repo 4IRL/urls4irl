@@ -290,9 +290,9 @@ def init_app(app: Flask):
     gunicorn_access_logger.disabled = True
 
 
-def safe_get_request_id():
+def safe_get_request_id() -> str:
     if not g or not hasattr(g, "request_id"):
-        return
+        return ""
     return g.request_id
 
 

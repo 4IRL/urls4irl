@@ -1,4 +1,4 @@
-from flask import render_template, jsonify, make_response
+from flask import render_template, jsonify, make_response, request
 from flask_login import current_user
 
 from src.app_logger import warning_log
@@ -30,7 +30,17 @@ def handle_404_response(_):
     )
 
 
-def handle_429_response_default_ratelimit(_):
+def handle_429_response_default_ratelimit(e):
+    if request.accept_mimetypes.accept_html:
+        return (
+            render_template(
+                "error_pages/error_response.html",
+                error_code=429,
+                header=IDENTIFIERS.HTML_429,
+            ),
+            429,
+        )
+
     return make_response(
         jsonify(
             {

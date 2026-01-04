@@ -161,6 +161,8 @@ function createUTubTagSuccess(response, utubID) {
 }
 
 function createUTubTagFail(xhr) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

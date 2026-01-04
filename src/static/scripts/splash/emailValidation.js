@@ -50,17 +50,26 @@ function handleValidateEmailFailure(xhr, _, error) {
 
   if (!xhr.responseJSON.hasOwnProperty("errorCode")) {
     // Handle other errors here
-    showSplashModalAlertBanner("Unable to process request...", "danger");
-    return;
+    switch (xhr.status) {
+      case 429: {
+        rewriteDocument(xhr.responseText);
+        return;
+      }
+      default: {
+        showSplashModalAlertBanner("Unable to process request...", "danger");
+        return;
+      }
+    }
   }
 
+  const errorCodes = APP_CONFIG.constants.VALIDATE_EMAIL_ERROR_CODES;
   switch (xhr.responseJSON.errorCode) {
-    case 1:
+    case errorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS:
       showSplashModalAlertBanner(xhr.responseJSON.message, "danger");
       break;
-    case 2:
-    case 3:
-    case 4:
+    case errorCodes.MAX_TIME_EMAIL_VALIDATION_ATTEMPTS:
+    case errorCodes.EMAIL_SEND_FAILURE:
+    case errorCodes.MAILJET_SERVER_FAILURE:
       showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
       break;
     default:

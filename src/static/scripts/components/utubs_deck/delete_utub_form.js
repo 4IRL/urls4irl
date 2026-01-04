@@ -123,6 +123,8 @@ function deleteUTubSuccess(utubID) {
 }
 
 function deleteUTubFail(xhr) {
+  if (xhr._429Handled) return;
+
   if (
     xhr.status === 403 &&
     xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"

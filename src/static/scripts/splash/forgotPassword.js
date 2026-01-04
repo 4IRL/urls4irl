@@ -45,13 +45,18 @@ function disableSendPasswordResetEmailButton() {
 
 function handleForgotPasswordFailure(xhr, _, error) {
   if (!xhr.hasOwnProperty("responseJSON")) {
-    if (
-      xhr.status === 403 &&
-      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
-    ) {
-      $("body").html(xhr.responseText);
+    if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
+      switch (xhr.status) {
+        case 403: {
+          $("body").html(xhr.responseText);
+        }
+        case 429: {
+          rewriteDocument(xhr.responseText);
+        }
+      }
       return;
     }
+
     window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }

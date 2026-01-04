@@ -25,13 +25,31 @@ const globalBeforeSend = function (xhr, settings) {
 
 // AJAX request
 function ajaxCall(type, url, data, timeout = 1000) {
-  let request;
-  return (request = $.ajax({
+  let request = $.ajax({
     type: type,
     url: url,
     data: data,
     timeout: timeout,
-  }));
+  });
+
+  request.fail(function (xhr) {
+    // Global 429 HTML handler
+    xhr._429Handled = false;
+    if (xhr.status === 429) {
+      let contentType = xhr.getResponseHeader("Content-Type");
+      if (contentType && contentType.includes("text/html")) {
+        xhr._429Handled = true;
+        $("body").fadeOut(150, function () {
+          document.open();
+          document.write(xhr.responseText);
+          document.close();
+          $("body").hide().fadeIn(150);
+        });
+      }
+    }
+  });
+
+  return request;
 }
 
 function debugCall(msg) {

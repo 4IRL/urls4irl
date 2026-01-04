@@ -1,0 +1,15 @@
+<h2>{{ header }}</h2>
+<section>
+    <p>Remember, it's a marathon, not a race.</p>
+
+    <p>Usually we expect bots to be going that fast!</p>
+    <p>Please wait a moment and then try again.</p>
+
+    <button class="refresh-button" id="refreshBtn">Click to Refresh</button>
+
+    <script nonce="{{ nonce }}">
+        document.getElementById('refreshBtn').addEventListener('click', function() {
+            window.location.href = window.location.href.split("#")[0];
+        })
+    </script>
+</section>

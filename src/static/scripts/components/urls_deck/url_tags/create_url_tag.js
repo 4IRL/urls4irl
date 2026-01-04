@@ -251,6 +251,8 @@ function createURLTagSuccess(response, urlCard, utubID) {
 
 // Displays appropriate prompts and options to user following a failed addition of a new Tag
 function createURLTagFail(xhr, urlCard) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

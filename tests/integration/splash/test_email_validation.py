@@ -5,6 +5,7 @@ from flask_login import current_user
 import pytest
 
 from src.models.utils import VerifyTokenResponse
+from src.splash.constants import EmailValidationErrorCodes
 from src.splash.utils import verify_token
 from tests.models_for_test import valid_user_1
 from src import db
@@ -133,7 +134,10 @@ def test_registered_not_email_validated_tries_registering_again(
         register_user_response_json[STD_JSON.MESSAGE]
         == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
     )
-    assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        int(register_user_response_json[STD_JSON.ERROR_CODE])
+        == EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS
+    )
 
     assert response.status_code == 401
 
@@ -166,7 +170,10 @@ def test_registered_not_email_validated_tries_logging_in(
         login_user_response_json[STD_JSON.MESSAGE]
         == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
     )
-    assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        int(login_user_response_json[STD_JSON.ERROR_CODE])
+        == EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS
+    )
 
     assert response.status_code == 401
 
@@ -361,7 +368,10 @@ def test_min_rate_limiting_of_sending_email(app, load_register_page):
 
     assert send_second_email_response.status_code == 429
     assert second_email_send_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(second_email_send_json[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(second_email_send_json[STD_JSON.ERROR_CODE])
+        == EmailValidationErrorCodes.MAX_TIME_EMAIL_VALIDATION_ATTEMPTS
+    )
     assert (
         second_email_send_json[STD_JSON.MESSAGE]
         == str(EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR - 1)
@@ -406,5 +416,8 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
 
     assert email_response.status_code == 429
     assert email_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert int(email_response_json[STD_JSON.ERROR_CODE]) == 1
+    assert (
+        int(email_response_json[STD_JSON.ERROR_CODE])
+        == EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS
+    )
     assert email_response_json[STD_JSON.MESSAGE] == EMAILS_FAILURE.TOO_MANY_ATTEMPTS_MAX

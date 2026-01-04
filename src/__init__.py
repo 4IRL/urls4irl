@@ -1,5 +1,6 @@
 import os
 import secrets
+from typing import Mapping
 
 from flask import Flask, Response, g, session
 from flask_assets import Environment
@@ -44,6 +45,11 @@ notification_sender = NotificationSender()
 
 environment_assets = Environment()
 
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["20/second", "100/minute"],
+)
+
 
 def create_app(config_class: type[Config] = Config) -> Flask | None:
     testing = config_class.TESTING
@@ -63,15 +69,11 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     csrf.init_app(app)
     login_manager.init_app(app)
 
-    limiter = Limiter(
-        key_func=get_remote_address,
-        default_limits=["20/second", "100/minute"],
-        default_limits_exempt_when=lambda: True if testing else False,
-        on_breach=handle_429_response_default_ratelimit,
-        storage_uri=app.config[CONFIG_ENVS.REDIS_URI],
-        storage_options={"socket_connect_timeout": 30},
-    )
-
+    # Configure limiter with app-specific settings
+    storage_options: Mapping = {"socket_connect_timeout": 30}
+    limiter._default_limits_exempt_when = lambda: True if testing else False
+    limiter._storage_uri = app.config[CONFIG_ENVS.REDIS_URI]
+    limiter._storage_options = storage_options
     limiter.init_app(app)
 
     if production or app.config.get(CONFIG_ENVS.DEV_SERVER, False):
@@ -123,6 +125,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
 
     app.register_error_handler(404, handle_404_response)
     app.register_error_handler(CSRFError, handle_403_response_from_csrf)
+    app.register_error_handler(429, handle_429_response_default_ratelimit)
 
     if not testing:
         # Import models to initialize migration scripts
@@ -163,6 +166,10 @@ def add_security_headers(app: Flask):
 
     @app.after_request
     def _add_security_headers(response: Response):
+        if "nonce" not in session:
+            session["nonce"] = secrets.token_urlsafe(16)
+        g.nonce = session["nonce"]
+
         valid_script_cdns = (
             "https://code.jquery.com",
             "https://cdn.jsdelivr.net",

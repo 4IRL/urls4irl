@@ -77,6 +77,8 @@
             {% include 'error_pages/404_response.html' %}
             {% elif error_code == 403 %}
             {% include 'error_pages/403_response.html' %}
+            {% elif error_code == 429 %}
+            {% include 'error_pages/429_response.html' %}
             {% endif %}
         </article>
     </main>
