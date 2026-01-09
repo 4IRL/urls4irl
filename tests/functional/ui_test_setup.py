@@ -16,7 +16,7 @@ def run_app(port: int, show_flask_logs: bool):
     Runs app
     """
     config = ConfigTestUI()
-    app_for_test = create_app(config)  # type: ignore
+    app_for_test = create_app(config, show_test_logs=show_flask_logs)  # type: ignore
     assert app_for_test is not None
     if not show_flask_logs:
         hide_logs_for_app(app_for_test)

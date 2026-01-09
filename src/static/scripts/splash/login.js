@@ -14,14 +14,7 @@ function openRegisterModalFromLogin() {
   });
 
   modalOpener.fail((xhr) => {
-    switch (xhr.status) {
-      case 429: {
-        rewriteDocument(xhr.responseText);
-        return;
-      }
-      default:
-        showSplashModalAlertBanner("Unable to load register form...", "danger");
-    }
+    showSplashModalAlertBanner("Unable to load register form...", "danger");
   });
 }
 
@@ -33,17 +26,10 @@ function openForgotPasswordModal() {
   });
 
   modalOpener.fail((xhr) => {
-    switch (xhr.status) {
-      case 429: {
-        rewriteDocument(xhr.responseText);
-        return;
-      }
-      default:
-        showSplashModalAlertBanner(
-          "Unable to load forgot password form...",
-          "danger",
-        );
-    }
+    showSplashModalAlertBanner(
+      "Unable to load forgot password form...",
+      "danger",
+    );
   });
 }
 
@@ -86,9 +72,6 @@ function handleLoginFailure(xhr, _, error) {
       switch (xhr.status) {
         case 403: {
           $("body").html(xhr.responseText);
-        }
-        case 429: {
-          rewriteDocument(xhr.responseText);
         }
       }
       return;

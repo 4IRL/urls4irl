@@ -14,6 +14,7 @@ from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,
     assert_not_visible_css_selector,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import get_utub_this_user_created
@@ -24,6 +25,7 @@ from tests.functional.login_utils import (
     login_user_with_cookie_from_session,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     get_all_url_ids_in_selected_utub,
     get_all_utub_selector_names,
     get_selected_utub_name,
@@ -43,7 +45,9 @@ from tests.functional.utubs_ui.selenium_utils import (
 pytestmark = pytest.mark.utubs_ui
 
 
-def test_select_utub(browser: WebDriver, create_test_urls, provide_app: Flask):
+def test_select_utub_changes_utub_name(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
     """
     Tests a user's ability to select a specific UTub and observe the changes in display.
 
@@ -253,6 +257,33 @@ def test_update_utub_name_key(
 
     # Assert new UTub name is updated in UTub Deck
     assert new_utub_name in utub_selector_names
+
+
+def test_update_utub_name_rate_limits(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to update a selected UTub's name, but they are rate limited.
+
+    GIVEN a user owns a UTub but they are rate limited
+    WHEN they submit the editUTub form
+    THEN ensure the 429 error page is shown
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    new_utub_name = MOCK_UTUB_NAME_BASE + "2"
+
+    update_utub_name(browser, new_utub_name)
+
+    # Submits new UTub name
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_NAME_SUBMIT_UPDATE)
+
+    assert_on_429_page(browser)
 
 
 def test_update_utub_name_length_exceeded(

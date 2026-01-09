@@ -39,12 +39,7 @@ function ajaxCall(type, url, data, timeout = 1000) {
       let contentType = xhr.getResponseHeader("Content-Type");
       if (contentType && contentType.includes("text/html")) {
         xhr._429Handled = true;
-        $("body").fadeOut(150, function () {
-          document.open();
-          document.write(xhr.responseText);
-          document.close();
-          $("body").hide().fadeIn(150);
-        });
+        showNewPageOnAJAXHTMLResponse(xhr.responseText);
       }
     }
   });

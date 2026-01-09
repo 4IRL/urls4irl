@@ -2,7 +2,7 @@ import os
 import secrets
 from typing import Mapping
 
-from flask import Flask, Response, g, session
+from flask import Flask, Response, abort, g, request, session
 from flask_assets import Environment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -51,17 +51,20 @@ limiter = Limiter(
 )
 
 
-def create_app(config_class: type[Config] = Config) -> Flask | None:
+def create_app(
+    config_class: type[Config] = Config, show_test_logs: bool = False
+) -> Flask | None:
     testing = config_class.TESTING
     production = config_class.PRODUCTION
     if testing and production:
         print("ERROR: Cannot be both production and testing environment")
         return
+
     app = Flask(__name__)
     app.config.from_object(ConfigProd if production else config_class)
     app.config[CONFIG_ENVS.TESTING_OR_PROD] = testing or production
 
-    app_logger.init_app(app)
+    app_logger.init_app(app, show_test_logs)
 
     sess.init_app(app)
     db.init_app(app)
@@ -87,6 +90,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
         test_url_val.init_app(app)
         test_notif_send.init_app(app)
         test_email_sender.init_app(app)
+        app_test_setup(app)
     else:
         url_validator.init_app(app)
         notification_sender.init_app(app)
@@ -222,3 +226,16 @@ def add_security_headers(app: Flask):
         )
         response.headers[CONFIG_ENVS.CROSS_ORIGIN_RESOURCE_POLICY] = "same-origin"
         return response
+
+
+def app_test_setup(app: Flask):
+    @app.before_request
+    def force_rate_limit():
+        if app.config.get("TESTING") and request.headers.get(
+            "X-Force-Rate-Limit", None
+        ):
+            app_logger.error_log(log="RATE LIMITED")
+            abort(429)
+
+        if app.config.get("TESTING") and request.args.get("force_rate_limit", None):
+            abort(429)

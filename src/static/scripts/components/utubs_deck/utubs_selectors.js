@@ -3,13 +3,29 @@
 // Streamline the AJAX call to db for updated info
 function getUTubInfo(selectedUTubID) {
   const timeoutID = showUTubLoadingIconAndSetTimeout();
-  return $.getJSON(APP_CONFIG.routes.getUTub(selectedUTubID))
-    .fail(function () {
-      window.history.replaceState(null, null, "/home");
+  const deferred = $.Deferred();
+
+  $.getJSON(APP_CONFIG.routes.getUTub(selectedUTubID))
+    .done(function (data) {
+      deferred.resolve(data);
+    })
+    .fail(function (xhr) {
+      switch (xhr.status) {
+        case 429: {
+          showNewPageOnAJAXHTMLResponse(xhr.responseText);
+          deferred.resolve(null);
+          return;
+        }
+        default: {
+          window.history.replaceState(null, null, "/home");
+          deferred.reject(xhr);
+        }
+      }
     })
     .always(function () {
       hideUTubLoadingIconAndClearTimeout(timeoutID);
     });
+  return deferred.promise();
 }
 
 function buildSelectedUTub(selectedUTub) {
@@ -108,6 +124,8 @@ function selectUTub(selectedUTubID, utubSelector) {
 function getSelectedUTubInfo(selectedUTubID) {
   getUTubInfo(selectedUTubID).then(
     (selectedUTub) => {
+      if (!selectedUTub) return;
+
       buildSelectedUTub(selectedUTub);
       // If mobile, go straight to URL deck
       if (isMobile()) {

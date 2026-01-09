@@ -16,7 +16,10 @@ from src.utils.strings.json_strs import FAILURE_GENERAL
 from src.utils.strings.reset_password_strs import EMAIL_SENT_MESSAGE, FORGOT_PASSWORD
 from src.utils.strings.splash_form_strs import LOGIN_TITLE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from tests.functional.assert_utils import assert_visited_403_on_invalid_csrf_and_reload
+from tests.functional.assert_utils import (
+    assert_on_429_page,
+    assert_visited_403_on_invalid_csrf_and_reload,
+)
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.splash_ui.assert_utils import (
@@ -27,6 +30,7 @@ from tests.functional.splash_ui.selenium_utils import (
     open_forgot_password_modal,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     clear_then_send_keys,
     invalidate_csrf_token_in_form,
     wait_then_click_element,
@@ -66,6 +70,22 @@ def test_open_forgot_password_modal(browser: WebDriver):
     assert submit_btn is not None
 
     assert submit_btn.get_attribute("disabled")
+
+
+def test_open_forgot_password_modal_rate_limits(browser: WebDriver):
+    """
+    Tests a user's ability to request a password reminder but rate limited
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens the login, clicks the 'Forgot Password' link, and enters their email
+    THEN the user is rate limited
+    """
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN, time=5)
+    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
+
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL, time=5)
+    assert_on_429_page(browser)
 
 
 def test_dismiss_forgot_password_modal_click(browser: WebDriver):

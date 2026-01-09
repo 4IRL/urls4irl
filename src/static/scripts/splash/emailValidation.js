@@ -50,16 +50,7 @@ function handleValidateEmailFailure(xhr, _, error) {
 
   if (!xhr.responseJSON.hasOwnProperty("errorCode")) {
     // Handle other errors here
-    switch (xhr.status) {
-      case 429: {
-        rewriteDocument(xhr.responseText);
-        return;
-      }
-      default: {
-        showSplashModalAlertBanner("Unable to process request...", "danger");
-        return;
-      }
-    }
+    showSplashModalAlertBanner("Unable to process request...", "danger");
   }
 
   const errorCodes = APP_CONFIG.constants.VALIDATE_EMAIL_ERROR_CODES;

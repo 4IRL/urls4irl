@@ -22,6 +22,7 @@ from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     Decks,
     click_on_navbar,
+    wait_for_element_presence,
     wait_for_tooltip_with_hover_retry,
     wait_then_click_element,
     wait_then_get_element,
@@ -109,6 +110,14 @@ def assert_on_404_page(browser: WebDriver):
     error_header = wait_then_get_element(browser, css_selector="h2", time=3)
     assert error_header is not None
     assert error_header.text == IDENTIFIERS.HTML_404
+    assert "Invalid Request - URLS4IRL" == browser.title
+
+
+def assert_on_429_page(browser: WebDriver):
+    wait_for_element_presence(browser, HPL.ERROR_PAGE_HANDLER, timeout=3)
+    error_header = wait_then_get_element(browser, css_selector="h2", time=3)
+    assert error_header is not None
+    assert error_header.text == IDENTIFIERS.HTML_429
     assert "Invalid Request - URLS4IRL" == browser.title
 
 

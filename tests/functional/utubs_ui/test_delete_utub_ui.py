@@ -18,6 +18,7 @@ from src.utils.strings.utub_strs import (
 from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import get_utub_this_user_created
@@ -25,6 +26,7 @@ from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_and_select_utub_by_name
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     get_selected_utub_id,
     invalidate_csrf_token_on_page,
@@ -215,6 +217,35 @@ def test_delete_utub_btn(browser: WebDriver, create_test_utubs, provide_app: Fla
 
     # Assert that the no utub selected UI is shown
     assert_elems_hidden_after_utub_deleted(browser)
+
+
+def test_delete_utub_rate_limits(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    GIVEN a user trying to delete one of the UTubs they created but they're rate limited
+    WHEN they try to delete the UTub
+    THEN ensure the rate limited page is shown
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_created.name
+    )
+
+    utub_id = get_selected_utub_id(browser)
+    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id}"]'
+
+    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
+
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+
+    assert_on_429_page(browser)
 
 
 def test_delete_last_utub_no_urls_no_tags_no_members(

@@ -37,9 +37,6 @@ function handleRegisterFailure(xhr, _, error) {
         case 403: {
           $("body").html(xhr.responseText);
         }
-        case 429: {
-          rewriteDocument(xhr.responseText);
-        }
       }
       return;
     }

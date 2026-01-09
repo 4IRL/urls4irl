@@ -3,6 +3,21 @@
 $(document).ready(function () {
   setToRegisterButton();
   setToLoginButton();
+
+  $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+    let originalError = options.error;
+
+    options.error = function (jqXHR, textStatus, errorThrown) {
+      if (jqXHR.status === 429) {
+        showNewPageOnAJAXHTMLResponse(jqXHR.responseText);
+        return; // Prevents both .error and .fail() from being called
+      }
+
+      if (originalError) {
+        originalError.call(this, jqXHR, textStatus, errorThrown);
+      }
+    };
+  });
 });
 
 function setToRegisterButton() {
@@ -30,16 +45,8 @@ function loginModalOpener() {
   });
 
   modalOpener.fail((xhr) => {
-    switch (xhr.status) {
-      case 429: {
-        rewriteDocument(xhr.responseText);
-        return;
-      }
-      default: {
-        bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
-        $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
-      }
-    }
+    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+    $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
   });
 }
 
@@ -51,16 +58,8 @@ function loginModalOpenerFromModal() {
   });
 
   modalOpener.fail((xhr) => {
-    switch (xhr.status) {
-      case 429: {
-        rewriteDocument(xhr.responseText);
-        return;
-      }
-      default: {
-        bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
-        $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
-      }
-    }
+    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+    $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
   });
 }
 
@@ -75,18 +74,8 @@ function registerModalOpener() {
   });
 
   modalOpener.fail((xhr) => {
-    switch (xhr.status) {
-      case 429: {
-        rewriteDocument(xhr.responseText);
-        return;
-      }
-      default: {
-        bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
-        $("#SplashErrorModalAlertBanner").text(
-          "Unable to load register form...",
-        );
-      }
-    }
+    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+    $("#SplashErrorModalAlertBanner").text("Unable to load register form...");
   });
 }
 
@@ -146,17 +135,10 @@ function emailValidationModalOpener() {
   });
 
   modalOpener.fail((xhr) => {
-    switch (xhr.status) {
-      case 429: {
-        rewriteDocument(xhr.responseText);
-        return;
-      }
-      default:
-        showSplashModalAlertBanner(
-          "Unable to load email validation modal...",
-          "danger",
-        );
-    }
+    showSplashModalAlertBanner(
+      "Unable to load email validation modal...",
+      "danger",
+    );
   });
   modalOpener.fail(() => {});
 }
@@ -246,12 +228,19 @@ function displayFormErrors(key, errorMessage) {
   $("#" + key).addClass("is-invalid");
 }
 
-function rewriteDocument(htmlText) {
+function showNewPageOnAJAXHTMLResponse(htmlText) {
   $("body").fadeOut(150, function () {
     document.open();
     document.write(htmlText);
     document.close();
-    $("body").hide().fadeIn(150);
+
+    // Hide body initially
+    document.body.style.opacity = "0";
+
+    // Wait for everything to load
+    window.addEventListener("load", function () {
+      $("body").css("opacity", "1").hide().fadeIn(150);
+    });
   });
 }
 

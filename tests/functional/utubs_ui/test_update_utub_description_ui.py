@@ -14,6 +14,7 @@ from src.utils.strings.utub_strs import UTUB_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
@@ -27,6 +28,7 @@ from tests.functional.login_utils import (
     login_user_to_home_page,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     clear_then_send_keys,
     invalidate_csrf_token_on_page,
     select_utub_by_id,
@@ -221,6 +223,31 @@ def test_update_utub_description_key(
     )
     assert utub_description_elem is not None
     assert utub_description_elem.text == MOCK_UTUB_DESCRIPTION
+
+
+def test_update_utub_description_rate_limits(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to update the selected UTub description while rate limited.
+
+    GIVEN a user is the UTub owner and they are rate limited
+    WHEN the utubDescriptionUpdate form is populated and submitted
+    THEN ensure the 429 error page is shown.
+    """
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    update_utub_description(browser, MOCK_UTUB_DESCRIPTION)
+
+    # Submits new UTub description
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_DESCRIPTION_SUBMIT_UPDATE)
+
+    assert_on_429_page(browser)
 
 
 def test_update_utub_description_length_exceeded(

@@ -886,6 +886,44 @@ def invalidate_csrf_token_on_page(browser: WebDriver):
     )
 
 
+def add_forced_rate_limit_header(browser: WebDriver):
+    browser.execute_script(
+        """
+    (function() {
+        var settings = $.ajaxSettings;
+        var oldBeforeSend = settings.beforeSend;
+        $.ajaxSetup({
+            beforeSend: function (xhr, ajaxSettings) {
+                // Call the previous beforeSend if it exists
+                if (oldBeforeSend) {
+                    oldBeforeSend.call(this, xhr, ajaxSettings);
+                }
+
+                // Add our custom header
+                xhr.setRequestHeader("X-Force-Rate-Limit", "true");
+                return true;
+            }
+        });
+    })();
+    """
+    )
+
+
+def modify_navigational_link(browser: WebDriver, element_id: str):
+    browser.execute_script(
+        """
+        const link = document.getElementById(arguments[0]);
+        if (!link) {
+            throw new Error('Element with ID "' + arguments[0] + '" not found');
+        }
+        const url = new URL(link.href, window.location.origin);
+        url.searchParams.set('force_rate_limit', 'true');
+        link.href = url.toString();
+    """,
+        element_id,
+    )
+
+
 def invalidate_csrf_token_in_form(browser: WebDriver):
     invalid_csrf_token = "invalid-csrf-token"
     browser.execute_script(
