@@ -13,6 +13,7 @@ from src.utils.strings.tag_strs import TAGS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
     assert_login_with_username,
+    assert_on_429_page,
     assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
@@ -37,6 +38,7 @@ from tests.functional.tags_ui.selenium_utils import (
     open_url_tag_input,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     invalidate_csrf_token_on_page,
     wait_then_click_element,
     wait_then_get_element,
@@ -477,6 +479,38 @@ def test_create_non_fresh_tag(browser: WebDriver, create_test_urls, provide_app:
         browser, badge_text_elems_selector, time=3
     )
     assert any([elem.text == tag_already_in_utub_str for elem in badge_text_elems])
+
+
+def test_create_tag_rate_limits(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests a user's ability to create a fresh tag to a URL when they are rate limited
+
+    GIVEN a user has access to UTubs with URLs and is rate limited
+    WHEN the createTag form is populated with a tag value that is not yet in the UTub
+    THEN ensure the 429 error page is shown
+    """
+    tag_text = UTS.TEST_TAG_NAME_1
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    utub_id = utub_user_created.id
+    url_in_utub = get_url_in_utub(app, utub_id)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_user_created.id, url_in_utub.id
+    )
+
+    add_tag_to_url(browser, url_in_utub.id, tag_text)
+
+    # Submit
+    btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
+
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, btn_selector, time=3)
+
+    assert_on_429_page(browser)
 
 
 def test_create_existing_tag(browser: WebDriver, create_test_tags, provide_app: Flask):

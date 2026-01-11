@@ -1,7 +1,9 @@
 from flask import Flask
 import pytest
+from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
+from src.models.utub_members import Member_Role, Utub_Members
 from tests.functional.assert_utils import (
     assert_on_429_page,
     assert_url_coloring_is_correct,
@@ -13,14 +15,17 @@ from tests.functional.db_utils import (
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import (
+    create_user_session_and_provide_session_id,
     login_user_and_select_utub_by_utubid,
     login_user_to_home_page,
+    login_user_with_cookie_from_session,
 )
 from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     select_utub_by_id,
     wait_for_element_presence,
     wait_then_click_element,
+    wait_until_visible_css_selector,
 )
 from tests.functional.utubs_ui.assert_utils import (
     assert_in_created_utub,
@@ -145,3 +150,37 @@ def test_select_utub_rate_limits(
     wait_then_click_element(browser, utub_selector, time=3)
 
     assert_on_429_page(browser)
+
+
+def test_utub_member_icon(browser: WebDriver, create_test_tags, provide_app: Flask):
+    """
+    GIVEN a set of UTubs with URLs, member, and tags within that UTub, and the user has no session cookie
+    WHEN the user logs in and sees their UTubs
+    THEN verify that the UTubs contain the correct member icon
+    """
+    app = provide_app
+    user_id = 1
+
+    with app.app_context():
+        members_of: list[Utub_Members] = Utub_Members.query.filter(
+            Utub_Members.user_id == user_id
+        ).all()
+
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+
+    for utub_member in members_of:
+        utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_member.utub_id}'] "
+
+        if utub_member.member_role == Member_Role.CREATOR.value:
+            utub_selector += HPL.CREATOR_ICON
+
+        elif utub_member.member_role == Member_Role.CO_CREATOR.value:
+            utub_selector += HPL.CO_CREATOR_ICON
+
+        elif utub_member.member_role == Member_Role.MEMBER.value:
+            utub_selector += HPL.MEMBER_ICON
+
+        wait_until_visible_css_selector(browser, utub_selector, timeout=10)
+        elem = browser.find_element(By.CSS_SELECTOR, utub_selector)
+        assert elem is not None and elem.is_displayed()

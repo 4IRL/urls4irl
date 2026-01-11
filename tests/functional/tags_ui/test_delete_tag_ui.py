@@ -8,6 +8,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from src.models.users import Users
 from tests.functional.assert_utils import (
     assert_login_with_username,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
@@ -22,6 +23,7 @@ from tests.functional.tags_ui.selenium_utils import (
     get_visible_urls_and_urls_with_tag_text_by_tag_id,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     get_selected_url,
     invalidate_csrf_token_on_page,
     open_update_url_title,
@@ -142,6 +144,37 @@ def test_delete_tag(browser: WebDriver, create_test_tags, provide_app: Flask):
     )
     assert final_vis == init_vis - 1
     assert final_total == init_total - 1
+
+
+def test_delete_tag_rate_limits(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests a user's ability to delete tags from a URL when they are rate limited
+
+    GIVEN a user has access to UTubs with URLs and tags applied and is rate limited
+    WHEN user clicks the deleteTag button
+    THEN ensure the 429 error page is shown
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+    utub_id = utub_user_created.id
+    url_in_utub = get_url_in_utub(app, utub_id)
+    url_id = url_in_utub.id
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub_id, url_id
+    )
+
+    tag_badge_selector = get_tag_badge_selector_on_selected_url_by_tag_id(url_id)
+    delete_tag_button = get_delete_tag_button_on_hover(browser, tag_badge_selector)
+
+    add_forced_rate_limit_header(browser)
+    delete_tag_button.click()
+
+    assert_on_429_page(browser)
 
 
 def test_no_get_delete_tag_button_on_hover_update_url_title(

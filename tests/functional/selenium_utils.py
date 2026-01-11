@@ -909,7 +909,7 @@ def add_forced_rate_limit_header(browser: WebDriver):
     )
 
 
-def modify_navigational_link(browser: WebDriver, element_id: str):
+def modify_navigational_link_for_rate_limit(browser: WebDriver, element_id: str):
     browser.execute_script(
         """
         const link = document.getElementById(arguments[0]);

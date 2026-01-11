@@ -11,6 +11,7 @@ from src.utils.strings.tag_strs import TAGS_FAILURE
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
     assert_login_with_username,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
@@ -29,6 +30,7 @@ from tests.functional.tags_ui.assert_utils import (
     assert_new_utub_tag_created,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     invalidate_csrf_token_on_page,
     set_focus_on_element,
     wait_then_click_element,
@@ -248,7 +250,34 @@ def test_open_input_create_utub_tag_press_enter_key(
     assert total_urls == init_tag_count_in_utub
 
 
-# Sad Path Tests
+def test_open_input_create_utub_tag_rate_limits(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    Tests ability to add a new tag to the UTub and user is rate limited
+
+    GIVEN a user is a UTub member, has selected the UTub, opens the create UTub tag form, and user is rate limited
+    WHEN the user presses the submit button after typing in a new UTub tag
+    THEN ensure the 429 error page is shown
+    """
+    app = provide_app
+    user_id_for_test = 1
+    new_tag = "WOWZA123"
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_select_utub_by_id_open_create_utub_tag(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    wait_until_in_focus(browser, HPL.INPUT_UTUB_TAG_CREATE, timeout=3)
+    browser.switch_to.active_element.send_keys(new_tag)
+
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_TAG_SUBMIT_CREATE)
+
+    assert_on_429_page(browser)
+
+
 def test_create_utub_tag_empty_field(
     browser: WebDriver, create_test_tags, provide_app: Flask
 ):

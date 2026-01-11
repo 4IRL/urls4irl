@@ -48,6 +48,7 @@ environment_assets = Environment()
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["20/second", "100/minute"],
+    application_limits=["2000/hour", "500/15minutes"],
 )
 
 

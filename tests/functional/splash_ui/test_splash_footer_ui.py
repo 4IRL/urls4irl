@@ -8,7 +8,7 @@ from tests.functional.assert_utils import (
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
-    modify_navigational_link,
+    modify_navigational_link_for_rate_limit,
     visit_privacy_page,
     visit_terms_page,
     wait_then_click_element,
@@ -36,7 +36,7 @@ def test_privacy_policy_rate_limits(browser: WebDriver):
     WHEN user clicks the privacy button in the footer
     THEN ensure the rate limited error page is shown
     """
-    modify_navigational_link(browser, HPL.PRIVACY_BTN.lstrip("#"))
+    modify_navigational_link_for_rate_limit(browser, HPL.PRIVACY_BTN.lstrip("#"))
     wait_then_click_element(browser, HPL.PRIVACY_BTN)
     assert_on_429_page(browser)
 
@@ -74,7 +74,7 @@ def test_terms_page_rate_limits(browser: WebDriver):
     WHEN user clicks the terms button in the footer
     THEN ensure the 429 error page is shown
     """
-    modify_navigational_link(browser, HPL.TERMS_BTN.lstrip("#"))
+    modify_navigational_link_for_rate_limit(browser, HPL.TERMS_BTN.lstrip("#"))
     wait_then_click_element(browser, HPL.TERMS_BTN)
     assert_on_429_page(browser)
 

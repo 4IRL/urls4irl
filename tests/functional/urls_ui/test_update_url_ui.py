@@ -23,6 +23,7 @@ from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.url_strs import URL_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
+    assert_on_429_page,
     assert_tooltip_animates,
     assert_update_url_state_is_hidden,
     assert_update_url_state_is_shown,
@@ -40,6 +41,7 @@ from tests.functional.login_utils import (
     login_user_select_utub_by_name_and_url_by_title,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     get_selected_url,
     invalidate_csrf_token_on_page,
     wait_then_click_element,
@@ -287,6 +289,46 @@ def test_update_url_string_press_enter_key(
     assert not browser.find_element(
         By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
     ).is_displayed()
+
+
+def test_update_url_string_rate_limits(
+    browser: WebDriver,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests a user's ability to update the URL string of the selected URL, but they are rate limited.
+
+    GIVEN a user has access to a URL and is rate limited
+    WHEN the updateURL form is populated with a new URL and user presses submit
+    THEN ensure the 429 error page is shown
+    """
+
+    _, cli_runner = runner
+    app = provide_app
+    random_url_to_add, random_url_to_change_to = random.sample(MOCK_URL_STRINGS, 2)
+    add_mock_urls(
+        cli_runner,
+        [
+            random_url_to_add,
+        ],
+    )
+
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_string(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+    )
+
+    url_row = get_selected_url(browser)
+
+    update_url_string(browser, url_row, random_url_to_change_to)
+    assert_update_url_state_is_shown(url_row)
+
+    add_forced_rate_limit_header(browser)
+    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
+
+    assert_on_429_page(browser)
 
 
 def test_update_url_string_big_cancel_btn(

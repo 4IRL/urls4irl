@@ -114,7 +114,7 @@ async function updateURL(urlStringUpdateInput, urlCard, utubID) {
   let timeoutID;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
-    await getUpdatedURL(utubID, utubUrlID, urlCard);
+    const update = await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     // Extract data to submit in POST request
     let patchURL, data;

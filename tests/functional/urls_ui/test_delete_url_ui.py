@@ -18,6 +18,7 @@ from tests.functional.assert_utils import (
     assert_active_utub,
     assert_elem_with_url_string_exists,
     assert_login_with_username,
+    assert_on_429_page,
     assert_tooltip_animates,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
@@ -31,6 +32,7 @@ from tests.functional.urls_ui.login_utils import (
     login_select_utub_select_url_click_delete_get_modal_url,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     get_num_url_rows,
     invalidate_csrf_token_on_page,
@@ -116,6 +118,39 @@ def test_delete_url_submit(browser: WebDriver, create_test_urls, provide_app: Fl
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, css_selector)
     assert init_num_url_rows - 1 == get_num_url_rows(browser)
+
+
+def test_delete_url_rate_limits(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests user's ability to delete a URL when they are rate limited
+
+    GIVEN a user, selected UTub and selected URL and they are rate limited
+    WHEN deleteURL button is selected and confirmation modal confirmed
+    THEN ensure the 429 error page is shown
+    """
+    user_id_for_test = 1
+
+    delete_modal, _ = login_select_utub_select_url_click_delete_get_modal_url(
+        browser=browser,
+        app=provide_app,
+        user_id=user_id_for_test,
+        utub_name=UTS.TEST_UTUB_NAME_1,
+        url_string=UTS.TEST_URL_STRING_CREATE,
+    )
+
+    css_selector = f'{HPL.URL_STRING_READ}[href="{UTS.TEST_URL_STRING_CREATE}"]'
+    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+
+    confirmation_modal_body_text = delete_modal.text
+
+    # Assert warning modal appears with appropriate text
+    assert confirmation_modal_body_text == DELETE_URL_WARNING
+
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    assert_on_429_page(browser)
 
 
 def test_delete_url_cancel_click_cancel_btn(
