@@ -76,6 +76,7 @@ def create_app(
     # Configure limiter with app-specific settings
     storage_options: Mapping = {"socket_connect_timeout": 30}
     limiter._default_limits_exempt_when = lambda: True if testing else False
+    limiter._application_limits_exempt_when = lambda: True if testing else False
     limiter._storage_uri = app.config[CONFIG_ENVS.REDIS_URI]
     limiter._storage_options = storage_options
     limiter.init_app(app)

@@ -12,7 +12,6 @@ from werkzeug import Response as WerkzeugResponse
 from src import db
 from src.api_common.auth_decorators import (
     no_authenticated_users_allowed,
-    xml_http_request_only,
 )
 from src.api_common.responses import FlaskResponse
 from src.app_logger import (
@@ -72,7 +71,6 @@ def splash_page() -> WerkzeugResponse | str:
 
 
 @splash.route("/register", methods=["GET", "POST"])
-@xml_http_request_only
 @no_authenticated_users_allowed
 def register_user() -> FlaskResponse | WerkzeugResponse | str | tuple[str, int]:
     """Allows a user to register an account."""
@@ -90,7 +88,6 @@ def register_user() -> FlaskResponse | WerkzeugResponse | str | tuple[str, int]:
 
 
 @splash.route("/login", methods=["GET", "POST"])
-@xml_http_request_only
 @no_authenticated_users_allowed
 def login():
     """Login page. Allows user to register or login."""
