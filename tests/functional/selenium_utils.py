@@ -235,7 +235,7 @@ def wait_for_element_to_be_removed(
 
 
 def wait_until_hidden(
-    browser: WebDriver, css_selector: str, timeout: int = 2
+    browser: WebDriver, css_selector: str, timeout: int = 10
 ) -> WebElement:
     element = browser.find_element(By.CSS_SELECTOR, css_selector)
 
@@ -809,8 +809,11 @@ def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
         Yields WebDriver to tests
     """
 
-    # Select editURL button
-    url_title_text = selected_url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ)
+    # Select url title button
+    url_title_text = wait_then_get_element(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.URL_TITLE_READ}"
+    )
+    assert url_title_text
 
     actions = ActionChains(browser)
 

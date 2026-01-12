@@ -8,7 +8,7 @@ from tests.functional.selenium_utils import (
     open_update_url_title,
     wait_then_click_element,
     wait_then_get_element,
-    wait_until_visible,
+    wait_until_visible_css_selector,
 )
 
 
@@ -56,27 +56,24 @@ def fill_create_url_form(browser: WebDriver, url_title: str, url_string: str):
 
 def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
     """
-    Streamlines actions required to updated a URL in the selected URL.
-
-    Args:
-        WebDriver open to a selected URL
-        New URL string
-
-    Returns:
-        Yields WebDriver to tests
+    Streamlines actions required to update a URL in the selected URL.
     """
 
     # Select editURL button
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
+    btn_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
+    wait_then_click_element(browser, btn_css_selector)
 
     # Input new URL string
-    url_string_input_field = url_row.find_element(
-        By.CSS_SELECTOR, HPL.INPUT_URL_STRING_UPDATE
+    update_url_string_input_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
     )
-    url_string_input_field = wait_until_visible(
-        browser, url_string_input_field, timeout=3
+    wait_until_visible_css_selector(browser, update_url_string_input_css_selector)
+
+    update_url_string_input = wait_then_get_element(
+        browser, update_url_string_input_css_selector
     )
-    clear_then_send_keys(url_string_input_field, url_string)
+    assert update_url_string_input
+    clear_then_send_keys(update_url_string_input, url_string)
 
 
 def update_url_title(browser: WebDriver, selected_url_row: WebElement, url_title: str):

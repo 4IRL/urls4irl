@@ -146,8 +146,12 @@ def test_update_url_with_valid_url(
         input_url = input_url.encode("unicode_escape").decode("utf-8")
 
     update_url_string(browser, url_row, input_url)
-    assert_update_url_state_is_shown(url_row)
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
+    assert_update_url_state_is_shown(browser, url_row)
+
+    submit_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    wait_then_click_element(browser, submit_css_selector)
 
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     assert_update_url_state_is_hidden(url_row)
@@ -201,8 +205,12 @@ def test_update_url_string_submit_btn(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
-    assert_update_url_state_is_shown(url_row)
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
+    assert_update_url_state_is_shown(browser, url_row)
+
+    submit_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    wait_then_click_element(browser, submit_css_selector)
 
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     assert_update_url_state_is_hidden(url_row)
@@ -262,7 +270,7 @@ def test_update_url_string_press_enter_key(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
-    assert_update_url_state_is_shown(url_row)
+    assert_update_url_state_is_shown(browser, url_row)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
@@ -323,10 +331,14 @@ def test_update_url_string_rate_limits(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
-    assert_update_url_state_is_shown(url_row)
+    assert_update_url_state_is_shown(browser, url_row)
 
     add_forced_rate_limit_header(browser)
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
+
+    submit_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    wait_then_click_element(browser, submit_css_selector)
 
     assert_on_429_page(browser)
 
@@ -366,8 +378,9 @@ def test_update_url_string_big_cancel_btn(
     init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
 
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    assert_update_url_state_is_shown(url_row)
+    update_btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
+    wait_then_click_element(browser, update_btn_selector)
+    assert_update_url_state_is_shown(browser, url_row)
 
     cancel_update_btn = wait_then_get_element(
         browser, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
@@ -428,8 +441,13 @@ def test_update_url_string_cancel_btn(
 
     init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    assert_update_url_state_is_shown(url_row)
+
+    url_update_btn_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
+    )
+    wait_until_visible_css_selector(browser, url_update_btn_css_selector)
+    wait_then_click_element(browser, url_update_btn_css_selector)
+    assert_update_url_state_is_shown(browser, url_row)
 
     cancel_update_btn = wait_then_get_element(
         browser, HPL.BUTTON_URL_STRING_CANCEL_UPDATE
@@ -490,8 +508,13 @@ def test_update_url_string_escape_key(
 
     init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    assert_update_url_state_is_shown(url_row)
+
+    url_update_btn_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
+    )
+    wait_until_visible_css_selector(browser, url_update_btn_css_selector)
+    wait_then_click_element(browser, url_update_btn_css_selector)
+    assert_update_url_state_is_shown(browser, url_row)
 
     wait_until_in_focus(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
@@ -546,7 +569,8 @@ def test_update_url_title_submit_btn(
     assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     # Submit
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE).click()
+    submit_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}"
+    wait_then_click_element(browser, submit_css_selector)
 
     # Wait for POST request
     wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
@@ -631,7 +655,8 @@ def test_update_url_title_cancel_click_btn(
     update_url_title(browser, url_row, url_title)
     assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE).click()
+    cancel_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_CANCEL_UPDATE}"
+    wait_then_click_element(browser, cancel_css_selector)
 
     wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
     assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
