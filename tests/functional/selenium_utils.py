@@ -724,14 +724,28 @@ def select_url_by_url_string(browser: WebDriver, url_string: str):
     url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_rows
 
-    for url_row in url_rows:
+    attempts = 3
+    for _ in range(attempts):
+        for url_row in url_rows:
+            url_row_string = url_row.find_element(
+                By.CSS_SELECTOR, HPL.URL_STRING_READ
+            ).get_attribute("href")
+            if url_row_string == url_string:
+                url_row.click()
+                break
 
-        url_row_string = url_row.find_element(
-            By.CSS_SELECTOR, HPL.URL_STRING_READ
-        ).get_attribute("href")
-        if url_row_string == url_string:
-            url_row.click()
+        wait_for_page_complete_and_dom_stable(browser)
+        url_string_css = f"{HPL.ROW_SELECTED_URL} {HPL.URL_STRING_READ}"
+
+        try:
+            url_string_elem = wait_then_get_element(
+                browser, css_selector=url_string_css
+            )
+            assert url_string_elem
+            assert url_string_elem.get_attribute("href") == url_string
             return
+        except Exception:
+            continue
 
 
 def get_num_url_rows(browser: WebDriver):

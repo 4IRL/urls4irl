@@ -6,6 +6,7 @@ from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     clear_then_send_keys,
     open_update_url_title,
+    wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_visible_css_selector,
@@ -58,6 +59,7 @@ def update_url_string(browser: WebDriver, url_row: WebElement, url_string: str):
     """
     Streamlines actions required to update a URL in the selected URL.
     """
+    wait_for_page_complete_and_dom_stable(browser)
 
     # Select editURL button
     btn_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
