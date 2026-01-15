@@ -11,10 +11,12 @@ from src.utils.strings.utub_strs import UTUB_CREATE_SAME_NAME, UTUB_FAILURE
 from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.login_utils import login_user_to_home_page
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     invalidate_csrf_token_on_page,
     wait_then_click_element,
     wait_then_get_element,
@@ -184,6 +186,30 @@ def test_create_utub_key(browser: WebDriver, create_test_users, provide_app: Fla
     icon = wait_then_get_element(browser, utub_selector_for_creator_icon, time=3)
     assert icon is not None
     assert icon.is_displayed()
+
+
+def test_create_utub_rate_limits(
+    browser: WebDriver, create_test_users, provide_app: Flask
+):
+    """
+    Tests a user's ability to create a UTub when they are rate limited
+
+    GIVEN a user attempting to make a UTub that is rate limited
+    WHEN the createUTub form is populated and submitted by the 'check' button
+    THEN ensure the 429 error page is shown
+    """
+    app = provide_app
+    USER_ID = 1
+    login_user_to_home_page(app, browser, USER_ID)
+
+    utub_name = UTS.TEST_UTUB_NAME_1
+
+    create_utub(browser, utub_name, MOCK_UTUB_DESCRIPTION)
+    add_forced_rate_limit_header(browser)
+
+    # Submits new UTub
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_SUBMIT_CREATE)
+    assert_on_429_page(browser)
 
 
 def test_create_utub_name_length_exceeded(

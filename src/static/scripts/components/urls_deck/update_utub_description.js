@@ -246,6 +246,8 @@ function updateUTubDescriptionSuccess(response, utubID) {
 
 // Handle error response display to user
 function updateUTubDescriptionFail(xhr) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

@@ -23,6 +23,7 @@ from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.url_strs import URL_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
+    assert_on_429_page,
     assert_tooltip_animates,
     assert_update_url_state_is_hidden,
     assert_update_url_state_is_shown,
@@ -40,6 +41,7 @@ from tests.functional.login_utils import (
     login_user_select_utub_by_name_and_url_by_title,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     get_selected_url,
     invalidate_csrf_token_on_page,
     wait_then_click_element,
@@ -47,6 +49,9 @@ from tests.functional.selenium_utils import (
     wait_until_hidden,
     wait_until_in_focus,
     wait_until_visible_css_selector,
+)
+from tests.functional.urls_ui.assert_utils import (
+    assert_select_url_as_utub_owner_or_url_creator,
 )
 from tests.functional.urls_ui.selenium_utils import (
     update_url_title,
@@ -63,6 +68,10 @@ pytestmark = pytest.mark.update_urls_ui
 if (int(os.getenv("GITHUB_WORKER_ID", -1)) - 1) >= 0:
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = random.sample(
         list(FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS), 30
+    )
+
+    INVALID_URLS_TO_VALIDATE = random.sample(
+        list(INVALID_URLS_TO_VALIDATE), len(INVALID_URLS_TO_VALIDATE) // 2
     )
 
 
@@ -136,6 +145,7 @@ def test_update_url_with_valid_url(
     login_user_select_utub_by_name_and_url_by_string(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
     )
+    assert_select_url_as_utub_owner_or_url_creator(browser, HPL.ROW_SELECTED_URL)
 
     url_row = get_selected_url(browser)
 
@@ -144,8 +154,12 @@ def test_update_url_with_valid_url(
         input_url = input_url.encode("unicode_escape").decode("utf-8")
 
     update_url_string(browser, url_row, input_url)
-    assert_update_url_state_is_shown(url_row)
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
+    assert_update_url_state_is_shown(browser, url_row)
+
+    submit_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    wait_then_click_element(browser, submit_css_selector)
 
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     assert_update_url_state_is_hidden(url_row)
@@ -199,8 +213,12 @@ def test_update_url_string_submit_btn(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
-    assert_update_url_state_is_shown(url_row)
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_SUBMIT_UPDATE).click()
+    assert_update_url_state_is_shown(browser, url_row)
+
+    submit_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    wait_then_click_element(browser, submit_css_selector)
 
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
     assert_update_url_state_is_hidden(url_row)
@@ -260,7 +278,7 @@ def test_update_url_string_press_enter_key(
     url_row = get_selected_url(browser)
 
     update_url_string(browser, url_row, random_url_to_change_to)
-    assert_update_url_state_is_shown(url_row)
+    assert_update_url_state_is_shown(browser, url_row)
     browser.switch_to.active_element.send_keys(Keys.ENTER)
 
     wait_until_hidden(browser, HPL.UPDATE_URL_STRING_WRAP)
@@ -287,6 +305,50 @@ def test_update_url_string_press_enter_key(
     assert not browser.find_element(
         By.CSS_SELECTOR, HPL.UPDATE_URL_STRING_WRAP
     ).is_displayed()
+
+
+def test_update_url_string_rate_limits(
+    browser: WebDriver,
+    create_test_utubs,
+    runner: Tuple[Flask, FlaskCliRunner],
+    provide_app: Flask,
+):
+    """
+    Tests a user's ability to update the URL string of the selected URL, but they are rate limited.
+
+    GIVEN a user has access to a URL and is rate limited
+    WHEN the updateURL form is populated with a new URL and user presses submit
+    THEN ensure the 429 error page is shown
+    """
+
+    _, cli_runner = runner
+    app = provide_app
+    random_url_to_add, random_url_to_change_to = random.sample(MOCK_URL_STRINGS, 2)
+    add_mock_urls(
+        cli_runner,
+        [
+            random_url_to_add,
+        ],
+    )
+
+    user_id_for_test = 1
+    login_user_select_utub_by_name_and_url_by_string(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
+    )
+
+    url_row = get_selected_url(browser)
+
+    update_url_string(browser, url_row, random_url_to_change_to)
+    assert_update_url_state_is_shown(browser, url_row)
+
+    add_forced_rate_limit_header(browser)
+
+    submit_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_SUBMIT_UPDATE}"
+    )
+    wait_then_click_element(browser, submit_css_selector)
+
+    assert_on_429_page(browser)
 
 
 def test_update_url_string_big_cancel_btn(
@@ -324,8 +386,9 @@ def test_update_url_string_big_cancel_btn(
     init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
 
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    assert_update_url_state_is_shown(url_row)
+    update_btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
+    wait_then_click_element(browser, update_btn_selector)
+    assert_update_url_state_is_shown(browser, url_row)
 
     cancel_update_btn = wait_then_get_element(
         browser, HPL.BUTTON_BIG_URL_STRING_CANCEL_UPDATE
@@ -386,8 +449,13 @@ def test_update_url_string_cancel_btn(
 
     init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    assert_update_url_state_is_shown(url_row)
+
+    url_update_btn_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
+    )
+    wait_until_visible_css_selector(browser, url_update_btn_css_selector)
+    wait_then_click_element(browser, url_update_btn_css_selector)
+    assert_update_url_state_is_shown(browser, url_row)
 
     cancel_update_btn = wait_then_get_element(
         browser, HPL.BUTTON_URL_STRING_CANCEL_UPDATE
@@ -448,8 +516,13 @@ def test_update_url_string_escape_key(
 
     init_url_row_data = url_row_string_elem.get_attribute("href")
     init_url_row_string_display = url_row_string_elem.text
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE).click()
-    assert_update_url_state_is_shown(url_row)
+
+    url_update_btn_css_selector = (
+        f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_STRING_UPDATE}"
+    )
+    wait_until_visible_css_selector(browser, url_update_btn_css_selector)
+    wait_then_click_element(browser, url_update_btn_css_selector)
+    assert_update_url_state_is_shown(browser, url_row)
 
     wait_until_in_focus(
         browser, f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
@@ -504,7 +577,8 @@ def test_update_url_title_submit_btn(
     assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
     # Submit
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE).click()
+    submit_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE}"
+    wait_then_click_element(browser, submit_css_selector)
 
     # Wait for POST request
     wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_SUBMIT_UPDATE)
@@ -589,7 +663,8 @@ def test_update_url_title_cancel_click_btn(
     update_url_title(browser, url_row, url_title)
     assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()
 
-    url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE).click()
+    cancel_css_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_CANCEL_UPDATE}"
+    wait_then_click_element(browser, cancel_css_selector)
 
     wait_until_hidden(browser, HPL.BUTTON_URL_TITLE_CANCEL_UPDATE)
     assert url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ).is_displayed()

@@ -9,9 +9,11 @@ from src.app_logger import critical_log, error_log, safe_add_log, warning_log
 from src.extensions.extension_utils import safe_get_email_sender, safe_get_notif_sender
 from src.models.email_validations import Email_Validations
 from src.models.users import Users
+from src.splash.constants import EmailValidationErrorCodes
 from src.splash.utils import verify_token
 from src.utils.all_routes import ROUTES
 from src.utils.constants import EMAIL_CONSTANTS
+from src.utils.mailjet_utils import handle_mailjet_failure
 from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
 
 
@@ -76,7 +78,9 @@ def _build_response_for_max_email_attempts_sent() -> FlaskResponse:
         f"User {current_user.id} hit max attempts on email validation, wait 1 hr"
     )
     return APIResponse(
-        status_code=429, message=EMAILS_FAILURE.TOO_MANY_ATTEMPTS_MAX, error_code=1
+        status_code=429,
+        message=EMAILS_FAILURE.TOO_MANY_ATTEMPTS_MAX,
+        error_code=EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS,
     ).to_response()
 
 
@@ -96,7 +100,7 @@ def _build_response_for_email_attempts_rate_limited(
 
     return APIResponse(
         status_code=429,
-        error_code=2,
+        error_code=EmailValidationErrorCodes.MAX_TIME_EMAIL_VALIDATION_ATTEMPTS,
         message=f"{leftover_attempts}{EMAILS_FAILURE.TOO_MANY_ATTEMPTS}",
     ).to_response()
 
@@ -139,39 +143,12 @@ def _handle_email_sending_result(email_result: requests.Response) -> FlaskRespon
         return APIResponse(
             status_code=400,
             message=f"{EMAILS.EMAIL_FAILED} | {errors}",
-            error_code=3,
+            error_code=EmailValidationErrorCodes.EMAIL_SEND_FAILURE,
         ).to_response()
 
-    return handle_mailjet_failure(email_result, 4)
-
-
-def handle_mailjet_failure(
-    email_result: requests.Response, error_code: int = 1
-) -> FlaskResponse:
-    """
-    Handles a failure from the Mailjet service.
-
-    Args:
-        email_result (requests.Response): A Response from the request sent to the Mailjet service.
-
-    Response:
-        (FlaskResponse): JSON response and HTTP status code
-    """
-    json_response = email_result.json()
-    message = json_response.get(EMAILS.MESSAGES, EMAILS.ERROR_WITH_MAILJET)
-
-    if message == EMAILS.ERROR_WITH_MAILJET:
-        errors = message
-    else:
-        errors = message.get(EMAILS.MAILJET_ERRORS, EMAILS.ERROR_WITH_MAILJET)
-
-    error_log(f"(4) Email failed to send: {errors}")
-
-    return APIResponse(
-        status_code=400,
-        error_code=error_code,
-        message=f"{EMAILS.ERROR_WITH_MAILJET} | {errors}",
-    ).to_response()
+    return handle_mailjet_failure(
+        email_result, error_code=EmailValidationErrorCodes.MAILJET_SERVER_FAILURE
+    )
 
 
 def validate_email_for_user(token: str) -> WerkzeugResponse:

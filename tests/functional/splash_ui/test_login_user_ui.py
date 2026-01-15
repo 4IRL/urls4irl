@@ -10,11 +10,13 @@ from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
 from tests.functional.assert_utils import (
     assert_login,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     invalidate_csrf_token_in_form,
     wait_for_web_element_and_click,
     wait_then_click_element,
@@ -35,6 +37,20 @@ def test_example(browser: WebDriver):
     """
     # Check if the title contains "URLS4IRL"
     assert "URLS4IRL" in browser.title
+
+
+def test_open_login_modal_center_btn_rate_limits(browser: WebDriver):
+    """
+    Tests a user's ability to open the Login modal using the center button, but
+    they are rate limited.
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user clicks the center login button
+    THEN ensure the 429 error page is opened
+    """
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+    assert_on_429_page(browser)
 
 
 def test_open_login_modal_center_btn(browser: WebDriver):
@@ -100,6 +116,23 @@ def test_register_to_login_modal_btn(browser: WebDriver):
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
 
     assert modal_title.text == LOGIN_TITLE
+
+
+def test_register_to_login_modal_btn_rate_limits(browser: WebDriver):
+    """
+    Tests a user's ability to change view from the Register modal to the Login modal, but is rate limited
+
+    GIVEN a fresh load of the U4I Splash page
+    WHEN user opens Register modal and wants to change to Login
+    THEN ensure the rate limit screen is shown
+    """
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
+    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
+
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_REGISTER)
+
+    assert_on_429_page(browser)
 
 
 def test_dismiss_login_modal_btn(browser: WebDriver):
@@ -205,6 +238,23 @@ def test_login_test_user_key(browser: WebDriver, create_test_users):
     password_input.send_keys(Keys.ENTER)
 
     assert_login(browser)
+
+
+def test_login_test_user_rate_limits(browser: WebDriver, create_test_users):
+    """
+    Tests a user's ability to login using the splash page login modal but is rate limited
+
+    GIVEN a fresh load of the U4I Splash page and validated user but rate limited
+    WHEN user initiates login sequence
+    THEN ensure rate limit screen shown
+    """
+    login_user_ui(browser)
+    add_forced_rate_limit_header(browser)
+
+    # Find submit button to login
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    assert_on_429_page(browser)
 
 
 def test_login_user_unconfirmed_email_shows_alert(

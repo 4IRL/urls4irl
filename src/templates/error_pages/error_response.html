@@ -18,6 +18,7 @@
             align-items: center;
             background-color: #1f2424;
             color: #28a745;
+            overflow-x: hidden;
         }
 
         main {
@@ -32,7 +33,6 @@
             color: white;
             font-size: 24px;
             text-align: center;
-            width: 100%;
         }
 
         .content {
@@ -77,6 +77,8 @@
             {% include 'error_pages/404_response.html' %}
             {% elif error_code == 403 %}
             {% include 'error_pages/403_response.html' %}
+            {% elif error_code == 429 %}
+            {% include 'error_pages/429_response.html' %}
             {% endif %}
         </article>
     </main>

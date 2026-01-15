@@ -260,6 +260,8 @@ function updateUTubNameSuccess(response) {
 
 // Handle error response display to user
 function updateUTubNameFail(xhr) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

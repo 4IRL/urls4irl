@@ -10,6 +10,7 @@ from src.models.users import Users
 from src.utils.strings.user_strs import MEMBER_LEAVE_WARNING
 from tests.functional.assert_utils import (
     assert_login_with_username,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
@@ -19,6 +20,7 @@ from tests.functional.db_utils import (
 from tests.functional.login_utils import login_user_and_select_utub_by_name
 from tests.functional.members_ui.selenium_utils import leave_utub_as_member
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     get_num_utubs,
     invalidate_csrf_token_on_page,
@@ -219,6 +221,36 @@ def test_leave_utub(
     # Assert no UTub is selector
     with pytest.raises(NoSuchElementException):
         browser.find_element(By.CSS_SELECTOR, HPL.SELECTOR_SELECTED_UTUB)
+
+
+def test_leave_utub_rate_limits(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    Tests a UTub user's ability to leave a UTub when they are rate limited
+
+    GIVEN a user is a UTub member but they are rate limited
+    WHEN the memberSelfBtnDelete button is selected and user submits the confirm modal
+    THEN ensure the 429 error page is shown
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_member_of = get_utub_this_user_did_not_create(app, user_id_for_test)
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, utub_user_member_of.name
+    )
+
+    wait_then_click_element(browser, HPL.BUTTON_UTUB_LEAVE, time=3)
+
+    warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
+    assert warning_modal_body is not None
+
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
+    assert_on_429_page(browser)
 
 
 def test_cannot_leave_utub_as_utub_creator(

@@ -108,6 +108,8 @@ function deleteURLSuccess(response, urlCard) {
 
 // Displays appropriate prompts and options to user following a failed removal of a URL
 function deleteURLFail(xhr) {
+  if (xhr._429Handled) return;
+
   if (
     xhr.status === 403 &&
     xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"

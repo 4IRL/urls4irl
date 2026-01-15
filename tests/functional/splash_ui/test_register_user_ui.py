@@ -12,13 +12,18 @@ from src.utils.strings.email_validation_strs import (
 from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from src.utils.strings.user_strs import USER_FAILURE
-from tests.functional.assert_utils import assert_visited_403_on_invalid_csrf_and_reload
+from tests.functional.assert_utils import (
+    assert_on_429_page,
+    assert_visible_css_selector,
+    assert_visited_403_on_invalid_csrf_and_reload,
+)
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.locators import ModalLocators as ML
 from tests.functional.splash_ui.selenium_utils import (
     register_user_ui,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
     wait_for_web_element_and_click,
@@ -51,6 +56,19 @@ def test_open_register_modal_center_btn(browser: WebDriver):
     )
     assert modal_title is not None
     assert modal_title.text == "Register"
+
+
+def test_open_register_modal_rate_limited(browser: WebDriver):
+    """
+    Tests a user's ability to open the Register modal using the center button but is rate limited.
+
+    GIVEN a fresh load of the U4I Splash page but they are rate limited
+    WHEN user clicks the center register button
+    THEN ensure the 429 error screen is shown
+    """
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
+    assert_on_429_page(browser)
 
 
 def test_open_register_modal_RHS_btn(browser: WebDriver):
@@ -100,6 +118,24 @@ def test_login_to_register_modal_btn(browser: WebDriver):
     )
     assert modal_title is not None
     assert modal_title.text == "Register"
+
+
+def test_login_to_register_modal_btn_rate_limits(browser: WebDriver):
+    """
+    Tests a user's ability to change view from the Login modal to the Register modal but is rate limited
+
+    GIVEN a fresh load of the U4I Splash page but user is rate limited
+    WHEN user opens Login modal and wants to change to Register
+    THEN ensure the 429 error page is shown
+    """
+    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
+    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
+    add_forced_rate_limit_header(browser)
+
+    assert_visible_css_selector(browser, SPL.SPLASH_MODAL)
+    wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
+
+    assert_on_429_page(browser)
 
 
 def test_dismiss_register_modal_btn(browser: WebDriver):
@@ -216,6 +252,25 @@ def test_register_new_user_key(browser: WebDriver):
     assert modal_title is not None
 
     assert modal_title.text == VALIDATE_YOUR_EMAIL
+
+
+def test_register_user_rate_limits(browser: WebDriver):
+    """
+    Tests a user's ability to register as a new user but they are rate limited.
+
+    GIVEN a fresh load of the U4I Splash page but user is rate limited
+    WHEN initiates registration modal and inputs desired login information
+    THEN U4I responds with 429 error page
+    """
+
+    register_user_ui(
+        browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
+    )
+    add_forced_rate_limit_header(browser)
+
+    # Submit form
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    assert_on_429_page(browser)
 
 
 def test_register_existing_username(browser: WebDriver, create_test_users):

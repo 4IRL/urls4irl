@@ -241,6 +241,8 @@ function createUTubSuccess(response) {
 
 // Handle error response display to user
 function createUTubFail(xhr) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

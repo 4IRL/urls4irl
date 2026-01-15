@@ -16,6 +16,7 @@ from tests.functional.selenium_utils import (
     select_url_by_url_string,
     select_utub_by_name,
     wait_for_animation_to_end_check_top_lhs_corner,
+    wait_for_page_complete_and_dom_stable,
     wait_then_click_element,
     wait_until_visible_css_selector,
 )
@@ -133,6 +134,7 @@ def login_user_select_utub_by_name_and_url_by_string(
 ):
     login_user_and_select_utub_by_name(app, browser, user_id, utub_name)
     select_url_by_url_string(browser, url_string)
+    wait_for_page_complete_and_dom_stable(browser)
 
 
 def login_user_select_utub_by_id_open_create_utub_tag(

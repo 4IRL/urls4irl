@@ -1,0 +1,9 @@
+from enum import IntEnum
+
+
+class EmailValidationErrorCodes(IntEnum):
+    UNKNOWN_EXCEPTION = 0
+    MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS = 1
+    MAX_TIME_EMAIL_VALIDATION_ATTEMPTS = 2
+    EMAIL_SEND_FAILURE = 3
+    MAILJET_SERVER_FAILURE = 4

@@ -1,9 +1,8 @@
-from flask import render_template, jsonify, make_response
+from flask import render_template
 from flask_login import current_user
 
 from src.app_logger import warning_log
 from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE
 
 
 def handle_403_response_from_csrf(_):
@@ -31,12 +30,11 @@ def handle_404_response(_):
 
 
 def handle_429_response_default_ratelimit(_):
-    return make_response(
-        jsonify(
-            {
-                STD_JSON_RESPONSE.STATUS: STD_JSON_RESPONSE.FAILURE,
-                STD_JSON_RESPONSE.MESSAGE: STD_JSON_RESPONSE.TOO_MANY_REQUESTS,
-            }
+    return (
+        render_template(
+            "error_pages/error_response.html",
+            error_code=429,
+            header=IDENTIFIERS.HTML_429,
         ),
         429,
     )

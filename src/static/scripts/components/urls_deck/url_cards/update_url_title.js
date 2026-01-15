@@ -99,6 +99,8 @@ function updateURLTitleSuccess(response, urlCard) {
 
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLTitleFail(xhr, urlCard) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

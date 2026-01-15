@@ -20,6 +20,7 @@ from src.utils.strings.url_strs import URL_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,
+    assert_on_429_page,
     assert_url_coloring_is_correct,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
@@ -34,6 +35,7 @@ from tests.functional.login_utils import (
 )
 from tests.functional.tags_ui.selenium_utils import apply_tag_filter_based_on_id
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     clear_then_send_keys,
     get_selected_url,
     get_url_row_by_id,
@@ -357,6 +359,34 @@ def test_create_url_submit_btn_some_urls(
 
     assert selected_utub_url_id and selected_utub_url_id.isnumeric()
     assert int(selected_utub_url_id) == utub_url_id
+
+
+def test_create_url_rate_limits(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a user's ability to create a new URL in a selected UTub when rate limited
+
+    GIVEN a user and selected UTub but they are rate limited
+    WHEN they submit a new URL using the submit button
+    THEN ensure the 429 error page is shown
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub_user_created = get_utub_this_user_created(app, user_id_for_test)
+
+    login_user_and_select_utub_by_utubid(
+        app, browser, user_id_for_test, utub_user_created.id
+    )
+
+    url_title = MOCK_URL_TITLES[0]
+    url_string = MOCK_URL_STRINGS[0]
+
+    fill_create_url_form(browser, url_title, url_string)
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_URL_SUBMIT_CREATE, time=3)
+
+    assert_on_429_page(browser)
 
 
 @pytest.mark.parametrize(

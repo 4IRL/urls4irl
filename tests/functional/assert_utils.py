@@ -22,6 +22,7 @@ from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     Decks,
     click_on_navbar,
+    wait_for_element_presence,
     wait_for_tooltip_with_hover_retry,
     wait_then_click_element,
     wait_then_get_element,
@@ -109,6 +110,14 @@ def assert_on_404_page(browser: WebDriver):
     error_header = wait_then_get_element(browser, css_selector="h2", time=3)
     assert error_header is not None
     assert error_header.text == IDENTIFIERS.HTML_404
+    assert "Invalid Request - URLS4IRL" == browser.title
+
+
+def assert_on_429_page(browser: WebDriver):
+    wait_for_element_presence(browser, HPL.ERROR_PAGE_HANDLER, timeout=3)
+    error_header = wait_then_get_element(browser, css_selector="h2", time=3)
+    assert error_header is not None
+    assert error_header.text == IDENTIFIERS.HTML_429
     assert "Invalid Request - URLS4IRL" == browser.title
 
 
@@ -294,15 +303,16 @@ def assert_elem_with_url_string_exists(browser: WebDriver, url_string: str):
     assert url_row_string == url_string
 
 
-def assert_update_url_state_is_shown(url_row: WebElement):
+def assert_update_url_state_is_shown(browser: WebDriver, url_row: WebElement):
     hidden_btns = (
         HPL.BUTTON_URL_DELETE,
         HPL.BUTTON_TAG_CREATE,
         HPL.BUTTON_URL_ACCESS,
     )
 
-    for btn in hidden_btns:
-        assert not url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
+    for btn_selector in hidden_btns:
+        css_selector = f"{HPL.ROW_SELECTED_URL} {btn_selector}"
+        assert_not_visible_css_selector(browser, css_selector)
 
     with pytest.raises(NoSuchElementException):
         url_row.find_element(By.CSS_SELECTOR, HPL.BUTTON_URL_STRING_UPDATE)
@@ -313,15 +323,20 @@ def assert_update_url_state_is_shown(url_row: WebElement):
         HPL.BUTTON_URL_STRING_CANCEL_UPDATE,
     )
 
-    for btn in visible_btns:
-        assert url_row.find_element(By.CSS_SELECTOR, btn).is_displayed()
+    for btn_selector in visible_btns:
+        css_selector = f"{HPL.ROW_SELECTED_URL} {btn_selector}"
+        assert_visible_css_selector(browser, css_selector)
 
-    assert url_row.find_element(
-        By.CSS_SELECTOR, HPL.INPUT_URL_STRING_UPDATE
-    ).is_displayed()
+    assert_visible_css_selector(
+        browser, css_selector=f"{HPL.ROW_SELECTED_URL} {HPL.INPUT_URL_STRING_UPDATE}"
+    )
 
-    assert not url_row.find_element(By.CSS_SELECTOR, HPL.URL_STRING_READ).is_displayed()
-    assert not url_row.find_element(By.CSS_SELECTOR, HPL.GO_TO_URL_ICON).is_displayed()
+    assert_not_visible_css_selector(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.URL_STRING_READ}"
+    )
+    assert_not_visible_css_selector(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.GO_TO_URL_ICON}"
+    )
 
 
 def assert_update_url_state_is_hidden(url_row: WebElement):

@@ -10,7 +10,9 @@ from flask_login import current_user, login_user
 from werkzeug import Response as WerkzeugResponse
 
 from src import db
-from src.api_common.auth_decorators import no_authenticated_users_allowed
+from src.api_common.auth_decorators import (
+    no_authenticated_users_allowed,
+)
 from src.api_common.responses import FlaskResponse
 from src.app_logger import (
     safe_add_log,

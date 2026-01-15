@@ -396,3 +396,10 @@ a {
         opacity: 0 !important;
     }
 }
+
+@media (max-width: 380px) {
+    footer {
+        font-size: 0.8rem;
+    }
+}
+

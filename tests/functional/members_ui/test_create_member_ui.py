@@ -10,6 +10,7 @@ from src.models.utub_members import Utub_Members
 from src.utils.strings.user_strs import MEMBER_FAILURE, USER_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
@@ -23,6 +24,7 @@ from tests.functional.members_ui.selenium_utils import (
     get_all_member_usernames,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     invalidate_csrf_token_on_page,
     select_utub_by_name,
     wait_then_click_element,
@@ -161,6 +163,32 @@ def test_create_member_key(browser: WebDriver, create_test_utubs, provide_app: F
 
     # Assert new member is added to UTub
     assert new_member_username in member_usernames
+
+
+def test_create_member_rate_limits(
+    browser: WebDriver, create_test_utubs, provide_app: Flask
+):
+    """
+    Tests a UTub owner's ability to create a member by adding another U4I user to the UTub, but
+    they are rate limited
+
+    GIVEN a user is the UTub owner but they are rate limited
+    WHEN the createMember form is populated and submitted
+    THEN ensure the 429 error page is shown
+    """
+
+    app = provide_app
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+
+    new_member_username = USERNAME_BASE + "2"
+    create_member_active_utub(browser, new_member_username)
+
+    # Submits new member form
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MEMBER_SUBMIT_CREATE)
+    assert_on_429_page(browser)
 
 
 def test_create_member_denied(

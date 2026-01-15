@@ -1,7 +1,8 @@
 import os
 import secrets
+from typing import Mapping
 
-from flask import Flask, Response, g, session
+from flask import Flask, Response, abort, g, request, session
 from flask_assets import Environment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -44,18 +45,27 @@ notification_sender = NotificationSender()
 
 environment_assets = Environment()
 
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=["20/second", "100/minute"],
+    application_limits=["2000/hour", "500/15minutes"],
+)
 
-def create_app(config_class: type[Config] = Config) -> Flask | None:
+
+def create_app(
+    config_class: type[Config] = Config, show_test_logs: bool = False
+) -> Flask | None:
     testing = config_class.TESTING
     production = config_class.PRODUCTION
     if testing and production:
         print("ERROR: Cannot be both production and testing environment")
         return
+
     app = Flask(__name__)
     app.config.from_object(ConfigProd if production else config_class)
     app.config[CONFIG_ENVS.TESTING_OR_PROD] = testing or production
 
-    app_logger.init_app(app)
+    app_logger.init_app(app, show_test_logs)
 
     sess.init_app(app)
     db.init_app(app)
@@ -63,15 +73,12 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
     csrf.init_app(app)
     login_manager.init_app(app)
 
-    limiter = Limiter(
-        key_func=get_remote_address,
-        default_limits=["20/second", "100/minute"],
-        default_limits_exempt_when=lambda: True if testing else False,
-        on_breach=handle_429_response_default_ratelimit,
-        storage_uri=app.config[CONFIG_ENVS.REDIS_URI],
-        storage_options={"socket_connect_timeout": 30},
-    )
-
+    # Configure limiter with app-specific settings
+    storage_options: Mapping = {"socket_connect_timeout": 30}
+    limiter._default_limits_exempt_when = lambda: True if testing else False
+    limiter._application_limits_exempt_when = lambda: True if testing else False
+    limiter._storage_uri = app.config[CONFIG_ENVS.REDIS_URI]
+    limiter._storage_options = storage_options
     limiter.init_app(app)
 
     if production or app.config.get(CONFIG_ENVS.DEV_SERVER, False):
@@ -85,6 +92,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
         test_url_val.init_app(app)
         test_notif_send.init_app(app)
         test_email_sender.init_app(app)
+        app_test_setup(app)
     else:
         url_validator.init_app(app)
         notification_sender.init_app(app)
@@ -123,6 +131,7 @@ def create_app(config_class: type[Config] = Config) -> Flask | None:
 
     app.register_error_handler(404, handle_404_response)
     app.register_error_handler(CSRFError, handle_403_response_from_csrf)
+    app.register_error_handler(429, handle_429_response_default_ratelimit)
 
     if not testing:
         # Import models to initialize migration scripts
@@ -163,6 +172,10 @@ def add_security_headers(app: Flask):
 
     @app.after_request
     def _add_security_headers(response: Response):
+        if "nonce" not in session:
+            session["nonce"] = secrets.token_urlsafe(16)
+        g.nonce = session["nonce"]
+
         valid_script_cdns = (
             "https://code.jquery.com",
             "https://cdn.jsdelivr.net",
@@ -215,3 +228,16 @@ def add_security_headers(app: Flask):
         )
         response.headers[CONFIG_ENVS.CROSS_ORIGIN_RESOURCE_POLICY] = "same-origin"
         return response
+
+
+def app_test_setup(app: Flask):
+    @app.before_request
+    def force_rate_limit():
+        if app.config.get("TESTING") and request.headers.get(
+            "X-Force-Rate-Limit", None
+        ):
+            app_logger.error_log(log="RATE LIMITED")
+            abort(429)
+
+        if app.config.get("TESTING") and request.args.get("force_rate_limit", None):
+            abort(429)

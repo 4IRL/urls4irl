@@ -3,6 +3,8 @@ name: u4i-local
 services:
   web:
     container_name: u4i-local-web
+    stdin_open: true
+    tty: true
     build:
       context: .
       dockerfile: docker/DockerfileLocal

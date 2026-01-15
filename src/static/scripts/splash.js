@@ -3,6 +3,21 @@
 $(document).ready(function () {
   setToRegisterButton();
   setToLoginButton();
+
+  $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
+    let originalError = options.error;
+
+    options.error = function (jqXHR, textStatus, errorThrown) {
+      if (jqXHR.status === 429) {
+        showNewPageOnAJAXHTMLResponse(jqXHR.responseText);
+        return; // Prevents both .error and .fail() from being called
+      }
+
+      if (originalError) {
+        originalError.call(this, jqXHR, textStatus, errorThrown);
+      }
+    };
+  });
 });
 
 function setToRegisterButton() {
@@ -29,7 +44,7 @@ function loginModalOpener() {
     }
   });
 
-  modalOpener.fail(() => {
+  modalOpener.fail((xhr) => {
     bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
     $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
   });
@@ -42,8 +57,9 @@ function loginModalOpenerFromModal() {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
   });
 
-  modalOpener.fail(() => {
-    showSplashModalAlertBanner("Unable to load login form...", "danger");
+  modalOpener.fail((xhr) => {
+    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
+    $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
   });
 }
 
@@ -57,7 +73,7 @@ function registerModalOpener() {
     }
   });
 
-  modalOpener.fail(() => {
+  modalOpener.fail((xhr) => {
     bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
     $("#SplashErrorModalAlertBanner").text("Unable to load register form...");
   });
@@ -118,12 +134,13 @@ function emailValidationModalOpener() {
     xhr.status === 200 ? $("#SplashModal .modal-content").html(data) : null;
   });
 
-  modalOpener.fail(() => {
+  modalOpener.fail((xhr) => {
     showSplashModalAlertBanner(
       "Unable to load email validation modal...",
       "danger",
     );
   });
+  modalOpener.fail(() => {});
 }
 
 function handleImproperFormErrors(errorResponse) {
@@ -209,6 +226,22 @@ function displayFormErrors(key, errorMessage) {
     .insertAfter("#" + key)
     .show();
   $("#" + key).addClass("is-invalid");
+}
+
+function showNewPageOnAJAXHTMLResponse(htmlText) {
+  $("body").fadeOut(150, function () {
+    document.open();
+    document.write(htmlText);
+    document.close();
+
+    // Hide body initially
+    document.body.style.opacity = "0";
+
+    // Wait for everything to load
+    window.addEventListener("load", function () {
+      $("body").css("opacity", "1").hide().fadeIn(150);
+    });
+  });
 }
 
 // jQuery plugins

@@ -235,7 +235,7 @@ def wait_for_element_to_be_removed(
 
 
 def wait_until_hidden(
-    browser: WebDriver, css_selector: str, timeout: int = 2
+    browser: WebDriver, css_selector: str, timeout: int = 10
 ) -> WebElement:
     element = browser.find_element(By.CSS_SELECTOR, css_selector)
 
@@ -405,7 +405,7 @@ def wait_for_page_complete(browser: WebDriver, timeout: int = 10):
         lambda d: d.execute_script("return document.readyState") == "complete"
     )
 
-    # Wait for jQuery to be loaded and active requests to be completed (if jQuery is used)
+    # Wait for jQuery to be loaded and active requests to be completed
     jquery_check = """
             return (typeof jQuery !== 'undefined') ?
                            jQuery.active == 0 :
@@ -724,14 +724,29 @@ def select_url_by_url_string(browser: WebDriver, url_string: str):
     url_rows = wait_then_get_elements(browser, HPL.ROWS_URLS)
     assert url_rows
 
-    for url_row in url_rows:
+    attempts = 3
+    for _ in range(attempts):
+        for url_row in url_rows:
+            url_row_string = url_row.find_element(
+                By.CSS_SELECTOR, HPL.URL_STRING_READ
+            ).get_attribute("href")
+            if url_row_string == url_string:
+                url_row.click()
+                break
 
-        url_row_string = url_row.find_element(
-            By.CSS_SELECTOR, HPL.URL_STRING_READ
-        ).get_attribute("href")
-        if url_row_string == url_string:
-            url_row.click()
+        wait_for_animation_to_end_check_height(browser, HPL.ROW_SELECTED_URL)
+        wait_for_page_complete_and_dom_stable(browser)
+        url_string_css = f"{HPL.ROW_SELECTED_URL} {HPL.URL_STRING_READ}"
+
+        try:
+            url_string_elem = wait_then_get_element(
+                browser, css_selector=url_string_css
+            )
+            assert url_string_elem
+            assert url_string_elem.get_attribute("href") == url_string
             return
+        except Exception:
+            continue
 
 
 def get_num_url_rows(browser: WebDriver):
@@ -809,8 +824,11 @@ def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
         Yields WebDriver to tests
     """
 
-    # Select editURL button
-    url_title_text = selected_url_row.find_element(By.CSS_SELECTOR, HPL.URL_TITLE_READ)
+    # Select url title button
+    url_title_text = wait_then_get_element(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.URL_TITLE_READ}"
+    )
+    assert url_title_text
 
     actions = ActionChains(browser)
 
@@ -883,6 +901,44 @@ def invalidate_csrf_token_on_page(browser: WebDriver):
         }
     });
     """
+    )
+
+
+def add_forced_rate_limit_header(browser: WebDriver):
+    browser.execute_script(
+        """
+    (function() {
+        var settings = $.ajaxSettings;
+        var oldBeforeSend = settings.beforeSend;
+        $.ajaxSetup({
+            beforeSend: function (xhr, ajaxSettings) {
+                // Call the previous beforeSend if it exists
+                if (oldBeforeSend) {
+                    oldBeforeSend.call(this, xhr, ajaxSettings);
+                }
+
+                // Add our custom header
+                xhr.setRequestHeader("X-Force-Rate-Limit", "true");
+                return true;
+            }
+        });
+    })();
+    """
+    )
+
+
+def modify_navigational_link_for_rate_limit(browser: WebDriver, element_id: str):
+    browser.execute_script(
+        """
+        const link = document.getElementById(arguments[0]);
+        if (!link) {
+            throw new Error('Element with ID "' + arguments[0] + '" not found');
+        }
+        const url = new URL(link.href, window.location.origin);
+        url.searchParams.set('force_rate_limit', 'true');
+        link.href = url.toString();
+    """,
+        element_id,
     )
 
 

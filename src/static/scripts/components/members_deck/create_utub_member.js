@@ -164,6 +164,8 @@ function createMemberSuccess(response, utubID) {
 }
 
 function createMemberFail(xhr) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

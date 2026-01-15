@@ -13,6 +13,7 @@ from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,
     assert_not_visible_css_selector,
+    assert_on_429_page,
     assert_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
@@ -20,6 +21,7 @@ from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_and_select_utub_by_utubid
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     invalidate_csrf_token_on_page,
     wait_then_click_element,
@@ -339,6 +341,36 @@ def test_delete_utub_tag_while_selected_unfilters_url_and_updates_text(
 
     tag_deck_subheader_txt = tag_deck_subheader.text
     assert "0 of 5" in tag_deck_subheader_txt
+
+
+def test_delete_utub_tag_rate_limits(
+    browser: WebDriver, create_test_tags, provide_app: Flask
+):
+    """
+    GIVEN a user in a UTub with Tags and is rate limited
+    WHEN they delete a UTub tag
+    THEN ensure 429 error page is shown
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+
+    login_user_and_select_utub_by_utubid(app, browser, user_id, utub_user_created.id)
+
+    tag_id = get_first_visible_tag_in_utub(browser).get_attribute(
+        HPL.TAG_BADGE_ID_ATTRIB
+    )
+    assert tag_id
+
+    url_tag_badge_selector = f"{HPL.TAG_BADGES}[{HPL.TAG_BADGE_ID_ATTRIB}='{tag_id}']"
+    assert browser.find_elements(By.CSS_SELECTOR, url_tag_badge_selector)
+
+    add_forced_rate_limit_header(browser)
+    open_delete_utub_tag_confirm_modal_for_tag(browser, tag_id, app)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+
+    assert_on_429_page(browser)
 
 
 def test_delete_last_utub_tag_closes_utub_tag_menu(

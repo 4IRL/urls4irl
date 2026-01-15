@@ -8,9 +8,9 @@ from src.extensions.extension_utils import safe_get_email_sender
 from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.splash.forms import ForgotPasswordForm
-from src.splash.services.validate_email import handle_mailjet_failure
 from src.utils.all_routes import ROUTES
 from src.utils.datetime_utils import utc_now
+from src.utils.mailjet_utils import handle_mailjet_failure
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD
 from src.utils.strings.user_strs import USER_FAILURE
 

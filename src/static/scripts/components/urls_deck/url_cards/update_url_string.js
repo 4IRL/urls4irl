@@ -114,7 +114,7 @@ async function updateURL(urlStringUpdateInput, urlCard, utubID) {
   let timeoutID;
   try {
     timeoutID = setTimeoutAndShowURLCardLoadingIcon(urlCard);
-    await getUpdatedURL(utubID, utubUrlID, urlCard);
+    const update = await getUpdatedURL(utubID, utubUrlID, urlCard);
 
     // Extract data to submit in POST request
     let patchURL, data;
@@ -193,6 +193,8 @@ function updateURLSuccess(response, urlCard) {
 
 // Displays appropriate prompts and options to user following a failed update of a URL
 function updateURLFail(xhr, urlCard, utubID) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

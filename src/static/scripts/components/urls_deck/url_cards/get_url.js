@@ -111,6 +111,12 @@ function updateURLTagsAndUTubTagsBasedOnGetURLData(
 
 function handleRejectFromGetURL(xhr, urlCard, errorMessage) {
   switch (xhr.status) {
+    case 429:
+      let contentType = xhr.getResponseHeader("Content-Type");
+      if (contentType && contentType.includes("text/html")) {
+        showNewPageOnAJAXHTMLResponse(xhr.responseText);
+      }
+      break;
     case 403:
       // User not authorized for this UTub
       window.location.assign(APP_CONFIG.routes.errorPage);

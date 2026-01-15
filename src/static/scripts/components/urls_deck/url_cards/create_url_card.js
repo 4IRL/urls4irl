@@ -141,6 +141,8 @@ function createURLSuccess(response, utubID) {
 
 // Displays appropriate prompts and options to user following a failed addition of a new URL
 function createURLFail(xhr, utubID) {
+  if (xhr._429Handled) return;
+
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (
       xhr.status === 403 &&

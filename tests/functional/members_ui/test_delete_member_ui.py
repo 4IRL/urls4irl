@@ -13,6 +13,7 @@ from src.utils.strings.user_strs import MEMBER_DELETE_WARNING
 from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,
+    assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.db_utils import (
@@ -26,6 +27,7 @@ from tests.functional.members_ui.selenium_utils import (
     get_all_member_usernames,
 )
 from tests.functional.selenium_utils import (
+    add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     invalidate_csrf_token_on_page,
     wait_for_element_to_be_removed,
@@ -230,6 +232,30 @@ def test_delete_member_btn(
 
     # Assert member no longer exists
     assert member_name not in member_usernames
+
+
+def test_delete_member_rate_limits(
+    browser: WebDriver,
+    create_test_utubmembers,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user owns a UTub with members but they are rate limited
+    WHEN they submit the delete UTub Member modal
+    THEN ensure the 429 error page is shown
+    """
+    app = provide_app
+
+    user_id = 1
+    utub_user_created = get_utub_this_user_created(app, user_id)
+    login_user_and_select_utub_by_name(app, browser, user_id, utub_user_created.name)
+    other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
+
+    delete_member_active_utub(browser, other_member.username)
+
+    add_forced_rate_limit_header(browser)
+    wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT)
+    assert_on_429_page(browser)
 
 
 def test_open_delete_member_modal_fails_as_member(

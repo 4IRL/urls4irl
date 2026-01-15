@@ -1,6 +1,7 @@
 from datetime import datetime
 import logging
 import os
+import sys
 import time
 from typing import Optional
 import uuid
@@ -165,10 +166,26 @@ def configure_logging(app: Flask, is_production=False):
     app.logger.propagate = False
 
 
-def log_with_detailed_info(app: Flask, level: int, message: str):
+def _output_logs_for_ui_tests(level: int, message: str):
+    request_id = getattr(g, "request_id", "-")
+    remote_addr = getattr(request, "remote_addr", "-")
+    module = request.endpoint if request.endpoint else "u4i"
+
+    # Format exactly like your detailed formatter would
+    level_name = logging.getLevelName(level)
+    formatted = f"{level_name} [{request_id}] [{remote_addr}] {module}: {message}"
+
+    # Write directly to stderr
+    print(formatted, file=sys.stderr, flush=True)
+
+
+def log_with_detailed_info(
+    app: Flask, level: int, message: str, show_ui_flask_logs: bool = False
+):
     """Log a message with detailed request info (user agent and remote addr)."""
     # Check if we're in a test environment by seeing if the app logger has any StreamHandlers
     # If not, it means they've been removed for testing, so just use the regular logger
+
     has_stream_handlers = any(
         isinstance(handler, logging.StreamHandler)
         and not isinstance(handler, logging.NullHandler)
@@ -176,8 +193,10 @@ def log_with_detailed_info(app: Flask, level: int, message: str):
     )
 
     if not has_stream_handlers:
-        # In test mode, just use the regular logger (which will be captured by caplog)
+        # In integration test mode, just use the regular logger (which will be captured by caplog)
         app.logger.log(level, message)
+        if show_ui_flask_logs:
+            _output_logs_for_ui_tests(level, message)
         return
 
     # Create a temporary handler with detailed formatter
@@ -213,7 +232,7 @@ def log_with_detailed_info(app: Flask, level: int, message: str):
         temp_logger.removeHandler(temp_file_handler)
 
 
-def setup_before_request_logging(app: Flask):
+def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = False):
     @app.before_request
     def before_request():
         g.request_id = request.headers.get(
@@ -233,7 +252,7 @@ def setup_before_request_logging(app: Flask):
             "PUT": "\033[93m",  # yellow
         }
         message = f"Request: {method_colors.get(request.method, '')}{request.method}{END} {path} "
-        log_with_detailed_info(app, logging.INFO, message)
+        log_with_detailed_info(app, logging.INFO, message, show_ui_flask_logs)
 
     @app.after_request
     def after_request(response: Optional[Response]):
@@ -264,6 +283,8 @@ def setup_before_request_logging(app: Flask):
         log_message = f"Response: {status_color}{status_code}{END} completed in {duration_ms:.2f}ms"
 
         app.logger.info(f"{log_message}")
+        if show_ui_flask_logs:
+            _output_logs_for_ui_tests(level=logging.INFO, message=log_message)
 
         return response
 
@@ -275,9 +296,9 @@ def setup_before_request_logging(app: Flask):
             )
 
 
-def init_app(app: Flask):
+def init_app(app: Flask, show_ui_test_logs: bool = False):
     configure_logging(app)
-    setup_before_request_logging(app)
+    setup_before_after_request_logging(app, show_ui_test_logs)
 
     # Disable Werkzeug's built-in logging to avoid duplication
     werkzeug_logger = logging.getLogger("werkzeug")
@@ -290,9 +311,9 @@ def init_app(app: Flask):
     gunicorn_access_logger.disabled = True
 
 
-def safe_get_request_id():
+def safe_get_request_id() -> str:
     if not g or not hasattr(g, "request_id"):
-        return
+        return ""
     return g.request_id
 
 

@@ -50,14 +50,15 @@ function handleUserChangedPassword() {
 
 function handleResetPasswordFailure(xhr, _, error) {
   if (!xhr.hasOwnProperty("responseJSON")) {
-    if (
-      xhr.status === 403 &&
-      xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
-    ) {
-      // Handle invalid CSRF token error response
-      $("body").html(xhr.responseText);
+    if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
+      switch (xhr.status) {
+        case 403: {
+          $("body").html(xhr.responseText);
+        }
+      }
       return;
     }
+
     window.location.assign(APP_CONFIG.routes.errorPage);
     return;
   }
