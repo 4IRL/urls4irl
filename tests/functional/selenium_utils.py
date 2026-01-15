@@ -405,7 +405,7 @@ def wait_for_page_complete(browser: WebDriver, timeout: int = 10):
         lambda d: d.execute_script("return document.readyState") == "complete"
     )
 
-    # Wait for jQuery to be loaded and active requests to be completed (if jQuery is used)
+    # Wait for jQuery to be loaded and active requests to be completed
     jquery_check = """
             return (typeof jQuery !== 'undefined') ?
                            jQuery.active == 0 :
@@ -734,6 +734,7 @@ def select_url_by_url_string(browser: WebDriver, url_string: str):
                 url_row.click()
                 break
 
+        wait_for_animation_to_end_check_height(browser, HPL.ROW_SELECTED_URL)
         wait_for_page_complete_and_dom_stable(browser)
         url_string_css = f"{HPL.ROW_SELECTED_URL} {HPL.URL_STRING_READ}"
 

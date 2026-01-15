@@ -50,6 +50,9 @@ from tests.functional.selenium_utils import (
     wait_until_in_focus,
     wait_until_visible_css_selector,
 )
+from tests.functional.urls_ui.assert_utils import (
+    assert_select_url_as_utub_owner_or_url_creator,
+)
 from tests.functional.urls_ui.selenium_utils import (
     update_url_title,
     update_url_string,
@@ -65,6 +68,10 @@ pytestmark = pytest.mark.update_urls_ui
 if (int(os.getenv("GITHUB_WORKER_ID", -1)) - 1) >= 0:
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = random.sample(
         list(FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS), 30
+    )
+
+    INVALID_URLS_TO_VALIDATE = random.sample(
+        list(INVALID_URLS_TO_VALIDATE), len(INVALID_URLS_TO_VALIDATE) // 2
     )
 
 
@@ -138,6 +145,7 @@ def test_update_url_with_valid_url(
     login_user_select_utub_by_name_and_url_by_string(
         app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1, random_url_to_add
     )
+    assert_select_url_as_utub_owner_or_url_creator(browser, HPL.ROW_SELECTED_URL)
 
     url_row = get_selected_url(browser)
 
