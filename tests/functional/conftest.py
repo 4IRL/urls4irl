@@ -17,7 +17,10 @@ from src.models.forgot_passwords import Forgot_Passwords
 from src.models.users import Users
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.db_utils import add_mock_urls
-from tests.functional.selenium_utils import ChromeRemoteWebDriver
+from tests.functional.selenium_utils import (
+    ChromeRemoteWebDriver,
+    wait_for_page_complete_and_dom_stable,
+)
 from tests.functional.ui_test_setup import (
     clear_db,
     find_open_port,
@@ -191,6 +194,8 @@ def browser(
     driver.delete_all_cookies()
 
     driver.get(url + str(open_port) + "/")
+    wait_for_page_complete_and_dom_stable(driver)
+
     init_handle = driver.current_window_handle
 
     clear_db(runner, debug_strings)
