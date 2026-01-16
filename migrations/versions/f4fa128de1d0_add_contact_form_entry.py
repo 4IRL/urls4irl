@@ -16,6 +16,14 @@ down_revision = "cbacf42d21d0"
 branch_labels = None
 depends_on = None
 
+url_valid_enum = postgresql.ENUM(
+    "VALIDATED",
+    "INVALIDATED",
+    "UNKNOWN",
+    name="possible_url_validation",
+    create_type=True,
+)
+
 
 def upgrade():
     op.create_table(
@@ -40,28 +48,30 @@ def upgrade():
     )
     with op.batch_alter_table("Urls", schema=None) as batch_op:
         batch_op.drop_column("isValidated")
+
+    op.execute("""DROP TYPE possible_url_validation""")
     # ### end Alembic commands ###
 
 
 def downgrade():
-    with op.batch_alter_table("UtubMembers", schema=None) as batch_op:
-        batch_op.drop_constraint("unique_member", type_="unique")
+    url_valid_enum.create(op.get_bind(), checkfirst=True)
 
     with op.batch_alter_table("Urls", schema=None) as batch_op:
         batch_op.add_column(
             sa.Column(
                 "isValidated",
-                postgresql.ENUM(
+                sa.Enum(
                     "VALIDATED",
                     "INVALIDATED",
                     "UNKNOWN",
                     name="possible_url_validation",
                 ),
-                server_default=sa.text("'UNKNOWN'::possible_url_validation"),
-                autoincrement=False,
                 nullable=False,
+                server_default="UNKNOWN",
             )
         )
+
+    op.execute("""UPDATE "Urls" SET "isValidated"='VALIDATED'""")
 
     op.drop_table("ContactFormEntries")
     # ### end Alembic commands ###

@@ -43,7 +43,7 @@ TEST_SPLIT = (
     "members",
     "urls",
     "tags",
-    "accounts_and_support",
+    "account_and_support",
     "cli",
     "splash_ui",
     "home_ui",
