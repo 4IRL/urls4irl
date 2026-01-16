@@ -16,12 +16,6 @@ from tests.models_for_test import valid_user_1
 
 
 @pytest.fixture
-def app_with_server_name(app: Flask) -> Generator[Flask, None, None]:
-    app.config["SERVER_NAME"] = "localhost:5000"
-    yield app
-
-
-@pytest.fixture
 def register_first_user_without_email_validation(
     app: Flask,
 ) -> Generator[Tuple[dict[str, str | None], Users], None, None]:

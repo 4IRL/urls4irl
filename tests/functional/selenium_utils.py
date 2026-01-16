@@ -19,6 +19,7 @@ from selenium.webdriver.support import expected_conditions as EC
 
 
 from src.config import ConfigTest
+from src.utils.strings.html_identifiers import IDENTIFIERS
 from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as MP
@@ -541,7 +542,6 @@ def wait_for_modal_ready(browser, modal_selector, timeout=10):
                 if float(opacity) >= 1.0:
                     break
             elif "show" in classes:
-                print("Modal show class present")
                 break
 
             time.sleep(0.1)
@@ -1001,3 +1001,28 @@ def visit_terms_page(browser: WebDriver):
     assert terms_title
 
     assert terms_title.text == "Terms & Conditions"
+
+
+def visit_contact_us_page(browser: WebDriver):
+    wait_then_click_element(browser, HPL.CONTACT_BTN, time=3)
+    terms_title = wait_then_get_element(browser, HPL.CONTACT_US_HEADER)
+    assert terms_title
+
+    assert terms_title.text == IDENTIFIERS.CONTACT_US_PAGE
+
+
+def contact_form_entry(
+    browser: ChromeRemoteWebDriver,
+    subject: str,
+    content: str,
+):
+    wait_for_element_presence(browser, HPL.CONTACT_SUBJECT_INPUT)
+    wait_until_visible_css_selector(browser, HPL.CONTACT_SUBJECT_INPUT)
+
+    subject_input = wait_then_get_element(browser, HPL.CONTACT_SUBJECT_INPUT)
+    assert subject_input is not None
+    clear_then_send_keys(subject_input, subject)
+
+    content_input = wait_then_get_element(browser, HPL.CONTACT_CONTENT_INPUT)
+    assert content_input is not None
+    clear_then_send_keys(content_input, content)

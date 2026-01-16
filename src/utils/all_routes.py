@@ -49,6 +49,13 @@ class URL_ROUTES:
 class USER_ROUTES:
     _USERS = "users."
     LOGOUT = _USERS + "logout"
+    PRIVACY = _USERS + "privacy_policy"
+    TERMS = _USERS + "terms_and_conditions"
+
+
+class ACCOUNT_AND_SETTING_ROUTES:
+    _CONTACT = "contact."
+    CONTACT_US = _CONTACT + "contact_us"
 
 
 class UTUB_ROUTES:
@@ -70,6 +77,7 @@ class ROUTES:
     URLS = URL_ROUTES
     USERS = USER_ROUTES
     UTUBS = UTUB_ROUTES
+    ACCOUNT_AND_SETTINGS = ACCOUNT_AND_SETTING_ROUTES
 
 
 def generate_routes_js() -> dict[str, str]:

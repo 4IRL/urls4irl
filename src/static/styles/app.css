@@ -271,6 +271,13 @@ a {
     flex-direction: column;
 }
 
+.flex-center {
+    align-items: center;
+}
+
+.hidden {
+    display: none !important;
+}
 
 .p-in-1r {
     padding-inline: 1rem;
@@ -288,6 +295,9 @@ a {
     z-index: 9999;
 }
 
+.g-1-5r {
+    gap: 1.5rem;
+}
 
 @media (min-width: 768px) {
     .nav-bar-inner-item.home button {

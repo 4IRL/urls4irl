@@ -24,6 +24,7 @@ services:
       - POSTGRES_PASSWORD
       - REDIS_PASSWORD
       - NOTIFICATION_URL
+      - CONTACT_US_URL
     volumes:
       - app_logs:/app/volume
     command: ["bash", "startup-flask.sh"]
@@ -106,6 +107,8 @@ secrets:
     file: ./secrets/SECRET_KEY
   NOTIFICATION_URL:
     file: ./secrets/NOTIFICATION_URL
+  CONTACT_US_URL:
+    file: ./secrets/CONTACT_US_URL
   ACCESS_KEY:
     file: ./secrets/ACCESS_KEY
   SECRET_ACCESS_KEY:

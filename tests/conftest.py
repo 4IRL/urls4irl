@@ -43,6 +43,7 @@ TEST_SPLIT = (
     "members",
     "urls",
     "tags",
+    "account_and_support",
     "cli",
     "splash_ui",
     "home_ui",
@@ -933,3 +934,9 @@ def add_all_urls_and_users_to_each_utub_with_all_tags(
                         db.session.add(new_url_tag)
 
         db.session.commit()
+
+
+@pytest.fixture
+def app_with_server_name(app: Flask) -> Generator[Flask, None, None]:
+    app.config["SERVER_NAME"] = "localhost:5000"
+    yield app

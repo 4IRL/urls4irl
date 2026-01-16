@@ -49,8 +49,15 @@ echo "Unzipping backup file..."
 gunzip -c "$BACKUP_FILE" > "$TMP_FILE"
 
 echo "Modifying owner references in backup file..."
-sed -i "s/Owner: [^ ]*/Owner: $DB_USER/g" "$TMP_FILE"
-sed -i "s/OWNER TO [^ ]*/OWNER TO $DB_USER;/g" "$TMP_FILE"
+sed -i '' -E "s/Owner: [^ ]*/Owner: $DB_USER/g" "$TMP_FILE"
+sed -i '' -E "s/OWNER TO [^ ]*/OWNER TO $DB_USER;/g" "$TMP_FILE"
+
+echo "Removing CREATE DATABASE commands and connection directives..."
+sed -i '' '/\\connect/d' "$TMP_FILE"
+sed -i '' '/\\restrict/d' "$TMP_FILE"
+sed -i '' '/\\unrestrict/d' "$TMP_FILE"
+sed -i '' '/DROP DATABASE/d' "$TMP_FILE"
+sed -i '' '/CREATE DATABASE/d' "$TMP_FILE"
 
 # Export the password to avoid interactive prompts
 export PGPASSWORD="$DB_PASSWORD"

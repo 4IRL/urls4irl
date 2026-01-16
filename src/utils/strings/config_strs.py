@@ -28,3 +28,4 @@ class CONFIG_ENVS:
     X_FRAME_OPTIONS = "X-Frame-Options"
     REFERRER_POLICY = "Referrer-Policy"
     CROSS_ORIGIN_RESOURCE_POLICY = "Cross-Origin-Resource-Policy"
+    CONTACT_US_URL = "CONTACT_US_URL"

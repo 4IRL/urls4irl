@@ -48,7 +48,7 @@ environment_assets = Environment()
 limiter = Limiter(
     key_func=get_remote_address,
     default_limits=["20/second", "100/minute"],
-    application_limits=["2000/hour", "500/15minutes"],
+    application_limits=["20000/hour", "5000/15minutes"],
 )
 
 
@@ -75,10 +75,9 @@ def create_app(
 
     # Configure limiter with app-specific settings
     storage_options: Mapping = {"socket_connect_timeout": 30}
-    limiter._default_limits_exempt_when = lambda: True if testing else False
-    limiter._application_limits_exempt_when = lambda: True if testing else False
     limiter._storage_uri = app.config[CONFIG_ENVS.REDIS_URI]
     limiter._storage_options = storage_options
+    limiter.enabled = not testing
     limiter.init_app(app)
 
     if production or app.config.get(CONFIG_ENVS.DEV_SERVER, False):
@@ -102,29 +101,34 @@ def create_app(
         email_sender.in_production()
 
     from src.assets.routes import assets_bp
-    from src.splash.routes import splash
-    from src.utubs.routes import utubs
-    from src.users.routes import users
+    from src.contact.routes import contact
     from src.members.routes import members
+    from src.splash.routes import splash
     from src.urls.routes import urls
+    from src.users.routes import users
+    from src.utubs.routes import utubs
     from src.tags.url_tag_routes import utub_url_tags
     from src.tags.utub_tag_routes import utub_tags
-    from src.debug.routes import debug as debug_routes
 
     @app.context_processor
     def asset_processor():
         return {CONFIG_ENVS.ASSET_VERSION: app.config[CONFIG_ENVS.ASSET_VERSION]}
 
     app.register_blueprint(assets_bp)
-    app.register_blueprint(splash)
-    app.register_blueprint(utubs)
-    app.register_blueprint(users)
+    app.register_blueprint(contact)
     app.register_blueprint(members)
+    app.register_blueprint(splash)
     app.register_blueprint(urls)
+    app.register_blueprint(users)
+    app.register_blueprint(utubs)
     app.register_blueprint(utub_url_tags)
     app.register_blueprint(utub_tags)
+
     if not (testing or production):
+        from src.debug.routes import debug as debug_routes
+
         app.register_blueprint(debug_routes)
+
     register_mocks_db_cli(app)
     register_short_urls_cli(app)
     register_utils_cli(app)

@@ -6,7 +6,7 @@ from src.api_common.input_sanitization import sanitize_user_input
 from src.utils.constants import UTUB_CONSTANTS
 from src.utils.strings.form_strs import UTUB_FORM, UTUB_DESCRIPTION_FORM
 from src.utils.strings.utub_strs import UTUB_FAILURE
-from src.utils.string_field_v2 import StringFieldV2
+from src.utils.form_utils import StringFieldV2
 
 
 class UTubForm(FlaskForm):
