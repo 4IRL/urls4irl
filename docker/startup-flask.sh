@@ -22,7 +22,7 @@ load_secrets() {
 }
 
 if [[ "$PRODUCTION" == "true" || "$DEV_SERVER" == "true" ]]; then
-    echo "\nLoading production environment...\n"
+    echo -e "\nLoading production environment...\n"
     export ASSET_VERSION=$(date +%s)
     load_secrets
 fi

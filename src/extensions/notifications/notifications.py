@@ -5,47 +5,55 @@ import logging
 
 from flask import Flask
 
-from src.app_logger import safe_get_request_id
+from src.app_logger import error_log, safe_add_log, safe_get_request_id, warning_log
 from src.utils.strings.config_strs import CONFIG_ENVS
 
 
 class NotificationType(IntEnum):
-    GENERAL_NOTIFICATIONS = 0
+    THREADED_NOTIFICATIONS = 0
     CONTACT_FORM = 1
 
 
 def _send_msg(
-    url: str, msg: str, timeout: int, request_id: str
+    url: str, msg: str, timeout: int, request_id: str, notif_type: NotificationType
 ) -> requests.Response | None:
     payload = {"content": msg}
     headers = {"Content-Type": "application/json"}
     response = None
+
+    if notif_type == NotificationType.THREADED_NOTIFICATIONS:
+        info_log = logging.info
+        warn_log = logging.warning
+        prefix = f"[{request_id}] "
+    else:
+        info_log = safe_add_log
+        warn_log = warning_log
+        prefix = ""
+
     try:
         response = requests.post(
             url=url, json=payload, headers=headers, timeout=timeout
         )
-        logging.info(
-            f"[{request_id}] Successfully sent notification: {response.status_code=}"
-        )
+        info_log(f"{prefix}Successfully sent notification: {response.status_code=}")
         return response
     except requests.exceptions.RequestException as e:
         if response:
-            logging.warning(
-                f"[{request_id}] Failed sending notification: {response.status_code=} | {e}"
+            warn_log(
+                f"{prefix}Failed sending notification: {response.status_code=} | {e}"
             )
             return
-        logging.warning(
-            f"[{request_id}] Received no response from notification request after RequestException | {e}"
+        warn_log(
+            f"{prefix}Received no response from notification request after RequestException | {e}"
         )
         return
     except Exception as e:
         if response:
-            logging.warning(
-                f"[{request_id}] Failed sending notification: {response.status_code=} | {e}"
+            warn_log(
+                f"{prefix}Failed sending notification: {response.status_code=} | {e}"
             )
             return
-        logging.warning(
-            f"[{request_id}] Received no response from notification request after Exception | {e}"
+        warn_log(
+            f"{prefix}Received no response from notification request after Exception | {e}"
         )
         return
 
@@ -95,7 +103,13 @@ class NotificationSender:
         request_id = safe_get_request_id()
         final_msg = self._modify_msg_if_not_in_production(msg)
 
-        args = [url, final_msg, self.timeout, request_id]
+        args = [
+            url,
+            final_msg,
+            self.timeout,
+            request_id,
+            NotificationType.THREADED_NOTIFICATIONS,
+        ]
 
         thread = threading.Thread(target=_send_msg, args=args, daemon=True)
         thread.start()
@@ -124,9 +138,27 @@ class NotificationSender:
 
         final_msg = self._modify_msg_if_not_in_production(msg)
 
-        response = _send_msg(url, final_msg, self.timeout, request_id)
+        response = _send_msg(
+            url,
+            final_msg,
+            self.timeout,
+            request_id,
+            notif_type=NotificationType.CONTACT_FORM,
+        )
 
         if not response or response.status_code != 204 or response.text:
+            log_msg = "Could not send contact form notification."
+
+            if not response or not isinstance(response, requests.Response):
+                log_msg += f" | {type(response)=}"
+                error_log(log_msg)
+                return False
+
+            log_msg += f" | {response.status_code=}"
+            log_msg += f" | {response.text=}"
+
+            error_log(log_msg)
             return False
 
+        safe_add_log("Sent contact form notification.")
         return True

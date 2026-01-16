@@ -304,11 +304,13 @@ def init_app(app: Flask, show_ui_test_logs: bool = False):
     werkzeug_logger = logging.getLogger("werkzeug")
     werkzeug_logger.disabled = True
 
-    if not app.config.get("PRODUCTION", False):
-        return
+    is_production = app.config.get(CONFIG_ENVS.PRODUCTION, False)
+    is_dev_server = app.config.get(CONFIG_ENVS.DEV_SERVER, False)
 
-    gunicorn_access_logger = logging.getLogger("gunicorn.access")
-    gunicorn_access_logger.disabled = True
+    if is_production or is_dev_server:
+        gunicorn_access_logger = logging.getLogger("gunicorn.access")
+        gunicorn_access_logger.disabled = True
+        return
 
 
 def safe_get_request_id() -> str:
