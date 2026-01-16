@@ -1,3 +1,4 @@
+from enum import IntEnum
 import requests
 import threading
 import logging
@@ -8,7 +9,14 @@ from src.app_logger import safe_get_request_id
 from src.utils.strings.config_strs import CONFIG_ENVS
 
 
-def _send_msg(url: str, msg: str, timeout: int, request_id: str, testing: bool = False):
+class NotificationType(IntEnum):
+    GENERAL_NOTIFICATIONS = 0
+    CONTACT_FORM = 1
+
+
+def _send_msg(
+    url: str, msg: str, timeout: int, request_id: str
+) -> requests.Response | None:
     payload = {"content": msg}
     headers = {"Content-Type": "application/json"}
     response = None
@@ -19,6 +27,7 @@ def _send_msg(url: str, msg: str, timeout: int, request_id: str, testing: bool =
         logging.info(
             f"[{request_id}] Successfully sent notification: {response.status_code=}"
         )
+        return response
     except requests.exceptions.RequestException as e:
         if response:
             logging.warning(
@@ -28,6 +37,7 @@ def _send_msg(url: str, msg: str, timeout: int, request_id: str, testing: bool =
         logging.warning(
             f"[{request_id}] Received no response from notification request after RequestException | {e}"
         )
+        return
     except Exception as e:
         if response:
             logging.warning(
@@ -37,6 +47,7 @@ def _send_msg(url: str, msg: str, timeout: int, request_id: str, testing: bool =
         logging.warning(
             f"[{request_id}] Received no response from notification request after Exception | {e}"
         )
+        return
 
 
 class NotificationSender:
@@ -45,6 +56,7 @@ class NotificationSender:
         self._in_production = False
         self._in_development = False
         self._notification_url = ""
+        self._contact_form_url = ""
         self.timeout = 20
 
     def init_app(self, app: Flask) -> None:
@@ -53,12 +65,23 @@ class NotificationSender:
         is_production: bool = app.config.get("PRODUCTION", False)
         is_ui_testing: bool = app.config.get("UI_TESTING", False)
         self._notification_url = app.config.get(CONFIG_ENVS.NOTIFICATION_URL, "")
+        self._contact_form_url = app.config.get(CONFIG_ENVS.CONTACT_US_URL, "")
         self._is_testing = is_testing
         self._in_development = not is_testing and not is_production
         self._in_production = (
             is_production and not is_testing and not self._in_development
         )
         self._is_ui_testing = is_ui_testing
+
+    def _modify_msg_if_not_in_production(self, msg: str) -> str:
+        if self._in_development or not self._in_production:
+            return (
+                "\n--------------- TESTING NOTIFICATION - DISREGARD ---------------\n"
+                + msg
+                + "\n--------------- TESTING NOTIFICATION - DISREGARD ---------------"
+            )
+
+        return msg
 
     def send_notification(
         self,
@@ -70,14 +93,40 @@ class NotificationSender:
 
         url = self._notification_url
         request_id = safe_get_request_id()
-        if self._in_development or not self._in_production:
-            msg = (
-                "\n--------------- TESTING NOTIFICATION - DISREGARD---------------\n"
-                + msg
-                + "\n--------------- TESTING NOTIFICATION - DISREGARD---------------"
-            )
+        final_msg = self._modify_msg_if_not_in_production(msg)
 
-        args = [url, msg, self.timeout, request_id, self._is_testing]
+        args = [url, final_msg, self.timeout, request_id]
 
         thread = threading.Thread(target=_send_msg, args=args, daemon=True)
         thread.start()
+
+    def send_contact_form_details(
+        self, subject: str, content: str, contact_id: int, username: str | None
+    ) -> bool:
+        if self._is_ui_testing:
+            return True
+
+        url = self._contact_form_url
+        request_id = safe_get_request_id()
+        head_and_tail = ("=-=" * 15) + "\n"
+        msg = (
+            f"{head_and_tail}"
+            + f"**SUBJECT**\n{subject}\n\n**CONTENT**\n{content}\n"
+            + f"\n----------\n*Contact ID*: {contact_id}\n"
+        )
+
+        msg += (
+            f"*Username*: {username}\n"
+            if username is not None
+            else "*Anonymous User*\n"
+        )
+        msg += f"{head_and_tail}"
+
+        final_msg = self._modify_msg_if_not_in_production(msg)
+
+        response = _send_msg(url, final_msg, self.timeout, request_id)
+
+        if not response or response.status_code != 204 or response.text:
+            return False
+
+        return True

@@ -1,6 +1,6 @@
 <div id="NavbarDropdownsHome" class="navbar-nav">
     {% include 'components/nav/logged_in_as.html' %}
-    {% if not is_privacy_or_terms %}
+    {% if not is_privacy_or_terms and not is_contact_form %}
     <button class="nav-item hidden home" id="toUTubs">
         <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-houses-fill"
             viewBox="0 0 16 16">

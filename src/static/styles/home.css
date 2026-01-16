@@ -231,10 +231,6 @@ button {
     align-items: flex-start;
 }
 
-.flex-center {
-    align-items: center;
-}
-
 .wrap {
     flex-wrap: wrap;
 }
@@ -363,10 +359,6 @@ button {
 
 .visible-flex {
     display: flex !important;
-}
-
-.hidden {
-    display: none !important;
 }
 
 .invalid-field {

@@ -1,0 +1,49 @@
+main {
+    background: var(--defaultPageBackgroundColor);
+    padding-bottom: 1.5rem;
+}
+
+label,
+h1 {
+    color: var(--splashGreen);
+}
+
+label {
+    font-size: 1.5rem;
+}
+
+form {
+    width: 75%;
+}
+
+textarea#Content {
+    min-height: 20rem;
+}
+
+.invalid-feedback {
+    font-size: 1rem;
+    font-weight: 650;
+}
+
+.is-invalid {
+    border-width: 0.15rem;
+}
+
+.collapsing#NavbarNavDropdown,
+.show#NavbarNavDropdown {
+    z-index: 9999;
+}
+
+#backHomeIcon {
+    transform: rotate(90deg);
+}
+
+#flasher {
+    width: 75%;
+    background-color: var(--selectedUTubColorBackground);
+    color: var(--deckSelectionGreen);
+    text-align: center;
+    border-radius: 4rem;
+    padding: 0.5rem;
+}
+

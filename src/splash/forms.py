@@ -5,7 +5,7 @@ from wtforms.validators import Length, Email, EqualTo, InputRequired, Validation
 from src.api_common.input_sanitization import sanitize_user_input
 from src.models.users import Users
 from src.utils.constants import USER_CONSTANTS
-from src.utils.string_field_v2 import StringFieldV2
+from src.utils.form_utils import StringFieldV2
 from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 from src.utils.strings.splash_form_strs import REGISTER_LOGIN_FORM, REGISTER_FORM
 from src.utils.strings.user_strs import USER_FAILURE

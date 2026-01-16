@@ -40,6 +40,8 @@ on:
         required: true
       NOTIFICATION_URL:
         required: true
+      CONTACT_US_URL:
+        required: true
       CF_R2_ACCESS_KEY:
         required: true
       CF_R2_SECRET_KEY:
@@ -106,6 +108,7 @@ jobs:
               echo "${{ secrets.MAILJET_SECRET_KEY }}" > ./secrets/MAILJET_SECRET_KEY;
               echo "${{ secrets.BASE_EMAIL }}" > ./secrets/BASE_EMAIL;
               echo "${{ secrets.NOTIFICATION_URL }}" > ./secrets/NOTIFICATION_URL;
+              echo "${{ secrets.CONTACT_US_URL }}" > ./secrets/CONTACT_US_URL;
               echo "${{ secrets.CF_R2_ACCESS_KEY }}" > ./secrets/ACCESS_KEY;
               echo "${{ secrets.CF_R2_SECRET_KEY }}" > ./secrets/SECRET_ACCESS_KEY;
               echo "${{ secrets.CF_R2_ENDPOINT }}" > ./secrets/R2_ENDPOINT;

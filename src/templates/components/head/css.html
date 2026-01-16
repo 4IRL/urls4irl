@@ -3,6 +3,8 @@
 
 {% if is_privacy_or_terms %} 
 <link rel="stylesheet" href="/static/styles/privacy_terms.css?v={{ ASSET_VERSION }}">
+{% elif is_contact_form %} 
+<link rel="stylesheet" href="/static/styles/contact_form.css?v={{ ASSET_VERSION }}">
 {% elif current_user.is_authenticated and current_user.email_validated %}
 <link rel="stylesheet" href="/static/styles/home.css?v={{ ASSET_VERSION }}">
 {% else %}

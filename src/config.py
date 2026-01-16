@@ -18,6 +18,7 @@ IS_DOCKER = environ.get(ENV.DOCKER, default="false").lower() == "true"
 IS_PRODUCTION = environ.get(ENV.PRODUCTION, default="false").lower() == "true"
 IS_DEV_SERVER = environ.get(ENV.DEV_SERVER, default="false").lower() == "true"
 NOTIFICATION_URL = environ.get(ENV.NOTIFICATION_URL, default="")
+CONTACT_US_URL = environ.get(ENV.CONTACT_US_URL, default="")
 
 POSTGRES_USER = environ.get(ENV.POSTGRES_USER)
 POSTGRES_PASSWORD = environ.get(ENV.POSTGRES_PASSWORD)
@@ -115,6 +116,7 @@ class Config:
     DEV_SERVER = IS_DEV_SERVER
     NOTIFICATION_URL = NOTIFICATION_URL
     LOG_DIR = LOG_DIR
+    CONTACT_US_URL = CONTACT_US_URL
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:

@@ -38,6 +38,7 @@ jobs:
             BASE_EMAIL: ${{ secrets.BASE_EMAIL_INF }}
             SECRET_KEY: ${{ secrets.PROD_SECRET_KEY }}
             NOTIFICATION_URL: ${{ secrets.NOTIFICATION_URL_INF }}
+            CONTACT_US_URL: ${{ secrets.CONTACT_US_URL_INF }}
             CF_R2_ACCESS_KEY: ${{ secrets.CF_ACCESS_KEY_ID_INF }}
             CF_R2_SECRET_KEY: ${{ secrets.CF_SECRET_ACCESS_KEY_INF }}
             CF_R2_ENDPOINT: ${{ secrets.S3_ENDPOINT_INF }}

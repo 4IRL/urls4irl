@@ -4,16 +4,25 @@ class GenericPageLocator:
     NAVBAR_TOGGLER = ".navbar-toggler"
     NAVBAR_DROPDOWN = "#NavbarNavDropdown"
     U4I_LOGO = ".navbar-brand"
+    SUBHEADER_INVALID_FEEDBACK = ".invalid-feedback"
 
     # Footer
     PRIVACY_BTN = "#PrivacyBtn"
     TERMS_BTN = "#TermsBtn"
+    CONTACT_BTN = "#ContactBtn"
 
     # Privacy Terms Pages
     PRIVACY_HEADER = "#PrivacyTitle"
     TERMS_HEADER = "#TermsTitle"
     BACK_HOME_BTN = "#backHomeBtn"
     BACK_SPLASH_BTN = "#backToSplashBtn"
+
+    # Contact Us Page
+    CONTACT_US_HEADER = "#ContactTitle"
+    CONTACT_SUBJECT_INPUT = "#Subject"
+    CONTACT_CONTENT_INPUT = "#Content"
+    CONTACT_SUBMIT = "#submit"
+    FLASH_ELEMENT = "#flasher"
 
 
 class HomePageLocators(GenericPageLocator):
@@ -216,7 +225,6 @@ class SplashPageLocators(GenericPageLocator):
     INPUT_PASSWORD_CONFIRM = "#confirmPassword"
     BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"
     HEADER_VALIDATE_EMAIL = ".validate-email-title"
-    SUBHEADER_INVALID_FEEDBACK = ".invalid-feedback"
 
     # Login
     BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"

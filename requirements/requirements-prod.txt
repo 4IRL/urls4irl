@@ -45,6 +45,9 @@ requests==2.32.4
 rich==13.7.0
 SQLAlchemy==1.4.31
 typing_extensions==4.9.0
+ua-parser[regex]==1.0.1
+ua-parser-builtins==202601
+ua-parser-rs==0.1.4
 urllib3==2.5.0
 webassets==2.0
 Werkzeug==3.0.6

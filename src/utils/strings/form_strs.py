@@ -14,6 +14,10 @@ from src.utils.strings.utub_strs import UTUB_NAME
 CSRF_TOKEN = "csrf_token"
 MAY_HAVE_ALREADY_BEEN_DELETED = "This item may already have been deleted."
 
+# Contact us Form
+SUBJECT = "Subject"
+CONTENT = "Content"
+
 
 class GENERAL_FORM:
     CSRF_TOKEN = CSRF_TOKEN
@@ -43,3 +47,8 @@ class UTUB_FORM(GENERAL_FORM):
 class UTUB_DESCRIPTION_FORM(GENERAL_FORM):
     UTUB_DESCRIPTION = UTUB_DESCRIPTION
     UTUB_DESCRIPTION_FOR_FORM = UTUB_DESCRIPTION
+
+
+class CONTACT_FORM(GENERAL_FORM):
+    SUBJECT = SUBJECT
+    CONTENT = CONTENT
