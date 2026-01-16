@@ -92,7 +92,7 @@ function setMobileUIWhenMemberDeckSelected() {
   $(".panel#leftPanel").removeClass("hidden");
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#UTubDeck").addClass("hidden");
-  $(".deck#TagDeck").addClass("hidden");
+  $(".deck#TagDeck").removeClass("visible-flex").addClass("hidden");
 
   $("button#toUTubs").removeClass("hidden");
   $("button#toTags").removeClass("hidden");
@@ -108,7 +108,7 @@ function setMobileUIWhenTagDeckSelected() {
   $(".panel#leftPanel").removeClass("hidden");
   $(".panel#centerPanel").removeClass("visible-flex");
   $(".deck#UTubDeck").addClass("hidden");
-  $(".deck#MemberDeck").addClass("hidden");
+  $(".deck#MemberDeck").removeClass("visible-flex").addClass("hidden");
 
   $("button#toUTubs").removeClass("hidden");
   $("button#toTags").addClass("hidden");
