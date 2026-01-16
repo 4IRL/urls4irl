@@ -1,6 +1,7 @@
 from datetime import datetime
 import logging
 import os
+import re
 import sys
 import time
 from typing import Optional
@@ -13,6 +14,8 @@ from src.utils.strings.config_strs import CONFIG_ENVS
 
 # ASCII Font color
 END = "\033[0m"
+
+REQUEST_ID_PATTERN = re.compile(r"[^a-zA-Z0-9\-_]")
 
 
 class RequestInfoFilter(logging.Filter):
@@ -232,12 +235,33 @@ def log_with_detailed_info(
         temp_logger.removeHandler(temp_file_handler)
 
 
+def sanitize_request_id(request_id: Optional[str], max_length: int = 12) -> str:
+    """
+    Sanitize request ID to prevent log injection.
+
+    Returns a safe request ID or generates a new one if invalid.
+    """
+    if not request_id:
+        return generate_request_id()
+
+    # Remove any characters that aren't alphanumeric, hyphens, or underscores
+    sanitized = REQUEST_ID_PATTERN.sub("", request_id)
+
+    # Enforce length limits
+    sanitized = sanitized[:max_length]
+
+    # If sanitization left us with nothing useful, generate a new one
+    if len(sanitized) < max_length:
+        return generate_request_id()
+
+    return sanitized
+
+
 def setup_before_after_request_logging(app: Flask, show_ui_flask_logs: bool = False):
     @app.before_request
     def before_request():
-        g.request_id = request.headers.get(
-            CONFIG_ENVS.X_REQUEST_ID, generate_request_id()
-        )
+        request_id = request.headers.get(CONFIG_ENVS.X_REQUEST_ID, None)
+        g.request_id = sanitize_request_id(request_id)
         g.request_start_time = time.time()
         g.log_messages = []
 
