@@ -1,10 +1,13 @@
 from datetime import datetime
+from flask_limiter import Limiter
 from flask_session.redis.redis import RedisSessionInterface
 from flask_sqlalchemy.extension import SQLAlchemy
 
 from flask import Flask, current_app
 from flask.cli import AppGroup, with_appcontext
 from sqlalchemy.engine.base import Engine
+
+from src.utils.strings.config_strs import CONFIG_ENVS
 
 HELP_SUMMARY_UTILS = """General CLI Utils for U4I."""
 
@@ -50,6 +53,37 @@ def starting_log_for_u4i():
         if has_db_connection
         else "PostgreSQL instance not found"
     )
+
+
+@utils_cli.command("reset-limiter", help="Reset rate limiter for development")
+@with_appcontext
+def reset_limiter():
+    # Cannot reset in production
+    if current_app.config.get(CONFIG_ENVS.PRODUCTION, False):
+        current_app.raw_logger.info("Cannot reset rate limits in production")  # type: ignore
+        return
+
+    limiter_extensions: set[Limiter] | None = current_app.extensions.get(
+        "limiter", None
+    )
+
+    def _get_limiter(s: set | None) -> Limiter | None:
+        if not s:
+            return
+
+        for val in s:
+            if isinstance(val, Limiter):
+                return val
+        return
+
+    limiter = _get_limiter(limiter_extensions)
+
+    if not isinstance(limiter, Limiter):
+        current_app.raw_logger.info("Could not find a valid limiter")  # type: ignore
+        return
+
+    limiter.reset()
+    current_app.raw_logger.info("Reset limits!")  # type: ignore
 
 
 def register_utils_cli(app: Flask):

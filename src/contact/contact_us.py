@@ -7,9 +7,12 @@ from src.extensions.extension_utils import safe_get_notif_sender
 from src.models.contact_form_entries import ContactFormEntries
 
 
-def load_contact_us_page(contact_form: ContactForm) -> str:
+def load_contact_us_page(contact_form: ContactForm, contacted: bool = False) -> str:
     return render_template(
-        "pages/contact_us.html", contact_form=contact_form, is_contact_form=True
+        "pages/contact_us.html",
+        contact_form=contact_form,
+        is_contact_form=True,
+        contacted=contacted,
     )
 
 
@@ -43,4 +46,4 @@ def validate_and_contact(contact_form: ContactForm) -> str:
         db.session.commit()
 
     flash("Sent! Thanks for reaching out.")
-    return load_contact_us_page(contact_form)
+    return load_contact_us_page(contact_form, contacted=True)

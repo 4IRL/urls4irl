@@ -20,6 +20,7 @@ from tests.functional.selenium_utils import (
     visit_privacy_page,
     visit_terms_page,
     wait_then_click_element,
+    wait_then_get_element,
     wait_then_get_elements,
     wait_until_visible_css_selector,
 )
@@ -238,3 +239,27 @@ def test_submit_empty_fields(
     assert len(error_elems) == len(contact_form_fields) - len(
         [val for val in contact_form_fields if bool(val)]
     )
+
+
+def test_contact_form_button_disables_on_submit(
+    browser: ChromeRemoteWebDriver,
+    create_test_users,
+    provide_app: Flask,
+):
+    """
+    GIVEN a user on the contact us page
+    WHEN they submit an entry in the form with an empty field
+    THEN verify that proper error response is shown
+    """
+    app = provide_app
+    user_id = 1
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+
+    visit_contact_us_page(browser)
+    contact_form_entry(browser=browser, subject="Subject" * 2, content="Content" * 10)
+    wait_then_click_element(browser, HPL.CONTACT_SUBMIT)
+
+    submit_btn = wait_then_get_element(browser, HPL.CONTACT_SUBMIT)
+    assert submit_btn
+    assert submit_btn.get_property("disabled")

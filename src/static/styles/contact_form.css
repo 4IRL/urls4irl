@@ -8,6 +8,21 @@ h1 {
     color: var(--splashGreen);
 }
 
+input[type="submit"] {
+    background-color: var(--splashGreen);
+    color: black;
+}
+
+
+h4 {
+    color: var(--grayBadgeSelection);
+    width: 75%;
+    text-align: center;
+    text-wrap: balance;
+    max-width: 40em;
+    letter-spacing: 0.02em;
+}
+
 label {
     font-size: 1.5rem;
 }

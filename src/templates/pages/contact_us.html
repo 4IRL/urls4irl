@@ -9,6 +9,7 @@
         </ul>
       {% endif %}
     {% endwith %}
+    <h4>Feature ideas, bugs, compliments? Send it our way!</h4>
 
     <form id="ContactForm" method="POST" action="/contact" class="flex-column g-1-5r" novalidate>
         {{ contact_form.hidden_tag() }}
@@ -44,10 +45,55 @@
             </div>
         </fieldset>
         <div>
+            {% if contacted %}
+            {{ contact_form.submit(class="btn btn-success login-register-form-group col-12 login-register-buttons", data_sent="true")}}
+            {% else %}
             {{ contact_form.submit(class="btn btn-success login-register-form-group col-12 login-register-buttons")}}
+            {% endif %}
         </div>
     </form>
 
 </main>
+
+<script nonce="{{ nonce }}">
+    (function($) {
+        const $form = $('form');
+
+        if ($form.length) {
+            $form.on("submit", function(e) {
+                const $submitBtn = $(this).find('input[type="submit"]');
+                $submitBtn.prop('disabled', true);
+                $submitBtn.val("Sending...");
+            });
+        }
+    })(jQuery);
+</script>
+
+{% if contacted %}
+<script nonce="{{ nonce }}">
+    (function($) {
+        const $submitBtn = $('input[data-sent="true"]');
+
+        if ($submitBtn.length) {
+            $submitBtn.prop('disabled', true);
+            const originalValue = $submitBtn.val();
+            let timeLeft = 5;
+            
+            $submitBtn.val(`Submitted! Please wait ${timeLeft}s...`);
+            
+            const interval = setInterval(function() {
+                timeLeft--;
+                if (timeLeft > 0) {
+                    $submitBtn.val(`Submitted! Please wait ${timeLeft}s...`);
+                } else {
+                    clearInterval(interval);
+                    $submitBtn.prop('disabled', false);
+                    $submitBtn.val(originalValue);
+                }
+            }, 1000);
+        }
+    })(jQuery);
+</script>
+{% endif %}
 
 {% endblock %}
