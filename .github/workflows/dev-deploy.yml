@@ -6,10 +6,6 @@ permissions:
 
 on:
   workflow_call:
-    inputs:
-      branch_ref:
-        required: true
-        type: string
     secrets:
       DEV_SSH_HOST:
         required: true
@@ -76,6 +72,7 @@ jobs:
             uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
             with:
               ref: main
+              persist-credentials: false
 
           - name: SCP Compose File Into Development Server
             run: |
