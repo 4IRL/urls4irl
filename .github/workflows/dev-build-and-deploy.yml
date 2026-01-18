@@ -14,6 +14,7 @@ jobs:
         name: 'CD Dev - Build'
         uses: ./.github/workflows/dev-build.yml
         permissions:
+            contents: read
             packages: write
 
     deploy-dev:
