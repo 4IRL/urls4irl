@@ -10,7 +10,6 @@ from alembic import op
 import sqlalchemy as sa
 from sqlalchemy.dialects.postgresql import ENUM
 
-
 # revision identifiers, used by Alembic.
 revision = "5895ca590d75"
 down_revision = "799cc1c01a1c"

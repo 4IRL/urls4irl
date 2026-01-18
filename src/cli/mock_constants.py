@@ -1,6 +1,5 @@
 from src.utils.constants import URL_CONSTANTS
 
-
 TEST_USER_COUNT = 5
 USERNAME_BASE = "u4i_test"
 EMAIL_SUFFIX = "@urls4irl.app"
