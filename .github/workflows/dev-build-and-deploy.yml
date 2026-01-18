@@ -23,8 +23,6 @@ jobs:
         name: 'CD Dev - Deploy'
         uses: ./.github/workflows/dev-deploy.yml
         permissions: read-all
-        with:
-            branch_ref: ${{ github.ref }}
         secrets:
             DEV_SSH_HOST: ${{ secrets.DEV_SSH_HOST }}
             DEV_SSH_USERNAME: ${{ secrets.DEV_SSH_USERNAME }}
@@ -47,8 +45,6 @@ jobs:
         name: 'CD Dev - Deploy 2'
         uses: ./.github/workflows/dev-deploy-2.yml
         permissions: read-all
-        with:
-            branch_ref: ${{ github.ref }}
         secrets:
             DEV_SSH_HOST: ${{ secrets.DEV_SSH_HOST_2 }}
             DEV_SSH_USERNAME: ${{ secrets.DEV_SSH_USERNAME_2 }}

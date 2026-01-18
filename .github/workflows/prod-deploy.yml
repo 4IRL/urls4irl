@@ -6,10 +6,6 @@ permissions:
 
 on:
   workflow_call:
-    inputs:
-      branch_ref:
-        required: true
-        type: string
     secrets:
       PROD_SSH_HOST:
         required: true
@@ -87,7 +83,8 @@ jobs:
           - name: Checkout code
             uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
             with:
-              ref: ${{ inputs.branch_ref }}
+              ref: main
+              persist-credentials: false
 
           - name: SCP Compose File Into Production Server
             run: |
