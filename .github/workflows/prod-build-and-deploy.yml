@@ -12,6 +12,7 @@ jobs:
         name: 'CD Prod - Build'
         uses: ./.github/workflows/prod-build.yml
         permissions:
+            contents: read
             packages: write
 
     deploy-prod:
