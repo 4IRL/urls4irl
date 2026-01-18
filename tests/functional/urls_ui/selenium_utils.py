@@ -104,8 +104,7 @@ class ClipboardMockHelper:
 
     def setup_clipboard_mock(self):
         """Setup a comprehensive clipboard mock with logging and verification"""
-        self.driver.execute_script(
-            """
+        self.driver.execute_script("""
             // Enhanced mock for headless environments
             window.mockClipboard = {
                 data: '',
@@ -310,14 +309,12 @@ class ClipboardMockHelper:
             };
             console.log('Enhanced headless clipboard mock setup complete');
             return true;
-        """
-        )
+        """)
 
     def setup_clipboard_failure(self):
         """Setup clipboard to fail on write operations"""
         self.setup_clipboard_mock()
-        self.driver.execute_script(
-            """
+        self.driver.execute_script("""
             window.mockClipboard.setWriteFailure({
                 shouldFail: true,
                 failureType: 'permission',
@@ -329,24 +326,20 @@ class ClipboardMockHelper:
                 shouldFail: true,
                 failureRate: 0
             });
-        """
-        )
+        """)
         return True
 
     def wait_for_async_clipboard(self, timeout=5):
         """Wait for async clipboard operations to complete in headless"""
-        self.driver.execute_script(
-            """
+        self.driver.execute_script("""
             return new Promise(function(resolve) {
                 setTimeout(resolve, 100);
             });
-        """
-        )
+        """)
 
     def verify_mock_setup(self):
         """Verify the mock was set up correctly"""
-        result = self.driver.execute_script(
-            """
+        result = self.driver.execute_script("""
             return {
                 hasMockClipboard: typeof window.mockClipboard !== 'undefined',
                 hasNavigatorClipboard: typeof navigator.clipboard !== 'undefined',
@@ -355,8 +348,7 @@ class ClipboardMockHelper:
                 hasFailureConfig: typeof window.mockClipboard.failureConfig !== 'undefined',
                 mockStats: window.mockClipboard ? window.mockClipboard.getStats() : null
             };
-        """
-        )
+        """)
         return result["hasMockClipboard"] and result["hasNavigatorClipboard"]
 
     def test_mock_directly(self, test_text="Hello Mock Test"):
@@ -375,15 +367,13 @@ class ClipboardMockHelper:
         )
 
         # Test readText
-        read_result = self.driver.execute_script(
-            """
+        read_result = self.driver.execute_script("""
             return navigator.clipboard.readText().then(function(text) {
                 return {success: true, text: text, error: null};
             }).catch(function(err) {
                 return {success: false, text: null, error: err.toString()};
             });
-        """
-        )
+        """)
         return write_result and read_result and read_result.get("text") == test_text
 
     def get_mock_stats(self):
@@ -396,26 +386,22 @@ class ClipboardMockHelper:
 
     def reset_mock(self):
         """Reset the mock to initial state"""
-        self.driver.execute_script(
-            """
+        self.driver.execute_script("""
             window.mockClipboard.data = '';
             window.mockClipboard.writeCount = 0;
             window.mockClipboard.readCount = 0;
             window.mockClipboard.lastWriteTime = null;
             window.mockClipboard.lastReadTime = null;
             window.mockClipboard.errors = [];
-        """
-        )
+        """)
 
     def cleanup_mock(self):
         """Restore original clipboard functionality"""
-        self.driver.execute_script(
-            """
+        self.driver.execute_script("""
             if (window.originalClipboard) {
                 navigator.clipboard = window.originalClipboard;
             }
             if (window.originalExecCommand) {
                 document.execCommand = window.originalExecCommand;
             }
-        """
-        )
+        """)

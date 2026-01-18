@@ -30,7 +30,6 @@ import re
 import ada_url
 from flask import Flask
 
-
 if __name__ == "__main__":
     # TODO: Change imports when running as standalone module
     from utils.strings.url_validation_strs import URL_VALIDATION as VALIDATION_STRS

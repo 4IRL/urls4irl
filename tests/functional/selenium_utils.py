@@ -887,8 +887,7 @@ def wait_for_tooltip_with_hover_retry(
 
 
 def invalidate_csrf_token_on_page(browser: WebDriver):
-    browser.execute_script(
-        """
+    browser.execute_script("""
     $.ajaxSetup({
         beforeSend: function (xhr, settings) {
           if (
@@ -900,13 +899,11 @@ def invalidate_csrf_token_on_page(browser: WebDriver):
           return true;
         }
     });
-    """
-    )
+    """)
 
 
 def add_forced_rate_limit_header(browser: WebDriver):
-    browser.execute_script(
-        """
+    browser.execute_script("""
     (function() {
         var settings = $.ajaxSettings;
         var oldBeforeSend = settings.beforeSend;
@@ -923,8 +920,7 @@ def add_forced_rate_limit_header(browser: WebDriver):
             }
         });
     })();
-    """
-    )
+    """)
 
 
 def modify_navigational_link_for_rate_limit(browser: WebDriver, element_id: str):

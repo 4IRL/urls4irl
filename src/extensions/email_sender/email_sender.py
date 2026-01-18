@@ -11,7 +11,6 @@ from src.utils.strings.json_strs import STD_JSON_RESPONSE
 from src.utils.strings.email_validation_strs import EMAILS
 from src.utils.strings.config_strs import CONFIG_ENVS
 
-
 # Standard response for JSON messages
 STD_JSON = STD_JSON_RESPONSE
 

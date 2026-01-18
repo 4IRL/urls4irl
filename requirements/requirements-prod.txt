@@ -1,7 +1,7 @@
 ada-url==1.26.0
 alembic==1.13.2
 async-timeout==4.0.3
-blinker==1.6.2
+blinker==1.9.0
 cachelib==0.6.0
 certifi==2024.7.4
 charset-normalizer==2.0.12
@@ -9,7 +9,7 @@ click==8.1.3
 Deprecated==1.2.14
 dnspython==2.6.1
 email-validator==1.1.3
-Flask==2.3.2
+Flask==3.1.2
 Flask-Assets==2.1.0
 Flask-Limiter==3.5.0
 Flask-Login==0.6.3
@@ -21,7 +21,7 @@ greenlet==2.0.2
 gunicorn==23.0.0
 idna==3.7
 importlib-resources==5.6.0
-itsdangerous==2.1.2
+itsdangerous==2.2.0
 Jinja2==3.1.6
 jsmin==3.0.1
 limits==3.7.0
@@ -48,8 +48,8 @@ typing_extensions==4.9.0
 ua-parser[regex]==1.0.1
 ua-parser-builtins==202601
 ua-parser-rs==0.1.4
-urllib3==2.5.0
+urllib3==2.6.3
 webassets==2.0
-Werkzeug==3.0.6
+Werkzeug==3.1.5
 wrapt==1.15.0
 WTForms==3.0.1
