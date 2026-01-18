@@ -40,7 +40,9 @@ function createGoToURLIcon(urlString) {
       $(document).off("keyup.accessURL");
     });
 
-  const btn = $(document.createElement("button")).append(goToUrlOuterIconSvg);
+  const btn = $(document.createElement("button"))
+    .append(goToUrlOuterIconSvg)
+    .addClass("self-start");
 
   return btn;
 }
