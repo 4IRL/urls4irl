@@ -260,6 +260,8 @@ def test_contact_form_button_disables_on_submit(
     contact_form_entry(browser=browser, subject="Subject" * 2, content="Content" * 10)
     wait_then_click_element(browser, HPL.CONTACT_SUBMIT)
 
-    submit_btn = wait_then_get_element(browser, HPL.CONTACT_SUBMIT)
+    submit_btn = wait_then_get_element(
+        browser, f'{HPL.CONTACT_SUBMIT}[data-sent="true"]'
+    )
     assert submit_btn
     assert submit_btn.get_property("disabled")
