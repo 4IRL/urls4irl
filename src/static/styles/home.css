@@ -247,6 +247,10 @@ button {
     align-items: flex-end;
 }
 
+.self-start {
+    align-self: flex-start;
+}
+
 .justify-center {
     justify-content: center;
 }

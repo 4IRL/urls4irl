@@ -183,7 +183,10 @@ def add_security_headers(app: Flask):
         valid_script_cdns = (
             "https://code.jquery.com",
             "https://cdn.jsdelivr.net",
+            "https://static.cloudflareinsights.com",
         )
+
+        valid_connects = "connect-src 'self' https://cloudflareinsights.com; "
 
         valid_style_cdns = (
             "https://code.jquery.com",
@@ -213,7 +216,7 @@ def add_security_headers(app: Flask):
 
         response.headers[CONFIG_ENVS.CONTENT_SECURITY_POLICY] = (
             "default-src 'none'; "
-            + "connect-src 'self'; "
+            + valid_connects
             + "manifest-src 'self'; "
             + valid_scripts
             + valid_styles
