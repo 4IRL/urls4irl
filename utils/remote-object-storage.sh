@@ -11,8 +11,10 @@ remote_backup() {
   REMOTE_BACKUP_ERROR=""
 
   if [[ "$PRODUCTION" != "true" ]]; then
-    database_success="false"
-    log_success="false"
+    echo -e "\n\n Skipping remote object storage due to not in production \n\n"
+    REMOTE_BACKUP_ERROR="Error: Failure in sending daily database backup to Cloudflare R2"
+    failure=1
+    return $failure
   fi
 
   echo "----------------------------------------------------"

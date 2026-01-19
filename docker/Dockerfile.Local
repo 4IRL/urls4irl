@@ -1,0 +1,62 @@
+# syntax=docker/dockerfile:1.5
+FROM python:3.11-slim-bookworm
+LABEL org.opencontainers.image.source="https://github.com/4IRL/urls4irl"
+
+# Some environment variable handling
+ENV FLASK_APP=run \
+	PYTHONUNBUFFERED=1 \
+	PIP_DISABLE_PIP_VERSION_CHECK=1 \
+	LOG_DIR=/app/volume/logs
+
+# Use code as working directory
+WORKDIR /code/u4i
+RUN chmod -R 775 /code
+
+# Create non-root user, update packages, clean up
+RUN set -ex \
+	&& addgroup --system --gid 1001 u4i-host-group \
+	&& adduser --system --uid 1001 --gid 1001 u4i-host \
+	&& apt-get update \
+	&& apt-get -y install libpq-dev gcc wget unzip xvfb libglib2.0-dev libnss3-dev libdbus-1-dev  libatk1.0-0 libatk-bridge2.0-0 libcups2 libxkbcommon-dev libxcomposite-dev libxdamage-dev libgbm-dev libpangocairo-1.0-0 libasound2 \
+	&& apt-get upgrade -y \
+	&& apt-get autoremove -y \
+	&& apt-get clean -y \
+	&& rm -rf /var/lib/apt/lists/*
+
+# Copy requirements files install dependencies
+COPY --chown=u4i-host:u4i-host-group requirements/ ./requirements/
+
+# Install development level requirements
+RUN --mount=type=cache,target=/root/.cache/pip \
+	python3 -m venv /code/venv \
+	&& . /code/venv/bin/activate \
+	&& pip install -r requirements/requirements-dev.txt
+
+# Copy files needed
+COPY --chown=u4i-host:u4i-host-group docker/startup-flask.sh ./
+COPY --chown=u4i-host:u4i-host-group run.py ./
+COPY --chown=u4i-host:u4i-host-group src/ ./src/
+COPY --chown=u4i-host:u4i-host-group migrations/ ./migrations/
+COPY --chown=u4i-host:u4i-host-group tests/ ./tests/
+COPY --chown=u4i-host:u4i-host-group utils/ ./utils/
+COPY --chown=u4i-host:u4i-host-group pytest.ini ./
+
+# Create necessary directories with proper permissions
+RUN mkdir -p /app/volume/logs /code/u4i/src/gen \
+	&& chmod -R 775 /code /app/volume/logs \
+	&& chmod -R 777 /code/u4i/src/gen \
+	&& chown -R u4i-host:u4i-host-group /code /app/volume/logs /code/u4i/src/gen
+
+# Add custom shell entrypoint that activates the venv
+RUN echo '#!/bin/bash\nsource /code/venv/bin/activate\nexec bash --rcfile <(echo "source /code/venv/bin/activate")' > /usr/local/bin/venvshell \
+    && chmod +x /usr/local/bin/venvshell
+
+# Create a non-root user
+USER u4i-host
+
+# Expose a port to access the container
+EXPOSE 5000
+
+HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
+    CMD wget --no-verbose --tries=1 --spider http://localhost:5000/health || exit 1
+

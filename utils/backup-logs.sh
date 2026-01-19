@@ -4,7 +4,7 @@ set +x # Disable command echoing
 echo "----------------------------------------------------"
 echo -e "\n\n START LOG BACKUP SESSION $(date +%Y%m%d_%H%M%S)\n\n"
 
-# ------- BACKUP DATABASE, STORE AND COMPRESS ON HOST ------- #
+# ------- BACKUP LOGS, STORE AND COMPRESS ON HOST ------- #
 
 # Compress daily backup on host
 echo "Compressing logs on host..."

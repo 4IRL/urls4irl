@@ -1,4 +1,9 @@
 # .dockerignore
 venv
-__pycache__
 sessions/
+.git/
+__pycache__
+.pytest_cache
+*.pyc
+.gitignore
+.DS_Store
