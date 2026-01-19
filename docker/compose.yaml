@@ -27,7 +27,6 @@ services:
       - CONTACT_US_URL
     volumes:
       - app_logs:/app/volume
-    command: ["bash", "startup-flask.sh"]
 
   db:
     image: postgres:16.3-bookworm

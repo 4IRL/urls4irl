@@ -25,8 +25,6 @@ POSTGRES_PASSWORD = environ.get(ENV.POSTGRES_PASSWORD)
 POSTGRES_DB = environ.get(ENV.POSTGRES_DB)
 POSTGRES_TEST_DB = environ.get(ENV.POSTGRES_TEST_DB, default=None)
 
-POSTGRES_TEST_DB = environ.get(ENV.POSTGRES_TEST_DB, default=None)
-
 ASSET_VERSION = environ.get(ENV.ASSET_VERSION, default=str(int(time())))
 
 PROD_DB_URI = (
@@ -102,14 +100,6 @@ class Config:
     TESTING = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_DATABASE_URI = DEV_DB_URI
-    SQLALCHEMY_BINDS = {
-        "dev": (
-            "sqlite://" if TESTING else DEV_DB_URI
-        ),  # When testing, give dev an in-memory database
-        "test": (
-            "sqlite://" if IS_DOCKER else TEST_DB_URI
-        ),  # Currently, not testing in local docker containers
-    }
     REDIS_URI = REDIS_URI
     DOCKER = IS_DOCKER
     ASSET_VERSION = ASSET_VERSION

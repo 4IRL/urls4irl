@@ -15,7 +15,6 @@ jobs:
             include:
               - name: u4i-prod
                 file: docker/Dockerfile
-                env: "-e SECRET_KEY=ABC123456"
               - name: u4i-workflow
                 file: docker/Dockerfile.Workflow
 
@@ -41,4 +40,4 @@ jobs:
             - name: Run Smoke Test
               run: | 
                 chmod +x docker/smoke-test.sh
-                docker/smoke-test.sh ${{ matrix.name }}:test "${{ matrix.env }}"
+                docker/smoke-test.sh ${{ matrix.name }}:test

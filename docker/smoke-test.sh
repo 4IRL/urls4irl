@@ -2,12 +2,35 @@
 set -e
 
 IMAGE_NAME=$1
-ENV_VARS=$2
 
 echo "🚀 Starting smoke test for $IMAGE_NAME..."
+ENV_VARS="-e SECRET_KEY=ABC123456"
 
 # Run the container (using Docker's internal healthcheck)
-CONTAINER_ID=$(docker run -d $ENV_VARS --name "smoke_test" "$IMAGE_NAME")
+echo "Running container..."
+if [ "$IMAGE_NAME" == "u4i-prod" ]; then
+    CONTAINER_ID=$(docker run -d \
+        --entrypoint bash \
+        -e DEV_SERVER=true \
+        -e POSTGRES_USER=bob \
+        -e POSTGRES_DB=test \
+        -e POSTGRES_PASSWORD=test \
+        -e IS_DOCKER=true \
+        --name "smoke_test" \
+        "$IMAGE_NAME" \
+        -c ". /code/venv/bin/activate && flask run --host=0.0.0.0 --port=5000"
+    )
+else
+    CONTAINER_ID=$(docker run -d \
+      -e POSTGRES_USER=bob \
+      -e POSTGRES_DB=test \
+      -e POSTGRES_PASSWORD=test \
+      --name "smoke_test" \
+      "$IMAGE_NAME"
+    )
+fi
+
+echo "Container ID: $CONTAINER_ID"
 
 # Cleanup trap
 trap 'echo "🧹 Cleaning up..."; docker stop $CONTAINER_ID > /dev/null && docker rm $CONTAINER_ID > /dev/null' EXIT
