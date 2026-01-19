@@ -37,5 +37,3 @@ jobs:
         needs: 'lint'
         name: 'Test Build Docker Container'
         uses: ./.github/workflows/test-build-image.yml
-        with:
-            branch_ref: ${{ github.event.pull_request.head.sha }}
