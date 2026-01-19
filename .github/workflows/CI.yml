@@ -12,22 +12,16 @@ jobs:
     format:
         name: 'Code Quality'
         uses: ./.github/workflows/format.yml
-        with:
-            branch_ref: ${{ github.event.pull_request.head.sha }}
 
     lint:
         needs: 'format'
         name: 'Code Quality'
         uses: ./.github/workflows/lint.yml
-        with:
-            branch_ref: ${{ github.event.pull_request.head.sha }}
 
     test:
         needs: 'lint'
         name: 'Test'
         uses: ./.github/workflows/test.yml
-        with:
-            branch_ref: ${{ github.event.pull_request.head.sha }}
         secrets:
             MAILJET_API_KEY: ${{ secrets.MAILJET_API_KEY }}
             MAILJET_SECRET_KEY: ${{ secrets.MAILJET_SECRET_KEY }}
