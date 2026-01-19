@@ -8,7 +8,7 @@ ENV_VARS="-e SECRET_KEY=ABC123456"
 
 # Run the container (using Docker's internal healthcheck)
 echo "Running container..."
-if [ "$IMAGE_NAME" == "u4i-prod" ]; then
+if [[ "$IMAGE_NAME" == *"u4i-prod"* ]]; then
     CONTAINER_ID=$(docker run -d \
         --entrypoint bash \
         -e DEV_SERVER=true \
