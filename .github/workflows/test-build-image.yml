@@ -13,9 +13,10 @@ jobs:
           fail-fast: false # Don't cancel the workflow if one image fails
           matrix:
             include:
-              - name: flask-prod
+              - name: u4i-prod
                 file: docker/Dockerfile
-              - name: workflow
+                env: "-e SECRET_KEY=ABC123456"
+              - name: u4i-workflow
                 file: docker/Dockerfile.Workflow
 
         steps:
@@ -31,7 +32,8 @@ jobs:
               with:
                 context: .
                 file: ${{ matrix.file }}
-                push: false 
+                load: true # Important: loads image into local Docker for the script
+                tags: ${{ matrix.name }}:test
                 # Use GHA cache to make subsequent PR builds much faster
                 cache-from: type=gha,scope=${{ matrix.name }}
                 cache-to: type=gha,mode=max,scope=${{ matrix.name }}

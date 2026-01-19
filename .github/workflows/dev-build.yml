@@ -16,13 +16,13 @@ jobs:
         name: Build Multi-Platform development docker image and workflow image
         runs-on: ubuntu-latest
         strategy:
-        fail-fast: false
-        matrix:
-          include:
-            - image: u4i-dev
-              file: docker/Dockerfile
-            - image: u4i-workflow
-              file: docker/Dockerfile.Workflow
+          fail-fast: false
+          matrix:
+            include:
+              - image: u4i-dev
+                file: docker/Dockerfile
+              - image: u4i-workflow
+                file: docker/Dockerfile.Workflow
 
         steps:
         - name: Checkout
