@@ -1,0 +1,45 @@
+name: Test build docker images
+permissions:
+  contents: read
+  packages: read
+
+on:
+  workflow_call:
+
+jobs:
+    ProdBuild:
+        name: Build Docker Images
+        runs-on: ubuntu-latest
+        strategy:
+          fail-fast: false # Don't cancel the workflow if one image fails
+          matrix:
+            include:
+              - name: flask-prod
+                file: docker/Dockerfile
+              - name: workflow
+                file: docker/Dockerfile.Workflow
+
+        steps:
+            - name: Checkout
+              uses: actions/checkout@v4
+
+            # Required for the --mount=type=cache in your Dockerfile to work
+            - name: Set up Docker Buildx
+              uses: docker/setup-buildx-action@v3
+
+            - name: Build ${{ matrix.name }}
+              uses: docker/setup-buildx-action@v3
+            - name: Build ${{ matrix.name }}
+              uses: docker/build-push-action@v6
+              with:
+                context: .
+                file: ${{ matrix.file }}
+                push: false 
+                # Use GHA cache to make subsequent PR builds much faster
+                cache-from: type=gha,scope=${{ matrix.name }}
+                cache-to: type=gha,mode=max,scope=${{ matrix.name }}
+
+            - name: Run Smoke Test
+              run: | 
+                chmod +x docker/smoke-test.sh
+                docker/smoke-test.sh ${{ matrix.name }}:test "${{ matrix.env }}"

@@ -16,65 +16,48 @@ jobs:
         name: Build flask production docker image and workflow image
         runs-on: ubuntu-latest
 
+        strategy:
+          fail-fast: false
+          matrix:
+            include:
+              - image_name: u4i-prod
+                dockerfile: docker/Dockerfile
+              - image_name: u4i-workflow
+                dockerfile: docker/Dockerfile.Workflow
+
         steps:
-        - uses: actions/checkout@v4
-        - name: Build flask and workflow images
-          run: |
-            DATE=$(date +%Y%m%d) # Generate current date in YYYYMMDD format
-            SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
-            FULL_TAG="$DATE-$SHORT_SHA"
+        - name: Checkout
+          uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
-            docker build . --file docker/Dockerfile --tag $IMAGE_NAME --tag $FULL_TAG --label "runnumber=${GITHUB_RUN_ID}"
-            docker build . --file docker/Dockerfile.Workflow --tag $WORKFLOW_IMAGE_NAME --tag $FULL_TAG --label "runnumber=${GITHUB_RUN_ID}"
+        - name: Log in to GHCR
+          uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+            with:
+              registry: ghcr.io
+              username: ${{ github.actor }}
+              password: ${{ secrets.GITHUB_TOKEN }}
 
-        - name: Log in to registry
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
+        - name: Extract metadata (tags, labels)
+          id: meta
+          uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+          with:
+            images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image_name }}
+            tags: |
+              type=raw,value=latest,enable={{is_default_branch}}
+              type=ref,event=branch
+              type=ref,event=tag
+              type=sha,format=short,prefix={{date 'YYYYMMDD'}}-
 
-        - name: Push flask production docker image
-          run: |
-            IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
+        - name: Set up Docker Buildx
+          uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
 
-            IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
-            [ "$VERSION" == "main" ] && VERSION=latest
-
-            DATE=$(date +%Y%m%d) # Generate current date in YYYYMMDD format
-            SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
-            FULL_TAG="$DATE-$SHORT_SHA"
-
-            echo IMAGE_ID=$IMAGE_ID
-            echo VERSION=$VERSION
-            docker tag $IMAGE_NAME $IMAGE_ID:$VERSION
-            docker tag $IMAGE_NAME $IMAGE_ID:$FULL_TAG
-            docker tag $IMAGE_NAME $IMAGE_ID:latest
-            docker push $IMAGE_ID:$VERSION
-            docker push $IMAGE_ID:$FULL_TAG
-            docker push $IMAGE_ID:latest
-
-        - name: Push workflow docker image
-          run: |
-            IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ env.WORKFLOW_IMAGE_NAME }}
-
-            IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-
-            [ "$VERSION" == "main" ] && VERSION=latest
-
-            DATE=$(date +%Y%m%d) # Generate current date in YYYYMMDD format
-            SHORT_SHA=$(git rev-parse --short HEAD) # Get the shortened commit SHA
-            FULL_TAG="$DATE-$SHORT_SHA"
-
-            echo IMAGE_ID=$IMAGE_ID
-            echo VERSION=$VERSION
-            docker tag $WORKFLOW_IMAGE_NAME $IMAGE_ID:$VERSION
-            docker tag $WORKFLOW_IMAGE_NAME $IMAGE_ID:$FULL_TAG
-            docker tag $WORKFLOW_IMAGE_NAME $IMAGE_ID:latest
-            docker push $IMAGE_ID:$VERSION
-            docker push $IMAGE_ID:$FULL_TAG
-            docker push $IMAGE_ID:latest
+        - name: Build and Push
+          uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+          with:
+            context: .
+            file: ${{ matrix.dockerfile }}
+            push: true
+            tags: ${{ id.meta.outputs.tags }}
+            labels: ${{ id.meta.outputs.labels }}
+            cache-from: type=gha,scope=${{ matrix.image_name }}
+            cache-to: type=gha,mode=max,scope=${{ matrix.image_name }}
 
