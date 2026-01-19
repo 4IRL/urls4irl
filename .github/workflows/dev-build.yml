@@ -13,57 +13,55 @@ env:
 
 jobs:
     DevBuild:
-        name: Build development docker image and workflow image
+        name: Build Multi-Platform development docker image and workflow image
         runs-on: ubuntu-latest
+        strategy:
+          fail-fast: false
+          matrix:
+            include:
+              - image: u4i-dev
+                file: docker/Dockerfile
+              - image: u4i-workflow
+                file: docker/Dockerfile.Workflow
 
         steps:
-        - uses: actions/checkout@v4
+        - name: Checkout
+          uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
 
         - name: Set up QEMU
           uses: docker/setup-qemu-action@c7c53464625b32c7a7e944ae62b3e17d2b600130 # v3.7.0
         
         - name: Set up Docker Buildx
           uses: docker/setup-buildx-action@8d2750c68a42422c14e847fe6c8ac0403b4cbd6f # v3.12.0
-        
-        - name: Log in to registry
-          run: echo "${{ secrets.GITHUB_TOKEN }}" | docker login ghcr.io -u ${{ github.actor }} --password-stdin
 
-        - name: Build flask dev image
-          run: |
-            IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ env.IMAGE_NAME }}
-            IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-            [ "$VERSION" == "main" ] && VERSION=latest
-            DATE=$(date +%Y%m%d)
-            SHORT_SHA=$(git rev-parse --short HEAD)
-            FULL_TAG="$DATE-$SHORT_SHA"
-            
-            docker buildx build . \
-              --file docker/Dockerfile \
-              --platform linux/amd64,linux/arm64 \
-              --tag ${IMAGE_ID}:${VERSION} \
-              --tag ${IMAGE_ID}:${FULL_TAG} \
-              --tag ${IMAGE_ID}:latest \
-              --label "runnumber=${GITHUB_RUN_ID}" \
-              --push
+        - name: Log in to GHCR
+          uses: docker/login-action@5e57cd118135c172c3672efd75eb46360885c0ef # v3.6.0
+          with:
+            registry: ghcr.io
+            username: ${{ github.actor }}
+            password: ${{ secrets.GITHUB_TOKEN }}
 
-        - name: Build flask workflow image
-          run: |
-            IMAGE_ID=ghcr.io/${{ github.repository_owner }}/${{ env.WORKFLOW_IMAGE_NAME }}
-            IMAGE_ID=$(echo $IMAGE_ID | tr '[A-Z]' '[a-z]')
-            VERSION=$(echo "${{ github.ref }}" | sed -e 's,.*/\(.*\),\1,')
-            [[ "${{ github.ref }}" == "refs/tags/"* ]] && VERSION=$(echo $VERSION | sed -e 's/^v//')
-            [ "$VERSION" == "main" ] && VERSION=latest
-            DATE=$(date +%Y%m%d)
-            SHORT_SHA=$(git rev-parse --short HEAD)
-            FULL_TAG="$DATE-$SHORT_SHA"
-            
-            docker buildx build . \
-              --file docker/Dockerfile.Workflow \
-              --platform linux/amd64,linux/arm64 \
-              --tag ${IMAGE_ID}:${VERSION} \
-              --tag ${IMAGE_ID}:${FULL_TAG} \
-              --tag ${IMAGE_ID}:latest \
-              --label "runnumber=${GITHUB_RUN_ID}" \
-              --push
+        - name: Docker metadata
+          uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
+          with:
+            images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
+            tags: |
+              type=raw,value=latest,enable={{is_default_branch}}
+              type=ref,event=branch
+              type=ref,event=tag
+              type=sha,format=short,prefix={{date 'YYYYMMDD'}}-
+            labels: |
+              runnumber=${{ github.run_id }}
+
+        - name: Build and Push
+          uses: docker/build-push-action@263435318d21b8e681c14492fe198d362a7d2c83 # v6.18.0
+          with:
+            context: .
+            file: ${{ matrix.file }}
+            platforms: linux/amd64,linux/arm64
+            push: true
+            tags: ${{ id.meta.outputs.tags }}
+            labels: ${{ id.meta.outputs.labels }}
+            cache-from: type=gha,scope=${{ matrix.image }}
+            cache-to: type=gha,mode=max,scope=${{ matrix.image }}
+

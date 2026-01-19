@@ -38,7 +38,6 @@ services:
       - ./migrations/versions:/code/u4i/migrations/versions
       - ./utils:/code/u4i/utils
       - app_logs:/app/volume
-    command: [ "bash", "startup-flask.sh" ]
 
   selenium:
     image: selenium/standalone-chromium:latest

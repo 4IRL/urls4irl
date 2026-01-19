@@ -2,6 +2,7 @@ import pytest
 from sqlalchemy import inspect
 
 from src import db
+from src.models.contact_form_entries import ContactFormEntries
 from src.models.utub_tags import Utub_Tags
 from src.models.urls import Urls
 from src.models.utub_url_tags import Utub_Url_Tags
@@ -30,3 +31,4 @@ def test_db_created_correctly(app):
         assert inspector.has_table(Utub_Members.__tablename__)
         assert inspector.has_table(Utub_Urls.__tablename__)
         assert inspector.has_table(Utub_Url_Tags.__tablename__)
+        assert inspector.has_table(ContactFormEntries.__tablename__)
