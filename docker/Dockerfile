@@ -11,7 +11,7 @@ WORKDIR /code/u4i
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
         libpq-dev \
-        gcc \
+        build-essential \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy and install Python dependencies
@@ -19,6 +19,7 @@ COPY requirements/requirements-prod.txt ./
 RUN --mount=type=cache,target=/root/.cache/pip \
     python3 -m venv /code/venv \
     && . /code/venv/bin/activate \
+    && pip install --upgrade pip \
     && pip install --no-compile -r requirements-prod.txt \
     && find /code/venv -type d -name __pycache__ -exec rm -rf {} + 2>/dev/null || true \
     && find /code/venv -type f -name '*.pyc' -delete
