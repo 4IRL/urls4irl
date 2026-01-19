@@ -7,7 +7,7 @@ echo -e "\nSTARTING FLASK CONTAINER: $(date +%Y%m%d_%H%M%S)\n"
 echo "!!######################################################################################################!!"
 
 # Allow time for database containers to build
-sleep 10
+sleep 5
 
 # Function to load secrets from Docker secrets
 load_secrets() {

@@ -7,8 +7,10 @@ services:
     ports: 
       - "127.0.0.1:8659:5000"
     depends_on:
-      - db
-      - redis
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     env_file:
       - .env
     environment:
@@ -38,12 +40,22 @@ services:
       - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
     volumes:
       - pgdata:/var/lib/postgresql/data
+    healthcheck:
+        test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
+        interval: 5s
+        timeout: 5s
+        retries: 5
 
   redis:
     image: redis:6.2
     container_name: u4i-dev-redis
     volumes:
       - redisdata:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   workflow:
     container_name: u4i-dev-workflow
@@ -51,22 +63,25 @@ services:
     env_file:
       - .env
     depends_on:
-      - web
-      - db
+      web:
+        condition: service_healthy
+      db:
+        condition: service_healthy
     environment:
       - PRODUCTION=false
       - DEV_SERVER=true
-      - POSTGRES_DB=${POSTGRES_DB}
-      - POSTGRES_USER=${POSTGRES_USER}
-      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
-      - NOTIFICATION_URL=${NOTIFICATION_URL}
-      - CONTACT_US_URL=${CONTACT_US_URL}
+      - TZ=America/Los_Angeles # Preferred timezone for backups
     volumes:
       - app_logs:/app/volume
       - pgdata:/var/lib/postgresql/data:ro
       - workflow_logs:/app/workflow_logs
       - backups:/backups
-    command: ["bash", "/app/startup-workflow.sh"]
+    healthcheck:
+      test: ["CMD", "pgrep", "cron"]
+      interval: 60s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
 
 secrets:
   MAILJET_API_KEY:

@@ -104,6 +104,7 @@ def create_app(
     from src.contact.routes import contact
     from src.members.routes import members
     from src.splash.routes import splash
+    from src.system.routes import system
     from src.urls.routes import urls
     from src.users.routes import users
     from src.utubs.routes import utubs
@@ -118,6 +119,7 @@ def create_app(
     app.register_blueprint(contact)
     app.register_blueprint(members)
     app.register_blueprint(splash)
+    app.register_blueprint(system)
     app.register_blueprint(urls)
     app.register_blueprint(users)
     app.register_blueprint(utubs)
