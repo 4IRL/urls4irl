@@ -14,6 +14,7 @@ if [[ "$IMAGE_NAME" == *"u4i-prod"* ]]; then
         -e DEV_SERVER=true \
         -e POSTGRES_USER=bob \
         -e POSTGRES_DB=test \
+        -e POSTGRES_TEST_DB=test \
         -e POSTGRES_PASSWORD=test \
         -e IS_DOCKER=true \
         --name "smoke_test" \

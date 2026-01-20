@@ -27,16 +27,24 @@ POSTGRES_TEST_DB = environ.get(ENV.POSTGRES_TEST_DB, default=None)
 
 ASSET_VERSION = environ.get(ENV.ASSET_VERSION, default=str(int(time())))
 
+DEV_DB_URI = build_db_uri(
+    username=POSTGRES_USER,
+    password=POSTGRES_PASSWORD,
+    database=POSTGRES_DB,
+    database_host="db" if IS_DOCKER else "localhost",
+)
+
 PROD_DB_URI = (
-    None
-    if not IS_PRODUCTION
-    else build_db_uri(
+    build_db_uri(
         username=POSTGRES_USER,
         password=POSTGRES_PASSWORD,
         database=POSTGRES_DB,
         database_host="db",
     )
+    if IS_PRODUCTION
+    else DEV_DB_URI
 )
+
 
 TEST_DB_URI = build_db_uri(
     username=POSTGRES_USER,
@@ -45,12 +53,6 @@ TEST_DB_URI = build_db_uri(
     database_host="test-db" if IS_DOCKER else "localhost",
 )
 
-DEV_DB_URI = build_db_uri(
-    username=POSTGRES_USER,
-    password=POSTGRES_PASSWORD,
-    database=POSTGRES_DB,
-    database_host="db" if IS_DOCKER else "localhost",
-)
 
 TEST_REDIS_URI = environ.get(ENV.TEST_REDIS_URI, default="memory://")
 TEST_SELENIUM_URI = environ.get(ENV.SELENIUM_URL, default=None)
