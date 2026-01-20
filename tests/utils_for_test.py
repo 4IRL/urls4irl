@@ -58,11 +58,7 @@ def trim_and_parse_logs(logs: list[LogRecord]) -> list[str]:
     Returns:
         list[str]: Log messages that aren't the first or last log
     """
-    return [
-        record.getMessage()
-        for idx, record in enumerate(logs)
-        if idx not in (0, len(logs) - 1)
-    ]
+    return [record.getMessage() for record in logs]
 
 
 def is_string_in_logs(needle: str, log_records: list[LogRecord]) -> bool:
