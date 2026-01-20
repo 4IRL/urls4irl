@@ -102,7 +102,10 @@ class Config:
     TESTING = False
     SQLALCHEMY_TRACK_MODIFICATIONS = False
     SQLALCHEMY_DATABASE_URI = DEV_DB_URI
-    SQLALCHEMY_BINDS = {"dev": DEV_DB_URI, "test": TEST_DB_URI}
+    SQLALCHEMY_BINDS = {
+        "dev": DEV_DB_URI if DEV_DB_URI else "sqlite://",
+        "test": TEST_DB_URI if TEST_DB_URI else "sqlite://",
+    }
     REDIS_URI = REDIS_URI
     DOCKER = IS_DOCKER
     ASSET_VERSION = ASSET_VERSION
