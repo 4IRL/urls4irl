@@ -68,7 +68,6 @@ services:
     environment:
       - PRODUCTION=false
       - DEV_SERVER=false
-      - TZ=America/Los_Angeles # Preferred timezone for backups
     volumes:
       - app_logs:/app/volume
       - pgdata:/var/lib/postgresql/data:ro

@@ -58,6 +58,11 @@ class ACCOUNT_AND_SETTING_ROUTES:
     CONTACT_US = _CONTACT + "contact_us"
 
 
+class SYSTEM_ROUTES:
+    _SYSTEM = "system."
+    HEALTH = _SYSTEM + "health"
+
+
 class UTUB_ROUTES:
     _UTUBS = "utubs."
     HOME = _UTUBS + "home"

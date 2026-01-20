@@ -40,6 +40,7 @@ jobs:
             password: ${{ secrets.GITHUB_TOKEN }}
 
         - name: Extract metadata (tags, labels)
+          id: meta
           uses: docker/metadata-action@c299e40c65443455700f0fdfc63efafe5b349051 # v5.10.0
           with:
             images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image_name }}
@@ -58,8 +59,8 @@ jobs:
             context: .
             file: ${{ matrix.dockerfile }}
             push: true
-            tags: ${{ id.meta.outputs.tags }}
-            labels: ${{ id.meta.outputs.labels }}
+            tags: ${{ steps.meta.outputs.tags }}
+            labels: ${{ steps.meta.outputs.labels }}
             cache-from: type=gha,scope=${{ matrix.image_name }}
             cache-to: type=gha,mode=max,scope=${{ matrix.image_name }}
 
