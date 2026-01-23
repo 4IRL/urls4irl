@@ -33,8 +33,11 @@ cleanup_secrets() {
 trap cleanup_secrets EXIT
 
 # Make sure cron jobs load the Docker compose environment
-if [[ -f /etc/container_environment ]]; then
-  . /etc/container_environment
+if [[ -f /app/container_environment ]]; then
+  . /app/container_environment
+else
+    echo "ERROR: /app/container_environment not found!";
+    exit 1;
 fi
 
 # Redirecting file stdout/stderr to a daily logfile
@@ -51,10 +54,7 @@ send_notification_msg() {
     local output="$1"
     if [[ "$PRODUCTION" != "true" ]]; then
         output="IGNORE, IN DEVELOPMENT: $output"
-    fi
-    #TODO: Remove DOCKER prefix once we verify this is working in prod
-    if [[ "$DEV_SERVER" == "true" || "$PRODUCTION" != "true" ]]; then
-          echo "DOCKER: $output"
+        echo $output
     else
         restricted_curl "POST" "$NOTIFICATION_URL" "DOCKER: $output"
     fi

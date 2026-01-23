@@ -41,9 +41,5 @@ printenv | grep -v "no_proxy" > /app/container_environment
 chmod 644 /app/container_environment
 chown workflow:workflow /app/container_environment
 
-# Install crontab NOW (after environment file exists)
-echo "Installing crontab for workflow user..."
-crontab -u workflow /tmp/crontab.workflow
-
 echo -e "\nStarting cron daemon...\n"
 exec cron -f

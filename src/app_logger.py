@@ -129,8 +129,24 @@ def get_remote_addr(request: Request):
     return request.remote_addr or "Unknown"
 
 
+def _setup_logger_for_cli(app: Flask):
+    cli_logger = logging.getLogger("cli_logger")
+    cli_logger.setLevel(logging.INFO)
+    cli_logger.propagate = False  # Prevent going up to root logger
+
+    cli_handler = logging.StreamHandler()
+    cli_handler.setFormatter(
+        logging.Formatter("%(message)s")
+    )  # No timestamp, level, etc.
+    cli_logger.addHandler(cli_handler)
+
+    setattr(app, "cli_logger", cli_logger)
+
+
 def configure_logging(app: Flask, is_production=False):
     """Configure the application's logging system with Flask-style text logs."""
+    _setup_logger_for_cli(app)
+
     # First remove default handler
     app.logger.removeHandler(default_handler)
 
