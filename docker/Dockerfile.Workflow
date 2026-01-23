@@ -6,19 +6,19 @@ LABEL org.opencontainers.image.source="https://github.com/4IRL/urls4irl/daily-wo
 ARG RCLONE_VERSION=v1.72.1
 RUN apt-get update \
     && apt-get install -y --no-install-recommends \
-    bash \
-    curl \
-    jq \
-    tar \
-    gzip \
-    cron \
-    wget \
-    gnupg \
-    lsb-release \
-    ca-certificates \
-    unzip \
-    file \
-    procps \
+        bash \
+        curl \
+        jq \
+        tar \
+        gzip \
+        cron \
+        wget \
+        gnupg \
+        lsb-release \
+        ca-certificates \
+        unzip \
+        file \
+        procps \
     && wget --quiet -O - https://www.postgresql.org/media/keys/ACCC4CF8.asc | gpg --dearmor -o /usr/share/keyrings/postgresql.gpg \
     && echo "deb [signed-by=/usr/share/keyrings/postgresql.gpg] http://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" > /etc/apt/sources.list.d/pgdg.list \
     && apt-get update \
@@ -54,6 +54,10 @@ RUN chmod +x /app/*.sh \
     && chmod +x /usr/bin/restricted_curl \
     && mv /usr/bin/curl /usr/bin/curl.real \
     && ln -s /usr/bin/restricted_curl /usr/bin/curl
+
+# Set up cron for workflow user
+RUN crontab -u workflow /tmp/crontab.workflow \
+    && rm /tmp/crontab.workflow
 
 # Add healthcheck
 HEALTHCHECK --interval=60s --timeout=5s --start-period=10s --retries=3 \

@@ -23,7 +23,7 @@ utils_cli = AppGroup(
 def starting_log_for_u4i():
     now = datetime.now()
     start_time = now.strftime("[%Y-%m-%d  %H:%M:%S]")
-    current_app.raw_logger.info(  # type: ignore
+    current_app.cli_logger.info(  # type: ignore
         """
     !!------------------------------------------------------------------------------------------------------!!\n
     !!-------------------------------------------- STARTING U4I --------------------------------------------!!\n
@@ -31,7 +31,7 @@ def starting_log_for_u4i():
     """
         + f"!!----------------------------------------{start_time}----------------------------------------!!\n"
     )
-    current_app.raw_logger.info(  # type: ignore
+    current_app.cli_logger.info(  # type: ignore
         "Redis successfully attached to U4I"
         if isinstance(current_app.session_interface, RedisSessionInterface)
         else "Redis instance not found"
@@ -48,7 +48,7 @@ def starting_log_for_u4i():
         .has_table(table_name="Utubs")
     )
 
-    current_app.raw_logger.info(  # type: ignore
+    current_app.cli_logger.info(  # type: ignore
         "PostgreSQL successfully attached to U4I"
         if has_db_connection
         else "PostgreSQL instance not found"
@@ -60,7 +60,7 @@ def starting_log_for_u4i():
 def reset_limiter():
     # Cannot reset in production
     if current_app.config.get(CONFIG_ENVS.PRODUCTION, False):
-        current_app.raw_logger.info("Cannot reset rate limits in production")  # type: ignore
+        current_app.cli_logger.info("Cannot reset rate limits in production")  # type: ignore
         return
 
     limiter_extensions: set[Limiter] | None = current_app.extensions.get(
@@ -79,11 +79,11 @@ def reset_limiter():
     limiter = _get_limiter(limiter_extensions)
 
     if not isinstance(limiter, Limiter):
-        current_app.raw_logger.info("Could not find a valid limiter")  # type: ignore
+        current_app.cli_logger.info("Could not find a valid limiter")  # type: ignore
         return
 
     limiter.reset()
-    current_app.raw_logger.info("Reset limits!")  # type: ignore
+    current_app.cli_logger.info("Reset limits!")  # type: ignore
 
 
 def register_utils_cli(app: Flask):
