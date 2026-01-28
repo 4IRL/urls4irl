@@ -89,6 +89,14 @@
     --grayBadgeSelection: rgba(170, 170, 170, 1.0);
     /* #bbbbbb */
     --grayBadgeSelectionFocus: rgba(187, 187, 187, 1.0);
+
+    /* Cookie banner colors */
+    --cookieBannerLightGrayBackground: var(--grayBadgeSelectionFocus);
+    --cookierBannerText: var(--navbarTextHover);
+    --cookieBannerLinkColor: var(--accessLinkColor);
+    --cookieBannerLinkHoverColor: var(--darkSplashGreen);
+    --cookieBannerTextColor: var(--offWhiteSplashBackgroundBanner);
+    --cookieBannerTitleColor: rgba(106, 246, 141, 0.94); 
 }
 
 /** HTML DOM Elements **/
@@ -260,6 +268,115 @@ a {
     transform: rotate(90deg);
 }
 
+#CookieBanner {
+    position: fixed;
+    bottom: 0;
+    width: 75%;
+    max-width: 50rem;
+    border-radius: 1.5rem;
+    padding-top: 0.25rem;
+    padding-bottom: 0.25rem;
+    opacity: 0;
+    pointer-events: none;
+
+    transform: translate(0, calc(1.75rem + 2px));
+
+    transition:
+        transform 200ms ease-out,
+        opacity 150ms ease-out;
+}
+
+#CookieBanner.is-hiding {
+    transform: translate(0, calc(1.75rem + 2px));
+    opacity: 0;
+}
+
+#CookieBanner.is-visible {
+    transform: translate(0, calc(0px - calc(1.75rem + 2px)));
+    opacity: 1;
+    pointer-events: auto;
+}
+
+#CookieBanner div {
+    width: 100%;
+}
+
+#CookieBanner img {
+    width: 40px;
+}
+
+#CookieBanner h5 {
+    flex: 1 1 auto;
+    margin-bottom: 0;
+    color: var(--cookieBannerTitleColor);
+}
+
+#CookieBanner form {
+    overflow-y: initial;
+    padding: 0;
+    width: 100%;
+    height: initial;
+    padding-top: 0.25rem;
+}
+
+#CookieButton {
+    min-width: 50%;
+    border-radius: 1.5rem;
+    height: 1.5rem;
+    text-align: center;
+    line-height: 1rem;
+    background-color: var(--splashGreen);
+    border-color: var(--darkSplashGreen);
+    border-width: 2px;
+    padding: 0;
+    color: black;
+}
+
+#CookieBanner .btn-close {
+    min-width: revert;
+}
+
+#CookieBanner p {
+    color: var(--cookieBannerText);
+    padding-bottom: 0;
+    margin-bottom: 0;
+    width: 100%;
+    color: var(--cookieBannerTextColor);
+    line-height: initial;
+}
+
+#CookieBanner a {
+    color: var(--cookieBannerLinkColor);
+}
+
+#CookieBanner a:hover {
+    color: var(--cookieBannerLinkHoverColor);
+}
+
+#CookieBanner.logged-in {
+    background-color: #1a1a1a; /* Slightly lighter than the background */
+    border: 1px solid #333;    /* Subtle border to define the shape */
+    
+    /* The Glow Effect */
+    box-shadow: 
+        0 10px 30px rgba(0, 0, 0, 0.7),     /* Deep shadow for lift */
+        0 0 15px rgba(40, 167, 69, 0.2);    /* Soft green glow */
+    
+    transition: box-shadow 0.3s ease;
+}
+
+/* Optional: Pulse effect when the page loads to grab attention */
+@keyframes pulse-glow {
+    0% { box-shadow: 0 0 5px rgba(40, 167, 69, 0.2); }
+    50% { box-shadow: 0 0 20px rgba(40, 167, 69, 0.4); }
+    100% { box-shadow: 0 0 5px rgba(40, 167, 69, 0.2); }
+}
+
+#CookieBanner.logged-in.is-visible {
+    animation: pulse-glow 2s infinite ease-in-out;
+}
+
+
 /** Utility **/
 .flex-row {
     display: flex;
@@ -269,6 +386,10 @@ a {
 .flex-column {
     display: flex;
     flex-direction: column;
+}
+
+.flex-start {
+    align-items: flex-start;
 }
 
 .flex-center {
@@ -321,6 +442,27 @@ a {
 
     .nav-bar-inner-item.home button {
         border-radius: 25px;
+    }
+}
+
+@media (max-width: 1049px) {
+    #CookieBanner {
+        width: 100%;
+        max-width: revert;
+        border-radius: 1.5rem 1.5rem 0 0;
+    }
+
+    #CookieBanner.is-visible {
+        transform: none;
+    }
+
+    #CookieButton {
+        width: 100%;
+        height: 2.5rem;
+    }
+
+    #CookieBanner .btn-close {
+        display: none;
     }
 }
 
@@ -405,6 +547,16 @@ a {
     .navbar-backdrop-fade {
         opacity: 0 !important;
     }
+
+    #CookieBanner .btn-close {
+        width: 5%;
+    }
+}
+@media (max-width: 558px) {
+    #splash-mini-text {
+        font-size: 0.8rem;
+        text-align: center;
+    }
 }
 
 @media (max-width: 380px) {
@@ -413,3 +565,8 @@ a {
     }
 }
 
+@media (prefers-reduced-motion: reduce) {
+  #CookieBanner {
+    transition: none;
+  }
+}

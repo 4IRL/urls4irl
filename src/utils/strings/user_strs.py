@@ -2,6 +2,9 @@ from src.utils.strings.json_strs import FAILURE_GENERAL
 from src.utils.strings.url_strs import URL_GENERAL
 from src.utils.strings.utub_strs import UTUB_GENERAL
 
+# General strings
+COOKIE_BANNER_SEEN = "cookie_banner_seen=true"  # Both the name and value of the cookie
+
 # Strings for users/members success
 MEMBER_REMOVED = "Member removed."
 MEMBER_ADDED = "Member added."

@@ -76,7 +76,7 @@ function setFocusEventListenersOnCreateURLTagInput(
 // Handle URL deck display changes related to creating a new tag
 function createTagBadgeInURL(utubTagID, tagString, urlCard, utubID) {
   const tagSpan = $(document.createElement("span"));
-  const removeButton = $(document.createElement("div"));
+  const removeButton = $(document.createElement("button"));
   const tagText = $(document.createElement("span"))
     .addClass("tagText")
     .text(tagString);
@@ -89,18 +89,8 @@ function createTagBadgeInURL(utubTagID, tagString, urlCard, utubID) {
 
   removeButton
     .addClass("urlTagBtnDelete flex-row align-center pointerable tabbable")
-    .on("click", function (e) {
-      e.stopPropagation();
+    .onExact("click", function (e) {
       deleteURLTag(utubTagID, tagSpan, urlCard, utubID);
-    })
-    .offAndOn("focus.removeURLTag", function () {
-      $(document).on("keyup.removeURLTag", function (e) {
-        if (e.key === KEYS.ENTER)
-          deleteURLTag(utubTagID, tagSpan, urlCard, utubID);
-      });
-    })
-    .offAndOn("blur.removeURLTag", function () {
-      $(document).off("keyup.removeURLTag");
     });
 
   removeButton.append(createTagDeleteIcon());

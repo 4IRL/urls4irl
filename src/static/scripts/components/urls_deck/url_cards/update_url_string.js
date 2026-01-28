@@ -40,8 +40,7 @@ function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
     .removeClass("urlStringBtnUpdate fourty-p-width")
     .addClass("urlStringCancelBigBtnUpdate")
     .text("Cancel")
-    .offAndOn("click", function (e) {
-      e.stopPropagation();
+    .offAndOnExact("click", function (e) {
       hideAndResetUpdateURLStringForm(urlCard);
       if (tooltip) tooltip.enable();
     });
@@ -67,8 +66,7 @@ function hideAndResetUpdateURLStringForm(urlCard) {
   urlStringBtnUpdate
     .removeClass("urlStringCancelBigBtnUpdate")
     .addClass("urlStringBtnUpdate")
-    .offAndOn("click", function (e) {
-      e.stopPropagation();
+    .offAndOnExact("click", function (e) {
       showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
     })
     .text("")
@@ -173,18 +171,15 @@ function updateURLSuccess(response, urlCard) {
     .text(updatedURLString);
 
   // Update URL options
-  urlCard.find(".urlBtnAccess").offAndOn("click", function (e) {
-    e.stopPropagation();
+  urlCard.find(".urlBtnAccess").offAndOnExact("click", function (e) {
     accessLink(updatedURLString);
   });
 
-  urlCard.find(".goToUrlIcon").offAndOn("click", function (e) {
-    e.stopPropagation();
+  urlCard.find(".goToUrlIcon").offAndOnExact("click", function (e) {
     accessLink(updatedURLString);
   });
 
-  urlCard.find(".urlBtnCopy").offAndOn("click", function (e) {
-    e.stopPropagation();
+  urlCard.find(".urlBtnCopy").offAndOnExact("click", function (e) {
     copyURLString(updatedURLString, this);
   });
 

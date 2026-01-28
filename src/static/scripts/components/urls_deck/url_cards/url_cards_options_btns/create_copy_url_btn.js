@@ -47,13 +47,12 @@ function createCopyURLBtn(url) {
       "data-bs-title": `${APP_CONFIG.strings.COPY_URL_TOOLTIP}`,
     })
     .disableTab()
-    .on("click", function (e) {
-      e.stopPropagation();
+    .onExact("click", function (e) {
       copyURLString(url.urlString, this);
     })
     .append(createCopyURLIcon())
     .on("blur", function () {
-      $(document).off("keyup.copyURL");
+      urlBtnCopy.off("keyup.copyURL");
     });
 
   bootstrap.Tooltip.getOrCreateInstance(urlBtnCopy);

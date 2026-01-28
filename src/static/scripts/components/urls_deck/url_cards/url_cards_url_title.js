@@ -41,14 +41,9 @@ function createURLTitleAndUpdateBlock(urlTitleText, urlCard, utubID) {
 function createShowUpdateURLTitleIcon(urlCard) {
   return makeUpdateButton(20)
     .addClass("urlTitleBtnUpdate")
-    .on("click.showUpdateURLTitle", function (e) {
-      if ($(e.target).parents(".urlTitleAndUpdateIconWrap").length > 0) {
-        const urlTitleAndIcon = $(e.target).closest(
-          ".urlTitleAndUpdateIconWrap",
-        );
-        e.stopPropagation();
-        showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
-      }
+    .onExact("click.showUpdateURLTitle", function (e) {
+      const urlTitleAndIcon = $(e.target).closest(".urlTitleAndUpdateIconWrap");
+      showUpdateURLTitleForm(urlTitleAndIcon, urlCard);
     });
 }
 
@@ -71,7 +66,8 @@ function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
     .val(urlTitleText);
 
   urlTitleTextInput.offAndOn("focus.updateURLTitleInputFocus", function () {
-    $(document).on("keyup.updateURLTitleSubmitEscape", function (e) {
+    urlTitleTextInput.on("keydown.updateURLTitleSubmitEscape", function (e) {
+      if (e.originalEvent.repeat) return;
       switch (e.key) {
         case KEYS.ENTER:
           updateURLTitle(urlTitleTextInput, urlCard, utubID);
@@ -86,7 +82,7 @@ function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
   });
 
   urlTitleTextInput.offAndOn("blur.updateURLTitleInputFocus", function () {
-    $(document).off("keyup.updateURLTitleSubmitEscape");
+    urlTitleTextInput.off("keydown.updateURLTitleSubmitEscape");
   });
 
   // Update Url Title submit button
@@ -94,53 +90,18 @@ function createUpdateURLTitleInput(urlTitleText, urlCard, utubID) {
     "urlTitleSubmitBtnUpdate",
   );
 
-  urlTitleSubmitBtnUpdate
-    .find(".submitButton")
-    .on("click.updateUrlTitle", function (e) {
-      if (
-        $(e.target)
-          .closest(".urlTitleSubmitBtnUpdate")
-          .is(urlTitleSubmitBtnUpdate) &&
-        $(e.target).closest(".urlRow").is(urlCard)
-      )
-        e.stopPropagation();
-      updateURLTitle(urlTitleTextInput, urlCard, utubID);
-    })
-    .offAndOn("focus.submitUpdateUrlTitle", function () {
-      $(document).on("keyup.submitUpdateUrlTitle", function (e) {
-        if (e.key === KEYS.ENTER)
-          updateURLTitle(urlTitleTextInput, urlCard, utubID);
-      });
-    })
-    .offAndOn("blur.submitUpdateUrlTitle", function () {
-      $(document).off("keyup.submitUpdateUrlTitle");
-    });
+  urlTitleSubmitBtnUpdate.onExact("click.updateUrlTitle", function (e) {
+    updateURLTitle(urlTitleTextInput, urlCard, utubID);
+  });
 
   // Update Url Title cancel button
   const urlTitleCancelBtnUpdate = makeCancelButton(30).addClass(
     "urlTitleCancelBtnUpdate tabbable",
   );
 
-  urlTitleCancelBtnUpdate
-    .find(".cancelButton")
-    .on("click.updateUrlTitle", function (e) {
-      if (
-        $(e.target)
-          .closest(".urlTitleCancelBtnUpdate")
-          .is(urlTitleCancelBtnUpdate) &&
-        $(e.target).closest(".urlRow").is(urlCard)
-      )
-        e.stopPropagation();
-      hideAndResetUpdateURLTitleForm(urlCard);
-    })
-    .offAndOn("focus.cancelUpdateUrlTitle", function () {
-      $(document).on("keyup.cancelUpdateUrlTitle", function (e) {
-        if (e.key === KEYS.ENTER) hideAndResetUpdateURLTitleForm(urlCard);
-      });
-    })
-    .offAndOn("blur.cancelUpdateUrlTitle", function () {
-      $(document).off("keyup.cancelUpdateUrlTitle");
-    });
+  urlTitleCancelBtnUpdate.onExact("click.updateUrlTitle", function (e) {
+    hideAndResetUpdateURLTitleForm(urlCard);
+  });
 
   urlTitleUpdateInputContainer
     .append(urlTitleSubmitBtnUpdate)

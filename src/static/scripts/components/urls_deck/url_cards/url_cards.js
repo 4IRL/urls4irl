@@ -146,13 +146,12 @@ function newURLInputAddEventListeners(urlInputForm, utubID) {
   const createURLTitleInput = urlInputForm.find("#urlTitleCreate");
   const createURLInput = urlInputForm.find("#urlStringCreate");
 
-  $(urlBtnCreate).on("click.createURL", function (e) {
-    e.stopPropagation();
+  $(urlBtnCreate).onExact("click.createURL", function (e) {
     createURL(createURLTitleInput, createURLInput, utubID);
   });
 
-  $(urlBtnDelete).on("click.createURL", function (e) {
-    if ($(e.target).closest(urlBtnDelete).length > 0) createURLHideInput();
+  $(urlBtnDelete).onExact("click.createURL", function (e) {
+    createURLHideInput();
   });
 
   const inputArr = [createURLInput, createURLTitleInput];
@@ -160,14 +159,15 @@ function newURLInputAddEventListeners(urlInputForm, utubID) {
   for (let i = 0; i < inputArr.length; i++) {
     $(inputArr[i]).on("focus.createURL", function () {
       bindCreateURLFocusEventListeners(
-        createURLTitleInput,
+        $(inputArr[i]),
         createURLInput,
+        createURLTitleInput,
         utubID,
       );
     });
 
     $(inputArr[i]).on("blur.createURL", function () {
-      unbindCreateURLFocusEventListeners();
+      unbindCreateURLFocusEventListeners($(inputArr[i]));
     });
   }
 }

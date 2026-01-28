@@ -84,6 +84,28 @@ function disableTabbableChildElements(parent) {
     return this;
   };
 
+  $.fn.onExact = function (events, callback, options = {}) {
+    return this.on(events, function (e) {
+      // Check if currentTarget matches the bound element
+      if (!$(e.currentTarget).is(this)) return;
+
+      // Check for exceptions (elements to ignore)
+      if (options.except) {
+        const exceptions = Array.isArray(options.except)
+          ? options.except
+          : [options.except];
+        if ($(e.target).closest(exceptions.join(",")).length) return;
+      }
+
+      // Call the actual handler
+      callback.call(this, e);
+    });
+  };
+
+  $.fn.offAndOnExact = function (eventName, callback, options = {}) {
+    return this.off(eventName).onExact(eventName, callback, options);
+  };
+
   $.fn.removeClassStartingWith = function (filter) {
     $(this).removeClass(function (_, className) {
       return (

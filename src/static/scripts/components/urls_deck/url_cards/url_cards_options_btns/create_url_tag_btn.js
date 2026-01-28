@@ -56,17 +56,10 @@ function createAddTagBtn(urlCard) {
       "data-bs-title": `${APP_CONFIG.strings.ADD_URL_TAG_TOOLTIP}`,
     })
     .disableTab()
-    .on("click", function (e) {
-      e.stopPropagation();
+    .onExact("click", function (e) {
       showCreateURLTagForm(urlCard, urlTagBtnCreate);
     })
-    .append(createAddTagIcon())
-    .on("focus", function (e) {
-      if ($(e.target).hasClass("cancel")) return;
-    })
-    .on("blur", function () {
-      $(document).off("keyup.showURLTagCreate");
-    });
+    .append(createAddTagIcon());
 
   bootstrap.Tooltip.getOrCreateInstance(urlTagBtnCreate);
   return urlTagBtnCreate;

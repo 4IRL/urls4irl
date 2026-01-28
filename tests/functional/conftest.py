@@ -19,6 +19,7 @@ from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.db_utils import add_mock_urls
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
+    add_cookie_banner_cookie,
     wait_for_page_complete_and_dom_stable,
 )
 from tests.functional.ui_test_setup import (
@@ -173,7 +174,7 @@ def build_driver_mobile_portrait(
 
 
 @pytest.fixture
-def browser(
+def browser_without_cookie_banner_cookie(
     provide_port: int,
     provide_config: ConfigTest,
     build_driver: WebDriver,
@@ -214,7 +215,20 @@ def browser(
 
 
 @pytest.fixture
-def browser_mobile_portrait(
+def browser(
+    browser_without_cookie_banner_cookie: WebDriver,
+):
+    """
+    This fixture adds the consent cookie before all tests
+    """
+    browser = browser_without_cookie_banner_cookie
+    add_cookie_banner_cookie(browser)
+
+    yield browser
+
+
+@pytest.fixture
+def browser_mobile_portrait_without_cookie_banner_cookie(
     provide_port: int,
     provide_config: ConfigTest,
     build_driver_mobile_portrait: WebDriver,
@@ -240,6 +254,19 @@ def browser_mobile_portrait(
 
     # Return the driver object to be used in the test functions
     yield driver
+
+
+@pytest.fixture
+def browser_mobile_portrait(
+    browser_mobile_portrait_without_cookie_banner_cookie: WebDriver,
+):
+    """
+    This fixture clears cookies, accesses the U4I site and supplies driver for use by the test. A new instance is invoked per test.
+    """
+    browser = browser_mobile_portrait_without_cookie_banner_cookie
+    add_cookie_banner_cookie(browser)
+
+    yield browser
 
 
 @pytest.fixture

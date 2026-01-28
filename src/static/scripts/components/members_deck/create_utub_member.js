@@ -10,13 +10,13 @@ function setupShowCreateMemberFormEventListeners(utubID) {
   });
 
   memberBtnCreate.offAndOn("focus", function () {
-    $(document).on("keyup.createMember", function (e) {
+    memberBtnCreate.on("keydown.createMember", function (e) {
       if (e.key === KEYS.ENTER) createMemberShowInput(utubID);
     });
   });
 
   memberBtnCreate.offAndOn("blur", function () {
-    $(document).off(".createMember");
+    memberBtnCreate.off(".createMember");
   });
 }
 
@@ -24,39 +24,17 @@ function setupCreateMemberEventListeners(utubID) {
   const memberSubmitBtnCreate = $("#memberSubmitBtnCreate");
   const memberCancelBtnCreate = $("#memberCancelBtnCreate");
 
-  memberSubmitBtnCreate.offAndOn("click.createMemberSubmit", function (e) {
-    if ($(e.target).closest("#memberSubmitBtnCreate").length > 0)
-      createMember(utubID);
+  memberSubmitBtnCreate.offAndOnExact("click.createMemberSubmit", function (e) {
+    createMember(utubID);
   });
 
-  memberSubmitBtnCreate.offAndOn("focus.createMemberSubmit", function () {
-    $(document).on("keyup.createMemberSubmit", function (e) {
-      if (e.key === KEYS.ENTER) createMember(utubID);
-    });
-  });
-
-  memberSubmitBtnCreate.offAndOn("blur.createMemberSubmit", function () {
-    $(document).off("keyup.createMemberSubmit");
-  });
-
-  memberCancelBtnCreate.offAndOn("click.createMemberEscape", function (e) {
-    if ($(e.target).closest("#memberCancelBtnCreate").length > 0)
-      createMemberHideInput();
-  });
-
-  memberCancelBtnCreate.offAndOn("focus.createMemberEscape", function () {
-    $(document).on("keyup.createMemberEscape", function (e) {
-      if (e.key === KEYS.ENTER) createMemberHideInput();
-    });
-  });
-
-  memberCancelBtnCreate.offAndOn("blur.createMemberEscape", function () {
-    $(document).off("keyup.createMemberEscape");
+  memberCancelBtnCreate.offAndOnExact("click.createMemberEscape", function (e) {
+    createMemberHideInput();
   });
 
   const memberInput = $("#memberCreate");
   memberInput.on("focus.createMemberSubmitEscape", function () {
-    bindCreateMemberFocusEventListeners(utubID);
+    bindCreateMemberFocusEventListeners(utubID, memberInput);
   });
   memberInput.on("blur.createMemberSubmitSubmitEscape", function () {
     unbindCreateMemberFocusEventListeners();
@@ -67,9 +45,10 @@ function removeCreateMemberEventListeners() {
   $("#memberCreate").off(".createMemberSubmitEscape");
 }
 
-function bindCreateMemberFocusEventListeners(utubID) {
+function bindCreateMemberFocusEventListeners(utubID, memberInput) {
   // Allow closing by pressing escape key
-  $(document).on("keyup.createMemberSubmitEscape", function (e) {
+  memberInput.on("keydown.createMemberSubmitEscape", function (e) {
+    if (e.originalEvent.repeat) return;
     switch (e.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
@@ -86,7 +65,7 @@ function bindCreateMemberFocusEventListeners(utubID) {
 }
 
 function unbindCreateMemberFocusEventListeners() {
-  $(document).off(".createMemberSubmitEscape");
+  $("#memberCreate").off(".createMemberSubmitEscape");
 }
 
 // Clear member creation

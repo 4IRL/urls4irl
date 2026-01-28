@@ -18,7 +18,25 @@ function selectURLCard(urlCard) {
 }
 
 function enableClickOnSelectedURLCardToHide(urlCard) {
-  urlCard.on("click.deselectURL", () => {
+  urlCard.on("click.deselectURL", (e) => {
+    const elementsToIgnoreForURLDeselection = [
+      ".urlTagBtnCreate",
+      ".urlStringBtnUpdate",
+      ".urlStringCancelBtnUpdate",
+      ".urlTagCancelBtnCreate",
+      ".urlTitleCancelBtnUpdate",
+      ".urlTagBtnDelete",
+      ".urlBtnCopy",
+      ".goToUrlIcon",
+      ".urlBtnAccess",
+      ".urlBtnDelete",
+    ];
+
+    for (let i = 0; i < elementsToIgnoreForURLDeselection.length; i++) {
+      if ($(e.target).closest(elementsToIgnoreForURLDeselection[i]).length)
+        return;
+    }
+
     deselectURL(urlCard);
   });
 }
@@ -51,9 +69,10 @@ function deselectAllURLs() {
 
 function setURLCardSelectionEventListener(urlCard) {
   urlCard.offAndOn("click.urlSelected", function (e) {
-    if ($(e.target).parents(".urlRow").length > 0) {
-      if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") return;
-      selectURLCard(urlCard);
-    }
+    if (!$(e.target).parents(".urlRow").length) return;
+
+    if ($(e.target).closest(".urlRow").attr("urlSelected") === "true") return;
+
+    selectURLCard(urlCard);
   });
 }

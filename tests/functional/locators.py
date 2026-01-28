@@ -24,6 +24,10 @@ class GenericPageLocator:
     CONTACT_SUBMIT = "#submit"
     FLASH_ELEMENT = "#flasher"
 
+    # Cookie Banner
+    COOKIE_BANNER = "#CookieBanner"
+    COOKIE_BANNER_BTN = "#CookieBanner #CookieButton"
+
 
 class HomePageLocators(GenericPageLocator):
     """A collector class for main page locators"""

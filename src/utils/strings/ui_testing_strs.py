@@ -5,6 +5,7 @@ from src.cli.mock_constants import (
     EMAIL_SUFFIX,
     MOCK_URL_STRINGS,
 )
+from src.utils.strings.user_strs import COOKIE_BANNER_SEEN
 
 
 class UI_TEST_STRINGS:
@@ -39,3 +40,5 @@ class UI_TEST_STRINGS:
         "C1",
         "D1",
     )
+
+    COOKIE_NAME, COOKIE_VALUE = COOKIE_BANNER_SEEN.split("=")

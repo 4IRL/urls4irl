@@ -6,7 +6,7 @@ function createOwnerBadge(utubOwnerUserID, utubMemberUsername) {
 
   $(memberSpan)
     .attr({ memberid: utubOwnerUserID })
-    .addClass("member full-width flex-row")
+    .addClass("member full-width flex-row flex-start align-center")
     .html("<b>" + utubMemberUsername + "</b>");
 
   return memberSpan;
@@ -22,47 +22,22 @@ function createMemberBadge(
 
   $(memberSpan)
     .attr({ memberid: utubMemberUserID })
-    .addClass("member full-width flex-row jc-sb align-center")
+    .addClass("member full-width flex-row jc-sb align-center flex-start")
     .html("<b>" + utubMemberUsername + "</b>");
 
   if (isCurrentUserOwner) {
-    const removeIcon = createMemberRemoveIcon();
-    removeIcon
-      .offAndOn("click.removeMember", function (e) {
-        e.stopPropagation();
-        removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
-      })
-      .offAndOn("focus.removeMember", function () {
-        $(document).on("keyup.removeMember", function (e) {
-          if (e.key === KEYS.ENTER)
-            removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
-        });
-      })
-      .offAndOn("blur.removeMember", function () {
-        $(document).off("keyup.removeMember");
-      });
+    const removeIcon = createMemberRemoveBtn();
+    removeIcon.offAndOnExact("click.removeMember", function (e) {
+      removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
+    });
     $(memberSpan).append(removeIcon);
   } else {
     // Leave UTub if member
-    $("#memberSelfBtnDelete")
-      .offAndOn("click.removeMember", function (e) {
-        e.stopPropagation();
-        hideInputs();
-        deselectAllURLs();
-        removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
-      })
-      .offAndOn("focus.removeSelf", function () {
-        $(document).on("keyup.removeSelf", function (e) {
-          if (e.key === KEYS.ENTER) {
-            hideInputs();
-            deselectAllURLs();
-            removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
-          }
-        });
-      })
-      .offAndOn("blur.removeSelf", function () {
-        $(document).off("keyup.removeSelf");
-      });
+    $("#memberSelfBtnDelete").offAndOnExact("click.removeMember", function (e) {
+      hideInputs();
+      deselectAllURLs();
+      removeMemberShowModal(utubMemberUserID, isCurrentUserOwner, utubID);
+    });
   }
 
   return memberSpan;

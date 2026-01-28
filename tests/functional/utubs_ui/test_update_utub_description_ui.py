@@ -33,6 +33,7 @@ from tests.functional.selenium_utils import (
     invalidate_csrf_token_on_page,
     select_utub_by_id,
     select_utub_by_name,
+    wait_and_get_deepest_hovered_elem,
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
@@ -536,16 +537,14 @@ def test_update_empty_utub_description_updates_description_member(
     actions = ActionChains(browser)
 
     utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
-    utub_desc_input_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
-    )
 
-    # Exception raised since hovering over the element should not pop up the
+    # Hovering over the element should not pop up the
     # empty UTub description update button
-    with pytest.raises(ElementNotInteractableException):
-        actions.move_to_element(utub_title_elem).pause(5).move_to_element(
-            utub_desc_input_elem
-        ).pause(5).perform()
+    actions.move_to_element(utub_title_elem).pause(5).perform()
+    hovered_elem = wait_and_get_deepest_hovered_elem(browser)
+    assert hovered_elem
+    assert hovered_elem.text == utub_user_member_of.name
+    assert_not_visible_css_selector(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
 
 
 def test_update_utub_description_form_closes_when_selecting_other_utub(
@@ -636,16 +635,14 @@ def test_open_update_utub_description_btn_not_visible_on_member_utub_after_own_u
     actions = ActionChains(browser)
 
     utub_title_elem = browser.find_element(By.CSS_SELECTOR, HPL.HEADER_URL_DECK)
-    utub_desc_input_elem = browser.find_element(
-        By.CSS_SELECTOR, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY
-    )
 
-    # Exception raised since hovering over the element should not pop up the
+    # Hovering over the element should not pop up the
     # empty UTub description update button
-    with pytest.raises(ElementNotInteractableException):
-        actions.move_to_element(utub_title_elem).pause(5).move_to_element(
-            utub_desc_input_elem
-        ).pause(5).perform()
+    actions.move_to_element(utub_title_elem).pause(5).perform()
+    hovered_elem = wait_and_get_deepest_hovered_elem(browser)
+    assert hovered_elem
+    assert hovered_elem.text == utub_user_member_of.name
+    assert_not_visible_css_selector(browser, HPL.BUTTON_ADD_UTUB_DESC_ON_EMPTY)
 
 
 def test_update_utub_description_invalid_csrf_token(

@@ -13,24 +13,9 @@ function checkSameNameUTubOnCreate(name) {
 function setCreateUTubEventListeners() {
   // Create new UTub
   const utubBtnCreate = $("#utubBtnCreate");
-  utubBtnCreate.offAndOn("click.createUTub", function () {
+  utubBtnCreate.offAndOnExact("click.createUTub", function (e) {
     createUTubShowInput();
     closeUTubSearchAndEraseInput();
-  });
-
-  // Allows user to press enter to bring up form while focusing on the add UTub icon, esp after tabbing
-  utubBtnCreate.offAndOn("focus.createUTub", function () {
-    $(document).offAndOn("keyup.createUTub", function (e) {
-      if (e.key === KEYS.ENTER) {
-        e.stopPropagation();
-        createUTubShowInput();
-      }
-    });
-  });
-
-  // Removes the keyup listener from the document once the button is blurred
-  utubBtnCreate.offAndOn("blur.createUTub", function () {
-    $(document).off("keyup.createUTub");
   });
 }
 
@@ -38,66 +23,42 @@ function setCreateUTubEventListeners() {
 function createNewUTubEventListeners() {
   const utubSubmitBtnCreate = $("#utubSubmitBtnCreate");
   const utubCancelBtnCreate = $("#utubCancelBtnCreate");
-  utubSubmitBtnCreate.offAndOn("click.createUTub", function (e) {
-    if ($(e.target).closest("#utubSubmitBtnCreate").length > 0)
-      checkSameNameUTubOnCreate($("#utubNameCreate").val());
+  utubSubmitBtnCreate.offAndOnExact("click.createUTub", function (e) {
+    checkSameNameUTubOnCreate($("#utubNameCreate").val());
   });
 
-  utubCancelBtnCreate.offAndOn("click.createUTub", function (e) {
-    if ($(e.target).closest("#utubCancelBtnCreate").length > 0)
-      createUTubHideInput();
-  });
-
-  utubSubmitBtnCreate.offAndOn("focus.createUTub", function () {
-    $(document).offAndOn("keyup.createUTubSubmit", function (e) {
-      if (e.key === KEYS.ENTER)
-        checkSameNameUTubOnCreate($("#utubNameCreate").val());
-    });
-  });
-
-  utubSubmitBtnCreate.offAndOn("blur.createUTub", function () {
-    $(document).off("keyup.createUTubSubmit");
-  });
-
-  utubCancelBtnCreate.offAndOn("focus.createUTub", function () {
-    $(document).offAndOn("keyup.createUTubCancel", function (e) {
-      if (e.key === KEYS.ENTER) createUTubHideInput();
-    });
-  });
-
-  utubCancelBtnCreate.on("blur.createUTub", function () {
-    $(document).off("keyup.createUTubCancel");
+  utubCancelBtnCreate.offAndOnExact("click.createUTub", function (e) {
+    createUTubHideInput();
   });
 
   const utubNameInput = $("#utubNameCreate");
   const utubDescriptionInput = $("#utubDescriptionCreate");
 
-  utubNameInput.on("focus.createUTub", function () {
-    $(document).on("keyup.createUTubName", function (e) {
+  utubNameInput.on("focus.createUTub", function (e) {
+    utubNameInput.on("keydown.createUTubName", function (e) {
+      if (e.originalEvent.repeat) return;
       handleOnFocusEventListenersForCreateUTub(e);
     });
   });
 
   utubNameInput.on("blur.createUTub", function () {
-    $(document).off(".createUTubName");
+    utubNameInput.off(".createUTubName");
   });
 
   utubDescriptionInput.on("focus.createUTub", function () {
-    $(document).on("keyup.createUTubDescription", function (e) {
+    utubDescriptionInput.on("keydown.createUTubDescription", function (e) {
       handleOnFocusEventListenersForCreateUTub(e);
     });
   });
 
   utubDescriptionInput.on("blur.createUTub", function () {
-    $(document).off(".createUTubDescription");
+    utubDescriptionInput.off(".createUTubDescription");
   });
 }
 
 function removeNewUTubEventListeners() {
-  $(document).off("keyup.createUTubName");
-  $(document).off("keyup.createUTubDescription");
-  $(document).off("keyup.createUTubCancel");
-  $(document).off("keyup.createUTubSubmit");
+  $("#utubNameCreate").off("keydown.createUTubName");
+  $("#utubDescriptionCreate").off("keydown.createUTubDescription");
   $("#utubNameCreate").off(".createUTub");
   $("#utubDescriptionCreate").off(".createUTub");
   $("#utubSubmitBtnCreate").off(".createUTub");
@@ -134,9 +95,8 @@ function sameUTubNameOnNewUTubWarningShowModal() {
   $("#modalDismiss")
     .addClass("btn btn-secondary")
     .text(buttonTextDismiss)
-    .offAndOn("click", function (e) {
+    .offAndOnExact("click", function (e) {
       e.preventDefault();
-      e.stopPropagation();
       sameNameWarningHideModal();
       highlightInput($("#utubNameCreate"));
     });
@@ -148,7 +108,7 @@ function sameUTubNameOnNewUTubWarningShowModal() {
     .removeClass()
     .addClass("btn btn-success")
     .text(buttonTextSubmit)
-    .offAndOn("click", function (e) {
+    .offAndOnExact("click", function (e) {
       e.preventDefault();
       createUTub();
       $("#utubNameCreate").val(null);

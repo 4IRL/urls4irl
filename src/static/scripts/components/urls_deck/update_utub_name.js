@@ -12,69 +12,38 @@ function checkSameNameUTubOnUpdate(name, utubID) {
 
 function setupUpdateUTubNameEventListeners(utubID) {
   // Update UTub name
-  $("#utubNameBtnUpdate").on("click", function (e) {
+  $("#utubNameBtnUpdate").offAndOn("click", function (e) {
     deselectAllURLs();
-    updateUTubDescriptionHideInput();
+    updateUTubDescriptionHideInput(utubID);
     updateUTubNameShowInput(utubID);
     // Prevent this event from bubbling up to the window to allow event listener creation
-    e.stopPropagation();
+    if (!$(e.target).is(this)) return;
   });
 
   const utubNameSubmitBtnUpdate = $("#utubNameSubmitBtnUpdate");
   const utubNameCancelBtnUpdate = $("#utubNameCancelBtnUpdate");
 
-  utubNameSubmitBtnUpdate
-    .find(".submitButton")
-    .on("click", function (e) {
-      // Prevent event from bubbling up to window which would exit the input box
-      e.stopPropagation();
-      // Skip if update is identical to original
-      if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
-        updateUTubNameHideInput();
-        return;
-      }
-      checkSameNameUTubOnUpdate($("#utubNameUpdate").val(), utubID);
-    })
-    .on("focus.updateUTubname", function () {
-      $(document).on("keyup.updateUTubname", function (e) {
-        if (e.key === KEYS.ENTER) {
-          if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
-            updateUTubNameHideInput();
-            return;
-          }
-          checkSameNameUTubOnUpdate($("#utubNameUpdate").val(), utubID);
-        }
-      });
-    })
-    .on("blur.updateUTubname", function () {
-      $(document).off("keyup.updateUTubname");
-    });
-
-  utubNameCancelBtnUpdate
-    .find(".cancelButton")
-    .on("click.updateUTubname", function (e) {
-      e.stopPropagation();
+  utubNameSubmitBtnUpdate.offAndOnExact("click.updateUTubname", function (e) {
+    // Skip if update is identical to original
+    if ($("#URLDeckHeader").text() === $("#utubNameUpdate").val()) {
       updateUTubNameHideInput();
-    })
-    .on("focus.updateUTubname", function () {
-      $(document).on("keyup.updateUTubname", function (e) {
-        if (e.key === KEYS.ENTER) updateUTubNameHideInput();
-      });
-    })
-    .on("blur.updateUTubname", function () {
-      $(document).off("keyup.updateUTubname");
-    });
+      return;
+    }
+    checkSameNameUTubOnUpdate($("#utubNameUpdate").val(), utubID);
+  });
+
+  utubNameCancelBtnUpdate.offAndOnExact("click.updateUTubname", function (e) {
+    updateUTubNameHideInput();
+  });
 }
 
 // Create event listeners to escape from updating UTub name
 function setEventListenersToEscapeUpdateUTubName(utubID) {
   // Allow user to still click in the text box
   $("#utubNameUpdate")
-    .offAndOn("click.updateUTubname", function (e) {
-      e.stopPropagation();
-    })
     .offAndOn("focus.updateUTubname", function () {
-      $(document).on("keyup.updateUTubname", function (e) {
+      $("#utubNameUpdate").on("keydown.updateUTubname", function (e) {
+        if (e.originalEvent.repeat) return;
         switch (e.key) {
           case KEYS.ENTER:
             // Handle enter key pressed
@@ -95,11 +64,23 @@ function setEventListenersToEscapeUpdateUTubName(utubID) {
       });
     })
     .offAndOn("blur.updateUTubname", function () {
-      $(document).off("keyup.updateUTubname");
+      $("#utubNameUpdate").off("keyup.updateUTubname");
     });
 
   // Bind clicking outside the window
-  $(window).offAndOn("click.updateUTubname", function () {
+  $(window).offAndOn("click.updateUTubname", function (e) {
+    // Ignore clicks on the creation object
+    if ($(e.target).closest("#utubNameBtnUpdate").length) return;
+
+    // Ignore clicks on the input box
+    if ($(e.target).is($("#utubNameUpdate"))) return;
+
+    // Ignore clicks on the submit button
+    if ($(e.target).closest($("#utubNameSubmitBtnUpdate").length)) return;
+
+    // Ignore clicks on the cancel button
+    if ($(e.target).closest($("#utubNameCancelBtnUpdate").length)) return;
+
     // Hide UTub name update fields
     updateUTubNameHideInput();
   });
@@ -107,7 +88,7 @@ function setEventListenersToEscapeUpdateUTubName(utubID) {
 
 function removeEventListenersToEscapeUpdateUTubName() {
   $(window).off(".updateUTubname");
-  $(document).off(".updateUTubname");
+  $("#utubNameUpdate").off(".updateUTubname");
 }
 
 function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
@@ -115,6 +96,7 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
   const modalBody = `${APP_CONFIG.strings.UTUB_UPDATE_SAME_NAME}`;
   const buttonTextDismiss = "Go Back to Editing";
   const buttonTextSubmit = "Edit Name";
+  let isSubmitting = false;
 
   removeEventListenersToEscapeUpdateUTubName();
 
@@ -125,12 +107,13 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
   $("#modalDismiss")
     .addClass("btn btn-secondary")
     .text(buttonTextDismiss)
-    .offAndOn("click", function (e) {
+    .offAndOnExact("click", function (e) {
       e.preventDefault();
-      e.stopPropagation();
       sameNameWarningHideModal();
-      highlightInput($("#utubNameUpdate"));
       setEventListenersToEscapeUpdateUTubName(utubID);
+      setTimeout(function () {
+        highlightInput($("#utubNameUpdate"));
+      }, 300);
     });
 
   $("#modalRedirect").hideClass();
@@ -140,15 +123,16 @@ function sameUTubNameOnUpdateUTubNameWarningShowModal(utubID) {
     .removeClass()
     .addClass("btn btn-success")
     .text(buttonTextSubmit)
-    .offAndOn("click", function (e) {
-      e.preventDefault();
+    .offAndOnExact("click", function (e) {
+      isSubmitting = true;
       updateUTubName(utubID);
     });
 
   $("#confirmModal").modal("show");
-  $("#confirmModal").on("hidden.bs.modal", function (e) {
+  $("#confirmModal").offAndOn("hidden.bs.modal", function (e) {
     e.stopPropagation();
     setEventListenersToEscapeUpdateUTubName(utubID);
+    if (!isSubmitting) highlightInput($("#utubNameUpdate"));
   });
 }
 
@@ -198,7 +182,9 @@ function updateUTubNameHideInput() {
   $("#utubNameBtnUpdate").addClass("visibleBtn");
 
   if ($("#URLDeckSubheader").text().length === 0) {
-    $("#URLDeckSubheaderCreateDescription").hideClass();
+    $("#URLDeckSubheaderCreateDescription")
+      .removeClass("opa-1 height-2rem")
+      .addClass("opa-0 height-0");
   }
 
   // Remove any errors if shown

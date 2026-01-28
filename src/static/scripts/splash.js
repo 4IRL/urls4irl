@@ -1,5 +1,13 @@
 "use strict";
 
+const KEYS = {
+  ENTER: "Enter",
+  ESCAPE: "Escape",
+  ARROW_UP: "ArrowUp",
+  ARROW_DOWN: "ArrowDown",
+  SPACE: " ",
+};
+
 $(document).ready(function () {
   setToRegisterButton();
   setToLoginButton();
