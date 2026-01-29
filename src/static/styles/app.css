@@ -332,8 +332,10 @@ a {
     color: black;
 }
 
-#CookieBanner .btn-close {
-    min-width: revert;
+
+#CookieButton:hover {
+    background-color: var(--darkSplashGreen);
+    border-color: transparent;
 }
 
 #CookieBanner p {
