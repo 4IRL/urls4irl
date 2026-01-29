@@ -47,8 +47,7 @@ function createEditURLBtn(urlCard) {
       "data-bs-title": `${APP_CONFIG.strings.EDIT_URL_TOOLTIP}`,
     })
     .disableTab()
-    .on("click", function (e) {
-      e.stopPropagation();
+    .onExact("click", function (e) {
       showUpdateURLStringForm(urlCard, urlStringBtnUpdate);
     })
     .append(createEditURLIcon());

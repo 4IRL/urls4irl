@@ -74,13 +74,14 @@ function buildSelectedUTub(selectedUTub) {
   removeEventListenersForShowCreateUTubDescIfEmptyDesc();
   if (utubDescription) {
     utubDescriptionHeader.text(utubDescription);
-    $("#URLDeckHeaderWrap > .dynamic-subheader").addClass("height-2p5rem");
+    $("#UTubDescriptionSubheaderWrap").showClassFlex();
+    $("#URLDeckSubheaderCreateDescription").disableTab();
   } else {
     isCurrentUserOwner
       ? allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty(selectedUTub.id)
       : null;
     utubDescriptionHeader.text(null);
-    $("#URLDeckHeaderWrap > .dynamic-subheader").removeClass("height-2p5rem");
+    $("#UTubDescriptionSubheaderWrap").hideClass();
   }
 
   // Only allow owner to update UTub name and description
@@ -153,18 +154,16 @@ function createUTubSelector(utubName, utubID, memberRole, index) {
       tabindex: 0,
     })
     // Bind display state change function on click
-    .on("click.selectUTub", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
+    .onExact("click.selectUTub", function (e) {
       selectUTub(utubID, utubSelector);
     })
-    .offAndOn("focus.selectUTub", function () {
-      $(document).on("keyup.selectUTub", function (e) {
+    .offAndOnExact("focus.selectUTub", function (e) {
+      utubSelector.on("keyup.selectUTub", function (e) {
         if (e.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
       });
     })
-    .offAndOn("blur.selectUTub", function () {
-      $(document).off("keyup.selectUTub");
+    .offAndOnExact("blur.selectUTub", function (e) {
+      utubSelector.off("keyup.selectUTub");
     })
     .append(utubSelectorText)
     .append(makeUTubRoleIcon(memberRole));
@@ -177,18 +176,16 @@ function setUTubSelectorEventListeners(utub) {
   const utubID = utubSelector.attr("utubid");
   utubSelector
     // Bind display state change function on click
-    .on("click.selectUTub", function (e) {
-      e.stopPropagation();
-      e.preventDefault();
+    .onExact("click.selectUTub", function (e) {
       selectUTub(utubID, utubSelector);
     })
-    .offAndOn("focus.selectUTub", function () {
-      $(document).on("keyup.selectUTub", function (e) {
+    .offAndOnExact("focus.selectUTub", function (e) {
+      utubSelector.on("keyup.selectUTub", function (e) {
         if (e.key === KEYS.ENTER) selectUTub(utubID, utubSelector);
       });
     })
-    .offAndOn("blur.selectUTub", function () {
-      $(document).off("keyup.selectUTub");
+    .offAndOnExact("blur.selectUTub", function (e) {
+      utubSelector.off("keyup.selectUTub");
     });
 }
 
@@ -217,9 +214,7 @@ function makeUTubRoleIcon(memberRole) {
 }
 
 function makeUTubSelectableAgainIfMobile(utub) {
-  $(utub).offAndOn("click.selectUTubMobile", function (e) {
-    e.stopPropagation();
-    e.preventDefault();
+  $(utub).offAndOnExact("click.selectUTubMobile", function (e) {
     getSelectedUTubInfo($(this).attr("utubid"));
     $(this).off("click.selectUTubMobile");
   });

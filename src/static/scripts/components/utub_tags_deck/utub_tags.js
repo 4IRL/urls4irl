@@ -19,13 +19,13 @@ function buildTagFilterInDeck(utubID, tagID, string, urlCount = 0) {
       toggleTagFilterSelected(container);
     })
     .on("focus.tagFilterSelected", function () {
-      $(document).offAndOn("keyup.tagFilterSelected", function (e) {
+      container.offAndOn("keyup.tagFilterSelected", function (e) {
         if (e.key === KEYS.ENTER && $(e.target).hasClass("tagFilter"))
           toggleTagFilterSelected(container);
       });
     })
     .on("blur.tagFilterSelected", function () {
-      $(document).off("keyup.tagFilterSelected");
+      container.off("keyup.tagFilterSelected");
     });
 
   tagStringSpan.text(string);
@@ -39,18 +39,8 @@ function buildTagFilterInDeck(utubID, tagID, string, urlCount = 0) {
 
   deleteTagButton
     .addClass("utubTagBtnDelete align-center pointerable tabbable")
-    .on("click.removeUtubTag", function (e) {
-      e.stopPropagation();
+    .onExact("click.removeUtubTag", function (e) {
       deleteUTubTagShowModal(utubID, tagID, string);
-    })
-    .offAndOn("focus.removeUtubTag", function () {
-      $(document).offAndOn("keyup.removeUtubTag", function (e) {
-        if (e.key === KEYS.ENTER && $(e.target).hasClass("utubTagBtnDelete"))
-          deleteUTubTagShowModal(utubID, tagID, string);
-      });
-    })
-    .offAndOn("blur.removeUtubTag", function () {
-      $(document).off("keyup.removeUtubTag");
     });
 
   deleteTagButton.append(createTagDeleteIcon(22));
@@ -118,16 +108,17 @@ function enableUnselectedTagsAfterDisabledDueToLimit() {
   const unselectedTags = $(".tagFilter.unselected").removeClass("disabled");
   unselectedTags.each((_, tag) => {
     $(tag)
-      .on("click.tagFilterSelected", function () {
+      .on("click.tagFilterSelected", function (e) {
+        if (!$(e.target).closest(".tagFilter").is(this)) return;
         toggleTagFilterSelected($(tag));
       })
       .offAndOn("focus.tagFilterSelected", function () {
-        $(document).on("keyup.tagFilterSelected", function (e) {
+        $(tag).on("keyup.tagFilterSelected", function (e) {
           if (e.key === KEYS.ENTER) toggleTagFilterSelected($(tag));
         });
       })
       .offAndOn("blur.tagFilterSelected", function () {
-        $(document).off("keyup.tagFilterSelected");
+        $(tag).off("keyup.tagFilterSelected");
       })
       .attr({ tabindex: 0 });
   });

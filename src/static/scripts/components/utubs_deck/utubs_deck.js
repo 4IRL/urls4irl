@@ -79,7 +79,7 @@ function setUTubDeckOnUTubSelected(selectedUTubID, isCurrentUserOwner) {
     setDeleteEventListeners(selectedUTubID);
   } else $("#utubBtnDelete").hideClass();
 
-  const utubSelector = $(`.UTubSelector[utubid=${selectedUTubID}]`);
+  const utubSelector = $(`.UTubSelector[utubid="${selectedUTubID}"]`);
 
   if (!utubSelector.hasClass("active")) {
     // Remove all other active UTub selectors first

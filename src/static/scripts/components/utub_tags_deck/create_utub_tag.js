@@ -7,16 +7,6 @@ function setupOpenCreateUTubTagEventListeners(utubID) {
   utubTagBtnCreate.offAndOn("click.createUTubTag", function () {
     createUTubTagShowInput(utubID);
   });
-
-  utubTagBtnCreate.offAndOn("focus", function () {
-    $(document).on("keyup.createUTubTag", function (e) {
-      if (e.key === KEYS.ENTER) createUTubTagShowInput(utubID);
-    });
-  });
-
-  utubTagBtnCreate.offAndOn("blur", function () {
-    $(document).off(".createUTubTag");
-  });
 }
 
 // Clear tag input form
@@ -28,42 +18,26 @@ function setupCreateUTubTagEventListeners(utubID) {
   const utubTagSubmitBtnCreate = $("#utubTagSubmitBtnCreate");
   const utubTagCancelBtnCreate = $("#utubTagCancelBtnCreate");
 
-  utubTagSubmitBtnCreate.offAndOn("click.createUTubTagSubmit", function (e) {
-    if ($(e.target).closest("#utubTagSubmitBtnCreate").length > 0)
+  utubTagSubmitBtnCreate.offAndOnExact(
+    "click.createUTubTagSubmit",
+    function (e) {
       createUTubTag(utubID);
-  });
+    },
+  );
 
-  utubTagSubmitBtnCreate.offAndOn("focus.createUTubTagSubmit", function () {
-    $(document).offAndOn("keyup.createUTubTagSubmit", function (e) {
-      if (e.key === KEYS.ENTER) createUTubTag(utubID);
-    });
-  });
-
-  utubTagSubmitBtnCreate.offAndOn("blur.createUTubTagSubmit", function () {
-    $(document).off("keyup.createUTubTagSubmit");
-  });
-
-  utubTagCancelBtnCreate.offAndOn("click.createUTubTagEscape", function (e) {
-    if ($(e.target).closest("#utubTagCancelBtnCreate").length > 0)
+  utubTagCancelBtnCreate.offAndOnExact(
+    "click.createUTubTagEscape",
+    function (e) {
       createUTubTagHideInput();
-  });
-
-  utubTagCancelBtnCreate.offAndOn("focus.createUTubTagEscape", function () {
-    $(document).on("keyup.createUTubTagEscape", function (e) {
-      if (e.key === KEYS.ENTER) createUTubTagHideInput();
-    });
-  });
-
-  utubTagCancelBtnCreate.offAndOn("blur.createUTubTagEscape", function () {
-    $(document).off("keyup.createUTubTagEscape");
-  });
+    },
+  );
 
   const utubTagInput = $("#utubTagCreate");
   utubTagInput.offAndOn("focus.createUTubTagSubmitEscape", function () {
-    bindCreateUTubTagFocusEventListeners(utubID);
+    bindCreateUTubTagFocusEventListeners(utubID, utubTagInput);
   });
   utubTagInput.offAndOn("blur.createUTubTagSubmitSubmitEscape", function () {
-    unbindCreateUTubTagFocusEventListeners();
+    unbindCreateUTubTagFocusEventListeners(utubTagInput);
   });
 }
 
@@ -71,9 +45,10 @@ function removeCreateUTubTagEventListeners() {
   $("#memberCreate").off(".createUTubTagSubmitEscape");
 }
 
-function bindCreateUTubTagFocusEventListeners(utubID) {
+function bindCreateUTubTagFocusEventListeners(utubID, utubTagInput) {
   // Allow closing by pressing escape key
-  $(document).on("keyup.createUTubTagSubmitEscape", function (e) {
+  utubTagInput.offAndOn("keydown.createUTubTagSubmitEscape", function (e) {
+    if (e.originalEvent.repeat) return;
     switch (e.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
@@ -89,8 +64,8 @@ function bindCreateUTubTagFocusEventListeners(utubID) {
   });
 }
 
-function unbindCreateUTubTagFocusEventListeners() {
-  $(document).off(".createUTubTagSubmitEscape");
+function unbindCreateUTubTagFocusEventListeners(utubTagInput) {
+  utubTagInput.off(".createUTubTagSubmitEscape");
 }
 
 function createUTubTagShowInput(utubID) {

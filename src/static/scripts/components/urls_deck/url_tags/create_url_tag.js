@@ -4,7 +4,7 @@ function createTagInputBlock(urlCard, utubID) {
   const urlTagCreateTextInputContainer = makeTextInput(
     "urlTag",
     METHOD_TYPES.CREATE.description,
-  ).addClass("createUrlTagWrap hidden");
+  ).addClass("createUrlTagWrap hidden flex-start gap-5p");
 
   urlTagCreateTextInputContainer.find("label").text("Tag");
 
@@ -21,40 +21,18 @@ function createTagInputBlock(urlCard, utubID) {
     "urlTagSubmitBtnCreate",
   );
 
-  urlTagSubmitBtnCreate
-    .find(".submitButton")
-    .on("click.createURLTag", function () {
-      createURLTag(urlTagTextInput, urlCard, utubID);
-    })
-    .on("focus.createURLTag", function () {
-      $(document).on("keyup.createURLTag", function (e) {
-        if (e.key === KEYS.ENTER)
-          createURLTag(urlTagTextInput, urlCard, utubID);
-      });
-    })
-    .on("blur.createURLTag", function () {
-      $(document).off("keyup.createURLTag");
-    });
+  urlTagSubmitBtnCreate.onExact("click.createURLTag", function (e) {
+    createURLTag(urlTagTextInput, urlCard, utubID);
+  });
 
   // Create Url Title cancel button
   const urlTagCancelBtnCreate = makeCancelButton(30).addClass(
     "urlTagCancelBtnCreate",
   );
 
-  urlTagCancelBtnCreate
-    .find(".cancelButton")
-    .on("click.createURLTag", function (e) {
-      e.stopPropagation();
-      hideAndResetCreateURLTagForm(urlCard);
-    })
-    .offAndOn("focus.createURLTag", function () {
-      $(document).on("keyup.createURLTag", function (e) {
-        if (e.key === KEYS.ENTER) hideAndResetCreateURLTagForm(urlCard);
-      });
-    })
-    .offAndOn("blur.createURLTag", function () {
-      $(document).off("keyup.createURLTag");
-    });
+  urlTagCancelBtnCreate.onExact("click.createURLTag", function (e) {
+    hideAndResetCreateURLTagForm(urlCard);
+  });
 
   urlTagCreateTextInputContainer
     .append(urlTagSubmitBtnCreate)
@@ -100,8 +78,7 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
     .removeClass("fourty-p-width")
     .addClass("cancel urlTagCancelBigBtnCreate")
     .text("Cancel")
-    .offAndOn("click", function (e) {
-      e.stopPropagation();
+    .offAndOnExact("click", function (e) {
       hideAndResetCreateURLTagForm(urlCard);
       if (tooltip) tooltip.enable();
     });
@@ -127,6 +104,17 @@ function showCreateURLTagForm(urlCard, urlTagBtnCreate) {
 function hideAndResetCreateURLTagForm(urlCard) {
   resetCreateURLTagFailErrors(urlCard);
 
+  // Modify add tag button
+  const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
+  urlTagBtnCreate
+    .removeClass("cancel urlTagCancelBigBtnCreate")
+    .addClass("fourty-p-width")
+    .offAndOnExact("click", function (e) {
+      showCreateURLTagForm(urlCard, urlTagBtnCreate);
+    })
+    .text("")
+    .append(createAddTagIcon());
+
   // Hide form to add a tag to this URL
   const tagInputFormContainer = urlCard.find(".createUrlTagWrap");
   disableTabbableChildElements(tagInputFormContainer);
@@ -134,18 +122,6 @@ function hideAndResetCreateURLTagForm(urlCard) {
 
   // Reset input form
   tagInputFormContainer.find("input").val(null);
-
-  // Modify add tag button
-  const urlTagBtnCreate = urlCard.find(".urlTagBtnCreate");
-  urlTagBtnCreate
-    .removeClass("cancel urlTagCancelBigBtnCreate")
-    .addClass("fourty-p-width")
-    .offAndOn("click", function (e) {
-      e.stopPropagation();
-      showCreateURLTagForm(urlCard, urlTagBtnCreate);
-    })
-    .text("")
-    .append(createAddTagIcon());
 
   // Enable URL Buttons as url Tag creation form is hidden
   urlCard.find(".urlBtnAccess").showClassFlex();

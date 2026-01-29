@@ -5,6 +5,8 @@ from selenium.webdriver.remote.webdriver import WebDriver
 
 
 from src.models.users import Users
+from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_panel_visibility_mobile,
@@ -71,6 +73,29 @@ def login_user_with_cookie_from_session(browser: WebDriver, session_id: str):
     browser.refresh()
 
 
+def login_user_with_session_and_banner_cookie(browser: WebDriver, session_id: str):
+    session_cookie = {
+        "name": "session",
+        "value": session_id,
+        "path": "/",
+        "httpOnly": True,
+    }
+
+    browser.add_cookie(session_cookie)
+
+    banner_cookie = {
+        "name": UI_TEST_STRINGS.COOKIE_NAME,
+        "value": UI_TEST_STRINGS.COOKIE_VALUE,
+        "path": "/",
+        "httpOnly": False,
+    }
+
+    browser.add_cookie(banner_cookie)
+
+    # Refresh to redirect user to their home page since they're logged in
+    browser.refresh()
+
+
 def login_user_to_home_page(app: Flask, browser: WebDriver, user_id: int):
     session_id = create_user_session_and_provide_session_id(app, user_id)
     login_user_with_cookie_from_session(browser, session_id)
@@ -89,6 +114,14 @@ def login_user_and_select_utub_by_utubid(
     wait_then_click_element(
         browser, f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']", time=10
     )
+
+
+def login_user_and_visit_preselected_utub(
+    app: Flask, browser: WebDriver, user_id: int, utub_id: int
+):
+    session_id = create_user_session_and_provide_session_id(app, user_id)
+    login_user_with_cookie_from_session(browser, session_id)
+    browser.get(browser.current_url + f"?{UTUB_ID_QUERY_PARAM}={utub_id}")
 
 
 def login_user_and_select_utub_by_utubid_mobile(

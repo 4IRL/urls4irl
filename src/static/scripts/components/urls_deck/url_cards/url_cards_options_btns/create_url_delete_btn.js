@@ -52,8 +52,7 @@ function createDeleteURLBtn(url, urlCard, utubID) {
       "data-bs-title": `${APP_CONFIG.strings.DELETE_URL_TOOLTIP}`,
     })
     .disableTab()
-    .on("click", function (e) {
-      e.stopPropagation();
+    .onExact("click", function (e) {
       deleteURLShowModal(url.utubUrlID, urlCard, utubID);
     })
     .append(createDeleteURLIcon());

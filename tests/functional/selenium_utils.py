@@ -853,6 +853,23 @@ def open_update_url_title(browser: WebDriver, selected_url_row: WebElement):
 
 
 # Misc
+def wait_and_get_deepest_hovered_elem(
+    browser: WebDriver, timeout=10
+) -> WebElement | None:
+    def _predicate(browser: WebDriver) -> WebElement | None:
+        script = """
+            var el = document.querySelector(':hover');
+            while (el && el.querySelector(':hover')) {
+                el = el.querySelector(':hover');
+            }
+            return el;
+        """
+        element = browser.execute_script(script)
+        return element if element else None
+
+    return WebDriverWait(browser, timeout).until(_predicate)
+
+
 def wait_for_tooltip_with_hover_retry(
     browser: WebDriver, element: WebElement, tooltip_selector: str, max_attempts=5
 ) -> WebElement | None:
@@ -1022,3 +1039,15 @@ def contact_form_entry(
     content_input = wait_then_get_element(browser, HPL.CONTACT_CONTENT_INPUT)
     assert content_input is not None
     clear_then_send_keys(content_input, content)
+
+
+def add_cookie_banner_cookie(browser: WebDriver):
+    cookie = {
+        "name": UTS.COOKIE_NAME,
+        "value": UTS.COOKIE_VALUE,
+        "path": "/",
+        "httpOnly": False,
+    }
+
+    browser.add_cookie(cookie)
+    browser.refresh()

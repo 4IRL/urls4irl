@@ -64,8 +64,7 @@ function createAccessLinkBtn(url) {
       "data-bs-title": `${APP_CONFIG.strings.ACCESS_URL_TOOLTIP}`,
     })
     .disableTab()
-    .on("click", function (e) {
-      e.stopPropagation();
+    .onExact("click", function (e) {
       const tooltip = bootstrap.Tooltip.getInstance(this);
       if (tooltip) tooltip.hide();
       accessLink(url.urlString);

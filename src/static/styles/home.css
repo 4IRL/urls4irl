@@ -48,7 +48,7 @@ button {
     border-radius: 15px;
     color: var(--deckSelectionGreen);
     overflow: hidden;
-    padding-top: 5px;
+    padding-top: 0.25rem;
     padding-bottom: 8px;
 }
 
@@ -203,6 +203,14 @@ button {
 
 /* Utility */
 
+.opa-0 {
+    opacity: 0;
+}
+
+.opa-1 {
+    opacity: 1;
+}
+
 .white-space-pre-line {
     white-space: pre-line;
 }
@@ -225,10 +233,6 @@ button {
 
 .flex-1-1-auto {
     flex: 1 1 auto;
-}
-
-.flex-start {
-    align-items: flex-start;
 }
 
 .wrap {
@@ -307,8 +311,16 @@ button {
     padding-bottom: 5px;
 }
 
+.height-0 {
+    height: 0;
+}
+
+.height-1p5rem {
+    height: 1.5rem !important;
+}
+
 .height-2rem {
-    height: 2rem;
+    height: 2rem !important;
 }
 
 .height-2p5rem {
@@ -323,6 +335,14 @@ button {
 .m-top-bot-0-5rem {
     margin-top: 0.5rem;
     margin-bottom: 0.5rem;
+}
+
+.m-bot-0p25rem {
+    margin-bottom: 0.25rem;
+}
+
+.width-0 {
+    width: 0;
 }
 
 .half-width {
@@ -1147,7 +1167,6 @@ a.urlString:hover {
 
 #UTubDescriptionSubheaderWrap~.createDiv {
     padding-top: 1rem;
-    padding-bottom: 1rem;
 }
 
 #listMembers {
@@ -1189,13 +1208,27 @@ a.urlString:hover {
 
 #UTubDescriptionSubheaderWrap>.visibleBtn,
 #UTubNameUpdateWrap>.visibleBtn {
-    display: none !important;
-
+    display: flex;
+    opacity: 0;
 }
 
-#UTubDescriptionSubheaderWrap:hover>.visibleBtn,
+#UTubDescriptionSubheaderWrap.visible-flex:hover>.visibleBtn,
 #UTubNameUpdateWrap:hover>.visibleBtn {
-    display: flex !important;
+    opacity: 1;
+}
+
+
+#updateUTubDescriptionBtn:focus,
+#updateUTubDescriptionBtn:active,
+#utubNameBtnUpdate:focus,
+#utubNameBtnUpdate:active {
+    opacity: 1;
+}
+
+#URLDeckSubheaderCreateDescription:focus,
+#URLDeckSubheaderCreateDescription:active {
+    opacity: 1;
+    height: 100%;
 }
 
 #createUTubTagWrap,
@@ -1207,8 +1240,6 @@ a.urlString:hover {
 }
 
 #URLDeckSubheaderCreateDescription {
-    margin-top: 5px;
-    margin-bottom: 5px;
     color: var(--cardURLTextColor);
 }
 
@@ -1219,6 +1250,11 @@ a.urlString:hover {
 
 #URLDeckSubheader {
     word-break: break-all;
+    margin: 0;
+}
+
+#UTubDescriptionSubheaderWrap {
+    margin-bottom: 0.25rem;
 }
 
 #URLDeckErrorIndicator {

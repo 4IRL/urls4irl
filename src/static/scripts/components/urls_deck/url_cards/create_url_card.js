@@ -1,11 +1,13 @@
 "use strict";
 
 function bindCreateURLFocusEventListeners(
-  createURLTitleInput,
+  inputElem,
   createURLInput,
+  createURLTitleInput,
   utubID,
 ) {
-  $(document).on("keyup.createURL", function (e) {
+  $(inputElem).on("keydown.createURL", function (e) {
+    if (e.originalEvent.repeat) return;
     switch (e.key) {
       case KEYS.ENTER:
         // Handle enter key pressed
@@ -21,8 +23,8 @@ function bindCreateURLFocusEventListeners(
   });
 }
 
-function unbindCreateURLFocusEventListeners() {
-  $(document).off(".createURL");
+function unbindCreateURLFocusEventListeners(inputElem) {
+  $(inputElem).off(".createURL");
 }
 
 // Clear new URL Form

@@ -169,7 +169,6 @@ def open_utub_search_box(browser: WebDriver):
     assert_visible_css_selector(browser, HPL.UTUB_OPEN_SEARCH_ICON)
 
     wait_then_click_element(browser, HPL.UTUB_OPEN_SEARCH_ICON, time=3)
-    browser.get_screenshot_as_file("p1.png")
     wait_for_animation_to_end_check_top_lhs_corner(
         browser, HPL.UTUB_SEARCH_INPUT, timeout=3
     )

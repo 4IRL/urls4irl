@@ -8,19 +8,9 @@ function setDeleteEventListeners(utubID) {
     deleteUTubShowModal(utubID);
   });
 
-  // Allows user to press enter to bring up form while focusing on the delete UTub icon, esp after tabbing
-  utubBtnDelete.offAndOn("focus.deleteUTub", function () {
-    $(document).offAndOn("keyup.deleteUTub", function (e) {
-      if (e.key === KEYS.ENTER) {
-        e.stopPropagation();
-        deleteUTubShowModal(utubID);
-      }
-    });
-  });
-
-  // Removes the keyup listener from the document once the button is blurred
+  // Removes the keydown listener from the document once the button is blurred
   utubBtnDelete.offAndOn("blur.deleteUTub", function () {
-    $(document).off("keyup.deleteUTub");
+    utubBtnDelete.off("keydown.deleteUTub");
   });
 }
 

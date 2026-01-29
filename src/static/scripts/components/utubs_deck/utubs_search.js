@@ -43,8 +43,7 @@ function setUTubSelectorSearchEventListener() {
   const searchIconClose = $("#UTubSearchFilterIconClose");
   const searchInput = $("#UTubNameSearch");
 
-  searchIcon.offAndOn("click.searchInputShow", function (e) {
-    e.stopPropagation();
+  searchIcon.offAndOnExact("click.searchInputShow", function (e) {
     wrapper.addClass("visible").removeClass("hidden");
     $("#UTubDeckSubheader").addClass("hidden");
     searchIcon.addClass("hidden");
@@ -57,22 +56,23 @@ function setUTubSelectorSearchEventListener() {
     searchInput.focus();
   });
 
-  searchIconClose.offAndOn("click.searchInputClose", function (e) {
-    e.stopPropagation();
+  searchIconClose.offAndOnExact("click.searchInputClose", function (e) {
     closeUTubSearchAndEraseInput();
     searchInput.removeClass("utub-search-expanded");
   });
 
   searchInput
-    .offAndOn("focus.searchInputEsc", function () {
-      $(document).offAndOn("keyup.searchInputEsc", function (e) {
+    .offAndOn("focus.searchInputEsc", function (e) {
+      searchInput.offAndOn("keydown.searchInputEsc", function (e) {
         if (e.key === KEYS.ESCAPE) {
           searchInput.blur();
+          closeUTubSearchAndEraseInput();
+          searchInput.removeClass("utub-search-expanded");
         }
       });
     })
     .offAndOn("blur.searchInputEsc", function () {
-      $(document).off("keyup.searchInputEsc");
+      searchInput.off("keydown.searchInputEsc");
     })
     .offAndOn("input", function () {
       const searchTerm = searchInput.val().toLowerCase();

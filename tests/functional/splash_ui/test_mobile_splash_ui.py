@@ -14,7 +14,9 @@ from tests.functional.selenium_utils import (
     Decks,
     click_on_navbar,
     input_login_fields,
+    wait_for_element_visible,
     wait_then_click_element,
+    wait_until_hidden,
 )
 
 pytestmark = pytest.mark.mobile_ui
@@ -119,3 +121,21 @@ def test_mobile_login_brings_user_to_utub_panel(
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
     assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
+
+
+def test_mobile_navbar_press_hides_cookie_banner(
+    browser_mobile_portrait_without_cookie_banner_cookie: WebDriver,
+):
+    """
+    GIVEN a user visiting the splash page without a cookie banner cookie
+    WHEN the user opens the site and sees the cookie banner
+    THEN ensure that the cookie banner is hidden when they click on the mobile navbar
+    """
+    browser = browser_mobile_portrait_without_cookie_banner_cookie
+
+    wait_for_element_visible(browser, SPL.COOKIE_BANNER)
+    assert_visible_css_selector(browser, SPL.COOKIE_BANNER)
+
+    wait_then_click_element(browser, SPL.NAVBAR_TOGGLER)
+    wait_until_hidden(browser, SPL.COOKIE_BANNER)
+    assert_not_visible_css_selector(browser, SPL.COOKIE_BANNER)

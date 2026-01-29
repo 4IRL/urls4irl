@@ -1,0 +1,61 @@
+
+{% if current_user.is_authenticated and current_user.email_validated %}
+<dialog class="z9999 flex-column flex-start bg-dark is-hiding logged-in" id="CookieBanner">
+{% else %}
+<dialog class="z9999 flex-column flex-start bg-dark is-hiding" id="CookieBanner">
+{% endif %}
+    <div class="flex-row flex-center">
+        <h5>Just the boring cookies.</h5>
+        <img src="/static/styles/SmallCookie.png" alt="A cookie">
+    </div>
+    <p><strong>Necessary cookies only.</strong> We use them to keep you logged in and hide this banner.</p>
+    <p>No tracking. No ads. We're just here to save URLs.</p>
+    <a href="/privacy-policy">Privacy Policy</a>
+    <form class="flex-column flex-center" method="dialog">
+        <button id="CookieButton" class="btn btn-success" type="button">Got It</button>
+    </form>
+</dialog>
+
+<script nonce="{{ nonce }}">
+    setTimeout(function () {
+        if (!document.cookie.includes(`${APP_CONFIG.strings.COOKIE_BANNER_SEEN}`)) {
+            $("#CookieBanner").addClass("is-visible")
+        }
+    }, 0);
+
+    // Set the cookie to expire in 365 days
+    function setCookieBannerSeenCookie() {
+        const date = new Date();
+
+        date.setTime(date.getTime() + (365 * 24 * 60 * 60 * 1000));
+        const expires = "expires=" + date.toUTCString();
+
+        {% if config.TESTING %}
+        document.cookie = `${APP_CONFIG.strings.COOKIE_BANNER_SEEN}` + ";" + expires + "; path=/; SameSite=Lax;";
+        {% else %}
+        document.cookie = `${APP_CONFIG.strings.COOKIE_BANNER_SEEN}` + ";" + expires + "; path=/; SameSite=Lax; Secure";
+        {% endif %}
+    }
+
+    $(document).on("click.clickOutsideBanner", function(e) {
+        const interactiveSelectors = ['a', 'button', '.UTubSelector', '.memberOtherBtnDelete', '.clickable', '.tagFilter', '.urlRow'];
+
+        if ($(e.target.closest(interactiveSelectors.join(','))).length > 0) {
+            setCookieBannerSeenCookie();
+            $("#CookieBanner").removeClass("is-visible");
+            $(document).off("click.clickOutsideBanner");
+        }
+    });
+    
+    $(document).on("keyup.clickOutsideBanner", function(e) {
+        if (e.originalEvent.repeat) return;
+        const interactiveSelectors = ['.UTubSelector', '.clickable', '.tagFilter', '.urlRow'];
+        if (e.key === KEYS.ENTER && $(e.target.closest(interactiveSelectors.join(','))).length > 0) {
+            setCookieBannerSeenCookie();
+            $("#CookieBanner").removeClass("is-visible");
+            $(document).off("click.clickOutsideBanner");
+        }
+    });
+
+
+</script>

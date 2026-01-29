@@ -8,7 +8,7 @@ from tests.functional.assert_utils import (
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import (
     create_user_session_and_provide_session_id,
-    login_user_with_cookie_from_session,
+    login_user_with_session_and_banner_cookie,
 )
 from tests.functional.selenium_utils import (
     click_on_navbar,
@@ -34,7 +34,7 @@ def test_privacy_policy(
     app = provide_app
     user_id = 1
     session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_with_session_and_banner_cookie(browser, session_id)
 
     visit_privacy_page(browser)
 
@@ -57,7 +57,7 @@ def test_privacy_policy_return_home(
     app = provide_app
     user_id = 1
     session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_with_session_and_banner_cookie(browser, session_id)
 
     visit_privacy_page(browser)
     click_on_navbar(browser) if home_btn_css_selector == HPL.BACK_HOME_BTN else None
@@ -66,7 +66,9 @@ def test_privacy_policy_return_home(
 
 
 def test_terms_page(
-    browser_mobile_portrait: WebDriver, create_test_users, provide_app: Flask
+    browser_mobile_portrait_without_cookie_banner_cookie: WebDriver,
+    create_test_users,
+    provide_app: Flask,
 ):
     """
     Tests a mobile logged in user's ability to visit the terms page from the home page.
@@ -75,11 +77,11 @@ def test_terms_page(
     WHEN user clicks the terms button in the footer
     THEN ensure the U4I Terms & Conditions are displayed
     """
-    browser = browser_mobile_portrait
+    browser = browser_mobile_portrait_without_cookie_banner_cookie
     app = provide_app
     user_id = 1
     session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_with_session_and_banner_cookie(browser, session_id)
 
     visit_terms_page(browser)
 
@@ -102,7 +104,7 @@ def test_terms_return_home(
     app = provide_app
     user_id = 1
     session_id = create_user_session_and_provide_session_id(app, user_id)
-    login_user_with_cookie_from_session(browser, session_id)
+    login_user_with_session_and_banner_cookie(browser, session_id)
 
     visit_terms_page(browser)
     click_on_navbar(browser) if home_btn_css_selector == HPL.BACK_HOME_BTN else None

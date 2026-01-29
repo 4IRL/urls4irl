@@ -61,40 +61,18 @@ function createUpdateURLStringInput(urlStringText, urlCard, utubID) {
     "urlStringSubmitBtnUpdate",
   );
 
-  urlStringSubmitBtnUpdate
-    .find(".submitButton")
-    .on("click.updateUrlString", function () {
-      updateURL(urlStringTextInput, urlCard, utubID);
-    })
-    .on("focus.updateUrlString", function () {
-      $(document).on("keyup.updateUrlString", function (e) {
-        if (e.key === KEYS.ENTER)
-          updateURL(urlStringTextInput, urlCard, utubID);
-      });
-    })
-    .on("blur.updateUrlString", function () {
-      $(document).off("keyup.updateUrlString");
-    });
+  urlStringSubmitBtnUpdate.onExact("click.updateUrlString", function () {
+    updateURL(urlStringTextInput, urlCard, utubID);
+  });
 
   // Update Url Title cancel button
   const urlStringCancelBtnUpdate = makeCancelButton(30).addClass(
     "urlStringCancelBtnUpdate",
   );
 
-  urlStringCancelBtnUpdate
-    .find(".cancelButton")
-    .on("click.updateUrlString", function (e) {
-      e.stopPropagation();
-      hideAndResetUpdateURLStringForm(urlCard);
-    })
-    .offAndOn("focus.updateUrlString", function () {
-      $(document).on("keyup.updateUrlString", function (e) {
-        if (e.key === KEYS.ENTER) hideAndResetUpdateURLStringForm(urlCard);
-      });
-    })
-    .offAndOn("blur.updateUrlString", function () {
-      $(document).off("keyup.updateUrlString");
-    });
+  urlStringCancelBtnUpdate.onExact("click.updateUrlString", function (e) {
+    hideAndResetUpdateURLStringForm(urlCard);
+  });
 
   urlStringUpdateTextInputContainer
     .append(urlStringSubmitBtnUpdate)

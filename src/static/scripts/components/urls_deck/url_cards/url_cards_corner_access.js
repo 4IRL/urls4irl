@@ -19,30 +19,18 @@ function createGoToURLIcon(urlString) {
       width: WIDTH_HEIGHT_PX,
       height: WIDTH_HEIGHT_PX,
       fill: "currentColor",
-      class: "bi bi-arrow-up-right-square-fill goToUrlIcon pointerable",
+      class: "bi bi-arrow-up-right-square-fill pointerable",
       viewBox: "0 0 16 16",
     })
-    .enableTab()
-    .append(goToUrlInnerIconPath)
-    .on("click", (e) => {
-      e.stopPropagation();
-      accessLink(urlString);
-    })
-    .on("focus", () => {
-      $(document).on("keyup.accessURL", function (e) {
-        if (e.key === KEYS.ENTER) {
-          accessLink(urlString);
-          goToUrlOuterIconSvg.trigger("focus");
-        }
-      });
-    })
-    .on("blur", () => {
-      $(document).off("keyup.accessURL");
-    });
+    .append(goToUrlInnerIconPath);
 
   const btn = $(document.createElement("button"))
     .append(goToUrlOuterIconSvg)
-    .addClass("self-start");
+    .addClass("self-start goToUrlIcon")
+    .enableTab()
+    .onExact("click", (e) => {
+      accessLink(urlString);
+    });
 
   return btn;
 }
