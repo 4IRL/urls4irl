@@ -4,7 +4,7 @@
 
   <h1 id="PrivacyTitle">Privacy Policy</h1>
   <h2>URLS4IRL</h2>
-  <p class="muted"><strong>Effective Date:</strong> December 6, 2025</p>
+  <p class="muted"><strong>Effective Date:</strong> January 28, 2026</p>
 
   <h2 id="toc">Table of contents</h2>
   <ul>
@@ -57,6 +57,8 @@
   <p>To create an account, we collect:</p>
   <ul>
     <li><strong>Email address</strong> — used for authentication, account notices, and login features (including optional Google Sign-In).</li>
+    <li><strong>Username</strong> — used for account creation, identification within UTubs, login, and display purposes.</li>
+    <li><strong>Password</strong> — stored in hashed form for account security and authentication.</li>
   </ul>
   <p class="note">If you sign in with Google, we only request the minimum OAuth scopes required for authentication (typically <code>openid email profile</code>). We receive the <strong>email address</strong> and — only if explicitly requested and used — the display name and profile image URL. We do not request phone numbers or physical addresses from Google.</p>
   <p>We do not collect names, phone numbers, physical addresses, payment data, contact lists, or other identifying information unless you voluntarily provide them (for example, in a support request).</p>
@@ -72,6 +74,7 @@
     <li>Pages or endpoints accessed and actions taken</li>
     <li>Timestamps of requests</li>
     <li>Basic error or crash information</li>
+    <li>User agent streing hash (when submitting support requests)</li>
   </ul>
   <p>Usage Data is stored in server logs and used for diagnostics, rate limiting, abuse prevention, and improving the Service.</p>
 
@@ -79,13 +82,13 @@
   <p>We use cookies to provide essential functionality and limited in-house analytics.</p>
   <ul>
     <li><strong>Essential Session Cookie</strong> — required for authentication and session management. Typically expires on logout or after <strong>30 days</strong> of inactivity (server-side session expiry).</li>
-    <li><strong>Analytics Cookie (in-house)</strong> — used to support internal analytics. Typically retained for <strong>365 days</strong>, aggregated and not tied to external tracking providers.</li>
+    <li><strong>Cookie Banner Preference Cookie (non-HTTP)</strong> — stores your acknowledgment of the cookie notice. Retained for <strong>365 days</strong> to prevent the banner from reappearing after you've seen it. This cookie does not track behavior and contains no personal information.</li>
   </ul>
   <p>We do not use advertising cookies, cross-site tracking cookies, third-party tracking cookies, beacons, marketing pixels, or tracking tags.</p>
   <p>You may disable cookies in your browser, but essential functionality (including login) may not work without them.</p>
 
   <h3 id="analytics">3.4 In-House Analytics</h3>
-  <p>We process analytics in-house (no Google Analytics, Facebook Pixel, or similar). Collected analytics are intended to be privacy-respectful and aggregated whenever possible:</p>
+  <p>We process analytics in-house (no Google Analytics, Facebook Pixel, or similar). All analytics are fully anonymized and aggregated—we do not associate analytics data with user IDs, pseudonymous identifiers, cookies, or any information that could identify individual users. Collected analytics include:</p>
   <ul>
     <li>Pages or features accessed</li>
     <li>Time spent on features</li>
@@ -114,7 +117,7 @@
     <li>Operating and maintaining the Service (authentication, session management).</li>
     <li>Providing core functionality (creating, storing, tagging, and sharing URLs within UTubs).</li>
     <li>Maintaining security, including fraud detection, rate limiting, and abuse prevention.</li>
-    <li>Providing customer support and responding to inquiries.</li>
+    <li>Providing customer support and responding to inquiries. When you submit a contact form, we collect your message, associated User ID, browser type and version, operating system, device type, and a hash of your user agent string to help us provide technical support and improve our Service.</li>
     <li>Improving and developing the Service (in-house analytics and product optimization).</li>
     <li>Notifying you about important changes to the Service or this policy.</li>
     <li>Complying with legal obligations.</li>
@@ -127,7 +130,8 @@
   <ul>
     <li><strong>Account data (email):</strong> retained until you delete your account or we terminate it for cause.</li>
     <li><strong>Server logs & Usage Data:</strong> retained for <strong>90 days</strong> by default for operational and security purposes; may be retained up to <strong>24 months</strong> if required to investigate abuse or comply with legal obligations.</li>
-    <li><strong>In-house analytics:</strong> aggregated analytics retained for <strong>12 months</strong> (individual-level analytics are not retained in a way that identifies you unless required for security).</li>
+    <li><strong>Anonymized, aggregated analytics:</strong> retained indefinitely as these statistics cannot be linked to individual users.</li>
+    <li><strong>Contact form submissions:</strong> retained up to <strong>24 months</strong> for support history and service improvement purposes. Messages are stored in our database along with associated technical metadata (browser type, OS, device, User ID, user agent hash).</li>
     <li>We will delete or anonymize data when it is no longer required for the purpose it was collected.</li>
   </ul>
   <p>If you request deletion of your account, we will remove your account data within a reasonable timeframe subject to legal or technical constraints; backups and logs may persist for a short time according to the retention schedule above.</p>
@@ -156,8 +160,13 @@
     <li><a href="https://www.cloudflare.com/privacypolicy/" target="_blank" rel="noopener">Cloudflare</a></li>
     <li><a href="https://www.digitalocean.com/legal/privacy-policy" target="_blank" rel="noopener">DigitalOcean</a></li>
     <li><a href="https://cloud.google.com/terms/cloud-privacy-notice" target="_blank" rel="noopener">Google Cloud Platform</a></li>
+    <li><a href="https://discord.com/privacy" target="_blank" rel="noopener">Discord</a></li>
   </ul>
   <p>These providers act as data processors and process data only to provide hosting, storage, and infrastructure services on our behalf. We contractually require processors to protect data and not to use it for their own purposes.</p>
+
+  <p>Additionally, when you submit a message through our Contact Us form, we transmit your message content, Username, and User ID,to <a href="https://discord.com/privacy" target="_blank" rel="noopener">Discord</a> via webhook for internal team notifications and support ticket management. Discord processes this data according to their privacy policy. While Discord facilitates our support operations, we do not have a formal Data Processing Agreement with Discord for webhook transmissions.</p>
+
+  <p>Additionally, when you submit a message through our Contact Us form, we transmit your message content, Username, and User ID to <a href="https://discord.com/privacy" target="_blank" rel="noopener">Discord</a> via webhook for internal team notifications and support ticket management. This data is subject to Discord's privacy policy and terms of service. We use Discord as a convenience tool for support operations, and by submitting a contact form, you acknowledge that your support request will be processed through Discord's platform.</p>
 
   <h2 id="security">9. Security of Your Personal Data</h2>
   <p>We take commercially reasonable measures to protect your personal data, including:</p>
@@ -191,7 +200,7 @@
   <p><strong>URLS4IRL does not sell or share personal information for cross-context behavioral advertising.</strong> Because we do not sell personal information, we do not provide a “Do Not Sell My Personal Information” web link. To exercise your rights, email <a href="mailto:u4i@urls4irl.app">u4i@urls4irl.app</a>. We will respond to verified requests within 45 days as required by law.</p>
 
   <h2 id="providers">12. Service Providers</h2>
-  <p>We may engage third-party companies to perform services such as hosting, storage, email delivery, and security monitoring. These Service Providers have access to personal data only to perform tasks on our behalf and are contractually required to keep data confidential and secure. We do not use third-party analytics, advertising networks, or data brokers.</p>
+  <p>We may engage third-party companies to perform services such as hosting, storage, email delivery, messaging infrastructure (Discord for support communications), and security monitoring. These Service Providers have access to personal data only to perform tasks on our behalf and are contractually required to keep data confidential and secure. We do not use third-party analytics, advertising networks, or data brokers.</p>
 
   <h2 id="links">13. Links to Other Sites</h2>
   <p>The Service may contain links to third-party websites. We are not responsible for the privacy practices of other sites. Please review the privacy policy of any site you visit.</p>
@@ -206,7 +215,7 @@
   <p class="note"><strong>No physical mailing address:</strong> At this time URLS4IRL does not maintain a physical mailing address or P.O. Box. Email is our official method for privacy-related inquiries and data rights requests. If that changes, we will update this policy.</p>
 
   <hr/>
-  <p class="muted">Last updated: December 6, 2025</p>
+  <p class="muted">Last updated: January 28, 2026</p>
 
 </main>
 
