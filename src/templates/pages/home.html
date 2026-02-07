@@ -34,6 +34,12 @@
     {% endif %}
 {% endassets %}
 
+{% if config.LOCAL %}
+    <script nonce="{{ nonce }}" type="module" src="http://localhost:5173/@vite/client"></script>
+{% endif %}
+
+<script nonce="{{ nonce }}" type="module" src="{{ vite_asset('main.js') }}"></script>
+
 {% endblock %}
 
 {% block modal_extender %}

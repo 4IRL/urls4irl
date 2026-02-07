@@ -113,6 +113,7 @@ class Config:
     NOTIFICATION_URL = NOTIFICATION_URL
     LOG_DIR = LOG_DIR
     CONTACT_US_URL = CONTACT_US_URL
+    LOCAL = not IS_DEV_SERVER and not PRODUCTION
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:

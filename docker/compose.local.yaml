@@ -22,7 +22,7 @@ services:
       - .env
     environment:
       - PRODUCTION=false
-      - REDIS_URI=redis://redis:6379/0
+      - REDIS_URI=redis://redis:6379/f
       - TEST_REDIS_URI=redis://redis:6379/1
       - FLASK_DEBUG=true
       - FLASK_ENV=development
@@ -38,6 +38,28 @@ services:
       - ./migrations/versions:/code/u4i/migrations/versions
       - ./utils:/code/u4i/utils
       - app_logs:/app/volume
+
+  vite:
+    container_name: u4i-local-vite
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.Vite
+    ports:
+      - "5173:5173"
+    environment:
+      - NODE_ENV=development
+    volumes:
+      - ./frontend:/app/frontend
+      - ./frontend/vite.config.js:/app/vite.config.js
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/package-lock.json:/app/package-lock.json
+      - /app/node_modules
+    command: npm run dev
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
 
   selenium:
     image: selenium/standalone-chromium:latest

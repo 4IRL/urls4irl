@@ -1,8 +1,9 @@
 import os
+import json
 import secrets
 from typing import Mapping
 
-from flask import Flask, Response, abort, g, request, session
+from flask import Flask, Response, abort, current_app, g, request, session, url_for
 from flask_assets import Environment
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
@@ -158,6 +159,7 @@ def create_app(
     )
 
     add_security_headers(app)
+    init_vite_app(app)
     return app
 
 
@@ -182,13 +184,13 @@ def add_security_headers(app: Flask):
             session["nonce"] = secrets.token_urlsafe(16)
         g.nonce = session["nonce"]
 
-        valid_script_cdns = (
+        valid_script_cdns = [
             "https://code.jquery.com",
             "https://cdn.jsdelivr.net",
             "https://static.cloudflareinsights.com",
-        )
+        ]
 
-        valid_connects = "connect-src 'self' https://cloudflareinsights.com; "
+        valid_connect_sources = ["'self'", "https://cloudflareinsights.com"]
 
         valid_style_cdns = (
             "https://code.jquery.com",
@@ -215,6 +217,15 @@ def add_security_headers(app: Flask):
         valid_style_elems = "style-src-attr 'unsafe-inline'; "
         valid_fonts = "font-src 'self' " + f"{' '.join(valid_font_cdns)}; "
         valid_imgs = "img-src 'self' data:;"
+
+        is_local = current_app.config.get("LOCAL", False)
+        if is_local:
+            vite_origin = "http://localhost:5173"
+            vite_ws = "ws://localhost:5173"
+            valid_script_cdns.append(vite_origin)
+            valid_connect_sources.extend([vite_origin, vite_ws])
+
+        valid_connects = f"connect-src {' '.join(valid_connect_sources)}; "
 
         response.headers[CONFIG_ENVS.CONTENT_SECURITY_POLICY] = (
             "default-src 'none'; "
@@ -250,3 +261,31 @@ def app_test_setup(app: Flask):
 
         if app.config.get("TESTING") and request.args.get("force_rate_limit", None):
             abort(429)
+
+
+def init_vite_app(app: Flask):
+    @app.context_processor
+    def vite_assets():
+        def vite_asset(entrypoint):
+            # 1. Local Mode: Point directly to the Vite container
+            if app.config.get("LOCAL", False):
+                return f"http://localhost:5173/{entrypoint}"
+
+            # 2. Production/Dev Server: Read from the manifest.json
+            if app.static_folder is None:
+                return ""
+
+            manifest_path = os.path.join(
+                app.static_folder, "dist", ".vite", "manifest.json"
+            )
+
+            try:
+                with open(manifest_path, "r") as f:
+                    manifest = json.load(f)
+                # Vite's manifest uses the relative path from the root
+                file_path = manifest[entrypoint]["file"]
+                return url_for("static", filename=f"dist/{file_path}")
+            except (FileNotFoundError, KeyError):
+                return ""  # Handle missing manifest gracefully
+
+        return dict(vite_asset=vite_asset)

@@ -4,6 +4,7 @@ from src.utils.strings.utub_strs import UTUB_GENERAL
 
 # General strings
 COOKIE_BANNER_SEEN = "cookie_banner_seen=true"  # Both the name and value of the cookie
+COOKIE_BANNER_KEY = COOKIE_BANNER_SEEN.split("=")[0]
 
 # Strings for users/members success
 MEMBER_REMOVED = "Member removed."
