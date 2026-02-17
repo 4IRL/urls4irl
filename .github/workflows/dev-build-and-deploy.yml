@@ -7,6 +7,8 @@ on:
             - main
         types:
             - closed
+            - synchronize # TODO: REMOVE
+            - opened # TODO: REMOVE
 
 jobs:
     build-dev:
