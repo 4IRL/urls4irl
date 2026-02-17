@@ -11,7 +11,7 @@ UI tests are run through the u4i-local-web container.
 3. You can run UI tests with the following command. Just replace #MARKER with the actual marker.
 
   ```bash
-  `docker exec u4i-local-web /bin/bash "source /code/venv/bin/activate; pytest -m '#MARKER' -x"`
+  `docker compose exec web bash -c "source /code/venv/bin/activate && python -m pytest -m '#MARKER' -x"`
   ```
 
 4. Verify the tests run.

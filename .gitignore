@@ -13,6 +13,7 @@ miscellaneous/
 jquery-[0-9]*.js
 bootstrap-[0-9]*.js*
 bootstrap-[0-9]*.css*
+src/static/styles/bootstrap.*.css*
 *.code-workspace
 secrets/
 backups/
