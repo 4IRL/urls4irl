@@ -9,9 +9,10 @@ sessions/
 miscellaneous/
 *.DS_Store
 .pytest_cache/
-jquery*.js
-bootstrap*.js*
-bootstrap*.css*
+# Vendor libraries (specific versions only, not custom modules)
+jquery-[0-9]*.js
+bootstrap-[0-9]*.js*
+bootstrap-[0-9]*.css*
 *.code-workspace
 secrets/
 backups/
