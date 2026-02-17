@@ -12,7 +12,7 @@ import warnings
 import redis
 from redis.client import Redis
 
-from src import create_app, db, environment_assets
+from src import create_app, db
 from src.config import ConfigTest
 from src.models.utub_tags import Utub_Tags
 from src.models.utub_url_tags import Utub_Url_Tags
@@ -132,9 +132,6 @@ def build_app(
     ignore_deprecation_warning,
 ) -> Generator[Tuple[Flask, ConfigTest], None, None]:
     config = ConfigTest()
-
-    # Clear bundles to avoid re-registering
-    environment_assets._named_bundles = {}
 
     app_for_test = create_app(config)  # type: ignore
     if app_for_test is None:

@@ -9,9 +9,11 @@ sessions/
 miscellaneous/
 *.DS_Store
 .pytest_cache/
-jquery*.js
-bootstrap*.js*
-bootstrap*.css*
+# Vendor libraries (specific versions only, not custom modules)
+jquery-[0-9]*.js
+bootstrap-[0-9]*.js*
+bootstrap-[0-9]*.css*
+src/static/styles/bootstrap.*.css*
 *.code-workspace
 secrets/
 backups/
@@ -20,3 +22,15 @@ node_modules/
 gen/
 *.bak
 logs/
+plans/
+tmp/
+.playwright-mcp
+
+# Vendor JS bundles (download via frontend/setup-vendor.sh)
+frontend/public/vendor/
+
+# Vite build outputs and cache
+src/static/dist/
+frontend/src/static/dist/
+.vite/
+*.local

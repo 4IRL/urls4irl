@@ -22,13 +22,17 @@ services:
       - .env
     environment:
       - PRODUCTION=false
-      - REDIS_URI=redis://redis:6379/0
+      - REDIS_URI=redis://redis:6379/f
       - TEST_REDIS_URI=redis://redis:6379/1
       - FLASK_DEBUG=true
       - FLASK_ENV=development
       - BASE_EMAIL=u4i@urls4irl.app
       - DOCKER=true
       - SELENIUM_URL=http://selenium:4444/wd/hub
+      - VITE_DEV_SERVER=true
+      - VITE_URL=http://localhost:5173
+      - VITE_INTERNAL_HOST=vite
+      - ENABLE_SSL=false
     volumes:
       - ./run.py:/code/u4i/run.py
       - ./pytest.ini:/code/u4i/pytest.ini
@@ -39,12 +43,48 @@ services:
       - ./utils:/code/u4i/utils
       - app_logs:/app/volume
 
+  vite:
+    container_name: u4i-local-vite
+    build:
+      context: .
+      dockerfile: docker/Dockerfile.Vite
+    ports:
+      - "5173:5173"
+    networks:
+      default:
+        aliases:
+          - localhost
+    environment:
+      - NODE_ENV=development
+      - ENABLE_SSL=false
+      - DOCKER=true
+    volumes:
+      - ./frontend:/app/frontend
+      - ./frontend/vite.config.js:/app/vite.config.js
+      - ./frontend/package.json:/app/package.json
+      - ./frontend/package-lock.json:/app/package-lock.json
+      - /app/node_modules
+      - ./src/static/dist:/app/src/static/dist
+    command: npm run dev
+    healthcheck:
+      test: |
+        if [ "$${ENABLE_SSL:-false}" = "true" ]; then
+          curl -f -k https://localhost:5173/@vite/client
+        else
+          curl -f http://localhost:5173/@vite/client
+        fi
+      interval: 10s
+      timeout: 5s
+      retries: 3
+
   selenium:
     image: selenium/standalone-chromium:latest
     container_name: u4i-selenium
     depends_on:
       web:
         condition: service_healthy
+      vite:
+        condition: service_started
     environment:
       - START_XVFB=false
       - SE_NODE_MAX_SESSIONS=5

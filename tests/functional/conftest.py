@@ -9,7 +9,7 @@ from selenium import webdriver
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
-from src import create_app, db, environment_assets
+from src import create_app, db
 from src.cli.mock_constants import MOCK_TEST_URL_STRINGS
 from src.config import ConfigTest
 from src.models.email_validations import Email_Validations
@@ -83,9 +83,6 @@ def parallelize_app(provide_port, flask_logs):
 
 @pytest.fixture(scope="session")
 def provide_app() -> Generator[Flask | None, None, None]:
-    # Clear bundles to avoid re-registering
-    environment_assets._named_bundles = {}
-
     config = ConfigTest()
     app = create_app(config)  # type: ignore
     assert app

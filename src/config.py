@@ -26,6 +26,10 @@ POSTGRES_DB = environ.get(ENV.POSTGRES_DB)
 POSTGRES_TEST_DB = environ.get(ENV.POSTGRES_TEST_DB, default=None)
 
 ASSET_VERSION = environ.get(ENV.ASSET_VERSION, default=str(int(time())))
+VITE_DEV_SERVER = environ.get(ENV.VITE_DEV_SERVER, default="false").lower() == "true"
+VITE_URL = environ.get(ENV.VITE_URL, default="https://localhost:5173")
+VITE_INTERNAL_HOST = environ.get(ENV.VITE_INTERNAL_HOST, default="")
+ENABLE_SSL = environ.get(ENV.ENABLE_SSL, default="false").lower() == "true"
 
 DEV_DB_URI = build_db_uri(
     username=POSTGRES_USER,
@@ -113,6 +117,12 @@ class Config:
     NOTIFICATION_URL = NOTIFICATION_URL
     LOG_DIR = LOG_DIR
     CONTACT_US_URL = CONTACT_US_URL
+    # DEPRECATED: Use VITE_DEV_SERVER instead. Will be removed in future release.
+    LOCAL = not IS_DEV_SERVER and not PRODUCTION
+    VITE_DEV_SERVER = VITE_DEV_SERVER
+    VITE_URL = VITE_URL
+    VITE_INTERNAL_HOST = VITE_INTERNAL_HOST
+    ENABLE_SSL = ENABLE_SSL
 
     def __init__(self) -> None:
         if not self.SECRET_KEY:
@@ -180,3 +190,15 @@ class ConfigTest(Config):
 class ConfigTestUI(ConfigTest):
     UI_TESTING = True
     SESSION_COOKIE_SECURE = False
+
+    def __init__(self) -> None:
+        super().__init__()
+        # Override VITE_URL for Docker-based Selenium tests
+        # Chrome in Selenium container reaches Vite via Docker network hostname
+        if IS_DOCKER and VITE_INTERNAL_HOST:
+            from urllib.parse import urlparse, urlunparse
+
+            parsed = urlparse(VITE_URL)
+            self.VITE_URL = urlunparse(
+                parsed._replace(netloc=f"{VITE_INTERNAL_HOST}:{parsed.port or 5173}")
+            )

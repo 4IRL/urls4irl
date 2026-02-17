@@ -1,6 +1,6 @@
 <li class="nav-item home" id="backHome">
     <div class="nav-bar-inner-item home">
-        <button id="backHomeBtn" >
+        <button id="backHomeBtn" data-route="home">
             <svg xmlns="http://www.w3.org/2000/svg" width="30" height="30" fill="currentColor" class="bi bi-upload"
                 viewBox="0 0 16 16" id="backHomeIcon">
                 <path
@@ -12,9 +12,3 @@
         </button>
     </div>
 </li>
-
-<script type="text/javascript" nonce="{{ nonce }}">
-    document.getElementById('backHomeBtn').addEventListener('click', () => {
-        window.location.assign(APP_CONFIG.routes.home);
-    });
-</script>

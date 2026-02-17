@@ -1,9 +1,9 @@
 import os
+import json
 import secrets
 from typing import Mapping
 
-from flask import Flask, Response, abort, g, request, session
-from flask_assets import Environment
+from flask import Flask, Response, abort, current_app, g, request, session, url_for
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 from flask_login import LoginManager
@@ -26,7 +26,6 @@ from src.extensions.url_validation.url_validator import UrlValidator
 from src.cli.short_urls import register_short_urls_cli
 from src.cli.utils import register_utils_cli
 from src.cli.mock_options import register_mocks_db_cli
-from src.utils.bundle import prepare_bundler_for_js_files
 from src.utils.strings.config_strs import CONFIG_ENVS
 
 sess = Session()
@@ -42,8 +41,6 @@ email_sender = EmailSender()
 url_validator = UrlValidator()
 
 notification_sender = NotificationSender()
-
-environment_assets = Environment()
 
 limiter = Limiter(
     key_func=get_remote_address,
@@ -64,6 +61,10 @@ def create_app(
     app = Flask(__name__)
     app.config.from_object(ConfigProd if production else config_class)
     app.config[CONFIG_ENVS.TESTING_OR_PROD] = testing or production
+
+    # Handle None objects to prevent Flask-SQLAlchemy 3 from crashing
+    if app.config.get("SQLALCHEMY_ENGINE_OPTIONS") is None:
+        app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {}
 
     app_logger.init_app(app, show_test_logs)
 
@@ -100,7 +101,6 @@ def create_app(
     if production:
         email_sender.in_production()
 
-    from src.assets.routes import assets_bp
     from src.contact.routes import contact
     from src.members.routes import members
     from src.splash.routes import splash
@@ -115,7 +115,6 @@ def create_app(
     def asset_processor():
         return {CONFIG_ENVS.ASSET_VERSION: app.config[CONFIG_ENVS.ASSET_VERSION]}
 
-    app.register_blueprint(assets_bp)
     app.register_blueprint(contact)
     app.register_blueprint(members)
     app.register_blueprint(splash)
@@ -146,18 +145,8 @@ def create_app(
         assert models
         migrate.init_app(app)
 
-    relative_js_path = "static/scripts/components/**/*.js"
-    js_path = os.path.join(app.root_path, relative_js_path)
-    prepare_bundler_for_js_files(
-        abs_js_path=js_path,
-        relative_js_path=relative_js_path,
-        app=app,
-        assets=environment_assets,
-        assets_url_prefix=assets_bp.url_prefix,
-        is_testing_or_prod=(testing or production),
-    )
-
     add_security_headers(app)
+    init_vite_app(app)
     return app
 
 
@@ -182,13 +171,13 @@ def add_security_headers(app: Flask):
             session["nonce"] = secrets.token_urlsafe(16)
         g.nonce = session["nonce"]
 
-        valid_script_cdns = (
+        valid_script_cdns = [
             "https://code.jquery.com",
             "https://cdn.jsdelivr.net",
             "https://static.cloudflareinsights.com",
-        )
+        ]
 
-        valid_connects = "connect-src 'self' https://cloudflareinsights.com; "
+        valid_connect_sources = ["'self'", "https://cloudflareinsights.com"]
 
         valid_style_cdns = (
             "https://code.jquery.com",
@@ -202,6 +191,23 @@ def add_security_headers(app: Flask):
             "https://fonts.gstatic.com",
             "https://maxcdn.bootstrapcdn.com",
         )
+
+        # Check for Vite dev server and add to CSP before constructing CSP strings
+        use_vite_dev = current_app.config.get("VITE_DEV_SERVER", False)
+        if use_vite_dev:
+            vite_url = current_app.config.get("VITE_URL", "http://localhost:5173")
+            # Parse URL to construct WebSocket URL
+            from urllib.parse import urlparse
+
+            parsed = urlparse(vite_url)
+            vite_origin = f"{parsed.scheme}://{parsed.netloc}"
+            # Use wss:// for HTTPS, ws:// for HTTP
+            ws_scheme = "wss" if parsed.scheme == "https" else "ws"
+            vite_ws = f"{ws_scheme}://{parsed.netloc}"
+            valid_script_cdns.append(vite_origin)
+            valid_connect_sources.extend([vite_origin, vite_ws])
+
+        # Construct CSP strings after Vite URL is added
         valid_scripts = (
             "script-src 'self' "
             + f"'nonce-{g.nonce}' "
@@ -215,6 +221,7 @@ def add_security_headers(app: Flask):
         valid_style_elems = "style-src-attr 'unsafe-inline'; "
         valid_fonts = "font-src 'self' " + f"{' '.join(valid_font_cdns)}; "
         valid_imgs = "img-src 'self' data:;"
+        valid_connects = f"connect-src {' '.join(valid_connect_sources)}; "
 
         response.headers[CONFIG_ENVS.CONTENT_SECURITY_POLICY] = (
             "default-src 'none'; "
@@ -250,3 +257,53 @@ def app_test_setup(app: Flask):
 
         if app.config.get("TESTING") and request.args.get("force_rate_limit", None):
             abort(429)
+
+
+def init_vite_app(app: Flask):
+    @app.context_processor
+    def vite_assets():
+        def vite_asset(entrypoint):
+            # 1. Vite Dev Server Mode: Point directly to the Vite dev server
+            if app.config.get("VITE_DEV_SERVER", False):
+                vite_url = app.config.get("VITE_URL", "https://localhost:5173")
+                return f"{vite_url}/{entrypoint}"
+
+            # 2. Production/Dev Server: Read from the manifest.json
+            if app.static_folder is None:
+                return ""
+
+            manifest_path = os.path.join(
+                app.static_folder, "dist", ".vite", "manifest.json"
+            )
+
+            try:
+                with open(manifest_path, "r") as f:
+                    manifest = json.load(f)
+                # Vite's manifest uses the relative path from the root
+                file_path = manifest[entrypoint]["file"]
+                return url_for("static", filename=f"dist/{file_path}")
+            except (FileNotFoundError, KeyError):
+                return ""  # Handle missing manifest gracefully
+
+        def vite_asset_static(entrypoint: str) -> str:
+            """
+            Always use manifest-based assets, never Vite dev server.
+            Use for error pages that must work in all contexts (e.g., Selenium tests).
+            """
+            if app.static_folder is None:
+                return ""
+
+            manifest_path = os.path.join(
+                app.static_folder, "dist", ".vite", "manifest.json"
+            )
+
+            try:
+                with open(manifest_path, "r") as f:
+                    manifest = json.load(f)
+                file_path = manifest[entrypoint]["file"]
+                return url_for("static", filename=f"dist/{file_path}")
+            except (FileNotFoundError, KeyError):
+                # Fallback to empty string if manifest unavailable
+                return ""
+
+        return dict(vite_asset=vite_asset, vite_asset_static=vite_asset_static)

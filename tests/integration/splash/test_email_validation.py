@@ -46,7 +46,7 @@ def test_registered_user_is_not_email_validated(app, load_register_page):
     # Assert user gets shown email validation modal
     assert response.status_code == 201
     assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
-    assert f"{EMAILS.EMAIL_VALIDATION_MODAL_CALL}".encode() in response.data
+    assert b'data-modal-type="email-validation"' in response.data
 
     with app.app_context():
         registered_user: Users = Users.query.filter(

@@ -367,9 +367,11 @@ def test_user_can_login_logout_login(login_first_user_with_register):
         follow_redirects=True,
     )
 
-    # Ensure backend sends url to home page for frontend to redirect to
+    # Ensure backend sends JSON with redirect_url to home page
     assert response.status_code == 200
-    assert response.data == bytes(f"{url_for(ROUTES.UTUBS.HOME)}", "utf-8")
+    json_response = response.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert json_response["redirect_url"] == url_for(ROUTES.UTUBS.HOME)
 
     # test if user logged in
     assert current_user.username == logged_in_user.username
@@ -425,7 +427,9 @@ def test_login_modal_logs_user_in(app_with_server_name, client, register_first_u
         response = client.post(url_for(ROUTES.SPLASH.LOGIN), data=registered_user_data)
 
         assert response.status_code == 200
-        assert response.data == bytes(f"{url_for(ROUTES.UTUBS.HOME)}", "utf-8")
+        json_response = response.json
+        assert json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        assert json_response["redirect_url"] == url_for(ROUTES.UTUBS.HOME)
 
         assert current_user.username == registered_user_data[LOGIN_FORM.USERNAME]
         assert check_password_hash(

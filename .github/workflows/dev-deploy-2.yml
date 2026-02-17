@@ -113,19 +113,6 @@ jobs:
               mkdir -p ~/static;
               docker exec u4i-dev-flask tar -cf - -C /code/u4i/src/static . | tar -xf - -C ~/static;
 
-              echo "Waiting for bundled JS file to be built...";
-              for i in {1..30}; do
-                if docker exec u4i-dev-flask ls /code/u4i/src/gen/logged_in.js &> /dev/null; then
-                  echo "Bundled JS file built! Copying to host...";
-                  break
-                fi
-              echo "Waiting.... (attempt $i of 30)";
-              sleep 5;
-              done
-
-              mkdir -p ~/static;
-              docker exec u4i-prod-flask tar -cf - -C /code/u4i/src/gen logged_in.js | tar -xf - -C ~/static;
-
               echo "Adding mock data for development..."
               docker exec u4i-dev-flask bash -c ". /code/venv/bin/activate && cd /code/u4i && flask managedb clear && flask addmock all";
 
@@ -133,7 +120,19 @@ jobs:
               rm -f ~/.docker/config.json
               ';
               sleep 30;
-          
+
+          # Verify Vite assets were extracted successfully
+          - name: Verify Vite Assets Deployed
+            run: |
+              ssh -T -q -o StrictHostKeyChecking=no ${{ secrets.DEV_SSH_HOST }} '
+              if [ -f ~/static/dist/.vite/manifest.json ]; then
+                echo "✓ Vite assets deployed successfully"
+              else
+                echo "✗ ERROR: Vite manifest missing"
+                exit 1
+              fi
+              '
+
           # Verify the three services are up and running after any updates
           - name: Verify Docker Network
             run: >

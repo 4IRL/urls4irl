@@ -1,0 +1,143 @@
+import { $ } from "../../lib/globals.js";
+import { APP_CONFIG } from "../../lib/config.js";
+import { ajaxCall } from "../../lib/ajax.js";
+import { hideInputs } from "../btns-forms.js";
+import {
+  isMobile,
+  setMobileUIWhenUTubNotSelectedOrUTubDeleted,
+} from "../mobile.js";
+import { setUIWhenNoUTubSelected } from "../init.js";
+import {
+  hideInputsAndSetUTubDeckSubheader,
+  resetUTubDeckIfNoUTubs,
+} from "./deck.js";
+import { resetURLDeckOnDeleteUTub } from "../urls/deck.js";
+import { getNumOfUTubs } from "./utils.js";
+import { closeUTubSearchAndEraseInput } from "./search.js";
+
+export function setDeleteEventListeners(utubID) {
+  const utubBtnDelete = $("#utubBtnDelete");
+
+  // Delete UTub
+  utubBtnDelete.offAndOn("click.deleteUTub", function () {
+    deleteUTubShowModal(utubID);
+  });
+
+  // Removes the keydown listener from the document once the button is blurred
+  utubBtnDelete.offAndOn("blur.deleteUTub", function () {
+    utubBtnDelete.off("keydown.deleteUTub");
+  });
+}
+
+// Hide confirmation modal for deletion of the current UTub
+function deleteUTubHideModal() {
+  $("#confirmModal").modal("hide");
+}
+
+// Show confirmation modal for deletion of the current UTub
+function deleteUTubShowModal(utubID) {
+  const modalTitle = "Are you sure you want to delete this UTub?";
+  const modalBody = `${APP_CONFIG.strings.UTUB_DELETE_WARNING}`;
+  const buttonTextDismiss = "Nevermind...";
+  const buttonTextSubmit = "Delete this sucka!";
+
+  $("#confirmModalTitle").text(modalTitle);
+
+  $("#confirmModalBody").text(modalBody);
+
+  $("#modalDismiss")
+    .removeClass()
+    .addClass("btn btn-secondary")
+    .offAndOn("click", function (e) {
+      e.preventDefault();
+      deleteUTubHideModal();
+    })
+    .text(buttonTextDismiss);
+
+  $("#modalSubmit")
+    .removeClass()
+    .addClass("btn btn-danger")
+    .text(buttonTextSubmit)
+    .offAndOn("click", function (e) {
+      e.preventDefault();
+      deleteUTub(utubID);
+      closeUTubSearchAndEraseInput();
+    });
+
+  $("#confirmModal").modal("show");
+  $("#modalRedirect").hide();
+}
+
+// Handles deletion of a current UTub
+function deleteUTub(utubID) {
+  // Extract data to submit in POST request
+  let postURL = deleteUTubSetup(utubID);
+
+  const request = ajaxCall("delete", postURL, []);
+
+  // Handle response
+  request.done(function (response, textStatus, xhr) {
+    if (xhr.status === 200) {
+      deleteUTubSuccess(utubID);
+    }
+  });
+
+  request.fail(function (xhr, textStatus, errorThrown) {
+    deleteUTubFail(xhr);
+  });
+}
+
+// Prepares post request inputs to delete the current UTub
+function deleteUTubSetup(utubID) {
+  let postURL = APP_CONFIG.routes.deleteUTub(utubID);
+
+  return postURL;
+}
+
+function deleteUTubSuccess(utubID) {
+  hideInputs();
+
+  // Close modal
+  $("#confirmModal").modal("hide");
+  $("#utubBtnDelete").hideClass();
+
+  // Update UTub Deck
+  const utubSelector = $(".UTubSelector[utubid=" + utubID + "]");
+
+  setTimeout(function () {
+    window.history.pushState(null, null, "/home");
+    window.history.replaceState(null, null, "/home");
+  }, 0);
+
+  utubSelector.fadeOut("slow", () => {
+    utubSelector.remove();
+
+    // Reset all panels
+    setUIWhenNoUTubSelected();
+
+    hideInputsAndSetUTubDeckSubheader();
+    resetURLDeckOnDeleteUTub();
+
+    if (getNumOfUTubs() === 0) {
+      resetUTubDeckIfNoUTubs();
+      $("#utubTagBtnCreate").hideClass();
+    }
+
+    isMobile() ? setMobileUIWhenUTubNotSelectedOrUTubDeleted() : null;
+  });
+}
+
+function deleteUTubFail(xhr) {
+  if (xhr._429Handled) return;
+
+  if (
+    xhr.status === 403 &&
+    xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
+  ) {
+    // Handle invalid CSRF token error response
+    $("body").html(xhr.responseText);
+    return;
+  }
+  window.location.assign(APP_CONFIG.routes.errorPage);
+  return;
+}

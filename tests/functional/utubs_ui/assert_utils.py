@@ -20,7 +20,9 @@ def assert_elems_hidden_after_utub_deleted(browser: WebDriver):
     )
 
     for elem in non_visible_elems:
-        assert not browser.find_element(By.CSS_SELECTOR, elem).is_displayed()
+        assert not browser.find_element(
+            By.CSS_SELECTOR, elem
+        ).is_displayed(), f"Element={elem}"
 
     update_utub_desc_btn = browser.find_element(
         By.CSS_SELECTOR, HPL.BUTTON_UTUB_DESCRIPTION_UPDATE

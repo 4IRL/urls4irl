@@ -29,8 +29,8 @@ def test_valid_token_receives_reset_password_form(user_attempts_reset_password):
         url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token)
     )
 
-    # JS AJAX call to modal that contains reset password form
-    assert RESET_PASSWORD.RESET_PASSWORD_MODAL_CALL.encode() in reset_response.data
+    # Assert reset password modal is rendered
+    assert b'data-modal-type="reset-password"' in reset_response.data
 
     assert IDENTIFIERS.SPLASH_PAGE.encode() in reset_response.data
     assert reset_response.status_code == 200

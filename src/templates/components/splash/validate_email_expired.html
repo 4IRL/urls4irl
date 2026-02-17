@@ -2,11 +2,6 @@
     aria-modal="true" role="dialog">
     <div class="modal-dialog" role="document">
         <div class="modal-content">
-            <script nonce="{{ nonce }}" type="text/javascript">
-                if (document.querySelector('head').childElementCount === 1) {
-                    window.location.href = '/';
-                };
-            </script>
             <form id="ModalForm" method="POST" class="login-register-form validate-email-form" action="" novalidate>
                 <div class="modal-header">
                     <div class="email-container">
@@ -37,13 +32,6 @@
                     col-8")}}
                 </div>
             </form>
-
-            <script nonce="{{ nonce }}"
-                src="{{ url_for('static', filename='scripts/splash/emailValidation.js') }}?v={{ ASSET_VERSION }}"></script>
         </div>
     </div>
 </div>
-
-<script nonce="{{ nonce }}" type="text/javascript">
-    bootstrap.Modal.getOrCreateInstance('#SplashModal').show();
-</script>

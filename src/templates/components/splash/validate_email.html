@@ -1,10 +1,4 @@
-<script nonce="{{ nonce }}" type="text/javascript">
-    if (document.querySelector('head').childElementCount === 1) {
-        window.location.href = '/';
-    };
-</script>
-
-<form id="ModalForm" method="POST" class="login-register-form validate-email-form" action="" novalidate>
+<form id="ModalForm" method="POST" class="login-register-form validate-email-form" data-modal-type="email-validation" action="" novalidate>
     <div class="modal-header">
         <div class="email-container">
             <div id="ValidateEmailIcon">✉️</div>
@@ -29,5 +23,3 @@
         col-8")}}
     </div>
 </form>
-
-<script nonce="{{ nonce }}" src="{{ url_for('static', filename='scripts/splash/emailValidation.js') }}?v={{ ASSET_VERSION }}"></script>

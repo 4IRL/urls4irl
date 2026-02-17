@@ -34,9 +34,12 @@ flask shorturls add
 if [[ "$PRODUCTION" != "true" && "$DEV_SERVER" != "true" ]]; then
     echo 'Running on 127.0.0.1:8659!'
     flask utils start-log
-    exec flask run --host=0.0.0.0 --port=5000 --cert=adhoc
+    if [[ "$ENABLE_SSL" == "true" ]]; then
+        exec flask run --host=0.0.0.0 --port=5000 --cert=adhoc
+    else
+        exec flask run --host=0.0.0.0 --port=5000
+    fi
 else
-    flask assets build
     flask utils start-log
     exec gunicorn --workers 4 --bind 0.0.0.0:5000 --access-logfile - --error-logfile - run:app
 fi
