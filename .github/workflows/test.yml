@@ -131,10 +131,10 @@ jobs:
       - name: Install frontend dependencies and build
         run: |
           bash frontend/setup-vendor.sh
-          npm ci --prefix frontend
-          cp frontend/vite.config.js ./vite.config.js
-          ./frontend/node_modules/.bin/vite build
-          rm vite.config.js
+          cp frontend/package.json frontend/package-lock.json frontend/vite.config.js ./
+          npm ci
+          npx vite build
+          rm package.json package-lock.json vite.config.js
 
       - name: Run tests
         env:
