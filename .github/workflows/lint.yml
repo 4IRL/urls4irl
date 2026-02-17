@@ -33,4 +33,4 @@ jobs:
           node-version: "20"
 
       - name: Verify JavaScript with ESLint
-        run: npx eslint src/static/scripts/** --no-config-lookup
+        run: npx eslint frontend/** --no-config-lookup
