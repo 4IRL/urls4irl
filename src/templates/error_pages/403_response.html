@@ -9,9 +9,6 @@
 
     <button class="refresh-button" id="refreshBtn">Click to Refresh</button>
 
-    <script nonce="{{ nonce }}">
-        document.getElementById('refreshBtn').addEventListener('click', function() {
-            window.location.href = window.location.href.split("#")[0];
-        })
-    </script>
+    <!-- Initialized by frontend/error.js -->
+    <script nonce="{{ nonce }}" type="module" src="{{ vite_asset_static('error.js') }}"></script>
 </section>

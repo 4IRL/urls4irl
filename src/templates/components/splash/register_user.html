@@ -1,9 +1,3 @@
-<script nonce="{{ nonce }}" type="text/javascript">
-    if (document.querySelector('head').childElementCount === 1) {
-        window.location.href = '/';
-    };
-</script>
-
 <form id="ModalForm" method="POST" class="login-register-form" action="/register" novalidate>
     <div class="modal-header">
         <h4 class="modal-title">Register</h4>
@@ -98,5 +92,3 @@
         </small>
     </div>
 </div>
-
-<script nonce="{{ nonce }}" src="{{ url_for('static', filename='scripts/splash/register.js') }}?v={{ ASSET_VERSION }}"></script>

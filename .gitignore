@@ -20,3 +20,14 @@ node_modules/
 gen/
 *.bak
 logs/
+plans/
+tmp/
+.playwright-mcp
+
+# Vendor JS bundles (download via frontend/setup-vendor.sh)
+frontend/public/vendor/
+
+# Vite build outputs and cache
+src/static/dist/
+.vite/
+*.local

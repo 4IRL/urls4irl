@@ -1,0 +1,25 @@
+{
+  "permissions": {
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.*)",
+      "Read(./secrets/**)",
+      "Read(./config/credentials.json)",
+      "Read(./build)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "filePattern": "**/*.js",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "docker compose exec -T vite npx vite build --logLevel error 2>&1 | tail -5"
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -38,7 +38,11 @@
     </div>
 </main>
 
-<script nonce="{{ nonce }}" src="{{ url_for('static', filename='scripts/splash.js') }}?v={{ ASSET_VERSION }}"></script>
+{% if config.VITE_DEV_SERVER %}
+    <script nonce="{{ nonce }}" type="module" src="{{ config.VITE_URL }}/@vite/client"></script>
+{% endif %}
+
+<script nonce="{{ nonce }}" type="module" src="{{ vite_asset('splash.js') }}"></script>
 
 {% endif %}
 

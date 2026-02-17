@@ -25,17 +25,8 @@
     <!-- End Center Panel -->
 </main>
 <!-- Home Page JS -->
-<!-- Add asset version based on UNIX epoch to cache bust when updates are made -->
-{% assets "logged_in_js" %}
-    {% if '?' in ASSET_URL %}
-        <script src="{{ ASSET_URL }}&v={{ ASSET_VERSION }}"></script>
-    {% else %}
-        <script src="{{ ASSET_URL }}?v={{ ASSET_VERSION }}"></script>
-    {% endif %}
-{% endassets %}
-
-{% if config.LOCAL %}
-    <script nonce="{{ nonce }}" type="module" src="http://localhost:5173/@vite/client"></script>
+{% if config.VITE_DEV_SERVER %}
+    <script nonce="{{ nonce }}" type="module" src="{{ config.VITE_URL }}/@vite/client"></script>
 {% endif %}
 
 <script nonce="{{ nonce }}" type="module" src="{{ vite_asset('main.js') }}"></script>

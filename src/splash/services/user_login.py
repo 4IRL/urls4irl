@@ -42,9 +42,13 @@ def login_user_to_u4i(login_form: LoginForm) -> FlaskResponse | str:
     safe_add_log(f"Logging User.id={user.id} in")
 
     # next query param takes user to the page they wanted to originally before being logged in
-    next_page = request.args.get("next")
     next_page = _verify_and_provide_next_page(request.args.to_dict())
-    return next_page if next_page else url_for(ROUTES.UTUBS.HOME)
+    redirect_url = next_page if next_page else url_for(ROUTES.UTUBS.HOME)
+
+    return APIResponse(
+        status_code=200,
+        data={"redirect_url": redirect_url},
+    ).to_response()
 
 
 def _verify_and_provide_next_page(request_args: dict[str, str]) -> str:

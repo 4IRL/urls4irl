@@ -1,6 +1,29 @@
 # syntax=docker/dockerfile:1.5
 
 # ============================================
+# Frontend Builder Stage - Build Vite assets
+# ============================================
+FROM node:22-bookworm-slim AS frontend-builder
+
+WORKDIR /build
+
+# Copy package files to project root for installation
+COPY frontend/package.json frontend/package-lock.json ./
+
+# Copy vite config from frontend/ to project root (required for proper __dirname resolution)
+COPY frontend/vite.config.js ./
+
+# Install dependencies at project root (including devDependencies needed for build)
+RUN npm ci
+
+# Copy frontend source
+COPY frontend/ ./frontend/
+
+# Build Vite assets → outputs to /build/src/static/dist/
+# Run from project root using locally installed vite
+RUN ./node_modules/.bin/vite build --config ./vite.config.js
+
+# ============================================
 # Builder Stage - Install dependencies
 # ============================================
 FROM python:3.11-slim-bookworm AS builder
@@ -59,6 +82,12 @@ COPY --chown=u4i-host:u4i-host-group docker/startup-flask.sh ./
 COPY --chown=u4i-host:u4i-host-group run.py ./
 COPY --chown=u4i-host:u4i-host-group src/ ./src/
 COPY --chown=u4i-host:u4i-host-group migrations/ ./migrations/
+
+# Copy built frontend assets from frontend-builder stage
+COPY --from=frontend-builder --chown=u4i-host:u4i-host-group /build/src/static/dist/ ./src/static/dist/
+
+# Verify Vite build artifacts exist
+RUN test -f ./src/static/dist/.vite/manifest.json || (echo "ERROR: Vite manifest missing" && exit 1)
 
 # Create log directory and set permissions
 RUN mkdir -p /app/volume/logs \
