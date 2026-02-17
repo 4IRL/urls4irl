@@ -7,12 +7,10 @@ on:
             - main
         types:
             - closed
-            - synchronize # TODO: REMOVE
-            - opened # TODO: REMOVE
 
 jobs:
     build-dev:
-        #if: github.event.pull_request.merged == true
+        if: github.event.pull_request.merged == true
         name: 'CD Dev - Build'
         uses: ./.github/workflows/dev-build.yml
         permissions:
@@ -20,7 +18,7 @@ jobs:
             packages: write
 
     deploy-dev:
-        #if: github.event.pull_request.merged == true
+        if: github.event.pull_request.merged == true
         needs: 'build-dev'
         name: 'CD Dev - Deploy'
         uses: ./.github/workflows/dev-deploy.yml
@@ -42,7 +40,7 @@ jobs:
             CONTACT_US_URL: ${{ secrets.CONTACT_US_URL_INF }}
 
     deploy-dev-2:
-        #if: github.event.pull_request.merged == true
+        if: github.event.pull_request.merged == true
         needs: 'build-dev'
         name: 'CD Dev - Deploy 2'
         uses: ./.github/workflows/dev-deploy-2.yml

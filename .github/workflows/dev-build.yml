@@ -48,8 +48,6 @@ jobs:
             images: ghcr.io/${{ github.repository_owner }}/${{ matrix.image }}
             tags: |
               type=raw,value=latest,enable={{is_default_branch}}
-              # TODO: REMOVE - Temporary tag to ensure dev server deploys the latest image on PR builds
-              type=raw,value=latest,enable=${{ github.event_name == 'pull_request' }}
               type=ref,event=branch
               type=ref,event=tag
               type=sha,format=short,prefix={{date 'YYYYMMDD'}}-
