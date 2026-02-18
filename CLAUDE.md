@@ -52,6 +52,23 @@ After editing JavaScript files, always run the Vite build (`docker compose exec 
 
 ## Development Commands
 
+### Makefile Shortcuts
+
+A `Makefile` is provided for common tasks. Prefer these over typing full Docker commands:
+
+| Command | Description |
+|---|---|
+| `make up` | Build and start the full stack |
+| `make down` | Stop the stack |
+| `make build` | Rebuild images without starting |
+| `make restart c=<service>` | Restart a specific compose service |
+| `make test-integration` | All non-UI integration tests |
+| `make test-functional` | All UI/Selenium functional tests |
+| `make test-js` | All JS unit tests (vitest) |
+| `make test-marker m=<marker>` | Tests for a specific pytest marker |
+| `make vite-build` | Vite build verification |
+| `make help` | List all available make commands |
+
 ### Docker Execution Note
 
 **CRITICAL:** All `docker` and `docker compose` commands must be run outside sandbox mode due to Docker socket access requirements. Always use `dangerouslyDisableSandbox: true` when running Docker commands.
@@ -87,6 +104,7 @@ flask run --host=0.0.0.0 --port=5000
 
 ```bash
 docker exec u4i-local-vite npm run build  # production/dev build to src/static/dist/
+docker compose exec vite npm test          # run JS unit tests (vitest) from repo root
 ```
 
 ### Testing

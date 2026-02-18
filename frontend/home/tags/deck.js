@@ -1,4 +1,5 @@
 import { $ } from "../../lib/globals.js";
+import { diffIDLists } from "../../logic/deck-diffing.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { buildTagFilterInDeck } from "./tags.js";
 import {
@@ -81,28 +82,19 @@ export function updateTagDeck(updatedTags, utubID) {
   );
   const newTagIDs = $.map(updatedTags, (tag) => tag.id);
 
+  const { toRemove, toAdd } = diffIDLists(oldTagIDs, newTagIDs);
+
   // Find any tags in old that aren't in new and remove them
-  let oldTagID;
-  for (let i = 0; i < oldTags.length; i++) {
-    oldTagID = parseInt($(oldTags[i]).attr("data-utub-tag-id"));
-    if (!newTagIDs.includes(oldTagID)) {
-      $(".tagFilter[data-utub-tag-id=" + oldTagID + "]").remove();
-    }
-  }
+  toRemove.forEach((tagID) => {
+    $(".tagFilter[data-utub-tag-id=" + tagID + "]").remove();
+  });
 
   // Find any tags in new that aren't in old and add them
   const tagDeck = $("#listTags");
-  for (let i = 0; i < updatedTags.length; i++) {
-    if (!oldTagIDs.includes(updatedTags[i].id)) {
-      tagDeck.append(
-        buildTagFilterInDeck(
-          utubID,
-          updatedTags[i].id,
-          updatedTags[i].tagString,
-        ),
-      );
-    }
-  }
+  toAdd.forEach((tagID) => {
+    const tagData = updatedTags.find((tag) => tag.id === tagID);
+    tagDeck.append(buildTagFilterInDeck(utubID, tagData.id, tagData.tagString));
+  });
 }
 
 export function setTagDeckSubheaderWhenNoUTubSelected() {

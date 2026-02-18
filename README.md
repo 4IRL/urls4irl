@@ -51,6 +51,23 @@ See [`src/config.py`](src/config.py) for the full list.
 
 ### Running with Docker (recommended)
 
+A `Makefile` is provided for common development tasks:
+
+| Command | Description |
+|---|---|
+| `make up` | Build and start the full stack |
+| `make down` | Stop the stack |
+| `make build` | Rebuild images without starting |
+| `make restart c=<service>` | Restart a specific compose service (e.g. `make restart c=web`) |
+| `make test-integration` | Run all non-UI integration tests |
+| `make test-functional` | Run all UI/Selenium functional tests |
+| `make test-js` | Run all JS unit tests (vitest) |
+| `make test-marker m=<marker>` | Run tests for a specific pytest marker (e.g. `make test-marker m=utubs`) |
+| `make vite-build` | Build Vite to verify no import/syntax errors |
+| `make help` | List all available make commands |
+
+Or run directly:
+
 ```bash
 docker compose --project-directory . -f docker/compose.local.yaml up --build --remove-orphans
 ```
