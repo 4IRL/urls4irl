@@ -7,6 +7,7 @@ import {
   getAllAccessibleUTubNames,
   sameNameWarningHideModal,
 } from "../utubs/utils.js";
+import { getState, setState } from "../../store/app-store.js";
 import { highlightInput, showInput, hideInput } from "../btns-forms.js";
 import {
   updateUTubDescriptionHideInput,
@@ -260,6 +261,13 @@ function updateUTubNameSetup(utubID) {
 // Handle update of UTub's name
 function updateUTubNameSuccess(response) {
   const utubName = response.utubName;
+
+  setState({
+    activeUTubName: response.utubName,
+    utubs: getState().utubs.map((u) =>
+      u.id === response.utubID ? { ...u, name: response.utubName } : u,
+    ),
+  });
 
   $("#confirmModal").modal("hide");
 

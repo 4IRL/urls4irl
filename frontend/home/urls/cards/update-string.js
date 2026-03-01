@@ -28,6 +28,7 @@ import {
 import { createEditURLIcon } from "./options/edit-string-btn.js";
 import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
+import { getState, setState } from "../../../store/app-store.js";
 
 // Shows update URL inputs
 export function showUpdateURLStringForm(urlCard, urlStringBtnUpdate) {
@@ -192,6 +193,19 @@ export async function updateURL(urlStringUpdateInput, urlCard, utubID) {
 function updateURLSuccess(response, urlCard) {
   // Extract response data
   const updatedURLString = response.URL.urlString;
+
+  setState({
+    urls: getState().urls.map((u) =>
+      u.utubUrlID === response.URL.utubUrlID
+        ? {
+            ...u,
+            urlString: response.URL.urlString,
+            urlTitle: response.URL.urlTitle,
+            utubUrlTagIDs: response.URL.urlTags.map((t) => t.tagID),
+          }
+        : u,
+    ),
+  });
 
   // Update URL body with latest published data
   urlCard

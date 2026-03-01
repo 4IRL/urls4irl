@@ -39,8 +39,10 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 1. **Use HTTP for all development tests** - Local development uses HTTP by default (`http://127.0.0.1:8659`), not HTTPS
 2. **Run all tests in Docker, never on host** - Always use the Docker containers for running tests
 3. **Debug UI test failures with Playwright before changing code** - When a UI test fails and the root cause isn't clear from code inspection, use Playwright MCP to manually reproduce the issue and observe actual behavior BEFORE making code changes
-4. **Rerun Selenium infrastructure errors separately** - If tests fail with `InvalidSessionIdException`, `SessionNotCreatedException`, 300+ second setup timeouts, or similar Selenium errors, rerun those specific tests individually to verify they're infrastructure issues, not code bugs. These errors indicate Selenium grid problems (session exhaustion, browser startup failures), not application bugs.
-5. **Check Selenium container health for persistent failures** - If Selenium infrastructure errors persist after reruns, check the Selenium container health (`docker compose ps selenium`) and restart it if needed (`docker compose restart selenium`) before doing deeper investigations
+4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`InvalidSessionIdException`, `SessionNotCreatedException`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "Selenium session exhaustion" as a dismissible category — if sessions are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
+5. **Check Selenium container health when sessions repeatedly fail** - If `SessionNotCreatedException` or `InvalidSessionIdException` persist across multiple test runs, check the Selenium container health (`docker compose ps selenium`) and restart it if needed (`docker compose restart selenium`), but still record and investigate the root cause.
+6. **Run tests one marker group at a time** - Tests share a single test DB and Redis instance; never run marker groups in parallel. Use `make test-marker m=<marker>` for each group sequentially.
+7. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
 
 ### General
 
@@ -51,6 +53,23 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 After editing JavaScript files, always run the Vite build (`docker compose exec vite npx vite build`) to verify no import path errors, missing exports, or syntax issues before reporting success.
 
 ## Development Commands
+
+### Makefile Shortcuts
+
+A `Makefile` is provided for common tasks. **Always prefer Makefile commands** over typing full Docker commands directly. Claude Code should use these for all standard operations:
+
+| Command | Description |
+|---|---|
+| `make up` | Build and start the full stack |
+| `make down` | Stop the stack |
+| `make build` | Rebuild images without starting |
+| `make restart c=<service>` | Restart a specific compose service |
+| `make test-integration` | All non-UI integration tests |
+| `make test-functional` | All UI/Selenium functional tests |
+| `make test-js` | All JS unit tests (vitest) |
+| `make test-marker m=<marker>` | Tests for a specific pytest marker |
+| `make vite-build` | Vite build verification |
+| `make help` | List all available make commands |
 
 ### Docker Execution Note
 
@@ -87,6 +106,7 @@ flask run --host=0.0.0.0 --port=5000
 
 ```bash
 docker exec u4i-local-vite npm run build  # production/dev build to src/static/dist/
+docker compose exec vite npm test          # run JS unit tests (vitest) from repo root
 ```
 
 ### Testing
@@ -114,6 +134,8 @@ pytest -k "test_name"         # single test by name
 ```
 
 Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`, `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`
+
+**CRITICAL: Do NOT run tests in parallel locally.** All tests share a single test database and Redis instance. Always run one marker group at a time sequentially.
 
 UI/functional tests require Selenium (`SELENIUM_URL` env var pointing to a Selenium grid).
 

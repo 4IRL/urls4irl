@@ -1,4 +1,7 @@
 import { $ } from "../../lib/globals.js";
+import { diffIDLists } from "../../logic/deck-diffing.js";
+import { getState } from "../../store/app-store.js";
+import { on, AppEvents } from "../../lib/event-bus.js";
 import { createMemberBadge, createOwnerBadge } from "./members.js";
 import { setupShowCreateMemberFormEventListeners } from "./create.js";
 import { createLeaveUTubAsMemberIcon } from "./delete.js";
@@ -11,35 +14,29 @@ export function resetMemberDeck() {
 
 // Update member deck on asynchronous update, either due to stale data or refresh
 export function updateMemberDeck(newMembers, isCurrentUserOwner, utubID) {
-  const currentMembers = $(".member");
-  const currentMemberIDs = $.map(currentMembers, (member) =>
-    parseInt($(member).attr("memberid")),
-  );
+  const currentMemberIDs = getState().members.map((m) => m.id);
   const newMemberIDs = $.map(newMembers, (member) => member.id);
 
+  const { toRemove, toAdd } = diffIDLists(currentMemberIDs, newMemberIDs);
+
   // Find any old members that aren't in new and remove them
-  let memberIDToRemove;
-  for (let i = 0; i < currentMemberIDs.length; i++) {
-    memberIDToRemove = currentMemberIDs[i];
-    if (!newMemberIDs.includes(memberIDToRemove)) {
-      $(".member[memberid=" + memberIDToRemove + "]").remove();
-    }
-  }
+  toRemove.forEach((memberID) => {
+    $(".member[memberid=" + memberID + "]").remove();
+  });
 
   // Find any new members that aren't in old and add them
   const memberDeck = $("#listMembers");
-  for (let i = 0; i < newMembers.length; i++) {
-    if (!currentMemberIDs.includes(newMembers[i].id)) {
-      memberDeck.append(
-        createMemberBadge(
-          newMembers[i].id,
-          newMembers[i].username,
-          isCurrentUserOwner,
-          utubID,
-        ),
-      );
-    }
-  }
+  toAdd.forEach((memberID) => {
+    const memberData = newMembers.find((member) => member.id === memberID);
+    memberDeck.append(
+      createMemberBadge(
+        memberData.id,
+        memberData.username,
+        isCurrentUserOwner,
+        utubID,
+      ),
+    );
+  });
 }
 
 // Build center panel URL list for selectedUTub
@@ -121,3 +118,19 @@ export function setMemberDeckForUTub(isCurrentUserOwner = true) {
   // Subheader prompt shown
   memberDeckSubheader.closest(".titleElement").show();
 }
+
+on(
+  AppEvents.UTUB_SELECTED,
+  ({ members, utubOwnerID, isCurrentUserOwner, currentUserID, utubID }) =>
+    setMemberDeckOnUTubSelected(
+      members,
+      utubOwnerID,
+      isCurrentUserOwner,
+      currentUserID,
+      utubID,
+    ),
+);
+
+on(AppEvents.STALE_DATA_DETECTED, ({ members, utubID }) =>
+  updateMemberDeck(members, getState().isCurrentUserOwner, utubID),
+);

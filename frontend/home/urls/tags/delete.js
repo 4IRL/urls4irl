@@ -12,6 +12,7 @@ import {
   TagCountOperation,
   updateTagFilteringOnURLOrURLTagDeletion,
 } from "../cards/filtering.js";
+import { getState, setState } from "../../../store/app-store.js";
 
 /**
  * Prepares post request inputs for removal of a URL - tag
@@ -75,6 +76,17 @@ export async function deleteURLTag(utubTagID, tagBadge, urlCard, utubID) {
  */
 function deleteURLTagSuccess(response, tagBadge, urlCard) {
   const tagID = response.utubTag.utubTagID;
+  const urlID = parseInt(urlCard.attr("utuburlid"));
+  setState({
+    urls: getState().urls.map((u) =>
+      u.utubUrlID === urlID
+        ? { ...u, utubUrlTagIDs: response.utubUrlTagIDs }
+        : u,
+    ),
+    tags: getState().tags.map((t) =>
+      t.id === tagID ? { ...t, tagApplied: response.tagCountsInUtub } : t,
+    ),
+  });
 
   updateTagFilterCount(
     tagID,

@@ -17,7 +17,7 @@ from tests.functional.selenium_utils import (
     wait_then_click_element,
 )
 
-pytestmark = pytest.mark.home_ui
+pytestmark = pytest.mark.mobile_ui
 
 
 def test_privacy_policy(

@@ -1,5 +1,6 @@
 import "./lib/security-check.js";
 import { $ } from "./lib/globals.js";
+import { setState } from "./store/app-store.js";
 import {
   registerJQueryPlugins,
   enableTabbableChildElements,
@@ -80,6 +81,9 @@ setupCSRF();
 
 // Initialize on DOM ready
 $(document).ready(() => {
+  const utubsScript = document.getElementById("utubs-data");
+  if (utubsScript) setState({ utubs: JSON.parse(utubsScript.textContent) });
+
   btnsForms.initBtnsForms();
   visibility.initVisibilityHandlers();
   navbar.initNavbar();

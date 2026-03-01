@@ -1,12 +1,13 @@
 import { $ } from "../lib/globals.js";
 import { TABLET_WIDTH } from "../lib/constants.js";
+import { on, AppEvents } from "../lib/event-bus.js";
 import { NAVBAR_TOGGLER } from "./navbar.js";
 import {
   resetAllDecksIfCollapsed,
   removeCollapsibleClickableHeaderClass,
   addCollapsibleClickableHeaderClass,
 } from "./collapsible-decks.js";
-import { getActiveUTubID } from "./utubs/utils.js";
+import { getState } from "../store/app-store.js";
 import { makeUTubSelectableAgainIfMobile } from "./utubs/selectors.js";
 
 /**
@@ -20,6 +21,10 @@ export function isMobile() {
  * Initialize mobile layout event listeners
  */
 export function initMobileLayout() {
+  on(AppEvents.UTUB_SELECTED, () => {
+    if (isMobile()) setMobileUIWhenUTubSelectedOrURLNavSelected();
+  });
+
   // Use matchMedia instead of resize when just need to determine if > or < than
   // specific size
   // https://webdevetc.com/blog/matchmedia-events-for-window-resizes/
@@ -33,7 +38,7 @@ export function initMobileLayout() {
       // If UTub selected, show URL Deck
       // If no UTub selected, show UTub deck
       // Set tablet-mobile navbar depending on UTub selected or not
-      if (!isNaN(getActiveUTubID())) {
+      if (getState().activeUTubID !== null) {
         setMobileUIWhenUTubSelectedOrURLNavSelected();
       } else {
         setMobileUIWhenUTubNotSelectedOrUTubDeleted();

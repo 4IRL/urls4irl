@@ -1,74 +1,63 @@
 import { $ } from "../../../lib/globals.js";
-import { updateCountOfTagFiltersApplied } from "../../tags/deck.js";
+import { getState, setState } from "../../../store/app-store.js";
+import { on, emit, AppEvents } from "../../../lib/event-bus.js";
 import { currentTagDeckIDs, isATagSelected } from "../../tags/utils.js";
+import {
+  computeURLVisibility,
+  computeVisibleTagCounts,
+  sortTagsByCount,
+} from "../../../logic/tag-filtering.js";
 
 export const TagCountOperation = Object.freeze({
   INCREMENT: 1,
   DECREMENT: -1,
 });
 
-export function updateURLsAndTagSubheaderWhenTagSelected() {
-  const selectedTagIDs = $.map($(".tagFilter.selected"), (tagFilter) =>
-    parseInt($(tagFilter).attr("data-utub-tag-id")),
-  );
-  const urlCards = $(".urlRow");
-  const numSelectedTagIDs = selectedTagIDs.length;
-
-  let tagBadgeIDsOnURL, shouldShow;
-  urlCards.each((_, urlCard) => {
-    tagBadgeIDsOnURL = $.map($(urlCard).find(".tagBadge"), (tagBadge) =>
-      parseInt($(tagBadge).attr("data-utub-tag-id")),
-    );
-
-    shouldShow = true;
-    for (let i = 0; i < selectedTagIDs.length; i++) {
-      if (!tagBadgeIDsOnURL.includes(selectedTagIDs[i])) {
-        shouldShow = false;
-      }
-    }
-
-    shouldShow
-      ? $(urlCard).attr({ filterable: true })
-      : $(urlCard).attr({ filterable: false });
+function applyURLVisibilityToDOM(visibility) {
+  visibility.forEach(({ urlId, visible }) => {
+    $(`.urlRow[utuburlid=${urlId}]`).attr({ filterable: visible });
   });
+}
+
+export function updateURLsAndTagSubheaderWhenTagSelected() {
+  const selectedTagIDs = getState().selectedTagIDs;
+  const urlsWithTagIDs = getState().urls.map((u) => ({
+    urlId: u.utubUrlID,
+    tagIDs: u.utubUrlTagIDs,
+  }));
+  const visibility = computeURLVisibility(selectedTagIDs, urlsWithTagIDs);
+  applyURLVisibilityToDOM(visibility);
   reapplyAlternatingURLCardBackgroundAfterFilter();
-  updateCountOfTagFiltersApplied(numSelectedTagIDs);
+  emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs });
   updateVisibleURLsForTagCount();
   sortTagFiltersInPlace();
 }
 
 function updateVisibleURLsForTagCount() {
   const currentTagIDs = currentTagDeckIDs();
-  const currentTagIDsMap = new Map();
-  currentTagIDs.forEach((tagID) => {
-    currentTagIDsMap.set(`${tagID}`, 0);
-  });
-
   const visibleURLCards = $(".urlRow[filterable=true]");
 
-  let urlTagIDsRaw, urlTagIDs, visibleURL, urlTag;
-  for (let i = 0; i < visibleURLCards.length; i++) {
-    visibleURL = $(visibleURLCards[i]);
-    urlTagIDsRaw = visibleURL.attr("data-utub-url-tag-ids");
-    if (!urlTagIDsRaw) continue;
-    urlTagIDs = urlTagIDsRaw.split(",");
+  const visibleURLTagIDsList = [];
+  visibleURLCards.each((_, urlCard) => {
+    const urlTagIDsRaw = $(urlCard).attr("data-utub-url-tag-ids");
+    visibleURLTagIDsList.push(urlTagIDsRaw ? urlTagIDsRaw.split(",") : []);
+  });
 
-    urlTagIDs.forEach((tagID) => {
-      currentTagIDsMap.set(tagID, (currentTagIDsMap.get(tagID) || 0) + 1);
-    });
-  }
+  const tagCounts = computeVisibleTagCounts(
+    visibleURLTagIDsList,
+    currentTagIDs,
+  );
 
-  let tagCountElem, tagCountText, tagID;
+  let tagCountElem, tagCountText;
   for (let j = 0; j < currentTagIDs.length; j++) {
-    tagID = currentTagIDs[j];
+    const tagID = currentTagIDs[j];
     tagCountElem = $(
       `.tagFilter[data-utub-tag-id=${tagID}]` + " .tagAppliedToUrlsCount",
     );
     tagCountText = tagCountElem.text().split(" / ");
     if (!tagCountText || tagCountText.length !== 2) continue;
-
     tagCountElem.text(
-      `${currentTagIDsMap.get(`${tagID}`)}` + " / " + `${tagCountText[1]}`,
+      `${tagCounts.get(`${tagID}`)}` + " / " + `${tagCountText[1]}`,
     );
   }
 }
@@ -110,23 +99,20 @@ export function reapplyAlternatingURLCardBackgroundAfterFilter() {
 
 function sortTagFiltersInPlace() {
   const container = $("#listTags");
-  const tagFilters = container.children(".tagFilter").get();
+  const tagFilterElems = container.children(".tagFilter").get();
 
-  tagFilters.sort((a, b) => {
-    const textA = $(a).find(".tagAppliedToUrlsCount").text().trim();
-    const textB = $(b).find(".tagAppliedToUrlsCount").text().trim();
-
-    const numeratorA = parseInt(textA.split(" / ")[0]) || 0;
-    const numeratorB = parseInt(textB.split(" / ")[0]) || 0;
-
-    return numeratorB - numeratorA;
+  const tags = tagFilterElems.map((el) => {
+    const textParts = $(el)
+      .find(".tagAppliedToUrlsCount")
+      .text()
+      .trim()
+      .split(" / ");
+    return { el, visibleCount: parseInt(textParts[0]) || 0 };
   });
 
-  const detachedElements = tagFilters.map((el) => $(el).detach());
-
-  for (let i = 0; i < detachedElements.length; i++) {
-    container.append(detachedElements[i]);
-  }
+  const sorted = sortTagsByCount(tags);
+  const detachedElements = sorted.map(({ el }) => $(el).detach());
+  detachedElements.forEach((el) => container.append(el));
 }
 
 export function isURLCurrentlyVisibleInURLDeck(urlString) {
@@ -147,3 +133,14 @@ export function updateTagFilteringOnURLOrURLTagDeletion() {
     reapplyAlternatingURLCardBackgroundAfterFilter();
   }
 }
+
+on(AppEvents.TAG_DELETED, () => updateURLsAndTagSubheaderWhenTagSelected());
+
+on(AppEvents.STALE_DATA_DETECTED, ({ tags }) => {
+  setState({
+    selectedTagIDs: getState().selectedTagIDs.filter((id) =>
+      tags.some((t) => t.id === id),
+    ),
+  });
+  updateTagFilteringOnURLOrURLTagDeletion();
+});

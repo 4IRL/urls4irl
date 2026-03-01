@@ -37,6 +37,7 @@ import { createAddTagIcon } from "../cards/options/tag-btn.js";
 import { isTagInUTubTagDeck } from "../../tags/utils.js";
 import { buildTagFilterInDeck } from "../../tags/tags.js";
 import { updateTagFilterCount, TagCountOperation } from "../cards/filtering.js";
+import { getState, setState } from "../../../store/app-store.js";
 
 export function createTagInputBlock(urlCard, utubID) {
   const urlTagCreateTextInputContainer = makeTextInput(
@@ -225,6 +226,20 @@ export async function createURLTag(urlTagCreateInput, urlCard, utubID) {
 function createURLTagSuccess(response, urlCard, utubID) {
   // Clear and reset input field
   hideAndResetCreateURLTagForm(urlCard);
+
+  const urlID = parseInt(urlCard.attr("utuburlid"));
+  setState({
+    urls: getState().urls.map((u) =>
+      u.utubUrlID === urlID
+        ? { ...u, utubUrlTagIDs: response.utubUrlTagIDs }
+        : u,
+    ),
+    tags: getState().tags.map((t) =>
+      t.id === response.utubTag.utubTagID
+        ? { ...t, tagApplied: response.tagCountsInUtub }
+        : t,
+    ),
+  });
 
   // Extract response data
   const utubTagID = response.utubTag.utubTagID;

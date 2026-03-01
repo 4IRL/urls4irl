@@ -1,4 +1,6 @@
 import { getUTubInfo } from "./selectors.js";
+import { setState } from "../../store/app-store.js";
+import { emit, AppEvents } from "../../lib/event-bus.js";
 
 // Handles updating a UTub if found to include stale data
 // For example, a user decides to update a URL string to a new URL, but it returns
@@ -11,27 +13,20 @@ export async function updateUTubOnFindingStaleData(selectedUTubID) {
   const utubDescription = utub.description;
   updateUTubNameAndDescription(utub.id, utubName, utubDescription);
 
-  // Update Tags
-  const utubTags = utub.tags;
-  updateTagDeck(utubTags, utub.id);
-
-  // Update URLs
   const utubURLs = utub.urls;
-  updateURLDeck(utubURLs, utubTags, utub.id);
-
-  // Update members
+  const utubTags = utub.tags;
   const utubMembers = utub.members;
-  const utubOwnerID = utub.createdByUserID;
-  const isCurrentUserOwner = utub.isCreator;
-  updateMemberDeck(
-    utubMembers,
-    utubOwnerID,
-    isCurrentUserOwner,
-    selectedUTubID,
-  );
 
-  // Update filtering
-  updateTagFilteringOnFindingStaleData();
+  // Emit before setState so deck-update functions can diff against the current (pre-update) store
+  emit(AppEvents.STALE_DATA_DETECTED, {
+    utubID: utub.id,
+    urls: utubURLs,
+    tags: utubTags,
+    members: utubMembers,
+  });
+
+  // Sync store; selectedTagIDs filtering is handled by filtering.js's STALE_DATA_DETECTED listener
+  setState({ urls: utubURLs, tags: utubTags, members: utubMembers });
 }
 
 function updateUTubNameAndDescription(utubID, utubName, utubDescription) {

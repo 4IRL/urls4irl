@@ -3,6 +3,7 @@ import { APP_CONFIG } from "../../../lib/config.js";
 import { ajaxCall } from "../../../lib/ajax.js";
 import { getUpdatedURL, handleRejectFromGetURL } from "./get.js";
 import { updateTagFilteringOnURLOrURLTagDeletion } from "./filtering.js";
+import { getState, setState } from "../../../store/app-store.js";
 
 // Hide confirmation modal for removal of the selected URL
 export function deleteURLHideModal() {
@@ -79,6 +80,9 @@ async function deleteURL(utubUrlID, urlCard, utubID) {
 function deleteURLSuccess(response, urlCard) {
   // Close modal
   $("#confirmModal").modal("hide");
+  setState({
+    urls: getState().urls.filter((u) => u.utubUrlID !== response.URL.utubUrlID),
+  });
   const currentURLTagIDs = urlCard.attr("data-utub-url-tag-ids") || "";
   if (currentURLTagIDs.trim()) {
     let tagIDs = currentURLTagIDs.split(",").map((s) => s.trim());

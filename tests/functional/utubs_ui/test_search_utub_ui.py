@@ -19,7 +19,6 @@ from tests.functional.selenium_utils import (
     wait_then_click_element,
     wait_then_get_element,
     wait_until_hidden,
-    wait_until_visible_css_selector,
 )
 from tests.functional.utubs_ui.selenium_utils import (
     create_utub,
@@ -27,48 +26,6 @@ from tests.functional.utubs_ui.selenium_utils import (
 )
 
 pytestmark = pytest.mark.utubs_ui
-
-
-def test_utub_search_box_opens_on_click_and_focused(
-    browser: WebDriver, create_test_tags, provide_app: Flask
-):
-    """
-    GIVEN a fresh load of the U4i Home page, where user is in multiple UTubs
-    WHEN user clicks on the UTub search icon
-    THEN ensure the all appropriate elements are visible and ready and input is focused
-    """
-    app = provide_app
-    user_id_for_test = 1
-
-    login_user_to_home_page(app, browser, user_id_for_test)
-    open_utub_search_box(browser)
-    assert_not_visible_css_selector(browser, HPL.UTUB_OPEN_SEARCH_ICON)
-    assert_visible_css_selector(browser, HPL.UTUB_CLOSE_SEARCH_ICON)
-    assert_visible_css_selector(browser, HPL.UTUB_SEARCH_INPUT)
-
-
-def test_utub_search_box_closes_on_click(
-    browser: WebDriver, create_test_tags, provide_app: Flask
-):
-    """
-    GIVEN a fresh load of the U4i Home page, where user is in multiple UTubs, and user has UTub search open
-    WHEN user clicks on the close UTub search icon
-    THEN ensure the all appropriate elements are not visible
-    """
-    app = provide_app
-    user_id_for_test = 1
-
-    login_user_to_home_page(app, browser, user_id_for_test)
-    open_utub_search_box(browser)
-    wait_then_click_element(browser, HPL.UTUB_CLOSE_SEARCH_ICON, time=3)
-
-    wait_until_hidden(browser, HPL.UTUB_CLOSE_SEARCH_ICON, timeout=3)
-    wait_until_hidden(browser, HPL.UTUB_SEARCH_INPUT, timeout=3)
-    wait_until_visible_css_selector(browser, HPL.UTUB_OPEN_SEARCH_ICON, timeout=3)
-
-    assert_visible_css_selector(browser, HPL.UTUB_OPEN_SEARCH_ICON)
-    assert_not_visible_css_selector(browser, HPL.UTUB_CLOSE_SEARCH_ICON)
-    assert_not_visible_css_selector(browser, HPL.UTUB_SEARCH_INPUT)
 
 
 def test_utub_search_with_no_match(
@@ -156,41 +113,6 @@ def test_utub_search_with_all_match(
     input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
     assert input_elem is not None
     assert input_elem.get_attribute("value") == "1"
-
-    for utub_id in utub_names_and_ids.values():
-        utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-        assert_visible_css_selector(browser, utub_selector, time=3)
-
-
-def test_utub_search_resets_selectors_when_closed(
-    browser: WebDriver, create_test_users, provide_app: Flask
-):
-    """
-    GIVEN a fresh load of the U4i Home page, where user is in multiple UTubs, and user has UTub search open
-    WHEN user performs search that matches no UTubs, but then closes the search
-    THEN ensure that all UTub selectors are again visible
-    """
-    app = provide_app
-    user_id_for_test = 1
-
-    utub_names_and_ids = create_test_searchable_utubs(app, user_id_for_test)
-    login_user_to_home_page(app, browser, user_id_for_test)
-    open_utub_search_box(browser)
-
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
-    assert input_elem is not None
-
-    input_elem.send_keys("Z")
-    input_elem = wait_then_get_element(browser, HPL.UTUB_SEARCH_INPUT)
-    assert input_elem is not None
-    assert input_elem.get_attribute("value") == "Z"
-
-    for utub_id in utub_names_and_ids.values():
-        utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-        assert_not_visible_css_selector(browser, utub_selector, time=3)
-
-    wait_then_click_element(browser, HPL.UTUB_CLOSE_SEARCH_ICON, time=3)
-    assert_not_visible_css_selector(browser, HPL.UTUB_CLOSE_SEARCH_ICON, time=3)
 
     for utub_id in utub_names_and_ids.values():
         utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"

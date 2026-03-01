@@ -1,5 +1,8 @@
 import { $ } from "../../lib/globals.js";
+import { diffIDLists } from "../../logic/deck-diffing.js";
+import { getState } from "../../store/app-store.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { on, AppEvents } from "../../lib/event-bus.js";
 import { bindSwitchURLKeyboardEventListeners } from "./utils.js";
 import {
   setupUpdateUTubDescriptionEventListeners,
@@ -52,45 +55,41 @@ export function showURLDeckBannerError(errorMessage) {
 
 // Update URLs in center panel based on asynchronous updates or stale data
 export function updateURLDeck(updatedUTubUrls, updatedUTubTags, utubID) {
-  const oldURLs = $(".urlRow");
-  const oldURLIDs = $.map(oldURLs, (url) => parseInt($(url).attr("utuburlid")));
+  const oldURLIDs = getState().urls.map((u) => u.utubUrlID);
   const newURLIDs = $.map(updatedUTubUrls, (newURL) => newURL.utubUrlID);
 
+  const { toRemove, toAdd, toUpdate } = diffIDLists(oldURLIDs, newURLIDs);
+
   // Remove any URLs that are in old that aren't in new
-  let oldURLID, urlToRemove;
-  for (let i = 0; i < oldURLIDs.length; i++) {
-    oldURLID = parseInt($(oldURLIDs[i]).attr("utuburlid"));
-    if (!newURLIDs.includes(oldURLID)) {
-      urlToRemove = $(".urlRow[utuburlid=" + oldURLID + "]");
-      urlToRemove.fadeOut("fast", function () {
-        urlToRemove.remove();
-      });
-    }
-  }
+  toRemove.forEach((urlID) => {
+    const urlToRemove = $(".urlRow[utuburlid=" + urlID + "]");
+    urlToRemove.fadeOut("fast", function () {
+      urlToRemove.remove();
+    });
+  });
 
   // Add any URLs that are in new that aren't in old
   const urlDeck = $("#listURLs");
-  for (let i = 0; i < updatedUTubUrls.length; i++) {
-    if (!oldURLIDs.includes(updatedUTubUrls[i].utubUrlID)) {
-      urlDeck.append(
-        createURLBlock(updatedUTubUrls[i], updatedUTubTags, utubID),
-      );
-    }
-  }
-
-  // Update any URLs in both old/new that might have new data from new
-  let urlToUpdate;
-  for (let i = 0; i < oldURLIDs.length; i++) {
-    if (newURLIDs.includes(oldURLIDs[i])) {
-      urlToUpdate = $(".urlRow[utuburlid=" + oldURLIDs[i] + "]");
-      updateURLAfterFindingStaleData(
-        urlToUpdate,
-        updatedUTubUrls.find((url) => url.utubUrlID === oldURLIDs[i]),
+  toAdd.forEach((urlID) => {
+    urlDeck.append(
+      createURLBlock(
+        updatedUTubUrls.find((url) => url.utubUrlID === urlID),
         updatedUTubTags,
         utubID,
-      );
-    }
-  }
+      ),
+    );
+  });
+
+  // Update any URLs in both old/new that might have new data from new
+  toUpdate.forEach((urlID) => {
+    const urlToUpdate = $(".urlRow[utuburlid=" + urlID + "]");
+    updateURLAfterFindingStaleData(
+      urlToUpdate,
+      updatedUTubUrls.find((url) => url.utubUrlID === urlID),
+      updatedUTubTags,
+      utubID,
+    );
+  });
 }
 
 // Build center panel URL list for selectedUTub
@@ -151,3 +150,11 @@ export function setURLDeckWhenNoUTubSelected() {
 export function initURLDeck() {
   bindSwitchURLKeyboardEventListeners();
 }
+
+on(AppEvents.UTUB_SELECTED, ({ utubID, utubName, urls, tags }) =>
+  setURLDeckOnUTubSelected(utubID, utubName, urls, tags),
+);
+on(AppEvents.STALE_DATA_DETECTED, ({ urls, tags, utubID }) =>
+  updateURLDeck(urls, tags, utubID),
+);
+on(AppEvents.UTUB_DELETED, () => resetURLDeckOnDeleteUTub());

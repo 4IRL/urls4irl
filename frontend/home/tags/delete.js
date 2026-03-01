@@ -9,7 +9,8 @@ import {
   setUnselectUpdateUTubTagEventListeners,
 } from "./update-all.js";
 import { KEYS } from "../../lib/constants.js";
-import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
+import { emit, AppEvents } from "../../lib/event-bus.js";
+import { getState, setState } from "../../store/app-store.js";
 
 function deleteUTubTagHideModal() {
   $("#confirmModal").modal("hide");
@@ -80,6 +81,19 @@ function deleteUTubTagSuccess(response) {
 
   // Remove the UTub Tag
   const utubTagID = response.utubTag.utubTagID;
+  const affectedURLIDs = new Set(response.utubUrlIDs);
+  setState({
+    tags: getState().tags.filter((t) => t.id !== utubTagID),
+    urls: getState().urls.map((u) =>
+      affectedURLIDs.has(u.utubUrlID)
+        ? {
+            ...u,
+            utubUrlTagIDs: u.utubUrlTagIDs.filter((id) => id !== utubTagID),
+          }
+        : u,
+    ),
+    selectedTagIDs: getState().selectedTagIDs.filter((id) => id !== utubTagID),
+  });
 
   const utubTagSelector = $(".tagFilter[data-utub-tag-id=" + utubTagID + "]");
 
@@ -98,7 +112,7 @@ function deleteUTubTagSuccess(response) {
       $("#utubTagStandardBtns").showClassFlex();
     }
 
-    updateURLsAndTagSubheaderWhenTagSelected();
+    emit(AppEvents.TAG_DELETED, { utubTagID });
   });
 }
 

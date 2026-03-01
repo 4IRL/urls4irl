@@ -10,6 +10,7 @@ import {
 import { createUTubSelector, selectUTub } from "./selectors.js";
 import { closeUTubSearchAndEraseInput } from "./search.js";
 import { removeCreateUTubEventListeners } from "./deck.js";
+import { getState, setState } from "../../store/app-store.js";
 
 function checkSameNameUTubOnCreate(name) {
   if (getAllAccessibleUTubNames().includes(name)) {
@@ -191,6 +192,17 @@ function createUTub() {
 function createUTubSuccess(response) {
   // DP 12/28/23 One problem is that confirmed DB changes aren't yet reflected on the page. Ex. 1. User makes UTub name change UTub1 -> UTub2. 2. User attempts to create new UTub UTub1. 3. Warning modal is thrown because no AJAX call made to update the passed UTubs json.
   const utubID = response.utubID;
+
+  setState({
+    utubs: [
+      ...getState().utubs,
+      {
+        id: response.utubID,
+        name: response.utubName,
+        memberRole: APP_CONFIG.constants.MEMBER_ROLES.CREATOR,
+      },
+    ],
+  });
 
   $("#confirmModal").modal("hide");
 

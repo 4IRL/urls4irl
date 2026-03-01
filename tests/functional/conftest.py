@@ -144,15 +144,14 @@ def build_driver_mobile_portrait(
     options.add_argument("--disable-notifications")
 
     if not turn_off_headless:
-        options.add_argument("--headless")
+        options.add_argument("--headless=new")
 
     if config.DOCKER:
         options.add_argument("--no-sandbox")
         options.add_argument("--disable-dev-shm-usage")
-        capabilities = webdriver.ChromeOptions().to_capabilities()
-        capabilities["acceptInsecureCerts"] = True
+        options.add_argument("--disable-gpu")
 
-        driver = webdriver.Remote(
+        driver = ChromeRemoteWebDriver(
             command_executor=config.TEST_SELENIUM_URI, options=options
         )
         url = UI_TEST_STRINGS.DOCKER_BASE_URL
@@ -167,7 +166,10 @@ def build_driver_mobile_portrait(
     yield driver
 
     # Teardown: Quit the browser after tests
-    driver.quit()
+    try:
+        driver.quit()
+    except Exception:
+        pass
 
 
 @pytest.fixture

@@ -1,4 +1,5 @@
 import { $ } from "../../../lib/globals.js";
+import { getState, setState } from "../../../store/app-store.js";
 import { hideAndResetUpdateURLTitleForm } from "./update-title.js";
 import { hideAndResetUpdateURLStringForm } from "./update-string.js";
 import {
@@ -10,14 +11,15 @@ import { setFocusEventListenersOnURLCard } from "./cards.js";
 
 // Streamline the jQuery selector extraction of selected URL card. Provides ease of reference by URL Functions.
 export function getSelectedURLCard() {
-  const selectedUrlCard = $(".urlRow[urlSelected=true]");
-  return selectedUrlCard.length ? selectedUrlCard : null;
+  const id = getState().selectedURLCardID;
+  return id !== null ? $(`.urlRow[utuburlid=${id}]`) : null;
 }
 
 // Perform actions on selection of a URL card
 export function selectURLCard(urlCard) {
   deselectAllURLs();
 
+  setState({ selectedURLCardID: parseInt(urlCard.attr("utuburlid")) });
   urlCard.attr({ urlSelected: true });
   urlCard.find(".goToUrlIcon").addClass("visible-flex");
   enableClickOnSelectedURLCardToHide(urlCard);
@@ -56,6 +58,7 @@ export function disableClickOnSelectedURLCardToHide(urlCard) {
 // Clean up when deselecting a URL card
 function deselectURL(urlCard) {
   disableClickOnSelectedURLCardToHide(urlCard);
+  setState({ selectedURLCardID: null });
   urlCard.attr({ urlSelected: false });
   urlCard.find(".urlString").off("click.goToURL");
   urlCard

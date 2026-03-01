@@ -1,5 +1,6 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { getState } from "../../store/app-store.js";
 import {
   showUTubLoadingIconAndSetTimeout,
   hideUTubLoadingIconAndClearTimeout,
@@ -30,25 +31,22 @@ export function getNumOfUTubs() {
 
 // Streamline extraction of UTub ID
 export function getActiveUTubID() {
-  return parseInt($(".UTubSelector.active").attr("utubid"));
+  return getState().activeUTubID;
 }
 
 // Check if a UTub is selected
 export function isUTubSelected() {
-  return $(".UTubSelector.active").length === 1;
+  return getState().activeUTubID !== null;
 }
 
 // Streamline the jQuery selector extraction of UTub name.
 export function getCurrentUTubName() {
-  return $(".UTubSelector.active .UTubName").text();
+  return getState().activeUTubName;
 }
 
-// Quickly extracts all UTub names from #listUTubs and returns an array.
+// Quickly extracts all UTub names and returns an array.
 export function getAllAccessibleUTubNames() {
-  let utubNames = [];
-  const utubSelectorNames = $(".UTubName");
-  utubSelectorNames.map((i) => utubNames.push($(utubSelectorNames[i]).text()));
-  return utubNames;
+  return getState().utubs.map((u) => u.name);
 }
 
 // Utility route to get all UTub summaries

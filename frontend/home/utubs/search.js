@@ -1,23 +1,13 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { filterUTubsByName } from "../../logic/utub-search.js";
 
-// Takes a user input into the UTub search field and returns an array of UTub ids that have names that contain the user's input as a substring
-function filterUTubs(searchTerm) {
-  const utubSelectors = $(".UTubSelector");
-  const utubsToHide = [];
-
-  let utubName;
-  let utubID;
-  let utubSelector;
-  for (let i = 0; i < utubSelectors.length; i++) {
-    utubSelector = $(utubSelectors[i]);
-    utubID = parseInt(utubSelector.attr("utubid"));
-    utubName = utubSelector.find(".UTubName").text().toLowerCase();
-
-    if (!utubName.includes(searchTerm)) utubsToHide.push(utubID);
-  }
-  return utubsToHide;
+function readUTubsFromDOM() {
+  return $.map($(".UTubSelector"), (el) => ({
+    id: parseInt($(el).attr("utubid")),
+    name: $(el).find(".UTubName").text(),
+  }));
 }
 
 // Updates displayed UTub selectors based on the provided array
@@ -82,7 +72,10 @@ export function setUTubSelectorSearchEventListener() {
         updatedUTubSelectorDisplay([]);
         return;
       }
-      const filteredUTubIDsToHide = filterUTubs(searchTerm);
+      const filteredUTubIDsToHide = filterUTubsByName(
+        readUTubsFromDOM(),
+        searchTerm,
+      );
       updatedUTubSelectorDisplay(filteredUTubIDsToHide);
     });
 }
