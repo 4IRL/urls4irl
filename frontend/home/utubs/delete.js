@@ -11,8 +11,9 @@ import {
   hideInputsAndSetUTubDeckSubheader,
   resetUTubDeckIfNoUTubs,
 } from "./deck.js";
-import { resetURLDeckOnDeleteUTub } from "../urls/deck.js";
+import { emit, AppEvents } from "../../lib/event-bus.js";
 import { getNumOfUTubs } from "./utils.js";
+import { getState, setState } from "../../store/app-store.js";
 import { closeUTubSearchAndEraseInput } from "./search.js";
 
 export function setDeleteEventListeners(utubID) {
@@ -112,11 +113,24 @@ function deleteUTubSuccess(utubID) {
   utubSelector.fadeOut("slow", () => {
     utubSelector.remove();
 
+    setState({
+      utubs: getState().utubs.filter((u) => u.id !== utubID),
+      activeUTubID: null,
+      activeUTubName: null,
+      activeUTubDescription: null,
+      isCurrentUserOwner: false,
+      urls: [],
+      tags: [],
+      members: [],
+      selectedTagIDs: [],
+      selectedURLCardID: null,
+    });
+
     // Reset all panels
     setUIWhenNoUTubSelected();
 
     hideInputsAndSetUTubDeckSubheader();
-    resetURLDeckOnDeleteUTub();
+    emit(AppEvents.UTUB_DELETED, { utubID });
 
     if (getNumOfUTubs() === 0) {
       resetUTubDeckIfNoUTubs();

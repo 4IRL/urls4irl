@@ -1,21 +1,18 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { setState } from "../../store/app-store.js";
 import { KEYS } from "../../lib/constants.js";
 import { showNewPageOnAJAXHTMLResponse } from "../../lib/page-utils.js";
-import { isMobile } from "../mobile.js";
-import { setMobileUIWhenUTubSelectedOrURLNavSelected } from "../mobile.js";
+import { emit, AppEvents } from "../../lib/event-bus.js";
 import {
   showUTubLoadingIconAndSetTimeout,
   hideUTubLoadingIconAndClearTimeout,
   setUTubDeckOnUTubSelected,
 } from "./deck.js";
-import { setTagDeckOnUTubSelected } from "../tags/deck.js";
-import { setURLDeckOnUTubSelected } from "../urls/deck.js";
 import {
   removeEventListenersForShowCreateUTubDescIfEmptyDesc,
   allowHoverOnUTubTitleToCreateDescriptionIfDescEmpty,
 } from "../urls/update-description.js";
-import { setMemberDeckOnUTubSelected } from "../members/deck.js";
 
 // Streamline the AJAX call to db for updated info
 export function getUTubInfo(selectedUTubID) {
@@ -46,15 +43,22 @@ export function getUTubInfo(selectedUTubID) {
 }
 
 export function buildSelectedUTub(selectedUTub) {
-  // Parse incoming data, pass them into subsequent functions as required
-  const utubName = selectedUTub.name;
-  const dictURLs = selectedUTub.urls;
-  const dictTags = selectedUTub.tags;
-  const dictMembers = selectedUTub.members;
-  const utubOwnerID = selectedUTub.createdByUserID;
   const utubDescription = selectedUTub.description;
   const isCurrentUserOwner = selectedUTub.isCreator;
-  const currentUserID = selectedUTub.currentUser;
+
+  setState({
+    activeUTubID: selectedUTub.id,
+    activeUTubName: selectedUTub.name,
+    activeUTubDescription: selectedUTub.description,
+    isCurrentUserOwner: selectedUTub.isCreator,
+    currentUserID: selectedUTub.currentUser,
+    utubOwnerID: selectedUTub.createdByUserID,
+    urls: selectedUTub.urls,
+    tags: selectedUTub.tags,
+    members: selectedUTub.members,
+    selectedTagIDs: [],
+    selectedURLCardID: null,
+  });
 
   const isUTubHistoryNull = window.history.state === null;
 
@@ -75,16 +79,20 @@ export function buildSelectedUTub(selectedUTub) {
     sessionStorage.setItem("fullyLoaded", "true");
   }
 
-  // LH panels
-  // UTub deck
+  // Emit UTUB_SELECTED — deck and mobile modules self-register and handle their own setup
+  emit(AppEvents.UTUB_SELECTED, {
+    utubID: selectedUTub.id,
+    utubName: selectedUTub.name,
+    urls: selectedUTub.urls,
+    tags: selectedUTub.tags,
+    members: selectedUTub.members,
+    utubOwnerID: selectedUTub.createdByUserID,
+    isCurrentUserOwner: selectedUTub.isCreator,
+    currentUserID: selectedUTub.currentUser,
+  });
+
+  // LH panels — UTub deck (same domain, direct call)
   setUTubDeckOnUTubSelected(selectedUTub.id, isCurrentUserOwner);
-
-  // Tag deck
-  setTagDeckOnUTubSelected(dictTags, selectedUTub.id);
-
-  // Center panel
-  // URL deck
-  setURLDeckOnUTubSelected(selectedUTub.id, utubName, dictURLs, dictTags);
 
   // UTub Description
   const utubDescriptionHeader = $("#URLDeckSubheader");
@@ -116,15 +124,6 @@ export function buildSelectedUTub(selectedUTub) {
       .addClass("hiddenBtn")
       .removeClass("visibleBtn");
   }
-
-  // Members deck
-  setMemberDeckOnUTubSelected(
-    dictMembers,
-    utubOwnerID,
-    isCurrentUserOwner,
-    currentUserID,
-    selectedUTub.id,
-  );
 }
 
 // Handles progagating changes across page related to a UTub selection
@@ -145,10 +144,6 @@ export function getSelectedUTubInfo(selectedUTubID) {
       if (!selectedUTub) return;
 
       buildSelectedUTub(selectedUTub);
-      // If mobile, go straight to URL deck
-      if (isMobile()) {
-        setMobileUIWhenUTubSelectedOrURLNavSelected();
-      }
     },
     () => {
       window.location.assign(APP_CONFIG.routes.errorPage);

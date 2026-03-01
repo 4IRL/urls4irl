@@ -1,6 +1,7 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { setState } from "../../store/app-store.js";
 import { toggleTagFilterSelected } from "./tags.js";
 import { updateURLsAndTagSubheaderWhenTagSelected } from "../urls/cards/filtering.js";
 
@@ -55,5 +56,6 @@ function unselectAllTags() {
     });
   disableUnselectAllButtonAfterTagFilterRemoved();
 
+  setState({ selectedTagIDs: [] });
   updateURLsAndTagSubheaderWhenTagSelected();
 }

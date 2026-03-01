@@ -1,6 +1,8 @@
 import { $ } from "../../lib/globals.js";
 import { diffIDLists } from "../../logic/deck-diffing.js";
+import { getState } from "../../store/app-store.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { on, off, AppEvents } from "../../lib/event-bus.js";
 import { buildTagFilterInDeck } from "./tags.js";
 import {
   createUTubTagHideInput,
@@ -18,6 +20,9 @@ import {
   disableUnselectAllButtonAfterTagFilterRemoved,
   resetCountOfTagFiltersApplied,
 } from "./unselect-all.js";
+
+// Tracks the off-function for the per-UTub TAG_FILTER_CHANGED listener
+let _tagFilterChangedOff = null;
 
 export function setTagDeckOnUTubSelected(dictTags, utubID) {
   resetTagDeck();
@@ -45,12 +50,24 @@ export function setTagDeckOnUTubSelected(dictTags, utubID) {
     );
   }
 
+  _tagFilterChangedOff = on(
+    AppEvents.TAG_FILTER_CHANGED,
+    ({ selectedTagIDs }) => {
+      updateCountOfTagFiltersApplied(selectedTagIDs.length);
+    },
+  );
+
   $("#utubTagBtnCreate").showClassNormal();
 
   $("#TagDeck > .dynamic-subheader").addClass("height-2p5rem");
 }
 
 export function resetTagDeck() {
+  if (_tagFilterChangedOff) {
+    _tagFilterChangedOff();
+    _tagFilterChangedOff = null;
+  }
+
   $("#listTags").empty();
   resetCountOfTagFiltersApplied();
   disableUnselectAllButtonAfterTagFilterRemoved();
@@ -76,10 +93,7 @@ export function resetTagDeckIfNoUTubSelected() {
 
 // Update tags in LH panel based on asynchronous updates or stale data
 export function updateTagDeck(updatedTags, utubID) {
-  const oldTags = $(".tagFilter");
-  const oldTagIDs = $.map(oldTags, (tag) =>
-    parseInt($(tag).attr("data-utub-tag-id")),
-  );
+  const oldTagIDs = getState().tags.map((t) => t.id);
   const newTagIDs = $.map(updatedTags, (tag) => tag.id);
 
   const { toRemove, toAdd } = diffIDLists(oldTagIDs, newTagIDs);
@@ -113,3 +127,10 @@ export function updateCountOfTagFiltersApplied(selectedTagCount) {
 export function removeTagFromTagDeckGivenTagID(tagID) {
   $(".tagFilter[data-utub-tag-id=" + tagID + "]").remove();
 }
+
+on(AppEvents.UTUB_SELECTED, ({ tags, utubID }) =>
+  setTagDeckOnUTubSelected(tags, utubID),
+);
+on(AppEvents.STALE_DATA_DETECTED, ({ tags, utubID }) =>
+  updateTagDeck(tags, utubID),
+);

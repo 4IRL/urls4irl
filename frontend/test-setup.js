@@ -94,8 +94,13 @@ const appConfig = {
     createMember: "/utubs/-1/members",
     removeMember: "/utubs/-1/members/-4",
   },
-  constants: {},
-  strings: {},
+  constants: {
+    UTUBS_MIN_NAME_LENGTH: 1,
+  },
+  strings: {
+    COOKIE_BANNER_SEEN: "cookie_banner_seen=true",
+    INVALID_URL: "This is not a valid URL.",
+  },
 };
 
 const configScript = document.createElement("script");

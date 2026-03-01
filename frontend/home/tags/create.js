@@ -4,6 +4,7 @@ import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import { buildTagFilterInDeck } from "./tags.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
+import { getState, setState } from "../../store/app-store.js";
 
 export function setupOpenCreateUTubTagEventListeners(utubID) {
   const utubTagBtnCreate = $("#utubTagBtnCreate");
@@ -123,6 +124,17 @@ function createUTubTag(utubID) {
 
 function createUTubTagSuccess(response, utubID) {
   resetNewUTubTagForm();
+
+  setState({
+    tags: [
+      ...getState().tags,
+      {
+        id: response.utubTag.utubTagID,
+        tagString: response.utubTag.tagString,
+        tagApplied: response.tagCountsInUtub,
+      },
+    ],
+  });
 
   // Create and append the new tag in the tag deck
   $("#listTags").append(

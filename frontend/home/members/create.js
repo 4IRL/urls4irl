@@ -4,6 +4,7 @@ import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import { createMemberBadge } from "./members.js";
 import { setMemberDeckForUTub } from "./deck.js";
+import { getState, setState } from "../../store/app-store.js";
 
 export function setupShowCreateMemberFormEventListeners(utubID) {
   /* Bind click functions */
@@ -132,6 +133,8 @@ function createMember(utubID) {
 // Perhaps update a scrollable/searchable list of members?
 function createMemberSuccess(response, utubID) {
   resetNewMemberForm();
+
+  setState({ members: [...getState().members, response.member] });
 
   // Create and append newly created Member badge - only creators can add members
   $("#listMembers").append(

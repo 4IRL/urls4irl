@@ -15,6 +15,7 @@ import { updateColorOfFollowingURLCardsAfterURLCreated } from "./utils.js";
 import { isURLCurrentlyVisibleInURLDeck } from "./filtering.js";
 import { isATagSelected } from "../../tags/utils.js";
 import { updateUTubOnFindingStaleData } from "../../utubs/stale-data.js";
+import { getState, setState } from "../../../store/app-store.js";
 
 export function bindCreateURLFocusEventListeners(
   inputElem,
@@ -133,6 +134,19 @@ function createURLSuccess(response, utubID) {
   const url = response.URL;
   url.utubUrlTagIDs = [];
   url.canDelete = true;
+
+  setState({
+    urls: [
+      ...getState().urls,
+      {
+        utubUrlID: url.utubUrlID,
+        urlString: url.urlString,
+        urlTitle: url.urlTitle,
+        utubUrlTagIDs: [],
+        canDelete: true,
+      },
+    ],
+  });
 
   // DP 09/17 need to implement ability to addTagtoURL interstitially before createURL is completed
   const currentNumOfURLs = getNumOfVisibleURLs();

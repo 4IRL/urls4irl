@@ -1,6 +1,7 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
+import { setState } from "../../store/app-store.js";
 import { deleteUTubTagShowModal } from "./delete.js";
 import {
   enableUnselectAllButtonAfterTagFilterApplied,
@@ -136,6 +137,10 @@ export function toggleTagFilterSelected(activeTagFilter) {
     }
   }
 
+  const selectedTagIDs = $.map($(".tagFilter.selected"), (tagFilter) =>
+    parseInt($(tagFilter).attr("data-utub-tag-id")),
+  );
+  setState({ selectedTagIDs });
   updateURLsAndTagSubheaderWhenTagSelected();
 }
 

@@ -1,5 +1,6 @@
 import { $ } from "../../../lib/globals.js";
-import { updateCountOfTagFiltersApplied } from "../../tags/deck.js";
+import { getState, setState } from "../../../store/app-store.js";
+import { on, emit, AppEvents } from "../../../lib/event-bus.js";
 import { currentTagDeckIDs, isATagSelected } from "../../tags/utils.js";
 import {
   computeURLVisibility,
@@ -12,21 +13,6 @@ export const TagCountOperation = Object.freeze({
   DECREMENT: -1,
 });
 
-function readSelectedTagIDsFromDOM() {
-  return $.map($(".tagFilter.selected"), (tagFilter) =>
-    parseInt($(tagFilter).attr("data-utub-tag-id")),
-  );
-}
-
-function readURLTagDataFromDOM() {
-  return $.map($(".urlRow"), (urlCard) => ({
-    urlId: parseInt($(urlCard).attr("utuburlid")),
-    tagIDs: $.map($(urlCard).find(".tagBadge"), (tagBadge) =>
-      parseInt($(tagBadge).attr("data-utub-tag-id")),
-    ),
-  }));
-}
-
 function applyURLVisibilityToDOM(visibility) {
   visibility.forEach(({ urlId, visible }) => {
     $(`.urlRow[utuburlid=${urlId}]`).attr({ filterable: visible });
@@ -34,12 +20,15 @@ function applyURLVisibilityToDOM(visibility) {
 }
 
 export function updateURLsAndTagSubheaderWhenTagSelected() {
-  const selectedTagIDs = readSelectedTagIDsFromDOM();
-  const urlsWithTagIDs = readURLTagDataFromDOM();
+  const selectedTagIDs = getState().selectedTagIDs;
+  const urlsWithTagIDs = getState().urls.map((u) => ({
+    urlId: u.utubUrlID,
+    tagIDs: u.utubUrlTagIDs,
+  }));
   const visibility = computeURLVisibility(selectedTagIDs, urlsWithTagIDs);
   applyURLVisibilityToDOM(visibility);
   reapplyAlternatingURLCardBackgroundAfterFilter();
-  updateCountOfTagFiltersApplied(selectedTagIDs.length);
+  emit(AppEvents.TAG_FILTER_CHANGED, { selectedTagIDs });
   updateVisibleURLsForTagCount();
   sortTagFiltersInPlace();
 }
@@ -144,3 +133,14 @@ export function updateTagFilteringOnURLOrURLTagDeletion() {
     reapplyAlternatingURLCardBackgroundAfterFilter();
   }
 }
+
+on(AppEvents.TAG_DELETED, () => updateURLsAndTagSubheaderWhenTagSelected());
+
+on(AppEvents.STALE_DATA_DETECTED, ({ tags }) => {
+  setState({
+    selectedTagIDs: getState().selectedTagIDs.filter((id) =>
+      tags.some((t) => t.id === id),
+    ),
+  });
+  updateTagFilteringOnURLOrURLTagDeletion();
+});

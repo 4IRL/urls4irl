@@ -11,6 +11,7 @@ import {
   disableClickOnSelectedURLCardToHide,
   enableClickOnSelectedURLCardToHide,
 } from "./selection.js";
+import { getState, setState } from "../../../store/app-store.js";
 
 // Shows the update URL title form
 export function showUpdateURLTitleForm(urlTitleAndShowUpdateIconWrap, urlCard) {
@@ -103,6 +104,19 @@ export async function updateURLTitle(urlTitleInput, urlCard, utubID) {
 function updateURLTitleSuccess(response, urlCard) {
   // Extract response data
   const updatedURLTitle = response.URL.urlTitle;
+
+  setState({
+    urls: getState().urls.map((u) =>
+      u.utubUrlID === response.URL.utubUrlID
+        ? {
+            ...u,
+            urlString: response.URL.urlString,
+            urlTitle: response.URL.urlTitle,
+            utubUrlTagIDs: response.URL.urlTags.map((t) => t.tagID),
+          }
+        : u,
+    ),
+  });
 
   // Update URL body with latest published data
   urlCard.find(".urlTitle").text(updatedURLTitle);

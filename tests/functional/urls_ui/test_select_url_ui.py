@@ -19,6 +19,7 @@ from tests.functional.selenium_utils import (
     get_selected_utub_id,
     wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_web_element_and_click,
+    wait_then_get_element,
     wait_then_get_elements,
     wait_until_visible_css_selector,
 )
@@ -102,8 +103,10 @@ def test_select_non_added_urls_as_utub_member(
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         wait_for_web_element_and_click(browser, url_row)
 
-        url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
-        assert get_selected_url(browser) == url_row
+        selected_url_selector = (
+            f"{HPL.ROWS_URLS}[utuburlid='{url_utub_id}'][urlselected='true']"
+        )
+        assert wait_then_get_element(browser, selected_url_selector, time=3) is not None
 
         url_row = browser.find_element(By.CSS_SELECTOR, url_selector)
         current_utub_url_id = url_row.get_attribute("utuburlid")

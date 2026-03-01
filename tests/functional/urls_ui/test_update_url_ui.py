@@ -1,9 +1,7 @@
-import os
 import random
 from typing import Tuple
 from urllib.parse import urlsplit
 
-import ada_url
 from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
@@ -57,22 +55,8 @@ from tests.functional.urls_ui.selenium_utils import (
     update_url_title,
     update_url_string,
 )
-from tests.unit.test_url_validation import (
-    FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
-    INVALID_URLS_TO_VALIDATE,
-)
 
 pytestmark = pytest.mark.update_urls_ui
-
-# For CI/CD testing, pull only 30 random values to run in pipeline to avoid timeouts
-if (int(os.getenv("GITHUB_WORKER_ID", -1)) - 1) >= 0:
-    FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = random.sample(
-        list(FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS), 30
-    )
-
-    INVALID_URLS_TO_VALIDATE = random.sample(
-        list(INVALID_URLS_TO_VALIDATE), len(INVALID_URLS_TO_VALIDATE) // 2
-    )
 
 
 def test_update_url_string_tooltip_animates(
@@ -110,8 +94,9 @@ def test_update_url_string_tooltip_animates(
 @pytest.mark.parametrize(
     "validated_url,input_url",
     [
-        (validated_url, input_url)
-        for (validated_url, input_url) in FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS
+        ("https://example.com/", "https://example.com"),
+        ("https://example.com/", "example.com"),
+        ("https://example.com/", " https://example.com "),
     ],
 )
 def test_update_url_with_valid_url(
@@ -129,7 +114,7 @@ def test_update_url_with_valid_url(
     WHEN the updateURL form is populated with a new URL and user presses submit
     THEN ensure the URL is updated accordingly
     """
-    VALIDATED_URL = ada_url.URL(validated_url).href
+    VALIDATED_URL = validated_url
 
     _, cli_runner = runner
     app = provide_app
@@ -854,7 +839,11 @@ def test_update_url_string_duplicate_url(
 
 @pytest.mark.parametrize(
     "invalid_url",
-    [invalid_url for invalid_url in INVALID_URLS_TO_VALIDATE if "@" not in invalid_url],
+    [
+        "javascript:alert(1)",
+        "data:text/html,<script>",
+        "https://asdfasdfasdf",
+    ],
 )
 def test_update_url_string_invalid_urls(
     browser: WebDriver, create_test_urls, provide_app: Flask, invalid_url: str

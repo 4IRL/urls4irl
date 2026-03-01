@@ -86,10 +86,25 @@ docker exec u4i-local-web /bin/bash -c "source /code/venv/bin/activate; pytest t
 #### Update the Finished Flag:
 - If all phases are complete, change `**finished**: false` to `**finished**: true`
 
-### Step 5: Report and Pause
+### Step 5: Staff Engineer Review
+**CRITICAL: Always perform this review before reporting to the user.**
+
+Adopt the perspective of a staff engineer reviewing the implementation. Evaluate:
+
+1. **Codebase fit** - Does the implementation follow existing patterns, naming conventions, and architecture? Does it belong where it was placed?
+2. **Technical correctness** - Are there logic errors, incorrect assumptions, or fragile implementations? Does the code do what it claims?
+3. **Edge cases** - Are failure modes handled? What happens with empty input, missing data, concurrent access, or unexpected states?
+4. **Test coverage** - Were tests added for the new behavior? Do existing tests still pass? Are happy and sad paths covered?
+5. **Security and quality** - Are there OWASP concerns (XSS, injection, CSRF)? Is debug code removed? Are typehints present on Python code?
+6. **Over-engineering** - Is the implementation more complex than needed? Are abstractions premature?
+
+After the review, immediately fix any issues found before proceeding. Re-run validation after fixes.
+
+### Step 6: Report and Pause
 - Provide a concise summary of what was completed
 - Show validation results (build output, test results, etc.)
 - Confirm the plan document was updated
+- Include a brief summary of the staff engineer review and any fixes applied
 - **REQUIRED:** Ask the user if they want to continue to the next step
 - Do NOT automatically proceed to the next step
 
@@ -107,6 +122,11 @@ Changes made:
 Validation:
 ✅ Vite build passed - no errors
 
+Staff Engineer Review:
+✅ Follows existing data-route pattern used in other nav components
+✅ Edge cases handled: missing route attribute falls back to window.location
+⚠️  Fixed: removed a stale console.log left in navbar.js
+
 Plan updated:
 ✅ Marked Phase 4 as complete in plan document
 
@@ -116,6 +136,7 @@ Ready for Phase 5 (Contact Form Migration)?
 ## Important Notes
 
 - **Always validate**: Build verification is mandatory for JavaScript changes
+- **Always review**: Staff engineer review is mandatory before reporting to the user
 - **Always update plan**: Mark progress after every step completion
 - **Always pause**: Never auto-continue to next step without user confirmation
 - **Use dangerouslyDisableSandbox: true** for all Docker commands

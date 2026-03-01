@@ -24,6 +24,9 @@
     </div>
     <!-- End Center Panel -->
 </main>
+<!-- Initial UTub data for client-side store seeding -->
+<script id="utubs-data" type="application/json">{{ utubs_for_this_user | tojson }}</script>
+
 <!-- Home Page JS -->
 {% if config.VITE_DEV_SERVER %}
     <script nonce="{{ nonce }}" type="module" src="{{ config.VITE_URL }}/@vite/client"></script>

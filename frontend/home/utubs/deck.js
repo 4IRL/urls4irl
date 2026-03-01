@@ -1,6 +1,7 @@
 import { $ } from "../../lib/globals.js";
 import { APP_CONFIG } from "../../lib/config.js";
 import { SHOW_LOADING_ICON_AFTER_MS, KEYS } from "../../lib/constants.js";
+import { setState } from "../../store/app-store.js";
 import { hideInputs } from "../btns-forms.js";
 import {
   createUTubSelector,
@@ -36,6 +37,7 @@ export function resetUTubDeck() {
 
 // Assembles components of the UTubDeck (top left panel)
 export function buildUTubDeck(utubs, timeoutID) {
+  setState({ utubs });
   resetUTubDeck();
   const parent = $("#listUTubs");
   const numOfUTubs = utubs.length;

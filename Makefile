@@ -34,5 +34,8 @@ test-js: ## Run all JS unit tests (vitest)
 test-marker: ## Run tests for a specific marker: make test-marker m=<marker>
 	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
 
+test-last-failed: ## Run tests for a specific marker: make test-marker m=<marker>
+	$(EXEC_WEB) "$(PYTEST) tests/ -v --lf"
+
 vite-build: ## Build Vite to verify no import/syntax errors
 	$(EXEC_VITE) npx vite build

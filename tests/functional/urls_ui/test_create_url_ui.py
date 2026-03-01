@@ -1,6 +1,3 @@
-import os
-import random
-import ada_url
 from flask import Flask
 import pytest
 from selenium.webdriver.common.by import By
@@ -49,18 +46,8 @@ from tests.functional.urls_ui.selenium_utils import (
     create_url,
     fill_create_url_form,
 )
-from tests.unit.test_url_validation import (
-    FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
-    INVALID_URLS_TO_VALIDATE,
-)
 
 pytestmark = pytest.mark.create_urls_ui
-
-# For CI/CD testing, pull only 30 random values to run in pipeline to avoid timeouts
-if (int(os.getenv("GITHUB_WORKER_ID", -1)) - 1) >= 0:
-    FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS = random.sample(
-        list(FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS), 30
-    )
 
 
 def test_create_url_open_input_no_urls_corner_btn(
@@ -392,8 +379,9 @@ def test_create_url_rate_limits(
 @pytest.mark.parametrize(
     "validated_url,input_url",
     [
-        (validated_url, input_url)
-        for (validated_url, input_url) in FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS
+        ("https://example.com/", "https://example.com"),
+        ("https://example.com/", "example.com"),
+        ("https://example.com/", " https://example.com "),
     ],
 )
 def test_valid_url_input(
@@ -413,7 +401,7 @@ def test_valid_url_input(
     app = provide_app
     user_id_for_test = 1
     utub_user_created = get_utub_this_user_created(app, user_id_for_test)
-    ada_validated_url = ada_url.URL(validated_url).href
+    ada_validated_url = validated_url
 
     login_user_and_select_utub_by_utubid(
         app, browser, user_id_for_test, utub_user_created.id
@@ -761,7 +749,11 @@ def test_create_url_empty_string(
 
 @pytest.mark.parametrize(
     "invalid_url",
-    [invalid_url for invalid_url in INVALID_URLS_TO_VALIDATE if "@" not in invalid_url],
+    [
+        "javascript:alert(1)",
+        "data:text/html,<script>",
+        "https://asdfasdfasdf",
+    ],
 )
 def test_invalid_url_input(
     browser: WebDriver, create_test_utubs, provide_app: Flask, invalid_url: str

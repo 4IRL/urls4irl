@@ -1,10 +1,9 @@
 import { $ } from "../../lib/globals.js";
+import { getState } from "../../store/app-store.js";
 
-// Simple function to streamline the jQuery selector extraction of what tag IDs are currently displayed in the Tag Deck
+// Returns tag IDs currently in the store
 export function currentTagDeckIDs() {
-  return $.map($(".tagFilter"), (tag) =>
-    parseInt($(tag).attr("data-utub-tag-id")),
-  );
+  return getState().tags.map((t) => t.id);
 }
 
 export function isTagInUTubTagDeck(utubTagid) {
@@ -23,5 +22,5 @@ export function isTagInUTub(tagBadges, utubTagID) {
 }
 
 export function isATagSelected() {
-  return $(".tagFilter.selected").length > 0;
+  return getState().selectedTagIDs.length > 0;
 }

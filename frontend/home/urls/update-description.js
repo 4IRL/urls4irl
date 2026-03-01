@@ -3,6 +3,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { KEYS } from "../../lib/constants.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import { showInput, hideInput } from "../btns-forms.js";
+import { setState } from "../../store/app-store.js";
 import { isHidden } from "../visibility.js";
 import { updateUTubNameHideInput } from "./update-name.js";
 import { deselectAllURLs } from "./cards/selection.js";
@@ -224,6 +225,8 @@ function updateUTubDescriptionSetup(utubID) {
 // Handle updateion of UTub's description
 function updateUTubDescriptionSuccess(response, utubID) {
   const utubDescription = response.utubDescription;
+
+  setState({ activeUTubDescription: response.utubDescription });
   const utubDescriptionElem = $("#URLDeckSubheader");
   const originalUTubDescriptionLength = utubDescriptionElem.text().length;
 

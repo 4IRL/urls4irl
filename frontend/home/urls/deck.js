@@ -1,6 +1,8 @@
 import { $ } from "../../lib/globals.js";
 import { diffIDLists } from "../../logic/deck-diffing.js";
+import { getState } from "../../store/app-store.js";
 import { APP_CONFIG } from "../../lib/config.js";
+import { on, AppEvents } from "../../lib/event-bus.js";
 import { bindSwitchURLKeyboardEventListeners } from "./utils.js";
 import {
   setupUpdateUTubDescriptionEventListeners,
@@ -53,8 +55,7 @@ export function showURLDeckBannerError(errorMessage) {
 
 // Update URLs in center panel based on asynchronous updates or stale data
 export function updateURLDeck(updatedUTubUrls, updatedUTubTags, utubID) {
-  const oldURLs = $(".urlRow");
-  const oldURLIDs = $.map(oldURLs, (url) => parseInt($(url).attr("utuburlid")));
+  const oldURLIDs = getState().urls.map((u) => u.utubUrlID);
   const newURLIDs = $.map(updatedUTubUrls, (newURL) => newURL.utubUrlID);
 
   const { toRemove, toAdd, toUpdate } = diffIDLists(oldURLIDs, newURLIDs);
@@ -149,3 +150,11 @@ export function setURLDeckWhenNoUTubSelected() {
 export function initURLDeck() {
   bindSwitchURLKeyboardEventListeners();
 }
+
+on(AppEvents.UTUB_SELECTED, ({ utubID, utubName, urls, tags }) =>
+  setURLDeckOnUTubSelected(utubID, utubName, urls, tags),
+);
+on(AppEvents.STALE_DATA_DETECTED, ({ urls, tags, utubID }) =>
+  updateURLDeck(urls, tags, utubID),
+);
+on(AppEvents.UTUB_DELETED, () => resetURLDeckOnDeleteUTub());

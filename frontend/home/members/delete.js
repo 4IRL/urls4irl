@@ -3,6 +3,7 @@ import { APP_CONFIG } from "../../lib/config.js";
 import { ajaxCall } from "../../lib/ajax.js";
 import { setMemberDeckForUTub } from "./deck.js";
 import { hideInputs } from "../btns-forms.js";
+import { getState, setState } from "../../store/app-store.js";
 import { deselectAllURLs } from "../urls/cards/selection.js";
 import { getNumOfUTubs } from "../utubs/utils.js";
 import {
@@ -132,6 +133,8 @@ function removeMember(memberID, isCreator, utubID) {
 function removeMemberSuccess(memberID) {
   // Close modal
   $("#confirmModal").modal("hide");
+
+  setState({ members: getState().members.filter((m) => m.id !== memberID) });
 
   const memberListItem = $("span[memberid=" + memberID + "]");
   memberListItem.fadeOut("slow", function () {
