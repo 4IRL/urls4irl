@@ -3,11 +3,11 @@ import pytest
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
-from src.models.users import Users
-from src.utils.constants import CONSTANTS
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from src.utils.strings.utub_strs import UTUB_CREATE_SAME_NAME, UTUB_FAILURE
+from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
+from backend.models.users import Users
+from backend.utils.constants import CONSTANTS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.utub_strs import UTUB_CREATE_SAME_NAME, UTUB_FAILURE
 from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,

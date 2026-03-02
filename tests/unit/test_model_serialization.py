@@ -3,16 +3,16 @@ import json
 from flask import Flask
 import pytest
 
-from src import db
-from src.models.utub_tags import Utub_Tags
-from src.models.urls import Urls
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.users import Users
-from src.models.utubs import Utubs
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utub_urls import Utub_Urls
-from src.utils.strings.model_strs import MODELS as MODEL_STRS
-from src.utils.strings.splash_form_strs import REGISTER_FORM
+from backend import db
+from backend.models.utub_tags import Utub_Tags
+from backend.models.urls import Urls
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.users import Users
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_urls import Utub_Urls
+from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from tests.functional.db_utils import count_urls_with_tag_applied_by_tag_id
 import tests.models_for_test as v_models
 

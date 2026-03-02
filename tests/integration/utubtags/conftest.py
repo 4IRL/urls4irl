@@ -1,11 +1,11 @@
 from flask import Flask
 import pytest
 
-from src import db
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utubs import Utubs
-from src.utils.strings import model_strs
+from backend import db
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utubs import Utubs
+from backend.utils.strings import model_strs
 from tests.models_for_test import all_tags
 
 

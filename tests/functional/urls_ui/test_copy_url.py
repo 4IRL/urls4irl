@@ -3,8 +3,8 @@ import pytest
 from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.keys import Keys
 
-from src.models.urls import Urls
-from src.utils.constants import STRINGS
+from backend.models.urls import Urls
+from backend.utils.constants import STRINGS
 from tests.functional.assert_utils import (
     assert_not_visible_css_selector,
     assert_tooltip_animates,

@@ -5,14 +5,14 @@ from flask.testing import FlaskClient
 from flask_login import current_user
 import pytest
 
-from src.models.utub_tags import Utub_Tags
-from src.models.urls import Urls
-from src.models.users import Users
-from src.models.utubs import Utubs
-from src.models.utub_urls import Utub_Urls
-from src.utils.all_routes import ROUTES
-from src.utils.strings.model_strs import MODELS
-from src.utils.strings.url_validation_strs import URL_VALIDATION
+from backend.models.utub_tags import Utub_Tags
+from backend.models.urls import Urls
+from backend.models.users import Users
+from backend.models.utubs import Utubs
+from backend.models.utub_urls import Utub_Urls
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.model_strs import MODELS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.utubs

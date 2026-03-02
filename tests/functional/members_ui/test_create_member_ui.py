@@ -4,10 +4,10 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.cli.mock_constants import USERNAME_BASE
-from src.models.users import Users
-from src.models.utub_members import Utub_Members
-from src.utils.strings.user_strs import MEMBER_FAILURE, USER_FAILURE
+from backend.cli.mock_constants import USERNAME_BASE
+from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
+from backend.utils.strings.user_strs import MEMBER_FAILURE, USER_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_on_429_page,

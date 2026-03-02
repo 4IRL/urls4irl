@@ -3,7 +3,7 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.models.utubs import Utubs
+from backend.models.utubs import Utubs
 from tests.functional.assert_utils import (
     assert_not_visible_css_selector,
     assert_panel_visibility_mobile,

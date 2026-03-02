@@ -3,11 +3,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.utils.strings.email_validation_strs import EMAILS, VALIDATE_MY_EMAIL
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.splash_form_strs import LOGIN_TITLE
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from src.utils.strings.user_strs import USER_FAILURE
+from backend.utils.strings.email_validation_strs import EMAILS, VALIDATE_MY_EMAIL
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.splash_form_strs import LOGIN_TITLE
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.user_strs import USER_FAILURE
 from tests.functional.assert_utils import (
     assert_login,
     assert_on_429_page,

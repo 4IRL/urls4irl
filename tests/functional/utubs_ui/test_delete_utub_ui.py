@@ -5,12 +5,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src import db
-from src.models.users import Users
-from src.models.utub_members import Utub_Members
-from src.models.utubs import Utubs
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from src.utils.strings.utub_strs import (
+from backend import db
+from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
+from backend.models.utubs import Utubs
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.utub_strs import (
     UTUB_CREATE_MSG,
     UTUB_DELETE_WARNING,
     UTUB_SELECT,

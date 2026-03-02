@@ -9,13 +9,13 @@ from selenium import webdriver
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
 
-from src import create_app, db
-from src.cli.mock_constants import MOCK_TEST_URL_STRINGS
-from src.config import ConfigTest
-from src.models.email_validations import Email_Validations
-from src.models.forgot_passwords import Forgot_Passwords
-from src.models.users import Users
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from backend import create_app, db
+from backend.cli.mock_constants import MOCK_TEST_URL_STRINGS
+from backend.config import ConfigTest
+from backend.models.email_validations import Email_Validations
+from backend.models.forgot_passwords import Forgot_Passwords
+from backend.models.users import Users
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.db_utils import add_mock_urls
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,

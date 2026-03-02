@@ -7,9 +7,9 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from locators import HomePageLocators as HPL
-from src.models.users import Users
-from src.models.utub_members import Member_Role, Utub_Members
-from src.utils.strings.user_strs import MEMBER_DELETE_WARNING
+from backend.models.users import Users
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.utils.strings.user_strs import MEMBER_DELETE_WARNING
 from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,

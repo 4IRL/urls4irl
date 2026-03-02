@@ -2,15 +2,15 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src import db
-from src.models.forgot_passwords import Forgot_Passwords
-from src.models.users import Users
-from src.models.utils import VerifyTokenResponse
-from src.splash.utils import verify_token
-from src.utils.all_routes import ROUTES
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.reset_password_strs import RESET_PASSWORD
+from backend import db
+from backend.models.forgot_passwords import Forgot_Passwords
+from backend.models.users import Users
+from backend.models.utils import VerifyTokenResponse
+from backend.splash.utils import verify_token
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.reset_password_strs import RESET_PASSWORD
 
 pytestmark = pytest.mark.splash
 

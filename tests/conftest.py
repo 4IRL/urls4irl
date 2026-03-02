@@ -12,17 +12,17 @@ import warnings
 import redis
 from redis.client import Redis
 
-from src import create_app, db
-from src.config import ConfigTest
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.users import Users
-from src.models.utubs import Utubs
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utub_urls import Utub_Urls
-from src.models.urls import Urls
-from src.utils.strings import model_strs
-from src.utils.strings.config_strs import CONFIG_ENVS
+from backend import create_app, db
+from backend.config import ConfigTest
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.users import Users
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_urls import Utub_Urls
+from backend.models.urls import Urls
+from backend.utils.strings import model_strs
+from backend.utils.strings.config_strs import CONFIG_ENVS
 from tests.utils_for_test import clear_database, get_csrf_token
 from tests.models_for_test import (
     valid_user_1,

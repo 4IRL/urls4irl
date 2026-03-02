@@ -7,8 +7,8 @@ from typing import Tuple
 from flask import Flask
 from flask.testing import FlaskCliRunner
 
-from src import create_app
-from src.config import ConfigTestUI
+from backend import create_app
+from backend.config import ConfigTestUI
 
 
 def run_app(port: int, show_flask_logs: bool):

@@ -4,10 +4,10 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
-from src.models.users import Users
-from src.models.utub_members import Utub_Members
-from src.utils.all_routes import ROUTES
-from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
+from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs

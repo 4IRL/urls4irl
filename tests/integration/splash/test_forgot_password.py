@@ -2,20 +2,20 @@ from datetime import datetime, timedelta
 from flask import url_for
 import pytest
 
-from src.models.utils import VerifyTokenResponse
-from src.splash.utils import verify_token
-from src.utils.strings.email_validation_strs import EMAILS_FAILURE
-from src.utils.strings.html_identifiers import IDENTIFIERS
+from backend.models.utils import VerifyTokenResponse
+from backend.splash.utils import verify_token
+from backend.utils.strings.email_validation_strs import EMAILS_FAILURE
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
-from src import db
-from src.models.forgot_passwords import Forgot_Passwords
-from src.models.users import Users
-from src.utils import constants as U4I_CONSTANTS
-from src.utils.all_routes import ROUTES
-from src.utils.datetime_utils import utc_now
-from src.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD, REGISTER_FORM
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
+from backend import db
+from backend.models.forgot_passwords import Forgot_Passwords
+from backend.models.users import Users
+from backend.utils import constants as U4I_CONSTANTS
+from backend.utils.all_routes import ROUTES
+from backend.utils.datetime_utils import utc_now
+from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD, REGISTER_FORM
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 
 pytestmark = pytest.mark.splash
 

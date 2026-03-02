@@ -5,9 +5,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.support import expected_conditions as EC
 
-from src.models.utub_members import Utub_Members
-from src.models.utubs import Utubs
-from src.utils.strings.html_identifiers import IDENTIFIERS
+from backend.models.utub_members import Utub_Members
+from backend.models.utubs import Utubs
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.functional.assert_utils import (
     assert_login,
     assert_no_utub_selected,
@@ -31,7 +31,7 @@ from tests.functional.selenium_utils import (
     wait_until_hidden,
     wait_until_utub_name_appears,
 )
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 
 pytestmark = pytest.mark.home_ui
 

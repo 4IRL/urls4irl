@@ -7,11 +7,11 @@ from selenium.common.exceptions import (
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src import db
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utub_urls import Utub_Urls
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend import db
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import (
     add_tag_to_utub_user_created,
     add_two_tags_across_urls_in_utub,

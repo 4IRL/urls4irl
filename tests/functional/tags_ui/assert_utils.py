@@ -2,7 +2,7 @@ from flask import Flask
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.utils.strings.tag_strs import DELETE_UTUB_TAG_WARNING
+from backend.utils.strings.tag_strs import DELETE_UTUB_TAG_WARNING
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (
     wait_then_get_element,

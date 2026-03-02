@@ -5,12 +5,12 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.remote.webelement import WebElement
 
-from src.models.users import Users
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utub_urls import Utub_Urls
-from src.utils.constants import CONSTANTS, STRINGS
-from src.utils.strings.tag_strs import TAGS_FAILURE
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.models.users import Users
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.utils.constants import CONSTANTS, STRINGS
+from backend.utils.strings.tag_strs import TAGS_FAILURE
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_on_429_page,

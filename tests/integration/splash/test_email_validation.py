@@ -4,25 +4,25 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.models.utils import VerifyTokenResponse
-from src.splash.constants import EmailValidationErrorCodes
-from src.splash.utils import verify_token
+from backend.models.utils import VerifyTokenResponse
+from backend.splash.constants import EmailValidationErrorCodes
+from backend.splash.utils import verify_token
 from tests.models_for_test import valid_user_1
-from src import db
-from src.models.email_validations import Email_Validations
-from src.models.users import Users
-from src.utils.all_routes import ROUTES
-from src.utils.constants import EMAIL_CONSTANTS
-from src.utils.datetime_utils import utc_now
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.splash_form_strs import REGISTER_FORM
-from src.utils.strings.email_validation_strs import (
+from backend import db
+from backend.models.email_validations import Email_Validations
+from backend.models.users import Users
+from backend.utils.all_routes import ROUTES
+from backend.utils.constants import EMAIL_CONSTANTS
+from backend.utils.datetime_utils import utc_now
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.splash_form_strs import REGISTER_FORM
+from backend.utils.strings.email_validation_strs import (
     EMAILS,
     EMAILS_FAILURE,
     VALIDATE_YOUR_EMAIL,
 )
-from src.utils.strings.user_strs import USER_FAILURE
+from backend.utils.strings.user_strs import USER_FAILURE
 
 pytestmark = pytest.mark.splash
 
@@ -198,7 +198,7 @@ def test_valid_token_generated_on_user_register(
         )
 
 
-@mock.patch("src.extensions.notifications.notifications.requests.post")
+@mock.patch("backend.extensions.notifications.notifications.requests.post")
 def test_token_validates_user(mock_request_post, app, load_register_page):
     """
     GIVEN a user trying to register via the register page

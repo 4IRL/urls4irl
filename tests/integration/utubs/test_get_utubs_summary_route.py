@@ -5,15 +5,15 @@ from flask.testing import FlaskClient
 from flask_login import current_user
 import pytest
 
-from src import db
-from src.models.users import Users
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utubs import Utubs
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import UTUB_FORM
-from src.utils.strings.json_strs import STD_JSON_RESPONSE
-from src.utils.strings.model_strs import MODELS
-from src.utils.strings.url_validation_strs import URL_VALIDATION
+from backend import db
+from backend.models.users import Users
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utubs import Utubs
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import UTUB_FORM
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE
+from backend.utils.strings.model_strs import MODELS
+from backend.utils.strings.url_validation_strs import URL_VALIDATION
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.utubs

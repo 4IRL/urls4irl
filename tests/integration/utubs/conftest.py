@@ -4,11 +4,11 @@ from flask_login import current_user
 import pytest
 from typing import Generator, Tuple
 
-from src import db
-from src.models.users import Users
-from src.models.utubs import Utubs
-from src.models.utub_members import Member_Role, Utub_Members
-from src.utils.strings import model_strs
+from backend import db
+from backend.models.users import Users
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.utils.strings import model_strs
 from tests.models_for_test import (
     valid_empty_utub_1,
 )

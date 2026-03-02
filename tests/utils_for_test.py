@@ -3,8 +3,8 @@ from logging import LogRecord
 
 import sqlalchemy
 
-from src.config import ConfigTest
-from src.models.utub_url_tags import Utub_Url_Tags
+from backend.config import ConfigTest
+from backend.models.utub_url_tags import Utub_Url_Tags
 
 
 def get_csrf_token(html_page: bytes, meta_tag: bool = False) -> str:

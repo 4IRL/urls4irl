@@ -6,16 +6,19 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src import db
-from src.models.forgot_passwords import Forgot_Passwords
-from src.utils.constants import USER_CONSTANTS
-from src.utils.datetime_utils import utc_now
-from src.utils.strings.email_validation_strs import EMAILS_FAILURE
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import FAILURE_GENERAL
-from src.utils.strings.reset_password_strs import EMAIL_SENT_MESSAGE, FORGOT_PASSWORD
-from src.utils.strings.splash_form_strs import LOGIN_TITLE
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend import db
+from backend.models.forgot_passwords import Forgot_Passwords
+from backend.utils.constants import USER_CONSTANTS
+from backend.utils.datetime_utils import utc_now
+from backend.utils.strings.email_validation_strs import EMAILS_FAILURE
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import FAILURE_GENERAL
+from backend.utils.strings.reset_password_strs import (
+    EMAIL_SENT_MESSAGE,
+    FORGOT_PASSWORD,
+)
+from backend.utils.strings.splash_form_strs import LOGIN_TITLE
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
     assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,

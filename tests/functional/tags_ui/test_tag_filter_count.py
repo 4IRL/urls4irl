@@ -5,16 +5,16 @@ from selenium.common.exceptions import NoSuchElementException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src import db
-from src.models.urls import Urls
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utub_urls import Utub_Urls
-from src.models.utubs import Utubs
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import TAG_FORM
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from src.utils.strings.url_strs import DELETE_URL_WARNING
+from backend import db
+from backend.models.urls import Urls
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import TAG_FORM
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.url_strs import DELETE_URL_WARNING
 from tests.functional.db_utils import (
     add_tag_to_utub_user_created,
     add_two_tags_across_urls_in_utub,
@@ -26,7 +26,7 @@ from tests.functional.db_utils import (
     get_utub_this_user_did_not_create,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from src.cli.mock_constants import MOCK_TAGS
+from backend.cli.mock_constants import MOCK_TAGS
 from tests.functional.login_utils import (
     login_user_and_select_utub_by_utubid,
     login_user_select_utub_by_id_and_url_by_id,

@@ -4,11 +4,11 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src import db
-from src.models.users import Users
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utub_urls import Utub_Urls
+from backend import db
+from backend.models.users import Users
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
 from tests.functional.assert_utils import (
     assert_active_utub,
     assert_login_with_username,

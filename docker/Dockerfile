@@ -19,7 +19,7 @@ RUN npm ci
 # Copy frontend source
 COPY frontend/ ./frontend/
 
-# Build Vite assets → outputs to /build/src/static/dist/
+# Build Vite assets → outputs to /build/backend/static/dist/
 # Run from project root using locally installed vite
 RUN ./node_modules/.bin/vite build --config ./vite.config.js
 
@@ -80,14 +80,14 @@ COPY --from=builder --chown=u4i-host:u4i-host-group /code/venv /code/venv
 # Copy application code
 COPY --chown=u4i-host:u4i-host-group docker/startup-flask.sh ./
 COPY --chown=u4i-host:u4i-host-group run.py ./
-COPY --chown=u4i-host:u4i-host-group src/ ./src/
+COPY --chown=u4i-host:u4i-host-group backend/ ./backend/
 COPY --chown=u4i-host:u4i-host-group migrations/ ./migrations/
 
 # Copy built frontend assets from frontend-builder stage
-COPY --from=frontend-builder --chown=u4i-host:u4i-host-group /build/src/static/dist/ ./src/static/dist/
+COPY --from=frontend-builder --chown=u4i-host:u4i-host-group /build/backend/static/dist/ ./backend/static/dist/
 
 # Verify Vite build artifacts exist
-RUN test -f ./src/static/dist/.vite/manifest.json || (echo "ERROR: Vite manifest missing" && exit 1)
+RUN test -f ./backend/static/dist/.vite/manifest.json || (echo "ERROR: Vite manifest missing" && exit 1)
 
 # Create log directory and set permissions
 RUN mkdir -p /app/volume/logs \

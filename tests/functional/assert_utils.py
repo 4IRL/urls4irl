@@ -12,17 +12,17 @@ from selenium.common.exceptions import (
     TimeoutException,
 )
 
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_urls import Utub_Urls
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     Decks,
     click_on_navbar,
-    wait_for_element_presence,
+    wait_for_page_complete_and_dom_stable,
     wait_for_tooltip_with_hover_retry,
     wait_then_click_element,
     wait_then_get_element,
@@ -114,8 +114,10 @@ def assert_on_404_page(browser: WebDriver):
 
 
 def assert_on_429_page(browser: WebDriver):
-    wait_for_element_presence(browser, HPL.ERROR_PAGE_HANDLER, timeout=3)
-    error_header = wait_then_get_element(browser, css_selector="h2", time=3)
+    wait_for_page_complete_and_dom_stable(browser)
+    error_header = wait_then_get_element(
+        browser, css_selector=f"{HPL.ERROR_PAGE_HANDLER} h2", time=5
+    )
     assert error_header is not None
     assert error_header.text == IDENTIFIERS.HTML_429
     assert "Invalid Request - URLS4IRL" == browser.title

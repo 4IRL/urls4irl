@@ -1,8 +1,8 @@
 from flask import url_for, request
 import pytest
 
-from src.utils.all_routes import ROUTES
-from src.utils.constants import USER_CONSTANTS
+from backend.utils.all_routes import ROUTES
+from backend.utils.constants import USER_CONSTANTS
 
 pytestmark = pytest.mark.splash
 

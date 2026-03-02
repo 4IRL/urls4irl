@@ -1,11 +1,11 @@
 from flask import url_for, request
 import pytest
 
-from src.utils.all_routes import ROUTES
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.splash_form_strs import LOGIN_FORM
-from src.utils.strings.user_strs import USER_FAILURE as LOGIN_FAILURE
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.splash_form_strs import LOGIN_FORM
+from backend.utils.strings.user_strs import USER_FAILURE as LOGIN_FAILURE
 
 pytestmark = pytest.mark.unit
 

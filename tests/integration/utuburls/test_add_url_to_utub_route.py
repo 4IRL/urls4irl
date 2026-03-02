@@ -6,18 +6,18 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.extensions.url_validation.url_validator import InvalidURLError
-from src.models.urls import Urls
-from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
-from src.models.utub_urls import Utub_Urls
-from src.urls.constants import URLErrorCodes
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import URL_FORM
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.model_strs import MODELS as MODEL_STRS
-from src.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
+from backend.extensions.url_validation.url_validator import InvalidURLError
+from backend.models.urls import Urls
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Utub_Members
+from backend.models.utub_urls import Utub_Urls
+from backend.urls.constants import URLErrorCodes
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import URL_FORM
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from tests.models_for_test import valid_url_strings
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
@@ -1725,7 +1725,7 @@ def test_add_valid_fresh_url_log(
         assert is_string_in_logs(f"URL.id={new_url.id}", caplog.records)
 
 
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+@mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_add_invalid_url_log(
     mock_validate_url,
     every_user_in_every_utub,
@@ -1775,8 +1775,8 @@ def test_add_invalid_url_log(
     assert is_string_in_logs(f"url_string={valid_url_to_add}", caplog.records)
 
 
-@mock.patch("src.extensions.notifications.notifications.threading.Thread")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+@mock.patch("backend.extensions.notifications.notifications.threading.Thread")
+@mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_add_url_unknown_exception_log(
     mock_validate_url,
     mock_thread,
@@ -1927,8 +1927,8 @@ def test_add_url_invalid_form_log(
     )
 
 
-@mock.patch("src.extensions.notifications.notifications.requests.post")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+@mock.patch("backend.extensions.notifications.notifications.requests.post")
+@mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_add_invalid_url_sends_notification(
     mock_validate_url,
     mock_request_post,

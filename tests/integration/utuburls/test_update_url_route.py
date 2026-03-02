@@ -6,21 +6,21 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.extensions.url_validation.url_validator import (
+from backend.extensions.url_validation.url_validator import (
     InvalidURLError,
 )
-from src.models.urls import Urls
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utubs import Utubs
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utub_urls import Utub_Urls
-from src.urls.constants import URLErrorCodes
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import URL_FORM
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.model_strs import MODELS as MODEL_STRS
-from src.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
+from backend.models.urls import Urls
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_urls import Utub_Urls
+from backend.urls.constants import URLErrorCodes
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import URL_FORM
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 from tests.unit.test_url_validation import (
     FLATTENED_NORMALIZED_AND_INPUT_VALID_URLS,
     FLATTENED_URLS_WITH_DIFFERENT_PATH,
@@ -2181,8 +2181,8 @@ def test_update_valid_url_updates_utub_last_updated(
         assert (current_utub.last_updated - initial_last_updated).total_seconds() > 0
 
 
-@mock.patch("src.extensions.notifications.notifications.threading.Thread")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+@mock.patch("backend.extensions.notifications.notifications.threading.Thread")
+@mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
     mock_validate_url,
     mock_thread,
@@ -2554,8 +2554,8 @@ def test_update_valid_url_with_same_url_before_normalization_url_log(
     )
 
 
-@mock.patch("src.extensions.notifications.notifications.threading.Thread")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+@mock.patch("backend.extensions.notifications.notifications.threading.Thread")
+@mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_to_invalid_url_log(
     mock_validate_url,
     mock_thread,
@@ -2794,8 +2794,8 @@ def test_update_url_with_invalid_form_log(
     )
 
 
-@mock.patch("src.extensions.notifications.notifications.requests.post")
-@mock.patch("src.extensions.url_validation.url_validator.UrlValidator.validate_url")
+@mock.patch("backend.extensions.notifications.notifications.requests.post")
+@mock.patch("backend.extensions.url_validation.url_validator.UrlValidator.validate_url")
 def test_update_url_unknown_exception_sends_notification(
     mock_validate_url,
     mock_request_post,

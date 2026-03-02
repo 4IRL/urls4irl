@@ -3,9 +3,9 @@ from typing import Generator, Tuple
 from flask import Flask
 import pytest
 
-from src import db
-from src.models.users import Users
-from src.utils.strings import model_strs
+from backend import db
+from backend.models.users import Users
+from backend.utils.strings import model_strs
 from tests.models_for_test import valid_user_2, valid_user_3
 
 

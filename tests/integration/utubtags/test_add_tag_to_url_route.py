@@ -2,22 +2,22 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src import db
-from src.models.utub_tags import Utub_Tags
-from src.models.urls import Urls
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
-from src.models.utub_urls import Utub_Urls
-from src.tags.constants import URLTagErrorCodes
-from src.utils.constants import TAG_CONSTANTS
-from src.utils.strings.html_identifiers import IDENTIFIERS
+from backend import db
+from backend.models.utub_tags import Utub_Tags
+from backend.models.urls import Urls
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Utub_Members
+from backend.models.utub_urls import Utub_Urls
+from backend.tags.constants import URLTagErrorCodes
+from backend.utils.constants import TAG_CONSTANTS
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import all_tag_strings
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import TAG_FORM
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.model_strs import MODELS as MODEL_STRS
-from src.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import TAG_FORM
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
 
 pytestmark = pytest.mark.tags

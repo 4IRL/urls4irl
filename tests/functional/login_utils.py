@@ -4,9 +4,9 @@ from flask import Flask, session
 from selenium.webdriver.remote.webdriver import WebDriver
 
 
-from src.models.users import Users
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from src.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
+from backend.models.users import Users
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_panel_visibility_mobile,

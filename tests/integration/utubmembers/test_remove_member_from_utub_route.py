@@ -2,18 +2,18 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src import db
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.users import Users
-from src.models.utubs import Utubs
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utub_urls import Utub_Urls
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import GENERAL_FORM
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.model_strs import MODELS
-from src.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
+from backend import db
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.users import Users
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_urls import Utub_Urls
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import GENERAL_FORM
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.model_strs import MODELS
+from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.members

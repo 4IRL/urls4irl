@@ -7,10 +7,10 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from locators import HomePageLocators as HPL
-from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
-from src.models.users import Users
-from src.utils.constants import CONSTANTS
-from src.utils.strings.utub_strs import UTUB_FAILURE
+from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
+from backend.models.users import Users
+from backend.utils.constants import CONSTANTS
+from backend.utils.strings.utub_strs import UTUB_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,

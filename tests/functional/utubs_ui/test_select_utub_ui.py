@@ -3,7 +3,7 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_members import Member_Role, Utub_Members
 from tests.functional.assert_utils import (
     assert_on_429_page,
     assert_url_coloring_is_correct,

@@ -4,7 +4,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.db_utils import get_utub_url_id_for_added_url_in_utub_as_member
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import login_user_and_select_utub_by_name
