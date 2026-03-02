@@ -1,8 +1,8 @@
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.utils.strings.reset_password_strs import EMAIL_SENT_MESSAGE
-from src.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD
+from backend.utils.strings.reset_password_strs import EMAIL_SENT_MESSAGE
+from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     wait_then_get_element,

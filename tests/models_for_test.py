@@ -1,6 +1,6 @@
-from src.utils.constants import TAG_CONSTANTS
-from src.utils.strings.model_strs import MODELS as MODEL_STRS
-from src.utils.strings.splash_form_strs import REGISTER_FORM
+from backend.utils.constants import TAG_CONSTANTS
+from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.splash_form_strs import REGISTER_FORM
 
 """
 Users used for testing logging in correctly

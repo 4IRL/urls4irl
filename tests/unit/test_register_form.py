@@ -1,14 +1,14 @@
 from flask import url_for, request
 import pytest
 
-from src.utils.all_routes import ROUTES
-from src.utils.constants import USER_CONSTANTS
-from src.utils.strings.email_validation_strs import EMAILS_FAILURE
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.splash_form_strs import REGISTER_FORM
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
-from src.utils.strings.user_strs import USER_FAILURE as REGISTER_FAILURE
+from backend.utils.all_routes import ROUTES
+from backend.utils.constants import USER_CONSTANTS
+from backend.utils.strings.email_validation_strs import EMAILS_FAILURE
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.splash_form_strs import REGISTER_FORM
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from backend.utils.strings.user_strs import USER_FAILURE as REGISTER_FAILURE
 
 pytestmark = pytest.mark.unit
 

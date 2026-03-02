@@ -2,16 +2,16 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utubs import Utubs
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_urls import Utub_Urls
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import UTUB_FORM
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import UTUB_FORM
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.models_for_test import valid_empty_utub_1
 from tests.utils_for_test import is_string_in_logs
 

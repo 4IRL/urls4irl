@@ -1,9 +1,9 @@
 from flask import Flask
 import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
-from src.cli.mock_constants import MOCK_UTUB_DESCRIPTION
-from src.models.utubs import Utubs
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
+from backend.models.utubs import Utubs
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import assert_panel_visibility_mobile
 from tests.functional.db_utils import get_utub_this_user_created
 from tests.functional.locators import HomePageLocators as HPL

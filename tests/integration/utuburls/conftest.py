@@ -1,14 +1,14 @@
 from flask import Flask
 import pytest
 
-from src import db
-from src.models.utub_tags import Utub_Tags
-from src.models.urls import Urls
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.users import Users
-from src.models.utubs import Utubs
-from src.models.utub_members import Utub_Members
-from src.models.utub_urls import Utub_Urls
+from backend import db
+from backend.models.utub_tags import Utub_Tags
+from backend.models.urls import Urls
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.users import Users
+from backend.models.utubs import Utubs
+from backend.models.utub_members import Utub_Members
+from backend.models.utub_urls import Utub_Urls
 
 
 @pytest.fixture

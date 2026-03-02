@@ -6,8 +6,8 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from locators import HomePageLocators as HPL
-from src.models.users import Users
-from src.utils.strings.user_strs import MEMBER_LEAVE_WARNING
+from backend.models.users import Users
+from backend.utils.strings.user_strs import MEMBER_LEAVE_WARNING
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_on_429_page,

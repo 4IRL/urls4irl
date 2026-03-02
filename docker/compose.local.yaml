@@ -36,11 +36,11 @@ services:
     volumes:
       - ./run.py:/code/u4i/run.py
       - ./pytest.ini:/code/u4i/pytest.ini
-      - ./src:/code/u4i/src
+      - ./backend:/code/u4i/backend
       - ./tests:/code/u4i/tests
       - ./migrations:/code/u4i/migrations
       - ./migrations/versions:/code/u4i/migrations/versions
-      - ./utils:/code/u4i/utils
+      - ./scripts:/code/u4i/scripts
       - app_logs:/app/volume
 
   vite:
@@ -64,7 +64,7 @@ services:
       - ./frontend/package.json:/app/package.json
       - ./frontend/package-lock.json:/app/package-lock.json
       - /app/node_modules
-      - ./src/static/dist:/app/src/static/dist
+      - ./backend/static/dist:/app/backend/static/dist
     command: npm run dev
     healthcheck:
       test: |

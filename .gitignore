@@ -13,7 +13,7 @@ miscellaneous/
 jquery-[0-9]*.js
 bootstrap-[0-9]*.js*
 bootstrap-[0-9]*.css*
-src/static/styles/bootstrap.*.css*
+backend/static/styles/bootstrap.*.css*
 *.code-workspace
 secrets/
 backups/
@@ -30,7 +30,7 @@ tmp/
 frontend/public/vendor/
 
 # Vite build outputs and cache
-src/static/dist/
+backend/static/dist/
 frontend/src/static/dist/
 .vite/
 *.local

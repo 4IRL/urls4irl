@@ -12,9 +12,9 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.wait import WebDriverWait
 
-from src.cli.mock_constants import MOCK_TEST_URL_STRINGS
-from src.utils.constants import STRINGS, URL_CONSTANTS
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.cli.mock_constants import MOCK_TEST_URL_STRINGS
+from backend.utils.constants import STRINGS, URL_CONSTANTS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import assert_tooltip_animates
 from tests.functional.db_utils import (
     add_mock_urls,

@@ -18,9 +18,9 @@ from selenium.webdriver.support.wait import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 
 
-from src.config import ConfigTest
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.config import ConfigTest
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.locators import ModalLocators as MP
 from tests.functional.locators import SplashPageLocators as SPL

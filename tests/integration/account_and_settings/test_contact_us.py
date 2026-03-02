@@ -4,13 +4,13 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
-from src.models.contact_form_entries import ContactFormEntries
-from src.models.users import Users
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import CONTACT_FORM
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.json_strs import FIELD_REQUIRED_STR
-from src.utils.strings.url_validation_strs import USER_AGENT
+from backend.models.contact_form_entries import ContactFormEntries
+from backend.models.users import Users
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import CONTACT_FORM
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
+from backend.utils.strings.url_validation_strs import USER_AGENT
 from tests.utils_for_test import get_csrf_token
 
 pytestmark = pytest.mark.account_and_support
@@ -48,7 +48,7 @@ def test_contact_us_page_opens_anonymous_user(logged_out_app, client):
     )
 
 
-@mock.patch("src.extensions.notifications.notifications._send_msg")
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
 def test_contact_us_page_sends_notification_logged_in_user(
     mock_send_msg: mock.MagicMock,
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
@@ -85,7 +85,7 @@ def test_contact_us_page_sends_notification_logged_in_user(
         )
 
 
-@mock.patch("src.extensions.notifications.notifications._send_msg")
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
 def test_contact_us_page_sends_notification_anonymous_user(
     mock_send_msg: mock.MagicMock, logged_out_app, client
 ):
@@ -124,7 +124,7 @@ def test_contact_us_page_sends_notification_anonymous_user(
         )
 
 
-@mock.patch("src.extensions.notifications.notifications._send_msg")
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
 def test_contact_us_page_notification_fails(
     mock_send_msg: mock.MagicMock,
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
@@ -169,7 +169,7 @@ def test_contact_us_page_notification_fails(
         CONTACT_FORM.CONTENT,
     ],
 )
-@mock.patch("src.extensions.notifications.notifications._send_msg")
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
 def test_contact_us_page_form_empty_fields(
     mock_send_msg: mock.MagicMock,
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
@@ -204,7 +204,7 @@ def test_contact_us_page_form_empty_fields(
         CONTACT_FORM.CONTENT,
     ],
 )
-@mock.patch("src.extensions.notifications.notifications._send_msg")
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
 def test_contact_us_page_form_missing_fields(
     mock_send_msg: mock.MagicMock,
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
@@ -232,7 +232,7 @@ def test_contact_us_page_form_missing_fields(
         assert ContactFormEntries.query.count() == 0
 
 
-@mock.patch("src.extensions.notifications.notifications._send_msg")
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
 def test_contact_us_page_form_missing_csrf_token(
     mock_send_msg: mock.MagicMock,
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],

@@ -4,14 +4,14 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
-from src.utils.strings.email_validation_strs import (
+from backend.utils.strings.email_validation_strs import (
     EMAILS,
     VALIDATE_MY_EMAIL,
     VALIDATE_YOUR_EMAIL,
 )
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from src.utils.strings.user_strs import USER_FAILURE
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.user_strs import USER_FAILURE
 from tests.functional.assert_utils import (
     assert_on_429_page,
     assert_visible_css_selector,

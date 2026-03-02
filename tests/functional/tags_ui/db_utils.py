@@ -1,5 +1,5 @@
 from flask import Flask
-from src.models.utub_tags import Utub_Tags
+from backend.models.utub_tags import Utub_Tags
 
 
 def get_tag_in_utub(app: Flask, tag_id: int) -> Utub_Tags:

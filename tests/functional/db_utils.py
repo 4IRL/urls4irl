@@ -2,15 +2,15 @@ from typing import Tuple
 from flask import Flask
 from flask.testing import FlaskCliRunner
 
-from src import db
-from src.models.urls import Urls
-from src.models.users import Users
-from src.models.utub_members import Member_Role, Utub_Members
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_urls import Utub_Urls
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utubs import Utubs
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS
+from backend import db
+from backend.models.urls import Urls
+from backend.models.users import Users
+from backend.models.utub_members import Member_Role, Utub_Members
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utubs import Utubs
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 
 
 def get_utub_this_user_created(app: Flask, user_id: int) -> Utubs:

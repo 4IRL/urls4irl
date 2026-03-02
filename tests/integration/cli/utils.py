@@ -1,16 +1,16 @@
-from src.cli.mock_constants import (
+from backend.cli.mock_constants import (
     MOCK_TAGS,
     MOCK_URL_STRINGS,
     TEST_USER_COUNT,
     USERNAME_BASE,
     MOCK_UTUB_NAME_BASE,
 )
-from src.models.utub_tags import Utub_Tags
-from src.models.urls import Urls
-from src.models.users import Users
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utub_urls import Utub_Urls
-from src.models.utubs import Utubs
+from backend.models.utub_tags import Utub_Tags
+from backend.models.urls import Urls
+from backend.models.users import Users
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 
 
 def verify_users_added():

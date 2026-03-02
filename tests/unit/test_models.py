@@ -1,10 +1,10 @@
 import pytest
 
-from src.extensions.url_validation.url_validator import UrlValidator
-from src.models.utub_tags import Utub_Tags
-from src.models.urls import Urls
-from src.models.users import Users
-from src.models.utubs import Utubs
+from backend.extensions.url_validation.url_validator import UrlValidator
+from backend.models.utub_tags import Utub_Tags
+from backend.models.urls import Urls
+from backend.models.users import Users
+from backend.models.utubs import Utubs
 
 pytestmark = pytest.mark.unit
 

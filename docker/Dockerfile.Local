@@ -35,17 +35,17 @@ RUN --mount=type=cache,target=/root/.cache/pip \
 # Copy files needed
 COPY --chown=u4i-host:u4i-host-group docker/startup-flask.sh ./
 COPY --chown=u4i-host:u4i-host-group run.py ./
-COPY --chown=u4i-host:u4i-host-group src/ ./src/
+COPY --chown=u4i-host:u4i-host-group backend/ ./backend/
 COPY --chown=u4i-host:u4i-host-group migrations/ ./migrations/
 COPY --chown=u4i-host:u4i-host-group tests/ ./tests/
-COPY --chown=u4i-host:u4i-host-group utils/ ./utils/
+COPY --chown=u4i-host:u4i-host-group scripts/ ./scripts/
 COPY --chown=u4i-host:u4i-host-group pytest.ini ./
 
 # Create necessary directories with proper permissions
-RUN mkdir -p /app/volume/logs /code/u4i/src/gen \
+RUN mkdir -p /app/volume/logs /code/u4i/backend/gen \
 	&& chmod -R 775 /code /app/volume/logs \
-	&& chmod -R 777 /code/u4i/src/gen \
-	&& chown -R u4i-host:u4i-host-group /code /app/volume/logs /code/u4i/src/gen
+	&& chmod -R 777 /code/u4i/backend/gen \
+	&& chown -R u4i-host:u4i-host-group /code /app/volume/logs /code/u4i/backend/gen
 
 # Add custom shell entrypoint that activates the venv
 RUN echo '#!/bin/bash\nsource /code/venv/bin/activate\nexec bash --rcfile <(echo "source /code/venv/bin/activate")' > /usr/local/bin/venvshell \

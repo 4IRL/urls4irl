@@ -1,11 +1,11 @@
 import ada_url
 import pytest
 
-from src.extensions.url_validation.url_validator import (
+from backend.extensions.url_validation.url_validator import (
     InvalidURLError,
     UrlValidator,
 )
-from src.extensions.url_validation import constants as url_constants
+from backend.extensions.url_validation import constants as url_constants
 
 pytestmark = pytest.mark.unit
 

@@ -38,7 +38,7 @@ export default defineConfig(({ mode }) => ({
   // Build configuration
   build: {
     // Output to Flask's static folder
-    outDir: "../src/static/dist",
+    outDir: "../backend/static/dist",
     emptyOutDir: true,
     manifest: true,
     copyPublicDir: true,

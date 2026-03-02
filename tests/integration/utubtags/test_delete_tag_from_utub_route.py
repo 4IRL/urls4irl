@@ -2,15 +2,15 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utubs import Utubs
-from src.utils.strings.html_identifiers import IDENTIFIERS
-from src.utils.all_routes import ROUTES
-from src.utils.strings.form_strs import TAG_FORM
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.model_strs import MODELS as MODEL_STRS
-from src.utils.strings.tag_strs import TAGS_SUCCESS
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utubs import Utubs
+from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.form_strs import TAG_FORM
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.model_strs import MODELS as MODEL_STRS
+from backend.utils.strings.tag_strs import TAGS_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.tags

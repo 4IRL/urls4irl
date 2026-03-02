@@ -2,8 +2,8 @@ from flask import Flask
 import pytest
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.models.users import Users
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.models.users import Users
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
     assert_not_visible_css_selector,
     assert_visible_css_selector,

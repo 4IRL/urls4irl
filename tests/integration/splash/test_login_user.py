@@ -4,16 +4,16 @@ from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
 
-from src.models.utub_members import Utub_Members
-from src.utils.constants import USER_CONSTANTS
-from src.utils.strings.html_identifiers import IDENTIFIERS
+from backend.models.utub_members import Utub_Members
+from backend.utils.constants import USER_CONSTANTS
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import invalid_user_1, valid_user_1
 from tests.utils_for_test import get_csrf_token, is_string_in_logs
-from src.models.users import Users
-from src.utils.all_routes import ROUTES
-from src.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
-from src.utils.strings.splash_form_strs import LOGIN_FORM
-from src.utils.strings.user_strs import USER_FAILURE
+from backend.models.users import Users
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.splash_form_strs import LOGIN_FORM
+from backend.utils.strings.user_strs import USER_FAILURE
 
 pytestmark = pytest.mark.splash
 

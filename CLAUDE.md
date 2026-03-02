@@ -105,7 +105,7 @@ flask run --host=0.0.0.0 --port=5000
 ### Frontend (Vite)
 
 ```bash
-docker exec u4i-local-vite npm run build  # production/dev build to src/static/dist/
+docker exec u4i-local-vite npm run build  # production/dev build to backend/static/dist/
 docker compose exec vite npm test          # run JS unit tests (vitest) from repo root
 ```
 
@@ -173,9 +173,9 @@ flask db downgrade            # rollback last migration
 
 ## Architecture
 
-### Backend Structure (`src/`)
+### Backend Structure (`backend/`)
 
-Flask app factory pattern in `src/__init__.py` with `create_app()`. Config classes in `src/config.py`: `Config` (dev), `ConfigProd`, `ConfigTest`, `ConfigTestUI`.
+Flask app factory pattern in `backend/__init__.py` with `create_app()`. Config classes in `backend/config.py`: `Config` (dev), `ConfigProd`, `ConfigTest`, `ConfigTestUI`.
 
 **10 Flask blueprints** organized by domain:
 - `splash` - auth (login, register, email validation, password reset)
@@ -191,22 +191,22 @@ Flask app factory pattern in `src/__init__.py` with `create_app()`. Config class
 
 Each blueprint follows the pattern: `routes.py` (endpoints), `forms.py` (WTForms validation), `services/` (business logic), `constants.py`.
 
-### Extensions (`src/extensions/`)
+### Extensions (`backend/extensions/`)
 
-Custom Flask extensions registered on `app.extensions` and initialized via `init_app()`. Access them from route/service code using the safe getters in `src/extensions/extension_utils.py` (`safe_get_email_sender()`, `safe_get_notif_sender()`, `safe_get_url_validator()`).
+Custom Flask extensions registered on `app.extensions` and initialized via `init_app()`. Access them from route/service code using the safe getters in `backend/extensions/extension_utils.py` (`safe_get_email_sender()`, `safe_get_notif_sender()`, `safe_get_url_validator()`).
 
 - **`url_validation/url_validator.py`** - `UrlValidator`: Two-step URL processing used when users add URLs to UTubs. `normalize_url()` strips whitespace, prepends `https://` if no scheme, blocks credential-containing URLs (`user:pass@host`), and validates scheme against a whitelist. `validate_url()` parses with `ada_url` (Rust-based WHATWG URL parser), verifies hostname/TLD validity, and returns the canonicalized URL. Raises `InvalidURLError`, `URLWithCredentialsError`, or `AdaUrlParsingError`.
-- **`email_sender/email_sender.py`** - `EmailSender`: Wraps the Mailjet REST API (`mailjet_rest.Client`) for transactional emails. Sends account email confirmations and password reset emails using Jinja2 templates from `src/templates/email_templates/`. Uses sandbox mode during tests. Production mode toggled via `in_production()`.
+- **`email_sender/email_sender.py`** - `EmailSender`: Wraps the Mailjet REST API (`mailjet_rest.Client`) for transactional emails. Sends account email confirmations and password reset emails using Jinja2 templates from `backend/templates/email_templates/`. Uses sandbox mode during tests. Production mode toggled via `in_production()`.
 - **`notifications/notifications.py`** - `NotificationSender`: Sends webhook notifications (Discord) via HTTP POST. `send_notification()` is fire-and-forget (runs in a background `threading.Thread`). `send_contact_form_details()` is synchronous and returns success/failure. Non-production messages are wrapped with a testing disclaimer.
 
-### Key Decorators (`src/api_common/auth_decorators.py`)
+### Key Decorators (`backend/api_common/auth_decorators.py`)
 
 - `@email_validation_required` - requires login + validated email
 - `@utub_membership_required` - requires membership in target UTub
 - `@xml_http_request_only` - AJAX only (`X-Requested-With: XMLHttpRequest`)
 - `@no_authenticated_users_allowed` - splash pages (logged-out only)
 
-### Models (`src/models/`)
+### Models (`backend/models/`)
 
 Core domain: `Users` -> `Utub_Members` (with `Member_Role`: CREATOR/EDITOR/VIEWER) -> `Utubs` -> `Utub_Urls` -> `Urls`. Tags: `Utub_Tags` <-> `Utub_Url_Tags` <-> `Utub_Urls`.
 
@@ -214,11 +214,11 @@ ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.
 
 ### Frontend Structure
 
-JavaScript is organized as ES6 modules in `frontend/` and built by Vite. Entry points are `frontend/main.js` (home page) and `frontend/splash.js` (splash/auth pages). The `init_vite_app()` function in `src/__init__.py` handles manifest-based asset resolution for production and direct Vite dev server proxying for local dev.
+JavaScript is organized as ES6 modules in `frontend/` and built by Vite. Entry points are `frontend/main.js` (home page) and `frontend/splash.js` (splash/auth pages). The `init_vite_app()` function in `backend/__init__.py` handles manifest-based asset resolution for production and direct Vite dev server proxying for local dev.
 
 jQuery (3.7.1) and Bootstrap (5.2.3) are loaded as global `<script>` tags and re-exported from `frontend/lib/globals.js` for use in modules.
 
-Templates are Jinja2 in `src/templates/`.
+Templates are Jinja2 in `backend/templates/`.
 
 ### Security
 
@@ -230,7 +230,7 @@ Templates are Jinja2 in `src/templates/`.
 
 ### API Pattern
 
-Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON responses follow `{status, data, message}` shape. See `src/API_DOCUMENTATION.md` for full endpoint docs.
+Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON responses follow `{status, data, message}` shape. See `backend/API_DOCUMENTATION.md` for full endpoint docs.
 
 ### Testing (`tests/`)
 
@@ -251,8 +251,8 @@ Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON respon
 
 ### Environment Variables
 
-Required: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`. See `src/config.py` for the full list and `src/utils/strings/config_strs.py` for env var name constants.
+Required: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`. See `backend/config.py` for the full list and `backend/utils/strings/config_strs.py` for env var name constants.
 
 ### String Constants
 
-All user-facing strings, model field names, and config keys are centralized in `src/utils/strings/` and `src/utils/constants.py`.
+All user-facing strings, model field names, and config keys are centralized in `backend/utils/strings/` and `backend/utils/constants.py`.

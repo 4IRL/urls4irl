@@ -5,7 +5,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.models.users import Users
+from backend.models.users import Users
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_on_429_page,

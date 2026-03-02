@@ -40,11 +40,11 @@ RUN mkdir -p /app/workflow_logs \
 
 # Copy scripts
 COPY --chown=workflow:workflow docker/startup-workflow.sh /app/
-COPY --chown=workflow:workflow utils/daily-docker.sh /app/
-COPY --chown=workflow:workflow utils/backup-database.sh /app/
-COPY --chown=workflow:workflow utils/backup-logs.sh /app/
-COPY --chown=workflow:workflow utils/remote-object-storage.sh /app/
-COPY utils/restricted-curl.sh /usr/bin/restricted_curl
+COPY --chown=workflow:workflow scripts/daily-docker.sh /app/
+COPY --chown=workflow:workflow scripts/backup-database.sh /app/
+COPY --chown=workflow:workflow scripts/backup-logs.sh /app/
+COPY --chown=workflow:workflow scripts/remote-object-storage.sh /app/
+COPY scripts/restricted-curl.sh /usr/bin/restricted_curl
 
 # Copy crontab job
 COPY docker/crontab.workflow /tmp/crontab.workflow

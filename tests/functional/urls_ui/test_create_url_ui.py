@@ -4,16 +4,16 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.cli.mock_constants import (
+from backend.cli.mock_constants import (
     MOCK_URL_TITLES,
     MOCK_URL_STRINGS,
 )
-from src.models.users import Users
-from src.models.utub_tags import Utub_Tags
-from src.models.utub_urls import Utub_Urls
-from src.utils.constants import CONSTANTS
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
-from src.utils.strings.url_strs import URL_FAILURE
+from backend.models.users import Users
+from backend.models.utub_tags import Utub_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.utils.constants import CONSTANTS
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.url_strs import URL_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
     assert_not_visible_css_selector,

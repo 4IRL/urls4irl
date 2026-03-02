@@ -3,8 +3,8 @@ import pytest
 import redis
 from redis import Redis
 
-from src.utils.strings.config_strs import CONFIG_ENVS as ENV
-from src.utils.strings.url_validation_strs import SHORT_URLS
+from backend.utils.strings.config_strs import CONFIG_ENVS as ENV
+from backend.utils.strings.url_validation_strs import SHORT_URLS
 
 pytestmark = pytest.mark.cli
 

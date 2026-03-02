@@ -6,15 +6,15 @@ import pytest
 from sqlalchemy import inspect
 from sqlalchemy.engine.reflection import Inspector
 
-from src import db, migrate
-from src.utils.db_table_names import TABLE_NAMES
-from src.models.utub_tags import Utub_Tags
-from src.models.urls import Urls
-from src.models.users import Users
-from src.models.utub_members import Utub_Members
-from src.models.utub_url_tags import Utub_Url_Tags
-from src.models.utub_urls import Utub_Urls
-from src.models.utubs import Utubs
+from backend import db, migrate
+from backend.utils.db_table_names import TABLE_NAMES
+from backend.models.utub_tags import Utub_Tags
+from backend.models.urls import Urls
+from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
+from backend.models.utub_url_tags import Utub_Url_Tags
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 
 pytestmark = pytest.mark.cli
 

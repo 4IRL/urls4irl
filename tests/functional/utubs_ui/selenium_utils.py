@@ -2,7 +2,7 @@ from selenium.webdriver.common.action_chains import ActionChains
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src.models.utubs import Utubs
+from backend.models.utubs import Utubs
 from tests.functional.assert_utils import assert_visible_css_selector
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.selenium_utils import (

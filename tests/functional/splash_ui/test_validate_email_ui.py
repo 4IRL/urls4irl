@@ -3,12 +3,12 @@ import pytest
 from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
-from src import db
-from src.models.email_validations import Email_Validations
-from src.models.users import Users
-from src.utils.all_routes import ROUTES
-from src.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
-from src.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend import db
+from backend.models.email_validations import Email_Validations
+from backend.models.users import Users
+from backend.utils.all_routes import ROUTES
+from backend.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
+from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import assert_login
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.splash_ui.selenium_utils import register_user_ui
