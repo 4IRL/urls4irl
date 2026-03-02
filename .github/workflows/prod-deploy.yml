@@ -116,7 +116,7 @@ jobs:
               docker compose -f compose.yaml up --build -d;
               rm -rf ./secrets/;
               docker image prune -f;
-              docker exec u4i-prod-flask tar -cf - -C /code/u4i/src static | tar -xf -;
+              docker exec u4i-prod-flask tar -cf - -C /code/u4i/backend static | tar -xf -;
 
               echo "Cleaning up docker login files..."
               rm -f ~/.docker/config.json

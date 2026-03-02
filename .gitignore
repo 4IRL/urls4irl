@@ -31,6 +31,5 @@ frontend/public/vendor/
 
 # Vite build outputs and cache
 backend/static/dist/
-frontend/src/static/dist/
 .vite/
 *.local
