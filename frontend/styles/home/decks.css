@@ -1,0 +1,79 @@
+.deck {
+    width: 100%;
+    margin-top: 5px;
+    background: var(--panelBackgroundColor);
+    border: 2px solid var(--borderColor);
+    border-radius: 15px;
+    color: var(--deckSelectionGreen);
+    overflow: hidden;
+    padding-top: 0.25rem;
+    padding-bottom: 8px;
+}
+
+.deck#UTubDeck,
+.deck#MemberDeck,
+.deck#TagDeck {
+    flex: 1 1 0;
+    transition: flex 0.3s ease;
+}
+
+.deck#UTubDeck.collapsed,
+.deck#MemberDeck.collapsed,
+.deck#TagDeck.collapsed {
+    flex: 0 0 48px;
+    padding-top: 0.15rem;
+    padding-bottom: 0;
+}
+
+.content {
+    flex: 1 1 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    border-top: 2px solid var(--contentTopBorder);
+    padding-bottom: 3px;
+    min-height: 0;
+}
+
+.content {
+    transition: opacity 0.3s ease;
+}
+
+.titleElement {
+    transition: all 0.3s ease;
+}
+
+.deck.collapsed .content,
+.deck.collapsed .titleElement:nth-of-type(2) {
+    opacity: 0;
+    flex-shrink: 0;
+    height: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.deck.collapsed .button-container {
+    transition: opacity 0.3s ease;
+    opacity: 0;
+    pointer-events: none;
+}
+
+.titleElement {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    flex-direction: row;
+}
+
+.deck .titleElement:first-child {
+    height: 38px;
+}
+
+.title-caret {
+    color: var(--deckHeaderGreen);
+    transition: transform 0.15s ease;
+    transform-origin: center;
+}
+
+.title-caret.closed {
+    transform: rotate(-90deg);
+}

@@ -596,7 +596,7 @@ def select_utub_by_name(browser: WebDriver, utub_name: str):
 
 def select_utub_by_id(browser: WebDriver, utub_id: int):
     utub_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id}']"
-    utub_selector_elem = wait_for_element_presence(browser, utub_selector, timeout=10)
+    utub_selector_elem = wait_then_get_element(browser, utub_selector, time=10)
     assert utub_selector_elem is not None
     utub_name = utub_selector_elem.text
     wait_then_click_element(browser, utub_selector, time=3)

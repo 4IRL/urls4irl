@@ -1,0 +1,380 @@
+/* URLs */
+
+#listURLs .urlRow.even[filterable="true"],
+#listURLs .urlRow.even[filterable="true"] .text-input-inner-container>label,
+#listURLs .urlRow.even[filterable="true"] .text-input-inner-container>input {
+    background-color: var(--cardBackgroundColor);
+}
+
+#listURLs .urlRow.even[filterable="true"] .tagBadge {
+    background: var(--pageBackgroundColor);
+}
+
+#listURLs .urlRow.even[filterable="true"]:not([urlSelected="true"]):hover {
+    background-color: rgba(61, 71, 71, 1.0);
+}
+
+#listURLs .urlRow.odd[filterable="true"]:not([urlSelected="true"]):hover {
+    background-color: rgba(51, 61, 61, 1.0);
+}
+
+#listURLs .urlRow[filterable="true"]:last-child {
+    border-bottom-width: 2px;
+}
+
+.urlRow {
+    border-bottom: 1px solid var(--borderColor);
+    border-top: 1px solid var(--borderColor);
+    transition: background-color 0.15s ease, padding 0.2s ease-in-out;
+    padding: 5px 15px;
+}
+
+.urlTitle {
+    margin: 0;
+    font-weight: bold;
+    line-height: inherit;
+}
+
+.urlString {
+    color: var(--cardURLTextColor);
+}
+
+.urlOptions {
+    display: flex;
+    flex-direction: row;
+    flex-wrap: no-wrap;
+}
+
+
+.goToUrlIcon {
+    display: flex;
+    color: var(--deckSelectionGreenHover);
+    transition: color 0.1s ease;
+    align-self: flex-start;
+}
+
+.urlRow .goToUrlIcon {
+    visibility: hidden;
+}
+
+.urlRow[filterable="true"][urlSelected="false"]:focus .goToUrlIcon,
+.urlRow[filterable="true"][urlSelected="false"]:hover .goToUrlIcon,
+.urlRow[filterable="true"][urlSelected="true"] .goToUrlIcon {
+    visibility: visible;
+}
+
+
+.goToUrlIcon:hover {
+    color: var(--deckSelectionGreen);
+}
+
+.outerTagsAndButtonsWrap {
+    display: grid;
+    grid-template-rows: min-content 0fr;
+}
+
+.urlTags,
+.urlOptions {
+    height: 0;
+    transition: padding 0.2s ease-in-out, opacity 0.2s ease-in-out;
+    padding: 0;
+    opacity: 0;
+}
+
+.urlOptions>button {
+    opacity: 0;
+    height: 0;
+    font-size: 0;
+    pointer-events: none;
+    transition: font-size 0.2s ease-in-out, height 0.2s ease-in-out, opacity 0.2s ease-in-out;
+}
+
+.urlTags {
+    overflow: hidden;
+}
+
+.urlRow:focus {
+    outline: none;
+}
+
+.urlRow[filterable="true"][urlSelected="false"]:focus-visible,
+.urlRow[filterable="true"][urlSelected="false"]:focus {
+    border-top: 1px solid var(--focusedUrlBorder);
+    border-bottom: 1px solid var(--focusedUrlBorder) !important;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] {
+    border-top: 1px solid var(--selectedUrlBorder);
+    border-bottom: 1px solid var(--selectedUrlBorder) !important;
+    cursor: auto;
+    padding-top: 15px;
+    padding-bottom: 20px;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlTags,
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions {
+    height: auto;
+    opacity: 1;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlTags {
+    padding: 20px 0 15px 0;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions {
+    padding: 15px 0 0 0;
+    align-items: center;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlOptions>button {
+    height: 40px;
+    font-size: initial;
+    opacity: 1;
+    pointer-events: initial;
+}
+
+a.urlString {
+    text-decoration: none;
+}
+
+a.urlString:hover {
+    color: var(--cardURLTextColor);
+}
+
+
+.urlRow[filterable="true"][urlSelected="true"] .urlString {
+    overflow-wrap: break-word;
+    white-space: normal;
+    width: fit-content;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlString:hover {
+    text-decoration: underline;
+    cursor: pointer;
+}
+
+.urlTitleBtnUpdate {
+    display: none;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap:hover>.urlTitleBtnUpdate {
+    display: flex;
+}
+
+.urlRow[filterable="true"][urlSelected=false] .urlTitle {
+    width: 95%;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .urlTitleAndUpdateIconInnerWrap {
+    width: max-content;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlTitleWrap>.text-input-container {
+    width: 65%;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .updateUrlStringWrap>.text-input-container {
+    width: 100%;
+}
+
+.urlRow[filterable="true"][urlSelected="true"] .createUrlTagWrap>.text-input-container {
+    width: 45%;
+}
+
+.urlRow[filterable="false"] {
+    display: none;
+}
+
+.urlTags::before,
+.urlOptions::before {
+    margin-top: -30px;
+}
+
+.urlTags::after,
+.urlOptions::after {
+    margin-bottom: -30px;
+}
+
+.urlOptions::after {
+    padding-bottom: 0;
+}
+
+.urlTagsContainer span:first-child {
+    margin-left: 0;
+}
+
+.urlStringBtnUpdate,
+.urlTagBtnCreate {
+    transition: background-color 0.3s ease-in-out;
+}
+
+#createURLWrap {
+    border-top: 1px solid var(--selectedUrlBorder);
+    border-bottom: 1px solid var(--selectedUrlBorder) !important;
+    padding-top: 15px;
+    padding-bottom: 15px;
+}
+
+.updateUrlTitleWrap {
+    padding-bottom: 20px;
+}
+
+.updateUrlStringWrap {
+    padding-bottom: 20px;
+    padding-top: 20px;
+}
+
+
+.urlRow[filterable="true"][urlSelected="true"] .urlTitle {
+    white-space: normal;
+    text-overflow: unset;
+}
+
+#accessAllURLsBtn,
+.urlBtnAccess {
+    background-color: var(--accessLinkColor);
+    border-width: 1px;
+    border-color: var(--accessLinkColor);
+}
+
+#accessAllURLsBtn:hover,
+.urlBtnAccess:hover {
+    background-color: var(--accessLinkColorHover);
+    border-color: var(--accessLinkColorBorderHover);
+    transition: background-color 0.3s ease;
+}
+
+#accessAllURLsBtn:active,
+.urlBtnAccess:active {
+    background-color: var(--accessLinkColor) !important;
+    border-width: 1px !important;
+    border-color: var(--accessLinkColor) !important;
+}
+
+.urlBtnCopy {
+    background-color: var(--copyURLColor);
+    border-width: 1px;
+    border-color: var(--copyURLColor);
+}
+
+.urlBtnCopy:hover {
+    background-color: var(--copyURLColorHover);
+    border-color: var(--copyURLColorBorderHover);
+    transition: background-color 0.1s ease;
+}
+
+.urlBtnCopy:active {
+    background-color: var(--copyURLColor) !important;
+    border-color: var(--copyURLColor) !important;
+}
+
+.urlTagBtnCreate {
+    background-color: var(--addTagColor);
+    border-width: 1px;
+    border-color: var(--addTagColor);
+}
+
+.urlTagBtnCreate:hover {
+    background-color: var(--addTagColorHover);
+    border-color: var(--addTagColorBorderHover);
+}
+
+.urlStringBtnUpdate {
+    background-color: var(--editURLColor);
+    border-width: 1px;
+    border-color: var(--editURLColor);
+}
+
+.urlStringBtnUpdate:hover {
+    background-color: var(--editURLColorHover);
+    border-width: 1px;
+    border-color: var(--editURLColorBorderHover);
+}
+
+.urlStringCancelBigBtnUpdate {
+    background-color: var(--editURLColor);
+    border-width: 1px;
+    border-color: var(--editURLColor);
+    transition: background-color 0.1s ease;
+}
+
+.urlStringCancelBigBtnUpdate:hover {
+    background-color: var(--editURLColorHover) !important;
+    border-width: 1px;
+    border-color: var(--editURLColorBorderHover) !important;
+    transition: background-color 0.1s ease;
+}
+
+.urlStringCancelBigBtnUpdate:active {
+    background-color: var(--editURLColor) !important;
+    border-width: 1px;
+    border-color: var(--editURLColor) !important;
+    transition: background-color 0.1s ease;
+}
+
+#accessAllURLsBtn {
+    color: var(--panelBackgroundColor);
+}
+
+.urlBtnDelete {
+    color: black;
+}
+
+.urlBtnDelete:hover {
+    color: black;
+}
+
+.urlBtnAccess,
+.urlTagBtnCreate,
+.urlStringBtnUpdate,
+.urlBtnDelete {
+    align-items: center;
+}
+
+#URLDeckSubheader {
+    margin-top: 3px;
+}
+
+#NoURLsSubheader {
+    color: rgba(255, 255, 255, 0.75);
+}
+
+#URLDeckSubheaderCreateDescription:focus,
+#URLDeckSubheaderCreateDescription:active {
+    opacity: 1;
+    height: 100%;
+}
+
+#URLDeckSubheaderCreateDescription {
+    color: var(--cardURLTextColor);
+}
+
+#URLDeckSubheaderCreateDescription:hover {
+    cursor: pointer;
+    text-decoration: underline;
+}
+
+#URLDeckSubheader {
+    word-break: break-all;
+    margin: 0;
+}
+
+#URLDeckErrorIndicator {
+    color: var(--removeIconColor);
+    background-color: var(--removeMemberColorLighter);
+    height: 0;
+    padding: 0;
+    opacity: 0;
+    margin: 0;
+    font-size: 0;
+    transition: height 0.2s ease-in-out, opacity 0.1s ease-in-out, padding 0.1s ease-in-out, border 0.1s ease-in-out, font-size 0.1s ease-in-out;
+}
+
+.URLDeckErrorIndicatorShow {
+    height: auto !important;
+    padding: 5px !important;
+    opacity: 100% !important;
+    font-size: larger !important;
+    border-radius: 5px;
+    border: 2px solid var(--removeMemberColor);
+}

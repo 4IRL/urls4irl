@@ -1,3 +1,7 @@
+import "bootstrap/dist/css/bootstrap.min.css";
+import "font-awesome/css/font-awesome.min.css";
+import "./styles/base.css";
+import "./styles/splash.css";
 import "./lib/security-check.js";
 import { $, bootstrap } from "./lib/globals.js";
 import { setupCSRF } from "./lib/csrf.js";

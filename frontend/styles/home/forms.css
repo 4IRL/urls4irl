@@ -1,0 +1,87 @@
+/** Custom Text Input Box **/
+
+.text-input-container {
+    display: flex;
+    flex-direction: column;
+}
+
+.text-input-inner-container {
+    position: relative;
+}
+
+.text-input[type="url"],
+.text-input[type="text"] {
+    width: 100%;
+    padding: 10px;
+    border: 1px solid var(--borderColor);
+    border-radius: 4px;
+    font-size: 16px;
+    outline: none;
+    transition: 0.3s ease;
+    background: var(--pageBackgroundColor);
+    color: whitesmoke;
+}
+
+#UTubNameSearch.text-input[type="text"] {
+    background: var(--searchInputBackgroundColor);
+    border-radius: 25px;
+    padding-inline: 13px;
+    padding-top: 5px;
+    padding-bottom: 5px;
+    width: 0;
+    opacity: 0;
+    transition: width 0.25s ease-in-out, opacity 0.10s ease-in-out 0.1s;
+}
+
+#UTubNameSearch.text-input[type="text"].utub-search-expanded {
+    width: 100%;
+    opacity: 1;
+}
+
+#UTubNameSearch+.text-input-label {
+    background: var(--searchInputBackgroundColor);
+    color: #c6c6c6;
+}
+
+#UTubNameSearch:focus+.text-input-label {
+    display: none;
+}
+
+.text-input[type="url"]:hover,
+.text-input[type="text"]:hover {
+    border-color: var(--deckSelectionGreenHover);
+}
+
+.text-input[type="url"]:focus,
+.text-input[type="text"]:focus {
+    border-color: var(--deckSelectionGreen);
+}
+
+.text-input-label {
+    position: absolute;
+    top: 50%;
+    left: 10px;
+    transform: translateY(-50%);
+    background: white;
+    padding: 0 5px;
+    color: #666;
+    font-size: 16px;
+    transition: 0.3s ease;
+    pointer-events: none;
+    background: var(--panelBackgroundColor);
+}
+
+.text-input:focus+.text-input-label {
+    top: 0px;
+    left: 10px;
+    color: var(--deckSelectionGreenHover);
+    font-size: 14px;
+}
+
+
+.text-input-error-message {
+    display: none;
+    color: red;
+    font-size: 14px;
+    margin-top: 5px;
+}

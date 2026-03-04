@@ -1,0 +1,185 @@
+/* Tags */
+
+.tagBadge {
+    color: var(--darkSplashGreen);
+    background: var(--cardBackgroundColor);
+    margin-left: 2px;
+    margin-right: 2px;
+    padding-left: 6px;
+    padding-right: 6px;
+    border-radius: 12px;
+    white-space: nowrap;
+    border: 1px solid var(--borderColor);
+}
+
+
+.urlTagBtnDelete:focus,
+.tagBadgeHoverable:hover .urlTagBtnDelete {
+    width: 100%;
+    opacity: 100%;
+}
+
+.tagText {
+    transition: padding 0.1s ease-in;
+}
+
+.tagBadgeHoverable:hover>.tagText {
+    padding-right: 6px;
+}
+
+.urlTagBtnDelete:focus~.tagText {
+    padding-right: 6px;
+}
+
+.urlTagBtnDelete {
+    width: 0;
+    opacity: 0;
+    padding: 0;
+    color: var(--tagBadgeDeleteBtnColor);
+    transition: width 0.1s ease-in, opacity 0.1s ease-in, color 0.1s ease-in, padding 0.1s ease-in;
+}
+
+.urlTagBtnDelete:hover {
+    color: var(--tagBadgeDeleteBtnColorHover);
+}
+
+.red-icon-disabled {
+    opacity: 0.15;
+    pointer-events: none;
+    cursor: not-allowed;
+}
+
+#utubTagBtnUpdateAllOpen,
+#unselectAllTagFilters {
+    transition: opacity 0.2s ease-in-out;
+}
+
+#utubTagBtnUpdateAllOpen,
+#utubTagBtnUpdateAllClose {
+    border-radius: 4px;
+    color: black;
+}
+
+#utubTagBtnUpdateAllClose>svg {
+    background: var(--updateUTubTagBtnColor);
+    border-radius: 4px;
+}
+
+#utubTagBtnUpdateAllClose>svg:hover {
+    background: var(--updateUTubTagBtnColorHover);
+}
+
+#utubTagBtnUpdateAllOpen {
+    background: var(--updateUTubTagBtnColor);
+}
+
+#utubTagBtnUpdateAllOpen:hover {
+    background: var(--updateUTubTagBtnColorHover);
+}
+
+.tagFilter {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+
+    color: var(--deckSelectionGreen);
+    font-weight: bold;
+
+    margin-top: 5px;
+    border-radius: 25px;
+    transition: background-color 0.3s ease-in-out,
+        border-color 0.3s ease-in-out, color 0.3s ease-in-out;
+    border: 2px solid var(--tagBorderColor);
+    background-color: var(--tagBackgroundColorSelected);
+}
+
+.tagFilter:hover {
+    border-color: var(--grayBadgeSelection);
+}
+
+.tagFilter.unselected:hover {
+    background-color: var(--tagBackgroundColorHover);
+    border-color: var(--tagBorderColor);
+}
+
+.tagFilter.unselected:active,
+.tagFilter:active {
+    background-color: var(--grayBadgeSelectionFocus);
+    color: var(--grayBadgeSelection);
+}
+
+.tagFilter.unselected {
+    color: var(--grayBadgeSelection);
+    background-color: var(--tagBackgroundColor);
+    border: 2px solid var(--tagBorderColor);
+    border-radius: 25px;
+}
+
+.tagFilter.disabled {
+    color: var(--grayBadgeSelection) !important;
+    background-color: var(--tagBackgroundColor) !important;
+    border: 2px solid var(--tagBorderColor) !important;
+    cursor: default;
+    pointer-events: none;
+}
+
+.tagFilter.disabled .utubTagBtnDelete {
+    cursor: pointer;
+    pointer-events: auto;
+}
+
+.tagFilter>.tagCountWrap>.tagAppliedToUrlsCount {
+    color: black;
+    background-color: var(--tagCountBackgroundSelectedColor);
+}
+
+.tagFilter.unselected>.tagCountWrap>.tagAppliedToUrlsCount {
+    color: var(--darkSplashGreen);
+    background: var(--cardBackgroundColor);
+}
+
+.tagCountWrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+
+.tagAppliedToUrlsCount {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  width: 5rem;
+  font-size: 1rem;
+  border: 1px solid var(--tagCountBorderColor);
+  border-radius: 5rem;
+  white-space: nowrap;
+  transition: background-color 0.2s ease-in-out;
+}
+
+.utubTagBtnDelete {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  transition: opacity 0.1s ease-in;
+  color: var(--tagBadgeDeleteBtnColor);
+}
+
+.utubTagBtnDelete:hover {
+    color: var(--tagBadgeDeleteBtnColorHover);
+}
+
+.urlTags:has(.tagBadge) {
+    gap: 2rem;
+}
+
+#unselectAllTagFilters.disabled,
+.unselected.disabled {
+    cursor: not-allowed;
+    color: gray;
+    pointer-events: none;
+}
+
+.unselected.disabled:hover {
+    background-color: var(--tagBackgroundColor) !important;
+}

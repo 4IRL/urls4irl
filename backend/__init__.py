@@ -1,7 +1,7 @@
 import os
 import json
 import secrets
-from typing import Mapping
+from typing import Mapping, NotRequired, TypedDict
 
 from flask import Flask, Response, abort, current_app, g, request, session, url_for
 from flask_limiter import Limiter
@@ -27,6 +27,41 @@ from backend.cli.short_urls import register_short_urls_cli
 from backend.cli.utils import register_utils_cli
 from backend.cli.mock_options import register_mocks_db_cli
 from backend.utils.strings.config_strs import CONFIG_ENVS
+
+
+class ViteManifestEntry(TypedDict):
+    file: str
+    css: NotRequired[list[str]]
+    imports: NotRequired[list[str]]
+
+
+def _read_manifest(manifest_path: str) -> dict[str, ViteManifestEntry]:
+    """Return parsed Vite manifest JSON, or {} on failure."""
+    try:
+        with open(manifest_path, "r") as f:
+            return json.load(f)
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {}
+
+
+def _collect_css_from_manifest(
+    manifest: dict[str, ViteManifestEntry], entrypoint: str
+) -> list[str]:
+    """Walk manifest from entrypoint, collecting all CSS paths (incl. shared chunks)."""
+    css_files: list[str] = []
+    visited: set[str] = set()
+
+    def collect(key: str) -> None:
+        if key in visited or key not in manifest:
+            return
+        visited.add(key)
+        css_files.extend(manifest[key].get("css", []))
+        for imported in manifest[key].get("imports", []):
+            collect(imported)
+
+    collect(entrypoint)
+    return css_files
+
 
 sess = Session()
 
@@ -206,6 +241,9 @@ def add_security_headers(app: Flask):
             vite_ws = f"{ws_scheme}://{parsed.netloc}"
             valid_script_cdns.append(vite_origin)
             valid_connect_sources.extend([vite_origin, vite_ws])
+            # Vite dev server injects CSS as <style> elements via HMR
+            valid_style_cdns = valid_style_cdns + (vite_origin,)
+            valid_font_cdns = valid_font_cdns + (vite_origin,)
 
         # Construct CSP strings after Vite URL is added
         valid_scripts = (
@@ -219,6 +257,15 @@ def add_security_headers(app: Flask):
             + f"{' '.join(valid_style_cdns)}; "
         )
         valid_style_elems = "style-src-attr 'unsafe-inline'; "
+        if use_vite_dev:
+            # style-src has a nonce which causes browsers to ignore 'unsafe-inline'.
+            # style-src-elem overrides style-src for <style> elements AND <link> stylesheets,
+            # so it must include all allowed origins plus 'unsafe-inline' for Vite's
+            # dynamically injected <style> tags in dev mode.
+            valid_style_elems += (
+                "style-src-elem 'self' 'unsafe-inline' "
+                + f"{' '.join(valid_style_cdns)}; "
+            )
         valid_fonts = "font-src 'self' " + f"{' '.join(valid_font_cdns)}; "
         valid_imgs = "img-src 'self' data:;"
         valid_connects = f"connect-src {' '.join(valid_connect_sources)}; "
@@ -260,50 +307,46 @@ def app_test_setup(app: Flask):
 
 
 def init_vite_app(app: Flask):
+    manifest_path = os.path.join(app.static_folder, "dist", ".vite", "manifest.json")
+
     @app.context_processor
     def vite_assets():
-        def vite_asset(entrypoint):
+        def vite_asset(entrypoint: str) -> str:
             # 1. Vite Dev Server Mode: Point directly to the Vite dev server
             if app.config.get("VITE_DEV_SERVER", False):
                 vite_url = app.config.get("VITE_URL", "https://localhost:5173")
                 return f"{vite_url}/{entrypoint}"
 
             # 2. Production/Dev Server: Read from the manifest.json
-            if app.static_folder is None:
-                return ""
-
-            manifest_path = os.path.join(
-                app.static_folder, "dist", ".vite", "manifest.json"
-            )
-
+            manifest = _read_manifest(manifest_path)
             try:
-                with open(manifest_path, "r") as f:
-                    manifest = json.load(f)
-                # Vite's manifest uses the relative path from the root
                 file_path = manifest[entrypoint]["file"]
                 return url_for("static", filename=f"dist/{file_path}")
-            except (FileNotFoundError, KeyError):
-                return ""  # Handle missing manifest gracefully
+            except KeyError:
+                return ""
 
         def vite_asset_static(entrypoint: str) -> str:
             """
             Always use manifest-based assets, never Vite dev server.
             Use for error pages that must work in all contexts (e.g., Selenium tests).
             """
-            if app.static_folder is None:
-                return ""
-
-            manifest_path = os.path.join(
-                app.static_folder, "dist", ".vite", "manifest.json"
-            )
-
+            manifest = _read_manifest(manifest_path)
             try:
-                with open(manifest_path, "r") as f:
-                    manifest = json.load(f)
                 file_path = manifest[entrypoint]["file"]
                 return url_for("static", filename=f"dist/{file_path}")
-            except (FileNotFoundError, KeyError):
-                # Fallback to empty string if manifest unavailable
+            except KeyError:
                 return ""
 
-        return dict(vite_asset=vite_asset, vite_asset_static=vite_asset_static)
+        def vite_css_assets(entrypoint: str) -> list[str]:
+            """Return CSS URLs for an entry point (production only; dev server injects via JS)."""
+            if app.config.get("VITE_DEV_SERVER", False):
+                return []  # Vite HMR injects CSS via JS in dev mode
+            manifest = _read_manifest(manifest_path)
+            css_paths = _collect_css_from_manifest(manifest, entrypoint)
+            return [url_for("static", filename=f"dist/{f}") for f in css_paths]
+
+        return dict(
+            vite_asset=vite_asset,
+            vite_asset_static=vite_asset_static,
+            vite_css_assets=vite_css_assets,
+        )
