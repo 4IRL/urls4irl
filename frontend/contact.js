@@ -1,3 +1,6 @@
+import "bootstrap/dist/css/bootstrap.min.css";
+import "./styles/base.css";
+import "./styles/contact.css";
 import { $ } from "./lib/globals.js";
 import "./lib/security-check.js";
 import { initNavbarRouting } from "./lib/navbar-shared.js";

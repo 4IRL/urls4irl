@@ -1,0 +1,82 @@
+/* Buttons */
+.green-clickable {
+    color: var(--splashGreen);
+}
+
+.green-clickable-wide {
+    background: var(--splashGreen);
+}
+
+.green-clickable:hover {
+    cursor: pointer;
+    color: var(--darkSplashGreen);
+}
+
+.green-clickable-wide:hover {
+    cursor: pointer;
+    background: var(--darkSplashGreen);
+}
+
+.trash-fill,
+.funnel-x {
+    background: var(--removeIconColor);
+    border-radius: 4px;
+}
+
+.cancelButton-wide:hover,
+.trash-fill:hover,
+.funnel-x:hover {
+    cursor: pointer;
+    background: var(--removeIconColorHover);
+}
+
+.clickable {
+    cursor: pointer;
+}
+
+.cancelButton {
+    color: var(--removeIconColor);
+}
+
+.cancelButton-wide {
+    background: var(--removeIconColor);
+}
+
+.green-clickable-wide>svg,
+.cancelButton-wide>svg {
+    fill: var(--panelBackgroundColor);
+}
+
+#UTubSearchFilterIconClose,
+#UTubSearchFilterIcon {
+    cursor: pointer;
+    height: 100%;
+    margin-bottom: 0;
+    padding-bottom: 0;
+    margin-right: 4px;
+}
+
+#UTubSearchFilterIcon>svg {
+    fill: var(--grayBadgeSelection);
+}
+
+#UTubSearchFilterIcon:hover>svg {
+    fill: var(--deckSelectionGreenHover);
+}
+
+#UTubSearchFilterIconClose>svg {
+    fill: var(--spanRemoveColor);
+}
+
+#UTubSearchFilterIconClose:hover>svg {
+    fill: var(--spanRemoveColorHover);
+}
+
+.cancelButton:hover {
+    cursor: pointer;
+    color: var(--removeIconColorHover);
+}
+
+.button-container {
+    justify-content: flex-end;
+}

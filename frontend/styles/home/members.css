@@ -1,0 +1,39 @@
+/* Members */
+
+.member {
+    color: var(--grayBadgeSelection);
+    border-color: var(--grayBadgeSelection);
+    border-radius: 25px;
+    border: 2px solid var(--tagBorderColor);
+    background-color: var(--cardBackgroundColor);
+}
+
+.memberOtherBtnDelete:focus,
+.member:hover>.memberOtherBtnDelete {
+    opacity: 1;
+}
+
+.memberOtherBtnDelete {
+    opacity: 0;
+    color: var(--removeMemberColor);
+    transition: color 0.2s;
+}
+
+.memberOtherBtnDelete:focus,
+.memberOtherBtnDelete:hover {
+    color: red;
+}
+
+.memberOtherBtnDelete:focus {
+    outline: none;
+    box-shadow: none;
+    border: 1px solid red;
+}
+
+#listMembers {
+    gap: 3px;
+}
+
+#MembersHeader {
+    margin-top: 0.75rem;
+}

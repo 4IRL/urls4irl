@@ -1,0 +1,41 @@
+/** Loading ring **/
+.dual-loading-ring {
+    color: #1c4c5b
+}
+
+.dual-loading-ring,
+.dual-loading-ring:after {
+    box-sizing: border-box;
+}
+
+.dual-loading-ring {
+    display: flex !important;
+    align-items: center;
+    height: 38px;
+    width: auto;
+}
+
+.dual-loading-ring:after {
+    content: " ";
+    display: inline-block !important;
+    height: 38px;
+    width: 38px;
+    border-radius: 50%;
+    border: 6.4px solid currentColor;
+    border-color: currentColor transparent currentColor transparent;
+    animation: dual-loading-ring 1.2s linear infinite;
+}
+
+@keyframes dual-loading-ring {
+    0% {
+        transform: rotate(0deg);
+    }
+
+    100% {
+        transform: rotate(360deg);
+    }
+}
+
+#urlCreateDualLoadingRing {
+    display: none;
+}

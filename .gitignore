@@ -23,6 +23,7 @@ gen/
 *.bak
 logs/
 plans/
+reviews/
 tmp/
 .playwright-mcp
 

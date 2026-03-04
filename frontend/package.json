@@ -13,8 +13,12 @@
   "devDependencies": {
     "@vitejs/plugin-basic-ssl": "2.1.4",
     "@vitest/coverage-v8": "4.0.18",
+    "autoprefixer": "10.4.27",
+    "bootstrap": "5.2.3",
+    "font-awesome": "4.7.0",
     "happy-dom": "20.6.1",
     "jquery": "3.7.1",
+    "postcss-preset-env": "11.2.0",
     "vite": "7.3.1",
     "vitest": "4.0.18"
   }

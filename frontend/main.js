@@ -1,3 +1,7 @@
+import "bootstrap/dist/css/bootstrap.min.css";
+import "font-awesome/css/font-awesome.min.css";
+import "./styles/base.css";
+import "./styles/home/index.css";
 import "./lib/security-check.js";
 import { $ } from "./lib/globals.js";
 import { setState } from "./store/app-store.js";

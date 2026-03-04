@@ -1,12 +1,7 @@
-<!-- Custom CSS adjustments -->
-<link rel="stylesheet" href="/static/styles/app.css?v={{ ASSET_VERSION }}">
-
-{% if is_privacy_or_terms %} 
-<link rel="stylesheet" href="/static/styles/privacy_terms.css?v={{ ASSET_VERSION }}">
-{% elif is_contact_form %} 
-<link rel="stylesheet" href="/static/styles/contact_form.css?v={{ ASSET_VERSION }}">
-{% elif current_user.is_authenticated and current_user.email_validated %}
-<link rel="stylesheet" href="/static/styles/home.css?v={{ ASSET_VERSION }}">
-{% else %}
-<link rel="stylesheet" href="/static/styles/splash.css?v={{ ASSET_VERSION }}">
-{% endif %}
+{% if is_privacy_or_terms %}{% set _ep = "navbar.js" %}
+{% elif is_contact_form %}{% set _ep = "contact.js" %}
+{% elif current_user.is_authenticated and current_user.email_validated %}{% set _ep = "main.js" %}
+{% else %}{% set _ep = "splash.js" %}{% endif %}
+{% for href in vite_css_assets(_ep) %}
+<link rel="stylesheet" href="{{ href }}">
+{% endfor %}
