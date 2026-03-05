@@ -41,8 +41,9 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 3. **Debug UI test failures with Playwright before changing code** - When a UI test fails and the root cause isn't clear from code inspection, use Playwright MCP to manually reproduce the issue and observe actual behavior BEFORE making code changes
 4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`InvalidSessionIdException`, `SessionNotCreatedException`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "Selenium session exhaustion" as a dismissible category — if sessions are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
 5. **Check Selenium container health when sessions repeatedly fail** - If `SessionNotCreatedException` or `InvalidSessionIdException` persist across multiple test runs, check the Selenium container health (`docker compose ps selenium`) and restart it if needed (`docker compose restart selenium`), but still record and investigate the root cause.
-6. **Run tests one marker group at a time** - Tests share a single test DB and Redis instance; never run marker groups in parallel. Use `make test-marker m=<marker>` for each group sequentially.
-7. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
+6. **`TimeoutException` in Selenium tests always requires investigation** - A `TimeoutException` is never pre-existing or dismissible as "flaky". It indicates either a UI logic bug introduced by recent changes, or a genuine timing/stability issue that must be diagnosed and fixed. Never dismiss a `TimeoutException` without identifying its root cause.
+7. **Run tests one marker group at a time** - Tests share a single test DB and Redis instance; never run marker groups in parallel. Use `make test-marker m=<marker>` for each group sequentially.
+8. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
 
 ### General
 

@@ -27,9 +27,9 @@ from tests.functional.selenium_utils import (
     get_selected_url,
     invalidate_csrf_token_on_page,
     open_update_url_title,
-    wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_element_to_be_removed,
     wait_then_click_element,
+    wait_until_css_property,
 )
 from locators import HomePageLocators as HPL
 
@@ -93,10 +93,14 @@ def test_hide_delete_tag_button_after_hover(
     actions.move_to_element(url_title).pause(3).perform()
 
     delete_tag_btn_selector = f"{tag_badge_selector} > {HPL.BUTTON_TAG_DELETE}"
-    wait_for_animation_to_end_check_top_lhs_corner(browser, delete_tag_btn_selector)
-    assert not browser.find_element(
-        By.CSS_SELECTOR, delete_tag_btn_selector
-    ).is_displayed()
+    wait_until_css_property(browser, delete_tag_btn_selector, "opacity", "0")
+    assert (
+        browser.execute_script(
+            "return window.getComputedStyle(arguments[0]).getPropertyValue('opacity');",
+            browser.find_element(By.CSS_SELECTOR, delete_tag_btn_selector),
+        )
+        == "0"
+    )
 
 
 def test_delete_tag(browser: WebDriver, create_test_tags, provide_app: Flask):

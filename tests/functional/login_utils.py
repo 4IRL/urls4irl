@@ -72,6 +72,11 @@ def login_user_with_cookie_from_session(browser: WebDriver, session_id: str):
     # Refresh to redirect user to their home page since they're logged in
     browser.refresh()
 
+    # Wait for Vite CSS injection and initial AJAX calls (e.g., UTub list load)
+    # to complete before returning. This prevents race conditions when CSS is
+    # loaded asynchronously via Vite HMR in dev mode.
+    wait_for_page_complete_and_dom_stable(browser)
+
 
 def login_user_with_session_and_banner_cookie(browser: WebDriver, session_id: str):
     session_cookie = {

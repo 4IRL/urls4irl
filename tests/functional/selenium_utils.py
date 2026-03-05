@@ -238,12 +238,36 @@ def wait_for_element_to_be_removed(
 def wait_until_hidden(
     browser: WebDriver, css_selector: str, timeout: int = 10
 ) -> WebElement:
-    element = browser.find_element(By.CSS_SELECTOR, css_selector)
+    WebDriverWait(browser, timeout).until(
+        EC.invisibility_of_element_located((By.CSS_SELECTOR, css_selector))
+    )
+    return browser.find_element(By.CSS_SELECTOR, css_selector)
 
-    wait = WebDriverWait(browser, timeout)
-    wait.until(lambda _: not element.is_displayed())
 
-    return element
+def wait_until_css_property(
+    browser: WebDriver,
+    css_selector: str,
+    css_property: str,
+    expected_value: str,
+    timeout: int = 10,
+) -> WebElement:
+    """Wait until an element's computed CSS property equals expected_value.
+
+    Use for elements hidden via CSS transitions (opacity, width) rather than
+    display:none, where is_displayed() is unreliable.
+    """
+
+    def check_property(driver: WebDriver) -> bool:
+        element = driver.find_element(By.CSS_SELECTOR, css_selector)
+        value = driver.execute_script(
+            "return window.getComputedStyle(arguments[0]).getPropertyValue(arguments[1]);",
+            element,
+            css_property,
+        )
+        return value == expected_value
+
+    WebDriverWait(browser, timeout).until(check_property)
+    return browser.find_element(By.CSS_SELECTOR, css_selector)
 
 
 def wait_until_all_hidden(browser: WebDriver, css_selector: str, timeout: int = 2):
