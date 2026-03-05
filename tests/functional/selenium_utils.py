@@ -237,11 +237,15 @@ def wait_for_element_to_be_removed(
 
 def wait_until_hidden(
     browser: WebDriver, css_selector: str, timeout: int = 10
-) -> WebElement:
+) -> WebElement | None:
+    try:
+        element = browser.find_element(By.CSS_SELECTOR, css_selector)
+    except NoSuchElementException:
+        return None
     WebDriverWait(browser, timeout).until(
         EC.invisibility_of_element_located((By.CSS_SELECTOR, css_selector))
     )
-    return browser.find_element(By.CSS_SELECTOR, css_selector)
+    return element
 
 
 def wait_until_css_property(
