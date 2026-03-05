@@ -12,15 +12,22 @@ from tests.functional.assert_utils import (
 from tests.functional.db_utils import (
     get_utub_this_user_created,
     get_utub_this_user_did_not_create,
+    get_url_in_utub,
 )
 from tests.functional.locators import HomePageLocators as HPL
-from tests.functional.login_utils import login_user_and_select_utub_by_utubid
+from tests.functional.login_utils import (
+    login_user_and_select_utub_by_utubid,
+    login_user_select_utub_by_id_and_url_by_id,
+)
 from tests.functional.members_ui.selenium_utils import leave_utub_as_member
 from tests.functional.selenium_utils import (
     select_utub_by_id,
     wait_then_click_element,
 )
-from tests.functional.tags_ui.selenium_utils import click_open_update_utub_tags_btn
+from tests.functional.tags_ui.selenium_utils import (
+    add_tag_to_url,
+    click_open_update_utub_tags_btn,
+)
 from tests.functional.utubs_ui.selenium_utils import delete_utub_as_creator
 
 pytestmark = pytest.mark.tags_ui
@@ -257,4 +264,39 @@ def test_update_tag_menu_btn_hidden_on_utub_delete(
     )
     assert_not_visible_css_selector(
         browser, css_selector=HPL.WRAP_BUTTON_UPDATE_TAG_ALL_CLOSE
+    )
+
+
+def test_utub_tag_menu_shown_after_first_url_tag_created(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Tests that the UTub Tag Menu button becomes visible after first URL tag is created.
+
+    GIVEN a user in a UTub with URLs but no tags
+    WHEN the user creates the first URL tag
+    THEN ensure the UTub Tag Menu button becomes visible
+    """
+    app = provide_app
+    user_id_for_test = 1
+    utub = get_utub_this_user_created(app, user_id_for_test)
+    url_in_utub = get_url_in_utub(app, utub.id)
+
+    login_user_select_utub_by_id_and_url_by_id(
+        app, browser, user_id_for_test, utub.id, url_in_utub.id
+    )
+
+    # Precondition: tag menu button not visible (UTub has no tags)
+    assert_not_visible_css_selector(
+        browser, css_selector=HPL.BUTTON_UPDATE_TAG_BTN_ALL_OPEN
+    )
+
+    # Create first URL tag
+    add_tag_to_url(browser, url_in_utub.id, "newtag")
+    btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_TAG_SUBMIT_CREATE}"
+    wait_then_click_element(browser, btn_selector, time=3)
+
+    # Assert tag menu button is now visible
+    assert_visible_css_selector(
+        browser, css_selector=HPL.BUTTON_UPDATE_TAG_BTN_ALL_OPEN
     )

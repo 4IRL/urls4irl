@@ -267,6 +267,7 @@ function createURLTagSuccess(response, urlCard, utubID) {
       ? newTag.addClass("disabled").off(".tagFilterSelected")
       : null;
     $("#listTags").append(newTag);
+    $("#utubTagBtnUpdateAllOpen").showClassNormal();
   } else {
     // Update tag filter in Tag Deck
     updateTagFilterCount(utubTagID, tagCount, TagCountOperation.INCREMENT);

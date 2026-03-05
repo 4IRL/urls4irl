@@ -2,9 +2,10 @@ name: u4i-dev
 
 services:
   web:
+    restart: unless-stopped
     image: ghcr.io/4irl/u4i-dev:latest
     container_name: u4i-dev-flask
-    ports: 
+    ports:
       - "127.0.0.1:8659:5000"
     depends_on:
       db:
@@ -29,10 +30,11 @@ services:
       - app_logs:/app/volume
 
   db:
+    restart: unless-stopped
     image: postgres:16.3-bookworm
     container_name: u4i-dev-postgres
     env_file:
-     - .env
+      - .env
     environment:
       - POSTGRES_DB=${POSTGRES_DB}
       - POSTGRES_USER=${POSTGRES_USER}
@@ -40,23 +42,25 @@ services:
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-        test: ["CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\""]
-        interval: 5s
-        timeout: 5s
-        retries: 5
+      test: [ "CMD-SHELL", "pg_isready -U \"$POSTGRES_USER\" -d \"$POSTGRES_DB\"" ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
 
   redis:
+    restart: unless-stopped
     image: redis:6.2
     container_name: u4i-dev-redis
     volumes:
       - redisdata:/data
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test: [ "CMD", "redis-cli", "ping" ]
       interval: 10s
       timeout: 5s
       retries: 3
 
   workflow:
+    restart: unless-stopped
     container_name: u4i-dev-workflow
     image: ghcr.io/4irl/u4i-workflow:latest
     env_file:
@@ -75,7 +79,7 @@ services:
       - workflow_logs:/app/workflow_logs
       - backups:/backups
     healthcheck:
-      test: ["CMD", "pgrep", "cron"]
+      test: [ "CMD", "pgrep", "cron" ]
       interval: 60s
       timeout: 5s
       retries: 3
@@ -99,4 +103,5 @@ volumes:
   app_logs:
   workflow_logs:
   backups:
+
 
