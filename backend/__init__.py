@@ -55,9 +55,9 @@ def _collect_css_from_manifest(
         if key in visited or key not in manifest:
             return
         visited.add(key)
-        css_files.extend(manifest[key].get("css", []))
         for imported in manifest[key].get("imports", []):
             collect(imported)
+        css_files.extend(manifest[key].get("css", []))
 
     collect(entrypoint)
     return css_files

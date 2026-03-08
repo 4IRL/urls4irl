@@ -1,20 +1,32 @@
 import threading
 from time import sleep
-from typing import Generator, Tuple
+from typing import Generator, Optional, Tuple
 
 from flask import Flask
 from flask.testing import FlaskCliRunner
 import pytest
+from redis import Redis
 from selenium import webdriver
 from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.chrome.options import Options
+from sqlalchemy import create_engine, text
 
 from backend import create_app, db
 from backend.cli.mock_constants import MOCK_TEST_URL_STRINGS
-from backend.config import ConfigTest
+from backend.config import (
+    ConfigTest,
+    ConfigTestUI,
+    IS_DOCKER,
+    POSTGRES_TEST_DB,
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+    TEST_DB_URI,
+    TEST_REDIS_URI,
+)
 from backend.models.email_validations import Email_Validations
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
+from backend.utils.db_uri_builder import build_db_uri
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS
 from tests.functional.db_utils import add_mock_urls
 from tests.functional.selenium_utils import (
@@ -30,6 +42,84 @@ from tests.functional.ui_test_setup import (
     run_app,
 )
 from tests.functional.urls_ui.selenium_utils import ClipboardMockHelper
+
+
+def _get_worker_num(worker_id: str) -> Optional[int]:
+    """Returns None for 'master' (non-parallel), else the integer worker number."""
+    if worker_id == "master":
+        return None
+    return int(worker_id.replace("gw", ""))
+
+
+@pytest.fixture(scope="session")
+def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
+    """Provides a per-worker database URI, creating and dropping a worker-specific DB."""
+    if worker_id == "master":
+        yield TEST_DB_URI
+        return
+
+    assert POSTGRES_TEST_DB, "POSTGRES_TEST_DB must be set for parallel UI tests"
+    worker_db_name = f"{POSTGRES_TEST_DB}_{worker_id}"
+    db_host = "test-db" if IS_DOCKER else "localhost"
+
+    admin_uri = build_db_uri(
+        username=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        database="postgres",
+        database_host=db_host,
+    )
+    worker_uri = build_db_uri(
+        username=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        database=worker_db_name,
+        database_host=db_host,
+    )
+
+    def _drop_worker_db(conn) -> None:
+        conn.execute(
+            text(
+                f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                f"WHERE datname = '{worker_db_name}' AND pid <> pg_backend_pid()"
+            )
+        )
+        conn.execute(text(f'DROP DATABASE IF EXISTS "{worker_db_name}"'))
+
+    engine = create_engine(admin_uri, isolation_level="AUTOCOMMIT")
+    with engine.connect() as conn:
+        _drop_worker_db(conn)
+        conn.execute(text(f'CREATE DATABASE "{worker_db_name}"'))
+    engine.dispose()
+
+    yield worker_uri
+
+    engine = create_engine(admin_uri, isolation_level="AUTOCOMMIT")
+    with engine.connect() as conn:
+        _drop_worker_db(conn)
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def worker_redis_uri(worker_id: str) -> str:
+    """Returns a per-worker Redis URI using a unique DB index."""
+    if not TEST_REDIS_URI or TEST_REDIS_URI == "memory://":
+        return TEST_REDIS_URI
+    if worker_id == "master":
+        return TEST_REDIS_URI
+    db_index = 16 + _get_worker_num(worker_id)
+    base = TEST_REDIS_URI.rsplit("/", 1)[0]
+    return f"{base}/{db_index}"
+
+
+@pytest.fixture(scope="session")
+def worker_config(worker_db_uri: str, worker_redis_uri: str) -> ConfigTestUI:
+    """Returns a ConfigTestUI instance configured for this worker's DB and Redis."""
+    config = ConfigTestUI()
+    config.SQLALCHEMY_DATABASE_URI = worker_db_uri
+    config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
+    if worker_redis_uri and worker_redis_uri != "memory://":
+        config.SESSION_TYPE = "redis"
+        config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
+    return config
 
 
 # CLI commands
@@ -49,13 +139,35 @@ def flask_logs(request):
 
 
 @pytest.fixture(scope="session")
-def provide_config() -> Generator[ConfigTest | None, None, None]:
-    yield ConfigTest()
+def build_app(
+    worker_config: ConfigTestUI,
+    ignore_deprecation_warning,
+) -> Generator[Tuple[Flask, ConfigTestUI], None, None]:
+    app_for_test = create_app(worker_config)  # type: ignore
+    assert app_for_test is not None
+
+    hide_logs_for_app(app_for_test)
+    app_for_test.logger.propagate = True
+
+    with app_for_test.app_context():
+        db.init_app(app_for_test)
+        db.create_all()
+
+    yield app_for_test, worker_config
+
+    with app_for_test.app_context():
+        db.drop_all()
 
 
 @pytest.fixture(scope="session")
-def provide_port(flask_logs: bool) -> int:
-    open_port = find_open_port()
+def provide_config(worker_config: ConfigTestUI) -> Generator[ConfigTestUI, None, None]:
+    yield worker_config
+
+
+@pytest.fixture(scope="session")
+def provide_port(worker_id: str, flask_logs: bool) -> int:
+    start_port = 10000 + (_get_worker_num(worker_id) or 0) * 1000
+    open_port = find_open_port(start_port=start_port)
     if flask_logs:
         print(f"\nFound an open port: {open_port}")
     sleep(2)
@@ -63,7 +175,7 @@ def provide_port(flask_logs: bool) -> int:
 
 
 @pytest.fixture(scope="session")
-def parallelize_app(provide_port, flask_logs):
+def parallelize_app(provide_port, flask_logs, worker_config: ConfigTestUI):
     """
     Starts a parallel process, runs Flask app
     """
@@ -74,6 +186,7 @@ def parallelize_app(provide_port, flask_logs):
         args=(
             open_port,
             flask_logs,
+            worker_config,
         ),
         daemon=True,
     )
@@ -82,9 +195,8 @@ def parallelize_app(provide_port, flask_logs):
 
 
 @pytest.fixture(scope="session")
-def provide_app() -> Generator[Flask | None, None, None]:
-    config = ConfigTest()
-    app = create_app(config)  # type: ignore
+def provide_app(worker_config: ConfigTestUI) -> Generator[Flask, None, None]:
+    app = create_app(worker_config)  # type: ignore
     assert app
     hide_logs_for_app(app)
     yield app

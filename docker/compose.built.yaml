@@ -1,0 +1,17 @@
+name: u4i-local
+
+services:
+  web:
+    environment:
+      - VITE_DEV_SERVER=false
+
+  vite:
+    command: npx vite build
+    restart: "no"
+    healthcheck:
+      disable: true
+
+  selenium:
+    depends_on:
+      vite:
+        condition: service_completed_successfully

@@ -162,7 +162,12 @@ export function hideAndResetCreateURLTagForm(urlCard) {
 
   enableTagRemovalInURLCard(urlCard);
   enableEditingURLTitle(urlCard);
-  enableClickOnSelectedURLCardToHide(urlCard);
+  if (
+    typeof urlCard.attr("urlSelected") === "string" &&
+    urlCard.attr("urlSelected").toLowerCase() === "true"
+  ) {
+    enableClickOnSelectedURLCardToHide(urlCard);
+  }
 }
 
 /**

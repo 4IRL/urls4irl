@@ -39,7 +39,7 @@ def test_collect_css_traverses_imports():
         },
     }
     result = _collect_css_from_manifest(manifest, "frontend/main.js")
-    assert result == ["assets/main-abc.css", "assets/shared-abc.css"]
+    assert result == ["assets/shared-abc.css", "assets/main-abc.css"]
 
 
 def test_collect_css_cycle_guard():

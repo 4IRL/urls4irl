@@ -89,7 +89,8 @@
     transition: font-size 0.2s ease-in-out, height 0.2s ease-in-out, opacity 0.2s ease-in-out;
 }
 
-.urlTags {
+.urlTags,
+.urlOptions {
     overflow: hidden;
 }
 

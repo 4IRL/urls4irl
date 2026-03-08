@@ -35,7 +35,7 @@ def add_first_user_to_second_utub_and_add_tags_remove_first_utub(
         db.session.delete(first_utub)
         db.session.commit()
         second_utub = Utubs.query.get(2)
-        all_tags = Utub_Tags.query.all()
+        all_tags = Utub_Tags.query.order_by(Utub_Tags.id).all()
 
         # Add a single missing users to this UTub
         new_user = Users.query.get(1)
@@ -80,7 +80,7 @@ def add_two_url_and_all_users_to_each_utub_no_tags(
             that user add a URL to their UTub
     """
     with app.app_context():
-        current_utubs = Utubs.query.all()
+        current_utubs = Utubs.query.order_by(Utubs.id).all()
 
         # Add all missing users to this UTub
         for utub in current_utubs:
@@ -124,8 +124,8 @@ def add_one_url_and_all_users_to_each_utub_with_all_tags(
             that user add a URL to their UTub
     """
     with app.app_context():
-        current_utubs = Utubs.query.all()
-        current_tags = Utub_Tags.query.all()
+        current_utubs = Utubs.query.order_by(Utubs.id).all()
+        current_tags = Utub_Tags.query.order_by(Utub_Tags.id).all()
 
         # Add all missing tags to this UTub
         for utub in current_utubs:

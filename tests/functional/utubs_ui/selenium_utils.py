@@ -182,11 +182,12 @@ def open_utub_search_box(browser: WebDriver):
 def delete_utub_as_creator(browser: WebDriver, utub_to_delete: Utubs):
     wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
 
+    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_to_delete.id}"]'
+    utub_selector = wait_then_get_element(browser, css_selector, time=3)
+
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
 
     # Wait for DELETE request
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
-    css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_to_delete.id}"]'
-    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
 
     wait_for_element_to_be_removed(browser, utub_selector, timeout=10)

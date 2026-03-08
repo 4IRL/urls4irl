@@ -37,3 +37,7 @@
 #MembersHeader {
     margin-top: 0.75rem;
 }
+
+#MemberDeck .button-container {
+    align-items: center;
+}

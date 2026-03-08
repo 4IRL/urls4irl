@@ -62,6 +62,8 @@ Evaluate across these dimensions. Be specific — cite step numbers and file nam
 In the project directory - 
 `reviews/<plan-name>-review.md` — create `reviews/` if it doesn't exist.
 
+NOTE: This `reviews/` MUST be in the project directory, NOT in the same `plans/` folder as the plan being reviewed.
+
 One file per plan. If a review file already exists, **append** a new dated review section; do not overwrite previous reviews.
 
 #### Review file structure

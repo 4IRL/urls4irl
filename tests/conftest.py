@@ -11,6 +11,8 @@ import warnings
 
 import redis
 from redis.client import Redis
+from sqlalchemy import event, inspect as sa_inspect, text
+from sqlalchemy.orm import scoped_session, sessionmaker
 
 from backend import create_app, db
 from backend.config import ConfigTest
@@ -159,20 +161,95 @@ def build_app(
 
 
 @pytest.fixture
-def app(build_app: Tuple[Flask, ConfigTest], caplog) -> Generator[Flask, None, None]:
-    caplog.set_level("INFO", logger=CONFIG_ENVS.U4I_LOGGER)
-    app, testing_config = build_app
-    yield app
-    clear_database(testing_config)
+def db_transaction(build_app: Tuple[Flask, ConfigTest]) -> Generator[Flask, None, None]:
+    """
+    Wraps each test in an outer transaction + SAVEPOINT.
 
-    if isinstance(app.session_interface, RedisSessionInterface):
-        app.session_interface.client.flushdb()
+    session.commit() inside routes/services commits to the SAVEPOINT only.
+    The after_transaction_end listener restarts the SAVEPOINT after each commit
+    so subsequent commits within the same test also stay within the transaction.
+    The outer transaction is rolled back after the test — no DDL needed.
+
+    Note: The double-commit pattern in backend/tags/services/create_url_tag.py
+    (_get_or_create_utub_tag commits the Utub_Tags row, then add_tag_to_url_if_valid
+    commits the association) is safe here because both commits land in the SAVEPOINT
+    and are rolled back together. Tests assert only on response JSON and row counts.
+    """
+    app, testing_config = build_app
+    with app.app_context():
+        connection = db.engine.connect()
+        trans = connection.begin()
+
+        session = scoped_session(sessionmaker(bind=connection))
+        old_session = db.session
+        db.session = session
+
+        # Flask-SQLAlchemy registers a teardown_appcontext handler that calls
+        # db.session.remove() on every app context pop, including nested ones
+        # created by `with app.app_context():` in fixtures and tests. Replacing
+        # remove() with a no-op prevents the session from being destroyed (and
+        # all loaded objects detached) between inner context blocks within the
+        # same test. The real removal happens explicitly below in teardown.
+        original_remove = session.remove
+        session.remove = lambda: None  # type: ignore[method-assign]
+
+        session.begin_nested()
+
+        @event.listens_for(session, "after_transaction_end")
+        def restart_savepoint(sess: object, transaction: object) -> None:
+            if transaction.nested and not transaction._parent.nested:
+                # expire_on_commit=True only fires on outermost commits, not on
+                # SAVEPOINT releases. We must manually expire all objects so the
+                # session re-fetches fresh state from the DB on next access.
+                # Additionally, objects deleted within the SAVEPOINT are not
+                # automatically expunged from the identity map (unlike full
+                # commits). Expunge them explicitly so lazy loads do not return
+                # stale cached references to deleted rows.
+                for instance in list(sess.identity_map.values()):
+                    if sa_inspect(instance).was_deleted:
+                        sess.expunge(instance)
+                sess.expire_all()
+                sess.begin_nested()
+
+        yield app
+
+        session.remove = original_remove
+        session.remove()
+        db.session = old_session
+        trans.rollback()
+        connection.close()
+
+        # Reset all PostgreSQL sequences so each test starts with IDs from 1,
+        # matching the behavior of the old clear_database() approach which
+        # dropped and recreated all tables (which resets sequences).
+        with db.engine.begin() as reset_conn:
+            sequences = reset_conn.execute(
+                text(
+                    "SELECT sequence_name FROM information_schema.sequences"
+                    " WHERE sequence_schema = 'public'"
+                )
+            ).fetchall()
+            for (seq_name,) in sequences:
+                reset_conn.execute(text(f'ALTER SEQUENCE "{seq_name}" RESTART WITH 1'))
 
 
 @pytest.fixture
-def runner(app) -> Generator[Tuple[Flask, FlaskCliRunner], None, None]:
-    flask_app: Flask = app
-    yield flask_app, flask_app.test_cli_runner()
+def app(db_transaction: Flask, caplog) -> Generator[Flask, None, None]:
+    caplog.set_level("INFO", logger=CONFIG_ENVS.U4I_LOGGER)
+    yield db_transaction
+    if isinstance(db_transaction.session_interface, RedisSessionInterface):
+        db_transaction.session_interface.client.flushdb()
+
+
+@pytest.fixture
+def runner(
+    build_app: Tuple[Flask, ConfigTest],
+) -> Generator[Tuple[Flask, FlaskCliRunner], None, None]:
+    app, testing_config = build_app
+    yield app, app.test_cli_runner()
+    clear_database(testing_config)
+    if isinstance(app.session_interface, RedisSessionInterface):
+        app.session_interface.client.flushdb()
 
 
 @pytest.fixture
@@ -530,7 +607,7 @@ def every_user_makes_a_unique_utub(app: Flask, register_multiple_users):
     """
     with app.app_context():
         # Get all other users who aren't logged in
-        other_users = Users.query.all()
+        other_users = Users.query.order_by(Users.id).all()
         for utub_data, other_user in zip(all_empty_utubs, other_users):
             new_utub = Utubs(
                 name=utub_data[model_strs.NAME],
@@ -558,8 +635,8 @@ def every_user_in_every_utub(app: Flask, every_user_makes_a_unique_utub):
     """
     with app.app_context():
         # Ensure each UTub has only one member
-        current_utubs: list[Utubs] = Utubs.query.all()
-        current_users = Users.query.all()
+        current_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
+        current_users = Users.query.order_by(Users.id).all()
 
         for utub in current_utubs:
             current_utub_members = [user.to_user for user in utub.members]
@@ -600,7 +677,7 @@ def add_urls_to_database(app: Flask, every_user_makes_a_unique_utub):
 @pytest.fixture
 def add_tags_to_utubs(app: Flask, every_user_makes_a_unique_utub):
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
         for utub in all_utubs:
             for idx, tag in enumerate(all_tags):
                 new_tag = Utub_Tags(
@@ -615,7 +692,7 @@ def add_tags_to_utubs(app: Flask, every_user_makes_a_unique_utub):
 @pytest.fixture
 def add_max_tags_to_utubs(app: Flask, every_user_makes_a_unique_utub):
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
         for utub in all_utubs:
             for tag in maximum_tags:
                 new_tag = Utub_Tags(
@@ -640,9 +717,9 @@ def add_one_url_to_each_utub_no_tags(app: Flask, add_urls_to_database):
         add_urls_to_database (pytest fixture): Adds all the test URLs to the database
     """
     with app.app_context():
-        all_urls: list[Urls] = Urls.query.all()
-        all_utubs: list[Utubs] = Utubs.query.all()
-        all_users: list[Users] = Users.query.all()
+        all_urls: list[Urls] = Urls.query.order_by(Urls.id).all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
+        all_users: list[Users] = Users.query.order_by(Users.id).all()
 
         for user, url, utub in zip(all_users, all_urls, all_utubs):
             new_utub_url_user_association = Utub_Urls()
@@ -730,7 +807,7 @@ def add_two_users_and_all_urls_to_each_utub_with_one_tag(
     """
     with app.app_context():
         one_tag: Utub_Tags = Utub_Tags.query.first()
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
 
         for utub in all_utubs:
             urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in utub.utub_urls]
@@ -769,8 +846,8 @@ def add_two_users_and_all_urls_to_each_utub_with_tags(
         add_tags_to_all_utubs (pytest.fixture): Adds all tags to the database for easy adding to URLs
     """
     with app.app_context():
-        all_tags: list[Utub_Tags] = Utub_Tags.query.all()
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_tags: list[Utub_Tags] = Utub_Tags.query.order_by(Utub_Tags.id).all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
 
         for utub in all_utubs:
             urls_in_utub: list[Utub_Urls] = [utub_url for utub_url in utub.utub_urls]
@@ -807,8 +884,8 @@ def add_one_url_and_all_users_to_each_utub_no_tags(
             that user add a URL to their UTub
     """
     with app.app_context():
-        current_utubs: list[Utubs] = Utubs.query.all()
-        current_users: list[Users] = Users.query.all()
+        current_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
+        current_users: list[Users] = Users.query.order_by(Users.id).all()
 
         # Add all missing users to this UTub
         for utub in current_utubs:
@@ -840,8 +917,8 @@ def add_all_urls_and_users_to_each_utub_no_tags(
             a single URL added by the creator
     """
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
-        all_urls: list[Urls] = Urls.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
+        all_urls: list[Urls] = Urls.query.order_by(Urls.id).all()
 
         for utub, url in zip(all_utubs, all_urls):
             for other_url in all_urls:
@@ -871,7 +948,7 @@ def add_all_urls_and_users_to_each_utub_with_one_tag(
         add_all_urls_and_users_to_each_utub_no_tags (pytest fixture): Adds all remaining URLs to each UTUb
     """
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
 
         for utub in all_utubs:
             for url in utub.utub_urls:
@@ -905,8 +982,8 @@ def add_all_urls_and_users_to_each_utub_with_all_tags(
             in each UTub
     """
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
-        all_tags: list[Utub_Tags] = Utub_Tags.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
+        all_tags: list[Utub_Tags] = Utub_Tags.query.order_by(Utub_Tags.id).all()
 
         for utub in all_utubs:
             for single_url_in_utub in utub.utub_urls:

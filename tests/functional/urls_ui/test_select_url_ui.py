@@ -17,6 +17,7 @@ from tests.functional.selenium_utils import (
     get_all_url_ids_in_selected_utub,
     get_selected_url,
     get_selected_utub_id,
+    open_update_url_title,
     wait_for_animation_to_end_check_top_lhs_corner,
     wait_for_web_element_and_click,
     wait_then_get_element,
@@ -267,3 +268,67 @@ def test_select_urls_using_up_key(
             == next_url_string
         )
         assert_keyed_url_is_selected(browser, url_rows[idx])
+
+
+def test_only_one_url_selected_after_form_open_and_close(
+    browser: WebDriver, create_test_urls, provide_app: Flask
+):
+    """
+    Regression test for JS event handler accumulation bug.
+
+    GIVEN a UTub with multiple URLs
+    WHEN URL A is selected, then URL B is selected and its title edit form is opened and
+        cancelled (triggering hideAndResetUpdateURLTitleForm with URL B unselected),
+        then URL A is clicked again
+    THEN only URL A should have urlselected="true"
+    """
+
+    app = provide_app
+    user_id_for_test = 1
+
+    login_user_and_select_utub_by_name(
+        app, browser, user_id_for_test, UTS.TEST_UTUB_NAME_1
+    )
+
+    url_utub_ids = get_all_url_ids_in_selected_utub(browser)
+    assert len(url_utub_ids) >= 2
+
+    sel_a = f"{HPL.ROWS_URLS}[utuburlid='{url_utub_ids[0]}']"
+    sel_b = f"{HPL.ROWS_URLS}[utuburlid='{url_utub_ids[1]}']"
+
+    # Click URL A
+    url_row_a = browser.find_element(By.CSS_SELECTOR, sel_a)
+    wait_for_web_element_and_click(browser, url_row_a)
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
+
+    # Click URL B
+    url_row_b = browser.find_element(By.CSS_SELECTOR, sel_b)
+    wait_for_web_element_and_click(browser, url_row_b)
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
+
+    # Open URL title edit form on URL B, then cancel it
+    # This calls hideAndResetUpdateURLTitleForm with URL B unselected (after it loses
+    # selection), accumulating stale click.deselectURL handlers on URL B
+    url_row_b = browser.find_element(By.CSS_SELECTOR, sel_b)
+    open_update_url_title(browser, url_row_b)
+
+    cancel_btn_selector = f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_TITLE_CANCEL_UPDATE}"
+    cancel_btn = wait_then_get_element(browser, cancel_btn_selector)
+    assert cancel_btn is not None
+    cancel_btn.click()
+
+    # Click URL A again — this is the click that triggered the bug
+    url_row_a = browser.find_element(By.CSS_SELECTOR, sel_a)
+    wait_for_web_element_and_click(browser, url_row_a)
+    wait_for_animation_to_end_check_top_lhs_corner(
+        browser, f"{HPL.ROW_SELECTED_URL} {HPL.BUTTON_URL_ACCESS}"
+    )
+
+    # Only URL A should be selected
+    selected_rows = browser.find_elements(By.CSS_SELECTOR, HPL.ROW_SELECTED_URL)
+    assert len(selected_rows) == 1
+    assert selected_rows[0].get_attribute("utuburlid") == str(url_utub_ids[0])
