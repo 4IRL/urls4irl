@@ -2,24 +2,28 @@ import logging
 import requests
 import socket
 from time import sleep
-from typing import Tuple
+from typing import Optional, Tuple
 
 from flask import Flask
 from flask.testing import FlaskCliRunner
 
-from backend import create_app
+from backend import create_app, db
 from backend.config import ConfigTestUI
 
 
-def run_app(port: int, show_flask_logs: bool):
+def run_app(port: int, show_flask_logs: bool, config: Optional[ConfigTestUI] = None):
     """
     Runs app
     """
-    config = ConfigTestUI()
+    if config is None:
+        config = ConfigTestUI()
     app_for_test = create_app(config, show_test_logs=show_flask_logs)  # type: ignore
     assert app_for_test is not None
     if not show_flask_logs:
         hide_logs_for_app(app_for_test)
+
+    with app_for_test.app_context():
+        db.create_all()
 
     host = "0.0.0.0" if config.DOCKER else "127.0.0.1"
     app_for_test.run(

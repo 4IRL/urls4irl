@@ -251,11 +251,12 @@ def test_back_and_forward_history_with_leaving_one_utub(
     warning_modal_body = wait_then_get_element(browser, HPL.BODY_MODAL)
     assert warning_modal_body is not None
 
+    utub_css_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id_to_delete}']"
+    utub_selector = browser.find_element(By.CSS_SELECTOR, utub_css_selector)
+
     # Wait for DELETE request
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
-    utub_css_selector = f"{HPL.SELECTORS_UTUB}[utubid='{utub_id_to_delete}']"
-    utub_selector = browser.find_element(By.CSS_SELECTOR, utub_css_selector)
     wait_for_element_to_be_removed(browser, utub_selector)
 
     # Assert UTub selector no longer exists

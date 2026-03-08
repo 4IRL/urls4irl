@@ -38,7 +38,12 @@ export function hideAndResetUpdateURLTitleForm(urlCard) {
   urlCard.find(".tagBadge").addClass("tagBadgeHoverable");
 
   resetUpdateURLTitleFailErrors(urlCard);
-  enableClickOnSelectedURLCardToHide(urlCard);
+  if (
+    typeof urlCard.attr("urlSelected") === "string" &&
+    urlCard.attr("urlSelected").toLowerCase() === "true"
+  ) {
+    enableClickOnSelectedURLCardToHide(urlCard);
+  }
 }
 
 // Prepares post request inputs for update of a URL

@@ -16,12 +16,12 @@ export function showNewPageOnAJAXHTMLResponse(htmlText) {
     document.write(htmlText);
     document.close();
 
-    // Hide body initially
+    // Hide body initially, then fade in on next frame
+    // (window.load fires before a listener can be added for simple HTML)
     document.body.style.opacity = "0";
-
-    // Wait for everything to load
-    window.addEventListener("load", function () {
-      $("body").css("opacity", "1").hide().fadeIn(150);
+    requestAnimationFrame(function () {
+      document.body.style.transition = "opacity 0.15s";
+      document.body.style.opacity = "1";
     });
   });
 }

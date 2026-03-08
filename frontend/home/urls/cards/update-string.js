@@ -122,7 +122,12 @@ export function hideAndResetUpdateURLStringForm(urlCard) {
 
   resetUpdateURLFailErrors(urlCard);
   enableTagRemovalInURLCard(urlCard);
-  enableClickOnSelectedURLCardToHide(urlCard);
+  if (
+    typeof urlCard.attr("urlSelected") === "string" &&
+    urlCard.attr("urlSelected").toLowerCase() === "true"
+  ) {
+    enableClickOnSelectedURLCardToHide(urlCard);
+  }
 }
 
 // Prepares post request inputs for update of a URL

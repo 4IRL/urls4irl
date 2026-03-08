@@ -185,14 +185,11 @@ def test_dismiss_delete_member_modal_key(
     other_member = get_other_member_in_utub(app, utub_user_created.id, user_id)
 
     member_name = other_member.username
-    delete_member_active_utub(browser, other_member.username)
-
     delete_member_active_utub(browser, member_name)
 
-    home_modal = wait_then_get_element(browser, HPL.HOME_MODAL)
-    assert home_modal is not None
+    wait_until_visible_css_selector(browser, HPL.HOME_MODAL, timeout=3)
 
-    home_modal.send_keys(Keys.ESCAPE)
+    browser.find_element(By.CSS_SELECTOR, HPL.HOME_MODAL).send_keys(Keys.ESCAPE)
 
     create_member_input = wait_until_hidden(browser, HPL.HOME_MODAL)
 

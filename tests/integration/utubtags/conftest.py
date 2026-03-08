@@ -25,7 +25,7 @@ def add_one_url_to_each_utub_one_tag_to_each_url_all_tags_in_utub(
         add_tags_to_all_utubs (pytest fixture): Adds all test tags to each UTub
     """
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
         tag = all_tags[0]
 
         for utub in all_utubs:
@@ -74,7 +74,7 @@ def add_one_tag_to_each_utub_after_all_users_added(
 
 def _add_one_tag_to_each_utub(app: Flask):
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
 
         for idx, utub in enumerate(all_utubs):
             tag = all_tags[idx]

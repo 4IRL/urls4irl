@@ -1,9 +1,11 @@
 COMPOSE = docker compose --project-directory . -f docker/compose.local.yaml
+COMPOSE_BUILT = docker compose --project-directory . -f docker/compose.local.yaml -f docker/compose.built.yaml
 EXEC_WEB = $(COMPOSE) exec web bash -c
+EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 
-.PHONY: up down build restart test-integration test-functional test-js test-marker vite-build help
+.PHONY: up down build restart test-integration test-functional test-ui-parallel test-js test-marker vite-build prune help up-built test-functional-built test-ui-parallel-built test-marker-built
 
 .DEFAULT_GOAL := help
 
@@ -12,6 +14,9 @@ help: ## Show this help message
 
 up: ## Build and start the full stack
 	$(COMPOSE) up --build --remove-orphans
+
+up-built: ## Build and start the full stack using pre-built Vite assets
+	$(COMPOSE_BUILT) up --build --remove-orphans
 
 down: ## Stop the stack
 	$(COMPOSE) down
@@ -28,14 +33,29 @@ test-integration: ## Run all integration (non-UI) tests
 test-functional: ## Run all functional (UI/Selenium) tests
 	$(EXEC_WEB) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -v"
 
+test-functional-built: ## Run all functional (UI/Selenium) tests against built assets
+	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -v"
+
+test-ui-parallel: ## Run UI tests in parallel: make test-ui-parallel [n=12] (default 12; reduce if Docker VM is memory-constrained)
+	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -n $(or $(n),12) --dist=loadscope"
+
+test-ui-parallel-built: ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=12]
+	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -n $(or $(n),12) --dist=loadscope"
+
 test-js: ## Run all JS unit tests (vitest)
 	$(EXEC_VITE) npm test
 
 test-marker: ## Run tests for a specific marker: make test-marker m=<marker>
 	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -v"
 
+test-marker-built: ## Run tests for a specific marker against built assets: make test-marker-built m=<marker>
+	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -v"
+
 test-last-failed: ## Run tests for a specific marker: make test-marker m=<marker>
 	$(EXEC_WEB) "$(PYTEST) tests/ -v --lf"
 
 vite-build: ## Build Vite to verify no import/syntax errors
 	$(EXEC_VITE) npx vite build
+
+prune: ## Prune Docker build cache to free disk space
+	docker builder prune -f

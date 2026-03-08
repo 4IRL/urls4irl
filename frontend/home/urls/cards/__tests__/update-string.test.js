@@ -1,5 +1,9 @@
 import { ajaxCall } from "../../../../lib/ajax.js";
-import { updateURL } from "../update-string.js";
+import {
+  updateURL,
+  hideAndResetUpdateURLStringForm,
+} from "../update-string.js";
+import { enableClickOnSelectedURLCardToHide } from "../selection.js";
 
 vi.mock("../../../../lib/ajax.js", () => ({
   ajaxCall: vi.fn(),
@@ -65,6 +69,40 @@ const URL_CARD_HTML = `
     <div class="urlCardDualLoadingRing"></div>
   </div>
 `;
+
+const HIDE_RESET_URL_CARD_HTML = `
+  <div class="urlRow" utuburlid="1" urlSelected="false">
+    <div class="updateUrlStringWrap hidden"></div>
+    <a class="urlString" href="https://ex.com">https://ex.com</a>
+    <input class="urlStringUpdate" value="https://ex.com" />
+  </div>
+`;
+
+describe("hideAndResetUpdateURLStringForm - selection guard", () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+  });
+
+  it("does NOT call enableClickOnSelectedURLCardToHide when card is NOT selected", () => {
+    document.body.innerHTML = HIDE_RESET_URL_CARD_HTML;
+    const urlCard = $(".urlRow");
+    urlCard.attr("urlSelected", "false");
+
+    hideAndResetUpdateURLStringForm(urlCard);
+
+    expect(enableClickOnSelectedURLCardToHide).not.toHaveBeenCalled();
+  });
+
+  it("DOES call enableClickOnSelectedURLCardToHide when card IS selected", () => {
+    document.body.innerHTML = HIDE_RESET_URL_CARD_HTML;
+    const urlCard = $(".urlRow");
+    urlCard.attr("urlSelected", "true");
+
+    hideAndResetUpdateURLStringForm(urlCard);
+
+    expect(enableClickOnSelectedURLCardToHide).toHaveBeenCalledWith(urlCard);
+  });
+});
 
 describe("updateURL - client-side validation", () => {
   let urlCard, urlStringInput;

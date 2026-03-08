@@ -195,16 +195,15 @@ def test_utub_search_resets_on_delete_utub(
         assert_not_visible_css_selector(browser, utub_selector, time=3)
 
     css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{first_id}"]'
-    assert browser.find_element(By.CSS_SELECTOR, css_selector)
+    utub_elem = browser.find_element(By.CSS_SELECTOR, css_selector)
     wait_then_click_element(browser, HPL.BUTTON_UTUB_DELETE, time=3)
 
     wait_then_click_element(browser, HPL.BUTTON_MODAL_SUBMIT, time=3)
 
     # Wait for DELETE request
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
-    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
 
-    wait_for_element_to_be_removed(browser, utub_selector, timeout=10)
+    wait_for_element_to_be_removed(browser, utub_elem, timeout=10)
 
     for utub_id in utub_names_and_ids.values():
         if utub_id == first_id:

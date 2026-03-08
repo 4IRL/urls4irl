@@ -87,9 +87,9 @@ services:
         condition: service_started
     environment:
       - START_XVFB=false
-      - SE_NODE_MAX_SESSIONS=5
-      - JAVA_OPTS=-XX:ActiveProcessorCount=5
-      - SE_NODE_OVERRIDE_MAX_SESSIONS=5
+      - SE_NODE_MAX_SESSIONS=12
+      - JAVA_OPTS=-XX:ActiveProcessorCount=12
+      - SE_NODE_OVERRIDE_MAX_SESSIONS=12
     ports:
       - "4444:4444"
     volumes:
@@ -141,6 +141,7 @@ services:
   test-db:
     image: postgres:16.3-bookworm
     container_name: u4i-local-postgres-test
+    command: postgres -c max_connections=500
     env_file:
       - .env
     environment:
@@ -156,6 +157,7 @@ services:
   redis:
     image: redis:6.2
     container_name: u4i-local-redis
+    command: redis-server --databases 32
     volumes:
       - redisdata:/data
     healthcheck:
