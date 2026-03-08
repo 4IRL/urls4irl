@@ -84,11 +84,20 @@ def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
         )
         conn.execute(text(f'DROP DATABASE IF EXISTS "{worker_db_name}"'))
 
+    print(
+        f"\n[DEBUG] {worker_id}: connecting to admin DB to create {worker_db_name}",
+        flush=True,
+    )
     engine = create_engine(admin_uri, isolation_level="AUTOCOMMIT")
     with engine.connect() as conn:
+        print(
+            f"\n[DEBUG] {worker_id}: connected, dropping old DB if exists", flush=True
+        )
         _drop_worker_db(conn)
+        print(f"\n[DEBUG] {worker_id}: creating {worker_db_name}", flush=True)
         conn.execute(text(f'CREATE DATABASE "{worker_db_name}"'))
     engine.dispose()
+    print(f"\n[DEBUG] {worker_id}: {worker_db_name} created, yielding URI", flush=True)
 
     yield worker_uri
 
@@ -113,12 +122,17 @@ def worker_redis_uri(worker_id: str) -> str:
 @pytest.fixture(scope="session")
 def worker_config(worker_db_uri: str, worker_redis_uri: str) -> ConfigTestUI:
     """Returns a ConfigTestUI instance configured for this worker's DB and Redis."""
+    print(
+        f"\n[DEBUG] worker_config: building config (db={worker_db_uri}, redis={worker_redis_uri})",
+        flush=True,
+    )
     config = ConfigTestUI()
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
     if worker_redis_uri and worker_redis_uri != "memory://":
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
+    print("\n[DEBUG] worker_config: done", flush=True)
     return config
 
 
@@ -143,15 +157,18 @@ def build_app(
     worker_config: ConfigTestUI,
     ignore_deprecation_warning,
 ) -> Generator[Tuple[Flask, ConfigTestUI], None, None]:
+    print("\n[DEBUG] build_app: creating Flask app", flush=True)
     app_for_test = create_app(worker_config)  # type: ignore
     assert app_for_test is not None
 
     hide_logs_for_app(app_for_test)
     app_for_test.logger.propagate = True
 
+    print("\n[DEBUG] build_app: running db.create_all()", flush=True)
     with app_for_test.app_context():
         db.init_app(app_for_test)
         db.create_all()
+    print("\n[DEBUG] build_app: db.create_all() done, yielding", flush=True)
 
     yield app_for_test, worker_config
 
@@ -180,6 +197,10 @@ def parallelize_app(provide_port, flask_logs, worker_config: ConfigTestUI):
     Starts a parallel process, runs Flask app
     """
     open_port = provide_port
+    print(
+        f"\n[DEBUG] parallelize_app: starting Flask thread on port {open_port}",
+        flush=True,
+    )
 
     thread = threading.Thread(
         target=run_app,
@@ -192,6 +213,10 @@ def parallelize_app(provide_port, flask_logs, worker_config: ConfigTestUI):
     )
     thread.start()
     sleep(5)
+    print(
+        f"\n[DEBUG] parallelize_app: sleep done, Flask thread alive={thread.is_alive()}",
+        flush=True,
+    )
 
 
 @pytest.fixture(scope="session")
@@ -222,17 +247,21 @@ def build_driver(
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
 
+        print("\n[DEBUG] build_driver: starting ChromeRemoteWebDriver", flush=True)
         driver = ChromeRemoteWebDriver(
             command_executor=config.TEST_SELENIUM_URI, options=options
         )
         url = UI_TEST_STRINGS.DOCKER_BASE_URL
     else:
+        print("\n[DEBUG] build_driver: starting local webdriver.Chrome()", flush=True)
         driver = webdriver.Chrome(options=options)
         url = UI_TEST_STRINGS.BASE_URL
 
+    print(f"\n[DEBUG] build_driver: driver ready, pinging {url}{open_port}", flush=True)
     driver.set_window_size(width=1920, height=1080)
 
     ping_server(url + str(open_port))
+    print("\n[DEBUG] build_driver: ping done, yielding driver", flush=True)
 
     yield driver
 
