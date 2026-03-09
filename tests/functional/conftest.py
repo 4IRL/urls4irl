@@ -118,8 +118,9 @@ def worker_redis_uri(worker_id: str) -> str:
         return TEST_REDIS_URI
     if worker_id == "master":
         return TEST_REDIS_URI
-    db_index = 16 + _get_worker_num(worker_id)
-    base = TEST_REDIS_URI.rsplit("/", 1)[0]
+    base, db_str = TEST_REDIS_URI.rsplit("/", 1)
+    base_db = int(db_str) if db_str.isdigit() else 0
+    db_index = base_db + 1 + _get_worker_num(worker_id)
     return f"{base}/{db_index}"
 
 
