@@ -1,5 +1,4 @@
 import logging
-import sys
 import requests
 import socket
 from time import sleep
@@ -96,10 +95,6 @@ def ping_server(url: str, timeout: float = 2) -> bool:
             sleep(timeout)
             total_time += timeout
         else:
-            sys.stderr.write(
-                f"\n[DEBUG] ping_server: got status {status_code} from {url}\n"
-            )
-            sys.stderr.flush()
             if status_code == 200:
                 is_server_ready = True
             else:

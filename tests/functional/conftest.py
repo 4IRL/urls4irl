@@ -1,4 +1,3 @@
-import sys
 import threading
 from time import sleep
 from typing import Generator, Optional, Tuple
@@ -44,6 +43,9 @@ from tests.functional.ui_test_setup import (
 )
 from tests.functional.urls_ui.selenium_utils import ClipboardMockHelper
 
+# Redis ships with 16 databases (indices 0-15) by default per the default redis.conf
+REDIS_DEFAULT_MAX_DATABASES = 16
+
 
 def _get_worker_num(worker_id: str) -> Optional[int]:
     """Returns None for 'master' (non-parallel), else the integer worker number."""
@@ -85,23 +87,11 @@ def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
         )
         conn.execute(text(f'DROP DATABASE IF EXISTS "{worker_db_name}"'))
 
-    sys.stderr.write(
-        f"\n[DEBUG] {worker_id}: connecting to admin DB to create {worker_db_name}\n"
-    )
-    sys.stderr.flush()
     engine = create_engine(admin_uri, isolation_level="AUTOCOMMIT")
     with engine.connect() as conn:
-        sys.stderr.write(
-            f"\n[DEBUG] {worker_id}: connected, dropping old DB if exists\n"
-        )
-        sys.stderr.flush()
         _drop_worker_db(conn)
-        sys.stderr.write(f"\n[DEBUG] {worker_id}: creating {worker_db_name}\n")
-        sys.stderr.flush()
         conn.execute(text(f'CREATE DATABASE "{worker_db_name}"'))
     engine.dispose()
-    sys.stderr.write(f"\n[DEBUG] {worker_id}: {worker_db_name} created, yielding URI\n")
-    sys.stderr.flush()
 
     yield worker_uri
 
@@ -121,24 +111,35 @@ def worker_redis_uri(worker_id: str) -> str:
     base, db_str = TEST_REDIS_URI.rsplit("/", 1)
     base_db = int(db_str) if db_str.isdigit() else 0
     db_index = base_db + 1 + _get_worker_num(worker_id)
+
+    probe = Redis.from_url(f"{base}/0")
+    try:
+        max_dbs = int(
+            probe.config_get("databases").get("databases", REDIS_DEFAULT_MAX_DATABASES)
+        )
+    finally:
+        probe.close()
+
+    if db_index >= max_dbs:
+        raise ValueError(
+            f"Redis DB index {db_index} is out of range for worker '{worker_id}'. "
+            f"Redis only has {max_dbs} databases (0-{max_dbs - 1}). "
+            f"TEST_REDIS_URI base DB is {base_db}. "
+            f"Either increase Redis 'databases' config or lower the base DB index."
+        )
+
     return f"{base}/{db_index}"
 
 
 @pytest.fixture(scope="session")
 def worker_config(worker_db_uri: str, worker_redis_uri: str) -> ConfigTestUI:
     """Returns a ConfigTestUI instance configured for this worker's DB and Redis."""
-    sys.stderr.write(
-        f"\n[DEBUG] worker_config: building config (db={worker_db_uri}, redis={worker_redis_uri})\n"
-    )
-    sys.stderr.flush()
     config = ConfigTestUI()
     config.SQLALCHEMY_DATABASE_URI = worker_db_uri
     config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
     if worker_redis_uri and worker_redis_uri != "memory://":
         config.SESSION_TYPE = "redis"
         config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
-    sys.stderr.write("\n[DEBUG] worker_config: done\n")
-    sys.stderr.flush()
     return config
 
 
@@ -163,21 +164,15 @@ def build_app(
     worker_config: ConfigTestUI,
     ignore_deprecation_warning,
 ) -> Generator[Tuple[Flask, ConfigTestUI], None, None]:
-    sys.stderr.write("\n[DEBUG] build_app: creating Flask app\n")
-    sys.stderr.flush()
     app_for_test = create_app(worker_config)  # type: ignore
     assert app_for_test is not None
 
     hide_logs_for_app(app_for_test)
     app_for_test.logger.propagate = True
 
-    sys.stderr.write("\n[DEBUG] build_app: running db.create_all()\n")
-    sys.stderr.flush()
     with app_for_test.app_context():
         db.init_app(app_for_test)
         db.create_all()
-    sys.stderr.write("\n[DEBUG] build_app: db.create_all() done, yielding\n")
-    sys.stderr.flush()
 
     yield app_for_test, worker_config
 
@@ -206,11 +201,6 @@ def parallelize_app(provide_port, flask_logs, worker_config: ConfigTestUI):
     Starts a parallel process, runs Flask app
     """
     open_port = provide_port
-    sys.stderr.write(
-        f"\n[DEBUG] parallelize_app: starting Flask thread on port {open_port}\n"
-    )
-    sys.stderr.flush()
-
     thread = threading.Thread(
         target=run_app,
         args=(
@@ -222,10 +212,6 @@ def parallelize_app(provide_port, flask_logs, worker_config: ConfigTestUI):
     )
     thread.start()
     sleep(5)
-    sys.stderr.write(
-        f"\n[DEBUG] parallelize_app: sleep done, Flask thread alive={thread.is_alive()}\n"
-    )
-    sys.stderr.flush()
 
 
 @pytest.fixture(scope="session")
@@ -256,27 +242,17 @@ def build_driver(
         options.add_argument("--disable-dev-shm-usage")
         options.add_argument("--disable-gpu")
 
-        sys.stderr.write("\n[DEBUG] build_driver: starting ChromeRemoteWebDriver\n")
-        sys.stderr.flush()
         driver = ChromeRemoteWebDriver(
             command_executor=config.TEST_SELENIUM_URI, options=options
         )
         url = UI_TEST_STRINGS.DOCKER_BASE_URL
     else:
-        sys.stderr.write("\n[DEBUG] build_driver: starting local webdriver.Chrome()\n")
-        sys.stderr.flush()
         driver = webdriver.Chrome(options=options)
         url = UI_TEST_STRINGS.BASE_URL
 
-    sys.stderr.write(
-        f"\n[DEBUG] build_driver: driver ready, pinging {url}{open_port}\n"
-    )
-    sys.stderr.flush()
     driver.set_window_size(width=1920, height=1080)
 
     ping_server(url + str(open_port))
-    sys.stderr.write("\n[DEBUG] build_driver: ping done, yielding driver\n")
-    sys.stderr.flush()
 
     yield driver
 
