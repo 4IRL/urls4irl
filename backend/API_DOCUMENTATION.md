@@ -367,7 +367,33 @@ Invalid form data sent with the request.
 
 > ```bash
 > curl -X GET \
->  https://urls.4irl.app/validate/123456789ABCDEFGH 
+>  https://urls.4irl.app/validate/123456789ABCDEFGH
+> ```
+
+</details>
+
+<details>
+ <summary><code>GET</code> <code><b>/validate/expired</b></code> <code>(resets an expired email validation token and logs the user in)</code></summary>
+
+##### Parameters
+
+> | name   |  type      | data type      | description                                          |
+> |--------|------------|----------------|------------------------------------------------------|
+> | `token` |  required  | string (query param) | The expired JWT from the email validation link |
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `text/html;charset=utf−8`         | `Renders splash page with expired-token modal.` | Token found, reset, and user logged in. Splash page is rendered with a modal notifying the user that a new validation email has been sent. |
+> | `404`         | `text/html;charset=utf−8`         | None | `token` query parameter is absent, or no email validation record exists for the given token. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  'https://urls.4irl.app/validate/expired?token=123456789ABCDEFGH'
 > ```
 
 </details>
@@ -940,7 +966,7 @@ Invalid form data sent with the request.
 > {
 >     "status": "Failure",
 >     "message": "Unable to modify UTub name.",
->     "errorCode": 3,
+>     "errorCode": 1,
 > }
 > ```
 
@@ -997,29 +1023,17 @@ Required form data:
 > }
 > ```
 
-###### 400 HTTP Code Response Body - Example
+###### 400 HTTP Code Response Body
 
-Indicates a missing form field in the payload content.
+Invalid form data sent with the request. The `errors` field is present when WTForms validation fails (e.g. field too long), and absent when the description field value is `None`.
 
 > ```json
 > {
 >     "status": "Failure",
 >     "message": "Unable to modify UTub description.",
 >     "errorCode": 2,
-> }
-> ```
-
-###### 400 HTTP Code Response Body
-
-Invalid form data sent with the request.
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Unable to modify UTub description.",
->     "errorCode": 3,
 >     "errors": {
->         "name": ["Field cannot be longer than 500 characters."],
+>         "description": ["Field cannot be longer than 500 characters."],
 >     },
 > }
 > ```
@@ -1040,7 +1054,7 @@ Invalid form data sent with the request.
 > {
 >     "status": "Failure",
 >     "message": "Unable to modify UTub description.",
->     "errorCode": 4,
+>     "errorCode": 1,
 > }
 > ```
 
@@ -1788,7 +1802,6 @@ Required form data:
 > | `200`         | `application/json`                | `See below.` | Successfully added a tag to UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | Form errors on creation of new string. |
-> | `403`         | `application/json`                | `See below.` | Requesting user not in the UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the request. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
@@ -1813,7 +1826,6 @@ Required form data:
 > {
 >     "status": "Failure",
 >     "message": "UTub already contains this tag.",
->     "errorCode": 2,
 > }
 > ```
 
@@ -1825,20 +1837,10 @@ Indicates form errors with adding this tag to this UTub.
 > {
 >     "status": "Failure",
 >     "message": "Unable to add tag to UTub.",
->     "errorCode": 3,
+>     "errorCode": 2,
 >     "errors": {
 >         "tagString": ["This field is required."],
 >     }
-> }
-> ```
-
-###### 403 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Unable to add tag to UTub.",
->     "errorCode": 1,
 > }
 > ```
 
@@ -1848,7 +1850,7 @@ Indicates form errors with adding this tag to this UTub.
 > {
 >     "status": "Failure",
 >     "message": "Unable to add tag to UTub.",
->     "errorCode": 4,
+>     "errorCode": 1,
 > }
 > ```
 
@@ -1880,7 +1882,6 @@ Indicates form errors with adding this tag to this UTub.
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully deleted a tag from UTub, and removed all URL associations with this tag in this UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `403`         | `application/json`                | `See below.` | Requesting user not in the UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the request. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested utubTag. |
@@ -1897,15 +1898,6 @@ Indicates form errors with adding this tag to this UTub.
 >         "tagString": "Hello",
 >     }
 >     "utubUrlIDs": [1, 2, 3]       // IDs of UTubURLs this tag was removed from, can be empty
-> }
-> ```
-
-###### 403 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Only UTub members can delete tags.",
 > }
 > ```
 
@@ -1951,7 +1943,6 @@ Required form data:
 > | `200`         | `application/json`                | `See below.` | Successfully added a tag to a URL to a UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
 > | `400`         | `application/json`                | `See below.` | URL already contains five tags, or form errors. |
-> | `403`         | `application/json`                | `See below.` | Requesting user not in the UTub containing the URL or tag. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub or given URL or tag in UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
@@ -1999,20 +1990,10 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > {
 >     "status": "Failure",
 >     "message": "Unable to add tag to URL.",
->     "errorCode": 4,
+>     "errorCode": 2,
 >     "errors": {
 >         "tagString": ["This field is required."],
 >     }
-> }
-> ```
-
-###### 403 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Unable to add tag to URL.",
->     "errorCode": 1,
 > }
 > ```
 
@@ -2022,7 +2003,7 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > {
 >     "status": "Failure",
 >     "message": "Unable to add tag to URL.",
->     "errorCode": 5,
+>     "errorCode": 1,
 > }
 > ```
 
@@ -2055,7 +2036,6 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully removed the tag from the URL in the UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `403`         | `application/json`                | `See below.` | User must be member of UTub to remove a tag from a URL. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, URL in UTub, or tag on URL in UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
 
@@ -2074,21 +2054,147 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > }
 > ```
 
-###### 403 HTTP Code Response Body
-
-> ```json
-> {
->     "status": "Failure",
->     "message": "Only UTub members can remove tags.",
-> }
-> ```
-
 ##### Example cURL
 
 > ```bash
 > curl -X DELETE \
 >  https://urls.4irl.app/utubs/1/urls/1/tags/4 \
 >  -H 'Cookie: YOUR_COOKIE'
+> ```
+
+</details>
+
+------------------------------------------------------------------------------------------
+
+#### Contact
+
+<details>
+ <summary><code>GET</code> <code><b>/contact</b></code> <code>(renders the contact form page)</code></summary>
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `text/html;charset=utf−8`         | `Renders the contact form page.` | Contact form page shown to the user. No authentication required. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls.4irl.app/contact
+> ```
+
+</details>
+
+<details>
+ <summary><code>POST</code> <code><b>/contact</b></code> <code>(submits the contact form)</code></summary>
+
+Rate limited to 5 requests per hour and 10 requests per day per IP address.
+
+##### Request Payload
+
+Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+
+Required form data:
+> ```
+> subject: %Subject%
+> content: %Message content%
+> csrf_token: %csrf_token%
+> ```
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `text/html;charset=utf−8`         | `Re-renders the contact page.` | Form valid: contact form entry saved and webhook notification sent. Page re-rendered with a flash message: "Sent! Thanks for reaching out." |
+> | `200`         | `text/html;charset=utf−8`         | `Re-renders the contact page with inline errors.` | Form invalid: contact page re-rendered with inline validation errors. No flash message. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+> | `429`         | `text/html;charset=utf−8`         | None | Rate limit exceeded (5/hour or 10/day per IP). |
+
+##### Example cURL
+
+> ```bash
+> curl -X POST \
+>  https://urls.4irl.app/contact \
+>  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  --data-urlencode 'subject=Hello there' \
+>  --data-urlencode 'content=I have a question about the app.' \
+>  --data-urlencode 'csrf_token=CSRF_TOKEN'
+> ```
+
+</details>
+
+------------------------------------------------------------------------------------------
+
+#### Legal / Static Pages
+
+<details>
+ <summary><code>GET</code> <code><b>/privacy-policy</b></code> <code>(renders the privacy policy page)</code></summary>
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `text/html;charset=utf−8`         | `Renders the privacy policy page.` | No authentication required. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls.4irl.app/privacy-policy
+> ```
+
+</details>
+
+<details>
+ <summary><code>GET</code> <code><b>/terms</b></code> <code>(renders the terms and conditions page)</code></summary>
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `text/html;charset=utf−8`         | `Renders the terms and conditions page.` | No authentication required. |
+> | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls.4irl.app/terms
+> ```
+
+</details>
+
+------------------------------------------------------------------------------------------
+
+#### System
+
+<details>
+ <summary><code>GET</code> <code><b>/health</b></code> <code>(health check endpoint)</code></summary>
+
+Rate limiting is exempt on this endpoint. No authentication required.
+
+##### Responses
+
+> | http code     | content-type                      | response  | details |
+> |---------------|-----------------------------------|-----------|---------------------------------------------------------|
+> | `200`         | `application/json`                | `See below.` | Service is healthy. |
+
+###### 200 HTTP Code Response Body
+
+> ```json
+> {
+>     "status": "Success"
+> }
+> ```
+
+##### Example cURL
+
+> ```bash
+> curl -X GET \
+>  https://urls.4irl.app/health
 > ```
 
 </details>
