@@ -1,6 +1,6 @@
 import os
 import logging
-from typing import Any, Awaitable, Generator, Tuple, Union
+from typing import Any, Awaitable, Generator, Optional, Tuple, Union
 
 from flask import Flask
 from flask.testing import FlaskCliRunner, FlaskClient
@@ -10,12 +10,21 @@ import pytest
 import warnings
 
 import redis
-from redis.client import Redis
-from sqlalchemy import event, inspect as sa_inspect, text
+from redis import Redis
+from sqlalchemy import create_engine, event, inspect as sa_inspect, text
 from sqlalchemy.orm import scoped_session, sessionmaker
 
 from backend import create_app, db
-from backend.config import ConfigTest
+from backend.config import (
+    ConfigTest,
+    IS_DOCKER,
+    POSTGRES_TEST_DB,
+    POSTGRES_USER,
+    POSTGRES_PASSWORD,
+    TEST_DB_URI,
+    TEST_REDIS_URI,
+)
+from backend.utils.db_uri_builder import build_db_uri
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.users import Users
@@ -122,6 +131,16 @@ warnings.filterwarnings(
 )  # , message="'flask.Markup' is deprecated and will be removed in Flask 2.4. Import 'markupsafe.Markup' instead.")
 
 
+REDIS_DEFAULT_MAX_DATABASES = 16
+
+
+def _get_worker_num(worker_id: str) -> Optional[int]:
+    """Returns None for 'master' (non-parallel), else the integer worker number."""
+    if worker_id == "master":
+        return None
+    return int(worker_id.replace("gw", ""))
+
+
 @pytest.fixture(scope="session")
 def ignore_deprecation_warning():
     warnings.filterwarnings("ignore", category=DeprecationWarning)
@@ -130,10 +149,96 @@ def ignore_deprecation_warning():
 
 
 @pytest.fixture(scope="session")
+def worker_db_uri(worker_id: str) -> Generator[str, None, None]:
+    """Provides a per-worker database URI, creating and dropping a worker-specific DB."""
+    if worker_id == "master":
+        yield TEST_DB_URI
+        return
+
+    assert (
+        POSTGRES_TEST_DB
+    ), "POSTGRES_TEST_DB must be set for parallel integration tests"
+    worker_db_name = f"{POSTGRES_TEST_DB}_{worker_id}"
+    db_host = "test-db" if IS_DOCKER else "localhost"
+
+    admin_uri = build_db_uri(
+        username=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        database="postgres",
+        database_host=db_host,
+    )
+    worker_uri = build_db_uri(
+        username=POSTGRES_USER,
+        password=POSTGRES_PASSWORD,
+        database=worker_db_name,
+        database_host=db_host,
+    )
+
+    def _drop_worker_db(conn) -> None:
+        conn.execute(
+            text(
+                f"SELECT pg_terminate_backend(pid) FROM pg_stat_activity "
+                f"WHERE datname = '{worker_db_name}' AND pid <> pg_backend_pid()"
+            )
+        )
+        conn.execute(text(f'DROP DATABASE IF EXISTS "{worker_db_name}"'))
+
+    engine = create_engine(admin_uri, isolation_level="AUTOCOMMIT")
+    with engine.connect() as conn:
+        _drop_worker_db(conn)
+        conn.execute(text(f'CREATE DATABASE "{worker_db_name}"'))
+    engine.dispose()
+
+    yield worker_uri
+
+    engine = create_engine(admin_uri, isolation_level="AUTOCOMMIT")
+    with engine.connect() as conn:
+        _drop_worker_db(conn)
+    engine.dispose()
+
+
+@pytest.fixture(scope="session")
+def worker_redis_uri(worker_id: str) -> str:
+    """Returns a per-worker Redis URI using a unique DB index."""
+    if not TEST_REDIS_URI or TEST_REDIS_URI == "memory://":
+        return TEST_REDIS_URI
+    if worker_id == "master":
+        return TEST_REDIS_URI
+    base, db_str = TEST_REDIS_URI.rsplit("/", 1)
+    base_db = int(db_str) if db_str.isdigit() else 0
+    db_index = base_db + 1 + _get_worker_num(worker_id)
+
+    probe = Redis.from_url(f"{base}/0")
+    try:
+        max_dbs = int(
+            probe.config_get("databases").get("databases", REDIS_DEFAULT_MAX_DATABASES)
+        )
+    finally:
+        probe.close()
+
+    if db_index >= max_dbs:
+        raise ValueError(
+            f"Redis DB index {db_index} is out of range for worker '{worker_id}'. "
+            f"Redis only has {max_dbs} databases (0-{max_dbs - 1}). "
+            f"TEST_REDIS_URI base DB is {base_db}. "
+            f"Either increase Redis 'databases' config or lower the base DB index."
+        )
+
+    return f"{base}/{db_index}"
+
+
+@pytest.fixture(scope="session")
 def build_app(
     ignore_deprecation_warning,
+    worker_db_uri: str,
+    worker_redis_uri: str,
 ) -> Generator[Tuple[Flask, ConfigTest], None, None]:
     config = ConfigTest()
+    config.SQLALCHEMY_DATABASE_URI = worker_db_uri
+    config.SQLALCHEMY_BINDS = {"test": worker_db_uri}
+    if worker_redis_uri and worker_redis_uri != "memory://":
+        config.SESSION_TYPE = "redis"
+        config.SESSION_REDIS = Redis.from_url(worker_redis_uri)
 
     app_for_test = create_app(config)  # type: ignore
     if app_for_test is None:

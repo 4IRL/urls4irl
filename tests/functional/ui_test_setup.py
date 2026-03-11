@@ -80,20 +80,25 @@ def find_open_port(start_port: int = 1024, end_port: int = 65535) -> int:
 
 def ping_server(url: str, timeout: float = 2) -> bool:
     total_time = 0
-    max_time = 10
+    max_time = 30
     is_server_ready = False
 
     # Keep pinging server until status code 200 or time limit is reached
     while not is_server_ready and total_time < max_time:
         try:
             status_code = requests.get(url, timeout=timeout).status_code
-        except requests.ConnectTimeout:
-            sleep(timeout)
-            total_time += timeout
-        except requests.ReadTimeout:
+        except (
+            requests.ConnectTimeout,
+            requests.ReadTimeout,
+            requests.ConnectionError,
+        ):
             sleep(timeout)
             total_time += timeout
         else:
-            is_server_ready = status_code == 200
+            if status_code == 200:
+                is_server_ready = True
+            else:
+                sleep(timeout)
+                total_time += timeout
 
     return is_server_ready

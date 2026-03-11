@@ -62,23 +62,23 @@ jobs:
     strategy:
       matrix:
         worker:
-          - [1, 'Unit Tests']
-          - [2, 'Splash Integration Tests']
-          - [3, 'UTub Integration Tests']
-          - [4, 'UTub Member Integration Tests']
-          - [5, 'UTub URL Integration Tests']
-          - [6, 'UTub Tags Integration Tests']
-          - [7, 'Account and Support Integration Tests']
-          - [8, 'CLI Integration Tests']
-          - [9, 'UI Splash Functional Tests']
-          - [10, 'UI Home Functional Tests']
-          - [11, 'UI UTub Functional Tests']
-          - [12, 'UI Member Functional Tests']
-          - [13, 'UI URL Functional Tests']
-          - [14, 'UI Create URL Functional Tests']
-          - [15, 'UI Update URL Functional Tests']
-          - [16, 'UI Tags Functional Tests']
-          - [17, 'UI Mobile Functional Tests']
+          - [1, 'Unit Tests', 3]
+          - [2, 'Splash Integration Tests', 3]
+          - [3, 'UTub Integration Tests', 3]
+          - [4, 'UTub Member Integration Tests', 3]
+          - [5, 'UTub URL Integration Tests', 3]
+          - [6, 'UTub Tags Integration Tests', 3]
+          - [7, 'Account and Support Integration Tests', 3]
+          - [8, 'CLI Integration Tests', 3]
+          - [9, 'UI Splash Functional Tests', 2]
+          - [10, 'UI Home Functional Tests', 2]
+          - [11, 'UI UTub Functional Tests', 2]
+          - [12, 'UI Member Functional Tests', 2]
+          - [13, 'UI URL Functional Tests', 2]
+          - [14, 'UI Create URL Functional Tests', 2]
+          - [15, 'UI Update URL Functional Tests', 2]
+          - [16, 'UI Tags Functional Tests', 2]
+          - [17, 'UI Mobile Functional Tests', 2]
 
     name: ${{ format('{0}', matrix.worker[1]) }}
 
@@ -123,6 +123,9 @@ jobs:
         run: |
           echo "GITHUB_WORKER_ID=${{matrix.worker[0]}}" >> $GITHUB_ENV
 
+      - name: Set xdist workers
+        run: echo "XDIST_N=${{ matrix.worker[2] }}" >> $GITHUB_ENV
+
       - name: Setup Python
         uses: actions/setup-python@83679a892e2d95755f2dac6acb0bfd1e9ac5d548 # v6.1.0
         with:
@@ -163,6 +166,10 @@ jobs:
       - name: Run tests
         env:
           DATABASE_URL_TEST: postgresql://postgres:postgres@localhost:${{ job.services.postgres.ports['5432'] }}/postgres
-        timeout-minutes: 10
+        timeout-minutes: 15
         run: |
-          python3.11 -m pytest 
+          if [[ "$XDIST_N" -gt 0 ]]; then
+            python3.11 -m pytest -n $XDIST_N --dist=loadscope
+          else
+            python3.11 -m pytest
+          fi

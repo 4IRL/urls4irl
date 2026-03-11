@@ -43,6 +43,9 @@ from tests.functional.ui_test_setup import (
 )
 from tests.functional.urls_ui.selenium_utils import ClipboardMockHelper
 
+# Redis ships with 16 databases (indices 0-15) by default per the default redis.conf
+REDIS_DEFAULT_MAX_DATABASES = 16
+
 
 def _get_worker_num(worker_id: str) -> Optional[int]:
     """Returns None for 'master' (non-parallel), else the integer worker number."""
@@ -105,8 +108,26 @@ def worker_redis_uri(worker_id: str) -> str:
         return TEST_REDIS_URI
     if worker_id == "master":
         return TEST_REDIS_URI
-    db_index = 16 + _get_worker_num(worker_id)
-    base = TEST_REDIS_URI.rsplit("/", 1)[0]
+    base, db_str = TEST_REDIS_URI.rsplit("/", 1)
+    base_db = int(db_str) if db_str.isdigit() else 0
+    db_index = base_db + 1 + _get_worker_num(worker_id)
+
+    probe = Redis.from_url(f"{base}/0")
+    try:
+        max_dbs = int(
+            probe.config_get("databases").get("databases", REDIS_DEFAULT_MAX_DATABASES)
+        )
+    finally:
+        probe.close()
+
+    if db_index >= max_dbs:
+        raise ValueError(
+            f"Redis DB index {db_index} is out of range for worker '{worker_id}'. "
+            f"Redis only has {max_dbs} databases (0-{max_dbs - 1}). "
+            f"TEST_REDIS_URI base DB is {base_db}. "
+            f"Either increase Redis 'databases' config or lower the base DB index."
+        )
+
     return f"{base}/{db_index}"
 
 
@@ -180,7 +201,6 @@ def parallelize_app(provide_port, flask_logs, worker_config: ConfigTestUI):
     Starts a parallel process, runs Flask app
     """
     open_port = provide_port
-
     thread = threading.Thread(
         target=run_app,
         args=(

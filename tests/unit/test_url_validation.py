@@ -536,7 +536,9 @@ def test_normalize_urls_valid(normalized_url: str, urls_to_validate: list[str]):
     "scheme",
     [
         scheme
-        for scheme in url_constants.CORE_SCHEMES | url_constants.OTHER_VALID_SCHEMES
+        for scheme in sorted(
+            url_constants.CORE_SCHEMES | url_constants.OTHER_VALID_SCHEMES
+        )
     ],
 )
 def test_normalize_url_schemes(scheme: str):
