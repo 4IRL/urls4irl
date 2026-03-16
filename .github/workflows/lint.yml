@@ -25,7 +25,7 @@ jobs:
         uses: py-actions/flake8@84ec6726560b6d5bd68f2a5bed83d62b52bb50ba # v2.3.0
         with:
             exclude: ".git,migrations"
-            args: "--extend-ignore E501"
+            args: "--extend-ignore E501,E203"
 
       - name: Setup node
         uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6.2.0
