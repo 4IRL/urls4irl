@@ -6,17 +6,20 @@ from sqlalchemy.exc import DataError
 from backend.app_logger import warning_log
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
+from backend.schemas.users import UtubSummaryListSchema
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
 
 def render_home_page() -> str:
-    utub_details = current_user.serialized_on_initial_load
+    utubs_for_this_user = UtubSummaryListSchema.from_user(current_user).model_dump(
+        by_alias=True
+    )[MODELS.UTUBS]
 
     return render_template(
         "pages/home.html",
-        utubs_for_this_user=utub_details[MODELS.UTUBS],
+        utubs_for_this_user=utubs_for_this_user,
         is_prod_or_testing=current_app.config.get(CONFIG_ENVS.TESTING_OR_PROD, True),
     )
 

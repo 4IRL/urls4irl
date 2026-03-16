@@ -2,68 +2,27 @@ from flask_login import current_user
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import (
-    critical_log,
     safe_add_log,
     safe_add_many_logs,
-    turn_form_into_str_for_log,
     warning_log,
 )
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
-from backend.tags.constants import URLTagErrorCodes
-from backend.tags.forms import NewTagForm
+from backend.schemas.tags import UrlTagModifiedResponseSchema, UtubTagOnAddDeleteSchema
 from backend.utils.constants import TAG_CONSTANTS
-from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 
 
-def handle_invalid_form_input_for_create_url_tag(
-    url_tag_form: NewTagForm, utub_url: Utub_Urls
-) -> FlaskResponse:
-    """
-    Handles invalid form inputs or unknown exceptions when a URL Tag is being added.
-
-    Args:
-        url_tag_form (NewTagForm): Form containing new URL Tag data
-        utub_url (Utub_Urls): The UTub URL object that the tag is being added to
-
-    Returns:
-        tuple[Response, int]:
-        - Response: JSON response on error.
-        - int: HTTP status code 400 (Invalid Form) / 404 (Unknown exception)
-    """
-    if url_tag_form.errors is not None:
-        errors = {MODELS.TAG_STRING: url_tag_form.tag_string.errors}
-        warning_log(
-            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(url_tag_form.errors)}"  # type: ignore
-        )
-        return APIResponse(
-            status_code=400,
-            message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-            error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
-            errors=errors,
-        ).to_response()
-
-    critical_log(
-        f"User={current_user.id} failed to add tag to UTubURL.id={utub_url.id} in UTub.id={utub_url.utub_id}"
-    )
-    return APIResponse(
-        status_code=404,
-        message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
-        error_code=URLTagErrorCodes.UNKNOWN_EXCEPTION,
-    ).to_response()
-
-
 def add_tag_to_url_if_valid(
-    url_tag_form: NewTagForm, utub: Utubs, utub_url: Utub_Urls
+    tag_string: str, utub: Utubs, utub_url: Utub_Urls
 ) -> FlaskResponse:
     """
     Adds a tag to a URL, but only if the URL does not already have the maximum number of tags, and if the URL does not have the tag already on it.
 
     Args:
-        url_tag_form (NewTagForm): The form containing the tag string to add to the URL
+        tag_string (str): The tag string to add to the URL
         utub (Utubs): The UTub containing the URL and tag to add
         utub_url (Utub_Urls): The URL having a tag being added to
 
@@ -75,7 +34,7 @@ def add_tag_to_url_if_valid(
             400 (at tag limit)
             400 (tag already on URL)
     """
-    tag_to_add = url_tag_form.tag_string.get()
+    tag_to_add = tag_string.strip()
 
     if _url_is_at_url_tag_limit(utub, utub_url):
         return _build_url_at_tag_limit_response(utub_url)
@@ -107,11 +66,11 @@ def add_tag_to_url_if_valid(
 
     return APIResponse(
         message=TAGS_SUCCESS.TAG_ADDED_TO_URL,
-        data={
-            TAGS_SUCCESS.UTUB_URL_TAG_IDS: utub_url.associated_tag_ids,
-            TAGS_SUCCESS.UTUB_TAG: utub_tag.serialized_on_add_delete,
-            TAGS_SUCCESS.TAG_COUNTS_MODIFIED: updated_tag_id_count,
-        },
+        data=UrlTagModifiedResponseSchema(
+            utub_url_tag_ids=utub_url.associated_tag_ids,
+            utub_tag=UtubTagOnAddDeleteSchema.from_orm_tag(utub_tag),
+            tag_counts_modified=updated_tag_id_count,
+        ),
     ).to_response()
 
 

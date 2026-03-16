@@ -56,14 +56,15 @@ def test_add_utub_with_valid_form(login_first_user_with_register):
         initial_utub_count = Utubs.query.count()
         initial_utub_member_count = Utub_Members.query.count()
 
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
-        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
-    }
-
     new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+            UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[
+                UTUB_SUCCESS.UTUB_DESCRIPTION
+            ],
+        },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert new_utub_response.status_code == 200
@@ -144,22 +145,22 @@ def test_add_utub_with_valid_form_empty_description(login_first_user_with_regist
         initial_utub_count = Utubs.query.count()
         initial_utub_member_count = Utub_Members.query.count()
 
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
-        UTUB_FORM.UTUB_DESCRIPTION: "",
-    }
-
     new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+            UTUB_FORM.UTUB_DESCRIPTION: "",
+        },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert new_utub_response.status_code == 200
 
     # Validate the JSON response from the backend
+    # Empty string "" is sanitized to None by sanitize_user_input
     new_utub_response_json = new_utub_response.json
     assert new_utub_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-    assert new_utub_response_json[UTUB_SUCCESS.UTUB_DESCRIPTION] == ""
+    assert new_utub_response_json[UTUB_SUCCESS.UTUB_DESCRIPTION] is None
     assert (
         new_utub_response_json[UTUB_SUCCESS.UTUB_NAME]
         == valid_empty_utub_1[UTUB_FORM.NAME]
@@ -177,7 +178,7 @@ def test_add_utub_with_valid_form_empty_description(login_first_user_with_regist
 
         # Assert that utub name and description line up in the database
         assert utub_from_db.name == valid_empty_utub_1[UTUB_FORM.NAME]
-        assert utub_from_db.utub_description == ""
+        assert utub_from_db.utub_description is None
 
         # Assert only one member in the UTub
         assert len(utub_from_db.members) == 1
@@ -203,21 +204,11 @@ def test_add_utub_with_valid_form_name_partially_sanitized(
 ):
     """
     GIVEN a valid logged in user on the home page
-    WHEN they make a new UTub for themselves and do a POST to "/utubs" with a UTub name that is sanitized by backend
-    THEN verify that the server responds with a 400 and valid JSON, and proper error response is shown
+    WHEN they make a new UTub for themselves and do a POST to "/utubs" with a UTub name that contains
+        HTML that would be partially sanitized by the backend (HTML tags stripped but text content preserved)
+    THEN verify that the server responds with a 400 since the sanitized result differs from the original input
 
-    On POST, the backend responds with a 400 status code and the following JSON:
-    {
-        STD_JSON.STATUS: STD_JSON.FAILURE,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 1 for invalid form inputs
-        STD_JSON.MESSAGE: String giving a general error message
-        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
-            [
-                {
-                    UTUB_FORM.UTUB_NAME: "Invalid input, please try again." - Indicates the UTub name field is invalid
-                }
-            ]
-    }
+    The policy is: if sanitization modifies the input, reject it. So "<h1>Hello</h1>" → "Hello" (differs) → REJECT.
     """
     client, csrf_token, _, _ = login_first_user_with_register
 
@@ -225,28 +216,21 @@ def test_add_utub_with_valid_form_name_partially_sanitized(
         "<<HELLO>>",
         "<h1>Hello</h1>",
     ):
-        new_utub_form = {
-            UTUB_FORM.CSRF_TOKEN: csrf_token,
-            UTUB_FORM.UTUB_NAME: utub_name,
-            UTUB_FORM.UTUB_DESCRIPTION: "",
-        }
-
         new_utub_response = client.post(
-            url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+            url_for(ROUTES.UTUBS.CREATE_UTUB),
+            json={
+                UTUB_FORM.UTUB_NAME: utub_name,
+                UTUB_FORM.UTUB_DESCRIPTION: "",
+            },
+            headers={"X-CSRFToken": csrf_token},
         )
 
+        # Input with HTML is rejected since sanitization would modify it
         assert new_utub_response.status_code == 400
 
         # Validate the JSON response from the backend
         new_utub_response_json = new_utub_response.json
         assert new_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-        assert (
-            new_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MAKE_UTUB
-        )
-        assert (
-            int(new_utub_response_json[STD_JSON.ERROR_CODE])
-            == UTubErrorCodes.INVALID_FORM_INPUT
-        )
         assert new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
             UTUB_FAILURE.INVALID_INPUT
         ]
@@ -255,7 +239,8 @@ def test_add_utub_with_valid_form_name_partially_sanitized(
 def test_add_utub_with_valid_form_name_fully_sanitized(login_first_user_with_register):
     """
     GIVEN a valid logged in user on the home page
-    WHEN they make a new UTub for themselves and do a POST to "/utubs" with a UTub name that is sanitized by backend
+    WHEN they make a new UTub for themselves and do a POST to "/utubs" with a UTub name that is fully
+        sanitized by the backend (all content stripped, resulting in None)
     THEN verify that the server responds with a 400 and valid JSON, and proper error response is shown
 
     On POST, the backend responds with a 400 status code and the following JSON:
@@ -266,21 +251,20 @@ def test_add_utub_with_valid_form_name_fully_sanitized(login_first_user_with_reg
         STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
             [
                 {
-                    UTUB_FORM.UTUB_NAME: "Invalid input, please try again." - Indicates the UTub name field is invalid
+                    UTUB_FORM.UTUB_NAME: "Input should be a valid string" - Indicates the UTub name is None after sanitization
                 }
             ]
     }
     """
     client, csrf_token, _, _ = login_first_user_with_register
 
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_NAME: '<img src="evl.jpg">',
-        UTUB_FORM.UTUB_DESCRIPTION: "",
-    }
-
     new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: '<img src="evl.jpg">',
+            UTUB_FORM.UTUB_DESCRIPTION: "",
+        },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert new_utub_response.status_code == 400
@@ -303,21 +287,11 @@ def test_add_utub_with_valid_form_description_partially_sanitized(
 ):
     """
     GIVEN a valid logged in user on the home page
-    WHEN they make a new UTub for themselves and do a POST to "/utubs" with a UTub description that is sanitized by backend
-    THEN verify that the server responds with a 400 and valid JSON, and proper error response is shown
+    WHEN they make a new UTub for themselves and do a POST to "/utubs" with a UTub description that contains
+        HTML that would be partially sanitized by the backend (HTML tags stripped but text content preserved)
+    THEN verify that the server responds with a 400 since the sanitized result differs from the original input
 
-    On POST, the backend responds with a 400 status code and the following JSON:
-    {
-        STD_JSON.STATUS: STD_JSON.FAILURE,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 1 for invalid form inputs
-        STD_JSON.MESSAGE: String giving a general error message
-        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
-            [
-                {
-                    UTUB_FORM.UTUB_DESCRIPTION: "Invalid input, please try again." - Indicates the UTub description field is invalid
-                }
-            ]
-    }
+    The policy is: if sanitization modifies the input, reject it. So "<h1>Hello</h1>" → "Hello" (differs) → REJECT.
     """
     client, csrf_token, _, _ = login_first_user_with_register
 
@@ -325,28 +299,21 @@ def test_add_utub_with_valid_form_description_partially_sanitized(
         "<<HELLO>>",
         "<h1>Hello</h1>",
     ):
-        new_utub_form = {
-            UTUB_FORM.CSRF_TOKEN: csrf_token,
-            UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
-            UTUB_FORM.UTUB_DESCRIPTION: utub_description,
-        }
-
         new_utub_response = client.post(
-            url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+            url_for(ROUTES.UTUBS.CREATE_UTUB),
+            json={
+                UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+                UTUB_FORM.UTUB_DESCRIPTION: utub_description,
+            },
+            headers={"X-CSRFToken": csrf_token},
         )
 
+        # Input with HTML is rejected since sanitization would modify it
         assert new_utub_response.status_code == 400
 
         # Validate the JSON response from the backend
         new_utub_response_json = new_utub_response.json
         assert new_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-        assert (
-            new_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MAKE_UTUB
-        )
-        assert (
-            int(new_utub_response_json[STD_JSON.ERROR_CODE])
-            == UTubErrorCodes.INVALID_FORM_INPUT
-        )
         assert new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_DESCRIPTION] == [
             UTUB_FAILURE.INVALID_INPUT
         ]
@@ -357,44 +324,29 @@ def test_add_utub_with_valid_form_description_fully_sanitized(
 ):
     """
     GIVEN a valid logged in user on the home page
-    WHEN they make a new UTub for themselves and do a POST to "/utubs" with a UTub description that is sanitized by backend
-    THEN verify that the server responds with a 400 and valid JSON, and proper error response is shown
+    WHEN they make a new UTub for themselves and do a POST to "/utubs" with a UTub description that is fully
+        sanitized by the backend (all content stripped, resulting in None or empty string)
+    THEN verify that the server responds with a 400 since the sanitized result differs from the original input
 
-    On POST, the backend responds with a 400 status code and the following JSON:
-    {
-        STD_JSON.STATUS: STD_JSON.FAILURE,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 1 for invalid form inputs
-        STD_JSON.MESSAGE: String giving a general error message
-        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
-            [
-                {
-                    UTUB_FORM.UTUB_DESCRIPTION: "Invalid input, please try again." - Indicates the UTub description field is invalid
-                }
-            ]
-    }
+    The policy is: if sanitization modifies the input, reject it. So '<img src="evl.jpg">' → None (differs) → REJECT.
     """
     client, csrf_token, _, _ = login_first_user_with_register
 
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
-        UTUB_FORM.UTUB_DESCRIPTION: '<img src="evl.jpg">',
-    }
-
     new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+            UTUB_FORM.UTUB_DESCRIPTION: '<img src="evl.jpg">',
+        },
+        headers={"X-CSRFToken": csrf_token},
     )
 
+    # Input with HTML is rejected since sanitization would modify it
     assert new_utub_response.status_code == 400
 
     # Validate the JSON response from the backend
     new_utub_response_json = new_utub_response.json
     assert new_utub_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert new_utub_response_json[STD_JSON.MESSAGE] == UTUB_FAILURE.UNABLE_TO_MAKE_UTUB
-    assert (
-        int(new_utub_response_json[STD_JSON.ERROR_CODE])
-        == UTubErrorCodes.INVALID_FORM_INPUT
-    )
     assert new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_DESCRIPTION] == [
         UTUB_FAILURE.INVALID_INPUT
     ]
@@ -435,14 +387,15 @@ def test_add_utub_with_same_name(
 
         num_of_utubs: int = Utubs.query.count()
 
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_NAME: current_utub_name,
-        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
-    }
-
     new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: current_utub_name,
+            UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[
+                UTUB_SUCCESS.UTUB_DESCRIPTION
+            ],
+        },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert new_utub_response.status_code == 200
@@ -528,13 +481,15 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
     }
     """
     client, csrf_token, _, app = login_first_user_with_register
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_FAILURE.UTUB_DESCRIPTION],
-    }
 
     invalid_new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[
+                UTUB_FAILURE.UTUB_DESCRIPTION
+            ],
+        },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     # Assert invalid response code
@@ -547,10 +502,9 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
         invalid_new_utub_response_json[STD_JSON.ERROR_CODE]
         == UTubErrorCodes.INVALID_FORM_INPUT
     )
-    assert (
-        invalid_new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME]
-        == UTUB_FAILURE.FIELD_REQUIRED
-    )
+    assert invalid_new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
+        "Field required"
+    ]
     assert (
         invalid_new_utub_response_json[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MAKE_UTUB
@@ -586,14 +540,15 @@ def test_csrf_expiration(app, login_first_user_with_register):
     """
     current_time = int(time.time())
     client, csrf_token, _, _ = login_first_user_with_register
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
+    new_utub_json = {
         UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
         UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
     valid_utub_response_with_csrf = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json=new_utub_json,
+        headers={"X-CSRFToken": csrf_token},
     )
     assert valid_utub_response_with_csrf.status_code == 200
 
@@ -603,7 +558,9 @@ def test_csrf_expiration(app, login_first_user_with_register):
         return_value=current_time + CONFIG_CONSTANTS.SESSION_LIFETIME + 10,
     ):
         invalid_utub_response_with_csrf = client.post(
-            url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+            url_for(ROUTES.UTUBS.CREATE_UTUB),
+            json=new_utub_json,
+            headers={"X-CSRFToken": csrf_token},
         )
         assert invalid_utub_response_with_csrf.status_code == 403
         assert (
@@ -630,13 +587,17 @@ def test_session_expiration(
     assert isinstance(redis_client, Redis)
 
     client, csrf_token, _, _ = login_first_user_with_register
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
-        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
-    }
 
-    client.post(url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form)
+    client.post(
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+            UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[
+                UTUB_SUCCESS.UTUB_DESCRIPTION
+            ],
+        },
+        headers={"X-CSRFToken": csrf_token},
+    )
     redis_keys: Union[Awaitable, Any] = redis_client.keys()
     assert (
         isinstance(redis_keys, list) and redis_keys and isinstance(redis_keys[0], bytes)
@@ -682,14 +643,13 @@ def test_add_multiple_valid_utubs(login_first_user_with_register):
     )
 
     for valid_utub in valid_utubs:
-        new_utub_form = {
-            UTUB_FORM.CSRF_TOKEN: csrf_token,
-            UTUB_FORM.UTUB_NAME: valid_utub[UTUB_FORM.NAME],
-            UTUB_FORM.UTUB_DESCRIPTION: valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION],
-        }
-
         new_utub_response = client.post(
-            url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+            url_for(ROUTES.UTUBS.CREATE_UTUB),
+            json={
+                UTUB_FORM.UTUB_NAME: valid_utub[UTUB_FORM.NAME],
+                UTUB_FORM.UTUB_DESCRIPTION: valid_utub[UTUB_SUCCESS.UTUB_DESCRIPTION],
+            },
+            headers={"X-CSRFToken": csrf_token},
         )
 
         assert new_utub_response.status_code == 200
@@ -742,14 +702,15 @@ def test_add_utub_success_logs(login_first_user_with_register, caplog):
     """
     client, csrf_token, _, _ = login_first_user_with_register
 
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
-        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
-    }
-
     new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
+            UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[
+                UTUB_SUCCESS.UTUB_DESCRIPTION
+            ],
+        },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert new_utub_response.status_code == 200
@@ -767,26 +728,25 @@ def test_add_utub_form_failed_logs(login_first_user_with_register, caplog):
     """
     GIVEN a valid logged in user on the home page
     WHEN they make a new UTub for themselves and do a POST to "/utubs" with invalid form data
-    THEN verify that app logs are correct
+        (empty UTub name which sanitizes to None)
+    THEN verify that a 400 is returned and parse_json_body logs the validation failure
     """
     client, csrf_token, user, _ = login_first_user_with_register
 
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_FORM.UTUB_NAME: "",
-        UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
-    }
-
     new_utub_response = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json={
+            UTUB_FORM.UTUB_NAME: "",
+            UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[
+                UTUB_SUCCESS.UTUB_DESCRIPTION
+            ],
+        },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert new_utub_response.status_code == 400
-
     assert is_string_in_logs(f"User={user.id}", caplog.records)
-    assert is_string_in_logs(
-        f"Invalid form: name={UTUB_FAILURE.FIELD_REQUIRED}", caplog.records
-    )
+    assert is_string_in_logs("Invalid JSON:", caplog.records)
 
 
 def test_csrf_expiration_log(app, login_first_user_with_register, caplog):
@@ -797,14 +757,15 @@ def test_csrf_expiration_log(app, login_first_user_with_register, caplog):
     """
     current_time = int(time.time())
     client, csrf_token, user, _ = login_first_user_with_register
-    new_utub_form = {
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
+    new_utub_json = {
         UTUB_FORM.UTUB_NAME: valid_empty_utub_1[UTUB_FORM.NAME],
         UTUB_FORM.UTUB_DESCRIPTION: valid_empty_utub_1[UTUB_SUCCESS.UTUB_DESCRIPTION],
     }
 
     valid_utub_response_with_csrf = client.post(
-        url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+        url_for(ROUTES.UTUBS.CREATE_UTUB),
+        json=new_utub_json,
+        headers={"X-CSRFToken": csrf_token},
     )
     assert valid_utub_response_with_csrf.status_code == 200
 
@@ -814,7 +775,9 @@ def test_csrf_expiration_log(app, login_first_user_with_register, caplog):
         return_value=current_time + CONFIG_CONSTANTS.SESSION_LIFETIME + 10,
     ):
         invalid_utub_response_with_csrf = client.post(
-            url_for(ROUTES.UTUBS.CREATE_UTUB), data=new_utub_form
+            url_for(ROUTES.UTUBS.CREATE_UTUB),
+            json=new_utub_json,
+            headers={"X-CSRFToken": csrf_token},
         )
         assert invalid_utub_response_with_csrf.status_code == 403
         assert is_string_in_logs(

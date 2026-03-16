@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Any, Dict
 from flask import jsonify, Response
+from pydantic import BaseModel
 
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 
@@ -17,15 +18,20 @@ class APIResponse:
     error_code: int | None = None
     errors: dict | None = None
     details: str | None = None
-    data: Dict[str, Any] = field(default_factory=dict)
+    data: Dict[str, Any] | BaseModel = field(default_factory=dict)
 
     def to_response(self) -> FlaskResponse:
         """Convert to Flask response"""
+        data_dict = (
+            self.data.model_dump(by_alias=True)
+            if isinstance(self.data, BaseModel)
+            else self.data
+        )
         payload = {
             STD_JSON.STATUS: (
                 STD_JSON.SUCCESS if self.status_code < 400 else STD_JSON.FAILURE
             ),
-            **self.data,
+            **data_dict,
         }
 
         if self.status is not None:

@@ -660,13 +660,13 @@ def test_create_url_empty_fields(
         browser, HPL.INPUT_URL_TITLE_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_title_error is not None
-    assert invalid_url_title_error.text == URL_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_url_title_error.text == URL_FAILURE.INVALID_INPUT
 
     invalid_url_string_error = wait_then_get_element(
         browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == URL_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_url_string_error.text == "String should have at least 1 character"
 
 
 def test_create_url_empty_title(
@@ -705,7 +705,7 @@ def test_create_url_empty_title(
         browser, HPL.INPUT_URL_TITLE_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_title_error is not None
-    assert invalid_url_title_error.text == URL_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_url_title_error.text == URL_FAILURE.INVALID_INPUT
 
 
 def test_create_url_empty_string(
@@ -744,7 +744,7 @@ def test_create_url_empty_string(
         browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == URL_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_url_string_error.text == "String should have at least 1 character"
 
 
 @pytest.mark.parametrize(

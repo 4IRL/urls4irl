@@ -60,14 +60,10 @@ def test_update_valid_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -152,25 +148,22 @@ def test_update_valid_empty_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
     assert update_utub_desc_response.status_code == 200
 
     # Ensure JSON response is correct
+    # Empty string "" sanitizes to None since sanitize_user_input("") returns None
     update_utub_desc_json_response = update_utub_desc_response.json
 
     assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(update_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == UPDATE_TEXT
+    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] is None
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -181,7 +174,7 @@ def test_update_valid_empty_utub_description_as_creator(
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
-        assert final_check_utub_of_user.utub_description == UPDATE_TEXT
+        assert final_check_utub_of_user.utub_description is None
 
         all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
@@ -244,25 +237,22 @@ def test_update_only_spaces_utub_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
     assert update_utub_desc_response.status_code == 200
 
     # Ensure JSON response is correct
+    # Whitespace-only description is coerced to None by coerce_whitespace_to_none validator
     update_utub_desc_json_response = update_utub_desc_response.json
 
     assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert int(update_utub_desc_json_response[UTUB_SUCCESS.UTUB_ID]) == current_utub_id
-    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] == ""
+    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] is None
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -273,7 +263,7 @@ def test_update_only_spaces_utub_description_as_creator(
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
-        assert final_check_utub_of_user.utub_description == ""
+        assert final_check_utub_of_user.utub_description is None
 
         all_final_utubs: list[Utubs] = Utubs.query.all()
         final_utub_names_and_descriptions = dict()
@@ -338,14 +328,10 @@ def test_update_utub_description_with_same_description_as_creator(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -386,29 +372,14 @@ def test_update_utub_description_fully_sanitized(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
-    WHEN the creator attempts to modify the UTub description to invalid description that is sanitized by the backend, via a POST to
-        "/utubs/<utub_id: int>/description" with valid form data, following this format:
-            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
-            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
-    THEN verify that the UTub description is not changed in the database and server responds with appropriate error message
+    WHEN the creator attempts to modify the UTub description to a description that contains HTML that would
+        be fully sanitized by the backend (all content stripped, resulting in None), via a PATCH to
+        "/utubs/<utub_id: int>/description"
+    THEN verify that the server responds with a 400 since the sanitized result differs from the original input
 
-    Proper JSON is as follows:
-    {
-        STD_JSON.STATUS: STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESCRIPTION
-        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
-            For example, with the missing name field:
-            {
-                UTUB_FORM.UTUB_DESCRIPTION: ['Invalid input, please try again.']
-            }
-    }
+    The policy is: if sanitization modifies the input, reject it. So '<img src="evl.jpg">' → None (differs) → REJECT.
     """
     client, csrf_token, _, app = login_first_user_without_register
-
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION: '<img src="evl.jpg">',
-    }
 
     with app.app_context():
         utub_of_user: Utubs = Utubs.query.filter(
@@ -416,24 +387,21 @@ def test_update_utub_description_fully_sanitized(
         ).first()
         current_utub_id = utub_of_user.id
 
-    update_utub_name_response = client.patch(
+    update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: '<img src="evl.jpg">'},
+        headers={"X-CSRFToken": csrf_token},
     )
 
-    # Ensure valid reponse
-    assert update_utub_name_response.status_code == 400
+    # Input with HTML is rejected since sanitization would modify it
+    assert update_utub_desc_response.status_code == 400
 
     # Ensure JSON response is correct
-    update_utub_name_json_response = update_utub_name_response.json
+    update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        update_utub_name_json_response[STD_JSON.MESSAGE]
-        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
-    )
-    assert update_utub_name_json_response[STD_JSON.ERRORS][
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert update_utub_desc_json_response[STD_JSON.ERRORS][
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM
     ] == [UTUB_FAILURE.INVALID_INPUT]
 
 
@@ -442,22 +410,12 @@ def test_update_utub_description_partially_sanitized(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
-    WHEN the creator attempts to modify the UTub description to invalid description that is sanitized by the backend, via a POST to
-        "/utubs/<utub_id: int>/description" with valid form data, following this format:
-            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
-            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: New utub description to add
-    THEN verify that the UTub description is not changed in the database and server responds with appropriate error message
+    WHEN the creator attempts to modify the UTub description to a description that contains HTML that would
+        be partially sanitized by the backend (HTML tags stripped but text content preserved), via a PATCH to
+        "/utubs/<utub_id: int>/description"
+    THEN verify that the server responds with a 400 since the sanitized result differs from the original input
 
-    Proper JSON is as follows:
-    {
-        STD_JSON.STATUS: STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESCRIPTION
-        STD_JSON.ERRORS: Objects representing the incorrect field, and an array of errors associated with that field.
-            For example, with the missing name field:
-            {
-                UTUB_FORM.UTUB_DESCRIPTION: ['Invalid input, please try again.']
-            }
-    }
+    The policy is: if sanitization modifies the input, reject it. So "<h1>Hello</h1>" → "Hello" (differs) → REJECT.
     """
     client, csrf_token, _, app = login_first_user_without_register
 
@@ -471,29 +429,21 @@ def test_update_utub_description_partially_sanitized(
         "<<HELLO>>",
         "<h1>Hello</h1>",
     ):
-        utub_desc_form = {
-            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token,
-            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION: utub_description,
-        }
-
-        update_utub_name_response = client.patch(
+        update_utub_desc_response = client.patch(
             url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-            data=utub_desc_form,
+            json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: utub_description},
+            headers={"X-CSRFToken": csrf_token},
         )
 
-        # Ensure valid reponse
-        assert update_utub_name_response.status_code == 400
+        # Input with HTML is rejected since sanitization would modify it
+        assert update_utub_desc_response.status_code == 400
 
         # Ensure JSON response is correct
-        update_utub_name_json_response = update_utub_name_response.json
+        update_utub_desc_json_response = update_utub_desc_response.json
 
-        assert update_utub_name_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-        assert (
-            update_utub_name_json_response[STD_JSON.MESSAGE]
-            == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
-        )
-        assert update_utub_name_json_response[STD_JSON.ERRORS][
-            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION
+        assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+        assert update_utub_desc_json_response[STD_JSON.ERRORS][
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM
         ] == [UTUB_FAILURE.INVALID_INPUT]
 
 
@@ -543,14 +493,10 @@ def test_update_utub_description_as_member(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -634,14 +580,10 @@ def test_update_utub_description_as_creator_of_other_utub(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -709,14 +651,10 @@ def test_update_utub_description_of_invalid_utub(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=NONEXISTENT_UTUB_ID),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -794,14 +732,10 @@ def test_update_utub_description_too_long(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -815,12 +749,11 @@ def test_update_utub_description_too_long(
         update_utub_desc_json_response[STD_JSON.MESSAGE]
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
     )
-    assert (
-        update_utub_desc_json_response[STD_JSON.ERRORS][
-            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM
-        ]
-        == UTUB_FAILURE.UTUB_DESC_FIELD_TOO_LONG
-    )
+    assert update_utub_desc_json_response[STD_JSON.ERRORS][
+        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM
+    ] == [
+        f"String should have at most {UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH} characters"
+    ]
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -852,18 +785,16 @@ def test_update_utub_description_missing_description_field(
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with, and given only
         creators are allowed to modify UTub descriptions
-    WHEN the creator attempts to modify the UTub description, via a POST to:
-        "/utubs/<utub_id: int>/description" with invalid form data that doens't contain
-            the UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM field, following this format:
-            UTUB_DESCRIPTION_FORM.CSRF_TOKEN: String containing CSRF token for validation
-    THEN the UTub-user associations are consistent across the change, all UTub descriptions are kept consistent,
-        the server sends back a 404 HTTP status code, and the server sends back the appropriate JSON response
-        indicating the form is invalid
+    WHEN the creator attempts to modify the UTub description, via a PATCH to:
+        "/utubs/<utub_id: int>/description" with a JSON body that doesn't contain the
+        utubDescription field
+    THEN the server responds with a 200 since utubDescription has a default of None and is optional,
+        and the UTub description is set to None
 
     Proper JSON is as follows:
     {
-        STD_JSON.STATUS : STD_JSON.FAILURE,
-        STD_JSON.MESSAGE: "Invalid form",
+        STD_JSON.STATUS : STD_JSON.SUCCESS,
+        UTUB_SUCCESS.UTUB_DESCRIPTION: null
     }
     """
     client, csrf_token_string, _, app = login_first_user_without_register
@@ -874,8 +805,6 @@ def test_update_utub_description_missing_description_field(
             Utubs.utub_creator == current_user.id
         ).first()
 
-        current_utub_description = utub_of_user.utub_description
-
         current_utub_id = utub_of_user.id
         current_utub_name = utub_of_user.name
 
@@ -884,32 +813,20 @@ def test_update_utub_description_missing_description_field(
         current_num_of_utub_urls = Utub_Urls.query.count()
         current_num_of_url_tags = Utub_Url_Tags.query.count()
 
-        # Get all UTub names and descriptions in a dictionary for checking
-        all_utub_names_and_descriptions = dict()
-        all_initial_utubs: list[Utubs] = Utubs.query.all()
-        for utub in all_initial_utubs:
-            all_utub_names_and_descriptions[utub.name] = utub.utub_description
-
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Ensure valid reponse
-    assert update_utub_desc_response.status_code == 400
+    # Missing utubDescription defaults to None - accepted since description is optional
+    assert update_utub_desc_response.status_code == 200
 
     # Ensure JSON response is correct
     update_utub_desc_json_response = update_utub_desc_response.json
 
-    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
-    assert (
-        update_utub_desc_json_response[STD_JSON.MESSAGE]
-        == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC
-    )
+    assert update_utub_desc_json_response[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert update_utub_desc_json_response[UTUB_SUCCESS.UTUB_DESCRIPTION] is None
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():
@@ -920,18 +837,7 @@ def test_update_utub_description_missing_description_field(
 
         final_check_utub_of_user: Utubs = Utubs.query.get(current_utub_id)
         assert final_check_utub_of_user.name == current_utub_name
-        assert final_check_utub_of_user.utub_description == current_utub_description
-
-        all_final_utubs: list[Utubs] = Utubs.query.all()
-        final_utub_names_and_descriptions = dict()
-        for utub in all_final_utubs:
-            final_utub_names_and_descriptions[utub.name] = utub.utub_description
-
-        for utub_name in final_utub_names_and_descriptions:
-            assert (
-                final_utub_names_and_descriptions[utub_name]
-                == all_utub_names_and_descriptions[utub_name]
-            )
+        assert final_check_utub_of_user.utub_description is None
 
 
 def test_update_utub_description_missing_csrf_token(
@@ -973,13 +879,9 @@ def test_update_utub_description_missing_csrf_token(
         for utub in all_initial_utubs:
             all_utub_names_and_descriptions[utub.name] = utub.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
     )
 
     # Ensure valid reponse
@@ -1033,14 +935,10 @@ def test_update_utub_description_updates_utub_last_updated(
 
         current_utub_id = utub_of_user.id
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -1075,14 +973,12 @@ def test_update_utub_desc_same_desc_does_not_update_utub_last_updated(
         current_utub_id = utub_of_user.id
         current_utub_description = utub_of_user.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: current_utub_description,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: current_utub_description
+        },
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -1117,14 +1013,10 @@ def test_update_utub_description_success_logs(
         current_utub_id = utub_of_user.id
         current_utub_description = utub_of_user.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -1158,14 +1050,12 @@ def test_update_utub_description_same_description_logs(
         current_utub_id = utub_of_user.id
         current_utub_description = utub_of_user.utub_description
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: current_utub_description,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={
+            UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: current_utub_description
+        },
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse
@@ -1180,9 +1070,10 @@ def test_update_utub_description_invalid_logs(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
-    WHEN the creator attempts to modify the UTub description to a new description, via a POST to
-        "/utubs/<utub_id: int>/description" with valid form data and unsanitized input
-    THEN verify that the logs are valid
+    WHEN the creator attempts to modify the UTub description to a description that contains HTML that would
+        be fully sanitized (e.g. '<img src="evl.jpg">'), via a PATCH to "/utubs/<utub_id: int>/description"
+    THEN verify that the server responds with 400 since the sanitized result differs from the original input,
+        and parse_json_body logs the validation failure
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 
@@ -1195,22 +1086,16 @@ def test_update_utub_description_invalid_logs(
 
         current_utub_id = utub_of_user.id
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: UPDATE_TEXT},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Ensure valid reponse
+    # HTML input is rejected since sanitization would modify it
     assert update_utub_desc_response.status_code == 400
-    assert is_string_in_logs(f"User={user.id} | ", caplog.records)
-    assert is_string_in_logs(
-        f"Invalid form: description=['{UTUB_FAILURE.INVALID_INPUT}']", caplog.records
-    )
+    assert is_string_in_logs(f"User={user.id}", caplog.records)
+    assert is_string_in_logs("Invalid JSON:", caplog.records)
 
 
 def test_update_utub_description_missing_utub_description_logs(
@@ -1220,11 +1105,12 @@ def test_update_utub_description_missing_utub_description_logs(
 ):
     """
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with those URLs
-    WHEN the creator attempts to modify the UTub description to a new description, via a POST to
-        "/utubs/<utub_id: int>/description" with invalid form data
-    THEN verify that the logs are valid
+    WHEN the creator attempts to modify the UTub description, via a PATCH to
+        "/utubs/<utub_id: int>/description" with a JSON body that omits the utubDescription field
+    THEN verify that the server responds with 200 since utubDescription defaults to None and is optional
+        (no form validation logging occurs with Pydantic)
     """
-    client, csrf_token_string, user, app = login_first_user_without_register
+    client, csrf_token_string, _, app = login_first_user_without_register
 
     # Grab this creator's UTub
     with app.app_context():
@@ -1234,20 +1120,14 @@ def test_update_utub_description_missing_utub_description_logs(
 
         current_utub_id = utub_of_user.id
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: None,
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Ensure valid reponse
-    assert update_utub_desc_response.status_code == 400
-    assert is_string_in_logs(f"User={user.id} | ", caplog.records)
-    assert is_string_in_logs("UTub description was None", caplog.records)
+    # Missing utubDescription defaults to None - accepted since description is optional
+    assert update_utub_desc_response.status_code == 200
 
 
 def test_update_utub_description_invalid_permissions_logs(
@@ -1271,14 +1151,10 @@ def test_update_utub_description_invalid_permissions_logs(
 
         current_utub_id = utub_of_user.id
 
-    utub_desc_form = {
-        UTUB_DESCRIPTION_FORM.CSRF_TOKEN: csrf_token_string,
-        UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: "Test",
-    }
-
     update_utub_desc_response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_DESC, utub_id=current_utub_id),
-        data=utub_desc_form,
+        json={UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM: "Test"},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure valid reponse

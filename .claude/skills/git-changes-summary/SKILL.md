@@ -104,16 +104,28 @@ Generated: {timestamp}
 ## GitHub PR Summary
 
 ### Problem
-{What problem or gap motivated this work? Why does it exist?}
+{2–4 sentences. Describe the specific gap, bug, or limitation that motivated this branch. Include:
+- What was missing or broken before this change
+- Why it matters (user impact, technical debt, correctness, etc.)
+- Any relevant context (e.g., prior refactor that made this possible, external requirement, etc.)}
 
 ### Solution
-{How does this branch solve the problem? What approach was taken?}
+{2–4 sentences. Describe the approach taken and why it was chosen. Include:
+- The core mechanism or pattern introduced (e.g., "replaced WTForms with Pydantic schemas for request validation")
+- Key design decisions and trade-offs considered
+- How the solution addresses each aspect of the problem above}
 
-### Tests Ran
-{List the test markers or commands run to verify the changes, e.g.:
-- `make test-marker m=unit`
-- `make test-marker m=splash`
-- or "Not yet run — see CI results"}
+### Key Changes
+- {Most impactful change, e.g., "Added `parse_request.py` to centralize Pydantic-based request parsing across all blueprints"}
+- {Second change}
+- {Third change, etc.}
+
+### Tests
+All relevant test suites were run locally and passed:
+- {e.g., `make test-marker-parallel m=unit`}
+- {e.g., `make test-marker-parallel m=utubs`}
+- {e.g., `make test-marker-parallel m=urls`}
+- {Add all markers tested, or note "Full integration suite: `make test-integration-parallel`"}
 
 ---
 *Covers all changes on {branch-name} vs main, as of {timestamp}*

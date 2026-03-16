@@ -9,6 +9,7 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
+from backend.schemas.urls import UtubUrlSchema
 from backend.tags.constants import URLTagErrorCodes
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
@@ -85,18 +86,14 @@ def test_add_fresh_tag_to_valid_url_as_utub_creator(
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -191,18 +188,14 @@ def test_add_fresh_tag_to_valid_url_as_utub_member(
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -314,18 +307,14 @@ def test_add_existing_tag_to_valid_url_as_utub_creator(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -434,18 +423,14 @@ def test_add_existing_tag_to_valid_url_as_utub_member(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -528,9 +513,9 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = url_utub_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+            url_utub_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
         num_of_tag_associations_with_url_in_utub = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
@@ -559,18 +544,14 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -605,7 +586,9 @@ def test_add_duplicate_tag_to_valid_url_as_utub_creator(
         ).first()
 
         assert (
-            url_utub_tag_association.serialized(current_user.id, creator_of_utub_id)
+            UtubUrlSchema.from_orm_url(
+                url_utub_tag_association, current_user.id, creator_of_utub_id
+            ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
 
@@ -653,9 +636,9 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
             Utub_Urls.user_id != current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = url_utub_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+            url_utub_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
         num_of_tag_associations_with_url_in_utub = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_member_of,
@@ -684,18 +667,14 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -730,7 +709,9 @@ def test_add_duplicate_tag_to_valid_url_as_utub_member(
         ).first()
 
         assert (
-            url_utub_tag_association.serialized(current_user.id, creator_of_utub_id)
+            UtubUrlSchema.from_orm_url(
+                url_utub_tag_association, current_user.id, creator_of_utub_id
+            ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
 
@@ -790,18 +771,14 @@ def test_add_duplicate_tag_not_in_utub_to_existing_url_in_utub(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_string_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_string_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -861,18 +838,14 @@ def test_add_tag_to_nonexistent_url_as_utub_creator(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 404
@@ -947,18 +920,14 @@ def test_add_tag_to_nonexistent_url_as_utub_member(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 404
@@ -1023,18 +992,14 @@ def test_add_tag_to_url_in_nonexistent_utub(
         initial_num_utub_tags = Utub_Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=NONEXISTENT_UTUB_ID,
             utub_url_id=NONEXISTENT_UTUB_ID,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 404
@@ -1097,9 +1062,9 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
             Utub_Urls.utub_id == utub_id_that_user_not_member_of
         ).first()
         url_id_for_url_in_utub: int = url_association_with_this_utub.id
-        url_serialization_for_check = url_association_with_this_utub.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+            url_association_with_this_utub, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
@@ -1108,18 +1073,14 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_that_user_not_member_of,
             utub_url_id=url_id_for_url_in_utub,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 404
@@ -1153,11 +1114,13 @@ def test_add_tag_to_url_in_utub_user_is_not_member_of(
 
         # Ensure URL in UTub serialization is still same
         assert (
-            Utub_Urls.query.filter(
-                Utub_Urls.id == url_id_for_url_in_utub,
-            )
-            .first()
-            .serialized(current_user.id, creator_of_utub_id)
+            UtubUrlSchema.from_orm_url(
+                Utub_Urls.query.filter(
+                    Utub_Urls.id == url_id_for_url_in_utub,
+                ).first(),
+                current_user.id,
+                creator_of_utub_id,
+            ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
 
@@ -1211,18 +1174,14 @@ def test_add_tag_to_url_not_in_utub(
         ).count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_for_url_not_in_utub,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 404
@@ -1326,31 +1285,27 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
         new_tag_id_to_add = new_tag_to_add.id
 
         # Get the initial URL-UTub serialization
-        url_serialization_for_check = (
+        url_serialization_for_check = UtubUrlSchema.from_orm_url(
             Utub_Urls.query.filter(
                 Utub_Urls.utub_id == utub_id_user_is_creator_of,
                 Utub_Urls.user_id == current_user.id,
-            )
-            .first()
-            .serialized(current_user.id, creator_of_utub_id)
-        )
+            ).first(),
+            current_user.id,
+            creator_of_utub_id,
+        ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: NEW_TAG_ABOVE_LIMIT,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_in_this_utub,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: NEW_TAG_ABOVE_LIMIT},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -1383,11 +1338,13 @@ def test_add_tag_to_url_with_five_tags_as_utub_creator(
         )
 
         assert (
-            Utub_Urls.query.filter(
-                Utub_Urls.id == url_id_in_this_utub,
-            )
-            .first()
-            .serialized(current_user.id, creator_of_utub_id)
+            UtubUrlSchema.from_orm_url(
+                Utub_Urls.query.filter(
+                    Utub_Urls.id == url_id_in_this_utub,
+                ).first(),
+                current_user.id,
+                creator_of_utub_id,
+            ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
 
@@ -1456,31 +1413,27 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
         new_tag_id_to_add = new_tag_to_add.id
 
         # Get the URL-UTub serialization for checking later
-        url_serialization_for_check = (
+        url_serialization_for_check = UtubUrlSchema.from_orm_url(
             Utub_Urls.query.filter(
                 Utub_Urls.utub_id == utub_id_user_is_member_of,
                 Utub_Urls.user_id != current_user.id,
-            )
-            .first()
-            .serialized(current_user.id, creator_of_utub_id)
-        )
+            ).first(),
+            current_user.id,
+            creator_of_utub_id,
+        ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_member_of,
             utub_url_id=url_id_in_this_utub,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -1513,11 +1466,13 @@ def test_add_tag_to_url_with_five_tags_as_utub_member(
         )
 
         assert (
-            Utub_Urls.query.filter(
-                Utub_Urls.id == url_id_in_this_utub,
-            )
-            .first()
-            .serialized(current_user.id, creator_of_utub_id)
+            UtubUrlSchema.from_orm_url(
+                Utub_Urls.query.filter(
+                    Utub_Urls.id == url_id_in_this_utub,
+                ).first(),
+                current_user.id,
+                creator_of_utub_id,
+            ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
 
@@ -1567,25 +1522,22 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = url_utub_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+            url_utub_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -1600,19 +1552,20 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         int(add_tag_response_json[STD_JSON.ERROR_CODE])
         == URLTagErrorCodes.INVALID_FORM_INPUT
     )
-    assert (
-        add_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING]
-        == TAGS_FAILURE.FIELD_REQUIRED
-    )
+    assert add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING] == [
+        "Field required"
+    ]
 
     with app.app_context():
         # Ensure no tags
         assert Utub_Tags.query.count() == 0
 
         # Ensure same serialization for URL
-        assert url_serialization_for_check == Utub_Urls.query.get(
-            url_id_to_add_tag_to
-        ).serialized(current_user.id, creator_of_utub_id)
+        assert url_serialization_for_check == UtubUrlSchema.from_orm_url(
+            Utub_Urls.query.get(url_id_to_add_tag_to),
+            current_user.id,
+            creator_of_utub_id,
+        ).model_dump(by_alias=True)
 
         # Ensure this tag does not exist in the database
         assert Utub_Tags.query.filter(Utub_Tags.tag_string == tag_to_add).count() == 0
@@ -1671,18 +1624,14 @@ def test_add_tag_to_valid_url_valid_utub_fully_sanitized_tag(
         url_id_to_add_tag_to = url_utub_association.id
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: '<img src="evl.jpg">',
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: '<img src="evl.jpg">'},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -1747,18 +1696,14 @@ def test_add_tag_to_valid_url_valid_utub_partially_sanitized_tag(
         "<h1>Hello</h1>",
     ):
         # Add tag to this URL
-        add_tag_form = {
-            TAG_FORM.CSRF_TOKEN: csrf_token,
-            TAG_FORM.TAG_STRING: tag_string,
-        }
-
         add_tag_response = client.post(
             url_for(
                 ROUTES.URL_TAGS.CREATE_URL_TAG,
                 utub_id=utub_id_user_is_creator_of,
                 utub_url_id=url_id_to_add_tag_to,
             ),
-            data=add_tag_form,
+            json={TAG_FORM.TAG_STRING: tag_string},
+            headers={"X-CSRFToken": csrf_token},
         )
 
         assert add_tag_response.status_code == 400
@@ -1811,25 +1756,21 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = url_utub_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+            url_utub_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
         # Get initial num of Url-Tag associations
         initial_num_url_tag_associations = Utub_Url_Tags.query.count()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
     )
 
     # Assert invalid response code
@@ -1842,9 +1783,11 @@ def test_add_tag_to_valid_url_valid_utub_missing_csrf_token(
         assert Utub_Tags.query.count() == 0
 
         # Ensure same serialization for URL
-        assert url_serialization_for_check == Utub_Urls.query.get(
-            url_id_to_add_tag_to
-        ).serialized(current_user.id, creator_of_utub_id)
+        assert url_serialization_for_check == UtubUrlSchema.from_orm_url(
+            Utub_Urls.query.get(url_id_to_add_tag_to),
+            current_user.id,
+            creator_of_utub_id,
+        ).model_dump(by_alias=True)
 
         # Ensure this tag does not exist in the database
         assert Utub_Tags.query.filter(Utub_Tags.tag_string == tag_to_add).count() == 0
@@ -1895,18 +1838,14 @@ def test_add_fresh_tag_to_url_updates_utub_last_updated(
         url_id_to_add_tag_to = url_utub_association.id
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -1951,18 +1890,14 @@ def test_add_existing_tag_to_url_updates_utub_last_updated(
         url_id_to_add_tag_to = url_utub_association.id
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -2011,18 +1946,14 @@ def test_add_duplicate_tag_to_url_does_not_update_utub_last_updated(
         tag_to_add = tag_on_url_in_utub.tag_string
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -2063,18 +1994,14 @@ def test_add_fresh_tag_to_valid_url_log(
         url_id_to_add_tag_to = url_utub_association.id
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -2148,18 +2075,14 @@ def test_add_tag_to_url_with_max_tags_log(
         db.session.commit()
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: NEW_TAG_ABOVE_LIMIT,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_in_this_utub,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: NEW_TAG_ABOVE_LIMIT},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -2208,18 +2131,14 @@ def test_add_duplicate_tag_to_valid_url_log(
         tag_to_add = tag_on_url_in_utub.tag_string
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -2259,24 +2178,19 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field_log(
         url_id_to_add_tag_to = url_utub_association.id
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
-    assert is_string_in_logs(
-        f"User={user.id} | Invalid form: tag_string={TAGS_FAILURE.FIELD_REQUIRED}",
-        caplog.records,
-    )
+    assert is_string_in_logs(f"User={user.id}", caplog.records)
+    assert is_string_in_logs("Invalid JSON:", caplog.records)
 
 
 def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
@@ -2314,9 +2228,9 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
             Utub_Urls.user_id == current_user.id,
         ).first()
         url_id_to_add_tag_to = url_utub_association.id
-        url_serialization_for_check = url_utub_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        url_serialization_for_check = UtubUrlSchema.from_orm_url(
+            url_utub_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
         num_of_tag_associations_with_url_in_utub = Utub_Url_Tags.query.filter(
             Utub_Url_Tags.utub_id == utub_id_user_is_creator_of,
@@ -2340,18 +2254,14 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
     tag_to_add = f" {tag_to_add} "
 
     # Add tag to this URL
-    add_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(
             ROUTES.URL_TAGS.CREATE_URL_TAG,
             utub_id=utub_id_user_is_creator_of,
             utub_url_id=url_id_to_add_tag_to,
         ),
-        data=add_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -2386,7 +2296,9 @@ def test_add_tag_with_whitespace_to_valid_url_as_utub_creator(
         ).first()
 
         assert (
-            url_utub_tag_association.serialized(current_user.id, creator_of_utub_id)
+            UtubUrlSchema.from_orm_url(
+                url_utub_tag_association, current_user.id, creator_of_utub_id
+            ).model_dump(by_alias=True)
             == url_serialization_for_check
         )
 

@@ -25,6 +25,8 @@ Code should be concise, but readable. We are looking for maintainability and fut
 ### Backend - Python/PostgreSQL/Redis
 
 1. Use typehints! No shortcuts around this.
+2. Never use quoted type hints (e.g. `"Utubs"`). All schema/model files use `from __future__ import annotations`, which makes every annotation lazy at runtime — so `TYPE_CHECKING`-only imports and self-referential return types can be written unquoted.
+3. Never use single-letter variable names. All variables must be named descriptively to convey their purpose (e.g. `value` not `v`, `route_fn` not `f`, `validation_error` not `e`, `SchemaT` not `T`).
 
 ### Tests
 
@@ -42,7 +44,9 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 4. **All test failures and errors are legitimate** - When running tests sequentially marker by marker, every failure or error (`InvalidSessionIdException`, `SessionNotCreatedException`, 300+ second setup timeouts, assertion errors) must be recorded and investigated. There is no such thing as "Selenium session exhaustion" as a dismissible category — if sessions are dying, it indicates a real bug (e.g., a fixture not tearing down properly, a test hanging). Always record and investigate.
 5. **Check Selenium container health when sessions repeatedly fail** - If `SessionNotCreatedException` or `InvalidSessionIdException` persist across multiple test runs, check the Selenium container health (`docker compose ps selenium`) and restart it if needed (`docker compose restart selenium`), but still record and investigate the root cause.
 6. **`TimeoutException` in Selenium tests always requires investigation** - A `TimeoutException` is never pre-existing or dismissible as "flaky". It indicates either a UI logic bug introduced by recent changes, or a genuine timing/stability issue that must be diagnosed and fixed. Never dismiss a `TimeoutException` without identifying its root cause.
-7. **Run tests one marker group at a time** - Tests share a single test DB and Redis instance; never run marker groups in parallel. Use `make test-marker m=<marker>` for each group sequentially.
+7. **Prefer parallel make targets** - Use `make test-marker-parallel m=<marker>` (integration) or `make test-ui-parallel` (UI, default n=8) by default. Sequential targets are fallbacks only. Never run two separate make test commands simultaneously — "parallel" means `-n` workers within a single invocation, not two concurrent terminal commands.
+   - **CRITICAL: Never run integration and UI test suites at the same time** — even as background processes. They share a single test DB and Redis instance; concurrent `db.drop_all()` calls corrupt the DB. Always finish one suite completely before starting the other.
+   - **UI parallelism cap: n=8 max** — Each UI worker needs a dedicated Flask server, Chrome session, and Postgres DB. Running n=12 saturates host CPU/RAM during concurrent startup, causing 120+ second fixture setup times that exceed Selenium wait timeouts and produce spurious login assertion failures. Individual markers pass at n=4; the full suite is stable at n=8.
 8. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
 
 ### General
@@ -65,10 +69,13 @@ A `Makefile` is provided for common tasks. **Always prefer Makefile commands** o
 | `make down` | Stop the stack |
 | `make build` | Rebuild images without starting |
 | `make restart c=<service>` | Restart a specific compose service |
-| `make test-integration` | All non-UI integration tests |
-| `make test-functional` | All UI/Selenium functional tests |
+| `make test-integration-parallel [n=4]` | All non-UI integration tests in parallel (**preferred**) |
+| `make test-integration` | All non-UI integration tests (sequential fallback) |
+| `make test-ui-parallel [n=8]` | All UI/Selenium tests in parallel (**preferred**, max n=8) |
+| `make test-functional` | All UI/Selenium functional tests (sequential fallback) |
 | `make test-js` | All JS unit tests (vitest) |
-| `make test-marker m=<marker>` | Tests for a specific pytest marker |
+| `make test-marker-parallel m=<marker> [n=4]` | Tests for a specific marker in parallel (**preferred**) |
+| `make test-marker m=<marker>` | Tests for a specific marker (sequential fallback) |
 | `make vite-build` | Vite build verification |
 | `make help` | List all available make commands |
 
@@ -136,7 +143,7 @@ pytest -k "test_name"         # single test by name
 
 Test markers (used for CI parallelization): `unit`, `splash`, `utubs`, `members`, `urls`, `tags`, `account_and_support`, `cli`, `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `create_urls_ui`, `update_urls_ui`, `tags_ui`, `mobile_ui`
 
-**CRITICAL: Do NOT run tests in parallel locally.** All tests share a single test database and Redis instance. Always run one marker group at a time sequentially.
+**Prefer parallel make targets** (`test-marker-parallel`, `test-integration-parallel`, `test-ui-parallel`) over sequential ones. "Parallel" means `-n` workers within a single invocation — never run two separate `make test-*` commands simultaneously, as they share a single test DB and Redis instance.
 
 UI/functional tests require Selenium (`SELENIUM_URL` env var pointing to a Selenium grid).
 
@@ -154,6 +161,8 @@ npx eslint .                  # lint
 # All at once via pre-commit
 pre-commit run --all-files
 ```
+
+**Note:** Never run `pre-commit`, `black`, or `flake8` manually unless explicitly asked — pre-commit runs all of these automatically as a git hook on commit.
 
 ### Flask CLI Commands
 

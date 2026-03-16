@@ -765,7 +765,7 @@ def test_update_url_string_empty_field(
         browser, HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == URL_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_url_string_error.text == "String should have at least 1 character"
 
 
 def test_update_url_title_empty_field(
@@ -793,7 +793,7 @@ def test_update_url_title_empty_field(
         browser, HPL.INPUT_URL_TITLE_UPDATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_title_error is not None
-    assert invalid_url_title_error.text == URL_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_url_title_error.text == URL_FAILURE.INVALID_INPUT
 
 
 def test_update_url_string_duplicate_url(

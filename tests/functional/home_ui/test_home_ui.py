@@ -173,8 +173,8 @@ def test_back_and_forward_history_with_one_utub_deleted(
     # Wait for DELETE request
     wait_until_hidden(browser, HPL.BUTTON_MODAL_SUBMIT, timeout=3)
     css_selector = f'{HPL.SELECTORS_UTUB}[utubid="{utub_id_to_delete}"]'
-    utub_selector = browser.find_element(By.CSS_SELECTOR, css_selector)
-    wait_for_element_to_be_removed(browser, utub_selector)
+
+    wait_until_hidden(browser, css_selector, timeout=3)
 
     # Assert UTub selector no longer exists
     with pytest.raises(NoSuchElementException):

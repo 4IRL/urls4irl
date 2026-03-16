@@ -224,7 +224,7 @@ function updateUTubDescriptionSetup(utubID) {
 
 // Handle updateion of UTub's description
 function updateUTubDescriptionSuccess(response, utubID) {
-  const utubDescription = response.utubDescription;
+  const utubDescription = response.utubDescription ?? "";
 
   setState({ activeUTubDescription: response.utubDescription });
   const utubDescriptionElem = $("#URLDeckSubheader");

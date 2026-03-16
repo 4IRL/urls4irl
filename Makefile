@@ -5,7 +5,7 @@ EXEC_WEB_BUILT = $(COMPOSE_BUILT) exec web bash -c
 EXEC_VITE = $(COMPOSE) exec vite
 PYTEST = source /code/venv/bin/activate && python -m pytest
 
-.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker vite-build prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built
+.PHONY: up down build restart test-integration test-integration-parallel test-functional test-ui-parallel test-js test-marker vite-build prune help up-built start-built test-functional-built test-ui-parallel-built test-marker-built test-marker-parallel test-marker-parallel-built
 
 .DEFAULT_GOAL := help
 
@@ -43,11 +43,11 @@ test-functional: ## Run all functional (UI/Selenium) tests
 test-functional-built: start-built ## Run all functional (UI/Selenium) tests against built assets
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -v"
 
-test-ui-parallel: ## Run UI tests in parallel: make test-ui-parallel [n=12] (matches SE_NODE_MAX_SESSIONS)
-	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -n $(or $(n),12) --dist=loadscope"
+test-ui-parallel: ## Run UI tests in parallel: make test-ui-parallel [n=8] (SE_NODE_MAX_SESSIONS=12, but n=8 avoids host resource saturation)
+	$(EXEC_WEB) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -n $(or $(n),8) --dist=loadscope"
 
-test-ui-parallel-built: start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=12]
-	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -n $(or $(n),12) --dist=loadscope"
+test-ui-parallel-built: start-built ## Run UI tests in parallel against built assets: make test-ui-parallel-built [n=8]
+	$(EXEC_WEB_BUILT) "$(PYTEST) -m 'splash_ui or home_ui or utubs_ui or members_ui or urls_ui or create_urls_ui or update_urls_ui or tags_ui or mobile_ui' -n $(or $(n),8) --dist=loadscope"
 
 test-js: ## Run all JS unit tests (vitest)
 	$(EXEC_VITE) npm test
@@ -57,6 +57,12 @@ test-marker: ## Run tests for a specific marker: make test-marker m=<marker>
 
 test-marker-built: start-built ## Run tests for a specific marker against built assets: make test-marker-built m=<marker>
 	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -v"
+
+test-marker-parallel: ## Run tests for a specific marker in parallel: make test-marker-parallel m=<marker> [n=4]
+	$(EXEC_WEB) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),4) --dist=loadscope -v"
+
+test-marker-parallel-built: start-built ## Run tests for a specific marker in parallel against built assets: make test-marker-parallel-built m=<marker> [n=4]
+	$(EXEC_WEB_BUILT) "$(PYTEST) tests/ -m '$(m)' -n $(or $(n),4) --dist=loadscope -v"
 
 test-last-failed: ## Run tests for a specific marker: make test-marker m=<marker>
 	$(EXEC_WEB) "$(PYTEST) tests/ -v --lf"

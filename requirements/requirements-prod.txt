@@ -1,5 +1,6 @@
 ada-url==1.26.0
 alembic==1.13.2
+annotated-types==0.7.0
 async-timeout==4.0.3
 blinker==1.9.0
 cachelib==0.6.0
@@ -33,6 +34,8 @@ nh3==0.2.20
 nodeenv==1.8.0
 ordered-set==4.1.0
 packaging==23.2
+pydantic==2.12.5
+pydantic-core==2.41.5
 psycopg2==2.9.5
 psycopg2-binary==2.9.9
 Pygments==2.17.2
@@ -42,7 +45,8 @@ redis==5.0.1
 requests==2.32.4
 rich==13.7.0
 SQLAlchemy==1.4.31
-typing_extensions==4.9.0
+typing-extensions==4.15.0
+typing-inspection==0.4.2
 ua-parser[regex]==1.0.1
 ua-parser-builtins==202601
 ua-parser-rs==0.1.4

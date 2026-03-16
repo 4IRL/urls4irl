@@ -2,12 +2,12 @@ from flask import url_for
 from flask_login import current_user
 import pytest
 
+from backend.schemas.urls import UtubUrlDeleteSchema
 from backend.models.urls import Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.form_strs import URL_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_strs import URL_SUCCESS
@@ -62,7 +62,7 @@ def test_delete_url_as_utub_creator_no_tags(
             utub_id=current_user_utub.id,
             utub_url_id=url_id_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -85,6 +85,7 @@ def test_delete_url_as_utub_creator_no_tags(
         delete_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
         == url_utub_user_association.url_title
     )
+    UtubUrlDeleteSchema.model_validate(delete_url_response_json[URL_SUCCESS.URL])
 
     # Ensure proper removal from database
     with app.app_context():
@@ -153,7 +154,7 @@ def test_delete_url_as_utub_member_no_tags(
             utub_id=current_user_utub_id,
             utub_url_id=current_url_in_utub.id,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -177,6 +178,7 @@ def test_delete_url_as_utub_member_no_tags(
         delete_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
         == current_url_title
     )
+    UtubUrlDeleteSchema.model_validate(delete_url_response_json[URL_SUCCESS.URL])
 
     # Ensure proper removal from database
     with app.app_context():
@@ -228,7 +230,7 @@ def test_delete_url_from_utub_not_member_of(
             utub_id=utub_current_user_not_part_of.id,
             utub_url_id=url_to_remove_id,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert delete_url_response.status_code == 404
@@ -282,7 +284,7 @@ def test_remove_invalid_nonexistant_url_as_utub_creator(
             utub_id=id_of_utub_current_user_creator_of,
             utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -324,7 +326,7 @@ def test_remove_invalid_nonexistant_url_as_utub_member(
             utub_id=id_of_utub_current_user_member_of,
             utub_url_id=NONEXISTENT_URL_IN_UTUB_ID,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -401,7 +403,7 @@ def test_delete_url_as_utub_creator_with_tag(
             utub_id=utub_id_to_delete_url_from,
             utub_url_id=url_id_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert delete_url_response.status_code == 200
@@ -425,6 +427,7 @@ def test_delete_url_as_utub_creator_with_tag(
         delete_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
         == url_in_utub.url_title
     )
+    UtubUrlDeleteSchema.model_validate(delete_url_response_json[URL_SUCCESS.URL])
 
     # Ensure proper removal from database
     with app.app_context():
@@ -511,7 +514,7 @@ def test_delete_url_as_utub_member_with_tags(
             utub_id=utub_id_to_delete_url_from,
             utub_url_id=url_id_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -538,6 +541,7 @@ def test_delete_url_as_utub_member_with_tags(
         delete_url_response_json[URL_SUCCESS.URL][URL_SUCCESS.URL_TITLE]
         == url_title_to_remove
     )
+    UtubUrlDeleteSchema.model_validate(delete_url_response_json[URL_SUCCESS.URL])
 
     # Ensure proper removal from database
     with app.app_context():
@@ -593,7 +597,7 @@ def test_delete_url_not_in_utub_no_tags(
             utub_id=current_user_utub.id,
             utub_url_id=url_id_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -699,7 +703,7 @@ def test_delete_url_updates_utub_last_updated(
             utub_id=current_user_utub.id,
             utub_url_id=url_id_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -744,7 +748,7 @@ def test_remove_invalid_url_does_not_update_utub_last_updated(
             utub_id=id_of_utub_current_user_creator_of,
             utub_url_id=id_of_url_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 404 HTTP status code response
@@ -782,7 +786,7 @@ def test_delete_url_logs(
             utub_id=current_user_utub.id,
             utub_url_id=utub_url_id_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -821,7 +825,7 @@ def test_delete_url_not_in_utub_logs(
             utub_id=current_user_utub.id,
             utub_url_id=utub_url_id_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response
@@ -863,7 +867,7 @@ def test_delete_url_user_not_adder_or_creator_logs(
             utub_id=another_user_utub.id,
             utub_url_id=utub_url_id_to_remove,
         ),
-        data={URL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 200 HTTP status code response

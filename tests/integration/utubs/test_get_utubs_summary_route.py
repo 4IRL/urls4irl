@@ -147,15 +147,11 @@ def test_get_utubs_sorted_based_on_last_updated(
     assert response.status_code == 200
     assert utub_summary == response.json
 
-    utub_name_form = {
-        UTUB_FORM.UTUB_NAME: last_utub_name + "88",
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     # Update the name of the last UTub
     response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=last_utub_id),
-        data=utub_name_form,
+        json={UTUB_FORM.UTUB_NAME: last_utub_name + "88"},
+        headers={"X-CSRFToken": csrf_token},
     )
     assert response.status_code == 200
 
@@ -173,15 +169,11 @@ def test_get_utubs_sorted_based_on_last_updated(
     middle_utub_id = int(utub_summary[MODELS.UTUBS][-2][MODELS.ID])
     middle_utub_name = str(utub_summary[MODELS.UTUBS][-2][MODELS.NAME])
 
-    utub_name_form = {
-        UTUB_FORM.UTUB_NAME: middle_utub_name + "88",
-        UTUB_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     # Update the name of the middle UTub
     response = client.patch(
         url_for(ROUTES.UTUBS.UPDATE_UTUB_NAME, utub_id=middle_utub_id),
-        data=utub_name_form,
+        json={UTUB_FORM.UTUB_NAME: middle_utub_name + "88"},
+        headers={"X-CSRFToken": csrf_token},
     )
     assert response.status_code == 200
 

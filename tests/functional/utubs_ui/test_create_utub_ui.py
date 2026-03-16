@@ -299,7 +299,7 @@ def test_create_utub_empty_utub_name(
         browser, HPL.INPUT_UTUB_NAME_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_utub_name_error is not None
-    assert invalid_utub_name_error.text == UTUB_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_utub_name_error.text == UTUB_FAILURE.INVALID_INPUT
 
 
 def test_create_utub_sanitized_name(
