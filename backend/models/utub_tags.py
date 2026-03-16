@@ -3,7 +3,6 @@ from datetime import datetime
 from sqlalchemy import DateTime, Column, ForeignKey, Integer, String, UniqueConstraint
 
 from backend import db
-from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.datetime_utils import utc_now
 
 
@@ -37,17 +36,3 @@ class Utub_Tags(db.Model):
         self.utub_id = utub_id
         self.tag_string = tag_string
         self.created_by = created_by
-
-    @property
-    def serialized(self):
-        """Returns serialized object."""
-        return {
-            MODEL_STRS.ID: self.id,
-            MODEL_STRS.TAG_STRING: self.tag_string,
-            MODEL_STRS.TAG_APPLIED: 0,
-        }
-
-    @property
-    def serialized_on_add_delete(self):
-        """Returns serialized object."""
-        return {MODEL_STRS.UTUB_TAG_ID: self.id, MODEL_STRS.TAG_STRING: self.tag_string}

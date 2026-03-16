@@ -3,6 +3,7 @@ from unittest import mock
 
 import ada_url
 from flask import url_for
+from backend.schemas.urls import UtubUrlDetailSchema
 from flask_login import current_user
 import pytest
 
@@ -99,18 +100,14 @@ def test_update_valid_url_with_fresh_valid_url(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: input_url,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: input_url},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -126,6 +123,7 @@ def test_update_valid_url_with_fresh_valid_url(
     assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == NORMALIZED_URL
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
+    UtubUrlDetailSchema.model_validate(json_response[URL_SUCCESS.URL])
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -234,18 +232,14 @@ def test_update_valid_url_with_fresh_valid_url_with_diff_paths(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: valid_url,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: valid_url},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -262,6 +256,7 @@ def test_update_valid_url_with_fresh_valid_url_with_diff_paths(
     assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] != lowercase_url
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
+    UtubUrlDetailSchema.model_validate(json_response[URL_SUCCESS.URL])
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -365,18 +360,14 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "yahoo.com",
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: "yahoo.com"},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -392,6 +383,7 @@ def test_update_valid_url_with_another_fresh_valid_url_as_utub_creator(
     assert json_response[URL_SUCCESS.URL][URL_FORM.URL_STRING] == NORMALIZED_URL
     assert json_response[URL_SUCCESS.URL][MODEL_STRS.URL_TAGS] == associated_tag_objs
     assert json_response[URL_SUCCESS.UTUB_NAME] == utub_creator_of.name
+    UtubUrlDetailSchema.model_validate(json_response[URL_SUCCESS.URL])
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -497,18 +489,14 @@ def test_update_valid_url_with_another_fresh_valid_url_as_url_member(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: NEW_RAW_URL,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_member_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: NEW_RAW_URL},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -631,18 +619,14 @@ def test_update_valid_url_with_previously_added_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_string_of_url_not_in_utub},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -760,18 +744,14 @@ def test_update_valid_url_with_previously_added_url_as_url_adder(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_string_of_url_not_in_utub},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -885,18 +865,14 @@ def test_update_valid_url_with_same_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_in_utub_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_in_utub_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -992,18 +968,14 @@ def test_update_valid_url_with_same_url_as_url_adder(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: current_url_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=url_in_this_utub_id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: current_url_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -1094,18 +1066,14 @@ def test_update_valid_url_with_invalid_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: str(invalid_url),
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: str(invalid_url)},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -1189,18 +1157,14 @@ def test_update_valid_url_with_invalid_url_as_url_adder(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: str(invalid_url),
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=url_in_this_utub_id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: str(invalid_url)},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -1282,18 +1246,14 @@ def test_update_valid_url_with_credentials_url_as_utub_creator(
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     url_with_credentials = "https://user:password@example.com"
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_with_credentials,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_with_credentials},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -1378,18 +1338,14 @@ def test_update_valid_url_with_url_with_credentials_as_url_adder(
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
     url_with_credentials = "https://user:password@example.com"
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_with_credentials,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=url_in_this_utub_id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_with_credentials},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -1480,18 +1436,14 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: NEW_URL,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: NEW_URL},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -1501,10 +1453,9 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == URLErrorCodes.INVALID_FORM_INPUT
-    assert (
-        json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
-        == URL_FAILURE.FIELD_REQUIRED
-    )
+    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == [
+        "String should have at least 1 character"
+    ]
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1568,7 +1519,9 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
         ).first()
         current_title = url_in_this_utub.url_title
         url_in_this_utub_id = url_in_this_utub.id
-        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_get_or_update
+        url_in_utub_serialized_originally = UtubUrlDetailSchema.from_orm_url(
+            url_in_this_utub
+        ).model_dump(by_alias=True)
         original_url_id = url_in_this_utub.url_id
 
         # Find associated tags with this url
@@ -1581,18 +1534,14 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: NEW_FRESH_URL,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_member_of.id,
             utub_url_id=url_in_this_utub_id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: NEW_FRESH_URL},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 403
@@ -1620,7 +1569,7 @@ def test_update_url_string_with_fresh_valid_url_as_another_current_utub_member(
 
         # Verify original serialization still exists
         assert (
-            utub_url_object.serialized_on_get_or_update
+            UtubUrlDetailSchema.from_orm_url(utub_url_object).model_dump(by_alias=True)
             == url_in_utub_serialized_originally
         )
 
@@ -1666,7 +1615,9 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
         url_in_this_utub: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == utub_user_not_member_of.id
         ).first()
-        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_get_or_update
+        url_in_utub_serialized_originally = UtubUrlDetailSchema.from_orm_url(
+            url_in_this_utub
+        ).model_dump(by_alias=True)
         original_user_id = url_in_this_utub.user_id
         original_url_id = url_in_this_utub.id
 
@@ -1685,18 +1636,14 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: NEW_FRESH_URL,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_user_not_member_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: NEW_FRESH_URL},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 404
@@ -1716,14 +1663,14 @@ def test_update_url_with_fresh_valid_url_as_other_utub_member(
 
         # Assert url-utub association hasn't changed
         assert (
-            Utub_Urls.query.filter(
-                Utub_Urls.id == url_in_this_utub.id,
-                Utub_Urls.utub_id == utub_user_not_member_of.id,
-                Utub_Urls.url_id == original_url_id,
-                Utub_Urls.user_id == original_user_id,
-            )
-            .first()
-            .serialized_on_get_or_update
+            UtubUrlDetailSchema.from_orm_url(
+                Utub_Urls.query.filter(
+                    Utub_Urls.id == url_in_this_utub.id,
+                    Utub_Urls.utub_id == utub_user_not_member_of.id,
+                    Utub_Urls.url_id == original_url_id,
+                    Utub_Urls.user_id == original_user_id,
+                ).first()
+            ).model_dump(by_alias=True)
             == url_in_utub_serialized_originally
         )
 
@@ -1765,7 +1712,9 @@ def test_update_nonexistent_url_as_utub_creator(
             Utub_Urls.utub_id == utub_user_not_member_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_get_or_update
+        url_in_utub_serialized_originally = UtubUrlDetailSchema.from_orm_url(
+            url_in_this_utub
+        ).model_dump(by_alias=True)
         original_user_id = url_in_this_utub.user_id
         original_url_id = url_in_this_utub.url_id
 
@@ -1784,18 +1733,14 @@ def test_update_nonexistent_url_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: NEW_FRESH_URL,
-    }
-
     update_url_string_response = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_user_not_member_of.id,
             utub_url_id=nonexistent_utub_url_id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: NEW_FRESH_URL},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_response.status_code == 404
@@ -1826,7 +1771,7 @@ def test_update_nonexistent_url_as_utub_creator(
         assert utub_url_object is not None
 
         assert (
-            utub_url_object.serialized_on_get_or_update
+            UtubUrlDetailSchema.from_orm_url(utub_url_object).model_dump(by_alias=True)
             == url_in_utub_serialized_originally
         )
 
@@ -1875,7 +1820,9 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
             Utub_Urls.utub_id == utub_user_not_member_of.id
         ).first()
         current_title = url_in_this_utub.url_title
-        url_in_utub_serialized_originally = url_in_this_utub.serialized_on_get_or_update
+        url_in_utub_serialized_originally = UtubUrlDetailSchema.from_orm_url(
+            url_in_this_utub
+        ).model_dump(by_alias=True)
         original_user_id = url_in_this_utub.user_id
         original_url_id = url_in_this_utub.url_id
 
@@ -1894,18 +1841,14 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: NEW_FRESH_URL,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_user_not_member_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: NEW_FRESH_URL},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 404
@@ -1935,7 +1878,7 @@ def test_update_url_with_fresh_valid_url_as_other_utub_creator(
         assert utub_url_object is not None
 
         assert (
-            utub_url_object.serialized_on_get_or_update
+            UtubUrlDetailSchema.from_orm_url(utub_url_object).model_dump(by_alias=True)
             == url_in_utub_serialized_originally
         )
 
@@ -1995,17 +1938,14 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_already_in_utub.id,
         ),
-        data=update_url_string_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -2015,10 +1955,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == URLErrorCodes.INVALID_FORM_INPUT
-    assert (
-        json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING]
-        == URL_FAILURE.FIELD_REQUIRED
-    )
+    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == ["Field required"]
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -2084,17 +2021,13 @@ def test_update_valid_url_with_valid_url_missing_csrf(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.URL_STRING: NEW_URL,
-    }
-
     update_url_string_response = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_already_in_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: NEW_URL},
     )
 
     # Ensure valid reponse
@@ -2159,18 +2092,14 @@ def test_update_valid_url_updates_utub_last_updated(
             Utub_Urls.user_id == current_user.id,
         ).first()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string_of_url_not_in_utub,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_string_of_url_not_in_utub},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -2216,11 +2145,6 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
 
         initial_last_updated = utub_member_of.last_updated
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "aaa",
-    }
-
     mock_validate_url.side_effect = InvalidURLError
     update_url_string_form = client.patch(
         url_for(
@@ -2228,7 +2152,8 @@ def test_update_valid_url_with_invalid_url_does_not_update_utub_last_updated(
             utub_id=utub_id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: "aaa"},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -2284,18 +2209,14 @@ def test_update_utub_url_with_url_already_in_utub(
         num_of_urls = Urls.query.count()
         num_of_url_utubs_assocs = Utub_Urls.query.count()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: current_url_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_member_of.id,
             utub_url_id=other_utub_url_id_to_update,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: current_url_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 409
@@ -2352,18 +2273,14 @@ def test_update_valid_url_with_fresh_valid_url_log(
             Utub_Urls.utub_id == utub_creator_of.id
         ).first()
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "yahoo.com",
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: "yahoo.com"},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -2411,18 +2328,14 @@ def test_update_valid_url_with_existing_url_log(
         url_string = url_not_in_this_utub.standalone_url.url_string
         url_id = url_not_in_this_utub.url_id
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -2467,18 +2380,14 @@ def test_update_valid_url_with_same_url_log(
         url_id = url_in_this_utub.url_id
 
     url_to_change_to = url_string.replace("https://", "")
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_to_change_to,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_to_change_to},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 409
@@ -2524,18 +2433,14 @@ def test_update_valid_url_with_same_url_before_normalization_url_log(
         url_id = url_in_this_utub.url_id
         url_string_before_normalize = url_string.replace("https://", "")
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string_before_normalize,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_string_before_normalize},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 409
@@ -2589,18 +2494,14 @@ def test_update_to_invalid_url_log(
         ).first()
         url_string = url_in_this_utub.standalone_url.url_string.replace("https://", "")
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -2641,18 +2542,14 @@ def test_update_to_same_url_log(
         ).first()
         url_string = url_in_this_utub.standalone_url.url_string
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=url_in_this_utub.id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 200
@@ -2686,18 +2583,14 @@ def test_update_url_user_not_allowed_to_log(
         utub_url_id = url_in_this_utub_did_not_add.id
         url_string = url_in_this_utub_did_not_add.standalone_url.url_string
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: url_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=utub_url_id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: url_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 403
@@ -2730,18 +2623,14 @@ def test_update_url_with_only_spaces_log(
         utub_id = url_in_this_utub.utub_id
         utub_url_id = url_in_this_utub.id
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "  ",
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=utub_url_id,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: "  "},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
@@ -2758,11 +2647,9 @@ def test_update_url_with_invalid_form_log(
 ):
     """
     GIVEN a valid creator of a UTub that has members, a single URL, and tags associated with that URL
-    WHEN a member attempts to modify URL but gives invalid form in body via a PATCH to
-        "/utubs/<int:utub_id>/urls/<int:url_id>" with valid form data, following this format:
-            "csrf_token": String containing CSRF token for validation
-            "urlString": String of URL to add
-    THEN verify the server sends back a 400 HTTP status code, and the logs are valid
+    WHEN a member attempts to modify URL but gives no JSON body via a PATCH to
+        "/utubs/<int:utub_id>/urls/<int:url_id>"
+    THEN verify the server sends back a 400 HTTP status code and parse_json_body logs the missing body
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 
@@ -2774,24 +2661,21 @@ def test_update_url_with_invalid_form_log(
         utub_id = url_in_this_utub.utub_id
         utub_url_id = url_in_this_utub.id
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_id,
             utub_url_id=utub_url_id,
         ),
-        data=update_url_string_form,
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert update_url_string_form.status_code == 400
-    assert is_string_in_logs(
-        f"User={user.id} | Invalid form: url_string={URL_FAILURE.FIELD_REQUIRED}",
-        caplog.records,
-    )
+    json_response = update_url_string_form.json
+    assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
+    assert is_string_in_logs(f"User={user.id}", caplog.records)
+    assert is_string_in_logs("Missing JSON body", caplog.records)
 
 
 @mock.patch("backend.extensions.notifications.notifications.requests.post")
@@ -2833,18 +2717,14 @@ def test_update_url_unknown_exception_sends_notification(
         ).first()
         id_of_url_in_utub = url_already_in_utub.id
 
-    update_url_string_form = {
-        URL_FORM.CSRF_TOKEN: csrf_token_string,
-        URL_FORM.URL_STRING: "AAAAA",
-    }
-
     update_url_string_form = client.patch(
         url_for(
             ROUTES.URLS.UPDATE_URL,
             utub_id=utub_creator_of.id,
             utub_url_id=id_of_url_in_utub,
         ),
-        data=update_url_string_form,
+        json={URL_FORM.URL_STRING: "AAAAA"},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Wait for notification to be sent (with timeout)

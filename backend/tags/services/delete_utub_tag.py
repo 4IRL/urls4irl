@@ -4,7 +4,10 @@ from backend.app_logger import safe_add_many_logs
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
-from backend.utils.strings.model_strs import MODELS
+from backend.schemas.tags import (
+    UtubTagDeletedFromUtubResponseSchema,
+    UtubTagOnAddDeleteSchema,
+)
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
 
 
@@ -25,7 +28,7 @@ def delete_utub_tag_from_utub_and_utub_urls(
     """
     utub_url_ids_with_utub_tag = _get_utub_url_ids_for_utub_tag(utub, utub_tag)
 
-    serialized_tag = utub_tag.serialized_on_add_delete
+    tag_schema = UtubTagOnAddDeleteSchema.from_orm_tag(utub_tag)
 
     db.session.delete(utub_tag)
 
@@ -36,16 +39,16 @@ def delete_utub_tag_from_utub_and_utub_urls(
             "Deleted UTubTag",
             f"UTub.id={utub.id}",
             f"UTubTag.id={utub_tag.id}",
-            f"UTubTag.tag_string={serialized_tag[MODELS.TAG_STRING]}",
+            f"UTubTag.tag_string={tag_schema.tag_string}",
         ]
     )
 
     return APIResponse(
         message=TAGS_SUCCESS.TAG_REMOVED_FROM_UTUB,
-        data={
-            TAGS_SUCCESS.UTUB_TAG: serialized_tag,
-            TAGS_SUCCESS.UTUB_URL_IDS: utub_url_ids_with_utub_tag,
-        },
+        data=UtubTagDeletedFromUtubResponseSchema(
+            utub_tag=tag_schema,
+            utub_url_ids=utub_url_ids_with_utub_tag,
+        ),
     ).to_response()
 
 

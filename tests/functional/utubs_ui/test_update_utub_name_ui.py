@@ -340,7 +340,7 @@ def test_update_utub_name_empty_field(
         browser, HPL.INPUT_UTUB_NAME_UPDATE + HPL.INVALID_FIELD_SUFFIX
     )
     assert invalid_utub_name_field is not None
-    assert invalid_utub_name_field.text == UTUB_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_utub_name_field.text == UTUB_FAILURE.INVALID_INPUT
 
 
 def test_update_utub_name_sanitized(

@@ -14,6 +14,7 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
+from backend.schemas.users import UserSchema
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.members
@@ -68,17 +69,13 @@ def test_add_valid_users_to_utub_as_creator(
 
     # Add the other users to the current user's UTubs
     for other_user in other_usernames:
-        add_user_form = {
-            ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-            ADD_USER_FORM.USERNAME: other_user,
-        }
-
         with app.app_context():
             new_user: Users = Users.query.filter(Users.username == other_user).first()
 
         added_user_response = client.post(
             url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
-            data=add_user_form,
+            json={ADD_USER_FORM.USERNAME: other_user},
+            headers={"X-CSRFToken": csrf_token},
         )
 
         # Assert correct status code
@@ -88,6 +85,7 @@ def test_add_valid_users_to_utub_as_creator(
         # Assert JSON response is valid and contains updated data
         assert added_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
         assert added_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_ADDED
+        UserSchema.model_validate(added_user_response_json[MEMBER_SUCCESS.MEMBER])
         assert (
             int(added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
             == new_user.id
@@ -190,7 +188,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
             utub_id=utub_user_created.id,
             user_id=other_user_id_in_utub_with_urls,
         ),
-        data={ADD_USER_FORM.CSRF_TOKEN: csrf_token},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     # Ensure HTTP response code is correct
@@ -206,14 +204,10 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
         )
 
     # Add them back in
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: other_user_username,
-    }
-
     added_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_user_created.id),
-        data=add_user_form,
+        json={ADD_USER_FORM.USERNAME: other_user_username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     # Assert correct status code
@@ -223,6 +217,7 @@ def test_add_then_remove_then_add_user_who_has_urls_to_utub(
     # Assert JSON response is valid and contains updated data
     assert added_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert added_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_ADDED
+    UserSchema.model_validate(added_user_response_json[MEMBER_SUCCESS.MEMBER])
     assert (
         int(added_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
         == other_user_id_in_utub_with_urls
@@ -301,15 +296,11 @@ def test_add_valid_users_to_utub_as_member(
         # Count all user-utub associations in db
         initial_num_user_utubs = Utub_Members.query.count()
 
-    # Try to add the missing member to the UTub
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: missing_user.username,
-    }
-
     missing_user_id = missing_user.id
     add_user_response = client.post(
-        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=only_utub.id), data=add_user_form
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=only_utub.id),
+        json={ADD_USER_FORM.USERNAME: missing_user.username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_user_response.status_code == 403
@@ -370,14 +361,10 @@ def test_add_duplicate_user_to_utub(
         initial_num_user_utubs = Utub_Members.query.count()
 
     # Try adding this user to the UTub again
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: another_user_username,
-    }
-
     add_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=current_user_utub_id),
-        data=add_user_form,
+        json={ADD_USER_FORM.USERNAME: another_user_username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_user_response.status_code == 400
@@ -437,13 +424,10 @@ def test_add_user_to_nonexistant_utub(
         initial_num_user_utubs = Utub_Members.query.count()
 
     # Try adding this user to a UTub
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: another_user.username,
-    }
-
     add_user_response = client.post(
-        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=1), data=add_user_form
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=1),
+        json={ADD_USER_FORM.USERNAME: another_user.username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_user_response.status_code == 404
@@ -482,13 +466,10 @@ def test_add_nonexistent_user_to_utub(
         initial_num_utubs = Utubs.query.count()
 
     # Try adding this user to a UTub
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: "Not a registered user",
-    }
-
     add_user_response = client.post(
-        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=only_utub.id), data=add_user_form
+        url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=only_utub.id),
+        json={ADD_USER_FORM.USERNAME: "Not a registered user"},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_user_response.status_code == 400
@@ -539,14 +520,10 @@ def test_add_user_to_another_users_utub(
         initial_num_user_utubs = Utub_Members.query.count()
 
     # Try to add this third user to the second user's UTub, logged as the first user
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: test_user_to_add.username,
-    }
-
     add_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=another_utub.id),
-        data=add_user_form,
+        json={ADD_USER_FORM.USERNAME: test_user_to_add.username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_user_response.status_code == 404
@@ -591,12 +568,11 @@ def test_add_user_to_utub_invalid_form(
         # Count all user-utub associations in db
         initial_num_user_utubs = Utub_Members.query.count()
 
-    # Try to add this third user to the second user's UTub, logged as the first user
-    add_user_form = {ADD_USER_FORM.CSRF_TOKEN: csrf_token}
-
+    # Try to add a member without providing a username
     add_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=current_user_utub.id),
-        data=add_user_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_user_response.status_code == 400
@@ -607,10 +583,9 @@ def test_add_user_to_utub_invalid_form(
     assert (
         add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER
     )
-    assert (
-        add_user_response_json[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME]
-        == MEMBER_FAILURE.FIELD_REQUIRED
-    )
+    assert add_user_response_json[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME] == [
+        "Field required"
+    ]
 
     with app.app_context():
         # Ensure correct count of Utub-User associations
@@ -680,14 +655,10 @@ def test_add_valid_users_updates_utub_last_updated(
 
     # Add the other users to the current user's UTubs
     for other_user in other_usernames:
-        add_user_form = {
-            ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-            ADD_USER_FORM.USERNAME: other_user,
-        }
-
         added_user_response = client.post(
             url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
-            data=add_user_form,
+            json={ADD_USER_FORM.USERNAME: other_user},
+            headers={"X-CSRFToken": csrf_token},
         )
 
         # Assert correct status code
@@ -736,14 +707,10 @@ def test_add_duplicate_user_to_utub_does_not_update_utub_last_updated(
         initial_last_updated = current_user_utub.last_updated
 
     # Try adding this user to the UTub again
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: another_user_username,
-    }
-
     add_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=current_user_utub_id),
-        data=add_user_form,
+        json={ADD_USER_FORM.USERNAME: another_user_username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_user_response.status_code == 400
@@ -779,14 +746,10 @@ def test_add_valid_users_to_utub_success_log(
         utub_id_of_current_user = utub_of_current_user.id
 
     # Add the other users to the current user's UTubs
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: other_username,
-    }
-
     added_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
-        data=add_user_form,
+        json={ADD_USER_FORM.USERNAME: other_username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     # Assert correct status code
@@ -821,14 +784,10 @@ def test_add_duplicate_user_to_utub_log(
         utub_id_of_current_user = utub_of_current_user.id
 
     # Add the other users to the current user's UTubs
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: other_username,
-    }
-
     added_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
-        data=add_user_form,
+        json={ADD_USER_FORM.USERNAME: other_username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     # Assert correct status code
@@ -845,7 +804,7 @@ def test_add_user_to_utub_invalid_log(
     """
     GIVEN a logged-in user who is creator of a UTub that contains only themselves, no URLs or tags
     WHEN the user wants to add a user to their UTub by POST to "/utubs/<int:utub_id>/members" with an invalid form
-    THEN ensure that the backend responds with a 200 HTTP status code and the logs are valid
+    THEN ensure that the backend responds with a 400 HTTP status code and parse_json_body logs the validation failure
     """
     client, csrf_token, user, app = login_first_user_without_register
 
@@ -858,22 +817,15 @@ def test_add_user_to_utub_invalid_log(
         utub_of_current_user: Utubs = utub_member.to_utub
         utub_id_of_current_user = utub_of_current_user.id
 
-    # Add the other users to the current user's UTubs
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     added_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
-        data=add_user_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token},
     )
 
-    # Assert correct status code
     assert added_user_response.status_code == 400
-    assert is_string_in_logs(
-        f"User={user.id} | Invalid form: username={MEMBER_FAILURE.FIELD_REQUIRED}",
-        caplog.records,
-    )
+    assert is_string_in_logs(f"User={user.id}", caplog.records)
+    assert is_string_in_logs("Invalid JSON:", caplog.records)
 
 
 def test_add_user_as_member_invalid_log(
@@ -900,15 +852,10 @@ def test_add_user_as_member_invalid_log(
         utub_of_current_user: Utubs = utub_member.to_utub
         utub_id_of_current_user = utub_of_current_user.id
 
-    # Add the other users to the current user's UTubs
-    add_user_form = {
-        ADD_USER_FORM.CSRF_TOKEN: csrf_token,
-        ADD_USER_FORM.USERNAME: other_username,
-    }
-
     added_user_response = client.post(
         url_for(ROUTES.MEMBERS.CREATE_MEMBER, utub_id=utub_id_of_current_user),
-        data=add_user_form,
+        json={ADD_USER_FORM.USERNAME: other_username},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     # Assert correct status code

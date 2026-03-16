@@ -304,7 +304,7 @@ def test_create_utub_tag_empty_field(
         browser, HPL.INPUT_UTUB_TAG_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_utub_tag_error is not None
-    assert invalid_utub_tag_error.text == TAGS_FAILURE.FIELD_REQUIRED_STR
+    assert invalid_utub_tag_error.text == TAGS_FAILURE.INVALID_INPUT
 
 
 def test_create_utub_tag_duplicate_tag(

@@ -6,7 +6,7 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, safe_add_many_logs, warning_log
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
-from backend.utils.strings.model_strs import MODELS
+from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 
 
@@ -171,11 +171,8 @@ def _remove_member_from_utub(
 
     return APIResponse(
         message=MEMBER_SUCCESS.MEMBER_REMOVED,
-        data={
-            MEMBER_SUCCESS.UTUB_ID: current_utub.id,
-            MEMBER_SUCCESS.MEMBER: {
-                MODELS.ID: user_id_to_remove,
-                MODELS.USERNAME: removed_user_username,
-            },
-        },
+        data=MemberModifiedResponseSchema(
+            utub_id=current_utub.id,
+            member=UserSchema(id=user_id_to_remove, username=removed_user_username),
+        ),
     ).to_response()

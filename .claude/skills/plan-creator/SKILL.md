@@ -37,6 +37,43 @@ finished: false
 - To-do items must be detailed enough that a junior engineer can execute them without ambiguity — include file paths, function names, data shapes, or API contracts where relevant.
 - The to-do list carries the detail; phase descriptions should be brief overviews.
 
+## Package Pinning
+
+Any plan step that adds a new Python package **must**:
+
+1. Pin it to the **latest stable version** (check PyPI: `curl -s https://pypi.org/pypi/<package>/json | python3 -c "import sys,json,re; d=json.load(sys.stdin); vs=[v for v in d['releases'] if re.match(r'^\d+\.\d+\.\d+$',v)]; print(sorted(vs,key=lambda v:tuple(int(x) for x in v.split('.')))[-1])"`)
+2. If stable is incompatible with the existing stack, use the latest working version instead — document why in the to-do item.
+3. Pin **all transitive dependencies** introduced by the new package to exact versions as well. Run `pip install <package>==<version>` in the container, then `pip show <package>` and inspect the `Requires:` field. Add each unlisted dependency at its installed version.
+
+**Always use `==` (not `>=`, `~=`, or ranges).** Add the package and its transitive deps to the appropriate requirements file based on usage:
+
+| File | Use when |
+|---|---|
+| `requirements-prod.txt` | Needed at runtime in production |
+| `requirements-test.txt` | Only needed for running tests (includes prod via `-r`) |
+| `requirements-dev.txt` | Only needed for local dev tooling / pre-commit (includes test via `-r`) |
+
+## TDD Enforcement
+
+For any plan involving a **new feature or bug fix** (not pure refactoring or cleanup), the steps must follow a strict Red → Green → Refactor loop. Do not bulk-code then bulk-test.
+
+## Final Verification Step
+
+For **every plan that touches code or tests**, the last phase must be:
+
+```markdown
+### N. Verify All Tests Pass
+
+Run the full test suites to confirm nothing is broken:
+
+**To-do:**
+- [ ] Run `make test-integration-parallel` and confirm all integration tests pass
+- [ ] Run `make test-ui-parallel-built` and confirm all UI/functional tests pass
+- [ ] Investigate and fix any failures before marking the plan finished
+```
+
+Do not omit this phase even if only one test file was touched.
+
 ## TDD Enforcement
 
 For any plan involving a **new feature or bug fix** (not pure refactoring or cleanup), the steps must follow a strict Red → Green → Refactor loop. Do not bulk-code then bulk-test.

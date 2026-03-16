@@ -1,5 +1,4 @@
 import time
-from typing import cast
 
 from flask import current_app
 from flask_login import current_user
@@ -11,7 +10,6 @@ from backend.app_logger import (
     safe_add_log,
     safe_add_many_logs,
     safe_get_request_id,
-    turn_form_into_str_for_log,
     warning_log,
 )
 from backend.extensions.extension_utils import (
@@ -28,20 +26,21 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
-from backend.urls.forms import NewURLForm
-from backend.urls.utils import build_form_errors
+from backend.schemas.urls import UrlCreatedItemSchema, UrlCreatedResponseSchema
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
 
 def create_url_in_utub(
-    create_url_form: NewURLForm,
+    url_string: str,
+    url_title: str,
     current_utub: Utubs,
 ) -> FlaskResponse:
     """
     Creates a new URL in a UTub.
 
     Args:
-        create_url_form (NewURLForm): Form containing new URL data
+        url_string (str): The URL string to add
+        url_title (str): The title for this URL in the UTub
         current_utub (Utubs): The UTub object containing the UTub_Urls
 
     Returns:
@@ -49,8 +48,6 @@ def create_url_in_utub(
         - Response: JSON response on create
         - int: HTTP status code 200 (Success)
     """
-    url_string = create_url_form.url_string.data
-
     validated_new_url = validate_new_url_for_utub(url_string, current_utub.id)
     if (
         validated_new_url.url_state == URLState.INVALID_URL_STRING
@@ -77,7 +74,7 @@ def create_url_in_utub(
     return _associate_url_with_utub(
         current_utub=current_utub,
         url_id=url.id,
-        url_title=create_url_form.url_title.get(),
+        url_title=url_title,
         url_string=url.url_string,
         url_state=url_state,
     )
@@ -414,52 +411,13 @@ def _associate_url_with_utub(
 
     return APIResponse(
         message=message,
-        data={
-            URL_SUCCESS.UTUB_ID: current_utub.id,
-            URL_SUCCESS.ADDED_BY: current_user.id,
-            URL_SUCCESS.URL: {
-                URL_SUCCESS.URL_STRING: url_string,
-                URL_SUCCESS.UTUB_URL_ID: url_utub_user_add.id,
-                URL_SUCCESS.URL_TITLE: url_title,
-            },
-        },
-    ).to_response()
-
-
-def handle_invalid_url_form_input(
-    utub_new_url_form: NewURLForm,
-) -> FlaskResponse:
-    """
-    Handle invalid form input when adding a new URL to a UTub.
-
-    Logs validation errors and returns an appropriate error response with form field errors
-    or a generic failure message if form validation passes but something else fails.
-
-    Args:
-        utub_new_url_form (NewURLForm): The form object containing URL input data and validation errors.
-
-    Returns:
-        tuple[Response, int]: A tuple containing:
-        - Response: JSON response with error details and status
-        - int: HTTP status code (400 for form errors, 404 for unknown errors)
-    """
-    # Invalid form input
-    if utub_new_url_form.errors is not None:
-        errors = cast(dict[str, list[str]], utub_new_url_form.errors)
-        warning_log(
-            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(errors)}"
-        )
-        return APIResponse(
-            status_code=400,
-            message=URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
-            error_code=URLErrorCodes.INVALID_FORM_INPUT,
-            errors=build_form_errors(utub_new_url_form),
-        ).to_response()
-
-    # Something else went wrong
-    critical_log("Unable to add URL to UTub")
-    return APIResponse(
-        status_code=404,
-        message=URL_FAILURE.UNABLE_TO_ADD_URL,
-        error_code=URLErrorCodes.UNKNOWN_ERROR,
+        data=UrlCreatedResponseSchema(
+            utub_id=current_utub.id,
+            added_by=current_user.id,
+            url=UrlCreatedItemSchema(
+                utub_url_id=url_utub_user_add.id,
+                url_string=url_string,
+                url_title=url_title,
+            ),
+        ),
     ).to_response()

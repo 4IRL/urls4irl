@@ -5,6 +5,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.tags import UrlTagModifiedResponseSchema, UtubTagOnAddDeleteSchema
 from backend.utils.strings.tag_strs import TAGS_SUCCESS
 
 
@@ -91,9 +92,9 @@ def _build_delete_url_tag_response(
 
     return APIResponse(
         message=TAGS_SUCCESS.TAG_REMOVED_FROM_URL,
-        data={
-            TAGS_SUCCESS.UTUB_URL_TAG_IDS: utub_url.associated_tag_ids,
-            TAGS_SUCCESS.UTUB_TAG: utub_tag.serialized_on_add_delete,
-            TAGS_SUCCESS.TAG_COUNTS_MODIFIED: utub_tag_id_count,
-        },
+        data=UrlTagModifiedResponseSchema(
+            utub_url_tag_ids=utub_url.associated_tag_ids,
+            utub_tag=UtubTagOnAddDeleteSchema.from_orm_tag(utub_tag),
+            tag_counts_modified=utub_tag_id_count,
+        ),
     ).to_response()

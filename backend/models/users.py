@@ -15,7 +15,6 @@ from backend.utils.constants import EMAIL_CONSTANTS, USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.config_strs import CONFIG_ENVS
 from backend.utils.strings.email_validation_strs import EMAILS
-from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
 
 
@@ -85,35 +84,6 @@ class Users(db.Model, UserMixin):
 
     def validate_email(self):
         self.email_validated = True
-
-    @property
-    def serialized(self) -> dict[str, int | str]:
-        """Return object in serialized form."""
-        return {
-            MODEL_STRS.ID: self.id,
-            MODEL_STRS.USERNAME: self.username,
-        }
-
-    @property
-    def serialized_on_initial_load(self) -> dict[str, list[dict]]:
-        """Returns object in serialized for, with only the utub id and Utub name the user is a member of."""
-
-        # Sort by last updated
-        sorted_utubs_user_is_in: list[Utub_Members] = sorted(
-            self.utubs_is_member_of,
-            key=lambda utub: utub.to_utub.last_updated,
-            reverse=True,
-        )
-        utub_summaries = [
-            {
-                MODEL_STRS.ID: utub.to_utub.id,
-                MODEL_STRS.NAME: utub.to_utub.name,
-                MODEL_STRS.MEMBER_ROLE: utub.member_role.value,
-            }
-            for utub in sorted_utubs_user_is_in
-        ]
-
-        return {MODEL_STRS.UTUBS: utub_summaries}
 
     def __repr__(self):
         return f"User: {self.username}"

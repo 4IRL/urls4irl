@@ -8,19 +8,21 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import (
     critical_log,
     safe_add_many_logs,
-    turn_form_into_str_for_log,
     warning_log,
 )
 from backend.models.urls import Urls
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.urls import (
+    UrlTitleUpdatedResponseSchema,
+    UrlUpdatedResponseSchema,
+    UtubUrlDetailSchema,
+)
 from backend.urls.constants import URLErrorCodes, URLState
-from backend.urls.forms import UpdateURLForm
 from backend.urls.services.create_urls import (
     build_response_for_invalidated_url,
     validate_new_url_for_utub,
 )
-from backend.urls.utils import build_form_errors
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 
@@ -54,13 +56,13 @@ def check_if_is_url_adder_or_utub_creator_on_url_update(
 
 
 def update_url_in_utub(
-    update_url_form: UpdateURLForm, current_utub: Utubs, current_utub_url: Utub_Urls
+    url_string: str, current_utub: Utubs, current_utub_url: Utub_Urls
 ) -> FlaskResponse:
     """
     Updates the given Utub_Urls in the UTub.
 
     Args:
-        update_url_form (UpdateURLForm): Form containing updated URL data
+        url_string (str): The new URL string to update to
         current_utub (Utubs): The UTub object containing the UTub_Urls
         current_utub_url (Utub_Urls): The UTub_Urls object to update.
 
@@ -69,7 +71,7 @@ def update_url_in_utub(
         - Response: JSON response on update
         - int: HTTP status code 200 (Success)
     """
-    url_to_change_to: str = update_url_form.get_url_string().replace(" ", "")
+    url_to_change_to: str = url_string.strip()
 
     # Check for empty URL string to update to
     is_empty_url = _check_for_empty_url_string_on_update(
@@ -92,9 +94,9 @@ def update_url_in_utub(
         return APIResponse(
             status=STD_JSON.NO_CHANGE,
             message=URL_NO_CHANGE.URL_NOT_MODIFIED,
-            data={
-                URL_SUCCESS.URL: current_utub_url.serialized_on_get_or_update,
-            },
+            data=UrlTitleUpdatedResponseSchema(
+                url=UtubUrlDetailSchema.from_orm_url(current_utub_url)
+            ),
         ).to_response()
 
     validated_new_url = validate_new_url_for_utub(url_to_change_to, current_utub.id)
@@ -191,8 +193,6 @@ def _associate_updated_url_with_utub(
     current_utub_url.url_id = url.id
     current_utub_url.standalone_url = url
 
-    new_serialized_url = current_utub_url.serialized_on_get_or_update
-
     current_utub.set_last_updated()
     db.session.commit()
 
@@ -202,44 +202,9 @@ def _associate_updated_url_with_utub(
 
     return APIResponse(
         message=URL_SUCCESS.URL_MODIFIED,
-        data={
-            URL_SUCCESS.UTUB_ID: current_utub.id,
-            URL_SUCCESS.UTUB_NAME: current_utub.name,
-            URL_SUCCESS.URL: new_serialized_url,
-        },
-    ).to_response()
-
-
-def handle_invalid_update_url_form_input(
-    update_url_form: UpdateURLForm,
-) -> FlaskResponse:
-    """
-    Handle invalid form input when updating a URL in a UTub.
-
-    Logs validation errors and returns an appropriate error response with form field errors
-    or a generic failure message if form validation passes but something else fails.
-
-    Args:
-        update_url_form (UpdateURLForm): The form object containing URL input data and validation errors.
-
-    Returns:
-        tuple[Response, int]: A tuple containing:
-        - Response: JSON response with error details and status
-        - int: HTTP status code (400 for form errors, 404 for unknown errors)
-    """
-    if update_url_form.errors is not None:
-        warning_log(f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(update_url_form.errors)}")  # type: ignore
-        return APIResponse(
-            status_code=400,
-            message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
-            error_code=URLErrorCodes.INVALID_FORM_INPUT,
-            errors=build_form_errors(update_url_form),
-        ).to_response()
-
-    # Something else went wrong
-    critical_log("Unable to update URL to UTub")
-    return APIResponse(
-        status_code=404,
-        message=URL_FAILURE.UNABLE_TO_MODIFY_URL,
-        error_code=URLErrorCodes.UNKNOWN_ERROR,
+        data=UrlUpdatedResponseSchema(
+            utub_id=current_utub.id,
+            utub_name=current_utub.name,
+            url=UtubUrlDetailSchema.from_orm_url(current_utub_url),
+        ),
     ).to_response()

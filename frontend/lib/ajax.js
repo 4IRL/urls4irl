@@ -15,10 +15,18 @@ import { showNewPageOnAJAXHTMLResponse } from "./page-utils.js";
  * @returns {jqXHR} jQuery AJAX promise
  */
 export function ajaxCall(type, url, data, timeout = 1000) {
+  const isJsonBody =
+    data !== null &&
+    typeof data === "object" &&
+    !Array.isArray(data) &&
+    Object.keys(data).length > 0;
+
   let request = $.ajax({
     type: type,
     url: url,
-    data: data,
+    ...(isJsonBody
+      ? { data: JSON.stringify(data), contentType: "application/json" }
+      : {}),
     timeout: timeout,
   });
 

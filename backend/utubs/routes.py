@@ -13,10 +13,16 @@ from backend.api_common.auth_decorators import (
     utub_membership_required,
     xml_http_request_only,
 )
+from backend.api_common.parse_request import parse_json_body
 from backend.api_common.responses import FlaskResponse
 from backend.models.utubs import Utubs
-from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
-from backend.utubs.forms import UTubDescriptionForm, UTubNewNameForm
+from backend.schemas.requests.utubs import (
+    CreateUTubRequest,
+    UpdateUTubDescriptionRequest,
+    UpdateUTubNameRequest,
+)
+from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_ID_QUERY_PARAM
+from backend.utubs.constants import UTubErrorCodes
 from backend.utubs.services.create_utubs import create_new_utub
 from backend.utubs.services.delete_utubs import delete_utub_for_user
 from backend.utubs.services.home_page import (
@@ -29,8 +35,6 @@ from backend.utubs.services.read_utubs import (
     get_single_utub_for_user,
 )
 from backend.utubs.services.update_utubs import (
-    handle_invalid_update_utub_description_form_input,
-    handle_invalid_update_utub_name_form_input,
     update_utub_desc_if_new,
     update_utub_name_if_new,
 )
@@ -86,8 +90,15 @@ def home() -> str | WerkzeugResponse:
 
 @utubs.route("/utubs", methods=["POST"])
 @email_validation_required
-def create_utub() -> FlaskResponse:
-    return create_new_utub()
+@parse_json_body(
+    CreateUTubRequest,
+    message=UTUB_FAILURE.UNABLE_TO_MAKE_UTUB,
+    error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+)
+def create_utub(validated_request: CreateUTubRequest) -> FlaskResponse:
+    return create_new_utub(
+        validated_request.utubName, validated_request.utubDescription
+    )
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["GET"])
@@ -112,58 +123,42 @@ def get_utubs() -> FlaskResponse:
 
 @utubs.route("/utubs/<int:utub_id>/name", methods=["PATCH"])
 @utub_creator_required
-def update_utub_name(utub_id: int, current_utub: Utubs) -> FlaskResponse:
+@parse_json_body(
+    UpdateUTubNameRequest,
+    message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME,
+    error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+)
+def update_utub_name(
+    utub_id: int, current_utub: Utubs, validated_request: UpdateUTubNameRequest
+) -> FlaskResponse:
     """
     Creator wants to update their UTub name.
     Name limit is 30 characters.
-    Form data required to be sent from the frontend with a parameter "name".
-
-    Input is required and the new name cannot be empty. Members cannot update UTub names. Creators
-    of other UTubs cannot update another UTub's name. The "name" field must be included in the form.
-
-    On PATCH:
-        The new name is saved to the database for that UTub.
 
     Args:
-        utub_id (int): The ID of the UTub that will have its description updated
+        utub_id (int): The ID of the UTub that will have its name updated
     """
-    utub_name_form: UTubNewNameForm = UTubNewNameForm()
-
-    if not utub_name_form.validate_on_submit():
-        return handle_invalid_update_utub_name_form_input(utub_name_form)
-
-    return update_utub_name_if_new(
-        current_utub=current_utub, utub_name_form=utub_name_form
-    )
+    return update_utub_name_if_new(current_utub, validated_request.utubName)
 
 
 @utubs.route("/utubs/<int:utub_id>/description", methods=["PATCH"])
 @utub_creator_required
-def update_utub_desc(utub_id: int, current_utub: Utubs) -> FlaskResponse:
+@parse_json_body(
+    UpdateUTubDescriptionRequest,
+    message=UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_DESC,
+    error_code=UTubErrorCodes.INVALID_FORM_INPUT,
+)
+def update_utub_desc(
+    utub_id: int, current_utub: Utubs, validated_request: UpdateUTubDescriptionRequest
+) -> FlaskResponse:
     """
     Creator wants to update their UTub description.
     Description limit is 500 characters.
-    Form data required to be sent from the frontend with a parameter "utub_description".
-
-    Members cannot update UTub descriptions. Creators of other UTubs cannot update another
-    UTub's name. The "utub_description" field must be contained in the form. The description
-    can be made blank if desired.
-
-    On POST:
-        The new description is saved to the database for that UTub.
 
     Args:
         utub_id (int): The ID of the UTub that will have its description updated
     """
-
-    utub_desc_form: UTubDescriptionForm = UTubDescriptionForm()
-
-    if not utub_desc_form.validate_on_submit():
-        return handle_invalid_update_utub_description_form_input(utub_desc_form)
-
-    return update_utub_desc_if_new(
-        current_utub=current_utub, utub_desc_form=utub_desc_form
-    )
+    return update_utub_desc_if_new(current_utub, validated_request.utubDescription)
 
 
 @utubs.route("/utubs/<int:utub_id>", methods=["DELETE"])

@@ -45,21 +45,6 @@ class Utub_Urls(db.Model):
 
     UniqueConstraint(utub_id, url_id, name="unique_url_per_utub")
 
-    def serialized(
-        self, current_user_id: int, utub_creator: int
-    ) -> dict[str, int | str | list[int] | bool]:
-        """Returns serialized object."""
-        url_item: Urls = self.standalone_url
-
-        return {
-            MODEL_STRS.UTUB_URL_ID: self.id,
-            MODEL_STRS.URL_STRING: url_item.url_string,
-            MODEL_STRS.URL_TAG_IDS: self.associated_tag_ids,
-            MODEL_STRS.URL_TITLE: self.url_title,
-            MODEL_STRS.CAN_DELETE: current_user_id == self.user_id
-            or current_user_id == utub_creator,
-        }
-
     @property
     def associated_tag_ids(self) -> list[int]:
         # Only return tags for the requested UTub
@@ -82,14 +67,3 @@ class Utub_Urls(db.Model):
                     }
                 )
         return url_tags
-
-    @property
-    def serialized_on_get_or_update(
-        self,
-    ) -> dict[str, int | str | list[dict[str, int | str]]]:
-        return {
-            MODEL_STRS.UTUB_URL_ID: self.id,
-            MODEL_STRS.URL_TITLE: self.url_title,
-            MODEL_STRS.URL_STRING: self.standalone_url.url_string,
-            MODEL_STRS.URL_TAGS: self.associated_tags,
-        }

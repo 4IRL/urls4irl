@@ -11,6 +11,7 @@ from backend.app_logger import critical_log, safe_add_many_logs
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.urls import UrlDeletedResponseSchema, UtubUrlDeleteSchema
 from backend.utils.strings.url_strs import URL_SUCCESS
 
 
@@ -64,10 +65,10 @@ def delete_url_in_utub(
         - int: HTTP status code 200 (Success)
     """
     # Store serialized data from URL association with UTub and associated tags
-    url_string_to_remove = current_utub_url.standalone_url.url_string
     url_id_to_remove = current_utub_url.standalone_url.id
     utub_url_id = current_utub_url.id
 
+    url_schema = UtubUrlDeleteSchema.from_orm_url(current_utub_url)
     tag_ids_and_updated_count = _update_tag_counts_on_url_delete(
         current_utub_url, current_utub
     )
@@ -89,15 +90,11 @@ def delete_url_in_utub(
 
     return APIResponse(
         message=URL_SUCCESS.URL_REMOVED,
-        data={
-            URL_SUCCESS.UTUB_ID: current_utub.id,
-            URL_SUCCESS.URL: {
-                URL_SUCCESS.URL_STRING: url_string_to_remove,
-                URL_SUCCESS.UTUB_URL_ID: utub_url_id,
-                URL_SUCCESS.URL_TITLE: current_utub_url.url_title,
-            },
-            URL_SUCCESS.TAG_COUNTS_MODIFIED: tag_ids_and_updated_count,
-        },
+        data=UrlDeletedResponseSchema(
+            utub_id=current_utub.id,
+            url=url_schema,
+            tag_counts_modified=tag_ids_and_updated_count,
+        ),
     ).to_response()
 
 

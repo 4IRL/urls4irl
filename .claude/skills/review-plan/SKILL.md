@@ -46,10 +46,17 @@ Evaluate across these dimensions. Be specific — cite step numbers and file nam
 - Does it respect CLAUDE.md rules (no window globals, typehints, cleanup of debug code)?
 - Are test markers correct per `pytest.ini`? Are new markers needed?
 
+#### Package Additions
+If the plan introduces new Python packages, flag any that:
+- Use a version range (`>=`, `~=`, `<`) instead of an exact pin (`==`)
+- Are missing transitive dependency pins (new deps not already in any requirements file)
+- Are placed in the wrong requirements file — runtime deps belong in `requirements-prod.txt`, test-only deps in `requirements-test.txt`, dev/tooling-only deps in `requirements-dev.txt`
+
 #### Verification Steps
 - Does each step have a clear way to verify success (a command to run, a behavior to observe)?
 - Are the verification steps in the plan actually sufficient to catch regressions?
 - Note any steps that lack verification and suggest what to add.
+- **Final test suite phase (required for any plan touching code or tests):** The last phase must include `make test-integration-parallel` and `make test-ui-parallel-built`. Flag as **Critical** if either is missing.
 
 #### Risk & Reversibility
 - Which steps are hard to undo (file deletions, DB migrations, API contract changes)?

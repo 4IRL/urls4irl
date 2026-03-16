@@ -8,8 +8,8 @@ from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Utub_Members
 from backend.models.utub_urls import Utub_Urls
+from backend.schemas.urls import UtubUrlSchema
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.form_strs import TAG_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
@@ -81,10 +81,6 @@ def test_delete_tag_from_url_as_utub_creator(
         ).count()
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -92,7 +88,7 @@ def test_delete_tag_from_url_as_utub_creator(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 200
@@ -212,10 +208,6 @@ def test_delete_tag_from_url_as_utub_member(
         ).count()
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -223,7 +215,7 @@ def test_delete_tag_from_url_as_utub_member(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 200
@@ -344,10 +336,6 @@ def test_delete_tag_from_url_with_one_tag(
         ).count()
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -355,7 +343,7 @@ def test_delete_tag_from_url_with_one_tag(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 200
@@ -479,10 +467,6 @@ def test_delete_last_url_tag_in_utub(
         ).count()
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -490,7 +474,7 @@ def test_delete_last_url_tag_in_utub(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 200
@@ -655,10 +639,6 @@ def test_delete_tag_from_url_with_five_tags(
         ).count()
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -666,7 +646,7 @@ def test_delete_tag_from_url_with_five_tags(
             utub_url_id=tag_to_delete.utub_url_id,
             utub_tag_id=tag_to_delete.utub_tag_id,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 200
@@ -754,15 +734,11 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
         url_id_to_delete_tag_from = valid_url_in_utub.id
 
         # Get URL serialization for checking
-        initial_url_serialization = valid_url_in_utub.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        initial_url_serialization = UtubUrlSchema.from_orm_url(
+            valid_url_in_utub, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -770,7 +746,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=NONEXISTENT_TAG_ID,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 404
@@ -792,9 +768,9 @@ def test_delete_nonexistent_tag_from_url_as_utub_creator(
         ).first()
 
         # Ensure final and initial serialization do match
-        assert initial_url_serialization == final_utub_url_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        assert initial_url_serialization == UtubUrlSchema.from_orm_url(
+            final_utub_url_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
 
 def test_delete_nonexistent_tag_from_url_as_utub_member(
@@ -828,18 +804,14 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
         url_id_to_delete_tag_from = valid_url_in_utub.id
 
         # Get URL serialization for checking
-        initial_url_serialization = valid_url_in_utub.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        initial_url_serialization = UtubUrlSchema.from_orm_url(
+            valid_url_in_utub, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
         # Initial number of Url-Tag associations
         initial_num_tag_url_associations = Utub_Url_Tags.query.count()
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -847,7 +819,7 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=NONEXISTENT_TAG_ID,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 404
@@ -869,9 +841,9 @@ def test_delete_nonexistent_tag_from_url_as_utub_member(
         ).first()
 
         # Ensure final and initial serialization do match
-        assert initial_url_serialization == final_utub_url_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        assert initial_url_serialization == UtubUrlSchema.from_orm_url(
+            final_utub_url_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
         assert Utub_Url_Tags.query.count() == initial_num_tag_url_associations
 
@@ -927,15 +899,11 @@ def test_delete_tag_from_url_but_not_member_of_utub(
             Utub_Urls.id == url_id_in_utub,
         ).first()
 
-        initial_url_utub_serialization = initial_url_utub_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        initial_url_utub_serialization = UtubUrlSchema.from_orm_url(
+            initial_url_utub_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -943,7 +911,7 @@ def test_delete_tag_from_url_but_not_member_of_utub(
             utub_url_id=url_id_in_utub,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 404
@@ -965,9 +933,9 @@ def test_delete_tag_from_url_but_not_member_of_utub(
             Utub_Urls.id == url_id_in_utub,
         ).first()
 
-        assert initial_url_utub_serialization == final_url_utub_association.serialized(
-            current_user.id, creator_of_utub_id
-        )
+        assert initial_url_utub_serialization == UtubUrlSchema.from_orm_url(
+            final_url_utub_association, current_user.id, creator_of_utub_id
+        ).model_dump(by_alias=True)
 
 
 def test_delete_tag_from_url_from_nonexistent_utub(
@@ -1007,18 +975,14 @@ def test_delete_tag_from_url_from_nonexistent_utub(
         initial_utub_url_association: Utub_Urls = Utub_Urls.query.filter(
             Utub_Urls.utub_id == existing_utub_id, Utub_Urls.id == url_id_to_delete
         ).first()
-        initial_utub_url_serialization = initial_utub_url_association.serialized(
-            current_user.id, creator_of_existing_utub_id
-        )
+        initial_utub_url_serialization = UtubUrlSchema.from_orm_url(
+            initial_utub_url_association, current_user.id, creator_of_existing_utub_id
+        ).model_dump(by_alias=True)
 
         # Initial number of Url-Tag associations
         initial_num_tag_url_associations = Utub_Url_Tags.query.count()
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -1026,7 +990,7 @@ def test_delete_tag_from_url_from_nonexistent_utub(
             utub_url_id=url_id_to_delete,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 404
@@ -1047,9 +1011,9 @@ def test_delete_tag_from_url_from_nonexistent_utub(
 
         # Ensure URL-UTub association still exists
         final_utub_url_association: Utub_Urls = Utub_Urls.query.get(url_id_to_delete)
-        final_utub_url_serialization = final_utub_url_association.serialized(
-            current_user.id, creator_of_existing_utub_id
-        )
+        final_utub_url_serialization = UtubUrlSchema.from_orm_url(
+            final_utub_url_association, current_user.id, creator_of_existing_utub_id
+        ).model_dump(by_alias=True)
 
         assert initial_utub_url_serialization == final_utub_url_serialization
 
@@ -1094,10 +1058,6 @@ def test_delete_tag_from_nonexistent_url_utub(
         initial_num_tag_url_associations = Utub_Url_Tags.query.count()
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -1105,7 +1065,7 @@ def test_delete_tag_from_nonexistent_url_utub(
             utub_url_id=NONEXISTENT_URL_ID,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 404
@@ -1171,8 +1131,6 @@ def test_delete_tag_with_no_csrf_token(
         initial_num_tag_url_associations = Utub_Url_Tags.query.count()
 
     # delete tag from this URL
-    delete_tag_form = {}
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -1180,7 +1138,6 @@ def test_delete_tag_with_no_csrf_token(
             utub_url_id=url_id_to_delete,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
     )
 
     # Assert invalid response code
@@ -1233,10 +1190,6 @@ def test_delete_tag_from_url_updates_utub_last_updated(
         url_id_to_delete_tag_from = tag_url_utub_association.utub_url_id
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -1244,7 +1197,7 @@ def test_delete_tag_from_url_updates_utub_last_updated(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 200
@@ -1285,10 +1238,6 @@ def test_delete_nonexistent_tag_from_url_does_not_update_utub_last_updated(
         url_id_to_delete_tag_from = valid_url_in_utub.id
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -1296,7 +1245,7 @@ def test_delete_nonexistent_tag_from_url_does_not_update_utub_last_updated(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=NONEXISTENT_TAG_ID,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 404
@@ -1338,10 +1287,6 @@ def test_delete_tag_from_url_log(
         url_id_to_delete_tag_from = tag_url_utub_association.utub_url_id
 
     # delete tag from this URL
-    delete_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     delete_tag_response = client.delete(
         url_for(
             ROUTES.URL_TAGS.DELETE_URL_TAG,
@@ -1349,7 +1294,7 @@ def test_delete_tag_from_url_log(
             utub_url_id=url_id_to_delete_tag_from,
             utub_tag_id=tag_id_to_delete,
         ),
-        data=delete_tag_form,
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert delete_tag_response.status_code == 200

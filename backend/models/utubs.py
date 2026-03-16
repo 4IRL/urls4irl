@@ -8,7 +8,6 @@ from backend.models.utub_urls import Utub_Urls
 from backend.models.utub_tags import Utub_Tags
 from backend.utils.constants import UTUB_CONSTANTS
 from backend.utils.datetime_utils import utc_now
-from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 
 
 class Utubs(db.Model):
@@ -54,39 +53,6 @@ class Utubs(db.Model):
         self.name = name
         self.utub_creator = utub_creator
         self.utub_description = utub_description
-
-    def serialized(self, current_user_id: int) -> dict[str, list | int | str]:
-        """Return object in serialized form."""
-        tags = [tag.serialized for tag in self.utub_tags]
-
-        urls = [
-            url_in_utub.serialized(current_user_id, self.utub_creator)
-            for url_in_utub in self.utub_urls
-        ]
-
-        for tag in tags:
-            tag[MODEL_STRS.TAG_APPLIED] += len(
-                [
-                    None
-                    for url in urls
-                    if tag[MODEL_STRS.ID] in url[MODEL_STRS.URL_TAG_IDS]
-                ]
-            )
-
-        return {
-            MODEL_STRS.ID: self.id,
-            MODEL_STRS.NAME: self.name,
-            MODEL_STRS.CREATED_BY: self.utub_creator,
-            MODEL_STRS.CREATED_AT: self.created_at.strftime("%m/%d/%Y %H:%M:%S"),
-            MODEL_STRS.DESCRIPTION: (
-                self.utub_description if self.utub_description is not None else ""
-            ),
-            MODEL_STRS.MEMBERS: [member.serialized for member in self.members],
-            MODEL_STRS.URLS: urls,
-            MODEL_STRS.TAGS: tags,
-            MODEL_STRS.IS_CREATOR: self.utub_creator == current_user_id,
-            MODEL_STRS.CURRENT_USER: str(current_user_id),
-        }
 
     def set_last_updated(self):
         self.last_updated = utc_now()

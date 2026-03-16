@@ -106,14 +106,10 @@ def test_tag_filter_count_after_add_existing_tag_to_url(
 
     new_tag_string = MOCK_TAGS[0]
 
-    new_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: new_tag_string,
-    }
-
     client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: new_tag_string},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     login_user_select_utub_by_id_and_url_by_id(

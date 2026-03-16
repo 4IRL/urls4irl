@@ -2,6 +2,7 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_many_logs
 from backend.models.utubs import Utubs
+from backend.schemas.utubs import UtubDeletedResponseSchema
 from backend.utils.strings.utub_strs import UTUB_SUCCESS
 
 
@@ -34,9 +35,9 @@ def delete_utub_for_user(current_utub: Utubs) -> FlaskResponse:
 
     return APIResponse(
         message=UTUB_SUCCESS.UTUB_DELETED,
-        data={
-            UTUB_SUCCESS.UTUB_ID: utub_id,
-            UTUB_SUCCESS.UTUB_NAME: utub_name,
-            UTUB_SUCCESS.UTUB_DESCRIPTION: utub_description,
-        },
+        data=UtubDeletedResponseSchema(
+            utub_id=utub_id,
+            utub_name=utub_name,
+            utub_description=utub_description,
+        ),
     ).to_response()

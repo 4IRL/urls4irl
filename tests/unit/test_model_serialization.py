@@ -11,6 +11,9 @@ from backend.models.users import Users
 from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
+from backend.schemas.urls import UtubUrlSchema
+from backend.schemas.users import UserSchema, UtubSummaryListSchema
+from backend.schemas.utubs import UtubDetailSchema, UtubTagSchema
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from tests.functional.db_utils import count_urls_with_tag_applied_by_tag_id
@@ -46,7 +49,7 @@ def test_tag_serialization(app: Flask, every_user_makes_a_unique_utub):
     input_tags = (v_models.valid_tag_1, v_models.valid_tag_2, v_models.valid_tag_3)
 
     with app.app_context():
-        for utub in Utubs.query.all():
+        for utub in Utubs.query.order_by(Utubs.id).all():
             for idx, tag in enumerate(input_tags):
                 new_tag = Utub_Tags(
                     utub_id=utub.id,
@@ -57,10 +60,14 @@ def test_tag_serialization(app: Flask, every_user_makes_a_unique_utub):
         db.session.commit()
 
     with app.app_context():
-        for utub in Utubs.query.all():
+        for utub in Utubs.query.order_by(Utubs.id).all():
             utub: Utubs
             for idx, tag in enumerate(utub.utub_tags):
-                json_tag = json.dumps(tag.serialized)
+                json_tag = json.dumps(
+                    UtubTagSchema(id=tag.id, tag_string=tag.tag_string).model_dump(
+                        by_alias=True
+                    )
+                )
 
                 tag_id = tag.id
                 tag_count_in_utub: int = count_urls_with_tag_applied_by_tag_id(
@@ -114,7 +121,12 @@ def test_url_serialization_without_tags():
         # Test a URL without any tags
         valid_url_for_json = json.dumps(v_url)
 
-        assert json.dumps(new_utub_url.serialized(1, 1)) == valid_url_for_json
+        assert (
+            json.dumps(
+                UtubUrlSchema.from_orm_url(new_utub_url, 1, 1).model_dump(by_alias=True)
+            )
+            == valid_url_for_json
+        )
 
 
 def test_url_serialization_with_tags(
@@ -142,7 +154,7 @@ def test_url_serialization_with_tags(
 
     # UTub - URL associations
     with app.app_context():
-        all_utubs = Utubs.query.all()
+        all_utubs = Utubs.query.order_by(Utubs.id).all()
         all_urls = Urls.query.all()
 
         for utub, url in zip(all_utubs, all_urls):
@@ -159,7 +171,7 @@ def test_url_serialization_with_tags(
 
     # UTub-URL-Tag associations
     with app.app_context():
-        all_utubs = Utubs.query.all()
+        all_utubs = Utubs.query.order_by(Utubs.id).all()
         all_urls = Utub_Urls.query.all()
 
         for utub, url in zip(all_utubs, all_urls):
@@ -174,7 +186,7 @@ def test_url_serialization_with_tags(
         db.session.commit()
 
     with app.app_context():
-        all_utubs = Utubs.query.all()
+        all_utubs = Utubs.query.order_by(Utubs.id).all()
         all_urls = Urls.query.all()
 
         for utub, url, verified_url in zip(all_utubs, all_urls, verified_urls):
@@ -187,7 +199,9 @@ def test_url_serialization_with_tags(
             ]
 
             assert json.dumps(verified_url) == json.dumps(
-                url_with_tags.serialized(1, 1)
+                UtubUrlSchema.from_orm_url(url_with_tags, 1, 1).model_dump(
+                    by_alias=True
+                )
             )
 
 
@@ -216,7 +230,11 @@ def test_user_serialization_as_member_of_utub():
         valid_users.append(new_user)
 
     for idx, test_user in enumerate(valid_users):
-        json_tag = json.dumps(test_user.serialized)
+        json_tag = json.dumps(
+            UserSchema(id=test_user.id, username=test_user.username).model_dump(
+                by_alias=True
+            )
+        )
         valid_json_user = json.dumps(
             {
                 MODEL_STRS.ID: idx,
@@ -284,7 +302,7 @@ def test_user_utub_data_serialized_on_initial_load():
     # Reverse considering the serialized values will be sorted by most recently updated
     valid_utubs.reverse()
     assert json.dumps({MODEL_STRS.UTUBS: valid_utubs}) == json.dumps(
-        new_user.serialized_on_initial_load
+        UtubSummaryListSchema.from_user(new_user).model_dump(by_alias=True)
     )
 
 
@@ -334,7 +352,7 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
     }
     """
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_only_creator, all_utubs
@@ -345,11 +363,16 @@ def test_utub_serialized_only_creator_no_urls_no_tags(
             utub: Utubs = utub
 
             # Match creator elements
-            test_utub[MODEL_STRS.IS_CREATOR] = utub.serialized(1)[MODEL_STRS.IS_CREATOR]
-            test_utub[MODEL_STRS.CURRENT_USER] = utub.serialized(1)[
+            utub_in_data_serialized = UtubDetailSchema.from_utub(utub, 1).model_dump(
+                by_alias=True
+            )
+            test_utub[MODEL_STRS.IS_CREATOR] = utub_in_data_serialized[
+                MODEL_STRS.IS_CREATOR
+            ]
+            test_utub[MODEL_STRS.CURRENT_USER] = utub_in_data_serialized[
                 MODEL_STRS.CURRENT_USER
             ]
-            assert json.dumps(test_utub) == json.dumps(utub.serialized(1))
+            assert json.dumps(test_utub) == json.dumps(utub_in_data_serialized)
 
 
 def test_utub_serialized_creator_and_members_no_urls_no_tags(
@@ -398,7 +421,7 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
     }
     """
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members, all_utubs
@@ -408,7 +431,9 @@ def test_utub_serialized_creator_and_members_no_urls_no_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized(1)
+            utub_in_data_serialized = UtubDetailSchema.from_utub(utub, 1).model_dump(
+                by_alias=True
+            )
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
@@ -472,7 +497,7 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
     }
     """
     with app.app_context():
-        all_utubs = Utubs.query.all()
+        all_utubs = Utubs.query.order_by(Utubs.id).all()
 
         for test_utub, utub in zip(
             v_models.valid_utub_serializations_with_members_and_url, all_utubs
@@ -482,7 +507,9 @@ def test_utub_serialized_creator_and_members_and_url_no_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized(1)
+            utub_in_data_serialized = UtubDetailSchema.from_utub(utub, 1).model_dump(
+                by_alias=True
+            )
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],
@@ -557,7 +584,7 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
     }
     """
     with app.app_context():
-        all_utubs: list[Utubs] = Utubs.query.all()
+        all_utubs: list[Utubs] = Utubs.query.order_by(Utubs.id).all()
         mock_utub_data = (
             v_models.valid_utub_serializations_with_members_and_url_and_tags
         )
@@ -581,7 +608,9 @@ def test_utub_serialized_creator_and_members_and_urls_and_tags(
             )
 
             # Array of members needs to be sorted by ID's to match
-            utub_in_data_serialized = utub.serialized(1)
+            utub_in_data_serialized = UtubDetailSchema.from_utub(utub, 1).model_dump(
+                by_alias=True
+            )
             utub_in_data_serialized[MODEL_STRS.MEMBERS] = sorted(
                 utub_in_data_serialized[MODEL_STRS.MEMBERS],
                 key=lambda test_user: test_user[MODEL_STRS.ID],

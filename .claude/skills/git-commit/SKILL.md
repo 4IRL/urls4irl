@@ -48,7 +48,6 @@ EOF
 )"
 ```
 
-- Do NOT include any kind of attribution or `Co-Authored-By` statements in the git commit message.
 - Keep the git commit to a single line
 
 ### 4. Handle Pre-Commit Failures

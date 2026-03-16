@@ -3,7 +3,6 @@ from enum import Enum
 from sqlalchemy import Column, Enum as SQLEnum, ForeignKey, Integer, UniqueConstraint
 
 from backend import db
-from backend.utils.strings.model_strs import MODELS
 
 
 class Member_Role(Enum):
@@ -32,18 +31,3 @@ class Utub_Members(db.Model):
     to_utub = db.relationship("Utubs", back_populates="members")
 
     UniqueConstraint(utub_id, user_id, name="unique_member")
-
-    @property
-    def serialized(self) -> dict:
-        from backend.models.users import Users
-
-        user: Users = self.to_user
-        return user.serialized
-
-    @property
-    def serialized_on_initial_load(self):
-        """Returns the serialized object on initial load for this member, including UTub name and id."""
-        from backend.models.utubs import Utubs
-
-        utub: Utubs = self.to_utub
-        return {MODELS.ID: utub.id, MODELS.NAME: utub.name}

@@ -4,17 +4,17 @@ from backend.api_common.auth_decorators import (
     utub_membership_with_valid_url_in_utub_required,
     utub_membership_with_valid_url_tag,
 )
+from backend.api_common.parse_request import parse_json_body
 from backend.api_common.responses import FlaskResponse
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utub_url_tags import Utub_Url_Tags
-from backend.tags.forms import NewTagForm
-from backend.tags.services.create_url_tag import (
-    add_tag_to_url_if_valid,
-    handle_invalid_form_input_for_create_url_tag,
-)
+from backend.schemas.requests.tags import AddTagRequest
+from backend.tags.constants import URLTagErrorCodes
+from backend.tags.services.create_url_tag import add_tag_to_url_if_valid
 from backend.tags.services.delete_url_tag import delete_url_tag
+from backend.utils.strings.tag_strs import TAGS_FAILURE
 
 utub_url_tags = Blueprint("utub_url_tags", __name__)
 
@@ -23,25 +23,32 @@ utub_url_tags = Blueprint("utub_url_tags", __name__)
     "/utubs/<int:utub_id>/urls/<int:utub_url_id>/tags", methods=["POST"]
 )
 @utub_membership_with_valid_url_in_utub_required
+@parse_json_body(
+    AddTagRequest,
+    message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_URL,
+    error_code=URLTagErrorCodes.INVALID_FORM_INPUT,
+)
 def create_utub_url_tag(
-    utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
+    utub_id: int,
+    utub_url_id: int,
+    current_utub: Utubs,
+    current_utub_url: Utub_Urls,
+    validated_request: AddTagRequest,
 ) -> FlaskResponse:
     """
     User wants to add a tag to a URL. 5 tags per URL.
 
     Args:
         utub_id (int): The utub that this user is being added to
-        url_id (int): The URL this user wants to add a tag to
+        utub_url_id (int): The URL this user wants to add a tag to
+        current_utub (Utubs): The UTub model
+        current_utub_url (Utub_Urls): The URL model
+        validated_request (AddTagRequest): Validated request schema
     """
-    url_tag_form: NewTagForm = NewTagForm()
-
-    if not url_tag_form.validate_on_submit():
-        return handle_invalid_form_input_for_create_url_tag(
-            url_tag_form, current_utub_url
-        )
-
     return add_tag_to_url_if_valid(
-        url_tag_form=url_tag_form, utub=current_utub, utub_url=current_utub_url
+        tag_string=validated_request.tagString,
+        utub=current_utub,
+        utub_url=current_utub_url,
     )
 
 
@@ -64,7 +71,7 @@ def delete_utub_url_tag(
 
     Args:
         utub_id (int): The ID of the UTub that contains the URL to be deleted
-        url_id (int): The ID of the URL containing tag to be deleted
+        utub_url_id (int): The ID of the URL containing tag to be deleted
         utub_tag_id (int): The ID of the tag to be deleted
     """
     return delete_url_tag(

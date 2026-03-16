@@ -271,7 +271,7 @@ def test_create_member_username_field_empty(
         By.CSS_SELECTOR, HPL.INPUT_MEMBER_CREATE_ERROR
     )
     assert member_error_elem is not None
-    assert MEMBER_FAILURE.FIELD_REQUIRED_STR == member_error_elem.text
+    assert member_error_elem.text == "String should have at least 3 characters"
 
 
 def test_create_member_duplicate_member(

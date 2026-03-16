@@ -3,63 +3,25 @@ from flask_login import current_user
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import (
-    critical_log,
     safe_add_many_logs,
-    turn_form_into_str_for_log,
     warning_log,
 )
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
-from backend.tags.constants import UTubTagErrorCodes
-from backend.tags.forms import NewTagForm
-from backend.utils.strings.model_strs import MODELS
+from backend.schemas.tags import (
+    UtubTagAddedToUtubResponseSchema,
+    UtubTagOnAddDeleteSchema,
+)
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 
 
-def handle_invalid_form_input_for_create_utub_tag(
-    utub_tag_form: NewTagForm, current_utub: Utubs
-) -> FlaskResponse:
-    """
-    Handles an invalid form input or unknown exception when creating a new UTub Tag.
-
-    Args:
-        utub_tag_form (NewTagForm): Form containing new UTub Tag data
-        current_utub (Utubs): The UTub object that the tag is being added to
-
-    Returns:
-        tuple[Response, int]:
-        - Response: JSON response with error message and details
-        - int: HTTP status code 400 (Invalid input) / 404 (Unknown exception)
-    """
-    if utub_tag_form.errors is not None:
-        warning_log(
-            f"User={current_user.id} | Invalid form: {turn_form_into_str_for_log(utub_tag_form.errors)}"  # type: ignore
-        )
-
-        return APIResponse(
-            status_code=400,
-            message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
-            error_code=UTubTagErrorCodes.INVALID_FORM_INPUT,
-            errors={MODELS.TAG_STRING: utub_tag_form.tag_string.errors},
-        ).to_response()
-
-    critical_log(
-        f"User={current_user.id} failed to add UTubTag to UTub.id={current_utub.id}"
-    )
-    return APIResponse(
-        status_code=404,
-        message=TAGS_FAILURE.UNABLE_TO_ADD_TAG_TO_UTUB,
-        error_code=UTubTagErrorCodes.UNKNOWN_EXCEPTION,
-    ).to_response()
-
-
-def create_tag_in_utub(utub_tag_form: NewTagForm, current_utub: Utubs) -> FlaskResponse:
+def create_tag_in_utub(tag_string: str, current_utub: Utubs) -> FlaskResponse:
     """
     Handles creating a new UTub tag in a UTub, not necessarily associated with a URL.
     Verifies that the tag is not already in the UTub.
 
     Args:
-        utub_tag_form (NewTagForm): Form containing new UTub Tag data
+        tag_string (str): The tag string to add to the UTub
         current_utub (Utubs): The UTub object that the tag is being added to
 
     Returns:
@@ -67,7 +29,7 @@ def create_tag_in_utub(utub_tag_form: NewTagForm, current_utub: Utubs) -> FlaskR
         - Response: JSON response on success or duplicate UTub tag.
         - int: HTTP status code 200 (Success) / 400 (Duplicate UTub tag)
     """
-    tag_to_add = utub_tag_form.tag_string.get()
+    tag_to_add = tag_string.strip()
 
     is_duplicate_utub_tag = _check_if_duplicate_utub_tag(tag_to_add, current_utub)
 
@@ -138,8 +100,8 @@ def _create_new_utub_tag(tag: str, utub: Utubs) -> FlaskResponse:
     )
     return APIResponse(
         message=TAGS_SUCCESS.TAG_ADDED_TO_UTUB,
-        data={
-            TAGS_SUCCESS.UTUB_TAG: new_utub_tag.serialized_on_add_delete,
-            TAGS_SUCCESS.TAG_COUNTS_MODIFIED: 0,  # No URLs associated yet
-        },
+        data=UtubTagAddedToUtubResponseSchema(
+            utub_tag=UtubTagOnAddDeleteSchema.from_orm_tag(new_utub_tag),
+            tag_counts_modified=0,
+        ),
     ).to_response()

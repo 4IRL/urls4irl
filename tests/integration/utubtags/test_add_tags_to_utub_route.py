@@ -4,6 +4,7 @@ import pytest
 
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
+from backend.schemas.tags import UtubTagOnAddDeleteSchema
 from backend.tags.constants import UTubTagErrorCodes
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.all_routes import ROUTES
@@ -49,15 +50,17 @@ def test_add_tag_to_utub(every_user_in_every_utub, login_first_user_without_regi
         ).count()
         num_of_utub_tags = Utub_Tags.query.count()
 
-    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: NEW_TAG},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
     add_tag_response_json = add_tag_response.json
+    UtubTagOnAddDeleteSchema.model_validate(
+        add_tag_response_json[TAGS_SUCCESS.UTUB_TAG]
+    )
 
     utub_to_add_tag_to_id = utub_to_add_tag_to.id
     new_tag_id = int(
@@ -132,11 +135,10 @@ def test_add_same_tag_to_multiple_utubs(
                 Utub_Tags.utub_id == utub_id, Utub_Tags.tag_string == NEW_TAG
             ).count()
 
-        new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
-
         add_tag_response = client.post(
             url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_id),
-            data=new_tag_form,
+            json={TAG_FORM.TAG_STRING: NEW_TAG},
+            headers={"X-CSRFToken": csrf_token},
         )
 
         assert add_tag_response.status_code == 200
@@ -213,14 +215,10 @@ def test_add_duplicate_tag_to_utub(
         # Get initial num of URLs with this Tag in the UTub
         initial_num_urls_with_tag = count_tag_instances_in_utub(utub_id, tag_id)
 
-    new_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_string_already_added,
-    }
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_string_already_added},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -254,11 +252,10 @@ def test_add_empty_tag_to_utub(
             Utubs.utub_creator == current_user.id
         ).first()
 
-    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: ""}
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: ""},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -271,10 +268,9 @@ def test_add_empty_tag_to_utub(
     )
     assert STD_JSON.ERRORS in add_tag_response_json
 
-    assert (
-        add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING]
-        == TAGS_FAILURE.FIELD_REQUIRED
-    )
+    assert add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING] == [
+        TAGS_FAILURE.INVALID_INPUT
+    ]
 
 
 def test_add_fully_sanitized_tag_to_utub(
@@ -298,14 +294,10 @@ def test_add_fully_sanitized_tag_to_utub(
             Utubs.utub_creator == current_user.id
         ).first()
 
-    new_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: '<img src="evl.jpg">',
-    }
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: '<img src="evl.jpg">'},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -348,14 +340,10 @@ def test_add_partially_sanitized_tag_to_utub(
         "<<HELLO>>",
         "<h1>Hello</h1>",
     ):
-        new_tag_form = {
-            TAG_FORM.CSRF_TOKEN: csrf_token,
-            TAG_FORM.TAG_STRING: tag_string,
-        }
-
         add_tag_response = client.post(
             url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
-            data=new_tag_form,
+            json={TAG_FORM.TAG_STRING: tag_string},
+            headers={"X-CSRFToken": csrf_token},
         )
 
         assert add_tag_response.status_code == 400
@@ -394,14 +382,10 @@ def test_add_long_tag_to_utub(
             Utubs.utub_creator == current_user.id
         ).first()
 
-    new_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: "a" * (TAG_CONSTANTS.MAX_TAG_LENGTH + 1),
-    }
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: "a" * (TAG_CONSTANTS.MAX_TAG_LENGTH + 1)},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -414,14 +398,10 @@ def test_add_long_tag_to_utub(
     )
     assert STD_JSON.ERRORS in add_tag_response_json
 
-    for limit in (
-        TAG_CONSTANTS.MAX_TAG_LENGTH,
-        TAG_CONSTANTS.MIN_TAG_LENGTH,
-    ):
-        assert (
-            str(limit)
-            in add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING][0]
-        )
+    assert (
+        str(TAG_CONSTANTS.MAX_TAG_LENGTH)
+        in add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING][0]
+    )
 
 
 def test_add_tag_to_utub_not_member_of(
@@ -451,11 +431,10 @@ def test_add_tag_to_utub_not_member_of(
         ).count()
         num_of_utub_tags = Utub_Tags.query.count()
 
-    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: NEW_TAG},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 404
@@ -486,11 +465,10 @@ def test_add_tag_to_nonexistent_utub(
     with app.app_context():
         num_of_utub_tags = Utub_Tags.query.count()
 
-    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=NONEXISTENT_UTUB_ID),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: NEW_TAG},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 404
@@ -521,11 +499,9 @@ def test_add_tag_to_utub_missing_csrf_token(
         ).count()
         num_of_utub_tags = Utub_Tags.query.count()
 
-    new_tag_form = {TAG_FORM.TAG_STRING: NEW_TAG}
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: NEW_TAG},
     )
 
     assert add_tag_response.status_code == 403
@@ -572,13 +548,10 @@ def test_add_tag_to_utub_missing_tag_field(
         ).count()
         num_of_utub_tags = Utub_Tags.query.count()
 
-    new_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
-        data=new_tag_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -594,10 +567,9 @@ def test_add_tag_to_utub_missing_tag_field(
         == UTubTagErrorCodes.INVALID_FORM_INPUT
     )
     assert STD_JSON.ERRORS in add_tag_response_json
-    assert (
-        add_tag_response_json[STD_JSON.ERRORS][TAG_FORM.TAG_STRING]
-        == TAGS_FAILURE.FIELD_REQUIRED
-    )
+    assert add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING] == [
+        "Field required"
+    ]
 
     with app.app_context():
         assert num_of_utub_tags == Utub_Tags.query.count()
@@ -627,11 +599,10 @@ def test_add_tag_updates_utub_last_updated(
         ).first()
         initial_last_updated = utub_to_add_tag_to.last_updated
 
-    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: NEW_TAG},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -657,11 +628,10 @@ def test_add_tag_to_utub_log(
             Utubs.utub_creator == current_user.id
         ).first()
 
-    new_tag_form = {TAG_FORM.CSRF_TOKEN: csrf_token, TAG_FORM.TAG_STRING: NEW_TAG}
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: NEW_TAG},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 200
@@ -697,14 +667,10 @@ def test_add_duplicate_tag_to_utub_log(
         ).first()
         tag_string_already_added = tag_already_added.tag_string
 
-    new_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_string_already_added,
-    }
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_string_already_added},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
@@ -730,20 +696,15 @@ def test_add_tag_to_utub_missing_tag_field_log(
             Utubs.utub_creator == current_user.id
         ).first()
 
-    new_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-    }
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_to_add_tag_to.id),
-        data=new_tag_form,
+        json={},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400
-    assert is_string_in_logs(
-        f"User={user.id} | Invalid form: tag_string={TAGS_FAILURE.FIELD_REQUIRED}",
-        caplog.records,
-    )
+    assert is_string_in_logs(f"User={user.id}", caplog.records)
+    assert is_string_in_logs("Invalid JSON:", caplog.records)
 
 
 def test_add_tag_with_whitespace_to_utub(
@@ -770,14 +731,10 @@ def test_add_tag_with_whitespace_to_utub(
     client, csrf_token, _, app = login_first_user_without_register
     tag_string_to_add = f" {tag_string_already_added} "
 
-    new_tag_form = {
-        TAG_FORM.CSRF_TOKEN: csrf_token,
-        TAG_FORM.TAG_STRING: tag_string_to_add,
-    }
-
     add_tag_response = client.post(
         url_for(ROUTES.UTUB_TAGS.CREATE_UTUB_TAG, utub_id=utub_of_user.id),
-        data=new_tag_form,
+        json={TAG_FORM.TAG_STRING: tag_string_to_add},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert add_tag_response.status_code == 400

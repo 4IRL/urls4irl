@@ -9,11 +9,11 @@ from backend.models.utubs import Utubs
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.form_strs import GENERAL_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
+from backend.schemas.users import UserSchema
 from tests.utils_for_test import is_string_in_logs
 
 pytestmark = pytest.mark.members
@@ -68,7 +68,7 @@ def test_remove_valid_user_from_utub_as_creator(
             utub_id=current_utub.id,
             user_id=second_user_in_utub.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -78,6 +78,7 @@ def test_remove_valid_user_from_utub_as_creator(
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
+    UserSchema.model_validate(remove_user_response_json[MEMBER_SUCCESS.MEMBER])
     assert (
         int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
         == second_user_in_utub.id
@@ -144,7 +145,7 @@ def test_remove_self_from_utub_as_member(
             utub_id=current_utub.id,
             user_id=current_user_id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -154,6 +155,7 @@ def test_remove_self_from_utub_as_member(
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
+    UserSchema.model_validate(remove_user_response_json[MEMBER_SUCCESS.MEMBER])
     assert (
         int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
         == current_user_id
@@ -238,7 +240,7 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
             utub_id=current_utub.id,
             user_id=second_user_in_utub.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -248,6 +250,7 @@ def test_remove_valid_user_with_urls_from_utub_as_creator(
     remove_user_response_json = remove_user_response.json
     assert remove_user_response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
     assert remove_user_response_json[STD_JSON.MESSAGE] == MEMBER_SUCCESS.MEMBER_REMOVED
+    UserSchema.model_validate(remove_user_response_json[MEMBER_SUCCESS.MEMBER])
     assert (
         int(remove_user_response_json[MEMBER_SUCCESS.MEMBER][MODELS.ID])
         == second_user_in_utub.id
@@ -319,7 +322,7 @@ def test_remove_self_from_utub_as_creator(
             utub_id=current_utub.id,
             user_id=current_user.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     assert remove_user_response.status_code == 400
@@ -481,7 +484,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
             utub_id=NONEXISTENT_UTUB_ID,
             user_id=current_user.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 404 HTTP status code response
@@ -493,7 +496,7 @@ def test_remove_valid_user_from_invalid_utub_as_member_or_creator(
             url_for(
                 ROUTES.MEMBERS.REMOVE_MEMBER, utub_id=NONEXISTENT_UTUB_ID, user_id=num
             ),
-            data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+            headers={"X-CSRFToken": csrf_token_string},
         )
 
         # Ensure 404 HTTP status code response
@@ -539,7 +542,7 @@ def test_remove_invalid_user_from_utub_as_creator(
             utub_id=current_utub.id,
             user_id=NONEXISTENT_USER_ID,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 404 HTTP status code response
@@ -598,7 +601,7 @@ def test_remove_invalid_user_from_utub_as_member(
             utub_id=current_utub.id,
             user_id=NONEXISTENT_USER_ID,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 403 HTTP status code response
@@ -668,7 +671,7 @@ def test_remove_another_member_from_same_utub_as_member(
             utub_id=current_utub.id,
             user_id=other_utub_member.user_id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -746,7 +749,7 @@ def test_remove_member_from_another_utub_as_creator_of_another_utub(
             utub_id=second_user_utub_id,
             user_id=third_user_id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 403 HTTP status code response
@@ -825,7 +828,7 @@ def test_remove_member_from_another_utub_as_member_of_another_utub(
             utub_id=new_utub_from_third_user.id,
             user_id=first_user_id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 403 HTTP status code response
@@ -878,7 +881,7 @@ def test_remove_valid_user_from_utub_updates_utub_last_updated(
             utub_id=current_utub.id,
             user_id=second_user_in_utub.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -922,7 +925,7 @@ def test_remove_invalid_user_from_utub_does_not_update_utub(
             utub_id=current_utub_id,
             user_id=NONEXISTENT_USER_ID,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure 404 HTTP status code response
@@ -964,7 +967,7 @@ def test_remove_valid_user_from_utub_as_creator_log(
             utub_id=current_utub.id,
             user_id=second_user_in_utub.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -994,7 +997,7 @@ def test_remove_missing_user_from_utub_as_creator_log(
             utub_id=utub.id,
             user_id=second_user.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -1028,7 +1031,7 @@ def test_remove_user_from_utub_as_member_log(
             utub_id=utub.id,
             user_id=second_user.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
@@ -1059,7 +1062,7 @@ def test_remove_self_from_utub_as_creator_log(
             utub_id=utub.id,
             user_id=user.id,
         ),
-        data={GENERAL_FORM.CSRF_TOKEN: csrf_token_string},
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Ensure HTTP response code is correct
