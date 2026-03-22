@@ -12,6 +12,11 @@ Reference plan may have files in the @plans directory - please reference these i
 urls4irl is a full-stack web app for managing shared collections of URLs called "UTubs". Flask backend with Jinja2 templates and a vanilla JS frontend currently transitioning to Vite/ES6 modules.
 
 
+## Project Structure
+
+Review files are stored at the project root level (`reviews/`), NOT under the `plans/` directory. Always look for `reviews/` at the repository root.
+
+
 ## Development and Coding Practices
 
 Code should be concise, but readable. We are looking for maintainability and future proofing.
@@ -48,6 +53,10 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
    - **CRITICAL: Never run integration and UI test suites at the same time** — even as background processes. They share a single test DB and Redis instance; concurrent `db.drop_all()` calls corrupt the DB. Always finish one suite completely before starting the other.
    - **UI parallelism cap: n=8 max** — Each UI worker needs a dedicated Flask server, Chrome session, and Postgres DB. Running n=12 saturates host CPU/RAM during concurrent startup, causing 120+ second fixture setup times that exceed Selenium wait timeouts and produce spurious login assertion failures. Individual markers pass at n=4; the full suite is stable at n=8.
 8. **Reset bad database state** - If tests fail due to leftover state from previously interrupted or parallel test runs, restart the `web` and `test-db` containers: `make restart c=web && make restart c=test-db`
+
+### Code Style
+
+This project is primarily Python with some JavaScript/HTML/CSS. When editing Python code, verify constant names, decorator types (`@model_validator` vs `@field_validator`), and imports against the actual codebase before making changes.
 
 ### General
 
@@ -181,88 +190,13 @@ flask db migrate -m "msg"     # generate new migration
 flask db downgrade            # rollback last migration
 ```
 
+## Review Workflow
+
+1. When reading review files, always scroll to the END of the file first to find the latest revision/pass. Never assume the highest line number found in an initial read is the last revision — the file may be longer than what was initially loaded.
+2. Be conservative with file reads during plan reviews. Read only the files directly referenced in the plan steps, not every potentially related file. Token limits are a real constraint.
+3. Do not append 'Verification' reminders or checklists after applying review items to plans. Just apply the edit and provide the staff-engineer critique.
+
+
 ## Architecture
 
-### Backend Structure (`backend/`)
-
-Flask app factory pattern in `backend/__init__.py` with `create_app()`. Config classes in `backend/config.py`: `Config` (dev), `ConfigProd`, `ConfigTest`, `ConfigTestUI`.
-
-**10 Flask blueprints** organized by domain:
-- `splash` - auth (login, register, email validation, password reset)
-- `utubs` - UTub CRUD
-- `urls` - URL management within UTubs
-- `members` - UTub member management
-- `tags` (2 blueprints: `utub_tags`, `utub_url_tags`) - tag CRUD
-- `users` - user profile, password change
-- `contact` - contact form
-- `system` - health check
-- `assets` - static asset serving
-- `debug` - dev-only debug routes (excluded in test/prod)
-
-Each blueprint follows the pattern: `routes.py` (endpoints), `forms.py` (WTForms validation), `services/` (business logic), `constants.py`.
-
-### Extensions (`backend/extensions/`)
-
-Custom Flask extensions registered on `app.extensions` and initialized via `init_app()`. Access them from route/service code using the safe getters in `backend/extensions/extension_utils.py` (`safe_get_email_sender()`, `safe_get_notif_sender()`, `safe_get_url_validator()`).
-
-- **`url_validation/url_validator.py`** - `UrlValidator`: Two-step URL processing used when users add URLs to UTubs. `normalize_url()` strips whitespace, prepends `https://` if no scheme, blocks credential-containing URLs (`user:pass@host`), and validates scheme against a whitelist. `validate_url()` parses with `ada_url` (Rust-based WHATWG URL parser), verifies hostname/TLD validity, and returns the canonicalized URL. Raises `InvalidURLError`, `URLWithCredentialsError`, or `AdaUrlParsingError`.
-- **`email_sender/email_sender.py`** - `EmailSender`: Wraps the Mailjet REST API (`mailjet_rest.Client`) for transactional emails. Sends account email confirmations and password reset emails using Jinja2 templates from `backend/templates/email_templates/`. Uses sandbox mode during tests. Production mode toggled via `in_production()`.
-- **`notifications/notifications.py`** - `NotificationSender`: Sends webhook notifications (Discord) via HTTP POST. `send_notification()` is fire-and-forget (runs in a background `threading.Thread`). `send_contact_form_details()` is synchronous and returns success/failure. Non-production messages are wrapped with a testing disclaimer.
-
-### Key Decorators (`backend/api_common/auth_decorators.py`)
-
-- `@email_validation_required` - requires login + validated email
-- `@utub_membership_required` - requires membership in target UTub
-- `@xml_http_request_only` - AJAX only (`X-Requested-With: XMLHttpRequest`)
-- `@no_authenticated_users_allowed` - splash pages (logged-out only)
-
-### Models (`backend/models/`)
-
-Core domain: `Users` -> `Utub_Members` (with `Member_Role`: CREATOR/EDITOR/VIEWER) -> `Utubs` -> `Utub_Urls` -> `Urls`. Tags: `Utub_Tags` <-> `Utub_Url_Tags` <-> `Utub_Urls`.
-
-ORM is SQLAlchemy (1.4.x style) via Flask-SQLAlchemy. Database is PostgreSQL 16.3.
-
-### Frontend Structure
-
-JavaScript is organized as ES6 modules in `frontend/` and built by Vite. Entry points are `frontend/main.js` (home page) and `frontend/splash.js` (splash/auth pages). The `init_vite_app()` function in `backend/__init__.py` handles manifest-based asset resolution for production and direct Vite dev server proxying for local dev.
-
-jQuery (3.7.1) and Bootstrap (5.2.3) are loaded as global `<script>` tags and re-exported from `frontend/lib/globals.js` for use in modules.
-
-Templates are Jinja2 in `backend/templates/`.
-
-### Security
-
-- CSRF: Flask-WTF `CSRFProtect`. Forms use `csrf_token` field; AJAX uses `X-Csrftoken` header.
-- Sessions: Redis-backed (or FileSystem fallback) via Flask-Session
-- Rate limiting: Flask-Limiter with Redis backend (disabled in tests)
-- CSP: Nonce-based inline script policy, set in `add_security_headers()`
-- Passwords: Werkzeug `pbkdf2:sha256`
-
-### API Pattern
-
-Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON responses follow `{status, data, message}` shape. See `backend/API_DOCUMENTATION.md` for full endpoint docs.
-
-### Testing (`tests/`)
-
-- `conftest.py` - fixtures, test DB setup, CSRF token helpers
-- `models_for_test.py` - test data factories (users, UTubs, URLs, tags)
-- `utils_for_test.py` - helpers (`clear_database()`, `get_csrf_token()`)
-- CI runs 17 parallel test workers split by marker
-- Config: `ConfigTest` (integration) / `ConfigTestUI` (Selenium, `SESSION_COOKIE_SECURE=False`)
-
-### Docker
-
-- `docker/Dockerfile` - production multi-stage build (Python 3.11-slim)
-- `docker/Dockerfile.Local` - local dev
-- `docker/Dockerfile.Vite` - Vite dev server container
-- `docker/compose.local.yaml` - full local stack (web, vite, db, test-db, redis, selenium, workflow)
-- `docker/compose.yaml` - production stack
-- `docker/compose.dev.yaml` - dev server stack
-
-### Environment Variables
-
-Required: `SECRET_KEY`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_DB`, `MAILJET_API_KEY`, `MAILJET_SECRET_KEY`. See `backend/config.py` for the full list and `backend/utils/strings/config_strs.py` for env var name constants.
-
-### String Constants
-
-All user-facing strings, model field names, and config keys are centralized in `backend/utils/strings/` and `backend/utils/constants.py`.
+See `ARCHITECTURE.md` for full codebase structure (blueprints, models, extensions, frontend, security, Docker, env vars). Not loaded automatically — read it when navigating unfamiliar parts of the codebase.
