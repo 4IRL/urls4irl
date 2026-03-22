@@ -8,8 +8,8 @@
 ### Authentication
 
 All HTTP requests to the API must include a `session` cookie under the header `Cookie`. Containing a cookie that is expired or invalid
-will redirect the user to the splash page. HTTP requests made over AJAX that use form data require a CSRF token via the `X-Csrftoken` header.
-Otherwise, HTTP requests containing form data should include a field for `csrf_token`, with the token in the value.
+will redirect the user to the splash page. AJAX endpoints that accept JSON (`application/json`) require a CSRF token via the `X-Csrftoken` request header.
+HTML form endpoints (splash/auth and contact) use `application/x-www-form-urlencoded` and include the CSRF token as a `csrf_token` form field.
 
 ------------------------------------------------------------------------------------------
 
@@ -775,13 +775,14 @@ UTub selection via the query parameter is handled on the client side.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> utubName: %NewUTubName%
-> utubDescription: %UTubDescription%
-> csrf_token: %csrf_token%
+Required JSON body:
+> ```json
+> {
+>     "utubName": "NewUTubName",
+>     "utubDescription": "UTubDescription"
+> }
 > ```
 
 ##### Responses
@@ -790,7 +791,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a new UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors in making the new UTub. |
+> | `400`         | `application/json`                | `See below.` | Validation errors in making the new UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unknown error occurred. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
@@ -809,7 +810,7 @@ Required form data:
 
 ###### 400 HTTP Code Response Body - Example
 
-Invalid form data sent with the request.
+Invalid JSON body sent with the request.
 
 > ```json
 > {
@@ -837,11 +838,10 @@ Invalid form data sent with the request.
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/utubs \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'utubName=UTub Name' \
->  --data-urlencode 'utubDescription=UTub Description' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"utubName": "UTub Name", "utubDescription": "UTub Description"}'
 > ```
 
 </details>
@@ -905,12 +905,13 @@ Invalid form data sent with the request.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> utubName: %NewUTubName%
-> csrf_token: %csrf_token%
+Required JSON body:
+> ```json
+> {
+>     "utubName": "NewUTubName"
+> }
 > ```
 
 ##### Responses
@@ -919,7 +920,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified a UTub name. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors when processing new UTub name. |
+> | `400`         | `application/json`                | `See below.` | Validation errors when processing new UTub name. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub to modify UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub. |
@@ -937,7 +938,7 @@ Required form data:
 
 ###### 400 HTTP Code Response Body - Example
 
-Invalid form data sent with the request.
+Invalid JSON body sent with the request.
 
 > ```json
 > {
@@ -975,10 +976,10 @@ Invalid form data sent with the request.
 > ```bash
 > curl -X PATCH \
 >  https://urls.4irl.app/utubs/1/name \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'name=UTub Name' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"utubName": "UTub Name"}'
 > ```
 
 </details>
@@ -993,13 +994,16 @@ Invalid form data sent with the request.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
+Required JSON body:
+> ```json
+> {
+>     "utubDescription": "NewUTubDescription"
+> }
 > ```
-> utubDescription: %NewUTubDescription%
-> csrf_token: %csrf_token%
-> ```
+
+The `utubDescription` field is optional and may be `null` or omitted to clear the description.
 
 ##### Responses
 
@@ -1007,7 +1011,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified the UTub description. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors when processing new UTub description. |
+> | `400`         | `application/json`                | `See below.` | Validation errors when processing new UTub description. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub to modify UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub. |
@@ -1025,7 +1029,7 @@ Required form data:
 
 ###### 400 HTTP Code Response Body
 
-Invalid form data sent with the request. The `errors` field is present when WTForms validation fails (e.g. field too long), and absent when the description field value is `None`.
+Invalid JSON body sent with the request. The `errors` field is present when Pydantic validation fails (e.g. field too long), and absent when the description field value is `null`.
 
 > ```json
 > {
@@ -1063,10 +1067,10 @@ Invalid form data sent with the request. The `errors` field is present when WTFo
 > ```bash
 > curl -X PATCH \
 >  https://urls.4irl.app/utubs/1/description \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'description=UTub Description' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"utubDescription": "UTub Description"}'
 > ```
 
 </details>
@@ -1086,12 +1090,13 @@ Invalid form data sent with the request. The `errors` field is present when WTFo
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> username: %newMemberName%
-> csrf_token: %csrf_token%
+Required JSON body:
+> ```json
+> {
+>     "username": "newMemberName"
+> }
 > ```
 
 
@@ -1101,7 +1106,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a member to the UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors in adding member, or member already in UTub. |
+> | `400`         | `application/json`                | `See below.` | Validation errors in adding member, or member already in UTub. |
 > | `403`         | `application/json`                | `See below.` | Only UTub creators can add members to UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub or member. |
@@ -1133,7 +1138,7 @@ Required form data:
 
 ###### 400 HTTP Code Response Body
 
-Indicates missing or invalid form data sent with the request.
+Indicates missing or invalid JSON body sent with the request.
 
 > ```json
 > {
@@ -1171,10 +1176,10 @@ Indicates missing or invalid form data sent with the request.
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/utubs/1/members \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'username=UTub Name' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"username": "newMemberName"}'
 > ```
 
 </details>
@@ -1344,13 +1349,14 @@ User not member of this UTub.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> urlString: %www.google.com%
-> urlTitle: %This is google%
-> csrf_token: %csrf_token%
+Required JSON body:
+> ```json
+> {
+>     "urlString": "www.google.com",
+>     "urlTitle": "This is google"
+> }
 > ```
 
 ##### Responses
@@ -1359,7 +1365,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a URL to a UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | URL unable to be validated, or form errors. |
+> | `400`         | `application/json`                | `See below.` | URL unable to be validated, or validation errors. |
 > | `403`         | `application/json`                | `See below.` | Requesting user not in the requested UTub. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
@@ -1397,7 +1403,7 @@ Indicates the URL could not be validated.
 
 ###### 400 HTTP Code Response Body
 
-Indicates form errors with adding this URL to this UTub.
+Indicates validation errors with adding this URL to this UTub.
 
 > ```json
 > {
@@ -1449,11 +1455,10 @@ URL already in UTub.
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/utubs/1/urls \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'urlString=urls.4irl.app' \
->  --data-urlencode 'urlTitle=My home page' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"urlString": "urls.4irl.app", "urlTitle": "My home page"}'
 > ```
 
 </details>
@@ -1522,12 +1527,13 @@ URL already in UTub.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> urlString: %New URL String%
-> csrf_token: %csrf_token%
+Required JSON body:
+> ```json
+> {
+>     "urlString": "New URL String"
+> }
 > ```
 
 ##### Responses
@@ -1536,7 +1542,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified the URL string, or no change. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors, or unable to validate URL. |
+> | `400`         | `application/json`                | `See below.` | Validation errors, or unable to validate URL. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
@@ -1594,7 +1600,7 @@ Unable to validate the given URL.
 
 ###### 400 HTTP Code Response Body
 
-Indicates missing or invalid form data sent in the request.
+Indicates missing or invalid JSON body sent in the request.
 
 > ```json
 > {
@@ -1645,10 +1651,10 @@ URL already in UTub.
 > ```bash
 > curl -X PATCH \
 >  https://urls.4irl.app/utubs/1/urls/1 \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'urlString=www.google.com' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"urlString": "www.google.com"}'
 > ```
 
 </details>
@@ -1665,12 +1671,13 @@ URL already in UTub.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> urlTitle: %New URL Title%
-> csrf_token: %csrf_token%
+Required JSON body:
+> ```json
+> {
+>     "urlTitle": "New URL Title"
+> }
 > ```
 
 ##### Responses
@@ -1679,7 +1686,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully modified the URL title, or no change. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors with modifying URL title. |
+> | `400`         | `application/json`                | `See below.` | Validation errors with modifying URL title. |
 > | `403`         | `application/json`                | `See below.` | User must be creator of UTub or adder of URL to modify title of URL. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find UTub, or URL in UTub. |
@@ -1711,7 +1718,7 @@ Required form data:
 
 ###### 400 HTTP Code Response Body
 
-Indicates missing form data sent in the request.
+Indicates missing JSON field in the request.
 
 > ```json
 > {
@@ -1726,7 +1733,7 @@ Indicates missing form data sent in the request.
 
 ###### 400 HTTP Code Response Body
 
-Indicates invalid form data sent in the request.
+Indicates invalid JSON field in the request.
 
 > ```json
 > {
@@ -1764,10 +1771,10 @@ Indicates invalid form data sent in the request.
 > ```bash
 > curl -X PATCH \
 >  https://urls.4irl.app/utubs/1/urls/1/title \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'urlTitle=New URL title' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"urlTitle": "New URL title"}'
 > ```
 
 </details>
@@ -1787,12 +1794,13 @@ Indicates invalid form data sent in the request.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> tagString: %Tag Here%
-> csrf_token: %csrf_token%
+Required JSON body:
+> ```json
+> {
+>     "tagString": "Tag Here"
+> }
 > ```
 
 ##### Responses
@@ -1801,7 +1809,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a tag to UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | Form errors on creation of new string. |
+> | `400`         | `application/json`                | `See below.` | Validation errors on creation of new tag. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the request. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
@@ -1831,7 +1839,7 @@ Required form data:
 
 ###### 400 HTTP Code Response Body
 
-Indicates form errors with adding this tag to this UTub.
+Indicates validation errors with adding this tag to this UTub.
 
 > ```json
 > {
@@ -1859,10 +1867,10 @@ Indicates form errors with adding this tag to this UTub.
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/utubs/1/tags \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'tagString=Hello' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"tagString": "Hello"}'
 > ```
 
 </details>
@@ -1906,7 +1914,6 @@ Indicates form errors with adding this tag to this UTub.
 > ```bash
 > curl -X DELETE \
 >  https://urls.4irl.app/utubs/1/tags/1 \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
 >  -H 'Cookie: YOUR_COOKIE'
 > ```
 
@@ -1928,12 +1935,13 @@ Indicates form errors with adding this tag to this UTub.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> tagString: %Tag Here%
-> csrf_token: %csrf_token%
+Required JSON body:
+> ```json
+> {
+>     "tagString": "Tag Here"
+> }
 > ```
 
 ##### Responses
@@ -1942,7 +1950,7 @@ Required form data:
 > |---------------|-----------------------------------|-----------|---------------------------------------------------------|
 > | `200`         | `application/json`                | `See below.` | Successfully added a tag to a URL to a UTub. |
 > | `302`         | `text/html;charset=utf−8`         | `Redirects and renders HTML for splash page.` | User not email authenticated or not logged in. |
-> | `400`         | `application/json`                | `See below.` | URL already contains five tags, or form errors. |
+> | `400`         | `application/json`                | `See below.` | URL already contains five tags, or validation errors. |
 > | `404`         | `application/json`                | `See below.` | Unable to process the form. |
 > | `404`         | `text/html;charset=utf−8`         | None | Unable to find requested UTub or given URL or tag in UTub. |
 > | `405`         | `text/html;charset=utf−8`         | None | Invalid HTTP method. |
@@ -1984,7 +1992,7 @@ Required form data:
 
 ###### 400 HTTP Code Response Body
 
-Indicates form errors with adding this tag onto this URL in this UTub.
+Indicates validation errors with adding this tag onto this URL in this UTub.
 
 > ```json
 > {
@@ -2012,10 +2020,10 @@ Indicates form errors with adding this tag onto this URL in this UTub.
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/utubs/1/urls/1/tags \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-Csrftoken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'tagString=Hello' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  --data-raw '{"tagString": "Hello"}'
 > ```
 
 </details>

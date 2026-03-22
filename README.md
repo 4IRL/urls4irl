@@ -17,10 +17,10 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 | Category | Technologies |
 |---|---|
 | **Backend** | Flask, SQLAlchemy, PostgreSQL, Redis |
-| **Frontend** | Jinja2, vanilla JS/jQuery (transitioning to Vite + ES6 modules) |
+| **Frontend** | Jinja2, Vite, ES6 modules, jQuery |
 | **Auth** | Flask-Login, Flask-WTF (CSRF), Mailjet (transactional email) |
 | **Infrastructure** | Docker, Docker Compose, Gunicorn, Nginx |
-| **Testing** | pytest, Selenium |
+| **Testing** | pytest, Selenium, Vitest |
 | **Code Quality** | Black, Flake8, Prettier, ESLint, pre-commit |
 
 ## Getting Started
@@ -47,7 +47,7 @@ URLS4IRL is a collaborative URL sharing platform where users organize links into
 | `ENABLE_SSL` | No | `false` | Enable HTTPS in local dev (Flask + Vite) |
 | `VITE_URL` | No | `http://localhost:5173` | Vite dev server URL (use `https://` when `ENABLE_SSL=true`) |
 
-See [`src/config.py`](src/config.py) for the full list.
+See [`backend/config.py`](backend/config.py) for the full list.
 
 ### Running with Docker (recommended)
 
@@ -63,6 +63,9 @@ A `Makefile` is provided for common development tasks:
 | `make test-functional` | Run all UI/Selenium functional tests |
 | `make test-js` | Run all JS unit tests (vitest) |
 | `make test-marker m=<marker>` | Run tests for a specific pytest marker (e.g. `make test-marker m=utubs`) |
+| `make test-integration-parallel [n=4]` | Run all non-UI integration tests in parallel (preferred) |
+| `make test-ui-parallel [n=8]` | Run all UI/Selenium tests in parallel (preferred, max n=8) |
+| `make test-marker-parallel m=<marker> [n=4]` | Run tests for a specific marker in parallel (preferred) |
 | `make vite-build` | Build Vite to verify no import/syntax errors |
 | `make help` | List all available make commands |
 
@@ -134,7 +137,7 @@ UI tests require Selenium (`SELENIUM_URL` env var). See [`pytest.ini`](pytest.in
 
 ```
 urls4irl/
-├── src/              # Flask app (blueprints, models, templates, static)
+├── backend/          # Flask app (blueprints, models, templates, static)
 ├── frontend/         # Vite/ES6 frontend modules
 ├── tests/            # pytest suite (unit, integration, UI)
 ├── docker/           # Dockerfiles and compose configs
@@ -145,7 +148,7 @@ urls4irl/
 
 ## API Documentation
 
-See [`src/API_DOCUMENTATION.md`](src/API_DOCUMENTATION.md) for full endpoint documentation.
+See [`backend/API_DOCUMENTATION.md`](backend/API_DOCUMENTATION.md) for full endpoint documentation.
 
 ## Contributing
 

@@ -16,13 +16,22 @@ Apply every unchecked item from a review's "To-Do" section to the corresponding 
 
 Both paths are **relative to the project root**, not nested under each other. `reviews/` is a sibling of `plans/`, not `plans/reviews/`.
 
-Read both files in full before making any changes.
+Read the plan file in full.
 
-### Step 2: Identify Pending Items
+For the review file, **always read the entire file** — review files accumulate multiple revision passes and the latest revision is always at the bottom. Do not stop after reading the first `### To-Do` section you encounter. Use `offset` + `limit` to paginate if the file exceeds the read limit. Continue until you have read every line.
 
-Find every unchecked item (`- [ ]`) in the **"To-Do: Required Changes"** section of the review file. These are the only items to act on. Ignore findings, verification gaps, and the verdict — only the To-Do checklist drives changes.
+### Step 2: Identify the Latest Revision and Its Pending Items
 
-If all items are already checked (`- [x]`), report that the review is fully applied and stop.
+Review files contain multiple dated revision sections (e.g., `## Review — 2026-03-15`, `## Review — 2026-03-17 (third pass)`). **Only the chronologically latest revision is authoritative.** Earlier revisions may have unchecked items that were superseded or intentionally skipped — do not act on them.
+
+To find the latest revision reliably:
+1. Grep for all `## Review` headings to get their line numbers and full text.
+2. Determine the latest revision by **pass number** (e.g., "eighth pass" > "fifth pass"), not by line position. Revisions may be appended out of order — the heading at the highest line number is NOT necessarily the latest. If headings include ordinal pass labels (e.g., "second pass", "eighth pass"), use the highest ordinal. If headings use only dates without pass labels, use the most recent date, breaking ties by line position.
+3. Read from that heading's line to the start of the next `## Review` heading (or end of file) to get the full latest revision.
+
+Find every unchecked item (`- [ ]`) in the **"To-Do: Required Changes"** section of the **latest revision only**. These are the only items to act on. Ignore findings, verification gaps, and the verdict — only the To-Do checklist of the latest revision drives changes.
+
+If all items in the latest revision are already checked (`- [x]`), report that the review is fully applied and stop.
 
 ### Step 3: Apply Each Item in Sequence
 
@@ -56,4 +65,3 @@ Mark the item as complete in the review file: `- [ ]` → `- [x]`.
 After all items are processed, output a brief summary:
 - How many items were applied
 - Any items that required user input or were skipped
-- Reminder to re-run relevant tests per the plan's Verification section
