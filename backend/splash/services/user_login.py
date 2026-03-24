@@ -6,6 +6,7 @@ from backend.app_logger import safe_add_log, warning_log
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.utils.all_routes import ROUTES
+from backend.splash.constants import LoginErrorCodes
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
@@ -18,7 +19,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         return APIResponse(
             status_code=400,
             message=USER_FAILURE.UNABLE_TO_LOGIN,
-            error_code=2,
+            error_code=LoginErrorCodes.INVALID_FORM_INPUT,
             errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
         ).to_response()
 
@@ -27,7 +28,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         return APIResponse(
             status_code=400,
             message=USER_FAILURE.UNABLE_TO_LOGIN,
-            error_code=2,
+            error_code=LoginErrorCodes.INVALID_FORM_INPUT,
             errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
         ).to_response()
 
@@ -38,7 +39,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
         return APIResponse(
             status_code=401,
             message=USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
-            error_code=1,
+            error_code=LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED,
         ).to_response()
 
     safe_add_log(f"Logging User.id={user.id} in")

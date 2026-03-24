@@ -3,6 +3,16 @@ name: plan-creator
 description: Creates structured planning documents for new features or tasks in the @plans directory. Use when the user asks to create, write, or draft a plan for a feature, task, or implementation.
 ---
 
+## Branch Guard
+
+Before starting, check the current branch:
+1. If on `main` or `master`:
+   - Run `gmas` to ensure main is up to date
+   - Suggest a branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`)
+   - Ask the user: "You're on main. Want me to create and switch to `<suggested-branch>`?"
+   - Do NOT proceed until the user confirms and you've switched branches
+2. If already on a feature branch: proceed normally
+
 ## Plan Creation
 
 1. Create `@plans/<feature-name>.md` (create `@plans/` if missing).
@@ -164,3 +174,11 @@ For any plan involving a **new feature or bug fix** (not pure refactoring or cle
 - **Frontend – logic/state:** Use Vitest with JSDOM (fast, isolated).
 - **Frontend – navigation/critical flows:** Use Selenium (end-to-end verification).
 - **Philosophy:** Tests are the contract; code is the fulfillment. Never write tests to fit existing feature code.
+
+## Changelog
+
+After creating the plan, append an entry to the branch changelog:
+
+```bash
+.claude/scripts/changelog.sh "plan-creator: created plans/<feature-name>.md — <one-line summary>"
+```

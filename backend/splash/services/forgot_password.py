@@ -4,6 +4,7 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.extension_utils import safe_get_email_sender
+from backend.splash.constants import ForgotPasswordErrorCodes
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
@@ -53,7 +54,10 @@ def send_forgot_password_email_to_user(
             forgot_password_obj, email, user_with_email
         )
         if email_send_result.status_code >= 500:
-            return handle_mailjet_failure(email_send_result, error_code=3)
+            return handle_mailjet_failure(
+                email_send_result,
+                error_code=ForgotPasswordErrorCodes.EMAIL_SEND_FAILURE,
+            )
 
         safe_add_log(f"Sending password reset email for User={user_with_email.id}")
 

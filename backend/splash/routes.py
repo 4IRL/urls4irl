@@ -27,7 +27,12 @@ from backend.schemas.requests.splash import (
     RegisterRequest,
     ResetPasswordRequest,
 )
-from backend.splash.constants import LoginErrorCodes, RegisterErrorCodes
+from backend.splash.constants import (
+    ForgotPasswordErrorCodes,
+    LoginErrorCodes,
+    RegisterErrorCodes,
+    ResetPasswordErrorCodes,
+)
 from backend.splash.forms import (
     ValidateEmailForm,
 )
@@ -182,14 +187,14 @@ def forgot_password_page() -> str:
 @parse_json_body(
     ForgotPasswordRequest,
     message=FORGOT_PASSWORD.INVALID_EMAIL,
-    error_code=1,
+    error_code=ForgotPasswordErrorCodes.INVALID_FORM_INPUT,
 )
 def forgot_password(validated_request: ForgotPasswordRequest) -> FlaskResponse:
     return send_forgot_password_email_to_user(validated_request.email)
 
 
 @splash.route("/reset-password/<string:token>", methods=["GET"])
-def reset_password_page(token: str):
+def reset_password_page(token: str) -> WerkzeugResponse | str:
     return get_reset_password_page(token)
 
 
@@ -197,7 +202,7 @@ def reset_password_page(token: str):
 @parse_json_body(
     ResetPasswordRequest,
     message=RESET_PASSWORD.RESET_PASSWORD_INVALID,
-    error_code=1,
+    error_code=ResetPasswordErrorCodes.INVALID_FORM_INPUT,
 )
 def reset_password(
     token: str, validated_request: ResetPasswordRequest

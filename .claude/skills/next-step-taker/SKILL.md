@@ -1,17 +1,36 @@
 ---
 name: next-step-taker
-description: Execute the next step in the plan when asked.
-argument-hint: Plan-name
+description: Execute the next step in a plan or apply the next item from a review. Use when asked to take the next step, continue a plan, or implement review feedback. The argument is a plan or review name (e.g., "/next-step-taker my-feature"). By default executes plan steps; when the user explicitly asks to implement review changes, applies review items instead.
+argument-hint: Plan-or-review-name
 ---
 
 # Next Step Taker Skill
 
-This skill executes the next incomplete step or phase from an existing implementation plan, validates the changes, updates the plan document, and pauses for user confirmation before continuing.
+This skill executes the next incomplete step from a plan OR applies the next pending item from a review file. It validates changes, updates tracking, and pauses for user confirmation before continuing.
 
-## Workflow
+## Branch Guard
+
+Before starting, check the current branch:
+1. If on `main` or `master`:
+   - Run `gmas` to ensure main is up to date
+   - Suggest a branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`)
+   - Ask the user: "You're on main. Want me to create and switch to `<suggested-branch>`?"
+   - Do NOT proceed until the user confirms and you've switched branches
+2. If already on a feature branch: proceed normally
+
+## Mode Selection
+
+Determine the mode based on user intent:
+
+- **Plan mode** (default): Execute the next incomplete phase/step from a plan document. Use this unless the user explicitly asks to implement review feedback.
+- **Review mode**: Apply the next unchecked item from a review file. Use when the user says things like "implement the review changes", "apply the review", "work through the review feedback", or "next review item".
+
+---
+
+## Plan Mode Workflow
 
 ### Step 1: Locate the Plan
-- Search for an existing plan in the `/Users/ggpropersi/code/urls4irl/plans/` directory that matches **$0** contextually
+- Search for an existing plan in the `/Users/ggpropersi/code/urls4irl/plans/` directory that matches **$ARGUMENTS** contextually
 - Read the plan document to understand the full context
 - Identify the next incomplete step or phase (look for unchecked checkboxes: `- [ ]`)
 
@@ -126,12 +145,81 @@ Plan updated:
 Ready for Phase 5 (Contact Form Migration)?
 ```
 
+---
+
+## Review Mode Workflow
+
+### Step 1: Locate and Read Files
+- Plan: `plans/<name>.md` where `<name>` matches **$ARGUMENTS** contextually
+- Review: `reviews/<name>-review.md` OR `reviews/push-review-<branch>-<timestamp>.md` (for push reviews)
+
+Both paths are **relative to the project root**. `reviews/` is a sibling of `plans/`, not nested under it.
+
+When **$ARGUMENTS** matches a push review file (e.g., "push-review-refactor-splash"), there is no associated plan file — the review is standalone. Skip reading the plan.
+
+Read the review file in full — review files accumulate multiple revision passes and the latest revision is at the bottom. Paginate with `offset` + `limit` if needed. For plan reviews, also read the plan file in full.
+
+### Step 2: Find the Latest Revision's Pending Items
+
+Review files contain multiple revision sections. **Only the latest revision is authoritative.**
+
+For push review files (`push-review-*`), revisions are numbered: `## Review 1`, `## Review 2`, etc.
+For plan review files (`*-review`), revisions use dates or pass labels: `## Review — 2026-03-15 (fifth pass)`.
+
+1. Grep for all `## Review` headings to get line numbers and text
+2. Determine the latest: by **number** for push reviews (highest N in `## Review N`), or by **pass label/date** for plan reviews
+3. Read from that heading to the next `## Review` heading (or end of file)
+4. Find every unchecked item (`- [ ]`) in the **"To-Do: Required Changes"** section of the latest revision only
+
+If all items are already checked (`- [x]`), report that the review is fully applied and stop.
+
+### Step 3: Apply the Next Unchecked Item
+
+Take the **first** unchecked item only (one at a time):
+
+#### 3a. Apply the Change
+- Read all files referenced by the review item before making changes
+- If the change is ambiguous or requires a decision the review doesn't resolve, **ask the user before editing**
+- Implement the minimal, faithful change to the **codebase** (not just the plan) that fulfills the review item
+- Follow CLAUDE.md guidelines
+
+#### 3b. Validate the Changes
+Use the same validation approach as Plan Mode Step 3 (build verification, tests via subagent, etc.)
+
+#### 3c. Staff-Engineer Critique
+After applying, evaluate:
+1. **Faithful?** Does the edit fully implement what the review item asked for — no more, no less?
+2. **Correct?** Is the change accurate given the actual codebase?
+3. **Coherent?** Does the change integrate cleanly with surrounding code?
+4. **Risk?** Does the edit introduce any new issues?
+
+If any concern: explain, propose correction, and **wait for user confirmation**.
+
+#### 3d. Cross Off the Review Item
+Mark complete in the review file: `- [ ]` → `- [x]`
+
+### Step 4: Report and Pause
+- Summarize what was applied
+- Show validation results
+- Include staff engineer review findings and any fixes
+- **REQUIRED:** Ask the user if they want to continue to the next review item
+- Do NOT automatically proceed
+
+---
+
 ## Important Notes
 
 - **Always validate**: Build verification is mandatory for JavaScript changes
 - **Always review**: Staff engineer review is mandatory before reporting to the user
-- **Always update plan**: Mark progress after every step completion
+- **Always update tracking**: Mark progress after every step/item completion
 - **Always pause**: Never auto-continue to next step without user confirmation
 - **Use dangerouslyDisableSandbox: true** for all Docker commands
 - **Follow existing patterns**: Read code before making changes
 - **Clean up**: Remove debug code, console.logs, window globals per CLAUDE.md
+
+## Changelog
+
+After completing a step or review item, append an entry to the branch changelog:
+
+- **Plan mode**: `.claude/scripts/changelog.sh "next-step-taker: completed <Plan Name> Phase N — <phase title>"`
+- **Review mode**: `.claude/scripts/changelog.sh "next-step-taker: applied <review-file> item — <item summary>"`

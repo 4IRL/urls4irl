@@ -12,7 +12,19 @@ from backend.models.users import Users
 from tests.utils_for_test import get_csrf_token
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings import model_strs, reset_password_strs
+from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from tests.models_for_test import valid_user_1
+
+
+def register_json(user_data: dict) -> dict:
+    """Build the JSON payload for a register request from a user data dict."""
+    return {
+        REGISTER_FORM.USERNAME: user_data[REGISTER_FORM.USERNAME],
+        REGISTER_FORM.EMAIL: user_data[REGISTER_FORM.EMAIL],
+        REGISTER_FORM.CONFIRM_EMAIL: user_data[REGISTER_FORM.CONFIRM_EMAIL],
+        REGISTER_FORM.PASSWORD: user_data[REGISTER_FORM.PASSWORD],
+        REGISTER_FORM.CONFIRM_PASSWORD: user_data[REGISTER_FORM.CONFIRM_PASSWORD],
+    }
 
 
 @pytest.fixture

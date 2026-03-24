@@ -13,19 +13,9 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.user_strs import USER_FAILURE
+from tests.integration.splash.conftest import register_json
 
 pytestmark = pytest.mark.splash
-
-
-def _register_json(user_data: dict) -> dict:
-    """Build the JSON payload for a register request from a user data dict."""
-    return {
-        REGISTER_FORM.USERNAME: user_data[REGISTER_FORM.USERNAME],
-        REGISTER_FORM.EMAIL: user_data[REGISTER_FORM.EMAIL],
-        REGISTER_FORM.CONFIRM_EMAIL: user_data[REGISTER_FORM.CONFIRM_EMAIL],
-        REGISTER_FORM.PASSWORD: user_data[REGISTER_FORM.PASSWORD],
-        REGISTER_FORM.CONFIRM_PASSWORD: user_data[REGISTER_FORM.CONFIRM_PASSWORD],
-    }
 
 
 def test_register_new_user(app, load_register_page):
@@ -49,7 +39,7 @@ def test_register_new_user(app, load_register_page):
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(new_user),
+        json=register_json(new_user),
         headers={"X-CSRFToken": csrf_token_string},
     )
 
@@ -121,7 +111,7 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(already_registered_user_data),
+        json=register_json(already_registered_user_data),
         headers={"X-CSRFToken": csrf_token_string},
     )
 
@@ -185,7 +175,7 @@ def test_register_existing_username_with_trailing_leading_whitespace(
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(already_registered_user_data),
+        json=register_json(already_registered_user_data),
         headers={"X-CSRFToken": csrf_token_string},
     )
 
@@ -256,7 +246,7 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
 
         response = client.post(
             url_for(ROUTES.SPLASH.REGISTER),
-            json=_register_json(already_registered_user_data),
+            json=register_json(already_registered_user_data),
             headers={"X-CSRFToken": csrf_token_string},
         )
 
@@ -341,7 +331,7 @@ def test_register_modal_logs_user_in(app_with_server_name, client):
 
         response = client.post(
             url_for(ROUTES.SPLASH.REGISTER),
-            json=_register_json(new_user),
+            json=register_json(new_user),
             headers={"X-CSRFToken": csrf_token},
         )
 
@@ -373,7 +363,7 @@ def test_register_user_missing_csrf(app, load_register_page):
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
     )
 
     # Correctly sends 403 for missing CSRF
@@ -417,7 +407,7 @@ def test_register_new_user_log(app, load_register_page, caplog):
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(new_user),
+        json=register_json(new_user),
         headers={"X-CSRFToken": csrf_token_string},
     )
 

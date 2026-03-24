@@ -1,0 +1,181 @@
+---
+name: git-push
+description: Review all unpushed code on the current branch using 7 parallel subagents (Safety & Security, Correctness, Simplicity & Conciseness, Test Coverage, Completeness & Cleanup, Consistency & Style, Integration Risk), then push if all approve or write findings to reviews/push-review-<branch>.md if any reject. Use when asked to push, push code, git push, or review-and-push.
+---
+
+# Git Push with Multi-Agent Review
+
+Review all code not yet on the remote branch, then push if approved or output findings.
+
+## Branch Guard
+
+Before starting, check the current branch:
+1. If on `main` or `master`:
+   - Run `gmas` to ensure main is up to date
+   - Suggest a branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`)
+   - Ask the user: "You're on main. Want me to create and switch to `<suggested-branch>`?"
+   - Do NOT proceed until the user confirms and you've switched branches
+2. If already on a feature branch: proceed normally
+
+## Workflow
+
+### 1. Gather the Diff
+
+Determine what code exists locally but not on the remote:
+
+```bash
+# Get branch name and remote tracking info
+BRANCH=$(git branch --show-current)
+git fetch origin
+
+# Check if remote branch exists
+if git rev-parse --verify origin/$BRANCH >/dev/null 2>&1; then
+  # Diff against remote branch
+  git diff origin/$BRANCH...HEAD
+  git diff origin/$BRANCH...HEAD --stat
+  git log origin/$BRANCH..HEAD --oneline
+else
+  # New branch — diff against main
+  git diff origin/main...HEAD
+  git diff origin/main...HEAD --stat
+  git log origin/main..HEAD --oneline
+fi
+
+# Also include uncommitted staged/unstaged changes
+git diff HEAD
+git status --short
+```
+
+If the diff is empty (nothing to push), inform the user and stop.
+
+### 2. Launch 7 Parallel Review Subagents
+
+Read `references/subagent-prompts.md` for the full prompt definitions and expected response format.
+
+Launch **all 7 subagents in parallel** using the Agent tool. Each subagent:
+- Receives the full diff output from Step 1
+- Receives its specific review focus area from the reference file
+- Must return a structured JSON response with `verdict`, `findings`, and `summary`
+- Uses `model: sonnet` for speed
+
+Subagents (all launched in a single message):
+
+| # | Name | Focus |
+|---|---|---|
+| 1 | Safety & Security | XSS, injection, secrets, OWASP, destructive ops |
+| 2 | Correctness | Logic errors, edge cases, type issues, wrong APIs |
+| 3 | Simplicity & Conciseness | Over-engineering, dead code, verbose patterns |
+| 4 | Test Coverage | Missing tests, untested new behavior, coverage gaps |
+| 5 | Completeness & Cleanup | Debug artifacts, TODOs, commented code, stubs |
+| 6 | Consistency & Style | Project conventions, naming, patterns, imports |
+| 7 | Integration Risk | Breaking changes, missing migrations, cross-module impact |
+
+### 3. Evaluate Results
+
+Collect all 7 subagent responses. Parse each verdict:
+
+- **ALL PASS**: Proceed to Step 4 (push).
+- **ANY FAIL**: Proceed to Step 5 (write findings).
+
+### 4. Push (All Approved)
+
+```bash
+git push origin $BRANCH
+```
+
+After pushing, output a brief summary:
+- Branch name and remote
+- Number of commits pushed
+- One-line summary from each subagent
+
+### 5. Write Findings (Any Rejected)
+
+The review file is `reviews/push-review-<branch>.md` (one file per branch, no timestamp in filename).
+
+#### File and Review Numbering
+
+1. Check if `reviews/push-review-<branch>.md` already exists
+2. **If it exists**: read the file, find the highest `## Review N` number, and append a new section numbered N+1
+3. **If it does not exist**: create the file with a header and start with `## Review 1`
+
+The file header (written only on first creation):
+```markdown
+# Push Review: <branch>
+```
+
+Each review section appended to the file:
+```markdown
+## Review <N>
+Generated: <YYYY-MM-DD HH:MM>
+Comparison: <base>...HEAD
+Verdict: **BLOCKED**
+
+### Results by Reviewer
+
+#### 1. Safety & Security — <PASS/FAIL>
+<summary + findings bullet list>
+
+#### 2. Correctness — <PASS/FAIL>
+...
+
+#### 3. Simplicity & Conciseness — <PASS/FAIL>
+...
+
+#### 4. Test Coverage — <PASS/FAIL>
+...
+
+#### 5. Completeness & Cleanup — <PASS/FAIL>
+...
+
+#### 6. Consistency & Style — <PASS/FAIL>
+...
+
+#### 7. Integration Risk — <PASS/FAIL>
+...
+
+### To-Do: Required Changes
+
+- [ ] **<Imperative action>** — <file(s) to change> — <what to do specifically>
+- [ ] ...
+```
+
+#### TO-DO Item Guidelines
+
+Each TO-DO item must be:
+- **Self-contained**: Include the file path(s), what to change, and why. The implementer should not need to read the reviewer results above.
+- **Imperative**: Start with a verb (Add, Update, Extract, Fix, Remove, Replace).
+- **Concrete**: Name the exact file, function, variable, or line to change. Avoid vague items like "fix style issues."
+- **One logical change**: Each item should be implementable and verifiable independently.
+
+Consolidate related findings from different reviewers into a single TO-DO item when they refer to the same fix. Minor findings (severity: minor) should be excluded from the TO-DO list — they appear in the reviewer results section only.
+
+Example:
+```markdown
+### To-Do: Required Changes
+
+- [ ] **Extract `_register_json` to shared helper** — `tests/integration/splash/test_email_validation.py`, `tests/integration/splash/test_register_user.py` — Move the duplicated `_register_json()` function to `tests/integration/splash/conftest.py` and import from there in both test files
+- [ ] **Add `ForgotPasswordErrorCodes` enum** — `backend/splash/constants.py`, `backend/splash/routes.py` — Create `ForgotPasswordErrorCodes(IntEnum)` with `INVALID_FORM_INPUT = 1` and use it in the `@parse_json_body` decorator call for the forgot-password route instead of bare `error_code=1`
+```
+
+After writing, inform the user:
+- Which reviewers failed and why (brief)
+- Path to the full review file and review number (e.g., "Review 2 appended")
+- That they can use `/next-step-taker push-review-<branch>` to implement items one by one
+- Do NOT automatically push — the user must fix findings and re-invoke
+
+## Important Notes
+
+- **All test suites have passed before commit** — code reaching this workflow has already passed all relevant test suites (integration, UI, unit, JS). Subagents should NOT flag "tests might fail" or "untested at runtime." The Test Coverage reviewer focuses on whether the diff includes sufficient test code for new/changed behavior, not whether existing tests pass.
+- Never push to `main` or `master` — warn the user and abort
+- Never force-push
+- If there are uncommitted changes, warn the user and ask whether to include them (commit first) or push only committed code
+- The `reviews/` directory is at the project root, NOT under `plans/`
+- All subagent launches must be in a single message for true parallelism
+- If a subagent fails to return valid JSON, treat it as FAIL with a note about the parse error
+
+## Changelog
+
+After completing this skill, append an entry to the branch changelog:
+
+- **Pushed**: `.claude/scripts/changelog.sh "git-push: pushed <N> commits to origin/<branch>"`
+- **Blocked**: `.claude/scripts/changelog.sh "git-push: blocked by review — findings written to reviews/push-review-<branch>.md (Review N)"`

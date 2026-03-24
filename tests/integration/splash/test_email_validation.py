@@ -23,21 +23,11 @@ from backend.utils.strings.email_validation_strs import (
     VALIDATE_YOUR_EMAIL,
 )
 from backend.utils.strings.user_strs import USER_FAILURE
+from tests.integration.splash.conftest import register_json
 
 pytestmark = pytest.mark.splash
 
 VALIDATE_EMAIL_MODAL_TITLE = f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'
-
-
-def _register_json(user_data: dict) -> dict:
-    """Build the JSON payload for a register request from a user data dict."""
-    return {
-        REGISTER_FORM.USERNAME: user_data[REGISTER_FORM.USERNAME],
-        REGISTER_FORM.EMAIL: user_data[REGISTER_FORM.EMAIL],
-        REGISTER_FORM.CONFIRM_EMAIL: user_data[REGISTER_FORM.CONFIRM_EMAIL],
-        REGISTER_FORM.PASSWORD: user_data[REGISTER_FORM.PASSWORD],
-        REGISTER_FORM.CONFIRM_PASSWORD: user_data[REGISTER_FORM.CONFIRM_PASSWORD],
-    }
 
 
 def test_registered_user_is_not_email_validated(app, load_register_page):
@@ -50,7 +40,7 @@ def test_registered_user_is_not_email_validated(app, load_register_page):
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
         headers={"X-CSRFToken": csrf_token},
     )
 
@@ -75,7 +65,7 @@ def test_registered_not_email_validated_user_access_home_page(load_register_page
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
         headers={"X-CSRFToken": csrf_token_string},
     )
 
@@ -100,7 +90,7 @@ def test_registered_not_email_validated_user_access_register_login(load_register
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
         headers={"X-CSRFToken": csrf_token_string},
     )
 
@@ -138,7 +128,7 @@ def test_registered_not_email_validated_tries_registering_again(
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
         headers={"X-CSRFToken": csrf_token_string},
     )
 
@@ -239,7 +229,7 @@ def test_token_validates_user(mock_request_post, app, load_register_page):
 
     client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
         headers={"X-CSRFToken": csrf_token},
     )
 
@@ -342,7 +332,7 @@ def test_success_on_send_of_email(app, load_register_page):
 
     client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
         headers={"X-CSRFToken": csrf_token},
     )
     send_email_response = client.post(
@@ -373,7 +363,7 @@ def test_min_rate_limiting_of_sending_email(app, load_register_page):
 
     client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
         headers={"X-CSRFToken": csrf_token},
     )
     client.post(
@@ -417,7 +407,7 @@ def test_max_rate_limiting_of_sending_email(app, load_register_page):
 
     client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        json=_register_json(valid_user_1),
+        json=register_json(valid_user_1),
         headers={"X-CSRFToken": csrf_token},
     )
 

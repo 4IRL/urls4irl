@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, ValidationInfo, field_validator
 
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
@@ -33,7 +33,7 @@ class RegisterRequest(_UsernameStripMixin):
 
     @field_validator("confirmEmail", mode="after")
     @classmethod
-    def emails_must_match(cls, value: str, info: object) -> str:
+    def emails_must_match(cls, value: str, info: ValidationInfo) -> str:
         if "email" not in info.data:
             return value
         if value != info.data.get("email"):
@@ -42,7 +42,7 @@ class RegisterRequest(_UsernameStripMixin):
 
     @field_validator("confirmPassword", mode="after")
     @classmethod
-    def passwords_must_match(cls, value: str, info: object) -> str:
+    def passwords_must_match(cls, value: str, info: ValidationInfo) -> str:
         if "password" not in info.data:
             return value
         if value != info.data.get("password"):
@@ -60,7 +60,7 @@ class ResetPasswordRequest(BaseModel):
 
     @field_validator("confirmNewPassword", mode="after")
     @classmethod
-    def passwords_must_match(cls, value: str, info: object) -> str:
+    def passwords_must_match(cls, value: str, info: ValidationInfo) -> str:
         if "newPassword" not in info.data:
             return value
         if value != info.data.get("newPassword"):

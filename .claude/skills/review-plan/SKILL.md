@@ -8,6 +8,16 @@ argument-hint: Plan-name
 
 Adopt the role of a **staff engineer** performing a thorough code review of a planning document. Be critical, specific, and actionable.
 
+## Branch Guard
+
+Before starting, check the current branch:
+1. If on `main` or `master`:
+   - Run `gmas` to ensure main is up to date
+   - Suggest a branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`)
+   - Ask the user: "You're on main. Want me to create and switch to `<suggested-branch>`?"
+   - Do NOT proceed until the user confirms and you've switched branches
+2. If already on a feature branch: proceed normally
+
 ## Workflow
 
 ### Step 1: Locate the Plan
@@ -248,6 +258,14 @@ When appending a new review pass and the current pass found findings that prior 
 - If the plan is already solid, say so clearly — a clean review is a useful result
 - Multiple reviews of the same plan accumulate in one file (append, don't overwrite)
 - The `plans/reviews/` directory may need to be created if this is the first review
+
+## Changelog
+
+After writing or appending a review, append an entry to the branch changelog:
+
+```bash
+.claude/scripts/changelog.sh "review-plan: reviewed <plan-name> — <verdict> (<N> critical, <N> major, <N> minor)"
+```
 
 ## CSRF / Auth / Session specifics
 
