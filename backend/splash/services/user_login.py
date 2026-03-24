@@ -5,8 +5,8 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
-from backend.utils.all_routes import ROUTES
 from backend.splash.constants import LoginErrorCodes
+from backend.utils.all_routes import ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
@@ -32,6 +32,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
             errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
         ).to_response()
 
+    # Log in before email_validated check so unvalidated users can request a resend
     login_user(user)  # Can add Remember Me functionality here
 
     if not user.email_validated:

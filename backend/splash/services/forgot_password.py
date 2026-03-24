@@ -4,9 +4,9 @@ from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.extension_utils import safe_get_email_sender
-from backend.splash.constants import ForgotPasswordErrorCodes
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
+from backend.splash.constants import ForgotPasswordErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.mailjet_utils import handle_mailjet_failure

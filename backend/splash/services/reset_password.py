@@ -15,14 +15,18 @@ from backend.utils.strings.reset_password_strs import RESET_PASSWORD
 def _validate_reset_token(token: str) -> Users | WerkzeugResponse:
     """
     Validates the reset password JWT token and returns the associated user,
-    or a redirect/abort response if the token is invalid.
+    or a redirect response if the token is expired.
+
+    If the token is invalid (bad user, unvalidated email, or stale/mismatched
+    token), this function calls ``abort(404)`` which raises an ``HTTPException``
+    and never returns.
 
     Args:
         token: The JWT passed in the URL to reset the password
 
     Returns:
         Users: The user associated with the valid token
-        WerkzeugResponse: A redirect when the token is expired
+        WerkzeugResponse: A redirect to the splash page when the token is expired
     """
     verify_token_response = verify_token(token, RESET_PASSWORD.RESET_PASSWORD_KEY)
 
@@ -65,8 +69,6 @@ def get_reset_password_page(token: str) -> WerkzeugResponse | str:
         str: Rendered HTML for the reset password page
     """
     result = _validate_reset_token(token)
-    # _validate_reset_token returns Users | WerkzeugResponse. A WerkzeugResponse
-    # means token validation failed and the response should be propagated immediately.
     if isinstance(result, WerkzeugResponse):
         return result
 
@@ -86,8 +88,6 @@ def reset_password_for_user(token: str, new_password: str) -> FlaskResponse:
         FlaskResponse: JSON response indicating success or failure
     """
     result = _validate_reset_token(token)
-    # _validate_reset_token returns Users | WerkzeugResponse. A WerkzeugResponse
-    # means token validation failed and the response should be propagated immediately.
     if isinstance(result, WerkzeugResponse):
         return result
 

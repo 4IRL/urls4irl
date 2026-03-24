@@ -1,5 +1,5 @@
 import pytest
-from pydantic import BaseModel, Field, ValidationError
+from pydantic import ValidationError
 
 from backend.api_common.request_errors import (
     INVALID_EMAIL_STR,
@@ -8,7 +8,9 @@ from backend.api_common.request_errors import (
     min_length_message,
     pydantic_errors_to_dict,
 )
+from backend.schemas.requests.splash import LoginRequest, RegisterRequest
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
+from backend.utils.strings.splash_form_strs import EMAILS_NOT_IDENTICAL
 
 pytestmark = pytest.mark.unit
 
@@ -76,23 +78,33 @@ class TestHumanizePassthrough:
 
 class TestPydanticErrorsToDictAppliesHumanization:
     def test_pydantic_errors_to_dict_applies_humanization(self):
-        class _MinLengthSchema(BaseModel):
-            name: str = Field(min_length=1)
-
         with pytest.raises(ValidationError) as exc_info:
-            _MinLengthSchema.model_validate({"name": ""})
+            LoginRequest.model_validate({"username": "testuser", "password": ""})
 
         result = pydantic_errors_to_dict(exc_info.value)
-        assert "name" in result
-        assert FIELD_REQUIRED_STR in result["name"]
+        assert "password" in result
+        assert FIELD_REQUIRED_STR in result["password"]
 
     def test_pydantic_errors_to_dict_humanizes_field_required(self):
-        class _RequiredSchema(BaseModel):
-            email: str
-
         with pytest.raises(ValidationError) as exc_info:
-            _RequiredSchema.model_validate({})
+            LoginRequest.model_validate({})
 
         result = pydantic_errors_to_dict(exc_info.value)
-        assert "email" in result
-        assert FIELD_REQUIRED_STR in result["email"]
+        assert "username" in result
+        assert FIELD_REQUIRED_STR in result["username"]
+
+    def test_pydantic_errors_to_dict_strips_value_error_prefix(self):
+        with pytest.raises(ValidationError) as exc_info:
+            RegisterRequest.model_validate(
+                {
+                    "username": "testuser",
+                    "email": "a@b.com",
+                    "confirmEmail": "different@b.com",
+                    "password": "validpassword1",
+                    "confirmPassword": "validpassword1",
+                }
+            )
+
+        result = pydantic_errors_to_dict(exc_info.value)
+        assert "confirmEmail" in result
+        assert result["confirmEmail"] == [EMAILS_NOT_IDENTICAL]

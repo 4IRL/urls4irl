@@ -74,10 +74,11 @@ Subagents (all launched in a single message):
 
 Collect all 7 subagent responses. Parse each verdict:
 
-- **ALL PASS**: Proceed to Step 4 (push).
-- **ANY FAIL**: Proceed to Step 5 (write findings).
+- **ALL PASS, no findings at all**: Proceed to Step 4 (push).
+- **ALL PASS, but minor findings exist**: Write findings (Step 5), then push (Step 4). Minor findings should not block the push but must be recorded so `/next-step-taker` can address them.
+- **ANY FAIL**: Proceed to Step 5 (write findings). Do NOT push.
 
-### 4. Push (All Approved)
+### 4. Push
 
 ```bash
 git push origin $BRANCH
@@ -87,8 +88,9 @@ After pushing, output a brief summary:
 - Branch name and remote
 - Number of commits pushed
 - One-line summary from each subagent
+- If a review file was written (minor findings), include its path and note that `/next-step-taker push-review-<branch>` can address them
 
-### 5. Write Findings (Any Rejected)
+### 5. Write Findings
 
 The review file is `reviews/push-review-<branch>.md` (one file per branch, no timestamp in filename).
 
@@ -108,7 +110,7 @@ Each review section appended to the file:
 ## Review <N>
 Generated: <YYYY-MM-DD HH:MM>
 Comparison: <base>...HEAD
-Verdict: **BLOCKED**
+Verdict: **BLOCKED** or **PUSHED WITH MINOR FINDINGS**
 
 ### Results by Reviewer
 
@@ -147,7 +149,7 @@ Each TO-DO item must be:
 - **Concrete**: Name the exact file, function, variable, or line to change. Avoid vague items like "fix style issues."
 - **One logical change**: Each item should be implementable and verifiable independently.
 
-Consolidate related findings from different reviewers into a single TO-DO item when they refer to the same fix. Minor findings (severity: minor) should be excluded from the TO-DO list — they appear in the reviewer results section only.
+Consolidate related findings from different reviewers into a single TO-DO item when they refer to the same fix. **Include all findings in the TO-DO list regardless of severity** — minor findings must also be actionable items so `/next-step-taker` can address them.
 
 Example:
 ```markdown

@@ -11,6 +11,7 @@ class EmailValidationErrorCodes(IntEnum):
 
 class ForgotPasswordErrorCodes(IntEnum):
     INVALID_FORM_INPUT = 1
+    # Value 2 intentionally skipped to preserve backward compatibility with legacy error codes
     EMAIL_SEND_FAILURE = 3
 
 

@@ -2,19 +2,9 @@ import pytest
 from pydantic import BaseModel, ValidationError
 
 from backend.api_common.request_errors import pydantic_errors_to_dict
+from backend.schemas.requests.splash import LoginRequest
 
 pytestmark = pytest.mark.unit
-
-
-class _SampleSchema(BaseModel):
-    username: str
-    age: int
-
-
-def _validation_error_for(data: dict) -> ValidationError:
-    with pytest.raises(ValidationError) as exc_info:
-        _SampleSchema.model_validate(data)
-    return exc_info.value
 
 
 def test_missing_required_field_produces_field_key():
@@ -23,8 +13,10 @@ def test_missing_required_field_produces_field_key():
     WHEN pydantic_errors_to_dict is called
     THEN the result contains that field name as the key with a non-empty error list
     """
-    validation_error = _validation_error_for({"age": 1})
-    result = pydantic_errors_to_dict(validation_error)
+    with pytest.raises(ValidationError) as exc_info:
+        LoginRequest.model_validate({"password": "validpassword1"})
+
+    result = pydantic_errors_to_dict(exc_info.value)
 
     assert "username" in result
     assert isinstance(result["username"], list)
@@ -37,11 +29,13 @@ def test_multiple_errors_on_different_fields_produce_separate_keys():
     WHEN pydantic_errors_to_dict is called
     THEN each field has its own key in the result
     """
-    validation_error = _validation_error_for({})
-    result = pydantic_errors_to_dict(validation_error)
+    with pytest.raises(ValidationError) as exc_info:
+        LoginRequest.model_validate({})
+
+    result = pydantic_errors_to_dict(exc_info.value)
 
     assert "username" in result
-    assert "age" in result
+    assert "password" in result
 
 
 def test_multiple_errors_on_same_field_accumulate_under_one_key():
@@ -49,6 +43,9 @@ def test_multiple_errors_on_same_field_accumulate_under_one_key():
     GIVEN a schema with a list field that has multiple invalid entries
     WHEN pydantic_errors_to_dict is called
     THEN all error messages for that field are accumulated under one key
+
+    No production schema uses list fields, so a test-only schema is used
+    to verify the accumulation logic in pydantic_errors_to_dict.
     """
 
     class _ListSchema(BaseModel):
@@ -56,8 +53,7 @@ def test_multiple_errors_on_same_field_accumulate_under_one_key():
 
     with pytest.raises(ValidationError) as exc_info:
         _ListSchema.model_validate({"items": ["a", "b"]})
-    validation_error = exc_info.value
 
-    result = pydantic_errors_to_dict(validation_error)
+    result = pydantic_errors_to_dict(exc_info.value)
     assert "items" in result
     assert len(result["items"]) >= 2

@@ -14,6 +14,7 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import LOGIN_FORM
 from backend.utils.strings.user_strs import USER_FAILURE
+from backend.splash.constants import LoginErrorCodes
 
 pytestmark = pytest.mark.splash
 
@@ -181,6 +182,47 @@ def test_login_user_missing_csrf(register_first_user, load_login_page):
     # Ensure no one is logged in
     assert current_user.get_id() is None
     assert current_user.is_active is False
+
+
+def test_login_user_not_email_validated(
+    register_first_user_without_email_validation, load_login_page
+):
+    """
+    GIVEN a registered user whose email has not been validated
+    WHEN "/login" is POST'd with correct credentials
+    THEN ensure a 401 response with the ACCOUNT_NOT_EMAIL_VALIDATED error code is returned
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
+        STD_JSON.ERROR_CODE: LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
+    }
+    """
+    registered_user_data, _ = register_first_user_without_email_validation
+    client, csrf_token_str = load_login_page
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: registered_user_data[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: registered_user_data[LOGIN_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    login_user_response_json = response.json
+    assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        login_user_response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
+    )
+    assert (
+        int(login_user_response_json[STD_JSON.ERROR_CODE])
+        == LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
+    )
+
+    assert response.status_code == 401
 
 
 def test_already_logged_in_user_to_splash_page(login_first_user_with_register):

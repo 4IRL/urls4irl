@@ -13,6 +13,7 @@ from backend import db
 from backend.api_common.auth_decorators import (
     no_authenticated_users_allowed,
 )
+from backend.api_common.parse_request import parse_json_body
 from backend.api_common.responses import FlaskResponse
 from backend.app_logger import (
     safe_add_log,
@@ -20,7 +21,6 @@ from backend.app_logger import (
 )
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
-from backend.api_common.parse_request import parse_json_body
 from backend.schemas.requests.splash import (
     ForgotPasswordRequest,
     LoginRequest,

@@ -1,15 +1,10 @@
 import pytest
 from flask import Flask
-from pydantic import BaseModel, Field
 
 from backend.api_common.parse_request import parse_json_body
+from backend.schemas.requests.splash import LoginRequest
 
 pytestmark = pytest.mark.unit
-
-
-class _SimpleSchema(BaseModel):
-    name: str = Field(min_length=1)
-    count: int
 
 
 @pytest.fixture()
@@ -20,12 +15,12 @@ def minimal_app():
 
     @flask_app.route("/test", methods=["POST"])
     @parse_json_body(
-        _SimpleSchema,
+        LoginRequest,
         message="Invalid input",
         error_code=1,
     )
-    def test_route(validated_request: _SimpleSchema):
-        return {"name": validated_request.name, "count": validated_request.count}, 200
+    def test_route(validated_request: LoginRequest):
+        return {"username": validated_request.username}, 200
 
     return flask_app
 
@@ -53,13 +48,12 @@ def test_valid_body_injects_validated_request(minimal_app: Flask):
     with minimal_app.test_client() as client:
         response = client.post(
             "/test",
-            json={"name": "hello", "count": 3},
+            json={"username": "testuser", "password": "validpassword1"},
         )
 
     assert response.status_code == 200
     payload = response.get_json()
-    assert payload["name"] == "hello"
-    assert payload["count"] == 3
+    assert payload["username"] == "testuser"
 
 
 def test_invalid_body_returns_400_with_errors(minimal_app: Flask):
@@ -71,12 +65,12 @@ def test_invalid_body_returns_400_with_errors(minimal_app: Flask):
     with minimal_app.test_client() as client:
         response = client.post(
             "/test",
-            json={"count": "not-a-number"},
+            json={"username": "ab"},
         )
 
     assert response.status_code == 400
     payload = response.get_json()
     assert "errors" in payload
     assert isinstance(payload["errors"], dict)
-    # "name" is missing, "count" has wrong type
-    assert "name" in payload["errors"] or "count" in payload["errors"]
+    # "username" too short, "password" missing
+    assert "username" in payload["errors"] or "password" in payload["errors"]
