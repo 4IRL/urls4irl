@@ -4,17 +4,17 @@ from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
 
+from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
+from backend.splash.constants import LoginErrorCodes
+from backend.utils.all_routes import ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from tests.models_for_test import invalid_user_1, valid_user_1
-from tests.utils_for_test import get_csrf_token, is_string_in_logs
-from backend.models.users import Users
-from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import LOGIN_FORM
 from backend.utils.strings.user_strs import USER_FAILURE
-from backend.splash.constants import LoginErrorCodes
+from tests.models_for_test import invalid_user_1, valid_user_1
+from tests.utils_for_test import get_csrf_token, is_string_in_logs
 
 pytestmark = pytest.mark.splash
 
@@ -96,7 +96,10 @@ def test_login_unregistered_user(load_login_page):
     login_user_response_json = response.json
     assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert login_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_LOGIN
-    assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(login_user_response_json[STD_JSON.ERROR_CODE])
+        == LoginErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         USER_FAILURE.USER_NOT_EXIST
         in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME]
@@ -145,7 +148,10 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
     login_user_response_json = response.json
     assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert login_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_LOGIN
-    assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(login_user_response_json[STD_JSON.ERROR_CODE])
+        == LoginErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         USER_FAILURE.INVALID_PASSWORD
         in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]

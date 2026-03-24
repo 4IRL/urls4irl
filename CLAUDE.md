@@ -58,6 +58,14 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 
 This project is primarily Python with some JavaScript/HTML/CSS. When editing Python code, verify constant names, decorator types (`@model_validator` vs `@field_validator`), and imports against the actual codebase before making changes.
 
+### Import Ordering
+
+Imports are sorted into three groups, each alphabetized internally, separated by a blank line:
+
+1. Standard library modules
+2. Third-party modules
+3. Project modules (`backend.*`, `tests.*`, etc.)
+
 ### General
 
 1. Always clean up temporary debug code (console.logs, window.* global exposures, debug hacks) before marking a task complete. Review all changes for leftover debugging artifacts.
