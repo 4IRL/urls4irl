@@ -1,4 +1,4 @@
-from flask import abort, redirect, render_template, request, url_for
+from flask import abort, redirect, render_template, url_for
 from werkzeug import Response as WerkzeugResponse
 
 from backend import db
@@ -7,24 +7,22 @@ from backend.app_logger import critical_log, warning_log
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
 from backend.models.utils import VerifyTokenResponse
-from backend.splash.forms import ResetPasswordForm
-from backend.splash.utils import build_form_errors, verify_token
+from backend.splash.utils import verify_token
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
-from backend.utils.strings.user_strs import USER_FAILURE
 
 
-def reset_password_for_user(token: str) -> WerkzeugResponse | FlaskResponse | str:
+def _validate_reset_token(token: str) -> Users | WerkzeugResponse:
     """
-    Handles resetting a password for a User. Users pass a JWT token via URL and this token must be validated before the password must be reset.
+    Validates the reset password JWT token and returns the associated user,
+    or a redirect/abort response if the token is invalid.
 
     Args:
-        token (str): The JWT passed in the URL to reset the password
+        token: The JWT passed in the URL to reset the password
 
-    Response:
-        (WerkzeugResponse): When redirecting the User to another URL
-        (FlaskRespnse): Contains JSON and HTTP status code in response
-        (str): Rendered HTML for the user
+    Returns:
+        Users: The user associated with the valid token
+        WerkzeugResponse: A redirect when the token is expired
     """
     verify_token_response = verify_token(token, RESET_PASSWORD.RESET_PASSWORD_KEY)
 
@@ -34,14 +32,12 @@ def reset_password_for_user(token: str) -> WerkzeugResponse | FlaskResponse | st
         )
 
     if not verify_token_response.user:
-        # Invalid token
         critical_log("Invalid user associated with token")
         abort(404)
 
     reset_password_user = verify_token_response.user
 
     if not reset_password_user.email_validated:
-        # Remove the object if it exists
         _handle_reset_token_for_user_with_invalid_email(
             user=reset_password_user, token=token
         )
@@ -53,21 +49,49 @@ def reset_password_for_user(token: str) -> WerkzeugResponse | FlaskResponse | st
         )
         abort(404)
 
-    reset_password_form = ResetPasswordForm()
+    return reset_password_user
 
-    if request.method == "GET":
-        return render_template(
-            "pages/splash.html",
-            is_resetting_password=True,
-            reset_password_form=reset_password_form,
-        )
 
-    if not reset_password_form.validate_on_submit():
-        return _handle_invalid_reset_password_form_input(
-            reset_password_form=reset_password_form, user=reset_password_user
-        )
+def get_reset_password_page(token: str) -> WerkzeugResponse | str:
+    """
+    Handles GET request for the reset password page. Validates the token
+    and renders the reset password modal.
 
-    return _validate_resetting_password(reset_password_user, reset_password_form)
+    Args:
+        token: The JWT passed in the URL to reset the password
+
+    Returns:
+        WerkzeugResponse: A redirect when the token is expired
+        str: Rendered HTML for the reset password page
+    """
+    result = _validate_reset_token(token)
+    # _validate_reset_token returns Users | WerkzeugResponse. A WerkzeugResponse
+    # means token validation failed and the response should be propagated immediately.
+    if isinstance(result, WerkzeugResponse):
+        return result
+
+    return render_template("pages/splash.html", is_resetting_password=True)
+
+
+def reset_password_for_user(token: str, new_password: str) -> FlaskResponse:
+    """
+    Handles POST request for resetting a password. Validates the token
+    and changes the user's password.
+
+    Args:
+        token: The JWT passed in the URL to reset the password
+        new_password: The new password to set
+
+    Returns:
+        FlaskResponse: JSON response indicating success or failure
+    """
+    result = _validate_reset_token(token)
+    # _validate_reset_token returns Users | WerkzeugResponse. A WerkzeugResponse
+    # means token validation failed and the response should be propagated immediately.
+    if isinstance(result, WerkzeugResponse):
+        return result
+
+    return _validate_resetting_password(result, new_password)
 
 
 def _handle_expired_password_reset_token(
@@ -78,11 +102,11 @@ def _handle_expired_password_reset_token(
     If user has an expired reset token, redirect them back to the splash page.
 
     Args:
-        verify_token_response (VerifyTokenResponse): Data related to token verification
-        token (str): The JWT token in the URL
+        verify_token_response: Data related to token verification
+        token: The JWT token in the URL
 
-    Response:
-        (WerkzeugResponse): URL redirect to the Splash Page
+    Returns:
+        WerkzeugResponse: URL redirect to the Splash Page
     """
     reset_password_user = verify_token_response.user
     reset_password_obj = Forgot_Passwords.query.filter(
@@ -115,29 +139,11 @@ def _is_invalid_or_expired_token(user: Users, token: str) -> bool:
     )
 
 
-def _handle_invalid_reset_password_form_input(
-    reset_password_form: ResetPasswordForm, user: Users
-) -> FlaskResponse:
-    if reset_password_form.errors is not None:
-        warning_log(f"User={user.id} | Invalid form for resetting password")
-        return APIResponse(
-            status_code=400,
-            message=RESET_PASSWORD.RESET_PASSWORD_INVALID,
-            error_code=1,
-            errors=build_form_errors(reset_password_form),
-        ).to_response()
-
-    critical_log(f"User={user.id} unable to reset password")
-    return APIResponse(
-        status_code=404, message=USER_FAILURE.SOMETHING_WENT_WRONG, error_code=2
-    ).to_response()
-
-
 def _validate_resetting_password(
-    reset_password_user: Users, reset_password_form: ResetPasswordForm
+    reset_password_user: Users, new_password: str
 ) -> FlaskResponse:
 
-    reset_password_user.change_password(reset_password_form.get_new_password())
+    reset_password_user.change_password(new_password)
     forgot_password_obj = reset_password_user.forgot_password
     db.session.delete(forgot_password_obj)
     db.session.commit()

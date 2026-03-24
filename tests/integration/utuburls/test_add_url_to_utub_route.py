@@ -15,7 +15,10 @@ from backend.urls.constants import URLErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import URL_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FIELD_REQUIRED_STR,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 from tests.models_for_test import valid_url_strings
@@ -1206,7 +1209,7 @@ def test_add_url_missing_url(
         == URLErrorCodes.INVALID_FORM_INPUT
     )
     assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == [
-        "String should have at least 1 character"
+        FIELD_REQUIRED_STR
     ]
 
     with app.app_context():
@@ -1276,7 +1279,7 @@ def test_add_url_missing_url_title(
         == URLErrorCodes.INVALID_FORM_INPUT
     )
     assert add_url_json_response[STD_JSON.ERRORS][URL_FORM.URL_TITLE] == [
-        URL_FAILURE.INVALID_INPUT
+        FIELD_REQUIRED_STR
     ]
 
     with app.app_context():

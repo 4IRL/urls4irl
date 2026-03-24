@@ -4,11 +4,10 @@ from flask_login import current_user
 import pytest
 from werkzeug.security import check_password_hash
 
-from backend.utils.constants import USER_CONSTANTS
-from backend.utils.strings.email_validation_strs import VALIDATE_YOUR_EMAIL
+from backend.splash.constants import RegisterErrorCodes
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
-from tests.utils_for_test import get_csrf_token, is_string_in_logs
+from tests.utils_for_test import get_csrf_token
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
@@ -16,6 +15,17 @@ from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from backend.utils.strings.user_strs import USER_FAILURE
 
 pytestmark = pytest.mark.splash
+
+
+def _register_json(user_data: dict) -> dict:
+    """Build the JSON payload for a register request from a user data dict."""
+    return {
+        REGISTER_FORM.USERNAME: user_data[REGISTER_FORM.USERNAME],
+        REGISTER_FORM.EMAIL: user_data[REGISTER_FORM.EMAIL],
+        REGISTER_FORM.CONFIRM_EMAIL: user_data[REGISTER_FORM.CONFIRM_EMAIL],
+        REGISTER_FORM.PASSWORD: user_data[REGISTER_FORM.PASSWORD],
+        REGISTER_FORM.CONFIRM_PASSWORD: user_data[REGISTER_FORM.CONFIRM_PASSWORD],
+    }
 
 
 def test_register_new_user(app, load_register_page):
@@ -27,7 +37,6 @@ def test_register_new_user(app, load_register_page):
     client, csrf_token_string = load_register_page
 
     new_user = deepcopy(valid_user_1)
-    new_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
 
     # Ensure no user with this data exists in database
     with app.app_context():
@@ -39,15 +48,14 @@ def test_register_new_user(app, load_register_page):
         )
 
     response = client.post(
-        url_for(ROUTES.SPLASH.REGISTER), data=new_user, follow_redirects=True
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=_register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Correctly sends URL to email validation modal
+    # Correctly responds with JSON 201
     assert response.status_code == 201
-    assert (
-        f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'.encode()
-        in response.data
-    )
+    assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
     # Test if user logged in
     assert current_user.username == new_user[REGISTER_FORM.USERNAME]
@@ -99,8 +107,6 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     client, csrf_token_string = load_register_page
     already_registered_user_data, _ = register_first_user
 
-    already_registered_user_data[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
-
     # Ensure user already exists
     with app.app_context():
         new_db_user = Users.query.filter(
@@ -115,8 +121,8 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        data=already_registered_user_data,
-        follow_redirects=True,
+        json=_register_json(already_registered_user_data),
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
     # Check that does not reroute
@@ -130,7 +136,10 @@ def test_register_duplicate_user(app, load_register_page, register_first_user):
     assert (
         register_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_REGISTER
     )
-    assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(register_user_response_json[STD_JSON.ERROR_CODE])
+        == RegisterErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         USER_FAILURE.USERNAME_TAKEN
         in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
@@ -146,28 +155,26 @@ def test_register_existing_username_with_trailing_leading_whitespace(
 ):
     """
     GIVEN a user to the page
-    WHEN they register with same credentials, and POST to "/register" correctly
-    THEN ensure they are not logged in and not registered again
+    WHEN they register with same credentials but username has leading/trailing whitespace,
+        and POST to "/register" correctly
+    THEN ensure the schema strips the whitespace and the service catches both
+        username and email as duplicates
 
     Proper JSON response is as follows:
     {
         STD_JSON.STATUS : STD_JSON.FAILURE,
         STD_JSON.MESSAGE: USER_FAILURE.UNABLE_TO_REGISTER,
-        STD_JSON.ERROR_CODE: Integer representing the failure code, 2 for invalid form inputs
-        STD_JSON.ERRORS: Array containing objects for each field and their specific error. For example:
-            [
-                {
-                    REGISTER_FORM.USERNAME: "That username is taken. Please choose another.",
-                    REGISTER_FORM.EMAIL: "That email address is already in use."
-                }
-            ]
+        STD_JSON.ERROR_CODE: RegisterErrorCodes.INVALID_FORM_INPUT,
+        STD_JSON.ERRORS: {
+            REGISTER_FORM.USERNAME: [USER_FAILURE.USERNAME_TAKEN],
+            REGISTER_FORM.EMAIL: [USER_FAILURE.EMAIL_TAKEN],
+        }
     }
     """
     client, csrf_token_string = load_register_page
     already_registered_user_data, _ = register_first_user
     already_registered_user_data = deepcopy(already_registered_user_data)
 
-    already_registered_user_data[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
     already_registered_user_data[REGISTER_FORM.USERNAME] = (
         f" {already_registered_user_data[REGISTER_FORM.USERNAME]} "
     )
@@ -178,22 +185,24 @@ def test_register_existing_username_with_trailing_leading_whitespace(
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        data=already_registered_user_data,
-        follow_redirects=True,
+        json=_register_json(already_registered_user_data),
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Check that does not reroute
+    # Schema strips whitespace, service catches both duplicates
     assert response.status_code == 400
     assert request.path == url_for(ROUTES.SPLASH.REGISTER)
     assert len(response.history) == 0
 
-    # Ensure json response from server is valid
     register_user_response_json = response.json
     assert register_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert (
         register_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_REGISTER
     )
-    assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(register_user_response_json[STD_JSON.ERROR_CODE])
+        == RegisterErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         USER_FAILURE.USERNAME_TAKEN
         in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
@@ -228,14 +237,18 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
     already_registered_user_data, _ = register_first_user
     already_registered_user_data = deepcopy(already_registered_user_data)
 
-    already_registered_user_data[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
-    cased_emails = (
-        already_registered_user_data[REGISTER_FORM.EMAIL].upper(),
-        already_registered_user_data[REGISTER_FORM.EMAIL].lower(),
+    base_email = already_registered_user_data[REGISTER_FORM.EMAIL]
+    local_part, domain = base_email.split("@")
+    # EmailStr normalizes domain to lowercase but preserves local-part case.
+    # confirmEmail must match the EmailStr-normalized output for schema validation to pass.
+    cased_emails_with_confirm = (
+        (base_email.upper(), f"{local_part.upper()}@{domain.lower()}"),
+        (base_email.lower(), base_email.lower()),
     )
 
-    for email in cased_emails:
+    for email, confirm_email in cased_emails_with_confirm:
         already_registered_user_data[REGISTER_FORM.EMAIL] = email
+        already_registered_user_data[REGISTER_FORM.CONFIRM_EMAIL] = confirm_email
 
         # Ensure no one is logged in
         assert current_user.get_id() is None
@@ -243,8 +256,8 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
 
         response = client.post(
             url_for(ROUTES.SPLASH.REGISTER),
-            data=already_registered_user_data,
-            follow_redirects=True,
+            json=_register_json(already_registered_user_data),
+            headers={"X-CSRFToken": csrf_token_string},
         )
 
         # Check that does not reroute
@@ -259,7 +272,10 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
             register_user_response_json[STD_JSON.MESSAGE]
             == USER_FAILURE.UNABLE_TO_REGISTER
         )
-        assert int(register_user_response_json[STD_JSON.ERROR_CODE]) == 2
+        assert (
+            int(register_user_response_json[STD_JSON.ERROR_CODE])
+            == RegisterErrorCodes.INVALID_FORM_INPUT
+        )
         assert (
             USER_FAILURE.USERNAME_TAKEN
             in register_user_response_json[STD_JSON.ERRORS][REGISTER_FORM.USERNAME]
@@ -285,29 +301,28 @@ def test_register_modal_is_shown(app_with_server_name, client):
             in response.data
         )
 
-        # Ensure on register page
+        # Ensure on register page with static HTML inputs
         assert (
-            b'<input id="csrf_token" name="csrf_token" type="hidden" value='
+            b'<input autocomplete="username" class="form-control login-register-form-group" id="username"'
             in response.data
         )
         assert (
-            b'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="20" minlength="3" name="username" required type="text" value="">'
+            b'<input autocomplete="email" class="form-control login-register-form-group" id="email"'
             in response.data
         )
         assert (
-            b'<input autocomplete="email" class="form-control login-register-form-group" id="email" name="email" required type="email" value="">'
+            b'<input autocomplete="email" class="form-control login-register-form-group" id="confirmEmail"'
             in response.data
         )
         assert (
-            b'<input autocomplete="email" class="form-control login-register-form-group" id="confirmEmail" name="confirmEmail" required type="email" value="">'
+            b'<input autocomplete="new-password" class="form-control login-register-form-group" id="password"'
             in response.data
         )
-        password_input_html = f'<input autocomplete="new-password" class="form-control login-register-form-group" id="password" maxlength="{USER_CONSTANTS.MAX_PASSWORD_LENGTH}" minlength="{USER_CONSTANTS.MIN_PASSWORD_LENGTH}" name="password" required type="password" value="">'
-        assert password_input_html.encode() in response.data
         assert (
-            b'<input autocomplete="new-password" class="form-control login-register-form-group" id="confirmPassword" name="confirmPassword" required type="password" value="">'
+            b'<input autocomplete="new-password" class="form-control login-register-form-group" id="confirmPassword"'
             in response.data
         )
+        assert b'<button id="submit"' in response.data
         assert request.path == url_for(ROUTES.SPLASH.REGISTER)
 
 
@@ -315,24 +330,23 @@ def test_register_modal_logs_user_in(app_with_server_name, client):
     """
     GIVEN a non-logged in user visiting the splash page ("/")
     WHEN the user makes a GET request to "/register", and then a POST request with the applicable form info
-    THEN verify that the backends responds with validation email modal html, and logs the user in via session
+    THEN verify that the backends responds with JSON 201, and logs the user in via session
     """
     with client:
         with app_with_server_name.app_context():
-            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            response = client.get(url_for(ROUTES.SPLASH.REGISTER))
-        csrf_token = get_csrf_token(response.data)
+            splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            csrf_token = get_csrf_token(splash_response.data, meta_tag=True)
 
         new_user = deepcopy(valid_user_1)
-        new_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token
 
-        response = client.post(url_for(ROUTES.SPLASH.REGISTER), data=new_user)
+        response = client.post(
+            url_for(ROUTES.SPLASH.REGISTER),
+            json=_register_json(new_user),
+            headers={"X-CSRFToken": csrf_token},
+        )
 
         assert response.status_code == 201
-        assert (
-            f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'.encode()
-            in response.data
-        )
+        assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
         assert current_user.username == new_user[REGISTER_FORM.USERNAME]
         assert check_password_hash(
@@ -345,7 +359,7 @@ def test_register_user_missing_csrf(app, load_register_page):
     """
     GIVEN a new, unregistered user to the page
     WHEN they register to an empty database, and POST to "/register" without a CSRF token
-    THEN ensure server responds with 400 and proper error message
+    THEN ensure server responds with 403 and proper error message
     """
     client, _ = load_register_page
 
@@ -359,19 +373,10 @@ def test_register_user_missing_csrf(app, load_register_page):
 
     response = client.post(
         url_for(ROUTES.SPLASH.REGISTER),
-        data={
-            REGISTER_FORM.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
-            REGISTER_FORM.EMAIL: valid_user_1[REGISTER_FORM.EMAIL],
-            REGISTER_FORM.CONFIRM_EMAIL: valid_user_1[REGISTER_FORM.CONFIRM_EMAIL],
-            REGISTER_FORM.PASSWORD: valid_user_1[REGISTER_FORM.PASSWORD],
-            REGISTER_FORM.CONFIRM_PASSWORD: valid_user_1[
-                REGISTER_FORM.CONFIRM_PASSWORD
-            ],
-        },
-        follow_redirects=True,
+        json=_register_json(valid_user_1),
     )
 
-    # Correctly sends URL to email validation modal
+    # Correctly sends 403 for missing CSRF
     assert response.status_code == 403
     assert response.content_type == "text/html; charset=utf-8"
     assert IDENTIFIERS.HTML_403.encode() in response.data
@@ -395,10 +400,11 @@ def test_register_new_user_log(app, load_register_page, caplog):
     WHEN they register to an empty database, and POST to "/register" correctly
     THEN ensure they are logged in and logs are valid
     """
+    from tests.utils_for_test import is_string_in_logs
+
     client, csrf_token_string = load_register_page
 
     new_user = deepcopy(valid_user_1)
-    new_user[REGISTER_FORM.CSRF_TOKEN] = csrf_token_string
 
     # Ensure no user with this data exists in database
     with app.app_context():
@@ -410,15 +416,14 @@ def test_register_new_user_log(app, load_register_page, caplog):
         )
 
     response = client.post(
-        url_for(ROUTES.SPLASH.REGISTER), data=new_user, follow_redirects=True
+        url_for(ROUTES.SPLASH.REGISTER),
+        json=_register_json(new_user),
+        headers={"X-CSRFToken": csrf_token_string},
     )
 
-    # Correctly sends URL to email validation modal
+    # Correctly responds with JSON 201
     assert response.status_code == 201
-    assert (
-        f'<h1 class="modal-title validate-email-text validate-email-title">{VALIDATE_YOUR_EMAIL}</h1>'.encode()
-        in response.data
-    )
+    assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
     # Test if user logged in
     assert current_user.username == new_user[REGISTER_FORM.USERNAME]
@@ -430,3 +435,43 @@ def test_register_new_user_log(app, load_register_page, caplog):
             f"User={user.id} successfully registered but not email validated",
             caplog.records,
         )
+
+
+def test_register_unvalidated_email_with_valid_username(
+    register_first_user_without_email_validation, load_register_page
+):
+    """
+    GIVEN a registered user without a validated email
+    WHEN a new session tries to register with the same email but a different, valid-format username
+    THEN ensure a 401 response with error_code=1 is returned (not a 400 schema error)
+
+    This verifies that the service layer's email-not-validated short-circuit
+    is reached when the email belongs to an unvalidated account and the username
+    is valid format but not yet taken.
+    """
+    registered_user, _ = register_first_user_without_email_validation
+    client, csrf_token_string = load_register_page
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.REGISTER),
+        json={
+            REGISTER_FORM.USERNAME: "BrandNewUser123",
+            REGISTER_FORM.EMAIL: registered_user[REGISTER_FORM.EMAIL],
+            REGISTER_FORM.CONFIRM_EMAIL: registered_user[REGISTER_FORM.EMAIL],
+            REGISTER_FORM.PASSWORD: registered_user[REGISTER_FORM.PASSWORD],
+            REGISTER_FORM.CONFIRM_PASSWORD: registered_user[REGISTER_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_string},
+    )
+
+    assert response.status_code == 401
+    response_json = response.json
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
+    )
+    assert (
+        int(response_json[STD_JSON.ERROR_CODE])
+        == RegisterErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
+    )

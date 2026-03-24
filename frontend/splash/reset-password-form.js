@@ -22,10 +22,14 @@ export function initResetPasswordForm() {
 function handleResetPassword(event) {
   event.preventDefault();
 
+  const newPassword = $("#newPassword").val();
+  const confirmNewPassword = $("#confirmNewPassword").val();
+
   const resetPasswordRequest = $.ajax({
     url: window.location.pathname,
     type: "POST",
-    data: $("#ModalForm").serialize(),
+    data: JSON.stringify({ newPassword, confirmNewPassword }),
+    contentType: "application/json",
   });
 
   resetPasswordRequest.done((response, textStatus, xhr) => {
@@ -80,10 +84,6 @@ function handleResetPasswordFailure(xhr, _, error) {
         $(".form-control").removeClass("is-invalid");
         $(".invalid-feedback").remove();
         handleImproperFormErrors(xhr.responseJSON);
-        break;
-      case 2:
-        hideSplashModalAlertBanner();
-        showSplashModalAlertBanner(xhr.responseJSON.message, "warning");
         break;
     }
   } else {

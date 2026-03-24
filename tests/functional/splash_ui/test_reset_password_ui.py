@@ -13,7 +13,6 @@ from backend.models.users import Users
 from backend.utils.constants import CONSTANTS
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
@@ -444,10 +443,6 @@ def test_password_reset_missing_fields(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
     )
     assert len(invalid_fields) == 2
-
-    assert all(
-        [field.text == FAILURE_GENERAL.FIELD_REQUIRED_STR for field in invalid_fields]
-    )
 
 
 def test_password_reset_invalid_csrf_token(

@@ -20,8 +20,8 @@ class UI_TEST_STRINGS:
     TEST_PASSWORD_UNLISTED = TEST_USERNAME_UNLISTED + EMAIL_SUFFIX
 
     # Register
-    PASSWORD_EQUALITY_FAILED = "Field must be equal to password."
-    EMAIL_EQUALITY_FAILED = "Field must be equal to email."
+    PASSWORD_EQUALITY_FAILED = "Passwords are not identical."
+    EMAIL_EQUALITY_FAILED = "Emails do not match."
 
     # UTubs
     TEST_UTUB_NAME_1 = MOCK_UTUB_NAME_BASE + "1"

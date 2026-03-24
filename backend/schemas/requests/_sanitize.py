@@ -11,8 +11,8 @@ def _sanitize_and_reject_if_modified(value: str | None) -> str | None:
     """For required sanitized string fields: reject if sanitization would change the value."""
     if not isinstance(value, str):
         return value
-    if not value:  # empty string → invalid input (not meaningful content)
-        raise ValueError(INVALID_INPUT)
+    if not value:  # empty string → let min_length produce humanized error
+        return value
     sanitized = sanitize_user_input(value)
     if sanitized != value:
         raise ValueError(INVALID_INPUT)

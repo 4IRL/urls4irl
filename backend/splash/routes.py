@@ -20,23 +20,26 @@ from backend.app_logger import (
 )
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
+from backend.api_common.parse_request import parse_json_body
+from backend.schemas.requests.splash import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+)
+from backend.splash.constants import LoginErrorCodes, RegisterErrorCodes
 from backend.splash.forms import (
-    LoginForm,
-    UserRegistrationForm,
     ValidateEmailForm,
-    ForgotPasswordForm,
 )
 from backend.splash.services.forgot_password import (
-    handle_invalid_forgot_password_form_input,
     send_forgot_password_email_to_user,
 )
-from backend.splash.services.reset_password import reset_password_for_user
-from backend.splash.services.user_login import (
-    handle_invalid_user_login_form_inputs,
-    login_user_to_u4i,
+from backend.splash.services.reset_password import (
+    get_reset_password_page,
+    reset_password_for_user,
 )
+from backend.splash.services.user_login import login_user_to_u4i
 from backend.splash.services.user_registration import (
-    handle_invalid_user_registration_form_inputs,
     register_new_user,
 )
 from backend.splash.services.validate_email import (
@@ -44,6 +47,8 @@ from backend.splash.services.validate_email import (
     validate_email_for_user,
 )
 from backend.utils.strings.email_validation_strs import EMAILS
+from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
+from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import provide_config_for_constants
 
@@ -70,36 +75,46 @@ def splash_page() -> WerkzeugResponse | str:
     return render_template("pages/splash.html")
 
 
-@splash.route("/register", methods=["GET", "POST"])
+@splash.route("/register", methods=["GET"])
 @no_authenticated_users_allowed
-def register_user() -> FlaskResponse | WerkzeugResponse | str | tuple[str, int]:
-    """Allows a user to register an account."""
-    register_form: UserRegistrationForm = UserRegistrationForm()
-
-    if request.method == "GET":
-        return render_template(
-            "components/splash/register_user.html", register_form=register_form
-        )
-
-    if not register_form.validate_on_submit():
-        return handle_invalid_user_registration_form_inputs(register_form)
-
-    return register_new_user(register_form=register_form)
+def register_user_page() -> str:
+    """Renders the registration form."""
+    return render_template("components/splash/register_user.html")
 
 
-@splash.route("/login", methods=["GET", "POST"])
+@splash.route("/register", methods=["POST"])
 @no_authenticated_users_allowed
-def login():
-    """Login page. Allows user to register or login."""
-    login_form = LoginForm()
+@parse_json_body(
+    RegisterRequest,
+    message=USER_FAILURE.UNABLE_TO_REGISTER,
+    error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
+)
+def register_user(validated_request: RegisterRequest) -> FlaskResponse:
+    """Handles registration form submission."""
+    return register_new_user(
+        validated_request.username,
+        validated_request.email,
+        validated_request.password,
+    )
 
-    if request.method == "GET":
-        return render_template("components/splash/login.html", login_form=login_form)
 
-    if not login_form.validate_on_submit():
-        return handle_invalid_user_login_form_inputs(login_form)
+@splash.route("/login", methods=["GET"])
+@no_authenticated_users_allowed
+def login_page() -> str:
+    """Login page. Renders the login form."""
+    return render_template("components/splash/login.html")
 
-    return login_user_to_u4i(login_form)
+
+@splash.route("/login", methods=["POST"])
+@no_authenticated_users_allowed
+@parse_json_body(
+    LoginRequest,
+    message=USER_FAILURE.UNABLE_TO_LOGIN,
+    error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+)
+def login(validated_request: LoginRequest) -> FlaskResponse:
+    """Handles login form submission."""
+    return login_user_to_u4i(validated_request.username, validated_request.password)
 
 
 @splash.route("/confirm-email", methods=["GET"])
@@ -156,22 +171,35 @@ def validate_email(token: str) -> WerkzeugResponse:
     return validate_email_for_user(token)
 
 
-@splash.route("/forgot-password", methods=["GET", "POST"])
+@splash.route("/forgot-password", methods=["GET"])
 @no_authenticated_users_allowed
-def forgot_password() -> str | FlaskResponse:
-    forgot_password_form = ForgotPasswordForm()
-    if request.method == "GET":
-        return render_template(
-            "components/splash/forgot_password.html",
-            forgot_password_form=forgot_password_form,
-        )
-
-    if not forgot_password_form.validate_on_submit():
-        return handle_invalid_forgot_password_form_input(forgot_password_form)
-
-    return send_forgot_password_email_to_user(forgot_password_form)
+def forgot_password_page() -> str:
+    return render_template("components/splash/forgot_password.html")
 
 
-@splash.route("/reset-password/<string:token>", methods=["GET", "POST"])
-def reset_password(token: str):
-    return reset_password_for_user(token)
+@splash.route("/forgot-password", methods=["POST"])
+@no_authenticated_users_allowed
+@parse_json_body(
+    ForgotPasswordRequest,
+    message=FORGOT_PASSWORD.INVALID_EMAIL,
+    error_code=1,
+)
+def forgot_password(validated_request: ForgotPasswordRequest) -> FlaskResponse:
+    return send_forgot_password_email_to_user(validated_request.email)
+
+
+@splash.route("/reset-password/<string:token>", methods=["GET"])
+def reset_password_page(token: str):
+    return get_reset_password_page(token)
+
+
+@splash.route("/reset-password/<string:token>", methods=["POST"])
+@parse_json_body(
+    ResetPasswordRequest,
+    message=RESET_PASSWORD.RESET_PASSWORD_INVALID,
+    error_code=1,
+)
+def reset_password(
+    token: str, validated_request: ResetPasswordRequest
+) -> FlaskResponse:
+    return reset_password_for_user(token, validated_request.newPassword)

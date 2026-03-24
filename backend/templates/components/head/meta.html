@@ -6,6 +6,6 @@
 {% block scripts_for_login %}
 {% if current_user.is_authenticated and current_user.email_validated %}
 <meta http-equiv="refresh" content="{{ CONSTANTS.CONFIG.SESSION_LIFETIME }}">
-<meta name="csrf-token" content="{{ csrf_token() }}">
 {% endif %}
+<meta name="csrf-token" content="{{ csrf_token() }}">
 {% endblock %}

@@ -217,7 +217,7 @@ def test_password_reset_without_csrf_fails(user_attempts_reset_password):
 
     reset_response = client.post(
         url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
-        data={
+        json={
             RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
             RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
         },
@@ -250,11 +250,11 @@ def test_password_reset_without_equal_passwords_fails(user_attempts_reset_passwo
 
     reset_response = client.post(
         url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
-        data={
+        json={
             RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
             RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD + "AAA",
-            RESET_PASSWORD.CSRF_TOKEN: csrf_token,
         },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert reset_response.status_code == 400
@@ -297,11 +297,11 @@ def test_valid_new_password_changes_password_and_deletes_forgot_password_object(
 
     reset_response = client.post(
         url_for(ROUTES.SPLASH.RESET_PASSWORD, token=reset_token),
-        data={
+        json={
             RESET_PASSWORD.NEW_PASSWORD_FIELD: NEW_PASSWORD,
             RESET_PASSWORD.CONFIRM_NEW_PASSWORD_FIELD: NEW_PASSWORD,
-            RESET_PASSWORD.CSRF_TOKEN: csrf_token,
         },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert reset_response.status_code == 200

@@ -17,6 +17,7 @@ from backend.models.users import Users
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
 from backend.utils.constants import STRINGS, URL_CONSTANTS
+from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.url_strs import URL_FAILURE
 from tests.functional.assert_utils import (
@@ -765,7 +766,7 @@ def test_update_url_string_empty_field(
         browser, HPL.INPUT_URL_STRING_UPDATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == "String should have at least 1 character"
+    assert invalid_url_string_error.text == FIELD_REQUIRED_STR
 
 
 def test_update_url_title_empty_field(
@@ -793,7 +794,7 @@ def test_update_url_title_empty_field(
         browser, HPL.INPUT_URL_TITLE_UPDATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_title_error is not None
-    assert invalid_url_title_error.text == URL_FAILURE.INVALID_INPUT
+    assert invalid_url_title_error.text == FIELD_REQUIRED_STR
 
 
 def test_update_url_string_duplicate_url(

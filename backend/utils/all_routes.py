@@ -14,14 +14,14 @@ class MEMBER_ROUTES:
 class SPLASH_ROUTES:
     _SPLASH = "splash."
     SPLASH_PAGE = _SPLASH + "splash_page"
-    REGISTER = _SPLASH + "register_user"
-    LOGIN = _SPLASH + "login"
+    REGISTER = _SPLASH + "register_user_page"
+    LOGIN = _SPLASH + "login_page"
     CONFIRM_EMAIL = _SPLASH + "confirm_email_after_register"
     SEND_VALIDATION_EMAIL = _SPLASH + "send_validation_email"
     VALIDATE_EMAIL = _SPLASH + "validate_email"
-    FORGOT_PASSWORD_PAGE = _SPLASH + "forgot_password"
+    FORGOT_PASSWORD_PAGE = _SPLASH + "forgot_password_page"
     CONFIRM_PASSWORD_RESET = _SPLASH + "confirm_password_reset"
-    RESET_PASSWORD = _SPLASH + "reset_password"
+    RESET_PASSWORD = _SPLASH + "reset_password_page"
     ERROR_PAGE = _SPLASH + "error_page"
 
 

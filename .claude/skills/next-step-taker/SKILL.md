@@ -22,14 +22,13 @@ This skill executes the next incomplete step or phase from an existing implement
 - Follow CLAUDE.md guidelines (no window globals, clean up debug code, use typehints, etc.)
 
 ### Step 3: Validate the Changes
-**CRITICAL: Always validate after execution.** Choose appropriate validation method(s):
+**CRITICAL: Always validate after execution.** Choose appropriate validation method(s).
+
+**CRITICAL: All test suites MUST be run via a subagent** (using the Agent tool) to avoid context window bloat. The subagent runs the tests, captures output, and returns only a concise pass/fail summary with failure details. Never run test commands directly in the main context.
 
 #### For JavaScript/Frontend Changes:
-```bash
-# ALWAYS run this after any JavaScript file changes
-docker compose --project-directory /Users/ggpropersi/code/urls4irl -f /Users/ggpropersi/code/urls4irl/docker/compose.local.yaml exec vite npx vite build
-```
-- Must use `dangerouslyDisableSandbox: true` for Docker commands
+Run the Vite build via subagent:
+- Task: "Run `make vite-build` and report pass/fail. On failure, include the full error output."
 - Verify: No import errors, no missing exports, clean build output
 
 #### For Template/Flask Changes:
@@ -38,30 +37,24 @@ docker compose --project-directory /Users/ggpropersi/code/urls4irl -f /Users/ggp
 
 #### For UI Changes (Selenium/Playwright Tests):
 - If the plan specifies manual verification steps, list them for the user
-- If specific UI tests are mentioned, run them in the Docker container:
-```bash
-# For UI tests with specific marker (e.g., splash_ui, home_ui, etc.)
-docker exec u4i-local-web /bin/bash -c "source /code/venv/bin/activate; pytest -m 'MARKER_NAME' -v"
-
-# For specific test file
-docker exec u4i-local-web /bin/bash -c "source /code/venv/bin/activate; pytest tests/functional/PATH/test_file.py -v"
-```
-- Must use `dangerouslyDisableSandbox: true` for Docker commands
+- If specific UI tests are mentioned, delegate to a subagent:
+  - Task: "Run UI tests for marker MARKER_NAME using `make test-marker-parallel m=MARKER_NAME`. Report pass/fail count. On failure, include test name and assertion/error for each failure."
+  - For a specific test file: "Run `make test-marker-parallel m=MARKER` or the specific pytest command in Docker. Report pass/fail with failure details."
 - Common UI test markers: `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `tags_ui`, `mobile_ui`
 
 #### For Unit/Integration Tests:
-- Run relevant tests in the Docker container:
-```bash
-# For unit tests
-docker exec u4i-local-web /bin/bash -c "source /code/venv/bin/activate; pytest -m 'unit' tests/unit/test_file.py -v"
+Delegate to a subagent:
+- Task: "Run tests for marker MARKER using `make test-marker-parallel m=MARKER`. Report pass/fail count. On failure, include test name and assertion/error for each failure."
+- For a specific test file: "Run pytest for `tests/path/test_file.py` in the Docker web container. Report pass/fail with failure details."
 
-# For integration tests (splash, utubs, members, urls, tags, etc.)
-docker exec u4i-local-web /bin/bash -c "source /code/venv/bin/activate; pytest -m 'MARKER' -v"
-
-# For specific test file
-docker exec u4i-local-web /bin/bash -c "source /code/venv/bin/activate; pytest tests/integration/PATH/test_file.py -v"
-```
-- Must use `dangerouslyDisableSandbox: true` for Docker commands
+#### Subagent Guidelines:
+- Use the Agent tool with a clear, self-contained prompt
+- The subagent must use `dangerouslyDisableSandbox: true` for all Docker commands
+- The subagent must activate the virtualenv: `source /code/venv/bin/activate`
+- The subagent should use `make` targets when available (preferred over raw docker commands)
+- Never run two test suites simultaneously (they share a single test DB)
+- On success: subagent returns pass count only
+- On failure: subagent returns failed test names + error/assertion snippets + writes failures to `tmp/` using the test-failure-logger pattern
 
 ### Step 4: Update the Plan Document
 **CRITICAL: Always update progress tracking.**

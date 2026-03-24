@@ -6,8 +6,8 @@ import {
   handleImproperFormErrors,
   handleUserHasAccountNotEmailValidated,
   loginModalOpenerFromModal,
+  emailValidationModalOpener,
 } from "./init.js";
-import { initEmailValidationForm } from "./email-validation-form.js";
 
 /**
  * Initialize register form handlers
@@ -25,10 +25,23 @@ function handleRegister(event) {
   event.preventDefault();
   $("#submit").attr("disabled", "disabled");
 
+  const username = $("#username").val();
+  const email = $("#email").val();
+  const confirmEmail = $("#confirmEmail").val();
+  const password = $("#password").val();
+  const confirmPassword = $("#confirmPassword").val();
+
   const registerRequest = $.ajax({
     url: APP_CONFIG.routes.register,
     type: "POST",
-    data: $("#ModalForm").serialize(),
+    data: JSON.stringify({
+      username,
+      email,
+      confirmEmail,
+      password,
+      confirmPassword,
+    }),
+    contentType: "application/json",
   });
 
   registerRequest.done((response, textStatus, xhr) =>
@@ -41,9 +54,7 @@ function handleRegister(event) {
 
 function handleRegisterSuccess(response, _, xhr) {
   if (xhr.status === 201) {
-    $("#SplashModal .modal-content").html(response);
-    // Initialize email validation form and send initial email
-    initEmailValidationForm(true);
+    emailValidationModalOpener();
   }
 }
 

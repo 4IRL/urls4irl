@@ -76,17 +76,17 @@ def user_attempts_reset_password(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
-    csrf_token = get_csrf_token(forgot_password_response.data)
+    splash_response = client.get("/")
+    csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)
 
     client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
+        json={
             reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[
                 reset_password_strs.FORGOT_PASSWORD.EMAIL
             ],
-            reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     with app.app_context():
@@ -133,17 +133,17 @@ def user_attempts_reset_password_one_hour_old(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
-    csrf_token = get_csrf_token(forgot_password_response.data)
+    splash_response = client.get("/")
+    csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)
 
     client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
+        json={
             reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[
                 reset_password_strs.FORGOT_PASSWORD.EMAIL
             ],
-            reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     with app.app_context():

@@ -4,7 +4,6 @@ import pytest
 
 from backend.models.utils import VerifyTokenResponse
 from backend.splash.utils import verify_token
-from backend.utils.strings.email_validation_strs import EMAILS_FAILURE
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import valid_user_1
 from backend import db
@@ -59,17 +58,18 @@ def test_user_registered_not_email_validated_cannot_access_forgot_password(
 
     register_response = client.post(
         "/register",
-        data={
+        json={
             REGISTER_FORM.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
             REGISTER_FORM.EMAIL: valid_user_1[REGISTER_FORM.EMAIL],
             REGISTER_FORM.CONFIRM_EMAIL: valid_user_1[REGISTER_FORM.EMAIL],
             REGISTER_FORM.PASSWORD: valid_user_1[REGISTER_FORM.PASSWORD],
             REGISTER_FORM.CONFIRM_PASSWORD: valid_user_1[REGISTER_FORM.PASSWORD],
-            REGISTER_FORM.CSRF_TOKEN: csrf_token,
         },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert register_response.status_code == 201
+    assert register_response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
 
     forgot_password_response = client.get(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE), follow_redirects=True
@@ -113,7 +113,7 @@ def test_valid_user_posts_forgot_password_form_without_csrf(
 
     forgot_password_post_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
     )
 
     # Assert invalid response code
@@ -144,21 +144,19 @@ def test_forgot_password_with_invalid_email_fails(load_login_page):
 
     response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: improper_email,
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: improper_email},
+        headers={"X-CSRFToken": csrf_token},
     )
 
-    assert response.status_code == 401
+    assert response.status_code == 400
     response_json = response.json
 
     assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert int(response_json[STD_JSON.ERROR_CODE]) == 1
     assert response_json[STD_JSON.MESSAGE] == FORGOT_PASSWORD.INVALID_EMAIL
     assert (
-        EMAILS_FAILURE.INVALID_EMAIL_INPUT
-        in response_json[STD_JSON.ERRORS][FORGOT_PASSWORD.EMAIL][-1]
+        response_json[STD_JSON.ERRORS][FORGOT_PASSWORD.EMAIL][-1]
+        == "Please enter a valid email address."
     )
 
 
@@ -183,10 +181,8 @@ def test_forgot_password_with_email_not_in_database(app, load_login_page):
 
     response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: nonregistered_user[FORGOT_PASSWORD.EMAIL],
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: nonregistered_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert response.status_code == 200
@@ -227,10 +223,8 @@ def test_forgot_password_with_validated_email(
 
     response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert response.status_code == 200
@@ -278,10 +272,8 @@ def test_forgot_password_with_validated_email_uppercase(
 
     response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL].upper(),
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL].upper()},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert response.status_code == 200
@@ -321,10 +313,8 @@ def test_forgot_password_with_non_validated_email(
 
     response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert response.status_code == 200
@@ -365,19 +355,15 @@ def test_forgot_password_rate_limits_correctly(
     initial_send_time: datetime = utc_now()
     first_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     second_send_time: datetime = utc_now()
     second_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     for response in (
@@ -431,10 +417,8 @@ def test_forgot_password_generates_token_correctly(
 
     forgot_password_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: valid_user_1[FORGOT_PASSWORD.EMAIL],
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: valid_user_1[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert forgot_password_response.status_code == 200
@@ -488,10 +472,8 @@ def test_user_requests_reset_after_password_reset_object_older_than_hour(
 
     forgot_password_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     current_time: datetime = utc_now()
@@ -548,10 +530,8 @@ def test_two_forgot_password_attempts_more_than_minute_apart_increments_attempts
 
     forgot_password_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
-            FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL],
-            FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
-        },
+        json={FORGOT_PASSWORD.EMAIL: new_user[FORGOT_PASSWORD.EMAIL]},
+        headers={"X-CSRFToken": csrf_token},
     )
 
     assert forgot_password_response.status_code == 200

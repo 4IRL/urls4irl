@@ -26,7 +26,8 @@ function handleForgotPassword(event) {
   const forgotPasswordRequest = $.ajax({
     url: APP_CONFIG.routes.forgotPassword,
     type: "POST",
-    data: $("#ModalForm").serialize(),
+    data: JSON.stringify({ email: $("#email").val() }),
+    contentType: "application/json",
   });
 
   forgotPasswordRequest.done((response, textStatus, xhr) =>
@@ -70,7 +71,7 @@ function handleForgotPasswordFailure(xhr, _, error) {
     return;
   }
 
-  if (xhr.status === 401 && xhr.responseJSON.hasOwnProperty("errorCode")) {
+  if (xhr.status === 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.responseJSON.errorCode) {
       case 1: {
         handleImproperFormErrors(xhr.responseJSON);
@@ -78,7 +79,5 @@ function handleForgotPasswordFailure(xhr, _, error) {
         break;
       }
     }
-  } else {
-    console.log("You need to handle other errors!");
   }
 }

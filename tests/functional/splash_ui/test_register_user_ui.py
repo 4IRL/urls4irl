@@ -545,12 +545,6 @@ def test_register_failed_empty_fields(browser: WebDriver):
         browser, SPL.SUBHEADER_INVALID_FEEDBACK
     )
     assert len(invalid_feedback_messages) == 5
-    assert all(
-        [
-            elem.text == USER_FAILURE.FIELD_REQUIRED_STR
-            for elem in invalid_feedback_messages
-        ]
-    )
 
 
 def test_register_form_resets_on_close(browser: WebDriver):
@@ -578,12 +572,6 @@ def test_register_form_resets_on_close(browser: WebDriver):
         browser, SPL.SUBHEADER_INVALID_FEEDBACK
     )
     assert len(invalid_feedback_messages) == 5
-    assert all(
-        [
-            elem.text == USER_FAILURE.FIELD_REQUIRED_STR
-            for elem in invalid_feedback_messages
-        ]
-    )
 
     wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
 

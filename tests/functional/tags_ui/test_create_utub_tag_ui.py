@@ -7,6 +7,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from backend.models.users import Users
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
+from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.tag_strs import TAGS_FAILURE
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
@@ -304,7 +305,7 @@ def test_create_utub_tag_empty_field(
         browser, HPL.INPUT_UTUB_TAG_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_utub_tag_error is not None
-    assert invalid_utub_tag_error.text == TAGS_FAILURE.INVALID_INPUT
+    assert invalid_utub_tag_error.text == FIELD_REQUIRED_STR
 
 
 def test_create_utub_tag_duplicate_tag(

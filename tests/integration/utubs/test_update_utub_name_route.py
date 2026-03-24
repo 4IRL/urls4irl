@@ -10,7 +10,10 @@ from backend.utils.all_routes import ROUTES
 from backend.utils.constants import UTUB_CONSTANTS
 from backend.utils.strings.form_strs import UTUB_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FIELD_REQUIRED_STR,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
@@ -260,7 +263,7 @@ def test_update_utub_empty_name_as_creator(
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
     )
     assert update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
-        UTUB_FAILURE.INVALID_INPUT
+        FIELD_REQUIRED_STR
     ]
 
     # Ensure database is consistent after sending back invalid form response
@@ -797,7 +800,7 @@ def test_update_name_of_utub_too_long_name(
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
     )
     assert update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
-        f"String should have at most {UTUB_CONSTANTS.MAX_NAME_LENGTH} characters"
+        f"Must be at most {UTUB_CONSTANTS.MAX_NAME_LENGTH} characters."
     ]
 
     # Ensure database is consistent after user requested same name for UTub
@@ -893,7 +896,7 @@ def test_update_name_of_utub_missing_name_field_form(
         == UTUB_FAILURE.UNABLE_TO_MODIFY_UTUB_NAME
     )
     assert update_utub_name_json_response[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
-        "Field required"
+        FIELD_REQUIRED_STR
     ]
 
     # Ensure database is consistent after user requested same name for UTub

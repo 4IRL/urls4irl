@@ -11,7 +11,10 @@ from backend.models.utub_urls import Utub_Urls
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import ADD_USER_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FIELD_REQUIRED_STR,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS
 from backend.utils.strings.user_strs import MEMBER_FAILURE, MEMBER_SUCCESS
 from backend.schemas.users import UserSchema
@@ -584,7 +587,7 @@ def test_add_user_to_utub_invalid_form(
         add_user_response_json[STD_JSON.MESSAGE] == MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER
     )
     assert add_user_response_json[STD_JSON.ERRORS][ADD_USER_FORM.USERNAME] == [
-        "Field required"
+        FIELD_REQUIRED_STR
     ]
 
     with app.app_context():

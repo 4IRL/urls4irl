@@ -1,40 +1,19 @@
 from flask import current_app, url_for
-from flask_login import current_user
 from requests import Response
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
-from backend.app_logger import critical_log, safe_add_log, warning_log
+from backend.app_logger import safe_add_log, warning_log
 from backend.extensions.extension_utils import safe_get_email_sender
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
-from backend.splash.forms import ForgotPasswordForm
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
 from backend.utils.mailjet_utils import handle_mailjet_failure
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD
-from backend.utils.strings.user_strs import USER_FAILURE
-
-
-def handle_invalid_forgot_password_form_input(
-    forgot_password_form: ForgotPasswordForm,
-) -> FlaskResponse:
-    if forgot_password_form.errors is not None:
-        warning_log("Invalid form for forgotten password")
-        return APIResponse(
-            status_code=401,
-            message=FORGOT_PASSWORD.INVALID_EMAIL,
-            error_code=1,
-            errors=forgot_password_form.errors,
-        ).to_response()
-
-    critical_log(f"User={current_user.id} unable to handle forgotten password")
-    return APIResponse(
-        status_code=404, message=USER_FAILURE.SOMETHING_WENT_WRONG, error_code=2
-    ).to_response()
 
 
 def send_forgot_password_email_to_user(
-    forgot_password_form: ForgotPasswordForm,
+    email: str,
 ) -> FlaskResponse:
     """
     Handles sending a forgot password email to the User using Mailjet, but only if all
@@ -43,14 +22,12 @@ def send_forgot_password_email_to_user(
     Regardless of if requirements are met, the response to the User will indicate success. This is to avoid indicating to malicious actors whether or not an email exists in the database.
 
     Args:
-        forgot_password_form (ForgotPasswordForm): Form with forgot password information
+        email (str): Email address from the forgot password request
 
     Returns:
         (FlaskResponse): JSON and HTTP status code
     """
-    user_with_email: Users = Users.query.filter(
-        Users.email == forgot_password_form.get_email().lower()
-    ).first()
+    user_with_email: Users = Users.query.filter(Users.email == email.lower()).first()
 
     if not user_with_email:
         return APIResponse(
@@ -73,7 +50,7 @@ def send_forgot_password_email_to_user(
 
     if forgot_password_obj.is_not_rate_limited():
         email_send_result = _send_forgot_password_email(
-            forgot_password_obj, forgot_password_form, user_with_email
+            forgot_password_obj, email, user_with_email
         )
         if email_send_result.status_code >= 500:
             return handle_mailjet_failure(email_send_result, error_code=3)
@@ -120,7 +97,7 @@ def _create_or_reset_forgot_password_object_for_user(
 
 def _send_forgot_password_email(
     forgot_password_obj: Forgot_Passwords,
-    forgot_password_form: ForgotPasswordForm,
+    email: str,
     user: Users,
 ) -> Response:
     """
@@ -128,7 +105,7 @@ def _send_forgot_password_email(
 
     Args:
         forgot_password_obj (Forgot_Passwords): The Forgot_Passwords object associated with the User
-        forgot_password_form (ForgotPasswordForm): The form with associated forgotten password data
+        email (str): The email address for the forgot password request
         user (Users): The User with forgotten password
 
     Returns:
@@ -150,7 +127,7 @@ def _send_forgot_password_email(
         _external=True,
     )
     email_send_result = email_sender.send_password_reset_email(
-        forgot_password_form.get_email(),
+        email.lower(),
         user.username,
         url_for_reset,
     )

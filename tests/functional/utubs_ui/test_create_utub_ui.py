@@ -7,6 +7,7 @@ from backend.cli.mock_constants import MOCK_UTUB_DESCRIPTION
 from backend.models.users import Users
 from backend.utils.constants import CONSTANTS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.utub_strs import UTUB_CREATE_SAME_NAME, UTUB_FAILURE
 from tests.functional.assert_utils import (
     assert_active_utub,
@@ -299,7 +300,7 @@ def test_create_utub_empty_utub_name(
         browser, HPL.INPUT_UTUB_NAME_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_utub_name_error is not None
-    assert invalid_utub_name_error.text == UTUB_FAILURE.INVALID_INPUT
+    assert invalid_utub_name_error.text == FIELD_REQUIRED_STR
 
 
 def test_create_utub_sanitized_name(

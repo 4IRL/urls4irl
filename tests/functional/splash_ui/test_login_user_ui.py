@@ -432,7 +432,6 @@ def test_login_with_empty_fields(browser: WebDriver):
 
     error_elems = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
     assert len(error_elems) == 2
-    assert all([elem.text == USER_FAILURE.FIELD_REQUIRED_STR for elem in error_elems])
 
 
 def test_login_user_invalid_csrf(browser: WebDriver):

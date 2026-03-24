@@ -13,6 +13,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.utils.constants import CONSTANTS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
+from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 from backend.utils.strings.url_strs import URL_FAILURE
 from tests.functional.assert_utils import (
     assert_login_with_username,
@@ -660,13 +661,13 @@ def test_create_url_empty_fields(
         browser, HPL.INPUT_URL_TITLE_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_title_error is not None
-    assert invalid_url_title_error.text == URL_FAILURE.INVALID_INPUT
+    assert invalid_url_title_error.text == FIELD_REQUIRED_STR
 
     invalid_url_string_error = wait_then_get_element(
         browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == "String should have at least 1 character"
+    assert invalid_url_string_error.text == FIELD_REQUIRED_STR
 
 
 def test_create_url_empty_title(
@@ -705,7 +706,7 @@ def test_create_url_empty_title(
         browser, HPL.INPUT_URL_TITLE_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_title_error is not None
-    assert invalid_url_title_error.text == URL_FAILURE.INVALID_INPUT
+    assert invalid_url_title_error.text == FIELD_REQUIRED_STR
 
 
 def test_create_url_empty_string(
@@ -744,7 +745,7 @@ def test_create_url_empty_string(
         browser, HPL.INPUT_URL_STRING_CREATE + HPL.INVALID_FIELD_SUFFIX, time=3
     )
     assert invalid_url_string_error is not None
-    assert invalid_url_string_error.text == "String should have at least 1 character"
+    assert invalid_url_string_error.text == FIELD_REQUIRED_STR
 
 
 @pytest.mark.parametrize(

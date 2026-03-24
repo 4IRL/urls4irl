@@ -1,33 +1,35 @@
 from urllib.parse import parse_qs, urlencode, urlparse
-from flask import render_template, request, url_for
+from flask import request, url_for
 from flask_login import current_user, login_user
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
-from backend.splash.forms import LoginForm
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
 from backend.utils.strings.utub_strs import UTUB_ID_QUERY_PARAM
 
 
-def handle_invalid_user_login_form_inputs(login_form: LoginForm) -> FlaskResponse | str:
-    # Input form errors
-    if login_form.errors is not None:
-        warning_log("User had form errors on login")
+def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
+    user: Users | None = Users.query.filter(Users.username == username).first()
+
+    if not user:
+        warning_log("User not found on login")
         return APIResponse(
             status_code=400,
             message=USER_FAILURE.UNABLE_TO_LOGIN,
             error_code=2,
-            errors=login_form.errors,
+            errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
         ).to_response()
 
-    return render_template("components/splash/login.html", login_form=login_form)
-
-
-def login_user_to_u4i(login_form: LoginForm) -> FlaskResponse | str:
-    username = login_form.username.data
-    user: Users = Users.query.filter(Users.username == username).first()
+    if not user.is_password_correct(password):
+        warning_log("User entered wrong password on login")
+        return APIResponse(
+            status_code=400,
+            message=USER_FAILURE.UNABLE_TO_LOGIN,
+            error_code=2,
+            errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
+        ).to_response()
 
     login_user(user)  # Can add Remember Me functionality here
 

@@ -984,18 +984,7 @@ def modify_navigational_link_for_rate_limit(browser: WebDriver, element_id: str)
 
 
 def invalidate_csrf_token_in_form(browser: WebDriver):
-    invalid_csrf_token = "invalid-csrf-token"
-    browser.execute_script(
-        f"document.querySelector('input[id=\"csrf_token\"]').setAttribute('value', '{invalid_csrf_token}');"
-    )
-
-    csrf_token = wait_for_element_presence(browser, "input#csrf_token")
-    assert csrf_token is not None
-
-    WebDriverWait(browser, 3).until(
-        lambda _: csrf_token.get_attribute("value") == invalid_csrf_token
-    )
-    assert csrf_token.get_attribute("value") == invalid_csrf_token
+    invalidate_csrf_token_on_page(browser)
 
 
 def build_secondary_driver():

@@ -104,6 +104,11 @@ If the plan introduces new Python packages, flag any that:
 - Does each step have a clear way to verify success (a command to run, a behavior to observe)?
 - Are the verification steps in the plan actually sufficient to catch regressions?
 - Note any steps that lack verification and suggest what to add.
+- **Layer-match check (required):** For each verification step, confirm the test type exercises the layer the change affects. Common mismatches to flag as **Major**:
+  - Template/HTML changes (meta tags, conditional blocks, field IDs, hidden inputs) verified only by integration tests (`client.post()`/`client.get()`) — these bypass the browser; need UI tests or Playwright verification to confirm the rendered DOM is correct for all user states.
+  - JS behavior changes (AJAX serialization, failure handler branches, DOM reads) verified only by integration tests — need either JS unit tests (vitest) or UI/Selenium tests.
+  - Backend-only changes (service logic, DB queries, status codes) verified only by UI tests — integration tests are faster and more precise; UI tests should supplement, not replace.
+  If a step changes templates or JS and the only verification is `make test-marker-parallel`, flag it and recommend adding `make test-js` and/or the relevant `_ui` marker test.
 - **Final test suite phase (required for any plan touching code or tests):** The last phase must include `make test-integration-parallel` and `make test-ui-parallel-built`. Flag as **Critical** if either is missing.
 
 #### Implementation Specificity
