@@ -2,7 +2,10 @@ import pytest
 from pydantic import BaseModel, Field, ValidationError
 
 from backend.api_common.request_errors import (
+    INVALID_EMAIL_STR,
     _humanize_error_message,
+    max_length_message,
+    min_length_message,
     pydantic_errors_to_dict,
 )
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
@@ -30,21 +33,21 @@ class TestHumanizeFieldRequired:
 class TestHumanizeMinLength:
     def test_min_length_n_maps_to_human_message(self):
         result = _humanize_error_message("String should have at least 12 characters")
-        assert result == "Must be at least 12 characters."
+        assert result == min_length_message(12)
 
     def test_min_length_3_maps_to_human_message(self):
         result = _humanize_error_message("String should have at least 3 characters")
-        assert result == "Must be at least 3 characters."
+        assert result == min_length_message(3)
 
 
 class TestHumanizeMaxLength:
     def test_max_length_maps_to_human_message(self):
         result = _humanize_error_message("String should have at most 20 characters")
-        assert result == "Must be at most 20 characters."
+        assert result == max_length_message(20)
 
     def test_max_length_singular_maps_to_human_message(self):
         result = _humanize_error_message("String should have at most 1 character")
-        assert result == "Must be at most 1 characters."
+        assert result == max_length_message(1)
 
 
 class TestHumanizeEmailError:
@@ -52,11 +55,11 @@ class TestHumanizeEmailError:
         raw = (
             "value is not a valid email address: An email address must have an @-sign."
         )
-        assert _humanize_error_message(raw) == "Please enter a valid email address."
+        assert _humanize_error_message(raw) == INVALID_EMAIL_STR
 
     def test_email_error_different_suffix_maps_to_human_message(self):
         raw = "value is not a valid email address: The part after the @-sign is not valid."
-        assert _humanize_error_message(raw) == "Please enter a valid email address."
+        assert _humanize_error_message(raw) == INVALID_EMAIL_STR
 
 
 class TestHumanizePassthrough:

@@ -9,6 +9,18 @@ from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
 _MIN_LENGTH_RE = re.compile(r"^String should have at least (\d+) characters?$")
 _MAX_LENGTH_RE = re.compile(r"^String should have at most (\d+) characters?$")
 
+INVALID_EMAIL_STR = "Please enter a valid email address."
+
+
+def min_length_message(length: int) -> str:
+    """Return the humanized min-length error for a given character count."""
+    return f"Must be at least {length} characters."
+
+
+def max_length_message(length: int) -> str:
+    """Return the humanized max-length error for a given character count."""
+    return f"Must be at most {length} characters."
+
 
 def _humanize_error_message(msg: str) -> str:
     """Map raw Pydantic validation messages to user-friendly equivalents."""
@@ -20,15 +32,15 @@ def _humanize_error_message(msg: str) -> str:
         length = int(min_match.group(1))
         if length <= 1:
             return FIELD_REQUIRED_STR
-        return f"Must be at least {length} characters."
+        return min_length_message(length)
 
     max_match = _MAX_LENGTH_RE.match(msg)
     if max_match:
         length = int(max_match.group(1))
-        return f"Must be at most {length} characters."
+        return max_length_message(length)
 
     if msg.startswith("value is not a valid email address"):
-        return "Please enter a valid email address."
+        return INVALID_EMAIL_STR
 
     return msg
 

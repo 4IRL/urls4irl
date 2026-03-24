@@ -151,9 +151,11 @@ Ready for Phase 5 (Contact Form Migration)?
 
 ### Step 1: Locate and Read Files
 - Plan: `plans/<name>.md` where `<name>` matches **$ARGUMENTS** contextually
-- Review: `reviews/<name>-review.md` OR `reviews/push-review-<branch>-<timestamp>.md` (for push reviews)
+- Review: `reviews/<name>-review.md` (for plan reviews) OR `reviews/push-review-<branch>.md` (for push reviews)
 
 Both paths are **relative to the project root**. `reviews/` is a sibling of `plans/`, not nested under it.
+
+**For push reviews**: derive the exact filename from the current git branch (`git branch --show-current`), then construct `reviews/push-review-<branch>.md`. Do NOT glob or fuzzy-match — use the exact branch name to avoid collisions with similarly-named files.
 
 When **$ARGUMENTS** matches a push review file (e.g., "push-review-refactor-splash"), there is no associated plan file — the review is standalone. Skip reading the plan.
 

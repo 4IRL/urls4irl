@@ -4,6 +4,7 @@ from selenium.webdriver.remote.webdriver import WebDriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 
+from backend.api_common.request_errors import INVALID_EMAIL_STR, min_length_message
 from backend.utils.strings.email_validation_strs import (
     EMAILS,
     VALIDATE_MY_EMAIL,
@@ -545,6 +546,14 @@ def test_register_failed_empty_fields(browser: WebDriver):
         browser, SPL.SUBHEADER_INVALID_FEEDBACK
     )
     assert len(invalid_feedback_messages) == 5
+    expected_errors = [
+        min_length_message(3),
+        INVALID_EMAIL_STR,
+        USER_FAILURE.FIELD_REQUIRED_STR,
+        min_length_message(12),
+        USER_FAILURE.FIELD_REQUIRED_STR,
+    ]
+    assert [elem.text for elem in invalid_feedback_messages] == expected_errors
 
 
 def test_register_form_resets_on_close(browser: WebDriver):
@@ -572,6 +581,14 @@ def test_register_form_resets_on_close(browser: WebDriver):
         browser, SPL.SUBHEADER_INVALID_FEEDBACK
     )
     assert len(invalid_feedback_messages) == 5
+    expected_errors = [
+        min_length_message(3),
+        INVALID_EMAIL_STR,
+        USER_FAILURE.FIELD_REQUIRED_STR,
+        min_length_message(12),
+        USER_FAILURE.FIELD_REQUIRED_STR,
+    ]
+    assert [elem.text for elem in invalid_feedback_messages] == expected_errors
 
     wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
 

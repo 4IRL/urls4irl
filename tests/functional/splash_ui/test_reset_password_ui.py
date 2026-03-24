@@ -7,12 +7,14 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend import db
+from backend.api_common.request_errors import min_length_message
 from backend.config import ConfigTest
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.models.users import Users
 from backend.utils.constants import CONSTANTS
 from backend.utils.datetime_utils import utc_now
 from backend.utils.strings.html_identifiers import IDENTIFIERS
+from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.reset_password_strs import RESET_PASSWORD
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import (
@@ -443,6 +445,8 @@ def test_password_reset_missing_fields(
         browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
     )
     assert len(invalid_fields) == 2
+    assert invalid_fields[0].text == min_length_message(12)
+    assert invalid_fields[1].text == FAILURE_GENERAL.FIELD_REQUIRED_STR
 
 
 def test_password_reset_invalid_csrf_token(
