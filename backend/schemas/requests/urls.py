@@ -2,7 +2,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, field_validator
 from backend.utils.constants import URL_CONSTANTS
 from backend.utils.strings.url_strs import URL_FAILURE
-from ._sanitize import SanitizedStr
+from backend.schemas.requests._sanitize import SanitizedStr
 
 
 class CreateURLRequest(BaseModel):
