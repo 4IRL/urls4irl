@@ -1,6 +1,6 @@
 ---
 name: git-push
-description: Review all unpushed code on the current branch using 7 parallel subagents (Safety & Security, Correctness, Simplicity & Conciseness, Test Coverage, Completeness & Cleanup, Consistency & Style, Integration Risk), then push if all approve or write findings to reviews/push-review-<branch>.md if any reject. Use when asked to push, push code, git push, or review-and-push.
+description: Review all unpushed code on the current branch using 7 parallel subagents (Safety & Security, Correctness, Simplicity & Conciseness, Test Coverage, Completeness & Cleanup, Consistency & Style, Integration Risk), then push if all approve or write findings to reviews/push-review-<branch>.md if any reject. After a successful push, create or update a GitHub PR using the GitHub App token. Use when asked to push, push code, git push, review-and-push, or create a PR.
 ---
 
 # Git Push with Multi-Agent Review
@@ -84,11 +84,9 @@ Collect all 7 subagent responses. Parse each verdict:
 git push origin $BRANCH
 ```
 
-After pushing, output a brief summary:
-- Branch name and remote
-- Number of commits pushed
-- One-line summary from each subagent
-- If a review file was written (minor findings), include its path and note that `/next-step-taker push-review-<branch>` can address them
+After pushing, proceed to Step 6 (PR creation).
+
+If a review file was written (minor findings), include its path and note that `/next-step-taker push-review-<branch>` can address them.
 
 ### 5. Write Findings
 
@@ -165,6 +163,89 @@ After writing, inform the user:
 - That they can use `/next-step-taker push-review-<branch>` to implement items one by one
 - Do NOT automatically push — the user must fix findings and re-invoke
 
+### 6. Create or Update PR
+
+After a successful push, create or update a PR targeting `main`.
+
+#### Environment Requirements
+
+All `gh` commands must:
+1. Be prefixed with the GitHub App token: `GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)`
+2. Use `dangerouslyDisableSandbox: true` — the sandbox blocks TLS connections to `api.github.com`
+
+```bash
+# Example (always run with dangerouslyDisableSandbox: true)
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr ...
+```
+
+#### Check for Existing PR
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr view $BRANCH 2>&1
+```
+
+- **If a PR exists**: use `gh pr edit` to update title/body if the changes warrant it.
+- **If no PR exists**: create one with `gh pr create`.
+
+#### PR Title Format
+
+```
+[SUBJECT] Title content
+```
+
+Where `SUBJECT` is one of:
+- `refactor` — code restructuring without behavior change
+- `frontend` — UI/JS/CSS changes
+- `backend` — Python/Flask/API changes
+- `database` — migrations, model changes
+- `tests` — test-only changes
+
+Use the most dominant category. If changes span multiple areas, pick the primary one.
+
+#### PR Body Format
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr create \
+  --base main \
+  --head "$BRANCH" \
+  --title "[SUBJECT] Title" \
+  --body "$(cat <<'EOF'
+# Summary
+
+Brief overview of what this PR does.
+
+## Problem
+
+What issue or need motivated this change.
+
+## Solutions
+
+What was done to address the problem. Reference key files/functions changed.
+
+## Verification Steps
+
+- Tests added/modified and their markers
+- How to manually verify (if applicable)
+- Build verification status
+EOF
+)"
+```
+
+#### Request Review
+
+After creating or updating the PR, always request review from `GPropersi`:
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --add-reviewer GPropersi
+```
+
+#### After PR Creation
+
+Output:
+- The PR URL
+- Branch name and number of commits
+- One-line summary from each review subagent
+
 ## Important Notes
 
 - **All test suites have passed before commit** — code reaching this workflow has already passed all relevant test suites (integration, UI, unit, JS). Subagents should NOT flag "tests might fail" or "untested at runtime." The Test Coverage reviewer focuses on whether the diff includes sufficient test code for new/changed behavior, not whether existing tests pass.
@@ -174,10 +255,3 @@ After writing, inform the user:
 - The `reviews/` directory is at the project root, NOT under `plans/`
 - All subagent launches must be in a single message for true parallelism
 - If a subagent fails to return valid JSON, treat it as FAIL with a note about the parse error
-
-## Changelog
-
-After completing this skill, append an entry to the branch changelog:
-
-- **Pushed**: `.claude/scripts/changelog.sh "git-push: pushed <N> commits to origin/<branch>"`
-- **Blocked**: `.claude/scripts/changelog.sh "git-push: blocked by review — findings written to reviews/push-review-<branch>.md (Review N)"`

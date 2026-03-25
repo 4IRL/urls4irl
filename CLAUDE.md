@@ -16,6 +16,10 @@ urls4irl is a full-stack web app for managing shared collections of URLs called 
 
 Review files are stored at the project root level (`reviews/`), NOT under the `plans/` directory. Always look for `reviews/` at the repository root.
 
+### `.claude/` Directory
+
+Files under `.claude/` (skills, scripts, settings) may be committed and pushed on **any branch**, regardless of the branch topic. Always include `.claude/` changes alongside other work — never exclude them for being "unrelated."
+
 
 ## Development and Coding Practices
 

@@ -1,6 +1,6 @@
 ---
-name: review-plan
-description: Review a plan file as a staff engineer, checking for inconsistencies, edge cases, technicalities, and integration with the existing codebase. Use when asked to review, critique, or audit a plan. The plan name is inferred from the argument (e.g., "/review-plan selenium-to-js-unit-tests"). Creates or updates a review document in the plans/reviews/ directory. Presents findings and a to-do list, then waits for user confirmation before making any changes.
+name: plan-reviewer
+description: Review a plan file as a staff engineer, checking for inconsistencies, edge cases, technicalities, and integration with the existing codebase. Use when asked to review, critique, or audit a plan. The plan name is inferred from the argument (e.g., "/plan-reviewer selenium-to-js-unit-tests"). Creates or updates a review document in the plans/reviews/ directory. Presents findings and a to-do list, then waits for user confirmation before making any changes.
 argument-hint: Plan-name
 ---
 
@@ -237,7 +237,7 @@ When appending a new review pass and the current pass found findings that prior 
    - **Fix verification stopped at plan text**: A prior round proposed a fix, subsequent rounds confirmed the plan now "says X," but nobody re-read the actual source file to verify the fix's assumption holds in practice.
    - **Scoped too narrowly to plan-referenced code**: A review dimension (e.g., conditional guards, CSRF delivery, dead imports) was applied only to files/lines the plan explicitly touches, not to the broader system the plan depends on.
    - **Other**: Describe the root cause if none of the above fit.
-3. **Skill gap**: Does the miss reveal a gap in the review-plan skill's instructions? If so, state what instruction is missing or insufficiently specific. If existing instructions already cover it (the reviewer just didn't follow them), say so — the fix is emphasis, not new rules.
+3. **Skill gap**: Does the miss reveal a gap in the plan-reviewer skill's instructions? If so, state what instruction is missing or insufficiently specific. If existing instructions already cover it (the reviewer just didn't follow them), say so — the fix is emphasis, not new rules.
 
 **Format:**
 
@@ -249,7 +249,7 @@ When appending a new review pass and the current pass found findings that prior 
 | CSRF meta tag gated behind auth | Trusted plan assertion ("CSRF is already handled") + Incomplete file reads (`meta.html` never read) | Existing CSRF section covers this but is disconnected from main Per-Endpoint trace; integrate into item 2 |
 ```
 
-**How this feeds back:** After writing the root-cause table, check whether the skill gap column reveals a pattern. If the same root cause recurs across multiple reviews of different plans, propose a concrete addition or edit to the review-plan skill's instructions (in this SKILL.md) and present it to the user for approval. Do not self-modify the skill without user confirmation.
+**How this feeds back:** After writing the root-cause table, check whether the skill gap column reveals a pattern. If the same root cause recurs across multiple reviews of different plans, propose a concrete addition or edit to the plan-reviewer skill's instructions (in this SKILL.md) and present it to the user for approval. Do not self-modify the skill without user confirmation.
 
 ## Important Notes
 
@@ -258,14 +258,6 @@ When appending a new review pass and the current pass found findings that prior 
 - If the plan is already solid, say so clearly — a clean review is a useful result
 - Multiple reviews of the same plan accumulate in one file (append, don't overwrite)
 - The `plans/reviews/` directory may need to be created if this is the first review
-
-## Changelog
-
-After writing or appending a review, append an entry to the branch changelog:
-
-```bash
-.claude/scripts/changelog.sh "review-plan: reviewed <plan-name> — <verdict> (<N> critical, <N> major, <N> minor)"
-```
 
 ## CSRF / Auth / Session specifics
 
