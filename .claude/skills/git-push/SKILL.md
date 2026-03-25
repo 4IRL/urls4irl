@@ -261,11 +261,11 @@ After applying labels, set the appropriate milestone based on the nature and mot
 | Milestone | When to use |
 |---|---|
 | `Bugs` | The PR fixes a bug or corrects broken behavior |
-| `Maintenance` | Refactors, dependency updates, CI/CD changes, code cleanup, chore work — anything that improves the codebase without adding features or fixing bugs |
-| `MVP v2` | New features or enhancements beyond the original MVP |
+| `Maintenance` | Bug fixes, dependency updates, CI/CD changes, minor cleanup — small fixes that keep things running |
+| `MVP v2` | New features, enhancements, refactors, and architectural improvements (e.g., new functionality, migrating to Pydantic, restructuring code) |
 | `REH-ch goals` | Stretch/reach goals beyond MVP v2 |
 
-Use the commit messages, branch name, and PR context to determine the best fit. When in doubt between `Maintenance` and another milestone, prefer the more specific one.
+Use the commit messages, branch name, and PR context to determine the best fit. Refactors and code modernization efforts are `MVP v2`, not `Maintenance`.
 
 ```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --milestone "<milestone title>"
