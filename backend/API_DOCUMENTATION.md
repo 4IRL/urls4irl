@@ -75,13 +75,16 @@ They must contain a positive, non-zero integer value associated with the given e
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> username: %username%
-> password: %password%
-> csrf_token: %csrf_token%
+CSRF token must be sent in the `X-CSRFToken` request header.
+
+Required JSON body:
+> ```json
+> {
+>     "username": "%username%",
+>     "password": "%password%"
+> }
 > ```
 
 ##### Responses
@@ -124,11 +127,10 @@ Invalid form data sent with the request.
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/login \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-CSRFToken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'username=USERNAME' \
->  --data-urlencode 'password=PASSWORD' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  -d '{"username": "USERNAME", "password": "PASSWORD"}'
 > ```
 
 </details>
@@ -182,16 +184,19 @@ Invalid form data sent with the request.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> username: %username%
-> email: %email%
-> confirmEmail: %confirm email%
-> password: %password%
-> confirmPassword: %confirm password%
-> csrf_token: %csrf_token%
+CSRF token must be sent in the `X-CSRFToken` request header.
+
+Required JSON body:
+> ```json
+> {
+>     "username": "%username%",
+>     "email": "%email%",
+>     "confirmEmail": "%confirm email%",
+>     "password": "%password%",
+>     "confirmPassword": "%confirm password%"
+> }
 > ```
 
 ##### Responses
@@ -234,14 +239,10 @@ Invalid form data sent with the request.
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/register \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-CSRFToken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'email=EMAIL' \
->  --data-urlencode 'confirmEmail=EMAIL' \
->  --data-urlencode 'username=USERNAME' \
->  --data-urlencode 'password=PASSWORD' \
->  --data-urlencode 'confirmPassword=PASSWORD' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  -d '{"username": "USERNAME", "email": "EMAIL", "confirmEmail": "EMAIL", "password": "PASSWORD", "confirmPassword": "PASSWORD"}'
 > ```
 
 </details>
@@ -429,12 +430,15 @@ Invalid form data sent with the request.
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> email: %email%
-> csrf_token: %csrf_token%
+CSRF token must be sent in the `X-CSRFToken` request header.
+
+Required JSON body:
+> ```json
+> {
+>     "email": "%email%"
+> }
 > ```
 
 ##### Responses
@@ -497,10 +501,10 @@ or missing email is provided. However, the reset-password email is only sent if 
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/forgot-password \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-CSRFToken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'email=EMAIL' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  -d '{"email": "EMAIL"}'
 > ```
 
 </details>
@@ -547,13 +551,16 @@ or missing email is provided. However, the reset-password email is only sent if 
 
 ##### Request Payload
 
-Payload content-type should be `application/x-www-form-urlencoded; charset=utf−8`.
+Payload content-type should be `application/json`.
 
-Required form data:
-> ```
-> newPassword: %new_password%
-> confirmNewPassword: %confirm_new_password%
-> csrf_token: %csrf_token%
+CSRF token must be sent in the `X-CSRFToken` request header.
+
+Required JSON body:
+> ```json
+> {
+>     "newPassword": "%new_password%",
+>     "confirmNewPassword": "%confirm_new_password%"
+> }
 > ```
 
 ##### Responses
@@ -602,11 +609,10 @@ Required form data:
 > ```bash
 > curl -X POST \
 >  https://urls.4irl.app/reset-password/ABCDEFGH123456789 \
->  -H 'Content-Type: application/x-www-form-urlencoded' \
+>  -H 'Content-Type: application/json' \
+>  -H 'X-CSRFToken: CSRF_TOKEN' \
 >  -H 'Cookie: YOUR_COOKIE' \
->  --data-urlencode 'newPassword=PASSWORD' \
->  --data-urlencode 'confirmNewPassword=PASSWORD' \
->  --data-urlencode 'csrf_token=CSRF_TOKEN'
+>  -d '{"newPassword": "PASSWORD", "confirmNewPassword": "PASSWORD"}'
 > ```
 
 </details>

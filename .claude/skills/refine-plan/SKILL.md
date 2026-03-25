@@ -1,12 +1,12 @@
 ---
 name: refine-plan
-description: Iteratively refine a plan by repeatedly applying the review-plan and apply-plan-review cycle for a given number of iterations. Uses per-pass subagents so source file reads don't accumulate in the main context window — the main agent only receives structured JSON summaries (finding counts, items applied, design questions). Stops early when a review pass returns 0 critical AND 0 major findings. Collects design questions deferred during apply phases and surfaces them at the end. Use when asked to iteratively refine, polish, or auto-apply review feedback on a plan in a loop (e.g., "/refine-plan my-feature 3" or "/refine-plan auth-redesign").
+description: Iteratively refine a plan by repeatedly applying the plan-reviewer and apply-plan-review cycle for a given number of iterations. Uses per-pass subagents so source file reads don't accumulate in the main context window — the main agent only receives structured JSON summaries (finding counts, items applied, design questions). Stops early when a review pass returns 0 critical AND 0 major findings. Collects design questions deferred during apply phases and surfaces them at the end. Use when asked to iteratively refine, polish, or auto-apply review feedback on a plan in a loop (e.g., "/refine-plan my-feature 3" or "/refine-plan auth-redesign").
 argument-hint: <plan-name> [max-iterations=5]
 ---
 
 # Refine Plan
 
-Orchestrate the review-plan → apply-plan-review loop using per-pass subagents to keep the main context lean. File reads happen inside subagents; the main agent tracks state and prints a summary table.
+Orchestrate the plan-reviewer → apply-plan-review loop using per-pass subagents to keep the main context lean. File reads happen inside subagents; the main agent tracks state and prints a summary table.
 
 ## Args
 
@@ -29,7 +29,7 @@ For each iteration `i` from 1 to MAX_ITER:
 
 Spawn a subagent using the Agent tool with these instructions:
 
-> Follow ALL steps of the review-plan skill (Steps 1–4): locate the plan at `plans/<plan-name>.md`, read all relevant source files, review the plan as a staff engineer across every dimension (correctness, per-endpoint trace, ordering, edge cases, codebase integration, verification steps, implementation specificity, risk), and write/append your findings to `reviews/<plan-name>-review.md`. The `reviews/` directory is at the project root, NOT inside `plans/`.
+> Follow ALL steps of the plan-reviewer skill (Steps 1–4): locate the plan at `plans/<plan-name>.md`, read all relevant source files, review the plan as a staff engineer across every dimension (correctness, per-endpoint trace, ordering, edge cases, codebase integration, verification steps, implementation specificity, risk), and write/append your findings to `reviews/<plan-name>-review.md`. The `reviews/` directory is at the project root, NOT inside `plans/`.
 >
 > **Count accuracy rule**: The JSON counts you report MUST exactly equal the number of NEW unchecked `- [ ]` items you wrote in this pass's "To-Do: Required Changes" section. Do NOT count findings from prior passes — even if they are still `[ ]` in an older section. If a prior finding was already applied to the plan (the plan now contains the fix), do NOT re-report it or create a new `- [ ]` item for it. Only genuinely new issues that are not already addressed in the current plan text produce `- [ ]` items and increment counts.
 >
@@ -157,6 +157,6 @@ Write (or append) to `reviews/<plan-name>-refine-log.md`. If the file doesn't ex
 - `reviews/` is a sibling of `plans/` at the project root — NOT nested inside `plans/`
 - The main agent must NOT read plan or review files directly — EXCEPT during step 2b (verify reported counts), where it reads the tail of the review file to confirm actual unchecked item counts
 - Each review subagent appends a new dated section; it does not overwrite prior reviews
-- Subagents must follow the full review-plan and apply-plan-review skill instructions, not abbreviated versions
+- Subagents must follow the full plan-reviewer and apply-plan-review skill instructions, not abbreviated versions
 - Best-effort decisions in the apply phase should favor the simplest, most conservative interpretation
 - `tmp/` must exist before writing design questions — create it if needed

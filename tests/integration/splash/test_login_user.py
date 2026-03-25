@@ -4,16 +4,17 @@ from flask_login import current_user
 from werkzeug.security import check_password_hash
 import pytest
 
+from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
+from backend.splash.constants import LoginErrorCodes
+from backend.utils.all_routes import ROUTES
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from tests.models_for_test import invalid_user_1, valid_user_1
-from tests.utils_for_test import get_csrf_token, is_string_in_logs
-from backend.models.users import Users
-from backend.utils.all_routes import ROUTES
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.splash_form_strs import LOGIN_FORM
 from backend.utils.strings.user_strs import USER_FAILURE
+from tests.models_for_test import invalid_user_1, valid_user_1
+from tests.utils_for_test import get_csrf_token, is_string_in_logs
 
 pytestmark = pytest.mark.splash
 
@@ -27,10 +28,15 @@ def test_login_registered_and_logged_in_user(login_first_user_with_register):
     client, csrf_token_str, user, app = login_first_user_with_register
 
     new_user = deepcopy(valid_user_1)
-    new_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
 
     response = client.post(
-        url_for(ROUTES.SPLASH.LOGIN), data=new_user, follow_redirects=True
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: new_user[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: new_user[LOGIN_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+        follow_redirects=True,
     )
 
     # Correctly responds with URL to home page
@@ -76,22 +82,24 @@ def test_login_unregistered_user(load_login_page):
     client, csrf_token_str = load_login_page
 
     invalid_user = deepcopy(invalid_user_1)
-    invalid_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
 
     response = client.post(
         url_for(ROUTES.SPLASH.LOGIN),
-        data={
-            LOGIN_FORM.CSRF_TOKEN: invalid_user[LOGIN_FORM.CSRF_TOKEN],
+        json={
             LOGIN_FORM.USERNAME: invalid_user[LOGIN_FORM.USERNAME],
             LOGIN_FORM.PASSWORD: invalid_user[LOGIN_FORM.PASSWORD],
         },
+        headers={"X-CSRFToken": csrf_token_str},
     )
 
     # Ensure json response from server is valid
     login_user_response_json = response.json
     assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert login_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_LOGIN
-    assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(login_user_response_json[STD_JSON.ERROR_CODE])
+        == LoginErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         USER_FAILURE.USER_NOT_EXIST
         in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.USERNAME]
@@ -126,22 +134,24 @@ def test_login_user_wrong_password(register_first_user, load_login_page):
     client, csrf_token_str = load_login_page
 
     new_user = deepcopy(valid_user_1)
-    new_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
 
     response = client.post(
         url_for(ROUTES.SPLASH.LOGIN),
-        data={
-            LOGIN_FORM.CSRF_TOKEN: new_user[LOGIN_FORM.CSRF_TOKEN],
+        json={
             LOGIN_FORM.USERNAME: new_user[LOGIN_FORM.USERNAME],
             LOGIN_FORM.PASSWORD: "A",
         },
+        headers={"X-CSRFToken": csrf_token_str},
     )
 
     # Ensure json response from server is valid
     login_user_response_json = response.json
     assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert login_user_response_json[STD_JSON.MESSAGE] == USER_FAILURE.UNABLE_TO_LOGIN
-    assert int(login_user_response_json[STD_JSON.ERROR_CODE]) == 2
+    assert (
+        int(login_user_response_json[STD_JSON.ERROR_CODE])
+        == LoginErrorCodes.INVALID_FORM_INPUT
+    )
     assert (
         USER_FAILURE.INVALID_PASSWORD
         in login_user_response_json[STD_JSON.ERRORS][LOGIN_FORM.PASSWORD]
@@ -164,7 +174,7 @@ def test_login_user_missing_csrf(register_first_user, load_login_page):
 
     response = client.post(
         url_for(ROUTES.SPLASH.LOGIN),
-        data={
+        json={
             LOGIN_FORM.USERNAME: valid_user_1[LOGIN_FORM.USERNAME],
             LOGIN_FORM.PASSWORD: "A",
         },
@@ -178,6 +188,47 @@ def test_login_user_missing_csrf(register_first_user, load_login_page):
     # Ensure no one is logged in
     assert current_user.get_id() is None
     assert current_user.is_active is False
+
+
+def test_login_user_not_email_validated(
+    register_first_user_without_email_validation, load_login_page
+):
+    """
+    GIVEN a registered user whose email has not been validated
+    WHEN "/login" is POST'd with correct credentials
+    THEN ensure a 401 response with the ACCOUNT_NOT_EMAIL_VALIDATED error code is returned
+
+    Proper JSON response is as follows:
+    {
+        STD_JSON.STATUS : STD_JSON.FAILURE,
+        STD_JSON.MESSAGE: USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
+        STD_JSON.ERROR_CODE: LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
+    }
+    """
+    registered_user_data, _ = register_first_user_without_email_validation
+    client, csrf_token_str = load_login_page
+
+    response = client.post(
+        url_for(ROUTES.SPLASH.LOGIN),
+        json={
+            LOGIN_FORM.USERNAME: registered_user_data[LOGIN_FORM.USERNAME],
+            LOGIN_FORM.PASSWORD: registered_user_data[LOGIN_FORM.PASSWORD],
+        },
+        headers={"X-CSRFToken": csrf_token_str},
+    )
+
+    login_user_response_json = response.json
+    assert login_user_response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert (
+        login_user_response_json[STD_JSON.MESSAGE]
+        == USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED
+    )
+    assert (
+        int(login_user_response_json[STD_JSON.ERROR_CODE])
+        == LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED
+    )
+
+    assert response.status_code == 401
 
 
 def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
@@ -339,11 +390,6 @@ def test_user_can_login_logout_login(login_first_user_with_register):
     response = client.get(url_for(ROUTES.SPLASH.LOGIN))
 
     # Ensure on login page
-    assert (
-        b'<input id="csrf_token" name="csrf_token" type="hidden" value='
-        in response.data
-    )
-
     login_input_html = f'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
 
     assert login_input_html.encode() in response.data
@@ -353,17 +399,18 @@ def test_user_can_login_logout_login(login_first_user_with_register):
     )
     assert response.request.path == url_for(ROUTES.SPLASH.LOGIN)
 
-    # Grab csrf token from login page
-    valid_user_1[LOGIN_FORM.CSRF_TOKEN] = get_csrf_token(response.data)
+    # Grab csrf token from splash page (meta tag)
+    splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+    csrf_token = get_csrf_token(splash_response.data, meta_tag=True)
 
     # Post data to login page
     response = client.post(
         url_for(ROUTES.SPLASH.LOGIN),
-        data={
-            LOGIN_FORM.CSRF_TOKEN: valid_user_1[LOGIN_FORM.CSRF_TOKEN],
+        json={
             LOGIN_FORM.USERNAME: valid_user_1[LOGIN_FORM.USERNAME],
             LOGIN_FORM.PASSWORD: valid_user_1[LOGIN_FORM.PASSWORD],
         },
+        headers={"X-CSRFToken": csrf_token},
         follow_redirects=True,
     )
 
@@ -394,11 +441,7 @@ def test_login_modal_is_shown(app_with_server_name, client):
             in response.data
         )
 
-        # Ensure on login page
-        assert (
-            b'<input id="csrf_token" name="csrf_token" type="hidden" value='
-            in response.data
-        )
+        # Ensure on login page - static HTML fields
         login_input_html = f'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
 
         assert login_input_html.encode() in response.data
@@ -418,13 +461,18 @@ def test_login_modal_logs_user_in(app_with_server_name, client, register_first_u
     registered_user_data, _ = register_first_user
     with client:
         with app_with_server_name.app_context():
-            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            response = client.get(url_for(ROUTES.SPLASH.LOGIN))
-        csrf_token = get_csrf_token(response.data)
+            splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            client.get(url_for(ROUTES.SPLASH.LOGIN))
+        csrf_token = get_csrf_token(splash_response.data, meta_tag=True)
 
-        registered_user_data[LOGIN_FORM.CSRF_TOKEN] = csrf_token
-
-        response = client.post(url_for(ROUTES.SPLASH.LOGIN), data=registered_user_data)
+        response = client.post(
+            url_for(ROUTES.SPLASH.LOGIN),
+            json={
+                LOGIN_FORM.USERNAME: registered_user_data[LOGIN_FORM.USERNAME],
+                LOGIN_FORM.PASSWORD: registered_user_data[LOGIN_FORM.PASSWORD],
+            },
+            headers={"X-CSRFToken": csrf_token},
+        )
 
         assert response.status_code == 200
         json_response = response.json
@@ -451,15 +499,20 @@ def test_login_user_to_home_log(
             user: Users = Users.query.filter(
                 Users.username == valid_user_1[LOGIN_FORM.USERNAME]
             ).first()
-            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            response = client.get(url_for(ROUTES.SPLASH.LOGIN))
-            csrf_token_str = get_csrf_token(response.data)
+            splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            client.get(url_for(ROUTES.SPLASH.LOGIN))
+            csrf_token_str = get_csrf_token(splash_response.data, meta_tag=True)
 
             new_user = deepcopy(valid_user_1)
-            new_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
 
             response = client.post(
-                url_for(ROUTES.SPLASH.LOGIN), data=new_user, follow_redirects=True
+                url_for(ROUTES.SPLASH.LOGIN),
+                json={
+                    LOGIN_FORM.USERNAME: new_user[LOGIN_FORM.USERNAME],
+                    LOGIN_FORM.PASSWORD: new_user[LOGIN_FORM.PASSWORD],
+                },
+                headers={"X-CSRFToken": csrf_token_str},
+                follow_redirects=True,
             )
 
             # Test if user logged in
@@ -490,16 +543,19 @@ def test_login_user_to_utub_id_log(
                 Utub_Members.user_id == user.id
             ).first()
             utub_id = utub_member.utub_id
-            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            response = client.get(url_for(ROUTES.SPLASH.LOGIN))
-            csrf_token_str = get_csrf_token(response.data)
+            splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
+            client.get(url_for(ROUTES.SPLASH.LOGIN))
+            csrf_token_str = get_csrf_token(splash_response.data, meta_tag=True)
 
             new_user = deepcopy(valid_user_1)
-            new_user[LOGIN_FORM.CSRF_TOKEN] = csrf_token_str
 
             response = client.post(
                 url_for(ROUTES.SPLASH.LOGIN, next=f"/home?UTubID={utub_id}"),
-                data=new_user,
+                json={
+                    LOGIN_FORM.USERNAME: new_user[LOGIN_FORM.USERNAME],
+                    LOGIN_FORM.PASSWORD: new_user[LOGIN_FORM.PASSWORD],
+                },
+                headers={"X-CSRFToken": csrf_token_str},
                 follow_redirects=True,
             )
             # Test if user logged in

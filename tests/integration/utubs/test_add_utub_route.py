@@ -21,7 +21,10 @@ from backend.models.utub_members import Member_Role, Utub_Members
 from backend.utils.all_routes import ROUTES
 from backend.utils.constants import CONFIG_CONSTANTS
 from backend.utils.strings.form_strs import UTUB_FORM
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FIELD_REQUIRED_STR,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.utub_strs import UTUB_FAILURE, UTUB_SUCCESS
 from tests.utils_for_test import is_string_in_logs
 
@@ -503,7 +506,7 @@ def test_add_utub_with_invalid_form(login_first_user_with_register):
         == UTubErrorCodes.INVALID_FORM_INPUT
     )
     assert invalid_new_utub_response_json[STD_JSON.ERRORS][UTUB_FORM.UTUB_NAME] == [
-        "Field required"
+        FIELD_REQUIRED_STR
     ]
     assert (
         invalid_new_utub_response_json[STD_JSON.MESSAGE]

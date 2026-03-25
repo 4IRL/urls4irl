@@ -2,7 +2,7 @@ from __future__ import annotations
 from pydantic import BaseModel, Field, field_validator
 from backend.utils.constants import UTUB_CONSTANTS
 from backend.utils.strings.utub_strs import UTUB_FAILURE
-from ._sanitize import SanitizedStr, OptionalSanitizedStr
+from backend.schemas.requests._sanitize import SanitizedStr, OptionalSanitizedStr
 
 
 class CreateUTubRequest(BaseModel):

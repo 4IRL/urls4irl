@@ -3,6 +3,16 @@ name: plan-creator
 description: Creates structured planning documents for new features or tasks in the @plans directory. Use when the user asks to create, write, or draft a plan for a feature, task, or implementation.
 ---
 
+## Branch Guard
+
+Before starting, check the current branch:
+1. If on `main` or `master`:
+   - Run `gmas` to ensure main is up to date
+   - Suggest a branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`)
+   - Ask the user: "You're on main. Want me to create and switch to `<suggested-branch>`?"
+   - Do NOT proceed until the user confirms and you've switched branches
+2. If already on a feature branch: proceed normally
+
 ## Plan Creation
 
 1. Create `@plans/<feature-name>.md` (create `@plans/` if missing).
@@ -59,6 +69,19 @@ Skipping layers produces plans that break in the gaps between what's described. 
 - A private helper inside a service that also holds the dependency being migrated
 - A test fixture that extracts a value (CSRF token, response field) from HTML that no longer contains it after a template change
 - A frontend handler branch that checks a status code or error code that changes after the migration
+
+### Verification Layer Matching
+
+Every step must include a verification command. The test type must match the layer changed:
+
+| Change layer | Required verification | Why |
+|---|---|---|
+| Template / rendered HTML (meta tags, field IDs, conditional blocks) | UI test marker (`make test-marker-parallel m=<module>_ui`) or Playwright smoke | `client.get()`/`client.post()` never parse the DOM; template regressions are invisible to integration tests |
+| Frontend JS (AJAX format, handlers, DOM reads) | `make test-js` + UI test marker or Playwright | JS unit tests catch logic; UI tests catch integration with real DOM |
+| Backend only (service, route, DB) | `make test-marker-parallel m=<marker>` | Integration tests are sufficient and faster |
+| Cross-layer (backend format + JS handler in same step) | Integration tests + `make test-js` + `make vite-build` | All three layers must be green |
+
+If a step changes what the browser sees or reads but only runs integration tests, the plan is undertested — add the appropriate UI-level verification.
 
 ### Dead Import Elimination Protocol
 

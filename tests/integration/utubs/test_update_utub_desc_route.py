@@ -751,9 +751,7 @@ def test_update_utub_description_too_long(
     )
     assert update_utub_desc_json_response[STD_JSON.ERRORS][
         UTUB_DESCRIPTION_FORM.UTUB_DESCRIPTION_FOR_FORM
-    ] == [
-        f"String should have at most {UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH} characters"
-    ]
+    ] == [f"Must be at most {UTUB_CONSTANTS.MAX_DESCRIPTION_LENGTH} characters."]
 
     # Ensure database is consistent with just updating the UTub description
     with app.app_context():

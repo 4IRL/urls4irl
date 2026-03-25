@@ -1,4 +1,10 @@
 from backend.schemas.requests.members import AddMemberRequest
+from backend.schemas.requests.splash import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+)
 from backend.schemas.requests.tags import AddTagRequest
 from backend.schemas.requests.urls import (
     CreateURLRequest,
@@ -13,6 +19,10 @@ from backend.schemas.requests.utubs import (
 
 __all__ = [
     "AddMemberRequest",
+    "ForgotPasswordRequest",
+    "LoginRequest",
+    "RegisterRequest",
+    "ResetPasswordRequest",
     "AddTagRequest",
     "CreateURLRequest",
     "UpdateURLStringRequest",

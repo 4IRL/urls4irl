@@ -52,10 +52,14 @@ function handleLogin(event) {
     url = `${url}?${searchParams.toString()}`;
   }
 
+  const username = $("#username").val();
+  const password = $("#password").val();
+
   const loginRequest = $.ajax({
     url: url,
     type: "POST",
-    data: $("#ModalForm").serialize(),
+    data: JSON.stringify({ username, password }),
+    contentType: "application/json",
   });
 
   loginRequest.done((response, textStatus, xhr) =>

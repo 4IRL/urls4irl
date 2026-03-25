@@ -6,6 +6,7 @@
 {% block scripts_for_login %}
 {% if current_user.is_authenticated and current_user.email_validated %}
 <meta http-equiv="refresh" content="{{ CONSTANTS.CONFIG.SESSION_LIFETIME }}">
-<meta name="csrf-token" content="{{ csrf_token() }}">
 {% endif %}
+{# Rendered for all users (including unauthenticated) because JSON splash POST routes need CSRF protection #}
+<meta name="csrf-token" content="{{ csrf_token() }}">
 {% endblock %}

@@ -18,7 +18,7 @@ Flask app factory pattern in `backend/__init__.py` with `create_app()`. Config c
 - `assets` - static asset serving
 - `debug` - dev-only debug routes (excluded in test/prod)
 
-Each blueprint follows the pattern: `routes.py` (endpoints), `services/` (business logic), `constants.py`. The `splash` and `contact` blueprints additionally have `forms.py` (WTForms) for HTML form validation. All AJAX blueprints (`utubs`, `urls`, `members`, `tags`) use Pydantic schemas in `backend/schemas/` instead.
+Each blueprint follows the pattern: `routes.py` (endpoints), `services/` (business logic), `constants.py`. The `contact` blueprint additionally has `forms.py` (WTForms) for HTML form validation. All AJAX blueprints (`utubs`, `urls`, `members`, `tags`) and the `splash` blueprint use Pydantic schemas in `backend/schemas/` for JSON request validation.
 
 ## Extensions (`backend/extensions/`)
 
@@ -71,7 +71,7 @@ Templates are Jinja2 in `backend/templates/`.
 
 ## API Pattern
 
-Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON responses follow `{status, data, message}` shape. AJAX write endpoints (`utubs`, `urls`, `members`, `tags`) expect `Content-Type: application/json` with the CSRF token in the `X-Csrftoken` request header. Splash and contact endpoints still use `application/x-www-form-urlencoded` with WTForms. See `backend/API_DOCUMENTATION.md` for full endpoint docs.
+Routes return HTML for page loads and JSON (`APIResponse`) for AJAX. JSON responses follow `{status, data, message}` shape. AJAX write endpoints (`utubs`, `urls`, `members`, `tags`) and splash endpoints (`login`, `register`, `forgot-password`, `reset-password`) expect `Content-Type: application/json` with the CSRF token in the `X-Csrftoken` request header. The contact blueprint still uses `application/x-www-form-urlencoded` with WTForms. See `backend/API_DOCUMENTATION.md` for full endpoint docs.
 
 ## Testing (`tests/`)
 

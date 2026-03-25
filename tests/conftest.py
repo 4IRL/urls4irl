@@ -400,8 +400,8 @@ def load_register_page(
         (str): The CSRF token found on the "/register" page
     """
     with client:
-        get_register_response = client.get("/register")
-        csrf_token_string = get_csrf_token(get_register_response.get_data())
+        splash_response = client.get("/")
+        csrf_token_string = get_csrf_token(splash_response.get_data(), meta_tag=True)
         yield client, csrf_token_string
 
 
@@ -420,8 +420,8 @@ def load_login_page(
         (str): The CSRF token found on the "/login" page
     """
     with client:
-        get_register_response = client.get("/login")
-        csrf_token_string = get_csrf_token(get_register_response.get_data())
+        splash_response = client.get("/")
+        csrf_token_string = get_csrf_token(splash_response.get_data(), meta_tag=True)
         yield client, csrf_token_string
 
 

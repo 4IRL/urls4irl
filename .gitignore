@@ -24,6 +24,7 @@ gen/
 logs/
 plans/
 reviews/
+changelog/
 tmp/
 .playwright-mcp
 

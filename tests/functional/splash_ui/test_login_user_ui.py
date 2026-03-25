@@ -3,6 +3,7 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
+from backend.api_common.request_errors import min_length_message
 from backend.utils.strings.email_validation_strs import EMAILS, VALIDATE_MY_EMAIL
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.splash_form_strs import LOGIN_TITLE
@@ -432,7 +433,8 @@ def test_login_with_empty_fields(browser: WebDriver):
 
     error_elems = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
     assert len(error_elems) == 2
-    assert all([elem.text == USER_FAILURE.FIELD_REQUIRED_STR for elem in error_elems])
+    assert error_elems[0].text == min_length_message(3)
+    assert error_elems[1].text == USER_FAILURE.FIELD_REQUIRED_STR
 
 
 def test_login_user_invalid_csrf(browser: WebDriver):

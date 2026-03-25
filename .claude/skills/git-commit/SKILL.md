@@ -7,6 +7,16 @@ description: Stage and commit changes to git in one workflow with automatic pre-
 
 Streamline git commits by staging files, generating commit messages, and handling pre-commit hook failures automatically.
 
+## Branch Guard
+
+Before starting, check the current branch:
+1. If on `main` or `master`:
+   - Run `gmas` to ensure main is up to date
+   - Suggest a branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`)
+   - Ask the user: "You're on main. Want me to create and switch to `<suggested-branch>`?"
+   - Do NOT proceed until the user confirms and you've switched branches
+2. If already on a feature branch: proceed normally
+
 ## Workflow
 
 ### 1. Stage Files
@@ -36,6 +46,10 @@ Analyze the staged changes to craft a concise commit message (1-2 sentences) tha
 - Focuses on "why" rather than "what"
 - Follows the repository's existing commit message style
 - Uses appropriate prefix (add/update/fix/refactor/etc.) based on actual changes
+
+**Skill file handling**: Changes under `.claude/skills/` get special treatment:
+- If skill changes are mixed with other (non-skill) changes: stage and commit everything together, but **ignore the skill files when writing the commit message** — focus the message only on the non-skill changes.
+- If the **only** staged changes are skill files: treat them as the focus and write the commit message about the skill updates.
 
 ### 3. Create Commit
 
@@ -85,3 +99,4 @@ If the commit fails due to pre-commit hooks:
 - Never use `--no-verify` to bypass pre-commit hooks unless explicitly requested
 - If pre-commit failures require non-menial changes, report to user and ask for guidance
 - Verify commit success with `git status` after completion
+- All commits must be authored by `u4i-claude-code[bot]` — do not add any `Co-Authored-By` trailers

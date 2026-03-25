@@ -7,12 +7,11 @@ from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from backend import db
+from backend.api_common.request_errors import INVALID_EMAIL_STR
 from backend.models.forgot_passwords import Forgot_Passwords
 from backend.utils.constants import USER_CONSTANTS
 from backend.utils.datetime_utils import utc_now
-from backend.utils.strings.email_validation_strs import EMAILS_FAILURE
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import FAILURE_GENERAL
 from backend.utils.strings.reset_password_strs import (
     EMAIL_SENT_MESSAGE,
     FORGOT_PASSWORD,
@@ -221,7 +220,7 @@ def test_forgot_password_empty_field(browser: WebDriver):
 
     feedback_elem = wait_then_get_element(browser, SPL.SUBHEADER_INVALID_FEEDBACK, 3)
     assert feedback_elem is not None
-    assert feedback_elem.text == FAILURE_GENERAL.FIELD_REQUIRED_STR
+    assert feedback_elem.text == INVALID_EMAIL_STR
 
 
 def test_forgot_password_invalid_email(browser: WebDriver):
@@ -241,7 +240,7 @@ def test_forgot_password_invalid_email(browser: WebDriver):
 
     feedback_elem = wait_then_get_element(browser, SPL.SUBHEADER_INVALID_FEEDBACK, 3)
     assert feedback_elem is not None
-    assert feedback_elem.text == EMAILS_FAILURE.INVALID_EMAIL_INPUT
+    assert feedback_elem.text == INVALID_EMAIL_STR
 
 
 def test_forgot_password_unconfirmed_email(

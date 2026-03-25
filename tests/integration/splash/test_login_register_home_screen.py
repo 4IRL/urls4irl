@@ -63,10 +63,6 @@ def test_get_login_screen_not_logged_in(app_with_server_name, client):
             b'<input autocomplete="current-password" class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
             in response.data
         )
-        assert (
-            b'<input id="csrf_token" name="csrf_token" type="hidden" value='
-            in response.data
-        )
 
         assert request.path == url_for(ROUTES.SPLASH.LOGIN)
 
@@ -101,9 +97,6 @@ def test_get_register_screen_not_logged_in(app_with_server_name, client):
             b'<input autocomplete="new-password" class="form-control login-register-form-group" id="confirmPassword" name="confirmPassword" required type="password" value="">'
             in response.data
         )
-        assert (
-            b'<input id="csrf_token" name="csrf_token" type="hidden" value='
-            in response.data
-        )
+        assert b'<button id="submit"' in response.data
 
         assert request.path == url_for(ROUTES.SPLASH.REGISTER)

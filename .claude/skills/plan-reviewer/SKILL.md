@@ -1,12 +1,22 @@
 ---
-name: review-plan
-description: Review a plan file as a staff engineer, checking for inconsistencies, edge cases, technicalities, and integration with the existing codebase. Use when asked to review, critique, or audit a plan. The plan name is inferred from the argument (e.g., "/review-plan selenium-to-js-unit-tests"). Creates or updates a review document in the plans/reviews/ directory. Presents findings and a to-do list, then waits for user confirmation before making any changes.
+name: plan-reviewer
+description: Review a plan file as a staff engineer, checking for inconsistencies, edge cases, technicalities, and integration with the existing codebase. Use when asked to review, critique, or audit a plan. The plan name is inferred from the argument (e.g., "/plan-reviewer selenium-to-js-unit-tests"). Creates or updates a review document in the plans/reviews/ directory. Presents findings and a to-do list, then waits for user confirmation before making any changes.
 argument-hint: Plan-name
 ---
 
 # Plan Review Skill
 
 Adopt the role of a **staff engineer** performing a thorough code review of a planning document. Be critical, specific, and actionable.
+
+## Branch Guard
+
+Before starting, check the current branch:
+1. If on `main` or `master`:
+   - Run `gmas` to ensure main is up to date
+   - Suggest a branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`)
+   - Ask the user: "You're on main. Want me to create and switch to `<suggested-branch>`?"
+   - Do NOT proceed until the user confirms and you've switched branches
+2. If already on a feature branch: proceed normally
 
 ## Workflow
 
@@ -104,6 +114,11 @@ If the plan introduces new Python packages, flag any that:
 - Does each step have a clear way to verify success (a command to run, a behavior to observe)?
 - Are the verification steps in the plan actually sufficient to catch regressions?
 - Note any steps that lack verification and suggest what to add.
+- **Layer-match check (required):** For each verification step, confirm the test type exercises the layer the change affects. Common mismatches to flag as **Major**:
+  - Template/HTML changes (meta tags, conditional blocks, field IDs, hidden inputs) verified only by integration tests (`client.post()`/`client.get()`) — these bypass the browser; need UI tests or Playwright verification to confirm the rendered DOM is correct for all user states.
+  - JS behavior changes (AJAX serialization, failure handler branches, DOM reads) verified only by integration tests — need either JS unit tests (vitest) or UI/Selenium tests.
+  - Backend-only changes (service logic, DB queries, status codes) verified only by UI tests — integration tests are faster and more precise; UI tests should supplement, not replace.
+  If a step changes templates or JS and the only verification is `make test-marker-parallel`, flag it and recommend adding `make test-js` and/or the relevant `_ui` marker test.
 - **Final test suite phase (required for any plan touching code or tests):** The last phase must include `make test-integration-parallel` and `make test-ui-parallel-built`. Flag as **Critical** if either is missing.
 
 #### Implementation Specificity
@@ -222,7 +237,7 @@ When appending a new review pass and the current pass found findings that prior 
    - **Fix verification stopped at plan text**: A prior round proposed a fix, subsequent rounds confirmed the plan now "says X," but nobody re-read the actual source file to verify the fix's assumption holds in practice.
    - **Scoped too narrowly to plan-referenced code**: A review dimension (e.g., conditional guards, CSRF delivery, dead imports) was applied only to files/lines the plan explicitly touches, not to the broader system the plan depends on.
    - **Other**: Describe the root cause if none of the above fit.
-3. **Skill gap**: Does the miss reveal a gap in the review-plan skill's instructions? If so, state what instruction is missing or insufficiently specific. If existing instructions already cover it (the reviewer just didn't follow them), say so — the fix is emphasis, not new rules.
+3. **Skill gap**: Does the miss reveal a gap in the plan-reviewer skill's instructions? If so, state what instruction is missing or insufficiently specific. If existing instructions already cover it (the reviewer just didn't follow them), say so — the fix is emphasis, not new rules.
 
 **Format:**
 
@@ -234,7 +249,7 @@ When appending a new review pass and the current pass found findings that prior 
 | CSRF meta tag gated behind auth | Trusted plan assertion ("CSRF is already handled") + Incomplete file reads (`meta.html` never read) | Existing CSRF section covers this but is disconnected from main Per-Endpoint trace; integrate into item 2 |
 ```
 
-**How this feeds back:** After writing the root-cause table, check whether the skill gap column reveals a pattern. If the same root cause recurs across multiple reviews of different plans, propose a concrete addition or edit to the review-plan skill's instructions (in this SKILL.md) and present it to the user for approval. Do not self-modify the skill without user confirmation.
+**How this feeds back:** After writing the root-cause table, check whether the skill gap column reveals a pattern. If the same root cause recurs across multiple reviews of different plans, propose a concrete addition or edit to the plan-reviewer skill's instructions (in this SKILL.md) and present it to the user for approval. Do not self-modify the skill without user confirmation.
 
 ## Important Notes
 

@@ -16,6 +16,10 @@ urls4irl is a full-stack web app for managing shared collections of URLs called 
 
 Review files are stored at the project root level (`reviews/`), NOT under the `plans/` directory. Always look for `reviews/` at the repository root.
 
+### `.claude/` Directory
+
+Files under `.claude/` (skills, scripts, settings) may be committed and pushed on **any branch**, regardless of the branch topic. Always include `.claude/` changes alongside other work — never exclude them for being "unrelated."
+
 
 ## Development and Coding Practices
 
@@ -57,6 +61,14 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 ### Code Style
 
 This project is primarily Python with some JavaScript/HTML/CSS. When editing Python code, verify constant names, decorator types (`@model_validator` vs `@field_validator`), and imports against the actual codebase before making changes.
+
+### Import Ordering
+
+Imports are sorted into three groups, each alphabetized internally, separated by a blank line:
+
+1. Standard library modules
+2. Third-party modules
+3. Project modules (`backend.*`, `tests.*`, etc.)
 
 ### General
 

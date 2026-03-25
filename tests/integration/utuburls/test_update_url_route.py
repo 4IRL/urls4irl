@@ -19,7 +19,10 @@ from backend.urls.constants import URLErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import URL_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FIELD_REQUIRED_STR,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.url_strs import URL_FAILURE, URL_NO_CHANGE, URL_SUCCESS
 from tests.unit.test_url_validation import (
@@ -1453,9 +1456,7 @@ def test_update_valid_url_with_empty_url_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == URLErrorCodes.INVALID_FORM_INPUT
-    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == [
-        "String should have at least 1 character"
-    ]
+    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == [FIELD_REQUIRED_STR]
 
     with app.app_context():
         # Assert database is consistent after newly modified URL
@@ -1955,7 +1956,7 @@ def test_update_valid_url_with_missing_url_field_as_utub_creator(
     assert json_response[STD_JSON.STATUS] == STD_JSON.FAILURE
     assert json_response[STD_JSON.MESSAGE] == URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM
     assert int(json_response[STD_JSON.ERROR_CODE]) == URLErrorCodes.INVALID_FORM_INPUT
-    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == ["Field required"]
+    assert json_response[STD_JSON.ERRORS][URL_FORM.URL_STRING] == [FIELD_REQUIRED_STR]
 
     with app.app_context():
         # Assert database is consistent after newly modified URL

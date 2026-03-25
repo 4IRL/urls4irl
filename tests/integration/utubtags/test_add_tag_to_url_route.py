@@ -16,7 +16,10 @@ from backend.utils.strings.html_identifiers import IDENTIFIERS
 from tests.models_for_test import all_tag_strings
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.form_strs import TAG_FORM
-from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
+from backend.utils.strings.json_strs import (
+    FIELD_REQUIRED_STR,
+    STD_JSON_RESPONSE as STD_JSON,
+)
 from backend.utils.strings.model_strs import MODELS as MODEL_STRS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
 from tests.utils_for_test import count_tag_instances_in_utub, is_string_in_logs
@@ -1553,7 +1556,7 @@ def test_add_tag_to_valid_url_valid_utub_missing_tag_field(
         == URLTagErrorCodes.INVALID_FORM_INPUT
     )
     assert add_tag_response_json[STD_JSON.ERRORS][MODEL_STRS.TAG_STRING] == [
-        "Field required"
+        FIELD_REQUIRED_STR
     ]
 
     with app.app_context():

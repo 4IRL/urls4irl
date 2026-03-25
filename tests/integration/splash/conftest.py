@@ -12,7 +12,19 @@ from backend.models.users import Users
 from tests.utils_for_test import get_csrf_token
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings import model_strs, reset_password_strs
+from backend.utils.strings.splash_form_strs import REGISTER_FORM
 from tests.models_for_test import valid_user_1
+
+
+def register_json(user_data: dict) -> dict:
+    """Build the JSON payload for a register request from a user data dict."""
+    return {
+        REGISTER_FORM.USERNAME: user_data[REGISTER_FORM.USERNAME],
+        REGISTER_FORM.EMAIL: user_data[REGISTER_FORM.EMAIL],
+        REGISTER_FORM.CONFIRM_EMAIL: user_data[REGISTER_FORM.CONFIRM_EMAIL],
+        REGISTER_FORM.PASSWORD: user_data[REGISTER_FORM.PASSWORD],
+        REGISTER_FORM.CONFIRM_PASSWORD: user_data[REGISTER_FORM.CONFIRM_PASSWORD],
+    }
 
 
 @pytest.fixture
@@ -76,17 +88,17 @@ def user_attempts_reset_password(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
-    csrf_token = get_csrf_token(forgot_password_response.data)
+    splash_response = client.get("/")
+    csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)
 
     client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
+        json={
             reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[
                 reset_password_strs.FORGOT_PASSWORD.EMAIL
             ],
-            reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     with app.app_context():
@@ -133,17 +145,17 @@ def user_attempts_reset_password_one_hour_old(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
-    csrf_token = get_csrf_token(forgot_password_response.data)
+    splash_response = client.get("/")
+    csrf_token = get_csrf_token(splash_response.get_data(), meta_tag=True)
 
     client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),
-        data={
+        json={
             reset_password_strs.FORGOT_PASSWORD.EMAIL: new_user[
                 reset_password_strs.FORGOT_PASSWORD.EMAIL
             ],
-            reset_password_strs.FORGOT_PASSWORD.CSRF_TOKEN: csrf_token,
         },
+        headers={"X-CSRFToken": csrf_token},
     )
 
     with app.app_context():
