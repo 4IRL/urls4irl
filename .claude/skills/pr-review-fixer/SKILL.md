@@ -193,6 +193,29 @@ Collect all subagent results. If any subagent reports issues requiring user inpu
 - Explain why the fix cannot be automated
 - Do NOT proceed until the user responds
 
+### 6a. Run Related Tests Before Committing
+
+**If any changes were made to code-containing files** (Python `.py`, JavaScript `.js`, HTML templates `.html`, CSS `.css`), you **must** run related tests locally before committing.
+
+1. Identify which files were changed by the fix subagents (check `git diff --name-only`)
+2. Determine the relevant test markers based on the changed files:
+   - `backend/splash/` → `splash` (integration) + `splash_ui` (UI)
+   - `backend/templates/components/splash/` → `splash_ui`
+   - `frontend/splash/` → `splash_ui` + `test-js` (vitest)
+   - `backend/urls/` or `frontend/urls/` → `urls` + `urls_ui`
+   - `backend/tags/` or `frontend/tags/` → `tags` + `tags_ui`
+   - `backend/utubs/` or `frontend/utubs/` → `utubs` + `utubs_ui`
+   - `backend/members/` or `frontend/members/` → `members` + `members_ui`
+   - For other paths, use best judgment to pick the right markers
+3. Run integration tests first using `make test-marker-parallel m=<marker>`, then UI tests using `make test-marker-parallel m=<marker_ui>`. **Never run both simultaneously** — they share a single test DB.
+4. If tests fail:
+   - Investigate the failure and fix if straightforward
+   - If the fix requires design decisions, stop and inform the user
+   - Re-run tests after fixing to confirm they pass
+5. Only proceed to commit (Step 7) after all related tests pass
+
+**Skip this step** if the only changes are to non-code files (e.g., documentation, config, `.claude/` skill files).
+
 ### 7. Commit
 
 Invoke the `/git-commit` skill via the Skill tool. This handles staging, message generation, and pre-commit hooks automatically.
