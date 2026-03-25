@@ -231,12 +231,76 @@ EOF
 )"
 ```
 
-#### Request Review
+#### Apply Labels
 
-After creating or updating the PR, always request review from `GPropersi`:
+After creating or updating the PR, apply labels based on the diff content. Add **all labels that apply** — multiple labels are expected when changes span areas.
+
+Available labels and when to apply:
+
+| Label | Apply when the diff touches… |
+|---|---|
+| `backend` | Python code under `backend/` (routes, models, schemas, utils) |
+| `frontend` | JavaScript, HTML templates, CSS, or Vite config |
+| `database` | Migrations, model column changes, or `flask db` commands |
+| `testing` | Test files (`tests/`) or test infrastructure |
+| `Infrastructure` | Docker, CI/CD, Makefile, `.github/`, or deployment config |
+| `desktop` | Desktop-specific UI code or desktop UI tests |
+| `mobile` | Mobile-specific UI code or mobile UI tests |
+| `bug` | The change fixes a bug (use commit message/PR context to determine) |
+| `enhancement` | The change adds new functionality |
+| `documentation` | README, CLAUDE.md, ARCHITECTURE.md, or doc-only changes |
 
 ```bash
-GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --add-reviewer GPropersi
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --add-label "label1,label2,..."
+```
+
+#### Set Milestone
+
+After applying labels, set the appropriate milestone based on the nature and motivation behind the branch's changes. Choose **one** milestone:
+
+| Milestone | When to use |
+|---|---|
+| `Bugs` | The PR fixes a bug or corrects broken behavior |
+| `Maintenance` | Refactors, dependency updates, CI/CD changes, code cleanup, chore work — anything that improves the codebase without adding features or fixing bugs |
+| `MVP v2` | New features or enhancements beyond the original MVP |
+| `REH-ch goals` | Stretch/reach goals beyond MVP v2 |
+
+Use the commit messages, branch name, and PR context to determine the best fit. When in doubt between `Maintenance` and another milestone, prefer the more specific one.
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --milestone "<milestone title>"
+```
+
+#### Add to Project
+
+After setting the milestone, add the PR to the **"URLS4IRL -> Real Life"** org project (project ID: `PVT_kwDOCEIbTM4Ai9RV`).
+
+First, get the PR's node ID:
+
+```bash
+PR_NODE_ID=$(GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query='{ repository(owner: "4IRL", name: "urls4irl") { pullRequest(number: <PR_NUMBER>) { id } } }' --jq '.data.repository.pullRequest.id')
+```
+
+Then add it to the project and capture the item ID:
+
+```bash
+PROJECT_ITEM_ID=$(GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query="mutation { addProjectV2ItemById(input: { projectId: \"PVT_kwDOCEIbTM4Ai9RV\", contentId: \"$PR_NODE_ID\" }) { item { id } } }" --jq '.data.addProjectV2ItemById.item.id')
+```
+
+Then set the **Status** field to **"In progress"** (field ID: `PVTSSF_lADOCEIbTM4Ai9RVzgbZQoU`, option ID: `42a2e094`):
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query="mutation { updateProjectV2ItemFieldValue(input: { projectId: \"PVT_kwDOCEIbTM4Ai9RV\", itemId: \"$PROJECT_ITEM_ID\", fieldId: \"PVTSSF_lADOCEIbTM4Ai9RVzgbZQoU\", value: { singleSelectOptionId: \"42a2e094\" } }) { projectV2Item { id } } }"
+```
+
+This is idempotent — safe to run on PRs already in the project.
+
+#### Assign and Request Review
+
+After adding to the project, assign the PR to the GitHub App (`u4i-claude-code`) and request review from `GPropersi`:
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --add-assignee u4i-claude-code --add-reviewer GPropersi
 ```
 
 #### After PR Creation

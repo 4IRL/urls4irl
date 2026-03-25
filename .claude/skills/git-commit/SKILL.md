@@ -99,3 +99,4 @@ If the commit fails due to pre-commit hooks:
 - Never use `--no-verify` to bypass pre-commit hooks unless explicitly requested
 - If pre-commit failures require non-menial changes, report to user and ask for guidance
 - Verify commit success with `git status` after completion
+- All commits must be authored by `u4i-claude-code[bot]` — do not add any `Co-Authored-By` trailers
