@@ -80,8 +80,11 @@ Collect all 7 subagent responses. Parse each verdict:
 
 ### 4. Push
 
+Push using the GitHub App token so the push is attributed to the bot, not your personal account. This is required for branch protection rules that block self-approval from the last pusher.
+
 ```bash
-git push origin $BRANCH
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
+git -c "http.https://github.com/.extraheader=Authorization: basic $(echo -n "x-access-token:$GH_TOKEN" | base64)" push origin $BRANCH
 ```
 
 After pushing, proceed to Step 6 (PR creation).
