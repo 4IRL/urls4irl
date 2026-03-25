@@ -8,7 +8,7 @@
         </div>
     </div>
     <div class="modal-body">
-        {{ validate_email_form.hidden_tag() }}
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
         <p id="ValidateEmailText" class="validate-email-text">Your email address has not been validated. To complete
             your registration, <strong>check your inbox</strong> and click on the link we sent in the email. If you have
             not received
@@ -18,8 +18,6 @@
     <div class="modal-footer" id="EmailValidationFooter">
         <button type="button" class="btn btn-warning close-modal login-register-form-group center-block col-4"
             data-bs-dismiss="modal">Close</button>
-        {{ validate_email_form.submit(class="btn btn-success login-register-form-group login-register-buttons
-        center-block
-        col-8")}}
+        <button type="submit" id="submit" class="btn btn-success login-register-form-group login-register-buttons center-block col-8">Resend Validation Email</button>
     </div>
 </form>

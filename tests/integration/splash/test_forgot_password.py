@@ -2,6 +2,7 @@ from datetime import datetime, timedelta
 from flask import url_for
 import pytest
 
+from backend.api_common.request_errors import INVALID_EMAIL_STR
 from backend.models.utils import VerifyTokenResponse
 from backend.splash.utils import verify_token
 from backend.utils.strings.html_identifiers import IDENTIFIERS
@@ -155,8 +156,7 @@ def test_forgot_password_with_invalid_email_fails(load_login_page):
     assert int(response_json[STD_JSON.ERROR_CODE]) == 1
     assert response_json[STD_JSON.MESSAGE] == FORGOT_PASSWORD.INVALID_EMAIL
     assert (
-        response_json[STD_JSON.ERRORS][FORGOT_PASSWORD.EMAIL][-1]
-        == "Please enter a valid email address."
+        response_json[STD_JSON.ERRORS][FORGOT_PASSWORD.EMAIL][-1] == INVALID_EMAIL_STR
     )
 
 

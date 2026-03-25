@@ -195,7 +195,7 @@ class TestResetPasswordRequest:
         req = ResetPasswordRequest.model_validate(
             {"newPassword": "a" * 12, "confirmNewPassword": "a" * 12}
         )
-        assert req.newPassword == "a" * 12
+        assert req.new_password == "a" * 12
 
     def test_mismatched_passwords_raises(self):
         from backend.schemas.requests.splash import ResetPasswordRequest

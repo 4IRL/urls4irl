@@ -33,9 +33,6 @@ from backend.splash.constants import (
     RegisterErrorCodes,
     ResetPasswordErrorCodes,
 )
-from backend.splash.forms import (
-    ValidateEmailForm,
-)
 from backend.splash.services.forgot_password import (
     send_forgot_password_email_to_user,
 )
@@ -130,10 +127,7 @@ def confirm_email_after_register() -> WerkzeugResponse | str:
     if current_user.email_validated:
         warning_log(f"User={current_user.id} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
-    return render_template(
-        "components/splash/validate_email.html",
-        validate_email_form=ValidateEmailForm(),
-    )
+    return render_template("components/splash/validate_email.html")
 
 
 @splash.route("/send-validation-email", methods=["POST"])
@@ -163,7 +157,6 @@ def validate_email_expired():
     return (
         render_template(
             "pages/splash.html",
-            validate_email_form=ValidateEmailForm(),
             email_token_is_expired=True,
             expired_token_message=EMAILS.TOKEN_EXPIRED,
         ),
@@ -207,4 +200,4 @@ def reset_password_page(token: str) -> WerkzeugResponse | str:
 def reset_password(
     token: str, validated_request: ResetPasswordRequest
 ) -> FlaskResponse:
-    return reset_password_for_user(token, validated_request.newPassword)
+    return reset_password_for_user(token, validated_request.new_password)
