@@ -80,11 +80,11 @@ Collect all 7 subagent responses. Parse each verdict:
 
 ### 4. Push
 
-Push using the GitHub App token so the push is attributed to the bot, not your personal account. This is required for branch protection rules that block self-approval from the last pusher.
+Push using the GitHub App token over HTTPS so the push is attributed to the bot, not your personal account. This is required for branch protection rules that block self-approval from the last pusher. The repo remote uses SSH, so we must push to an explicit HTTPS URL with the token embedded.
 
 ```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
-git -c "http.https://github.com/.extraheader=Authorization: basic $(echo -n "x-access-token:$GH_TOKEN" | base64)" push origin $BRANCH
+git push "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
 ```
 
 After pushing, proceed to Step 6 (PR creation).
