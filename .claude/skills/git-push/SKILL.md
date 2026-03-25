@@ -233,7 +233,7 @@ EOF
 
 #### Apply Labels
 
-After creating or updating the PR, apply labels based on the diff content. Add **all labels that apply** — multiple labels are expected when changes span areas.
+After creating or updating the PR, apply labels based on **all changes on the branch** (the full `origin/main...HEAD` diff, not just the latest push). Add **all labels that apply** — multiple labels are expected when changes span areas.
 
 Available labels and when to apply:
 
@@ -256,7 +256,7 @@ GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER
 
 #### Set Milestone
 
-After applying labels, set the appropriate milestone based on the nature and motivation behind the branch's changes. Choose **one** milestone:
+After applying labels, set the appropriate milestone based on the nature and motivation behind **all changes on the branch** (not just the latest push). Choose **one** milestone:
 
 | Milestone | When to use |
 |---|---|
@@ -297,10 +297,18 @@ This is idempotent — safe to run on PRs already in the project.
 
 #### Assign and Request Review
 
-After adding to the project, assign the PR to the GitHub App (`u4i-claude-code`) and request review from `GPropersi`:
+After adding to the project, assign the GitHub App as assignee via GraphQL (bot accounts can't be assigned via `gh pr edit --add-assignee`), then request review from `GPropersi`.
+
+Assign the bot (node ID: `BOT_kgDOCHBJTA`) using the PR node ID obtained earlier:
 
 ```bash
-GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --add-assignee u4i-claude-code --add-reviewer GPropersi
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh api graphql -f query='mutation { addAssigneesToAssignable(input: { assignableId: "'"$PR_NODE_ID"'", assigneeIds: ["BOT_kgDOCHBJTA"] }) { assignable { ... on PullRequest { number } } } }'
+```
+
+Then request review:
+
+```bash
+GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh) gh pr edit <PR_NUMBER> --add-reviewer GPropersi
 ```
 
 #### After PR Creation
