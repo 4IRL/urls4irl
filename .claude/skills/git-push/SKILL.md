@@ -84,7 +84,7 @@ Push using the GitHub App token over HTTPS so the push is attributed to the bot,
 
 ```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
-git push "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
+git -c credential.helper="" push "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
 ```
 
 After pushing, proceed to Step 6 (PR creation).
