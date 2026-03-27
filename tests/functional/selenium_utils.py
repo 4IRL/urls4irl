@@ -619,6 +619,25 @@ def dismiss_modal_with_click_out(
     action.perform()
 
 
+def wait_for_modal_hidden(
+    browser: WebDriver, modal_selector: str, timeout: int = 10
+) -> None:
+    """Wait for Bootstrap modal to be fully hidden"""
+    wait = WebDriverWait(browser, timeout)
+    modal = wait.until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, modal_selector))
+    )
+
+    def modal_class_lacks_show(_driver):
+        try:
+            return "show" not in modal.get_attribute("class")
+        except StaleElementReferenceException:
+            return False
+
+    wait.until(modal_class_lacks_show)
+    wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
+
+
 # UTub Deck
 def select_utub_by_name(browser: WebDriver, utub_name: str):
     """
