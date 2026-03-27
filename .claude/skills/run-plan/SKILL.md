@@ -64,9 +64,9 @@ The main agent reads the subagent's report and decides:
 - The step's plan instructions were ambiguous
 - The plan's `finished` flag was set to `true` (all steps done)
 
-#### 2c. Commit (main agent)
+#### 2c. Commit (via subagent)
 
-The main agent creates a commit with a descriptive message referencing the plan step name.
+Launch a separate subagent to commit the step's changes using `/git-commit`. The commit subagent handles staging, message generation, and pre-commit hook failures autonomously.
 
 #### 2d. Progress Report
 
@@ -109,8 +109,8 @@ If the final test suite reveals failures, report them and stop for user guidance
 ## Important Notes
 
 - **Main agent is orchestrator only** — never directly edit implementation files, run tests, or make code changes. Delegate everything to subagents running `/next-step-taker`.
-- **Main agent CAN**: read the plan, run `git diff --name-only`, create commits, re-read the plan between steps, and report progress.
+- **Main agent CAN**: read the plan, run `git diff --name-only`, spawn subagents (execution + commit), re-read the plan between steps, and report progress.
 - **Each subagent runs the full /next-step-taker workflow** — including its own validation and review sub-subagents. The main agent does not duplicate that work.
-- **Auto-commits use descriptive messages** — reference the plan step name.
+- **Commits are delegated to `/git-commit` subagents** — never commit directly from the main agent.
 - If a step modifies the plan itself (e.g., adds sub-steps), the main agent re-reads the plan before continuing.
 - When stopping on a blocker, report: which step failed, what was tried, what needs user input.

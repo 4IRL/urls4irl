@@ -76,27 +76,30 @@ def test_user_registered_not_email_validated_cannot_access_forgot_password(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE), follow_redirects=True
     )
 
-    # Only one redirect to user home page
-    assert len(forgot_password_response.history) == 1
-    redirect_response = forgot_password_response.history[0]
-
-    assert redirect_response.location == url_for(ROUTES.SPLASH.CONFIRM_EMAIL)
-    assert redirect_response.status_code == 302
+    # Two redirects: /forgot-password -> /confirm-email -> /
+    assert len(forgot_password_response.history) == 2
+    assert forgot_password_response.history[0].status_code == 302
+    assert forgot_password_response.history[0].location == url_for(
+        ROUTES.SPLASH.CONFIRM_EMAIL
+    )
+    assert forgot_password_response.history[1].status_code == 302
+    assert forgot_password_response.history[1].location == url_for(
+        ROUTES.SPLASH.SPLASH_PAGE
+    )
 
 
 def test_valid_user_requests_forgot_password_form(register_first_user, load_login_page):
     """
     GIVEN a user who is not logged in but is email validated and registered
-    WHEN they try to make a GET to the /forgot-password URL
-    THEN server successfully sends the user the forgot password form and responds with
-        200 status code
+    WHEN they visit the splash page
+    THEN the splash page contains the pre-rendered forgot password form HTML
     """
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
+    splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
-    assert forgot_password_response.status_code == 200
-    assert FORGOT_PASSWORD_MODAL_TITLE.encode() in forgot_password_response.data
+    assert splash_response.status_code == 200
+    assert FORGOT_PASSWORD_MODAL_TITLE.encode() in splash_response.data
 
 
 def test_valid_user_posts_forgot_password_form_without_csrf(
@@ -110,7 +113,7 @@ def test_valid_user_posts_forgot_password_form_without_csrf(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
+    client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
     forgot_password_post_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),

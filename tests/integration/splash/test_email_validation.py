@@ -102,8 +102,12 @@ def test_registered_not_email_validated_user_access_register_login(load_register
 
     for url in urls_to_check:
         response = client.get(url, follow_redirects=True)
+        # 2-hop redirect: /login or /register -> /confirm-email -> /
+        assert len(response.history) == 2
         assert response.history[0].status_code == 302
         assert response.history[0].location == url_for(ROUTES.SPLASH.CONFIRM_EMAIL)
+        assert response.history[1].status_code == 302
+        assert response.history[1].location == url_for(ROUTES.SPLASH.SPLASH_PAGE)
         assert response.status_code == 200
         assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
 

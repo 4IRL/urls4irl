@@ -48,14 +48,18 @@ def test_get_login_screen_not_logged_in(app_with_server_name, client):
     """
     GIVEN a fresh user to the website who isn't logged in
     WHEN "/login" is requested (GET)
-    THEN ensure page contains Login form data, and successful page load
+    THEN ensure redirect to splash page (302) and splash page contains login form HTML
     """
     with client:
         with app_with_server_name.app_context():
-            response = client.get(url_for(ROUTES.SPLASH.LOGIN))
+            response = client.get(url_for(ROUTES.SPLASH.LOGIN), follow_redirects=True)
 
+        # Redirects from /login to splash page
+        assert len(response.history) == 1
+        assert response.history[0].status_code == 302
         assert response.status_code == 200
 
+        # Splash page contains pre-rendered login form HTML
         login_input_html = f'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
 
         assert login_input_html.encode() in response.data
@@ -64,21 +68,27 @@ def test_get_login_screen_not_logged_in(app_with_server_name, client):
             in response.data
         )
 
-        assert request.path == url_for(ROUTES.SPLASH.LOGIN)
+        assert request.path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
 
 
 def test_get_register_screen_not_logged_in(app_with_server_name, client):
     """
     GIVEN a fresh user to the website who isn't logged in
     WHEN "/register" is requested (GET)
-    THEN ensure page contains Register form data, and successful page load
+    THEN ensure redirect to splash page (302) and splash page contains register form HTML
     """
     with client:
         with app_with_server_name.app_context():
-            response = client.get(url_for(ROUTES.SPLASH.REGISTER))
+            response = client.get(
+                url_for(ROUTES.SPLASH.REGISTER), follow_redirects=True
+            )
 
+        # Redirects from /register to splash page
+        assert len(response.history) == 1
+        assert response.history[0].status_code == 302
         assert response.status_code == 200
 
+        # Splash page contains pre-rendered register form HTML
         assert (
             b'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="20" minlength="3" name="username" required type="text" value="">'
             in response.data
@@ -99,4 +109,4 @@ def test_get_register_screen_not_logged_in(app_with_server_name, client):
         )
         assert b'<button id="submit"' in response.data
 
-        assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+        assert request.path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
