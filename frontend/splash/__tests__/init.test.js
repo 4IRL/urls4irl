@@ -5,6 +5,7 @@ import {
   showSplashModalAlertBanner,
   hideSplashModalAlertBanner,
   handleUserHasAccountNotEmailValidated,
+  emailValidationModalOpener,
 } from "../init.js";
 import { initEmailValidationForm } from "../email-validation-form.js";
 
@@ -439,5 +440,159 @@ describe("handleUserHasAccountNotEmailValidated", () => {
     $("#EmailValidationModal").trigger("hide.bs.modal");
     expect(ajaxGetSpy).toHaveBeenCalledWith("/logout");
     expect(window.location.replace).toHaveBeenCalledWith("/");
+  });
+});
+
+describe("emailValidationModalOpener", () => {
+  beforeEach(() => {
+    document.body.innerHTML = MODAL_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("calls switchModal from source to EmailValidationModal", () => {
+    const mockFromModal = { hide: vi.fn() };
+    const mockToModal = { show: vi.fn() };
+    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(
+      mockFromModal,
+    );
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue(
+      mockToModal,
+    );
+
+    emailValidationModalOpener("#RegisterModal");
+
+    expect(mockFromModal.hide).toHaveBeenCalled();
+  });
+
+  it("calls initEmailValidationForm with EmailValidationModal and sendInitialEmail=true", () => {
+    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
+      show: vi.fn(),
+    });
+
+    emailValidationModalOpener("#RegisterModal");
+
+    expect(initEmailValidationForm).toHaveBeenCalledWith(
+      expect.any(Object),
+      true,
+    );
+  });
+
+  it("registers a one-time hide.bs.modal logout handler on EmailValidationModal", () => {
+    vi.spyOn(window.bootstrap.Modal, "getInstance").mockReturnValue(null);
+    vi.spyOn(window.bootstrap.Modal, "getOrCreateInstance").mockReturnValue({
+      show: vi.fn(),
+    });
+    const ajaxGetSpy = vi.spyOn($, "get").mockReturnValue({
+      always: vi.fn((callback) => {
+        callback();
+        return { always: vi.fn() };
+      }),
+    });
+    vi.spyOn(window.location, "replace").mockImplementation(() => {});
+
+    emailValidationModalOpener("#RegisterModal");
+
+    // Trigger hide on EmailValidationModal
+    $("#EmailValidationModal").trigger("hide.bs.modal");
+
+    expect(ajaxGetSpy).toHaveBeenCalledWith("/logout");
+    expect(window.location.replace).toHaveBeenCalledWith("/");
+  });
+});
+
+describe("show.bs.modal reset handlers", () => {
+  beforeEach(() => {
+    document.body.innerHTML = MODAL_HTML;
+    vi.clearAllMocks();
+  });
+
+  afterEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("login form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
+    const { initLoginForm } = await vi.importActual("../login-form.js");
+    const $modal = $("#LoginModal");
+
+    // Add some invalid state
+    $modal.find(".form-control").addClass("is-invalid");
+    $modal.find("#username").after('<div class="invalid-feedback">Error</div>');
+    const banner = $modal.find("#SplashModalAlertBanner");
+    banner
+      .removeClass("alert-banner-splash-modal-hide")
+      .addClass("alert-banner-splash-modal-display alert-danger");
+
+    initLoginForm($modal);
+    $modal.trigger("show.bs.modal");
+
+    expect($modal.find(".invalid-feedback").length).toBe(0);
+    expect($modal.find(".form-control.is-invalid").length).toBe(0);
+    expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
+    expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
+  });
+
+  it("register form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
+    const { initRegisterForm } = await vi.importActual("../register-form.js");
+    const $modal = $("#RegisterModal");
+
+    $modal.find(".form-control").addClass("is-invalid");
+    $modal.find("#username").after('<div class="invalid-feedback">Error</div>');
+    const banner = $modal.find("#SplashModalAlertBanner");
+    banner
+      .removeClass("alert-banner-splash-modal-hide")
+      .addClass("alert-banner-splash-modal-display alert-danger");
+
+    initRegisterForm($modal);
+    $modal.trigger("show.bs.modal");
+
+    expect($modal.find(".invalid-feedback").length).toBe(0);
+    expect($modal.find(".form-control.is-invalid").length).toBe(0);
+    expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
+    expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
+  });
+
+  it("forgot password form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
+    const { initForgotPasswordForm } = await vi.importActual(
+      "../forgot-password-form.js",
+    );
+    const $modal = $("#ForgotPasswordModal");
+
+    $modal.find(".form-control").addClass("is-invalid");
+    $modal.find("#email").after('<div class="invalid-feedback">Error</div>');
+    const banner = $modal.find("#SplashModalAlertBanner");
+    banner
+      .removeClass("alert-banner-splash-modal-hide")
+      .addClass("alert-banner-splash-modal-display alert-danger");
+
+    initForgotPasswordForm($modal);
+    $modal.trigger("show.bs.modal");
+
+    expect($modal.find(".invalid-feedback").length).toBe(0);
+    expect($modal.find(".form-control.is-invalid").length).toBe(0);
+    expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
+    expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
+  });
+
+  it("email validation form show.bs.modal removes invalid-feedback and is-invalid, hides alert banner", async () => {
+    const { initEmailValidationForm: realInit } = await vi.importActual(
+      "../email-validation-form.js",
+    );
+    const $modal = $("#EmailValidationModal");
+
+    const banner = $modal.find("#SplashModalAlertBanner");
+    banner
+      .removeClass("alert-banner-splash-modal-hide")
+      .addClass("alert-banner-splash-modal-display alert-danger");
+
+    realInit($modal, false);
+    $modal.trigger("show.bs.modal");
+
+    expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
+    expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
   });
 });
