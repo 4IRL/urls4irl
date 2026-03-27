@@ -1,5 +1,6 @@
 import { $, bootstrap } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
   hideSplashModalAlertBanner,
@@ -72,8 +73,9 @@ function handleResetPasswordFailure(xhr, _, error, $modal) {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
-        case 403: {
-          $("body").html(xhr.responseText);
+        case 403:
+        case 429: {
+          showNewPageOnAJAXHTMLResponse(xhr.responseText);
           return;
         }
       }

@@ -218,23 +218,6 @@ class SplashPageLocators(GenericPageLocator):
     NAVBAR_REGISTER = ".nav-bar-inner-item > .to-register"
     NAVBAR_LOGIN = ".nav-bar-inner-item > .to-login"
 
-    # Common
-    INPUT_USERNAME = "#username"
-    INPUT_PASSWORD = "#password"
-    BUTTON_SUBMIT = "#submit"
-
-    # Register
-    INPUT_EMAIL = "#email"
-    INPUT_EMAIL_CONFIRM = "#confirmEmail"
-    INPUT_PASSWORD_CONFIRM = "#confirmPassword"
-    BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"
-    HEADER_VALIDATE_EMAIL = ".validate-email-title"
-
-    # Login
-    BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"
-
-    BUTTON_LOGIN_FROM_FORGOT_PASSWORD = "#ToLoginFromForgotPassword"
-
     # Per-form modal locators
     LOGIN_MODAL = "#LoginModal"
     REGISTER_MODAL = "#RegisterModal"
@@ -244,15 +227,66 @@ class SplashPageLocators(GenericPageLocator):
     # Keep SPLASH_MODAL for reset password and email validation expired flows
     SPLASH_MODAL = "#SplashModal"
 
+    # Unscoped common selectors (use for reset password / single-modal pages)
+    INPUT_USERNAME = "#username"
+    INPUT_PASSWORD = "#password"
+    INPUT_EMAIL = "#email"
+    INPUT_EMAIL_CONFIRM = "#confirmEmail"
+    INPUT_PASSWORD_CONFIRM = "#confirmPassword"
+    BUTTON_SUBMIT = "#submit"
+
+    # Login modal scoped selectors
+    LOGIN_INPUT_USERNAME = f"{LOGIN_MODAL} #username"
+    LOGIN_INPUT_PASSWORD = f"{LOGIN_MODAL} #password"
+    LOGIN_BUTTON_SUBMIT = f"{LOGIN_MODAL} #submit"
+    LOGIN_INVALID_FEEDBACK = f"{LOGIN_MODAL} .invalid-feedback"
+
+    # Register modal scoped selectors
+    REGISTER_INPUT_USERNAME = f"{REGISTER_MODAL} #username"
+    REGISTER_INPUT_PASSWORD = f"{REGISTER_MODAL} #password"
+    REGISTER_INPUT_EMAIL = f"{REGISTER_MODAL} #email"
+    REGISTER_INPUT_EMAIL_CONFIRM = f"{REGISTER_MODAL} #confirmEmail"
+    REGISTER_INPUT_PASSWORD_CONFIRM = f"{REGISTER_MODAL} #confirmPassword"
+    REGISTER_BUTTON_SUBMIT = f"{REGISTER_MODAL} #submit"
+    REGISTER_INVALID_FEEDBACK = f"{REGISTER_MODAL} .invalid-feedback"
+    REGISTER_BTN_CLOSE = f"{REGISTER_MODAL} .btn-close"
+
+    # Forgot password modal scoped selectors
+    FORGOT_PASSWORD_INPUT_EMAIL = f"{FORGOT_PASSWORD_MODAL} #email"
+    FORGOT_PASSWORD_BUTTON_SUBMIT = f"{FORGOT_PASSWORD_MODAL} #submit"
+    FORGOT_PASSWORD_INVALID_FEEDBACK = f"{FORGOT_PASSWORD_MODAL} .invalid-feedback"
+    FORGOT_PASSWORD_BTN_CLOSE = f"{FORGOT_PASSWORD_MODAL} .btn-close"
+
+    # Email validation modal scoped selectors
+    EMAIL_VALIDATION_BUTTON_SUBMIT = f"{EMAIL_VALIDATION_MODAL} #submit"
+
+    # Reset password (uses #SplashModal — only modal on page, no scoping needed)
+    RESET_PASSWORD_BUTTON_SUBMIT = f"{SPLASH_MODAL} #submit"
+    RESET_PASSWORD_INVALID_FEEDBACK = f"{SPLASH_MODAL} .invalid-feedback"
+
+    # Register
+    BUTTON_LOGIN_FROM_REGISTER = "#ToLoginFromRegister"
+    HEADER_VALIDATE_EMAIL = ".validate-email-title"
+
+    # Login
+    BUTTON_REGISTER_FROM_LOGIN = "#ToRegisterFromLogin"
+
+    BUTTON_LOGIN_FROM_FORGOT_PASSWORD = "#ToLoginFromForgotPassword"
+
     # Alert banner (scoped to visible modal via compound selector)
-    LOGIN_MODAL_ALERT = "#LoginModal #SplashModalAlertBanner"
-    REGISTER_MODAL_ALERT = "#RegisterModal #SplashModalAlertBanner"
-    FORGOT_PASSWORD_MODAL_ALERT = "#ForgotPasswordModal #SplashModalAlertBanner"
-    EMAIL_VALIDATION_MODAL_ALERT = "#EmailValidationModal #SplashModalAlertBanner"
-    SPLASH_MODAL_ALERT = "#SplashModalAlertBanner"
+    LOGIN_MODAL_ALERT = f"{LOGIN_MODAL} #SplashModalAlertBanner"
+    REGISTER_MODAL_ALERT = f"{REGISTER_MODAL} #SplashModalAlertBanner"
+    FORGOT_PASSWORD_MODAL_ALERT = f"{FORGOT_PASSWORD_MODAL} #SplashModalAlertBanner"
+    EMAIL_VALIDATION_MODAL_ALERT = f"{EMAIL_VALIDATION_MODAL} #SplashModalAlertBanner"
+    SPLASH_MODAL_ALERT = "#SplashModal #SplashModalAlertBanner"
 
     BUTTON_X_MODAL_DISMISS = ".close-register-login-modal"
     BUTTON_FORGOT_PASSWORD_MODAL = ".to-forgot-password"
+
+    # Modal-scoped dismiss buttons
+    LOGIN_BTN_CLOSE = f"{LOGIN_MODAL} .btn-close"
+    LOGIN_X_MODAL_DISMISS = f"{LOGIN_MODAL} .close-register-login-modal"
+    REGISTER_X_MODAL_DISMISS = f"{REGISTER_MODAL} .close-register-login-modal"
 
     # Jumbotron
     WELCOME_TEXT = "#splash-major-text"

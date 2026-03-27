@@ -1,5 +1,6 @@
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
+import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
   handleImproperFormErrors,
@@ -20,6 +21,12 @@ export function initForgotPasswordForm($modal) {
   $modal
     .find("#submit")
     .offAndOn("click", (event) => handleForgotPassword(event, $modal));
+
+  $modal.on("show.bs.modal", () => {
+    $modal.find(".invalid-feedback").remove();
+    $modal.find(".form-control").removeClass("is-invalid");
+    $modal.find("#SplashModalAlertBanner").addClass("d-none");
+  });
 }
 
 function handleForgotPassword(event, $modal) {
@@ -64,8 +71,9 @@ function handleForgotPasswordFailure(xhr, _, error, $modal) {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
-        case 403: {
-          $("body").html(xhr.responseText);
+        case 403:
+        case 429: {
+          showNewPageOnAJAXHTMLResponse(xhr.responseText);
           return;
         }
       }

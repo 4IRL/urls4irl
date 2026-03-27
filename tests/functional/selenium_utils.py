@@ -241,10 +241,15 @@ def wait_until_hidden(
     try:
         element = browser.find_element(By.CSS_SELECTOR, css_selector)
     except NoSuchElementException:
+        # Element not in DOM (e.g. page navigated away) — treat as hidden
         return None
-    WebDriverWait(browser, timeout).until(
-        EC.invisibility_of_element_located((By.CSS_SELECTOR, css_selector))
-    )
+    try:
+        WebDriverWait(browser, timeout).until(
+            EC.invisibility_of_element_located((By.CSS_SELECTOR, css_selector))
+        )
+    except (NoSuchElementException, StaleElementReferenceException):
+        # Element was removed during wait (e.g. page navigated) — treat as hidden
+        return None
     return element
 
 
@@ -506,8 +511,8 @@ def login_user_ui(
 
     wait_for_modal_ready(browser, SPL.LOGIN_MODAL)
 
-    wait_for_element_presence(browser, SPL.INPUT_USERNAME)
-    wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME)
+    wait_for_element_presence(browser, SPL.LOGIN_INPUT_USERNAME)
+    wait_until_visible_css_selector(browser, SPL.LOGIN_INPUT_USERNAME)
 
     return input_login_fields(browser, username, password)
 
@@ -518,11 +523,11 @@ def input_login_fields(
     password: str = UTS.TEST_PASSWORD_1,
 ):
     # Input login details
-    username_input = wait_then_get_element(browser, SPL.INPUT_USERNAME)
+    username_input = wait_then_get_element(browser, SPL.LOGIN_INPUT_USERNAME)
     assert username_input is not None
     clear_then_send_keys(username_input, username)
 
-    password_input = wait_then_get_element(browser, SPL.INPUT_PASSWORD)
+    password_input = wait_then_get_element(browser, SPL.LOGIN_INPUT_PASSWORD)
     assert password_input is not None
     clear_then_send_keys(password_input, password)
 
@@ -598,9 +603,11 @@ def wait_for_modal_hidden(
     wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
 
 
-def dismiss_modal_with_click_out(browser: WebDriver):
+def dismiss_modal_with_click_out(
+    browser: WebDriver, modal_selector: str = MP.ELEMENT_MODAL
+):
     action = ActionChains(browser)
-    modal_element = wait_then_get_element(browser, MP.ELEMENT_MODAL)
+    modal_element = wait_then_get_element(browser, modal_selector)
     assert modal_element is not None
     width = modal_element.rect["width"]
     height = modal_element.rect["height"]

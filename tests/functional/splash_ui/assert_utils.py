@@ -26,7 +26,7 @@ def assert_forgot_password_submission(browser: WebDriver):
 
     assert modal_alert.text == EMAIL_SENT_MESSAGE
 
-    submit_btn = wait_then_get_element(browser, SPL.BUTTON_SUBMIT)
+    submit_btn = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT)
     assert submit_btn is not None
 
     assert submit_btn.get_attribute("disabled")

@@ -104,6 +104,7 @@ export function hideSplashModalAlertBanner($modal) {
 export function showSplashModalAlertBanner($modal, message, category) {
   $modal
     .find("#SplashModalAlertBanner")
+    .removeClass("d-none")
     .removeClass("alert-banner-splash-modal-hide")
     .removeClassStartingWith("alert-")
     .addClass("alert-" + category)
@@ -128,6 +129,7 @@ export function handleUserHasAccountNotEmailValidated(
   $sourceModal.find(".to-forgot-password").remove();
   const alertBanner = $sourceModal.find("#SplashModalAlertBanner");
   alertBanner
+    .removeClass("d-none")
     .removeClass("alert-banner-splash-modal-hide")
     .addClass("alert-info alert-banner-splash-modal-show")
     .append($("<div>" + message + "</div>"))

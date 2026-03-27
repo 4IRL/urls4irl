@@ -11,7 +11,6 @@ from backend.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import assert_login
-from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.splash_ui.selenium_utils import register_user_ui
 from tests.functional.selenium_utils import (
@@ -111,7 +110,7 @@ def test_email_validation_rate_limits(browser: ChromeRemoteWebDriver):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Await response
     modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL, time=3)
@@ -125,7 +124,7 @@ def test_email_validation_rate_limits(browser: ChromeRemoteWebDriver):
     assert alert_modal_banner.text == EMAILS.EMAIL_SENT
 
     # Clicking within 60 seconds will rate limit
-    browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
+    browser.find_element(By.CSS_SELECTOR, SPL.EMAIL_VALIDATION_BUTTON_SUBMIT).click()
     alert_modal_banner = wait_then_get_element(
         browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=3
     )
@@ -146,7 +145,7 @@ def test_authenticated_not_validated_user_sees_email_validation_modal(
     # Login with unvalidated user — this authenticates the session even though
     # the server returns 401 for unvalidated email
     login_user_ui(browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1)
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
     # Wait for the login modal alert showing unconfirmed email error
     login_alert = wait_then_get_element(browser, SPL.LOGIN_MODAL_ALERT, time=5)
@@ -164,7 +163,8 @@ def test_authenticated_not_validated_user_sees_email_validation_modal(
     assert modal_element.is_displayed()
 
     # Close the modal — this should trigger logout via logoutOnExit
-    wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
+    email_validation_btn_close = f"{SPL.EMAIL_VALIDATION_MODAL} .btn-close"
+    wait_then_click_element(browser, email_validation_btn_close)
     wait_until_hidden(browser, SPL.EMAIL_VALIDATION_MODAL)
 
     # After logout, user should be redirected to splash page as anonymous

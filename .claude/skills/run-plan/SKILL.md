@@ -81,7 +81,7 @@ Then re-read the plan to check for any modifications the subagent made, and loop
 
 When all steps are done or the plan is marked finished:
 
-1. Run the full test suite via subagent (`make test-integration-parallel` then `make test-ui-parallel-built` — sequentially, never simultaneously)
+1. **Launch a subagent** to run the full test suite (`make test-integration-parallel` then `make test-ui-parallel-built` — sequentially, never simultaneously). The main agent MUST NOT run tests directly — always delegate to a subagent.
 2. Report final summary:
 
 ```
@@ -108,8 +108,8 @@ If the final test suite reveals failures, report them and stop for user guidance
 
 ## Important Notes
 
-- **Main agent is orchestrator only** — never directly edit implementation files, run tests, or make code changes. Delegate everything to subagents running `/next-step-taker`.
-- **Main agent CAN**: read the plan, run `git diff --name-only`, spawn subagents (execution + commit), re-read the plan between steps, and report progress.
+- **Main agent is orchestrator only** — never directly edit implementation files, run tests, run make commands, or make code changes. ALL execution (code changes, tests, builds, make targets) MUST be delegated to subagents. This includes the final test suite in Step 3.
+- **Main agent CAN**: read the plan, run `git diff --name-only`, spawn subagents (execution + commit + tests), re-read the plan between steps, and report progress.
 - **Each subagent runs the full /next-step-taker workflow** — including its own validation and review sub-subagents. The main agent does not duplicate that work.
 - **Commits are delegated to `/git-commit` subagents** — never commit directly from the main agent.
 - If a step modifies the plan itself (e.g., adds sub-steps), the main agent re-reads the plan before continuing.

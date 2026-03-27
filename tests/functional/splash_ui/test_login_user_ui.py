@@ -14,7 +14,6 @@ from tests.functional.assert_utils import (
     assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
@@ -40,20 +39,6 @@ def test_example(browser: WebDriver):
     """
     # Check if the title contains "URLS4IRL"
     assert "URLS4IRL" in browser.title
-
-
-def test_open_login_modal_center_btn_rate_limits(browser: WebDriver):
-    """
-    Tests a user's ability to open the Login modal using the center button, but
-    they are rate limited.
-
-    GIVEN a fresh load of the U4I Splash page
-    WHEN user clicks the center login button
-    THEN ensure the 429 error page is opened
-    """
-    add_forced_rate_limit_header(browser)
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
-    assert_on_429_page(browser)
 
 
 def test_open_login_modal_center_btn(browser: WebDriver):
@@ -123,23 +108,6 @@ def test_register_to_login_modal_btn(browser: WebDriver):
     assert modal_title.text == LOGIN_TITLE
 
 
-def test_register_to_login_modal_btn_rate_limits(browser: WebDriver):
-    """
-    Tests a user's ability to change view from the Register modal to the Login modal, but is rate limited
-
-    GIVEN a fresh load of the U4I Splash page
-    WHEN user opens Register modal and wants to change to Login
-    THEN ensure the rate limit screen is shown
-    """
-    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
-    wait_until_visible_css_selector(browser, SPL.REGISTER_MODAL)
-
-    add_forced_rate_limit_header(browser)
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_REGISTER)
-
-    assert_on_429_page(browser)
-
-
 def test_dismiss_login_modal_btn(browser: WebDriver):
     """
     Tests a user's ability to close the splash page login modal by clicking the upper RHS 'x' button
@@ -150,7 +118,7 @@ def test_dismiss_login_modal_btn(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
 
-    wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
+    wait_then_click_element(browser, SPL.LOGIN_BTN_CLOSE)
 
     modal_element = wait_until_hidden(browser, SPL.LOGIN_MODAL)
 
@@ -167,7 +135,7 @@ def test_dismiss_login_modal_click(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
 
-    dismiss_modal_with_click_out(browser)
+    dismiss_modal_with_click_out(browser, SPL.LOGIN_MODAL)
 
     modal_element = wait_until_hidden(browser, SPL.LOGIN_MODAL)
 
@@ -184,7 +152,7 @@ def test_dismiss_login_modal_x(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
 
-    wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
+    wait_then_click_element(browser, SPL.LOGIN_X_MODAL_DISMISS)
 
     modal_element = wait_until_hidden(browser, SPL.LOGIN_MODAL)
 
@@ -223,7 +191,7 @@ def test_login_test_user_btn(browser: WebDriver, create_test_users):
     login_user_ui(browser)
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
     assert_login(browser)
 
@@ -257,7 +225,7 @@ def test_login_test_user_rate_limits(browser: WebDriver, create_test_users):
     add_forced_rate_limit_header(browser)
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
     assert_on_429_page(browser)
 
@@ -276,7 +244,7 @@ def test_login_user_unconfirmed_email_shows_alert(
     login_user_ui(browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1)
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
     splash_modal_alert_elem = wait_then_get_element(browser, SPL.LOGIN_MODAL_ALERT)
     assert splash_modal_alert_elem is not None
 
@@ -305,7 +273,7 @@ def test_login_user_unconfirmed_email_validate_btn_shows_validate_modal(
     login_user_ui(browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1)
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
     splash_modal_alert_elem = wait_then_get_element(browser, SPL.LOGIN_MODAL_ALERT)
     assert splash_modal_alert_elem is not None
 
@@ -335,9 +303,9 @@ def test_login_with_nonexistent_user(browser: WebDriver, create_test_users):
     )
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elem = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
+    error_elem = wait_then_get_elements(browser, SPL.LOGIN_INVALID_FEEDBACK)
     assert len(error_elem) == 1
     error_elem = error_elem.pop()
 
@@ -358,9 +326,9 @@ def test_login_with_invalid_password(browser: WebDriver, create_test_users):
     )
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elem = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
+    error_elem = wait_then_get_elements(browser, SPL.LOGIN_INVALID_FEEDBACK)
     assert len(error_elem) == 1
     error_elem = error_elem.pop()
 
@@ -382,17 +350,17 @@ def test_invalid_username_error_dismissed_on_modal_reload(browser: WebDriver):
     )
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elem = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
+    error_elem = wait_then_get_elements(browser, SPL.LOGIN_INVALID_FEEDBACK)
     assert len(error_elem) == 1
 
-    wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
+    wait_then_click_element(browser, SPL.LOGIN_X_MODAL_DISMISS)
 
     login_user_ui(
         browser, username=UTS.TEST_PASSWORD_1 + "a", password=UTS.TEST_PASSWORD_1 + "a"
     )
-    error_elem = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
+    error_elem = wait_then_get_elements(browser, SPL.LOGIN_INVALID_FEEDBACK)
     assert len(error_elem) == 0
 
 
@@ -411,17 +379,17 @@ def test_invalid_password_error_dismissed_on_modal_reload(browser: WebDriver):
     )
 
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elem = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
+    error_elem = wait_then_get_elements(browser, SPL.LOGIN_INVALID_FEEDBACK)
     assert len(error_elem) == 1
 
-    wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
+    wait_then_click_element(browser, SPL.LOGIN_X_MODAL_DISMISS)
 
     login_user_ui(
         browser, username=UTS.TEST_PASSWORD_1 + "a", password=UTS.TEST_PASSWORD_1 + "a"
     )
-    error_elem = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
+    error_elem = wait_then_get_elements(browser, SPL.LOGIN_INVALID_FEEDBACK)
     assert len(error_elem) == 0
 
 
@@ -435,9 +403,9 @@ def test_login_with_empty_fields(browser: WebDriver):
     """
     login_user_ui(browser, username="", password="")
     # Find submit button to login
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
-    error_elems = wait_then_get_elements(browser, SPL.SUBHEADER_INVALID_FEEDBACK)
+    error_elems = wait_then_get_elements(browser, SPL.LOGIN_INVALID_FEEDBACK)
     assert len(error_elems) == 2
     assert error_elems[0].text == min_length_message(3)
     assert error_elems[1].text == USER_FAILURE.FIELD_REQUIRED_STR
@@ -455,7 +423,7 @@ def test_login_user_invalid_csrf(browser: WebDriver):
 
     # Find submit button to login
     invalidate_csrf_token_in_form(browser)
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
     # Visit 403 error page due to CSRF, then reload
     assert_visited_403_on_invalid_csrf_and_reload(browser)

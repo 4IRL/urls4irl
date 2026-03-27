@@ -13,6 +13,12 @@ export function initEmailValidationForm($modal, sendInitialEmail = false) {
     .find("#submit")
     .offAndOn("click", (event) => handleValidateEmail(event, $modal));
 
+  $modal.on("show.bs.modal", () => {
+    $modal.find(".invalid-feedback").remove();
+    $modal.find(".form-control").removeClass("is-invalid");
+    $modal.find("#SplashModalAlertBanner").addClass("d-none");
+  });
+
   // Send validation email after register, but not if token for validation is expired
   if (sendInitialEmail) {
     handleValidateEmail(null, $modal);

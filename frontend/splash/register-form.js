@@ -21,6 +21,12 @@ export function initRegisterForm($modal) {
   $modal
     .find("#submit")
     .offAndOn("click", (event) => handleRegister(event, $modal));
+
+  $modal.on("show.bs.modal", () => {
+    $modal.find(".invalid-feedback").remove();
+    $modal.find(".form-control").removeClass("is-invalid");
+    $modal.find("#SplashModalAlertBanner").addClass("d-none");
+  });
 }
 
 function handleRegister(event, $modal) {
