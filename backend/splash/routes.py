@@ -74,14 +74,19 @@ def splash_page() -> WerkzeugResponse | str:
     if current_user.is_authenticated and current_user.email_validated:
         safe_add_log(f"User={current_user} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
-    return render_template("pages/splash.html")
+    show_email_validation = (
+        current_user.is_authenticated and not current_user.email_validated
+    )
+    return render_template(
+        "pages/splash.html", show_email_validation=show_email_validation
+    )
 
 
 @splash.route("/register", methods=["GET"])
 @no_authenticated_users_allowed
-def register_user_page() -> str:
-    """Renders the registration form."""
-    return render_template("components/splash/register_user.html")
+def register_user_page() -> WerkzeugResponse:
+    """Redirects to splash page — form is pre-rendered in the modal."""
+    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
 
 @splash.route("/register", methods=["POST"])
@@ -102,9 +107,9 @@ def register_user(validated_request: RegisterRequest) -> FlaskResponse:
 
 @splash.route("/login", methods=["GET"])
 @no_authenticated_users_allowed
-def login_page() -> str:
-    """Login page. Renders the login form."""
-    return render_template("components/splash/login.html")
+def login_page() -> WerkzeugResponse:
+    """Redirects to splash page — form is pre-rendered in the modal."""
+    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
 
 @splash.route("/login", methods=["POST"])
@@ -120,14 +125,14 @@ def login(validated_request: LoginRequest) -> FlaskResponse:
 
 
 @splash.route("/confirm-email", methods=["GET"])
-def confirm_email_after_register() -> WerkzeugResponse | str:
+def confirm_email_after_register() -> WerkzeugResponse:
     if current_user.is_anonymous:
         safe_add_log("No user logged in")
         return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
     if current_user.email_validated:
         warning_log(f"User={current_user.id} already logged in")
         return redirect(url_for(ROUTES.UTUBS.HOME))
-    return render_template("components/splash/validate_email.html")
+    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
 
 @splash.route("/send-validation-email", methods=["POST"])
@@ -171,8 +176,9 @@ def validate_email(token: str) -> WerkzeugResponse:
 
 @splash.route("/forgot-password", methods=["GET"])
 @no_authenticated_users_allowed
-def forgot_password_page() -> str:
-    return render_template("components/splash/forgot_password.html")
+def forgot_password_page() -> WerkzeugResponse:
+    """Redirects to splash page — form is pre-rendered in the modal."""
+    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
 
 @splash.route("/forgot-password", methods=["POST"])
