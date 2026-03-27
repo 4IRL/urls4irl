@@ -122,7 +122,6 @@ export function handleUserHasAccountNotEmailValidated(
 ) {
   const $sourceModal = $(sourceModalSelector);
   const logoutOnExit = createLogoutOnExit();
-  const $emailValidationModal = $("#EmailValidationModal");
 
   $sourceModal.find(".form-control").removeClass("is-invalid");
   $sourceModal.find(".invalid-feedback").remove();
@@ -138,9 +137,7 @@ export function handleUserHasAccountNotEmailValidated(
         `<button type="button" class="btn btn-link btn-block">${APP_CONFIG.strings.VALIDATE_MY_EMAIL}</button>`,
       ).offAndOn("click", () => {
         $sourceModal.off("hide.bs.modal", logoutOnExit);
-        switchModal(sourceModalSelector, "#EmailValidationModal");
-        $emailValidationModal.one("hide.bs.modal", logoutOnExit);
-        initEmailValidationForm($emailValidationModal, true);
+        emailValidationModalOpener(sourceModalSelector);
       }),
     );
 
