@@ -3,7 +3,7 @@
 Cross-layer navigation map for every route in the application. Each entry traces:
 **Route → Handler → Service → Template → JS Module → Tests**
 
-Last updated: 2026-03-25
+Last updated: 2026-03-27
 
 ---
 
@@ -28,9 +28,8 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 |---|---|
 | **Handler** | `backend/splash/routes.py:login_page` |
 | **Decorators** | `@no_authenticated_users_allowed` |
-| **Service** | `render_template()` direct |
-| **Template** | `components/splash/login.html` |
-| **JS Module** | `frontend/splash/init.js` (loads form), `frontend/splash/login-form.js` (handles submit) |
+| **Service** | Redirects to splash page (form is pre-rendered in modal) |
+| **Template** | None (redirect only) |
 | **Tests** | `tests/integration/splash/test_login_user.py` (marker: `splash`), `tests/functional/splash_ui/test_login_user_ui.py` (marker: `splash_ui`) |
 
 ### POST /login
@@ -51,9 +50,8 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 |---|---|
 | **Handler** | `backend/splash/routes.py:register_user_page` |
 | **Decorators** | `@no_authenticated_users_allowed` |
-| **Service** | `render_template()` direct |
-| **Template** | `components/splash/register_user.html` |
-| **JS Module** | `frontend/splash/init.js` (loads form), `frontend/splash/register-form.js` (handles submit) |
+| **Service** | Redirects to splash page (form is pre-rendered in modal) |
+| **Template** | None (redirect only) |
 | **Tests** | `tests/integration/splash/test_register_user.py` (marker: `splash`), `tests/functional/splash_ui/test_register_user_ui.py` (marker: `splash_ui`) |
 
 ### POST /register
@@ -74,9 +72,8 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 |---|---|
 | **Handler** | `backend/splash/routes.py:confirm_email_after_register` |
 | **Decorators** | None |
-| **Service** | `render_template()` direct |
-| **Template** | `components/splash/validate_email.html` |
-| **JS Module** | `frontend/splash/init.js` (loads form), `frontend/splash/email-validation-form.js` (handles submit) |
+| **Service** | Redirects: authenticated+validated users to home, all others to splash page |
+| **Template** | None (redirect only) |
 | **Tests** | `tests/integration/splash/test_email_validation.py` (marker: `splash`), `tests/functional/splash_ui/test_validate_email_ui.py` (marker: `splash_ui`) |
 
 ### POST /send-validation-email
@@ -117,9 +114,8 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 |---|---|
 | **Handler** | `backend/splash/routes.py:forgot_password_page` |
 | **Decorators** | `@no_authenticated_users_allowed` |
-| **Service** | `render_template()` direct |
-| **Template** | `components/splash/forgot_password.html` |
-| **JS Module** | `frontend/splash/login-form.js` (loads form), `frontend/splash/forgot-password-form.js` (handles submit) |
+| **Service** | Redirects to splash page (form is pre-rendered in modal) |
+| **Template** | None (redirect only) |
 | **Tests** | `tests/integration/splash/test_forgot_password.py` (marker: `splash`), `tests/functional/splash_ui/test_forgot_password_ui.py` (marker: `splash_ui`) |
 
 ### POST /forgot-password
