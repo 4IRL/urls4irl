@@ -100,6 +100,7 @@ const appConfig = {
   strings: {
     COOKIE_BANNER_SEEN: "cookie_banner_seen=true",
     INVALID_URL: "This is not a valid URL.",
+    VALIDATE_MY_EMAIL: "Validate My Email",
   },
 };
 

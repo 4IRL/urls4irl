@@ -19,7 +19,6 @@
     {% if email_token_is_expired %}
 
     {% include 'components/splash/validate_email_expired.html' %}
-    {% include 'modals/splashErrorModalBase.html' %}
 
     {% elif is_resetting_password %}
 
@@ -31,8 +30,7 @@
 
     {% else %}
 
-    {% include 'modals/splashModalBase.html' %}
-    {% include 'modals/splashErrorModalBase.html' %}
+    {% include 'modals/splashModals.html' %}
 
     {% endif %}
     {% endblock %}

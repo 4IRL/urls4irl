@@ -5,42 +5,30 @@ import {
   showSplashModalAlertBanner,
   handleImproperFormErrors,
   handleUserHasAccountNotEmailValidated,
-  loginModalOpenerFromModal,
-  registerModalOpener,
+  switchModal,
 } from "./init.js";
-import { initForgotPasswordForm } from "./forgot-password-form.js";
 
 /**
  * Initialize login form handlers
  * Must be called after login form HTML is loaded into the modal
  */
-export function initLoginForm() {
-  $("#ToRegisterFromLogin").offAndOn("click", () => registerModalOpener());
+export function initLoginForm($modal) {
+  $modal
+    .find("#ToRegisterFromLogin")
+    .offAndOn("click", () => switchModal("#LoginModal", "#RegisterModal"));
 
-  $(".to-forgot-password").offAndOn("click", () => openForgotPasswordModal());
-
-  $("#submit").offAndOn("click", (event) => handleLogin(event));
-}
-
-function openForgotPasswordModal() {
-  const modalOpener = $.get(APP_CONFIG.routes.forgotPassword);
-
-  modalOpener.done((data, _, xhr) => {
-    if (xhr.status === 200) {
-      $("#SplashModal .modal-content").html(data);
-      initForgotPasswordForm();
-    }
-  });
-
-  modalOpener.fail((xhr) => {
-    showSplashModalAlertBanner(
-      "Unable to load forgot password form...",
-      "danger",
+  $modal
+    .find(".to-forgot-password")
+    .offAndOn("click", () =>
+      switchModal("#LoginModal", "#ForgotPasswordModal"),
     );
-  });
+
+  $modal
+    .find("#submit")
+    .offAndOn("click", (event) => handleLogin(event, $modal));
 }
 
-function handleLogin(event) {
+function handleLogin(event, $modal) {
   event.preventDefault();
 
   // Allow user to attach a query param `next` if browser URL currently includes it
@@ -52,8 +40,8 @@ function handleLogin(event) {
     url = `${url}?${searchParams.toString()}`;
   }
 
-  const username = $("#username").val();
-  const password = $("#password").val();
+  const username = $modal.find("#username").val();
+  const password = $modal.find("#password").val();
 
   const loginRequest = $.ajax({
     url: url,
@@ -66,20 +54,20 @@ function handleLogin(event) {
     handleLoginSuccess(response, textStatus, xhr),
   );
   loginRequest.fail((xhr, textStatus, error) =>
-    handleLoginFailure(xhr, textStatus, error),
+    handleLoginFailure(xhr, textStatus, error, $modal),
   );
 }
 
 function handleLoginSuccess(response, _, xhr) {
   if (xhr.status === 200) {
-    bootstrap.Modal.getOrCreateInstance("#SplashModal").hide();
+    bootstrap.Modal.getOrCreateInstance("#LoginModal").hide();
     // Use redirect_url from JSON response
     const redirectUrl = response.redirect_url || APP_CONFIG.routes.home;
     window.location.replace(redirectUrl);
   }
 }
 
-function handleLoginFailure(xhr, _, error) {
+function handleLoginFailure(xhr, _, error, $modal) {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
@@ -101,16 +89,23 @@ function handleLoginFailure(xhr, _, error) {
     switch (xhr.responseJSON.errorCode) {
       case 1: {
         // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated(xhr.responseJSON.message);
-        $("input").attr("disabled", true);
+        handleUserHasAccountNotEmailValidated(
+          "#LoginModal",
+          xhr.responseJSON.message,
+        );
+        $modal.find("input").attr("disabled", true);
         break;
       }
       case 2: {
-        handleImproperFormErrors(xhr.responseJSON);
+        handleImproperFormErrors($modal, xhr.responseJSON);
         break;
       }
     }
   } else {
-    showSplashModalAlertBanner("Unable to process request...", "danger");
+    showSplashModalAlertBanner(
+      $modal,
+      "Unable to process request...",
+      "danger",
+    );
   }
 }

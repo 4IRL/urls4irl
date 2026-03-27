@@ -9,21 +9,24 @@ import {
 /**
  * Initialize reset password form handlers
  * Must be called after reset password form HTML is loaded into the modal
+ * @param {jQuery} $modal - The modal container element
  */
-export function initResetPasswordForm() {
-  $("#submit").offAndOn("click", (event) => handleResetPassword(event));
+export function initResetPasswordForm($modal) {
+  $modal
+    .find("#submit")
+    .offAndOn("click", (event) => handleResetPassword(event, $modal));
 
-  $("#SplashModal").on("hide.bs.modal", function (_) {
-    $("#SplashModal").off("hide.bs.modal");
+  $modal.on("hide.bs.modal", function (_) {
+    $modal.off("hide.bs.modal");
     window.location.replace("/");
   });
 }
 
-function handleResetPassword(event) {
+function handleResetPassword(event, $modal) {
   event.preventDefault();
 
-  const newPassword = $("#newPassword").val();
-  const confirmNewPassword = $("#confirmNewPassword").val();
+  const newPassword = $modal.find("#newPassword").val();
+  const confirmNewPassword = $modal.find("#confirmNewPassword").val();
 
   const resetPasswordRequest = $.ajax({
     url: window.location.pathname,
@@ -33,38 +36,39 @@ function handleResetPassword(event) {
   });
 
   resetPasswordRequest.done((response, textStatus, xhr) => {
-    handleResetPasswordSuccess(response, textStatus, xhr);
+    handleResetPasswordSuccess(response, textStatus, xhr, $modal);
   });
 
   resetPasswordRequest.fail((xhr, textStatus, error) => {
-    handleResetPasswordFailure(xhr, textStatus, error);
+    handleResetPasswordFailure(xhr, textStatus, error, $modal);
   });
 }
 
-function handleResetPasswordSuccess(response, _, xhr) {
+function handleResetPasswordSuccess(response, _, xhr, $modal) {
   if (xhr.status === 200) {
     // Password changed!
-    $(".form-control").removeClass("is-invalid");
-    $(".invalid-feedback").remove();
-    hideSplashModalAlertBanner();
-    showSplashModalAlertBanner(xhr.responseJSON.message, "success");
-    handleUserChangedPassword();
+    $modal.find(".form-control").removeClass("is-invalid");
+    $modal.find(".invalid-feedback").remove();
+    hideSplashModalAlertBanner($modal);
+    showSplashModalAlertBanner($modal, xhr.responseJSON.message, "success");
+    handleUserChangedPassword($modal);
   }
 }
 
-function handleUserChangedPassword() {
-  $("#submit").removeClass("login-register-buttons");
-  $("#submit")
+function handleUserChangedPassword($modal) {
+  $modal.find("#submit").removeClass("login-register-buttons");
+  $modal
+    .find("#submit")
     .prop("type", "button")
     .val("Close")
     .removeClass("btn-success")
     .addClass("btn-warning")
     .offAndOn("click", function (_) {
-      bootstrap.Modal.getOrCreateInstance("#SplashModal").hide();
+      bootstrap.Modal.getOrCreateInstance($modal[0]).hide();
     });
 }
 
-function handleResetPasswordFailure(xhr, _, error) {
+function handleResetPasswordFailure(xhr, _, error, $modal) {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
@@ -81,12 +85,16 @@ function handleResetPasswordFailure(xhr, _, error) {
   if (xhr.status === 400 && xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.responseJSON.errorCode) {
       case 1:
-        $(".form-control").removeClass("is-invalid");
-        $(".invalid-feedback").remove();
-        handleImproperFormErrors(xhr.responseJSON);
+        $modal.find(".form-control").removeClass("is-invalid");
+        $modal.find(".invalid-feedback").remove();
+        handleImproperFormErrors($modal, xhr.responseJSON);
         break;
     }
   } else {
-    showSplashModalAlertBanner("Unable to process request...", "danger");
+    showSplashModalAlertBanner(
+      $modal,
+      "Unable to process request...",
+      "danger",
+    );
   }
 }

@@ -5,7 +5,6 @@ import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";
 import { initForgotPasswordForm } from "./forgot-password-form.js";
-import { initResetPasswordForm } from "./reset-password-form.js";
 import { initEmailValidationForm } from "./email-validation-form.js";
 
 /**
@@ -15,6 +14,18 @@ import { initEmailValidationForm } from "./email-validation-form.js";
 export function initSplash() {
   setToRegisterButton();
   setToLoginButton();
+  initLoginForm($("#LoginModal"));
+  initRegisterForm($("#RegisterModal"));
+  initForgotPasswordForm($("#ForgotPasswordModal"));
+
+  // Auto-show email validation modal for authenticated-but-not-validated users
+  const splashConfig = document.getElementById("splashConfig");
+  if (splashConfig && splashConfig.dataset.showEmailValidation === "true") {
+    bootstrap.Modal.getOrCreateInstance("#EmailValidationModal").show();
+    initEmailValidationForm($("#EmailValidationModal"), true);
+    const logoutOnExit = createLogoutOnExit();
+    $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
+  }
 
   // Setup rate limit error handler
   $.ajaxPrefilter(function (options, originalOptions, jqXHR) {
@@ -47,65 +58,52 @@ function setToLoginButton() {
   });
 }
 
-export function loginModalOpener() {
-  const modalOpener = $.get(APP_CONFIG.routes.login);
-
-  modalOpener.done((data, _, xhr) => {
-    if (xhr.status === 200) {
-      $("#SplashModal .modal-content").html(data);
-      initLoginForm();
-      bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
-    }
-  });
-
-  modalOpener.fail((xhr) => {
-    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
-    $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
-  });
+export function createLogoutOnExit() {
+  return () => {
+    $.get(APP_CONFIG.routes.logout).always(() => {
+      window.location.replace("/");
+    });
+  };
 }
 
-export function loginModalOpenerFromModal() {
-  const modalOpener = $.get(APP_CONFIG.routes.login);
+export function switchModal(fromSelector, toSelector) {
+  const fromModal = bootstrap.Modal.getInstance(fromSelector);
+  if (fromModal) {
+    $(fromSelector).one("hidden.bs.modal", () => {
+      bootstrap.Modal.getOrCreateInstance(toSelector).show();
+    });
+    fromModal.hide();
+  } else {
+    bootstrap.Modal.getOrCreateInstance(toSelector).show();
+  }
+}
 
-  modalOpener.done((data, _, xhr) => {
-    if (xhr.status === 200) {
-      $("#SplashModal .modal-content").html(data);
-      initLoginForm();
-    }
-  });
-
-  modalOpener.fail((xhr) => {
-    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
-    $("#SplashErrorModalAlertBanner").text("Unable to load login form...");
-  });
+export function loginModalOpener() {
+  bootstrap.Modal.getOrCreateInstance("#LoginModal").show();
 }
 
 export function registerModalOpener() {
-  const modalOpener = $.get(APP_CONFIG.routes.register);
-
-  modalOpener.done((data, _, xhr) => {
-    if (xhr.status === 200) {
-      $("#SplashModal .modal-content").html(data);
-      initRegisterForm();
-      bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
-    }
-  });
-
-  modalOpener.fail((xhr) => {
-    bootstrap.Modal.getOrCreateInstance("#SplashErrorModal").show();
-    $("#SplashErrorModalAlertBanner").text("Unable to load register form...");
-  });
+  bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 
-export function hideSplashModalAlertBanner() {
-  $("#SplashModalAlertBanner")
+export function emailValidationModalOpener(fromSelector) {
+  switchModal(fromSelector, "#EmailValidationModal");
+  initEmailValidationForm($("#EmailValidationModal"), true);
+  const logoutOnExit = createLogoutOnExit();
+  $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
+}
+
+export function hideSplashModalAlertBanner($modal) {
+  $modal
+    .find("#SplashModalAlertBanner")
     .removeClass("alert-banner-splash-modal-display")
     .removeClassStartingWith("alert-")
     .addClass("alert-banner-splash-modal-hide");
 }
 
-export function showSplashModalAlertBanner(message, category) {
-  $("#SplashModalAlertBanner")
+export function showSplashModalAlertBanner($modal, message, category) {
+  $modal
+    .find("#SplashModalAlertBanner")
     .removeClass("alert-banner-splash-modal-hide")
     .removeClassStartingWith("alert-")
     .addClass("alert-" + category)
@@ -113,15 +111,22 @@ export function showSplashModalAlertBanner(message, category) {
     .text(message);
 }
 
-export function disableInputFields() {
-  $("input").attr("disabled", true);
+export function disableInputFields($modal) {
+  $modal.find("input").attr("disabled", true);
 }
 
-export function handleUserHasAccountNotEmailValidated(message) {
-  $(".form-control").removeClass("is-invalid");
-  $(".invalid-feedback").remove();
-  $(".to-forgot-password").remove();
-  const alertBanner = $("#SplashModalAlertBanner");
+export function handleUserHasAccountNotEmailValidated(
+  sourceModalSelector,
+  message,
+) {
+  const $sourceModal = $(sourceModalSelector);
+  const logoutOnExit = createLogoutOnExit();
+  const $emailValidationModal = $("#EmailValidationModal");
+
+  $sourceModal.find(".form-control").removeClass("is-invalid");
+  $sourceModal.find(".invalid-feedback").remove();
+  $sourceModal.find(".to-forgot-password").remove();
+  const alertBanner = $sourceModal.find("#SplashModalAlertBanner");
   alertBanner
     .removeClass("alert-banner-splash-modal-hide")
     .addClass("alert-info alert-banner-splash-modal-show")
@@ -130,48 +135,26 @@ export function handleUserHasAccountNotEmailValidated(message) {
       $(
         `<button type="button" class="btn btn-link btn-block">${APP_CONFIG.strings.VALIDATE_MY_EMAIL}</button>`,
       ).offAndOn("click", () => {
-        $("#SplashModal").off("hide.bs.modal", logoutOnExit);
-        emailValidationModalOpener();
+        $sourceModal.off("hide.bs.modal", logoutOnExit);
+        switchModal(sourceModalSelector, "#EmailValidationModal");
+        $emailValidationModal.one("hide.bs.modal", logoutOnExit);
+        initEmailValidationForm($emailValidationModal, true);
       }),
     );
 
-  $(".register-to-login-footer").remove();
-  $(".modal-footer").remove();
-
-  const logoutOnExit = () => {
-    $.get(APP_CONFIG.routes.logout);
-    $("#SplashModal").off("hide.bs.modal", logoutOnExit);
-  };
-  $("#SplashModal").on("hide.bs.modal", logoutOnExit);
+  $sourceModal.find(".register-to-login-footer").remove();
+  $sourceModal.find(".modal-footer").remove();
+  $sourceModal.one("hide.bs.modal", logoutOnExit);
 }
 
-export function emailValidationModalOpener() {
-  const modalOpener = $.get(APP_CONFIG.routes.confirmEmailAfterRegister);
-
-  modalOpener.done((data, _, xhr) => {
-    if (xhr.status === 200) {
-      $("#SplashModal .modal-content").html(data);
-      // Initialize email validation form and send initial email
-      initEmailValidationForm(true);
-    }
-  });
-
-  modalOpener.fail((xhr) => {
-    showSplashModalAlertBanner(
-      "Unable to load email validation modal...",
-      "danger",
-    );
-  });
-}
-
-export function handleImproperFormErrors(errorResponse) {
-  $(".invalid-feedback").remove();
-  $(".alert").each(function () {
+export function handleImproperFormErrors($modal, errorResponse) {
+  $modal.find(".invalid-feedback").remove();
+  $modal.find(".alert").each(function () {
     if ($(this).attr("id") !== "SplashModalAlertBanner") {
       $(this).remove();
     }
   });
-  $(".form-control").removeClass("is-invalid");
+  $modal.find(".form-control").removeClass("is-invalid");
   for (let key in errorResponse.errors) {
     switch (key) {
       case "username":
@@ -182,7 +165,7 @@ export function handleImproperFormErrors(errorResponse) {
       case "newPassword":
       case "confirmNewPassword":
         let errorMessage = errorResponse.errors[key][0];
-        displayFormErrors(key, errorMessage);
+        displayFormErrors($modal, key, errorMessage);
         break;
       default:
         // Error for a field that doesn't exist
@@ -191,9 +174,9 @@ export function handleImproperFormErrors(errorResponse) {
   }
 }
 
-export function displayFormErrors(key, errorMessage) {
+export function displayFormErrors($modal, key, errorMessage) {
   $('<div class="invalid-feedback"><span>' + errorMessage + "</span></div>")
-    .insertAfter("#" + key)
+    .insertAfter($modal.find("#" + key))
     .show();
-  $("#" + key).addClass("is-invalid");
+  $modal.find("#" + key).addClass("is-invalid");
 }
