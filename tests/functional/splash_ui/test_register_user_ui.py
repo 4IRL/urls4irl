@@ -27,6 +27,8 @@ from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
+    wait_for_modal_hidden,
+    wait_for_modal_ready,
     wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
@@ -47,13 +49,13 @@ def test_open_register_modal_center_btn(browser: WebDriver):
     THEN ensure the modal opens
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.REGISTER_MODAL)
     assert modal_element is not None
 
     assert modal_element.is_displayed()
 
     modal_title = wait_then_get_element(
-        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+        browser, f"{SPL.REGISTER_MODAL} .modal-title", time=3
     )
     assert modal_title is not None
     assert modal_title.text == "Register"
@@ -88,13 +90,13 @@ def test_open_register_modal_RHS_btn(browser: WebDriver):
     register_btn = navbar.find_element(By.CSS_SELECTOR, SPL.NAVBAR_REGISTER)
     register_btn.click()
 
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.REGISTER_MODAL)
     assert modal_element is not None
 
     assert modal_element.is_displayed()
 
     modal_title = wait_then_get_element(
-        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+        browser, f"{SPL.REGISTER_MODAL} .modal-title", time=3
     )
     assert modal_title is not None
     assert modal_title.text == "Register"
@@ -110,12 +112,14 @@ def test_login_to_register_modal_btn(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
     wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
+    wait_for_modal_hidden(browser, SPL.LOGIN_MODAL)
+    wait_for_modal_ready(browser, SPL.REGISTER_MODAL)
 
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.REGISTER_MODAL)
     assert modal_element is not None
 
     modal_title = wait_then_get_element(
-        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+        browser, f"{SPL.REGISTER_MODAL} .modal-title", time=3
     )
     assert modal_title is not None
     assert modal_title.text == "Register"
@@ -130,10 +134,10 @@ def test_login_to_register_modal_btn_rate_limits(browser: WebDriver):
     THEN ensure the 429 error page is shown
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
-    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
+    wait_until_visible_css_selector(browser, SPL.LOGIN_MODAL)
     add_forced_rate_limit_header(browser)
 
-    assert_visible_css_selector(browser, SPL.SPLASH_MODAL)
+    assert_visible_css_selector(browser, SPL.LOGIN_MODAL)
     wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
 
     assert_on_429_page(browser)
@@ -151,7 +155,7 @@ def test_dismiss_register_modal_btn(browser: WebDriver):
 
     wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.REGISTER_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -170,7 +174,7 @@ def test_dismiss_register_modal_key(browser: WebDriver):
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.REGISTER_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -187,7 +191,7 @@ def test_dismiss_register_modal_click(browser: WebDriver):
 
     dismiss_modal_with_click_out(browser)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.REGISTER_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -204,7 +208,7 @@ def test_dismiss_register_modal_x(browser: WebDriver):
 
     wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.REGISTER_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -410,7 +414,7 @@ def test_register_user_unconfirmed_email_shows_alert(
 
     # Extract error message text
     unconfirmed_email_feedback = wait_then_get_element(
-        browser, SPL.SPLASH_MODAL_ALERT, time=3
+        browser, SPL.REGISTER_MODAL_ALERT, time=3
     )
     assert unconfirmed_email_feedback is not None
 
@@ -445,7 +449,7 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
 
     # Extract error message text
     unconfirmed_email_feedback = wait_then_get_element(
-        browser, SPL.SPLASH_MODAL_ALERT, time=3
+        browser, SPL.REGISTER_MODAL_ALERT, time=3
     )
     assert unconfirmed_email_feedback is not None
 
@@ -456,7 +460,9 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
     wait_for_web_element_and_click(browser, validate_email_btn)
     wait_until_visible_css_selector(browser, SPL.HEADER_VALIDATE_EMAIL)
 
-    email_sent = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
+    email_sent = wait_then_get_element(
+        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=3
+    )
     assert email_sent is not None
     assert email_sent.text == EMAILS.EMAIL_SENT
 
@@ -592,7 +598,7 @@ def test_register_form_resets_on_close(browser: WebDriver):
 
     wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
 
-    wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    wait_until_hidden(browser, SPL.REGISTER_MODAL)
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
     wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME, timeout=3)
 

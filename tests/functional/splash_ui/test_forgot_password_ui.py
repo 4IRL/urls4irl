@@ -35,6 +35,8 @@ from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     clear_then_send_keys,
     invalidate_csrf_token_in_form,
+    wait_for_modal_hidden,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     dismiss_modal_with_click_out,
@@ -63,7 +65,7 @@ def test_open_forgot_password_modal(browser: WebDriver):
 
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
 
-    modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
+    modal_alert = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL_ALERT)
     assert modal_alert is not None
 
     assert modal_alert.text == EMAIL_SENT_MESSAGE
@@ -83,7 +85,7 @@ def test_open_forgot_password_modal_rate_limits(browser: WebDriver):
     THEN the user is rate limited
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN, time=5)
-    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
+    wait_until_visible_css_selector(browser, SPL.LOGIN_MODAL)
 
     add_forced_rate_limit_header(browser)
     wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL, time=5)
@@ -102,7 +104,7 @@ def test_dismiss_forgot_password_modal_click(browser: WebDriver):
 
     dismiss_modal_with_click_out(browser)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.FORGOT_PASSWORD_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -120,7 +122,7 @@ def test_dismiss_forgot_password_modal_x(browser: WebDriver):
     wait_until_visible_css_selector(browser, ML.BUTTON_X_MODAL_DISMISS, timeout=3)
     wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS, time=3)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.FORGOT_PASSWORD_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -135,12 +137,12 @@ def test_dismiss_forgot_password_modal_key(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL, time=3)
+    splash_modal = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL, time=3)
     assert splash_modal is not None
 
     splash_modal.send_keys(Keys.ESCAPE)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.FORGOT_PASSWORD_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -192,13 +194,15 @@ def test_forgot_password_to_login_modal_btn(browser: WebDriver):
     THEN ensure the modal view changes appropriately
     """
     open_forgot_password_modal(browser)
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL)
     assert modal_element is not None
 
     wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_FORGOT_PASSWORD)
+    wait_for_modal_hidden(browser, SPL.FORGOT_PASSWORD_MODAL)
+    wait_for_modal_ready(browser, SPL.LOGIN_MODAL)
     wait_until_visible_css_selector(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
 
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.LOGIN_MODAL)
     assert modal_element is not None
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
@@ -260,7 +264,7 @@ def test_forgot_password_unconfirmed_email(
     input_elem.send_keys(UTS.TEST_PASSWORD_1)
 
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
-    alert_banner = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, 3)
+    alert_banner = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL_ALERT, 3)
     assert alert_banner is not None
 
     assert alert_banner.text == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
@@ -281,7 +285,7 @@ def test_forgot_password_nonexistent_email(browser: WebDriver):
     input_elem.send_keys(UTS.TEST_PASSWORD_1)
 
     wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
-    alert_banner = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, 3)
+    alert_banner = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL_ALERT, 3)
     assert alert_banner is not None
 
     assert alert_banner.text == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE

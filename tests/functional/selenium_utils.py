@@ -504,7 +504,7 @@ def login_user_ui(
     # Find and click login button to open modal
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
 
-    wait_for_modal_ready(browser, SPL.SPLASH_MODAL)
+    wait_for_modal_ready(browser, SPL.LOGIN_MODAL)
 
     wait_for_element_presence(browser, SPL.INPUT_USERNAME)
     wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME)
@@ -584,6 +584,18 @@ def wait_for_modal_ready(browser, modal_selector, timeout=10):
 
     time.sleep(0.2)
     return final_modal
+
+
+def wait_for_modal_hidden(
+    browser: WebDriver, modal_selector: str, timeout: int = 10
+) -> None:
+    """Wait for Bootstrap modal to be fully hidden"""
+    wait = WebDriverWait(browser, timeout)
+    modal = wait.until(
+        EC.presence_of_element_located((By.CSS_SELECTOR, modal_selector))
+    )
+    wait.until(lambda _: "show" not in modal.get_attribute("class"))
+    wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
 
 
 def dismiss_modal_with_click_out(browser: WebDriver):

@@ -8,14 +8,19 @@ from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.email_validation_strs import EMAILS, EMAILS_FAILURE
+from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from tests.functional.assert_utils import assert_login
+from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.splash_ui.selenium_utils import register_user_ui
 from tests.functional.selenium_utils import (
     ChromeRemoteWebDriver,
+    login_user_ui,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
+    wait_until_hidden,
 )
 
 pytestmark = pytest.mark.splash_ui
@@ -113,12 +118,56 @@ def test_email_validation_rate_limits(browser: ChromeRemoteWebDriver):
     assert modal_title is not None
 
     # 'Email sent!' is shown when the modal loads
-    alert_modal_banner = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
+    alert_modal_banner = wait_then_get_element(
+        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=3
+    )
     assert alert_modal_banner is not None
     assert alert_modal_banner.text == EMAILS.EMAIL_SENT
 
     # Clicking within 60 seconds will rate limit
     browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
-    alert_modal_banner = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
+    alert_modal_banner = wait_then_get_element(
+        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=3
+    )
     assert alert_modal_banner is not None
     assert alert_modal_banner.text == "4" + EMAILS_FAILURE.TOO_MANY_ATTEMPTS
+
+
+def test_authenticated_not_validated_user_sees_email_validation_modal(
+    browser: WebDriver, create_user_unconfirmed_email
+):
+    """
+    Tests that an authenticated but not email-validated user sees the email validation modal.
+
+    GIVEN a registered but not email-validated user
+    WHEN the user logs in and navigates to the splash page
+    THEN the EmailValidationModal is auto-shown, and closing it triggers logout
+    """
+    # Login with unvalidated user — this authenticates the session even though
+    # the server returns 401 for unvalidated email
+    login_user_ui(browser, username=UTS.TEST_USERNAME_1, password=UTS.TEST_PASSWORD_1)
+    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+
+    # Wait for the login modal alert showing unconfirmed email error
+    login_alert = wait_then_get_element(browser, SPL.LOGIN_MODAL_ALERT, time=5)
+    assert login_alert is not None
+    assert login_alert.is_displayed()
+
+    # Navigate to splash page — user is authenticated but not validated,
+    # so the email validation modal should auto-show
+    browser.get(browser.current_url.split("?")[0])
+    wait_for_modal_ready(browser, SPL.EMAIL_VALIDATION_MODAL)
+
+    # Assert the email validation modal is visible
+    modal_element = wait_then_get_element(browser, SPL.EMAIL_VALIDATION_MODAL)
+    assert modal_element is not None
+    assert modal_element.is_displayed()
+
+    # Close the modal — this should trigger logout via logoutOnExit
+    wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
+    wait_until_hidden(browser, SPL.EMAIL_VALIDATION_MODAL)
+
+    # After logout, user should be redirected to splash page as anonymous
+    welcome_text = wait_then_get_element(browser, SPL.WELCOME_TEXT, time=5)
+    assert welcome_text is not None
+    assert welcome_text.text == IDENTIFIERS.SPLASH_PAGE

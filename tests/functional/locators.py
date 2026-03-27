@@ -235,9 +235,22 @@ class SplashPageLocators(GenericPageLocator):
 
     BUTTON_LOGIN_FROM_FORGOT_PASSWORD = "#ToLoginFromForgotPassword"
 
-    # Modal
+    # Per-form modal locators
+    LOGIN_MODAL = "#LoginModal"
+    REGISTER_MODAL = "#RegisterModal"
+    FORGOT_PASSWORD_MODAL = "#ForgotPasswordModal"
+    EMAIL_VALIDATION_MODAL = "#EmailValidationModal"
+
+    # Keep SPLASH_MODAL for reset password and email validation expired flows
     SPLASH_MODAL = "#SplashModal"
+
+    # Alert banner (scoped to visible modal via compound selector)
+    LOGIN_MODAL_ALERT = "#LoginModal #SplashModalAlertBanner"
+    REGISTER_MODAL_ALERT = "#RegisterModal #SplashModalAlertBanner"
+    FORGOT_PASSWORD_MODAL_ALERT = "#ForgotPasswordModal #SplashModalAlertBanner"
+    EMAIL_VALIDATION_MODAL_ALERT = "#EmailValidationModal #SplashModalAlertBanner"
     SPLASH_MODAL_ALERT = "#SplashModalAlertBanner"
+
     BUTTON_X_MODAL_DISMISS = ".close-register-login-modal"
     BUTTON_FORGOT_PASSWORD_MODAL = ".to-forgot-password"
 
