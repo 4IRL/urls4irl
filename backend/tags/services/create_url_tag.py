@@ -10,6 +10,7 @@ from backend.models.utub_tags import Utub_Tags
 from backend.models.utub_url_tags import Utub_Url_Tags
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.errors import build_message_error_response
 from backend.schemas.tags import UrlTagModifiedResponseSchema, UtubTagOnAddDeleteSchema
 from backend.utils.constants import TAG_CONSTANTS
 from backend.utils.strings.tag_strs import TAGS_FAILURE, TAGS_SUCCESS
@@ -107,10 +108,7 @@ def _build_url_at_tag_limit_response(utub_url: Utub_Urls) -> FlaskResponse:
     warning_log(
         f"User={current_user.id} tried adding tag to UTubURL.id={utub_url.id} but tag limited"
     )
-    return APIResponse(
-        status_code=400,
-        message=TAGS_FAILURE.FIVE_TAGS_MAX,
-    ).to_response()
+    return build_message_error_response(message=TAGS_FAILURE.FIVE_TAGS_MAX)
 
 
 def _get_or_create_utub_tag(tag: str, utub: Utubs) -> Utub_Tags:
@@ -173,10 +171,7 @@ def _build_tag_already_on_url_response(
     warning_log(
         f"User={current_user.id} tried adding UTubTag.tag_string={utub_tag.tag_string} to UTubURL.id={utub_url.id} but already on UTubURL"
     )
-    return APIResponse(
-        status_code=400,
-        message=TAGS_FAILURE.TAG_ALREADY_ON_URL,
-    ).to_response()
+    return build_message_error_response(message=TAGS_FAILURE.TAG_ALREADY_ON_URL)
 
 
 def _add_url_tag(utub_url: Utub_Urls, utub_tag: Utub_Tags) -> Utub_Url_Tags:

@@ -7,7 +7,7 @@ from backend.api_common.request_utils import (
     is_adder_of_utub_url,
     is_current_utub_creator,
 )
-from backend.api_common.responses import APIResponse
+from backend.schemas.errors import build_message_error_response
 from backend.app_logger import critical_log, warning_log
 from backend.models.utub_members import Member_Role, Utub_Members
 from backend.models.utub_tags import Utub_Tags
@@ -104,10 +104,10 @@ def utub_creator_required(func: Callable):
                 f"User={current_user.id} not creator: UTub.id={utub_id} | UTub.name={current_utub.name}"
             )
 
-            return APIResponse(
-                status_code=403,
+            return build_message_error_response(
                 message=UTUB_FAILURE.NOT_AUTHORIZED,
-            ).to_response()
+                status_code=403,
+            )
 
         return func(*args, **kwargs)
 
