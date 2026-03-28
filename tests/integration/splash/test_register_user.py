@@ -279,19 +279,18 @@ def test_register_user_cased_email(app, load_register_page, register_first_user)
 def test_register_modal_is_shown(app_with_server_name, client):
     """
     GIVEN a non-registered user visiting the splash page ("/")
-    WHEN the user makes a request to "/register"
-    THEN verify that the backends responds with a modal in the HTML
+    WHEN the user makes a request to "/"
+    THEN verify that the splash page contains the pre-rendered register form HTML
     """
     with client:
         with app_with_server_name.app_context():
-            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            response = client.get(url_for(ROUTES.SPLASH.REGISTER))
+            response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
         assert (
             b'<form id="ModalForm" method="POST" class="login-register-form" action="/register" novalidate>'
             in response.data
         )
 
-        # Ensure on register page with static HTML inputs
+        # Ensure splash page contains register form with static HTML inputs
         assert (
             b'<input autocomplete="username" class="form-control login-register-form-group" id="username"'
             in response.data
@@ -313,7 +312,7 @@ def test_register_modal_is_shown(app_with_server_name, client):
             in response.data
         )
         assert b'<button id="submit"' in response.data
-        assert request.path == url_for(ROUTES.SPLASH.REGISTER)
+        assert request.path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
 
 
 def test_register_modal_logs_user_in(app_with_server_name, client):

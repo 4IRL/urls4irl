@@ -21,7 +21,7 @@ from tests.functional.assert_utils import (
     assert_on_404_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.locators import ModalLocators, SplashPageLocators as SPL
+from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.selenium_utils import (
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
@@ -88,9 +88,9 @@ def test_password_reset_dismiss_modal_click(
     splash_modal.click()
     wait_for_page_complete_and_dom_stable(browser, timeout=10)
 
-    dismiss_modal_with_click_out(browser)
+    dismiss_modal_with_click_out(browser, SPL.SPLASH_MODAL)
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
-    assert not modal_element.is_displayed()
+    assert modal_element is None or not modal_element.is_displayed()
     config: ConfigTest = provide_config
     base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
     assert browser.current_url == f"{base_url}{provide_port}/"
@@ -124,9 +124,9 @@ def test_password_reset_dismiss_modal_x(
     splash_modal.click()
     wait_for_page_complete_and_dom_stable(browser, timeout=10)
 
-    wait_then_click_element(browser, ModalLocators.BUTTON_X_MODAL_DISMISS, time=3)
+    wait_then_click_element(browser, f"{SPL.SPLASH_MODAL} .btn-close", time=3)
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
-    assert not modal_element.is_displayed()
+    assert modal_element is None or not modal_element.is_displayed()
 
     config: ConfigTest = provide_config
     base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
@@ -166,7 +166,7 @@ def test_password_reset_dismiss_modal_key(
 
     ActionChains(browser).send_keys(Keys.ESCAPE).perform()
     modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL, timeout=5)
-    assert not modal_element.is_displayed()
+    assert modal_element is None or not modal_element.is_displayed()
     config: ConfigTest = provide_config
     base_url = UTS.DOCKER_BASE_URL if config.DOCKER else UTS.BASE_URL
     assert browser.current_url == f"{base_url}{provide_port}/"
@@ -207,7 +207,7 @@ def test_password_reset_successful_reset_btn(
     new_password_input.send_keys(NEW_PASSWORD)
     confirm_new_password_input.send_keys(NEW_PASSWORD)
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT)
     confirm_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
     assert confirm_alert is not None
 
@@ -406,11 +406,11 @@ def test_password_reset_unequal_password_fields(
     confirm_new_password_input.send_keys(NEW_PASSWORD + "a")
 
     wait_for_page_complete_and_dom_stable(browser, timeout=10)
-    browser.find_element(By.CSS_SELECTOR, SPL.BUTTON_SUBMIT).click()
+    browser.find_element(By.CSS_SELECTOR, SPL.RESET_PASSWORD_BUTTON_SUBMIT).click()
     wait_for_page_complete_and_dom_stable(browser, timeout=10)
 
     invalid_field = wait_then_get_element(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
+        browser, SPL.RESET_PASSWORD_INVALID_FEEDBACK, time=3
     )
     assert invalid_field is not None
     assert invalid_field.text == RESET_PASSWORD.PASSWORDS_NOT_IDENTICAL
@@ -436,13 +436,19 @@ def test_password_reset_missing_fields(
 
     browser.get(reset_password_url)
 
-    wait_until_visible_css_selector(browser, SPL.BUTTON_SUBMIT, timeout=3)
-    submit_btn = wait_then_click_element(browser, SPL.BUTTON_SUBMIT, time=3)
+    wait_until_visible_css_selector(
+        browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT, timeout=3
+    )
+    submit_btn = wait_then_click_element(
+        browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT, time=3
+    )
     assert submit_btn is not None
 
-    wait_until_visible_css_selector(browser, SPL.SUBHEADER_INVALID_FEEDBACK, timeout=3)
+    wait_until_visible_css_selector(
+        browser, SPL.RESET_PASSWORD_INVALID_FEEDBACK, timeout=3
+    )
     invalid_fields = wait_then_get_elements(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
+        browser, SPL.RESET_PASSWORD_INVALID_FEEDBACK, time=3
     )
     assert len(invalid_fields) == 2
     assert invalid_fields[0].text == min_length_message(12)
@@ -480,7 +486,7 @@ def test_password_reset_invalid_csrf_token(
 
     invalidate_csrf_token_in_form(browser)
     wait_for_page_complete_and_dom_stable(browser, timeout=10)
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, time=10)
+    wait_then_click_element(browser, SPL.RESET_PASSWORD_BUTTON_SUBMIT, time=10)
 
     # Visit 403 error page due to CSRF, then reload
     assert_visited_403_on_invalid_csrf_and_reload(browser)

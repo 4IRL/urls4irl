@@ -98,25 +98,19 @@ Delegate to a subagent:
 #### Update the Finished Flag:
 - If all phases are complete, change `**finished**: false` to `**finished**: true`
 
-### Step 5: Staff Engineer Review
+### Step 5: Subagent Review & Fix
 **CRITICAL: Always perform this review before reporting to the user.**
 
-Adopt the perspective of a staff engineer reviewing the implementation. Evaluate:
-
-1. **Codebase fit** - Does the implementation follow existing patterns, naming conventions, and architecture? Does it belong where it was placed?
-2. **Technical correctness** - Are there logic errors, incorrect assumptions, or fragile implementations? Does the code do what it claims?
-3. **Edge cases** - Are failure modes handled? What happens with empty input, missing data, concurrent access, or unexpected states?
-4. **Test coverage** - Were tests added for the new behavior? Do existing tests still pass? Are happy and sad paths covered?
-5. **Security and quality** - Are there OWASP concerns (XSS, injection, CSRF)? Is debug code removed? Are typehints present on Python code?
-6. **Over-engineering** - Is the implementation more complex than needed? Are abstractions premature?
-
-After the review, immediately fix any issues found before proceeding. Re-run validation after fixes.
+Use the **Subagent Review Pipeline** (defined below) to review and fix the implementation. Before launching:
+1. Run `git diff --name-only` to collect the list of changed files
+2. Prepare a brief description of what the step was supposed to implement (from the plan)
+3. Launch all 3 review subagents in parallel, then the fix subagent if needed
 
 ### Step 6: Report and Pause
 - Provide a concise summary of what was completed
 - Show validation results (build output, test results, etc.)
 - Confirm the plan document was updated
-- Include a brief summary of the staff engineer review and any fixes applied
+- Include a brief summary of subagent review findings and any fixes applied by the fix subagent
 - **REQUIRED:** Ask the user if they want to continue to the next step
 - Do NOT automatically proceed to the next step
 
@@ -134,10 +128,14 @@ Changes made:
 Validation:
 ✅ Vite build passed - no errors
 
-Staff Engineer Review:
-✅ Follows existing data-route pattern used in other nav components
-✅ Edge cases handled: missing route attribute falls back to window.location
-⚠️  Fixed: removed a stale console.log left in navbar.js
+Subagent Review:
+- Correctness & Codebase Fit: PASS — follows existing data-route pattern
+- Security & Edge Cases: PASS — no injection vectors, missing route falls back safely
+- Quality & Completeness: 1 FINDING — stale console.log in navbar.js
+
+Fix Subagent:
+✅ Removed console.log from navbar.js
+✅ Re-validated: Vite build clean
 
 Plan updated:
 ✅ Marked Phase 4 as complete in plan document
@@ -188,14 +186,11 @@ Take the **first** unchecked item only (one at a time):
 #### 3b. Validate the Changes
 Use the same validation approach as Plan Mode Step 3 (build verification, tests via subagent, etc.)
 
-#### 3c. Staff-Engineer Critique
-After applying, evaluate:
-1. **Faithful?** Does the edit fully implement what the review item asked for — no more, no less?
-2. **Correct?** Is the change accurate given the actual codebase?
-3. **Coherent?** Does the change integrate cleanly with surrounding code?
-4. **Risk?** Does the edit introduce any new issues?
-
-If any concern: explain, propose correction, and **wait for user confirmation**.
+#### 3c. Subagent Review & Fix
+Use the **Subagent Review Pipeline** (defined below) to review and fix the applied change. Before launching:
+1. Run `git diff --name-only` to collect the list of changed files
+2. Prepare a brief description of what the review item asked for
+3. Launch all 3 review subagents in parallel, then the fix subagent if needed
 
 #### 3d. Cross Off the Review Item
 Mark complete in the review file: `- [ ]` → `- [x]`
@@ -203,16 +198,111 @@ Mark complete in the review file: `- [ ]` → `- [x]`
 ### Step 4: Report and Pause
 - Summarize what was applied
 - Show validation results
-- Include staff engineer review findings and any fixes
+- Include subagent review findings and any fixes applied by the fix subagent
 - **REQUIRED:** Ask the user if they want to continue to the next review item
 - Do NOT automatically proceed
+
+---
+
+## Subagent Review Pipeline
+
+This pipeline is used by both Plan Mode (Step 5) and Review Mode (Step 3c). It replaces inline reviews with parallel subagents to keep the main context window clean.
+
+### Prerequisites
+
+Before launching the review subagents, the main agent must:
+1. Run `git diff --name-only` to collect the list of changed files
+2. Prepare a one-line summary of **what was supposed to be implemented** (the intent)
+
+### Phase 1: Three Parallel Review Subagents (Read-Only)
+
+Launch all 3 subagents simultaneously using the Agent tool. Each receives:
+- The list of changed files
+- The implementation intent summary
+- Their specific review focus (below)
+- Instruction: **read-only — do NOT edit any files**
+- Instruction: read only the changed files and their immediate context (imports, callers)
+
+Each subagent returns a structured response:
+
+```
+VERDICT: PASS | FINDINGS
+Items: (only if FINDINGS)
+- severity: critical | major | minor
+  file: <path>
+  line: <number or range>
+  issue: <one-line description>
+  suggestion: <one-line fix suggestion>
+```
+
+#### Subagent 1: Correctness & Codebase Fit
+- Does the implementation follow existing patterns, naming conventions, and architecture?
+- Are there logic errors, incorrect assumptions, or fragile implementations?
+- Does the code faithfully implement what the plan step / review item specified?
+- Are imports ordered correctly (stdlib → third-party → project)?
+
+#### Subagent 2: Security & Edge Cases
+- OWASP concerns: XSS, injection, CSRF vulnerabilities?
+- Failure modes: empty input, missing data, unexpected states?
+- Leftover debug code: console.log, window globals, debug hacks?
+- Sensitive data exposure or insecure defaults?
+
+#### Subagent 3: Quality & Completeness
+- Over-engineering or premature abstractions?
+- Test coverage: were tests added for new behavior? Happy + sad paths?
+- CLAUDE.md compliance: typehints on Python code, no quoted annotations, descriptive variable names, no single-letter variables?
+- Clean up: no unused imports, no dead code introduced?
+
+### Phase 2: Aggregation
+
+The main agent collects all 3 subagent responses:
+- If all 3 return `PASS`: skip Phase 3, proceed to reporting
+- If any return `FINDINGS`: aggregate all findings into a single list and proceed to Phase 3
+
+### Phase 3: Fix Subagent
+
+Launch a single fix subagent via the Agent tool. It receives:
+- The aggregated findings list from Phase 2
+- The list of changed files
+- The implementation intent summary
+- Instruction: fix all reported findings, then re-validate
+
+The fix subagent must:
+1. Read the relevant files
+2. Apply fixes for each finding
+3. Re-validate using the appropriate method:
+   - **JavaScript/Frontend changes**: Run `make vite-build` (with `dangerouslyDisableSandbox: true`)
+   - **Python changes**: Run the relevant test marker via `make test-marker-parallel m=<marker>` (with `dangerouslyDisableSandbox: true`, activate venv first)
+   - **Template changes**: Verify Flask container starts without errors
+4. Return a structured response:
+
+```
+FIXES APPLIED:
+- file: <path>, line: <number>, change: <one-line description>
+- ...
+
+VALIDATION: PASS | FAIL
+(if FAIL, include error output)
+
+UNRESOLVED:
+- (any findings that could not be fixed mechanically — require user decision)
+```
+
+If the fix subagent reports `VALIDATION: FAIL` or has `UNRESOLVED` items, the main agent must surface these to the user in the report step and ask for guidance before proceeding.
+
+### Subagent Guidelines (applies to all 4 subagents)
+- Use `dangerouslyDisableSandbox: true` for all Docker commands
+- Activate the virtualenv in Docker: `source /code/venv/bin/activate`
+- Use `make` targets when available (preferred over raw docker commands)
+- Never run two test suites simultaneously (they share a single test DB)
+- Keep responses concise — structured format only, no prose
 
 ---
 
 ## Important Notes
 
 - **Always validate**: Build verification is mandatory for JavaScript changes
-- **Always review**: Staff engineer review is mandatory before reporting to the user
+- **Always review via subagents**: The Subagent Review Pipeline is mandatory before reporting to the user
 - **Always update tracking**: Mark progress after every step/item completion
 - **Always pause**: Never auto-continue to next step without user confirmation
 - **Use dangerouslyDisableSandbox: true** for all Docker commands

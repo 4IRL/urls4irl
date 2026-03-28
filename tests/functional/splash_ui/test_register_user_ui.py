@@ -15,11 +15,9 @@ from backend.utils.strings.ui_testing_strs import UI_TEST_STRINGS as UTS
 from backend.utils.strings.user_strs import USER_FAILURE
 from tests.functional.assert_utils import (
     assert_on_429_page,
-    assert_visible_css_selector,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
 from tests.functional.locators import SplashPageLocators as SPL
-from tests.functional.locators import ModalLocators as ML
 from tests.functional.splash_ui.selenium_utils import (
     register_user_ui,
 )
@@ -27,6 +25,8 @@ from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     dismiss_modal_with_click_out,
     invalidate_csrf_token_in_form,
+    wait_for_modal_hidden,
+    wait_for_modal_ready,
     wait_for_web_element_and_click,
     wait_then_click_element,
     wait_then_get_element,
@@ -47,29 +47,16 @@ def test_open_register_modal_center_btn(browser: WebDriver):
     THEN ensure the modal opens
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.REGISTER_MODAL)
     assert modal_element is not None
 
     assert modal_element.is_displayed()
 
     modal_title = wait_then_get_element(
-        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+        browser, f"{SPL.REGISTER_MODAL} .modal-title", time=3
     )
     assert modal_title is not None
     assert modal_title.text == "Register"
-
-
-def test_open_register_modal_rate_limited(browser: WebDriver):
-    """
-    Tests a user's ability to open the Register modal using the center button but is rate limited.
-
-    GIVEN a fresh load of the U4I Splash page but they are rate limited
-    WHEN user clicks the center register button
-    THEN ensure the 429 error screen is shown
-    """
-    add_forced_rate_limit_header(browser)
-    wait_then_click_element(browser, SPL.BUTTON_REGISTER)
-    assert_on_429_page(browser)
 
 
 def test_open_register_modal_RHS_btn(browser: WebDriver):
@@ -88,13 +75,13 @@ def test_open_register_modal_RHS_btn(browser: WebDriver):
     register_btn = navbar.find_element(By.CSS_SELECTOR, SPL.NAVBAR_REGISTER)
     register_btn.click()
 
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.REGISTER_MODAL)
     assert modal_element is not None
 
     assert modal_element.is_displayed()
 
     modal_title = wait_then_get_element(
-        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+        browser, f"{SPL.REGISTER_MODAL} .modal-title", time=3
     )
     assert modal_title is not None
     assert modal_title.text == "Register"
@@ -110,33 +97,17 @@ def test_login_to_register_modal_btn(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_LOGIN)
     wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
+    wait_for_modal_hidden(browser, SPL.LOGIN_MODAL)
+    wait_for_modal_ready(browser, SPL.REGISTER_MODAL)
 
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.REGISTER_MODAL)
     assert modal_element is not None
 
     modal_title = wait_then_get_element(
-        browser, f"{SPL.SPLASH_MODAL} .modal-title", time=3
+        browser, f"{SPL.REGISTER_MODAL} .modal-title", time=3
     )
     assert modal_title is not None
     assert modal_title.text == "Register"
-
-
-def test_login_to_register_modal_btn_rate_limits(browser: WebDriver):
-    """
-    Tests a user's ability to change view from the Login modal to the Register modal but is rate limited
-
-    GIVEN a fresh load of the U4I Splash page but user is rate limited
-    WHEN user opens Login modal and wants to change to Register
-    THEN ensure the 429 error page is shown
-    """
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN)
-    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
-    add_forced_rate_limit_header(browser)
-
-    assert_visible_css_selector(browser, SPL.SPLASH_MODAL)
-    wait_then_click_element(browser, SPL.BUTTON_REGISTER_FROM_LOGIN)
-
-    assert_on_429_page(browser)
 
 
 def test_dismiss_register_modal_btn(browser: WebDriver):
@@ -149,9 +120,9 @@ def test_dismiss_register_modal_btn(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
 
-    wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
+    wait_then_click_element(browser, SPL.REGISTER_BTN_CLOSE)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.REGISTER_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -166,11 +137,11 @@ def test_dismiss_register_modal_key(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
 
-    wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME, timeout=3)
+    wait_until_visible_css_selector(browser, SPL.REGISTER_INPUT_USERNAME, timeout=3)
 
     browser.switch_to.active_element.send_keys(Keys.ESCAPE)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.REGISTER_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -185,9 +156,9 @@ def test_dismiss_register_modal_click(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
 
-    dismiss_modal_with_click_out(browser)
+    dismiss_modal_with_click_out(browser, SPL.REGISTER_MODAL)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.REGISTER_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -202,9 +173,9 @@ def test_dismiss_register_modal_x(browser: WebDriver):
     """
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
 
-    wait_then_click_element(browser, SPL.BUTTON_X_MODAL_DISMISS)
+    wait_then_click_element(browser, SPL.REGISTER_X_MODAL_DISMISS)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.REGISTER_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -223,7 +194,7 @@ def test_register_new_user_btn(browser: WebDriver):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Await response
     modal_title = wait_then_get_element(browser, SPL.HEADER_VALIDATE_EMAIL, time=3)
@@ -270,7 +241,7 @@ def test_register_user_rate_limits(browser: WebDriver):
     add_forced_rate_limit_header(browser)
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
     assert_on_429_page(browser)
 
 
@@ -291,11 +262,11 @@ def test_register_existing_username(browser: WebDriver, create_test_users):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_username_message = wait_then_get_element(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
+        browser, SPL.REGISTER_INVALID_FEEDBACK, time=3
     )
     assert invalid_feedback_username_message is not None
 
@@ -319,11 +290,11 @@ def test_register_sanitized_username(browser: WebDriver, create_test_users):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_username_message = wait_then_get_element(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
+        browser, SPL.REGISTER_INVALID_FEEDBACK, time=3
     )
     assert invalid_feedback_username_message is not None
 
@@ -347,11 +318,11 @@ def test_register_existing_email(browser: WebDriver, create_test_users):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_email_message = wait_then_get_element(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK
+        browser, SPL.REGISTER_INVALID_FEEDBACK
     )
     assert invalid_feedback_email_message is not None
 
@@ -375,11 +346,11 @@ def test_register_existing_username_and_email(browser: WebDriver, create_test_us
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_messages = wait_then_get_elements(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK
+        browser, SPL.REGISTER_INVALID_FEEDBACK
     )
     assert len(invalid_feedback_messages) == 2
     assert any(
@@ -406,11 +377,11 @@ def test_register_user_unconfirmed_email_shows_alert(
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     unconfirmed_email_feedback = wait_then_get_element(
-        browser, SPL.SPLASH_MODAL_ALERT, time=3
+        browser, SPL.REGISTER_MODAL_ALERT, time=3
     )
     assert unconfirmed_email_feedback is not None
 
@@ -441,11 +412,11 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     unconfirmed_email_feedback = wait_then_get_element(
-        browser, SPL.SPLASH_MODAL_ALERT, time=3
+        browser, SPL.REGISTER_MODAL_ALERT, time=3
     )
     assert unconfirmed_email_feedback is not None
 
@@ -456,7 +427,9 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
     wait_for_web_element_and_click(browser, validate_email_btn)
     wait_until_visible_css_selector(browser, SPL.HEADER_VALIDATE_EMAIL)
 
-    email_sent = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, time=3)
+    email_sent = wait_then_get_element(
+        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=3
+    )
     assert email_sent is not None
     assert email_sent.text == EMAILS.EMAIL_SENT
 
@@ -480,11 +453,11 @@ def test_register_failed_password_equality(browser: WebDriver):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_username_message = wait_then_get_element(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
+        browser, SPL.REGISTER_INVALID_FEEDBACK, time=3
     )
     assert invalid_feedback_username_message is not None
 
@@ -510,11 +483,11 @@ def test_register_failed_email_equality(browser: WebDriver):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_username_message = wait_then_get_element(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK, time=3
+        browser, SPL.REGISTER_INVALID_FEEDBACK, time=3
     )
     assert invalid_feedback_username_message is not None
 
@@ -539,11 +512,11 @@ def test_register_failed_empty_fields(browser: WebDriver):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_messages = wait_then_get_elements(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK
+        browser, SPL.REGISTER_INVALID_FEEDBACK
     )
     assert len(invalid_feedback_messages) == 5
     expected_errors = [
@@ -574,11 +547,11 @@ def test_register_form_resets_on_close(browser: WebDriver):
     )
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Extract error message text
     invalid_feedback_messages = wait_then_get_elements(
-        browser, SPL.SUBHEADER_INVALID_FEEDBACK
+        browser, SPL.REGISTER_INVALID_FEEDBACK
     )
     assert len(invalid_feedback_messages) == 5
     expected_errors = [
@@ -590,14 +563,14 @@ def test_register_form_resets_on_close(browser: WebDriver):
     ]
     assert [elem.text for elem in invalid_feedback_messages] == expected_errors
 
-    wait_then_click_element(browser, ML.BUTTON_MODAL_DISMISS)
+    wait_then_click_element(browser, SPL.REGISTER_BTN_CLOSE)
 
-    wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    wait_until_hidden(browser, SPL.REGISTER_MODAL)
     wait_then_click_element(browser, SPL.BUTTON_REGISTER)
-    wait_until_visible_css_selector(browser, SPL.INPUT_USERNAME, timeout=3)
+    wait_until_visible_css_selector(browser, SPL.REGISTER_INPUT_USERNAME, timeout=3)
 
     with pytest.raises(NoSuchElementException):
-        browser.find_element(By.CSS_SELECTOR, SPL.SUBHEADER_INVALID_FEEDBACK)
+        browser.find_element(By.CSS_SELECTOR, SPL.REGISTER_INVALID_FEEDBACK)
 
 
 def test_register_new_user_invalid_csrf(browser: WebDriver):
@@ -608,28 +581,13 @@ def test_register_new_user_invalid_csrf(browser: WebDriver):
     WHEN user attempts registration with an invalid CSRF token
     THEN browser redirects user to error page, where user can refresh
     """
-    '''
-    browser.execute_script("""
-    $.ajaxSetup({
-        beforeSend: function (xhr, settings) {
-          if (
-            !/^(GET|HEAD|OPTIONS|TRACE)$/i.test(settings.type) &&
-            !this.crossDomain
-          ) {
-            xhr.setRequestHeader("X-CSRFToken", "invalid-csrf-token");
-          }
-          return true;
-        }
-    });
-    """)
-    '''
     register_user_ui(
         browser, UTS.TEST_USERNAME_1, UTS.TEST_PASSWORD_1, UTS.TEST_PASSWORD_1
     )
     invalidate_csrf_token_in_form(browser)
 
     # Submit form
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.REGISTER_BUTTON_SUBMIT)
 
     # Visit 403 error page due to CSRF, then reload
     assert_visited_403_on_invalid_csrf_and_reload(browser)

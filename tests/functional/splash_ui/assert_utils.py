@@ -10,7 +10,7 @@ from tests.functional.selenium_utils import (
 
 
 def assert_forgot_password_modal_open(browser: WebDriver):
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL)
     assert modal_element is not None
 
     assert modal_element.is_displayed()
@@ -21,12 +21,12 @@ def assert_forgot_password_modal_open(browser: WebDriver):
 
 
 def assert_forgot_password_submission(browser: WebDriver):
-    modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
+    modal_alert = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL_ALERT)
     assert modal_alert is not None
 
     assert modal_alert.text == EMAIL_SENT_MESSAGE
 
-    submit_btn = wait_then_get_element(browser, SPL.BUTTON_SUBMIT)
+    submit_btn = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT)
     assert submit_btn is not None
 
     assert submit_btn.get_attribute("disabled")

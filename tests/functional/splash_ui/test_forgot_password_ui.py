@@ -22,7 +22,6 @@ from tests.functional.assert_utils import (
     assert_on_429_page,
     assert_visited_403_on_invalid_csrf_and_reload,
 )
-from tests.functional.locators import ModalLocators as ML
 from tests.functional.locators import SplashPageLocators as SPL
 from tests.functional.splash_ui.assert_utils import (
     assert_forgot_password_modal_open,
@@ -35,6 +34,8 @@ from tests.functional.selenium_utils import (
     add_forced_rate_limit_header,
     clear_then_send_keys,
     invalidate_csrf_token_in_form,
+    wait_for_modal_hidden,
+    wait_for_modal_ready,
     wait_then_click_element,
     wait_then_get_element,
     dismiss_modal_with_click_out,
@@ -57,18 +58,18 @@ def test_open_forgot_password_modal(browser: WebDriver):
 
     assert_forgot_password_modal_open(browser)
 
-    email_input = wait_then_get_element(browser, SPL.INPUT_EMAIL)
+    email_input = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL)
     assert email_input is not None
     clear_then_send_keys(email_input, UTS.TEST_PASSWORD_1)
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT)
 
-    modal_alert = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT)
+    modal_alert = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL_ALERT)
     assert modal_alert is not None
 
     assert modal_alert.text == EMAIL_SENT_MESSAGE
 
-    submit_btn = wait_then_get_element(browser, SPL.BUTTON_SUBMIT)
+    submit_btn = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT)
     assert submit_btn is not None
 
     assert submit_btn.get_attribute("disabled")
@@ -79,14 +80,17 @@ def test_open_forgot_password_modal_rate_limits(browser: WebDriver):
     Tests a user's ability to request a password reminder but rate limited
 
     GIVEN a fresh load of the U4I Splash page
-    WHEN user opens the login, clicks the 'Forgot Password' link, and enters their email
+    WHEN user opens the forgot password modal and submits the form
     THEN the user is rate limited
     """
-    wait_then_click_element(browser, SPL.BUTTON_LOGIN, time=5)
-    wait_until_visible_css_selector(browser, SPL.SPLASH_MODAL)
+    open_forgot_password_modal(browser)
+
+    email_input = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL)
+    assert email_input is not None
+    clear_then_send_keys(email_input, UTS.TEST_PASSWORD_1)
 
     add_forced_rate_limit_header(browser)
-    wait_then_click_element(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL, time=5)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT, time=5)
     assert_on_429_page(browser)
 
 
@@ -100,9 +104,9 @@ def test_dismiss_forgot_password_modal_click(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    dismiss_modal_with_click_out(browser)
+    dismiss_modal_with_click_out(browser, SPL.FORGOT_PASSWORD_MODAL)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.FORGOT_PASSWORD_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -117,10 +121,10 @@ def test_dismiss_forgot_password_modal_x(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    wait_until_visible_css_selector(browser, ML.BUTTON_X_MODAL_DISMISS, timeout=3)
-    wait_then_click_element(browser, ML.BUTTON_X_MODAL_DISMISS, time=3)
+    wait_until_visible_css_selector(browser, SPL.FORGOT_PASSWORD_BTN_CLOSE, timeout=3)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BTN_CLOSE, time=3)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.FORGOT_PASSWORD_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -135,12 +139,12 @@ def test_dismiss_forgot_password_modal_key(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    splash_modal = wait_then_get_element(browser, SPL.SPLASH_MODAL, time=3)
+    splash_modal = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL, time=3)
     assert splash_modal is not None
 
     splash_modal.send_keys(Keys.ESCAPE)
 
-    modal_element = wait_until_hidden(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_until_hidden(browser, SPL.FORGOT_PASSWORD_MODAL)
 
     assert not modal_element.is_displayed()
 
@@ -155,11 +159,11 @@ def test_submit_forgot_password_modal_btn(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    email_input = wait_then_get_element(browser, SPL.INPUT_EMAIL)
+    email_input = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL)
     assert email_input is not None
     clear_then_send_keys(email_input, UTS.TEST_PASSWORD_1)
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT)
 
     assert_forgot_password_submission(browser)
 
@@ -174,7 +178,7 @@ def test_submit_forgot_password_modal_key(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    email_input = wait_then_get_element(browser, SPL.INPUT_EMAIL)
+    email_input = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL)
     assert email_input is not None
     clear_then_send_keys(email_input, UTS.TEST_PASSWORD_1)
 
@@ -192,13 +196,15 @@ def test_forgot_password_to_login_modal_btn(browser: WebDriver):
     THEN ensure the modal view changes appropriately
     """
     open_forgot_password_modal(browser)
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL)
     assert modal_element is not None
 
     wait_then_click_element(browser, SPL.BUTTON_LOGIN_FROM_FORGOT_PASSWORD)
+    wait_for_modal_hidden(browser, SPL.FORGOT_PASSWORD_MODAL)
+    wait_for_modal_ready(browser, SPL.LOGIN_MODAL)
     wait_until_visible_css_selector(browser, SPL.BUTTON_FORGOT_PASSWORD_MODAL)
 
-    modal_element = wait_then_get_element(browser, SPL.SPLASH_MODAL)
+    modal_element = wait_then_get_element(browser, SPL.LOGIN_MODAL)
     assert modal_element is not None
 
     modal_title = modal_element.find_element(By.CLASS_NAME, "modal-title")
@@ -216,9 +222,11 @@ def test_forgot_password_empty_field(browser: WebDriver):
     """
     open_forgot_password_modal(browser)
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT, 3)
 
-    feedback_elem = wait_then_get_element(browser, SPL.SUBHEADER_INVALID_FEEDBACK, 3)
+    feedback_elem = wait_then_get_element(
+        browser, SPL.FORGOT_PASSWORD_INVALID_FEEDBACK, 3
+    )
     assert feedback_elem is not None
     assert feedback_elem.text == INVALID_EMAIL_STR
 
@@ -232,13 +240,15 @@ def test_forgot_password_invalid_email(browser: WebDriver):
     THEN the modal responds with a suggestion to try again
     """
     open_forgot_password_modal(browser)
-    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    input_elem = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL, 3)
     assert input_elem is not None
     input_elem.send_keys("abcdf")
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT, 3)
 
-    feedback_elem = wait_then_get_element(browser, SPL.SUBHEADER_INVALID_FEEDBACK, 3)
+    feedback_elem = wait_then_get_element(
+        browser, SPL.FORGOT_PASSWORD_INVALID_FEEDBACK, 3
+    )
     assert feedback_elem is not None
     assert feedback_elem.text == INVALID_EMAIL_STR
 
@@ -255,12 +265,12 @@ def test_forgot_password_unconfirmed_email(
     """
 
     open_forgot_password_modal(browser)
-    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    input_elem = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL, 3)
     assert input_elem is not None
     input_elem.send_keys(UTS.TEST_PASSWORD_1)
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
-    alert_banner = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, 3)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT, 3)
+    alert_banner = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL_ALERT, 3)
     assert alert_banner is not None
 
     assert alert_banner.text == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
@@ -276,12 +286,12 @@ def test_forgot_password_nonexistent_email(browser: WebDriver):
     """
 
     open_forgot_password_modal(browser)
-    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    input_elem = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL, 3)
     assert input_elem is not None
     input_elem.send_keys(UTS.TEST_PASSWORD_1)
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
-    alert_banner = wait_then_get_element(browser, SPL.SPLASH_MODAL_ALERT, 3)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT, 3)
+    alert_banner = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_MODAL_ALERT, 3)
     assert alert_banner is not None
 
     assert alert_banner.text == FORGOT_PASSWORD.EMAIL_SENT_MESSAGE
@@ -298,7 +308,7 @@ def test_forgot_password_two_per_minute_rate_limit(
     THEN ensure U4I responds with appropriate error message
     """
     open_forgot_password_modal(browser)
-    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    input_elem = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL, 3)
     assert input_elem is not None
     input_elem.send_keys(UTS.TEST_PASSWORD_1)
 
@@ -311,7 +321,7 @@ def test_forgot_password_two_per_minute_rate_limit(
         initial_attempts = forgot_password.attempts
         db.session.commit()
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT, 3)
 
     with app.app_context():
         forgot_password: Forgot_Passwords = Forgot_Passwords.query.first()
@@ -329,7 +339,7 @@ def test_forgot_password_five_per_hour_rate_limit(
     THEN ensure U4I responds with appropriate error message
     """
     open_forgot_password_modal(browser)
-    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    input_elem = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL, 3)
     assert input_elem is not None
     input_elem.send_keys(UTS.TEST_PASSWORD_1)
 
@@ -340,7 +350,7 @@ def test_forgot_password_five_per_hour_rate_limit(
         initial_attempts = forgot_password.attempts
         db.session.commit()
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT, 3)
 
     with app.app_context():
         forgot_password: Forgot_Passwords = Forgot_Passwords.query.first()
@@ -356,12 +366,12 @@ def test_forgot_password_invalid_csrf(browser: WebDriver):
     THEN browser redirects user to error page, where user can refresh
     """
     open_forgot_password_modal(browser)
-    input_elem = wait_then_get_element(browser, SPL.INPUT_EMAIL, 3)
+    input_elem = wait_then_get_element(browser, SPL.FORGOT_PASSWORD_INPUT_EMAIL, 3)
     assert input_elem is not None
     assert input_elem.is_displayed()
 
     invalidate_csrf_token_in_form(browser)
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT, 3)
+    wait_then_click_element(browser, SPL.FORGOT_PASSWORD_BUTTON_SUBMIT, 3)
 
     # Visit 403 error page due to CSRF, then reload
     assert_visited_403_on_invalid_csrf_and_reload(browser)

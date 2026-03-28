@@ -1,0 +1,33 @@
+<div id="splashConfig" data-show-email-validation="{{ show_email_validation|default(false)|lower }}" style="display: none;"></div>
+
+<div class="modal fade" id="LoginModal" tabindex="-1" aria-labelledby="LoginModalLabel" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            {% include 'components/splash/login.html' %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="RegisterModal" tabindex="-1" aria-labelledby="RegisterModalLabel" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            {% include 'components/splash/register_user.html' %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="ForgotPasswordModal" tabindex="-1" aria-labelledby="ForgotPasswordModalLabel" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            {% include 'components/splash/forgot_password.html' %}
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="EmailValidationModal" tabindex="-1" aria-labelledby="EmailValidationModalLabel" style="display: none;" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered" role="document">
+        <div class="modal-content">
+            {% include 'components/splash/validate_email.html' %}
+        </div>
+    </div>
+</div>

@@ -260,64 +260,6 @@ def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
     assert int(current_user.get_id()) == logged_in_user.id
 
 
-def test_already_logged_in_user_to_login_page(login_first_user_with_register):
-    """
-    GIVEN a registered and logged in user
-    WHEN "/login" is GET after user is already logged on
-    THEN ensure redirection occurs and user is brought to their home page
-        - Note: Redirects are "/login" -> "/home"
-    """
-    client, _, logged_in_user, _ = login_first_user_with_register
-
-    # Ensure redirect on home page access
-    response = client.get(url_for(ROUTES.SPLASH.LOGIN), follow_redirects=True)
-
-    # Correctly redirects first to login page
-    # Since already logged in, redirects to home page
-    assert len(response.history) == 1
-    assert response.history[0].status_code == 302
-    assert response.history[0].request.path == url_for(ROUTES.SPLASH.LOGIN)
-
-    # Ensure lands on user's home page
-    assert response.status_code == 200
-    assert response.request.path == url_for(ROUTES.UTUBS.HOME)
-
-    # Test if user logged in
-    assert current_user.username == logged_in_user.username
-    assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email.lower()
-    assert int(current_user.get_id()) == logged_in_user.id
-
-
-def test_already_logged_in_user_to_register_page(login_first_user_with_register):
-    """
-    GIVEN a registered and logged in user
-    WHEN "/register" is GET after user is already logged on
-    THEN ensure redirection occurs and user is brought to their home page
-        - Note: Redirects are "/register" -> "/home"
-    """
-    client, _, logged_in_user, _ = login_first_user_with_register
-
-    # Ensure redirect on home page access
-    response = client.get(url_for(ROUTES.SPLASH.REGISTER), follow_redirects=True)
-
-    # Correctly redirects first to login page
-    # Since already logged in, redirects to home page
-    assert len(response.history) == 1
-    assert response.history[0].status_code == 302
-    assert response.history[0].request.path == url_for(ROUTES.SPLASH.REGISTER)
-
-    # Ensure lands on user's home page
-    assert response.status_code == 200
-    assert response.request.path == url_for(ROUTES.UTUBS.HOME)
-
-    # Test if user logged in
-    assert current_user.username == logged_in_user.username
-    assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email.lower()
-    assert int(current_user.get_id()) == logged_in_user.id
-
-
 def test_already_logged_in_user_to_home_page(login_first_user_with_register):
     """
     GIVEN a registered and logged in user
@@ -387,9 +329,9 @@ def test_user_can_login_logout_login(login_first_user_with_register):
     assert response.status_code == 200
     assert response.request.path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
 
-    response = client.get(url_for(ROUTES.SPLASH.LOGIN))
+    response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
-    # Ensure on login page
+    # Ensure splash page contains login form HTML
     login_input_html = f'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
 
     assert login_input_html.encode() in response.data
@@ -397,11 +339,10 @@ def test_user_can_login_logout_login(login_first_user_with_register):
         b'<input autocomplete="current-password" class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
         in response.data
     )
-    assert response.request.path == url_for(ROUTES.SPLASH.LOGIN)
+    assert response.request.path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
 
     # Grab csrf token from splash page (meta tag)
-    splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-    csrf_token = get_csrf_token(splash_response.data, meta_tag=True)
+    csrf_token = get_csrf_token(response.data, meta_tag=True)
 
     # Post data to login page
     response = client.post(
@@ -429,19 +370,18 @@ def test_user_can_login_logout_login(login_first_user_with_register):
 def test_login_modal_is_shown(app_with_server_name, client):
     """
     GIVEN a non-logged in user visiting the splash page ("/")
-    WHEN the user makes a request to "/login"
-    THEN verify that the backends responds with a modal in the HTML
+    WHEN the user makes a request to "/"
+    THEN verify that the splash page contains the pre-rendered login form HTML
     """
     with client:
         with app_with_server_name.app_context():
-            client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            response = client.get(url_for(ROUTES.SPLASH.LOGIN))
+            response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
         assert (
             b'<form id="ModalForm" method="POST" class="login-register-form" action="/login" novalidate>'
             in response.data
         )
 
-        # Ensure on login page - static HTML fields
+        # Ensure splash page contains login form - static HTML fields
         login_input_html = f'<input autocomplete="username" class="form-control login-register-form-group" id="username" maxlength="{USER_CONSTANTS.MAX_USERNAME_LENGTH}" minlength="{USER_CONSTANTS.MIN_USERNAME_LENGTH}" name="username" required type="text" value="">'
 
         assert login_input_html.encode() in response.data
@@ -449,20 +389,19 @@ def test_login_modal_is_shown(app_with_server_name, client):
             b'<input autocomplete="current-password" class="form-control login-register-form-group" id="password" name="password" required type="password" value="">'
             in response.data
         )
-        assert request.path == url_for(ROUTES.SPLASH.LOGIN)
+        assert request.path == url_for(ROUTES.SPLASH.SPLASH_PAGE)
 
 
 def test_login_modal_logs_user_in(app_with_server_name, client, register_first_user):
     """
     GIVEN a non-logged in user visiting the splash page ("/")
-    WHEN the user makes a GET request to "/login", and then a POST request with the applicable form info
+    WHEN the user makes a GET request to "/" (splash page), and then a POST request with the applicable form info
     THEN verify that the backends responds with URL to "/home" on response to the post
     """
     registered_user_data, _ = register_first_user
     with client:
         with app_with_server_name.app_context():
             splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            client.get(url_for(ROUTES.SPLASH.LOGIN))
         csrf_token = get_csrf_token(splash_response.data, meta_tag=True)
 
         response = client.post(
@@ -500,7 +439,6 @@ def test_login_user_to_home_log(
                 Users.username == valid_user_1[LOGIN_FORM.USERNAME]
             ).first()
             splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            client.get(url_for(ROUTES.SPLASH.LOGIN))
             csrf_token_str = get_csrf_token(splash_response.data, meta_tag=True)
 
             new_user = deepcopy(valid_user_1)
@@ -544,7 +482,6 @@ def test_login_user_to_utub_id_log(
             ).first()
             utub_id = utub_member.utub_id
             splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-            client.get(url_for(ROUTES.SPLASH.LOGIN))
             csrf_token_str = get_csrf_token(splash_response.data, meta_tag=True)
 
             new_user = deepcopy(valid_user_1)

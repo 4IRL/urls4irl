@@ -3,9 +3,10 @@ import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
+  resetModalFormState,
   handleImproperFormErrors,
   handleUserHasAccountNotEmailValidated,
-  loginModalOpenerFromModal,
+  switchModal,
   emailValidationModalOpener,
 } from "./init.js";
 
@@ -13,23 +14,27 @@ import {
  * Initialize register form handlers
  * Must be called after register form HTML is loaded into the modal
  */
-export function initRegisterForm() {
-  $("#ToLoginFromRegister").offAndOn("click", function () {
-    loginModalOpenerFromModal();
-  });
+export function initRegisterForm($modal) {
+  $modal
+    .find("#ToLoginFromRegister")
+    .offAndOn("click", () => switchModal($modal, "#LoginModal"));
 
-  $("#submit").offAndOn("click", (event) => handleRegister(event));
+  $modal
+    .find("#submit")
+    .offAndOn("click", (event) => handleRegister(event, $modal));
+
+  $modal.on("show.bs.modal", () => resetModalFormState($modal));
 }
 
-function handleRegister(event) {
+function handleRegister(event, $modal) {
   event.preventDefault();
-  $("#submit").attr("disabled", "disabled");
+  $modal.find("#submit").attr("disabled", "disabled");
 
-  const username = $("#username").val();
-  const email = $("#email").val();
-  const confirmEmail = $("#confirmEmail").val();
-  const password = $("#password").val();
-  const confirmPassword = $("#confirmPassword").val();
+  const username = $modal.find("#username").val();
+  const email = $modal.find("#email").val();
+  const confirmEmail = $modal.find("#confirmEmail").val();
+  const password = $modal.find("#password").val();
+  const confirmPassword = $modal.find("#confirmPassword").val();
 
   const registerRequest = $.ajax({
     url: APP_CONFIG.routes.register,
@@ -45,20 +50,20 @@ function handleRegister(event) {
   });
 
   registerRequest.done((response, textStatus, xhr) =>
-    handleRegisterSuccess(response, textStatus, xhr),
+    handleRegisterSuccess(response, textStatus, xhr, $modal),
   );
   registerRequest.fail((xhr, textStatus, error) =>
-    handleRegisterFailure(xhr, textStatus, error),
+    handleRegisterFailure(xhr, textStatus, error, $modal),
   );
 }
 
-function handleRegisterSuccess(response, _, xhr) {
+function handleRegisterSuccess(response, _, xhr, $modal) {
   if (xhr.status === 201) {
-    emailValidationModalOpener();
+    emailValidationModalOpener($modal);
   }
 }
 
-function handleRegisterFailure(xhr, _, error) {
+function handleRegisterFailure(xhr, _, error, $modal) {
   if (!xhr.hasOwnProperty("responseJSON")) {
     if (xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8") {
       switch (xhr.status) {
@@ -76,18 +81,22 @@ function handleRegisterFailure(xhr, _, error) {
   if (xhr.responseJSON.hasOwnProperty("errorCode")) {
     switch (xhr.status) {
       case 400: {
-        handleImproperFormErrors(xhr.responseJSON);
-        $("#submit").removeAttr("disabled");
+        handleImproperFormErrors($modal, xhr.responseJSON);
+        $modal.find("#submit").removeAttr("disabled");
         break;
       }
       case 401: {
         // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated(xhr.responseJSON.message);
-        $("input").attr("disabled", true);
+        handleUserHasAccountNotEmailValidated($modal, xhr.responseJSON.message);
+        $modal.find("input").attr("disabled", true);
         break;
       }
     }
   } else {
-    showSplashModalAlertBanner("Unable to process request...", "danger");
+    showSplashModalAlertBanner(
+      $modal,
+      "Unable to process request...",
+      "danger",
+    );
   }
 }

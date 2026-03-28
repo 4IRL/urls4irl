@@ -6,24 +6,14 @@ import "./lib/security-check.js";
 import { $, bootstrap } from "./lib/globals.js";
 import { setupCSRF } from "./lib/csrf.js";
 import { registerJQueryPlugins } from "./lib/jquery-plugins.js";
-import { showNewPageOnAJAXHTMLResponse } from "./lib/page-utils.js";
 import { initCookieBanner } from "./lib/cookie-banner.js";
-import { initNavbar, NAVBAR_TOGGLER } from "./splash/navbar.js";
-import {
-  initSplash,
-  loginModalOpener,
-  loginModalOpenerFromModal,
-  registerModalOpener,
-  showSplashModalAlertBanner,
-  hideSplashModalAlertBanner,
-  handleImproperFormErrors,
-  handleUserHasAccountNotEmailValidated,
-  emailValidationModalOpener,
-  disableInputFields,
-  displayFormErrors,
-} from "./splash/init.js";
+import { initNavbar } from "./splash/navbar.js";
+import { initSplash, createLogoutOnExit } from "./splash/init.js";
 import { initResetPasswordForm } from "./splash/reset-password-form.js";
-import { initEmailValidationForm } from "./splash/email-validation-form.js";
+import {
+  initEmailValidationForm,
+  SKIP_INITIAL_EMAIL,
+} from "./splash/email-validation-form.js";
 
 // Register jQuery plugins globally
 registerJQueryPlugins();
@@ -41,10 +31,9 @@ initCookieBanner();
 function initResetPasswordIfPresent() {
   const modalForm = $("#ModalForm[data-modal-type='reset-password']");
   if (modalForm.length) {
-    // Show the modal
     bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
-    // Initialize form handlers
-    initResetPasswordForm();
+    // initResetPasswordForm needs the jQuery wrapper for DOM event binding
+    initResetPasswordForm($("#SplashModal"));
   }
 }
 
@@ -53,12 +42,12 @@ function initResetPasswordIfPresent() {
  * This happens when user clicks an expired email validation link
  */
 function initEmailValidationIfPresent() {
-  const modalForm = $("#ModalForm[data-modal-type='email-validation']");
+  const modalForm = $("#ModalForm[data-modal-context='expired-token']");
   if (modalForm.length) {
-    // Show the modal
     bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
-    // Initialize form handlers (false = don't send initial email for expired token page)
-    initEmailValidationForm(false);
+    initEmailValidationForm($("#SplashModal"), SKIP_INITIAL_EMAIL);
+    const logoutOnExit = createLogoutOnExit();
+    $("#SplashModal").one("hide.bs.modal", logoutOnExit);
   }
 }
 

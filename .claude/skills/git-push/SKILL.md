@@ -80,12 +80,16 @@ Collect all 7 subagent responses. Parse each verdict:
 
 ### 4. Push
 
-Push using the GitHub App token over HTTPS so the push is attributed to the bot, not your personal account. This is required for branch protection rules that block self-approval from the last pusher. The repo remote uses SSH, so we must push to an explicit HTTPS URL with the token embedded.
+**CRITICAL: Never use bare `git push`.** The repo remote uses SSH, which attributes the push to the user's personal account. This breaks branch protection rules that block self-approval from the last pusher.
+
+**Always push via HTTPS with the GitHub App token** so the push is attributed to the bot:
 
 ```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
 git -c credential.helper="" push "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
 ```
+
+This command does NOT need `dangerouslyDisableSandbox`. Only `gh` CLI commands (which make TLS connections to `api.github.com`) need sandbox disabled.
 
 After pushing, proceed to Step 6 (PR creation).
 

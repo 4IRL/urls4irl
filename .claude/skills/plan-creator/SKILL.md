@@ -1,6 +1,6 @@
 ---
 name: plan-creator
-description: Creates structured planning documents for new features or tasks in the @plans directory. Use when the user asks to create, write, or draft a plan for a feature, task, or implementation.
+description: Creates structured planning documents for new features or tasks in the @plans directory. Use when the user asks to create, write, or draft a plan for a feature, task, or implementation. Performs deep codebase research using parallel subagents before writing the plan to ensure accuracy.
 ---
 
 ## Branch Guard
@@ -13,7 +13,53 @@ Before starting, check the current branch:
    - Do NOT proceed until the user confirms and you've switched branches
 2. If already on a feature branch: proceed normally
 
-## Plan Creation
+## Step 1: Deep Research via Parallel Subagents
+
+Before writing any plan, perform deep codebase research using parallel subagents. This keeps source file reads out of the main context window and enables thorough, parallel investigation.
+
+### 1a. Identify Research Targets
+
+From the user's feature/task description, identify:
+- **Affected modules**: Which backend blueprints, frontend modules, templates, and test directories are involved?
+- **Affected endpoints**: Which routes will be created, modified, or deleted?
+- **Affected symbols**: Which functions, classes, schemas, or models will change?
+- **Task type flags**: Does this involve data validation or model changes? (determines whether Subagent #5 launches)
+
+### 1b. Launch Research Subagents
+
+Read `references/research-prompts.md` for the full prompt definitions and expected JSON response format.
+
+Launch subagents **in parallel** using the Agent tool. Each subagent:
+- Receives the user's task description and the research targets from 1a
+- Reads source files independently (the main agent does NOT pre-read files)
+- Returns structured JSON per the format in `references/research-prompts.md`
+
+Include this preamble in every subagent prompt:
+
+> You are researching the codebase to inform a detailed implementation plan. The task is: `<user's task description>`. Affected modules/files: `<list from 1a>`.
+>
+> Read the source files relevant to your research area. Return ONLY a JSON block — no other text. Every file path you cite must be one you actually read.
+
+| # | Subagent | Focus | Launch condition |
+|---|---|---|---|
+| 1 | Architecture & Patterns | Module structure, conventions, naming | Always |
+| 2 | Dependency & Impact Mapping | Callers, callees, importers, cross-module effects | Always |
+| 3 | Request/Response Chain | Per-endpoint full-stack trace | Always (when endpoints are involved) |
+| 4 | Test Infrastructure | Markers, fixtures, coverage, test patterns | Always |
+| 5 | Schema & Data Shapes | Pydantic schemas, DB models, form classes, frontend contracts | Only when task involves data validation or model changes |
+
+All applicable subagents must launch in a **single message** for true parallelism.
+
+### 1c. Collect and Use Research Results
+
+After all subagents return:
+1. Parse each JSON response
+2. If any subagent fails or returns invalid JSON, note the gap — do NOT skip the area; instead, read the minimum necessary files directly to fill the gap
+3. Use the structured findings to inform plan writing in Step 2 — the main agent should reference subagent findings (file paths, signatures, patterns) rather than re-reading those files
+
+**The research summaries are the foundation of the plan.** Every file path, function signature, data shape, and pattern referenced in to-do items should trace back to a subagent finding.
+
+## Step 2: Plan Creation
 
 1. Create `@plans/<feature-name>.md` (create `@plans/` if missing).
 2. Name the file after the feature/task (kebab-case).
@@ -24,6 +70,9 @@ Before starting, check the current branch:
 
 ## Summary
 <2-4 sentence description of what this feature does and why.>
+
+## Research Findings
+<Brief summary of key discoveries from the research phase that shaped this plan. Include notable patterns, dependencies, or constraints discovered. Keep to 3-5 bullets — this is context for reviewers, not a full research dump.>
 
 ## Steps
 
@@ -46,7 +95,7 @@ finished: false
 - Each phase must have at least one actionable to-do checkbox.
 - To-do items must be detailed enough that a junior engineer can execute them without ambiguity — include file paths, function names, data shapes, or API contracts where relevant.
 - The to-do list carries the detail; phase descriptions should be brief overviews.
-- **Verify before you write.** Any constant, function, template tag, import path, or configuration value you reference in a to-do item must be confirmed to exist (and exist in the right context) by reading the relevant file before writing the to-do. Never write "use X from Y" based on memory or inference alone — read Y first.
+- **Ground to-dos in research findings.** Every file path, function signature, constant name, or data shape referenced in a to-do must come from a research subagent's findings. If a subagent didn't cover it, read the file before writing the to-do.
 - **Specify exact data structures.** When a to-do item constructs or populates a dict, list, or object, name the exact keys and value types — e.g., `errors["email"] = [USER_FAILURE.EMAIL_TAKEN]`, not "add `EMAIL_TAKEN` to the errors dict." Vague structure descriptions produce silent runtime failures when the implementer guesses the wrong key.
 - **No forward references within a step.** If a step's to-do item calls or imports a function, that function must either already exist in the codebase or have been created earlier in the same step. If a function is first defined in step N, no to-do in steps 1–(N-1) may reference it. Check this before finalising step order.
 
@@ -63,6 +112,8 @@ Client sends request
   → Test fixtures (how does the test obtain CSRF tokens, session state, DB state?)
   → Frontend JS (request data format, field IDs, success/failure handler branches)
 ```
+
+**Subagent #3 (Request/Response Chain) provides this trace.** Use its findings directly — do not re-trace manually unless the subagent missed an endpoint.
 
 Skipping layers produces plans that break in the gaps between what's described. Common omissions:
 - A middleware or decorator that gates the flow (auth condition, CSRF guard) that is only satisfied in some contexts
@@ -99,10 +150,10 @@ When any to-do item **deletes a function, class, or helper**, you must trace its
 
 ### Function Signature Change Protocol
 
-When any to-do item changes a function's signature (parameter type, name, count, or structure), **read the function body** before writing the to-do and explicitly enumerate:
+When any to-do item changes a function's signature (parameter type, name, count, or structure), **use Subagent #2's dependency mapping** to enumerate:
 
 1. **Every private helper inside it** that receives or uses the changed parameter — add a separate to-do to update each one's signature and internal uses.
-2. **Every direct call site in other files** — grep for callers and add a to-do for each one.
+2. **Every direct call site in other files** — add a to-do for each caller found in the dependency map.
 
 A plan that says "update `public_fn(form)` → `public_fn(value: str)`" without listing `_private_helper(form)` called inside it will produce an `AttributeError` at runtime. The callee enumeration must be explicit to-do items, not implied.
 

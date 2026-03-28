@@ -13,7 +13,7 @@ from backend.models.users import Users
 from backend.utils import constants as U4I_CONSTANTS
 from backend.utils.all_routes import ROUTES
 from backend.utils.datetime_utils import utc_now
-from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD, REGISTER_FORM
+from backend.utils.strings.splash_form_strs import FORGOT_YOUR_PASSWORD
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.reset_password_strs import FORGOT_PASSWORD, RESET_PASSWORD
 
@@ -23,80 +23,18 @@ USER_CONSTANTS = U4I_CONSTANTS.USER_CONSTANTS
 FORGOT_PASSWORD_MODAL_TITLE = f'<h4 class="modal-title">{FORGOT_YOUR_PASSWORD}</h4>'
 
 
-def test_user_logged_in_email_validated_cannot_access_forgot_password(
-    register_first_user, login_first_user_without_register
-):
-    """
-    GIVEN a user who is already logged in and email validated
-    WHEN they try to make a GET to the /forgot-password URL
-    THEN ensure they cannot access - only access is from non-logged in users
-        who are email validated. User should get redirected to their home page
-    """
-    client, _, _, _ = login_first_user_without_register
-
-    forgot_password_response = client.get(
-        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE), follow_redirects=True
-    )
-
-    # Only one redirect to user home page
-    assert len(forgot_password_response.history) == 1
-    redirect_response = forgot_password_response.history[0]
-
-    assert redirect_response.location == url_for(ROUTES.UTUBS.HOME)
-    assert redirect_response.status_code == 302
-
-
-def test_user_registered_not_email_validated_cannot_access_forgot_password(
-    load_register_page,
-):
-    """
-    GIVEN a user who just registered and the email confirmation modal has popped up
-    WHEN they try to make a GET to the /forgot-password URL
-    THEN ensure they cannot access - only access is from non-logged in users
-        who are email validated. User should get redirected to the email confirmation page
-    """
-    client, csrf_token = load_register_page
-
-    register_response = client.post(
-        "/register",
-        json={
-            REGISTER_FORM.USERNAME: valid_user_1[REGISTER_FORM.USERNAME],
-            REGISTER_FORM.EMAIL: valid_user_1[REGISTER_FORM.EMAIL],
-            REGISTER_FORM.CONFIRM_EMAIL: valid_user_1[REGISTER_FORM.EMAIL],
-            REGISTER_FORM.PASSWORD: valid_user_1[REGISTER_FORM.PASSWORD],
-            REGISTER_FORM.CONFIRM_PASSWORD: valid_user_1[REGISTER_FORM.PASSWORD],
-        },
-        headers={"X-CSRFToken": csrf_token},
-    )
-
-    assert register_response.status_code == 201
-    assert register_response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-
-    forgot_password_response = client.get(
-        url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE), follow_redirects=True
-    )
-
-    # Only one redirect to user home page
-    assert len(forgot_password_response.history) == 1
-    redirect_response = forgot_password_response.history[0]
-
-    assert redirect_response.location == url_for(ROUTES.SPLASH.CONFIRM_EMAIL)
-    assert redirect_response.status_code == 302
-
-
 def test_valid_user_requests_forgot_password_form(register_first_user, load_login_page):
     """
     GIVEN a user who is not logged in but is email validated and registered
-    WHEN they try to make a GET to the /forgot-password URL
-    THEN server successfully sends the user the forgot password form and responds with
-        200 status code
+    WHEN they visit the splash page
+    THEN the splash page contains the pre-rendered forgot password form HTML
     """
     client, _ = load_login_page
 
-    forgot_password_response = client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
+    splash_response = client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
-    assert forgot_password_response.status_code == 200
-    assert FORGOT_PASSWORD_MODAL_TITLE.encode() in forgot_password_response.data
+    assert splash_response.status_code == 200
+    assert FORGOT_PASSWORD_MODAL_TITLE.encode() in splash_response.data
 
 
 def test_valid_user_posts_forgot_password_form_without_csrf(
@@ -110,7 +48,7 @@ def test_valid_user_posts_forgot_password_form_without_csrf(
     new_user, _ = register_first_user
     client, _ = load_login_page
 
-    client.get(url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE))
+    client.get(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
     forgot_password_post_response = client.post(
         url_for(ROUTES.SPLASH.FORGOT_PASSWORD_PAGE),

@@ -80,34 +80,6 @@ def test_registered_not_email_validated_user_access_home_page(load_register_page
     assert IDENTIFIERS.SPLASH_PAGE.encode() in response.data
 
 
-def test_registered_not_email_validated_user_access_register_login(load_register_page):
-    """
-    GIVEN a registered user (but not logged in user) without a validated email, after just registering
-    WHEN they try to access the login or register pages
-    THEN ensure they are redirected to the email validation modal
-    """
-    client, csrf_token_string = load_register_page
-
-    response = client.post(
-        url_for(ROUTES.SPLASH.REGISTER),
-        json=register_json(valid_user_1),
-        headers={"X-CSRFToken": csrf_token_string},
-    )
-
-    # Correctly responds with JSON 201
-    assert response.status_code == 201
-    assert response.json[STD_JSON.STATUS] == STD_JSON.SUCCESS
-
-    urls_to_check = (url_for(ROUTES.SPLASH.REGISTER), url_for(ROUTES.SPLASH.LOGIN))
-
-    for url in urls_to_check:
-        response = client.get(url, follow_redirects=True)
-        assert response.history[0].status_code == 302
-        assert response.history[0].location == url_for(ROUTES.SPLASH.CONFIRM_EMAIL)
-        assert response.status_code == 200
-        assert VALIDATE_EMAIL_MODAL_TITLE.encode() in response.data
-
-
 def test_registered_not_email_validated_tries_registering_again(
     register_first_user_without_email_validation, load_register_page
 ):

@@ -16,9 +16,19 @@ urls4irl is a full-stack web app for managing shared collections of URLs called 
 
 Review files are stored at the project root level (`reviews/`), NOT under the `plans/` directory. Always look for `reviews/` at the repository root.
 
-### `.claude/` Directory
+### Endpoint Registry
 
-Files under `.claude/` (skills, scripts, settings) may be committed and pushed on **any branch**, regardless of the branch topic. Always include `.claude/` changes alongside other work — never exclude them for being "unrelated."
+`ENDPOINT_REGISTRY.md` at the project root maps every route through all implementation layers (handler → service → schema → template → JS module → tests). **When any code change adds, modifies, or removes an endpoint, its entry in the registry must be updated in the same commit.** This includes changes to:
+- Route handlers, decorators, or URL paths
+- Service functions called by routes
+- Pydantic request schemas
+- Templates rendered by routes
+- JS modules that call endpoints
+- Test files covering endpoints
+
+### `.claude/`, `CLAUDE.md`, and `.gitignore`
+
+Files under `.claude/` (skills, scripts, settings), `CLAUDE.md`, and `.gitignore` may be committed and pushed on **any branch**, regardless of the branch topic. Always include these changes alongside other work — never exclude them for being "unrelated."
 
 
 ## Development and Coding Practices

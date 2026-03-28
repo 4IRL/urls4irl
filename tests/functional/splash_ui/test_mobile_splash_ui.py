@@ -118,7 +118,7 @@ def test_mobile_login_brings_user_to_utub_panel(
     wait_then_click_element(browser, SPL.NAVBAR_LOGIN)
     input_login_fields(browser)
 
-    wait_then_click_element(browser, SPL.BUTTON_SUBMIT)
+    wait_then_click_element(browser, SPL.LOGIN_BUTTON_SUBMIT)
 
     assert_panel_visibility_mobile(browser=browser, visible_deck=Decks.UTUBS)
 
