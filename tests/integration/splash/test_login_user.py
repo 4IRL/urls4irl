@@ -260,64 +260,6 @@ def test_already_logged_in_user_to_splash_page(login_first_user_with_register):
     assert int(current_user.get_id()) == logged_in_user.id
 
 
-def test_already_logged_in_user_to_login_page(login_first_user_with_register):
-    """
-    GIVEN a registered and logged in user
-    WHEN "/login" is GET after user is already logged on
-    THEN ensure redirection occurs and user is brought to their home page
-        - Note: Redirects are "/login" -> "/home"
-    """
-    client, _, logged_in_user, _ = login_first_user_with_register
-
-    # Ensure redirect on home page access
-    response = client.get(url_for(ROUTES.SPLASH.LOGIN), follow_redirects=True)
-
-    # Correctly redirects first to login page
-    # Since already logged in, redirects to home page
-    assert len(response.history) == 1
-    assert response.history[0].status_code == 302
-    assert response.history[0].request.path == url_for(ROUTES.SPLASH.LOGIN)
-
-    # Ensure lands on user's home page
-    assert response.status_code == 200
-    assert response.request.path == url_for(ROUTES.UTUBS.HOME)
-
-    # Test if user logged in
-    assert current_user.username == logged_in_user.username
-    assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email.lower()
-    assert int(current_user.get_id()) == logged_in_user.id
-
-
-def test_already_logged_in_user_to_register_page(login_first_user_with_register):
-    """
-    GIVEN a registered and logged in user
-    WHEN "/register" is GET after user is already logged on
-    THEN ensure redirection occurs and user is brought to their home page
-        - Note: Redirects are "/register" -> "/home"
-    """
-    client, _, logged_in_user, _ = login_first_user_with_register
-
-    # Ensure redirect on home page access
-    response = client.get(url_for(ROUTES.SPLASH.REGISTER), follow_redirects=True)
-
-    # Correctly redirects first to login page
-    # Since already logged in, redirects to home page
-    assert len(response.history) == 1
-    assert response.history[0].status_code == 302
-    assert response.history[0].request.path == url_for(ROUTES.SPLASH.REGISTER)
-
-    # Ensure lands on user's home page
-    assert response.status_code == 200
-    assert response.request.path == url_for(ROUTES.UTUBS.HOME)
-
-    # Test if user logged in
-    assert current_user.username == logged_in_user.username
-    assert current_user.password == logged_in_user.password
-    assert current_user.email == logged_in_user.email.lower()
-    assert int(current_user.get_id()) == logged_in_user.id
-
-
 def test_already_logged_in_user_to_home_page(login_first_user_with_register):
     """
     GIVEN a registered and logged in user

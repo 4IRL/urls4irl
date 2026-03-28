@@ -5,7 +5,10 @@ import { NAVBAR_TOGGLER } from "./navbar.js";
 import { initLoginForm } from "./login-form.js";
 import { initRegisterForm } from "./register-form.js";
 import { initForgotPasswordForm } from "./forgot-password-form.js";
-import { initEmailValidationForm } from "./email-validation-form.js";
+import {
+  initEmailValidationForm,
+  SEND_INITIAL_EMAIL,
+} from "./email-validation-form.js";
 
 /**
  * Initialize splash page
@@ -22,7 +25,7 @@ export function initSplash() {
   const splashConfig = document.getElementById("splashConfig");
   if (splashConfig && splashConfig.dataset.showEmailValidation === "true") {
     bootstrap.Modal.getOrCreateInstance("#EmailValidationModal").show();
-    initEmailValidationForm($("#EmailValidationModal"), true);
+    initEmailValidationForm($("#EmailValidationModal"), SEND_INITIAL_EMAIL);
     const logoutOnExit = createLogoutOnExit();
     $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
   }
@@ -66,10 +69,10 @@ export function createLogoutOnExit() {
   };
 }
 
-export function switchModal(fromSelector, toSelector) {
-  const fromModal = bootstrap.Modal.getInstance(fromSelector);
+export function switchModal($fromModal, toSelector) {
+  const fromModal = bootstrap.Modal.getInstance($fromModal[0]);
   if (fromModal) {
-    $(fromSelector).one("hidden.bs.modal", () => {
+    $fromModal.one("hidden.bs.modal", () => {
       bootstrap.Modal.getOrCreateInstance(toSelector).show();
     });
     fromModal.hide();
@@ -86,9 +89,9 @@ export function registerModalOpener() {
   bootstrap.Modal.getOrCreateInstance("#RegisterModal").show();
 }
 
-export function emailValidationModalOpener(fromSelector) {
-  switchModal(fromSelector, "#EmailValidationModal");
-  initEmailValidationForm($("#EmailValidationModal"), true);
+export function emailValidationModalOpener($fromModal) {
+  switchModal($fromModal, "#EmailValidationModal");
+  initEmailValidationForm($("#EmailValidationModal"), SEND_INITIAL_EMAIL);
   const logoutOnExit = createLogoutOnExit();
   $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
 }
@@ -116,11 +119,7 @@ export function disableInputFields($modal) {
   $modal.find("input").attr("disabled", true);
 }
 
-export function handleUserHasAccountNotEmailValidated(
-  sourceModalSelector,
-  message,
-) {
-  const $sourceModal = $(sourceModalSelector);
+export function handleUserHasAccountNotEmailValidated($sourceModal, message) {
   const logoutOnExit = createLogoutOnExit();
 
   $sourceModal.find(".form-control").removeClass("is-invalid");
@@ -137,7 +136,7 @@ export function handleUserHasAccountNotEmailValidated(
         `<button type="button" class="btn btn-link btn-block">${APP_CONFIG.strings.VALIDATE_MY_EMAIL}</button>`,
       ).offAndOn("click", () => {
         $sourceModal.off("hide.bs.modal", logoutOnExit);
-        emailValidationModalOpener(sourceModalSelector);
+        emailValidationModalOpener($sourceModal);
       }),
     );
 

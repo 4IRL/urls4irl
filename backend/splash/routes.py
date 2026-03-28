@@ -82,13 +82,6 @@ def splash_page() -> WerkzeugResponse | str:
     )
 
 
-@splash.route("/register", methods=["GET"])
-@no_authenticated_users_allowed
-def register_user_page() -> WerkzeugResponse:
-    """Redirects to splash page — form is pre-rendered in the modal."""
-    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
-
-
 @splash.route("/register", methods=["POST"])
 @no_authenticated_users_allowed
 @parse_json_body(
@@ -103,13 +96,6 @@ def register_user(validated_request: RegisterRequest) -> FlaskResponse:
         validated_request.email,
         validated_request.password,
     )
-
-
-@splash.route("/login", methods=["GET"])
-@no_authenticated_users_allowed
-def login_page() -> WerkzeugResponse:
-    """Redirects to splash page — form is pre-rendered in the modal."""
-    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
 
 @splash.route("/login", methods=["POST"])
@@ -172,13 +158,6 @@ def validate_email_expired():
 @splash.route("/validate/<string:token>", methods=["GET"])
 def validate_email(token: str) -> WerkzeugResponse:
     return validate_email_for_user(token)
-
-
-@splash.route("/forgot-password", methods=["GET"])
-@no_authenticated_users_allowed
-def forgot_password_page() -> WerkzeugResponse:
-    """Redirects to splash page — form is pre-rendered in the modal."""
-    return redirect(url_for(ROUTES.SPLASH.SPLASH_PAGE))
 
 
 @splash.route("/forgot-password", methods=["POST"])

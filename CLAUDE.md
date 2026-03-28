@@ -26,9 +26,9 @@ Review files are stored at the project root level (`reviews/`), NOT under the `p
 - JS modules that call endpoints
 - Test files covering endpoints
 
-### `.claude/` Directory
+### `.claude/`, `CLAUDE.md`, and `.gitignore`
 
-Files under `.claude/` (skills, scripts, settings) may be committed and pushed on **any branch**, regardless of the branch topic. Always include `.claude/` changes alongside other work — never exclude them for being "unrelated."
+Files under `.claude/` (skills, scripts, settings), `CLAUDE.md`, and `.gitignore` may be committed and pushed on **any branch**, regardless of the branch topic. Always include these changes alongside other work — never exclude them for being "unrelated."
 
 
 ## Development and Coding Practices

@@ -5,6 +5,9 @@ import {
   hideSplashModalAlertBanner,
 } from "./init.js";
 
+export const SEND_INITIAL_EMAIL = true;
+export const SKIP_INITIAL_EMAIL = false;
+
 /**
  * Initialize email validation form handlers
  * Must be called after email validation form HTML is loaded into the modal
@@ -14,7 +17,7 @@ import {
 export function initEmailValidationForm($modal, sendInitialEmail = false) {
   $modal
     .find("#submit")
-    .offAndOn("click", (event) => handleValidateEmail(event, $modal));
+    .offAndOn("click", (event) => handleValidateEmail($modal, event));
 
   $modal.on("show.bs.modal", () => {
     $modal.find(".invalid-feedback").remove();
@@ -24,11 +27,11 @@ export function initEmailValidationForm($modal, sendInitialEmail = false) {
 
   // Send validation email after register, but not if token for validation is expired
   if (sendInitialEmail) {
-    handleValidateEmail(null, $modal);
+    handleValidateEmail($modal);
   }
 }
 
-function handleValidateEmail(event = null, $modal) {
+function handleValidateEmail($modal, event = null) {
   if (event !== null) {
     event.preventDefault();
   }

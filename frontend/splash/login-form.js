@@ -16,13 +16,11 @@ import {
 export function initLoginForm($modal) {
   $modal
     .find("#ToRegisterFromLogin")
-    .offAndOn("click", () => switchModal("#LoginModal", "#RegisterModal"));
+    .offAndOn("click", () => switchModal($modal, "#RegisterModal"));
 
   $modal
     .find(".to-forgot-password")
-    .offAndOn("click", () =>
-      switchModal("#LoginModal", "#ForgotPasswordModal"),
-    );
+    .offAndOn("click", () => switchModal($modal, "#ForgotPasswordModal"));
 
   $modal
     .find("#submit")
@@ -96,10 +94,7 @@ function handleLoginFailure(xhr, _, error, $modal) {
     switch (xhr.responseJSON.errorCode) {
       case 1: {
         // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated(
-          "#LoginModal",
-          xhr.responseJSON.message,
-        );
+        handleUserHasAccountNotEmailValidated($modal, xhr.responseJSON.message);
         $modal.find("input").attr("disabled", true);
         break;
       }

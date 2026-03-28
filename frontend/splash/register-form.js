@@ -17,7 +17,7 @@ import {
 export function initRegisterForm($modal) {
   $modal
     .find("#ToLoginFromRegister")
-    .offAndOn("click", () => switchModal("#RegisterModal", "#LoginModal"));
+    .offAndOn("click", () => switchModal($modal, "#LoginModal"));
 
   $modal
     .find("#submit")
@@ -54,16 +54,16 @@ function handleRegister(event, $modal) {
   });
 
   registerRequest.done((response, textStatus, xhr) =>
-    handleRegisterSuccess(response, textStatus, xhr),
+    handleRegisterSuccess(response, textStatus, xhr, $modal),
   );
   registerRequest.fail((xhr, textStatus, error) =>
     handleRegisterFailure(xhr, textStatus, error, $modal),
   );
 }
 
-function handleRegisterSuccess(response, _, xhr) {
+function handleRegisterSuccess(response, _, xhr, $modal) {
   if (xhr.status === 201) {
-    emailValidationModalOpener("#RegisterModal");
+    emailValidationModalOpener($modal);
   }
 }
 
@@ -91,10 +91,7 @@ function handleRegisterFailure(xhr, _, error, $modal) {
       }
       case 401: {
         // User found but email not yet validated
-        handleUserHasAccountNotEmailValidated(
-          "#RegisterModal",
-          xhr.responseJSON.message,
-        );
+        handleUserHasAccountNotEmailValidated($modal, xhr.responseJSON.message);
         $modal.find("input").attr("disabled", true);
         break;
       }

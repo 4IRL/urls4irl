@@ -224,7 +224,11 @@ class SplashPageLocators(GenericPageLocator):
     FORGOT_PASSWORD_MODAL = "#ForgotPasswordModal"
     EMAIL_VALIDATION_MODAL = "#EmailValidationModal"
 
-    # Keep SPLASH_MODAL for reset password and email validation expired flows
+    # Keep SPLASH_MODAL for reset password and expired email validation flows.
+    # These flows use a single generic #SplashModal shell that is populated with
+    # different form content at runtime (via URL dispatch), unlike the other modals
+    # (e.g. ForgotPasswordModal, EmailValidationModal) which are pre-rendered with
+    # their own specific IDs and can be targeted directly.
     SPLASH_MODAL = "#SplashModal"
 
     # Unscoped common selectors (use for reset password / single-modal pages)

@@ -27,6 +27,8 @@ vi.mock("../forgot-password-form.js", () => ({
 
 vi.mock("../email-validation-form.js", () => ({
   initEmailValidationForm: vi.fn(),
+  SEND_INITIAL_EMAIL: true,
+  SKIP_INITIAL_EMAIL: false,
 }));
 
 vi.mock("../../lib/page-utils.js", () => ({
@@ -156,7 +158,7 @@ describe("switchModal", () => {
       mockToModal,
     );
 
-    switchModal("#LoginModal", "#RegisterModal");
+    switchModal($("#LoginModal"), "#RegisterModal");
 
     expect(mockFromModal.hide).toHaveBeenCalled();
     expect(mockToModal.show).not.toHaveBeenCalled();
@@ -173,7 +175,7 @@ describe("switchModal", () => {
       mockToModal,
     );
 
-    switchModal("#LoginModal", "#RegisterModal");
+    switchModal($("#LoginModal"), "#RegisterModal");
 
     expect(mockToModal.show).toHaveBeenCalled();
   });
@@ -186,7 +188,7 @@ describe("switchModal", () => {
       mockToModal,
     );
 
-    switchModal("#LoginModal", "#RegisterModal");
+    switchModal($("#LoginModal"), "#RegisterModal");
 
     // First trigger shows the to-modal
     $("#LoginModal").trigger("hidden.bs.modal");
@@ -338,7 +340,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
 
   it("binds logoutOnExit to source modal via .one() — closing fires logout and redirect", () => {
     handleUserHasAccountNotEmailValidated(
-      "#LoginModal",
+      $("#LoginModal"),
       "Please validate your email",
     );
 
@@ -351,7 +353,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
 
   it("logoutOnExit auto-unbinds after one firing (.one() behavior)", () => {
     handleUserHasAccountNotEmailValidated(
-      "#LoginModal",
+      $("#LoginModal"),
       "Please validate your email",
     );
 
@@ -365,7 +367,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
 
   it("removes form controls, forgot-password link, footer from source modal", () => {
     handleUserHasAccountNotEmailValidated(
-      "#LoginModal",
+      $("#LoginModal"),
       "Please validate your email",
     );
 
@@ -377,7 +379,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
 
   it("shows validate-my-email button in alert banner", () => {
     handleUserHasAccountNotEmailValidated(
-      "#LoginModal",
+      $("#LoginModal"),
       "Please validate your email",
     );
 
@@ -400,7 +402,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
     );
 
     handleUserHasAccountNotEmailValidated(
-      "#LoginModal",
+      $("#LoginModal"),
       "Please validate your email",
     );
 
@@ -425,7 +427,7 @@ describe("handleUserHasAccountNotEmailValidated", () => {
     });
 
     handleUserHasAccountNotEmailValidated(
-      "#LoginModal",
+      $("#LoginModal"),
       "Please validate your email",
     );
 
@@ -463,7 +465,7 @@ describe("emailValidationModalOpener", () => {
       mockToModal,
     );
 
-    emailValidationModalOpener("#RegisterModal");
+    emailValidationModalOpener($("#RegisterModal"));
 
     expect(mockFromModal.hide).toHaveBeenCalled();
   });
@@ -474,7 +476,7 @@ describe("emailValidationModalOpener", () => {
       show: vi.fn(),
     });
 
-    emailValidationModalOpener("#RegisterModal");
+    emailValidationModalOpener($("#RegisterModal"));
 
     expect(initEmailValidationForm).toHaveBeenCalledWith(
       expect.any(Object),
@@ -495,7 +497,7 @@ describe("emailValidationModalOpener", () => {
     });
     vi.spyOn(window.location, "replace").mockImplementation(() => {});
 
-    emailValidationModalOpener("#RegisterModal");
+    emailValidationModalOpener($("#RegisterModal"));
 
     // Trigger hide on EmailValidationModal
     $("#EmailValidationModal").trigger("hide.bs.modal");

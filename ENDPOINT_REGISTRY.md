@@ -22,16 +22,6 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **JS Module** | `frontend/splash/init.js` |
 | **Tests** | `tests/integration/splash/test_login_register_home_screen.py` (marker: `splash`) |
 
-### GET /login
-
-| Layer | Location |
-|---|---|
-| **Handler** | `backend/splash/routes.py:login_page` |
-| **Decorators** | `@no_authenticated_users_allowed` |
-| **Service** | Redirects to splash page (form is pre-rendered in modal) |
-| **Template** | None (redirect only) |
-| **Tests** | `tests/integration/splash/test_login_user.py` (marker: `splash`), `tests/functional/splash_ui/test_login_user_ui.py` (marker: `splash_ui`) |
-
 ### POST /login
 
 | Layer | Location |
@@ -43,16 +33,6 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **JS Module** | `frontend/splash/login-form.js` — `JSON.stringify`, `application/json` |
 | **CSRF** | Meta tag `<meta name="csrf-token">` via `components/head/meta.html` |
 | **Tests** | `tests/integration/splash/test_login_user.py` (marker: `splash`), `tests/integration/splash/test_invalid_json_body.py` (marker: `splash`), `tests/functional/splash_ui/test_login_user_ui.py` (marker: `splash_ui`) |
-
-### GET /register
-
-| Layer | Location |
-|---|---|
-| **Handler** | `backend/splash/routes.py:register_user_page` |
-| **Decorators** | `@no_authenticated_users_allowed` |
-| **Service** | Redirects to splash page (form is pre-rendered in modal) |
-| **Template** | None (redirect only) |
-| **Tests** | `tests/integration/splash/test_register_user.py` (marker: `splash`), `tests/functional/splash_ui/test_register_user_ui.py` (marker: `splash_ui`) |
 
 ### POST /register
 
@@ -107,16 +87,6 @@ Base path: `/splash` (registered without url_prefix in some routes — paths sho
 | **Service** | `backend/splash/services/email_validation.py:validate_email_for_user` |
 | **Template** | Redirect (no template) |
 | **Tests** | `tests/integration/splash/test_email_validation.py` (marker: `splash`) |
-
-### GET /forgot-password
-
-| Layer | Location |
-|---|---|
-| **Handler** | `backend/splash/routes.py:forgot_password_page` |
-| **Decorators** | `@no_authenticated_users_allowed` |
-| **Service** | Redirects to splash page (form is pre-rendered in modal) |
-| **Template** | None (redirect only) |
-| **Tests** | `tests/integration/splash/test_forgot_password.py` (marker: `splash`), `tests/functional/splash_ui/test_forgot_password_ui.py` (marker: `splash_ui`) |
 
 ### POST /forgot-password
 

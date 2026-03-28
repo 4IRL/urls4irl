@@ -10,7 +10,10 @@ import { initCookieBanner } from "./lib/cookie-banner.js";
 import { initNavbar } from "./splash/navbar.js";
 import { initSplash, createLogoutOnExit } from "./splash/init.js";
 import { initResetPasswordForm } from "./splash/reset-password-form.js";
-import { initEmailValidationForm } from "./splash/email-validation-form.js";
+import {
+  initEmailValidationForm,
+  SKIP_INITIAL_EMAIL,
+} from "./splash/email-validation-form.js";
 
 // Register jQuery plugins globally
 registerJQueryPlugins();
@@ -29,6 +32,7 @@ function initResetPasswordIfPresent() {
   const modalForm = $("#ModalForm[data-modal-type='reset-password']");
   if (modalForm.length) {
     bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
+    // initResetPasswordForm needs the jQuery wrapper for DOM event binding
     initResetPasswordForm($("#SplashModal"));
   }
 }
@@ -41,7 +45,7 @@ function initEmailValidationIfPresent() {
   const modalForm = $("#ModalForm[data-modal-context='expired-token']");
   if (modalForm.length) {
     bootstrap.Modal.getOrCreateInstance("#SplashModal").show();
-    initEmailValidationForm($("#SplashModal"), false);
+    initEmailValidationForm($("#SplashModal"), SKIP_INITIAL_EMAIL);
     const logoutOnExit = createLogoutOnExit();
     $("#SplashModal").one("hide.bs.modal", logoutOnExit);
   }

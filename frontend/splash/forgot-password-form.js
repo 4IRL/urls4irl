@@ -15,9 +15,7 @@ import {
 export function initForgotPasswordForm($modal) {
   $modal
     .find("#ToLoginFromForgotPassword")
-    .offAndOn("click", () =>
-      switchModal("#ForgotPasswordModal", "#LoginModal"),
-    );
+    .offAndOn("click", () => switchModal($modal, "#LoginModal"));
 
   $modal
     .find("#submit")
