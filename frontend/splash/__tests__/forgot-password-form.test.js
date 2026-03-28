@@ -26,16 +26,12 @@ vi.mock("../../lib/config.js", () => {
 
 const $ = window.jQuery;
 
+// Minimal HTML — only the DOM nodes the function under test actually queries.
+// This decouples tests from template markup and avoids maintaining HTML in two places.
 const FORGOT_PASSWORD_MODAL_HTML = `
   <div class="modal fade" id="ForgotPasswordModal">
-    <div class="modal-content">
-      <div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>
-      <form id="ModalForm">
-        <input id="email" class="form-control" value="test@test.com" />
-        <button id="submit" type="submit"></button>
-      </form>
-      <div id="ToLoginFromForgotPassword">Back</div>
-    </div>
+    <input id="email" class="form-control" value="test@test.com" />
+    <button id="submit" type="submit"></button>
   </div>
 `;
 

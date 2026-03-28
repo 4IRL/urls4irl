@@ -50,57 +50,20 @@ vi.mock("../../lib/config.js", () => {
 
 const $ = window.jQuery;
 
-const MODAL_HTML = `
-  <div class="modal fade" id="LoginModal">
-    <div class="modal-content">
-      <div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>
-      <form id="ModalForm">
-        <input id="username" class="form-control" />
-        <input id="password" class="form-control" />
-        <input id="email" class="form-control" />
-        <button id="submit" type="submit"></button>
-      </form>
-      <div class="to-forgot-password">Forgot?</div>
-      <div class="register-to-login-footer">Footer</div>
-      <div class="modal-footer">Modal Footer</div>
-    </div>
-  </div>
-  <div class="modal fade" id="RegisterModal">
-    <div class="modal-content">
-      <div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>
-      <form id="ModalForm">
-        <input id="username" class="form-control" />
-        <input id="email" class="form-control" />
-        <button id="submit" type="submit"></button>
-      </form>
-      <div class="register-to-login-footer">Footer</div>
-      <div class="modal-footer">Modal Footer</div>
-    </div>
-  </div>
-  <div class="modal fade" id="ForgotPasswordModal">
-    <div class="modal-content">
-      <div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>
-      <form id="ModalForm">
-        <input id="email" class="form-control" />
-        <button id="submit" type="submit"></button>
-      </form>
-    </div>
-  </div>
-  <div class="modal fade" id="EmailValidationModal">
-    <div class="modal-content">
-      <div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>
-      <form id="ModalForm">
-        <button id="submit" type="submit"></button>
-      </form>
-    </div>
-  </div>
-`;
+// Minimal HTML fixtures — each test builds only the DOM nodes its function
+// under test actually queries, rather than replicating full modal templates.
+// This decouples tests from template markup and avoids maintaining HTML in two places.
+
+function modalShell(id, innerHTML = "") {
+  return `<div class="modal fade" id="${id}">${innerHTML}</div>`;
+}
+
+const ALERT_BANNER = `<div id="SplashModalAlertBanner" class="alert-banner-splash-modal-hide"></div>`;
 
 describe("createLogoutOnExit", () => {
   let ajaxGetSpy;
 
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
     ajaxGetSpy = vi.spyOn($, "get").mockReturnValue({
       always: vi.fn((callback) => {
         callback();
@@ -135,7 +98,8 @@ describe("switchModal", () => {
   let mockToModal;
 
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML =
+      modalShell("LoginModal") + modalShell("RegisterModal");
     mockFromModal = {
       show: vi.fn(),
       hide: vi.fn(),
@@ -203,7 +167,12 @@ describe("switchModal", () => {
 
 describe("displayFormErrors", () => {
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML =
+      modalShell("LoginModal", `<input id="username" class="form-control" />`) +
+      modalShell(
+        "RegisterModal",
+        `<input id="username" class="form-control" />`,
+      );
   });
 
   it("adds is-invalid class and inserts error message after the matching input", () => {
@@ -242,7 +211,9 @@ describe("displayFormErrors", () => {
 
 describe("showSplashModalAlertBanner", () => {
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML =
+      modalShell("LoginModal", ALERT_BANNER) +
+      modalShell("RegisterModal", ALERT_BANNER);
   });
 
   it("shows alert banner with correct message and category class within modal scope", () => {
@@ -275,7 +246,7 @@ describe("showSplashModalAlertBanner", () => {
 
 describe("hideSplashModalAlertBanner", () => {
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML = modalShell("LoginModal", ALERT_BANNER);
   });
 
   it("hides the alert banner and removes alert category classes", () => {
@@ -297,7 +268,10 @@ describe("hideSplashModalAlertBanner", () => {
 
 describe("resetModalFormState", () => {
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML = modalShell(
+      "LoginModal",
+      ALERT_BANNER + `<input id="username" class="form-control" />`,
+    );
   });
 
   it("removes invalid-feedback elements, strips is-invalid class, and hides alert banner", () => {
@@ -322,7 +296,7 @@ describe("resetModalFormState", () => {
 
 describe("initEmailValidationForm", () => {
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML = modalShell("EmailValidationModal");
     vi.clearAllMocks();
   });
 
@@ -349,7 +323,14 @@ describe("handleUserHasAccountNotEmailValidated", () => {
   let ajaxGetSpy;
 
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML =
+      modalShell(
+        "LoginModal",
+        ALERT_BANNER +
+          `<div class="to-forgot-password"></div>` +
+          `<div class="register-to-login-footer"></div>` +
+          `<div class="modal-footer"></div>`,
+      ) + modalShell("EmailValidationModal");
     ajaxGetSpy = vi.spyOn($, "get").mockReturnValue({
       always: vi.fn((callback) => {
         callback();
@@ -473,7 +454,8 @@ describe("handleUserHasAccountNotEmailValidated", () => {
 
 describe("emailValidationModalOpener", () => {
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML =
+      modalShell("RegisterModal") + modalShell("EmailValidationModal");
     vi.clearAllMocks();
   });
 
@@ -535,7 +517,26 @@ describe("emailValidationModalOpener", () => {
 
 describe("show.bs.modal reset handlers", () => {
   beforeEach(() => {
-    document.body.innerHTML = MODAL_HTML;
+    document.body.innerHTML =
+      modalShell(
+        "LoginModal",
+        ALERT_BANNER +
+          `<input id="username" class="form-control" /><button id="submit"></button>`,
+      ) +
+      modalShell(
+        "RegisterModal",
+        ALERT_BANNER +
+          `<input id="username" class="form-control" /><button id="submit"></button>`,
+      ) +
+      modalShell(
+        "ForgotPasswordModal",
+        ALERT_BANNER +
+          `<input id="email" class="form-control" /><button id="submit"></button>`,
+      ) +
+      modalShell(
+        "EmailValidationModal",
+        ALERT_BANNER + `<button id="submit"></button>`,
+      );
     vi.clearAllMocks();
   });
 
