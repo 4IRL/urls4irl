@@ -7,11 +7,14 @@ description: Creates structured planning documents for new features or tasks in 
 
 Before starting, check the current branch:
 1. If on `main` or `master`:
-   - Run `gmas` to ensure main is up to date
-   - Suggest a branch name based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`)
-   - Ask the user: "You're on main. Want me to create and switch to `<suggested-branch>`?"
-   - Do NOT proceed until the user confirms and you've switched branches
-2. If already on a feature branch: proceed normally
+   - Run `gmas` to ensure main is up to date with remote
+   - Create and switch to a suggested feature branch based on the task context (e.g., `refactor/splash-validation`, `fix/login-error`) — do NOT ask for confirmation, just do it
+   - Inform the user which branch was created, then proceed
+2. If on a different branch:
+   - Use `AskUserQuestion` to ask whether to:
+     - **Switch to main first** — run `gmas` to switch to main and pull latest from remote, then create a new feature branch from there
+     - **Stay on current branch** — proceed with plan creation on the current working branch without switching
+   - Follow the user's choice before proceeding
 
 ## Step 1: Deep Research via Parallel Subagents
 
