@@ -591,18 +591,6 @@ def wait_for_modal_ready(browser, modal_selector, timeout=10):
     return final_modal
 
 
-def wait_for_modal_hidden(
-    browser: WebDriver, modal_selector: str, timeout: int = 10
-) -> None:
-    """Wait for Bootstrap modal to be fully hidden"""
-    wait = WebDriverWait(browser, timeout)
-    modal = wait.until(
-        EC.presence_of_element_located((By.CSS_SELECTOR, modal_selector))
-    )
-    wait.until(lambda _: "show" not in modal.get_attribute("class"))
-    wait.until(EC.invisibility_of_element_located((By.CSS_SELECTOR, modal_selector)))
-
-
 def dismiss_modal_with_click_out(
     browser: WebDriver, modal_selector: str = MP.ELEMENT_MODAL
 ):
