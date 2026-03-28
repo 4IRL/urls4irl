@@ -73,5 +73,5 @@ No breaking changes. All callers of refactored JS functions updated. Removed GET
 ### To-Do: Required Changes
 
 - [x] **Remove duplicate `wait_for_modal_hidden` definition** — `tests/functional/selenium_utils.py` — First copy (line 594-603) lacks `StaleElementReferenceException` guard and is silently overridden by second definition (line 622-638). Remove the first copy. *(Fixed in commit b865a04)*
-- [ ] **Inline single-use `modalElement` variable** — `frontend/splash/reset-password-form.js:68-69` — Replace `const modalElement = $modal[0]; bootstrap.Modal.getOrCreateInstance(modalElement).hide()` with `bootstrap.Modal.getOrCreateInstance($modal[0]).hide()`
-- [ ] **Consider extracting shared show.bs.modal reset handler** — `frontend/splash/login-form.js`, `register-form.js`, `forgot-password-form.js` — The identical 3-line block could be a `resetFormState($modal)` helper, but this is optional given the simplicity
+- [x] **Inline single-use `modalElement` variable** — `frontend/splash/reset-password-form.js:68-69` — Replace `const modalElement = $modal[0]; bootstrap.Modal.getOrCreateInstance(modalElement).hide()` with `bootstrap.Modal.getOrCreateInstance($modal[0]).hide()`
+- [x] **Consider extracting shared show.bs.modal reset handler** — `frontend/splash/login-form.js`, `register-form.js`, `forgot-password-form.js` — The identical 3-line block could be a `resetFormState($modal)` helper, but this is optional given the simplicity

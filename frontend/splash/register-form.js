@@ -3,7 +3,7 @@ import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
-  hideSplashModalAlertBanner,
+  resetModalFormState,
   handleImproperFormErrors,
   handleUserHasAccountNotEmailValidated,
   switchModal,
@@ -23,11 +23,7 @@ export function initRegisterForm($modal) {
     .find("#submit")
     .offAndOn("click", (event) => handleRegister(event, $modal));
 
-  $modal.on("show.bs.modal", () => {
-    $modal.find(".invalid-feedback").remove();
-    $modal.find(".form-control").removeClass("is-invalid");
-    hideSplashModalAlertBanner($modal);
-  });
+  $modal.on("show.bs.modal", () => resetModalFormState($modal));
 }
 
 function handleRegister(event, $modal) {

@@ -4,6 +4,7 @@ import {
   displayFormErrors,
   showSplashModalAlertBanner,
   hideSplashModalAlertBanner,
+  resetModalFormState,
   handleUserHasAccountNotEmailValidated,
   emailValidationModalOpener,
 } from "../init.js";
@@ -291,6 +292,31 @@ describe("hideSplashModalAlertBanner", () => {
     expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
     expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
     expect(banner.hasClass("alert-danger")).toBe(false);
+  });
+});
+
+describe("resetModalFormState", () => {
+  beforeEach(() => {
+    document.body.innerHTML = MODAL_HTML;
+  });
+
+  it("removes invalid-feedback elements, strips is-invalid class, and hides alert banner", () => {
+    const $modal = $("#LoginModal");
+
+    // Add invalid state
+    $modal.find(".form-control").addClass("is-invalid");
+    $modal.find("#username").after('<div class="invalid-feedback">Error</div>');
+    const banner = $modal.find("#SplashModalAlertBanner");
+    banner
+      .removeClass("alert-banner-splash-modal-hide")
+      .addClass("alert-banner-splash-modal-display alert-danger");
+
+    resetModalFormState($modal);
+
+    expect($modal.find(".invalid-feedback").length).toBe(0);
+    expect($modal.find(".form-control.is-invalid").length).toBe(0);
+    expect(banner.hasClass("alert-banner-splash-modal-hide")).toBe(true);
+    expect(banner.hasClass("alert-banner-splash-modal-display")).toBe(false);
   });
 });
 

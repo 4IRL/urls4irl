@@ -1,9 +1,6 @@
 import { $ } from "../lib/globals.js";
 import { APP_CONFIG } from "../lib/config.js";
-import {
-  showSplashModalAlertBanner,
-  hideSplashModalAlertBanner,
-} from "./init.js";
+import { showSplashModalAlertBanner, resetModalFormState } from "./init.js";
 
 export const SEND_INITIAL_EMAIL = true;
 export const SKIP_INITIAL_EMAIL = false;
@@ -19,11 +16,7 @@ export function initEmailValidationForm($modal, sendInitialEmail = false) {
     .find("#submit")
     .offAndOn("click", (event) => handleValidateEmail($modal, event));
 
-  $modal.on("show.bs.modal", () => {
-    $modal.find(".invalid-feedback").remove();
-    $modal.find(".form-control").removeClass("is-invalid");
-    hideSplashModalAlertBanner($modal);
-  });
+  $modal.on("show.bs.modal", () => resetModalFormState($modal));
 
   // Send validation email after register, but not if token for validation is expired
   if (sendInitialEmail) {

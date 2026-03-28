@@ -3,7 +3,7 @@ import { APP_CONFIG } from "../lib/config.js";
 import { showNewPageOnAJAXHTMLResponse } from "../lib/page-utils.js";
 import {
   showSplashModalAlertBanner,
-  hideSplashModalAlertBanner,
+  resetModalFormState,
   handleImproperFormErrors,
   switchModal,
 } from "./init.js";
@@ -21,11 +21,7 @@ export function initForgotPasswordForm($modal) {
     .find("#submit")
     .offAndOn("click", (event) => handleForgotPassword(event, $modal));
 
-  $modal.on("show.bs.modal", () => {
-    $modal.find(".invalid-feedback").remove();
-    $modal.find(".form-control").removeClass("is-invalid");
-    hideSplashModalAlertBanner($modal);
-  });
+  $modal.on("show.bs.modal", () => resetModalFormState($modal));
 }
 
 function handleForgotPassword(event, $modal) {

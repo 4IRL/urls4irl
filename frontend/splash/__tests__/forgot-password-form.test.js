@@ -7,7 +7,7 @@ vi.mock("../../lib/page-utils.js", () => ({
 
 vi.mock("../init.js", () => ({
   showSplashModalAlertBanner: vi.fn(),
-  hideSplashModalAlertBanner: vi.fn(),
+  resetModalFormState: vi.fn(),
   handleImproperFormErrors: vi.fn(),
   switchModal: vi.fn(),
 }));

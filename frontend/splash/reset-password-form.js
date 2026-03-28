@@ -65,8 +65,7 @@ function handleUserChangedPassword($modal) {
     .removeClass("btn-success")
     .addClass("btn-warning")
     .offAndOn("click", function (_) {
-      const modalElement = $modal[0];
-      bootstrap.Modal.getOrCreateInstance(modalElement).hide();
+      bootstrap.Modal.getOrCreateInstance($modal[0]).hide();
     });
 }
 

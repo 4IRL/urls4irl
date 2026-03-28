@@ -96,6 +96,12 @@ export function emailValidationModalOpener($fromModal) {
   $("#EmailValidationModal").one("hide.bs.modal", logoutOnExit);
 }
 
+export function resetModalFormState($modal) {
+  $modal.find(".invalid-feedback").remove();
+  $modal.find(".form-control").removeClass("is-invalid");
+  hideSplashModalAlertBanner($modal);
+}
+
 export function hideSplashModalAlertBanner($modal) {
   $modal
     .find("#SplashModalAlertBanner")
