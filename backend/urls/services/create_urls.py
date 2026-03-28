@@ -24,9 +24,13 @@ from backend.extensions.url_validation.url_validator import (
 from backend.models.urls import Urls
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.errors import (
+    build_detail_error_response,
+    build_url_conflict_error_response,
+)
+from backend.schemas.urls import UrlCreatedItemSchema, UrlCreatedResponseSchema
 from backend.urls.constants import URLErrorCodes, URLNormalizationResult, URLState
 from backend.urls.data_models import NormalizedUrl, ValidatedUrl
-from backend.schemas.urls import UrlCreatedItemSchema, UrlCreatedResponseSchema
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
 
@@ -59,14 +63,11 @@ def create_url_in_utub(
         warning_log(
             f"User={current_user.id} tried adding URL.id={validated_new_url.url.id} but already exists in UTub.id={current_utub.id}"
         )
-        return APIResponse(
-            status_code=409,
+        return build_url_conflict_error_response(
             message=URL_FAILURE.URL_IN_UTUB,
+            url_string=validated_new_url.url.url_string,
             error_code=URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
-            data={
-                URL_FAILURE.URL_STRING: validated_new_url.url.url_string,
-            },
-        ).to_response()
+        )
 
     url, url_state = validated_new_url.url, validated_new_url.url_state
 
@@ -286,12 +287,11 @@ def handle_url_with_credentials_error(normalized_url: NormalizedUrl) -> FlaskRes
         + f"[{request_id}] Exception={str(normalized_url.exception)}"
     )
 
-    return APIResponse(
-        status_code=400,
+    return build_detail_error_response(
         message=URL_FAILURE.URLS_WITH_CREDENTIALS_EXCEPTION,
         details=str(normalized_url.exception),
         error_code=URLErrorCodes.URL_WITH_CREDENTIALS_ERROR,
-    ).to_response()
+    )
 
 
 def handle_invalid_url_error(normalized_url: NormalizedUrl) -> FlaskResponse:
@@ -318,12 +318,11 @@ def handle_invalid_url_error(normalized_url: NormalizedUrl) -> FlaskResponse:
         + f"[{request_id}] Exception={str(normalized_url.exception)}"
     )
 
-    return APIResponse(
-        status_code=400,
+    return build_detail_error_response(
         message=URL_FAILURE.UNABLE_TO_VALIDATE_THIS_URL,
         details=str(normalized_url.exception),
         error_code=URLErrorCodes.INVALID_URL_ERROR,
-    ).to_response()
+    )
 
 
 def handle_unexpected_url_validation_error(
@@ -357,12 +356,11 @@ def handle_unexpected_url_validation_error(
         f"Unexpected exception validating {normalized_url.input_url_string} | Exception={str(normalized_url.exception)}"
     )
 
-    return APIResponse(
-        status_code=400,
+    return build_detail_error_response(
         message=URL_FAILURE.UNEXPECTED_VALIDATION_EXCEPTION,
-        error_code=URLErrorCodes.UNEXPECTED_VALIDATION_ERROR,
         details=str(normalized_url.exception),
-    ).to_response()
+        error_code=URLErrorCodes.UNEXPECTED_VALIDATION_ERROR,
+    )
 
 
 def _associate_url_with_utub(

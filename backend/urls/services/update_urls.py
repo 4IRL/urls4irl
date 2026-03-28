@@ -13,6 +13,10 @@ from backend.app_logger import (
 from backend.models.urls import Urls
 from backend.models.utub_urls import Utub_Urls
 from backend.models.utubs import Utubs
+from backend.schemas.errors import (
+    build_message_error_response,
+    build_url_conflict_error_response,
+)
 from backend.schemas.urls import (
     UrlTitleUpdatedResponseSchema,
     UrlUpdatedResponseSchema,
@@ -79,11 +83,10 @@ def update_url_in_utub(
     )
 
     if is_empty_url:
-        return APIResponse(
-            status_code=400,
+        return build_message_error_response(
             message=URL_FAILURE.EMPTY_URL,
             error_code=URLErrorCodes.EMPTY_URL,
-        ).to_response()
+        )
 
     # Check for updating the URL to the same URL
     is_equivalent_url = _check_for_equivalent_url_on_update(
@@ -110,14 +113,11 @@ def update_url_in_utub(
         warning_log(
             f"User={current_user.id} tried adding URL.id={validated_new_url.url.id} but already exists in UTub.id={current_utub.id}"
         )
-        return APIResponse(
-            status_code=409,
+        return build_url_conflict_error_response(
             message=URL_FAILURE.URL_IN_UTUB,
+            url_string=validated_new_url.url.url_string,
             error_code=URLErrorCodes.URL_ALREADY_IN_UTUB_ERROR,
-            data={
-                URL_FAILURE.URL_STRING: validated_new_url.url.url_string,
-            },
-        ).to_response()
+        )
 
     return _associate_updated_url_with_utub(
         url=validated_new_url.url,

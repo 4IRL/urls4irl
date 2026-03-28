@@ -6,6 +6,7 @@ from werkzeug import Response as WerkzeugResponse
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, error_log, safe_add_log, warning_log
+from backend.schemas.errors import build_message_error_response
 from backend.extensions.extension_utils import (
     safe_get_email_sender,
     safe_get_notif_sender,
@@ -80,11 +81,11 @@ def _build_response_for_max_email_attempts_sent() -> FlaskResponse:
     warning_log(
         f"User {current_user.id} hit max attempts on email validation, wait 1 hr"
     )
-    return APIResponse(
-        status_code=429,
+    return build_message_error_response(
         message=EMAILS_FAILURE.TOO_MANY_ATTEMPTS_MAX,
         error_code=EmailValidationErrorCodes.MAX_TOTAL_EMAIL_VALIDATION_ATTEMPTS,
-    ).to_response()
+        status_code=429,
+    )
 
 
 def _build_response_for_email_attempts_rate_limited(
@@ -101,11 +102,11 @@ def _build_response_for_email_attempts_rate_limited(
         EMAIL_CONSTANTS.MAX_EMAIL_ATTEMPTS_IN_HOUR - email_validation.attempts
     )
 
-    return APIResponse(
-        status_code=429,
-        error_code=EmailValidationErrorCodes.MAX_TIME_EMAIL_VALIDATION_ATTEMPTS,
+    return build_message_error_response(
         message=f"{leftover_attempts}{EMAILS_FAILURE.TOO_MANY_ATTEMPTS}",
-    ).to_response()
+        error_code=EmailValidationErrorCodes.MAX_TIME_EMAIL_VALIDATION_ATTEMPTS,
+        status_code=429,
+    )
 
 
 def _log_email_send_if_in_development(email_validation: Email_Validations):
@@ -143,11 +144,11 @@ def _handle_email_sending_result(email_result: requests.Response) -> FlaskRespon
 
         error_log(f"(3) Email failed to send: {errors}")
 
-        return APIResponse(
-            status_code=400,
+        return build_message_error_response(
             message=f"{EMAILS.EMAIL_FAILED} | {errors}",
             error_code=EmailValidationErrorCodes.EMAIL_SEND_FAILURE,
-        ).to_response()
+            status_code=400,
+        )
 
     return handle_mailjet_failure(
         email_result, error_code=EmailValidationErrorCodes.MAILJET_SERVER_FAILURE

@@ -10,6 +10,7 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import (
     safe_add_many_logs,
 )
+from backend.schemas.errors import build_message_error_response
 from backend.schemas.requests.urls import (
     CreateURLRequest,
     UpdateURLStringRequest,
@@ -119,10 +120,9 @@ def update_url(
     if not check_if_is_url_adder_or_utub_creator_on_url_update(
         utub_id=utub_id, utub_url_id=utub_url_id
     ):
-        return APIResponse(
-            status_code=403,
-            message=URL_FAILURE.UNABLE_TO_MODIFY_URL,
-        ).to_response()
+        return build_message_error_response(
+            message=URL_FAILURE.UNABLE_TO_MODIFY_URL, status_code=403
+        )
 
     return update_url_in_utub(
         url_string=validated_request.urlString,
@@ -159,10 +159,9 @@ def update_url_title(
     if not check_if_is_url_adder_or_utub_creator_on_url_update(
         utub_id=utub_id, utub_url_id=utub_url_id
     ):
-        return APIResponse(
-            status_code=403,
-            message=URL_FAILURE.UNABLE_TO_MODIFY_URL,
-        ).to_response()
+        return build_message_error_response(
+            message=URL_FAILURE.UNABLE_TO_MODIFY_URL, status_code=403
+        )
 
     return update_url_title_if_new(
         new_url_title=validated_request.urlTitle,
@@ -189,10 +188,9 @@ def delete_url(
     )
 
     if not is_utub_creator_or_url_adder:
-        return APIResponse(
-            status_code=403,
-            message=URL_FAILURE.UNABLE_TO_DELETE_URL,
-        ).to_response()
+        return build_message_error_response(
+            message=URL_FAILURE.UNABLE_TO_DELETE_URL, status_code=403
+        )
 
     return delete_url_in_utub(
         current_utub=current_utub, current_utub_url=current_utub_url
