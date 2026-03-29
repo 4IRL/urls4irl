@@ -130,8 +130,8 @@ Every step must include a verification command. The test type must match the lay
 
 | Change layer | Required verification | Why |
 |---|---|---|
-| Template / rendered HTML (meta tags, field IDs, conditional blocks) | UI test marker (`make test-marker-parallel m=<module>_ui`) or Playwright smoke | `client.get()`/`client.post()` never parse the DOM; template regressions are invisible to integration tests |
-| Frontend JS (AJAX format, handlers, DOM reads) | `make test-js` + UI test marker or Playwright | JS unit tests catch logic; UI tests catch integration with real DOM |
+| Template / rendered HTML (meta tags, field IDs, conditional blocks) | UI test marker (`make test-marker-parallel-built m=<module>_ui`) or Playwright smoke | `client.get()`/`client.post()` never parse the DOM; template regressions are invisible to integration tests |
+| Frontend JS (AJAX format, handlers, DOM reads) | `make test-js` + UI test marker (built) or Playwright | JS unit tests catch logic; UI tests catch integration with real DOM |
 | Backend only (service, route, DB) | `make test-marker-parallel m=<marker>` | Integration tests are sufficient and faster |
 | Cross-layer (backend format + JS handler in same step) | Integration tests + `make test-js` + `make vite-build` | All three layers must be green |
 
