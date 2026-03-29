@@ -5,7 +5,6 @@ from flask import (
 from backend import limiter
 from backend.api_common.parse_request import parse_json_body
 from backend.api_common.responses import FlaskResponse
-from backend.contact.constants import ContactErrorCodes
 from backend.contact.contact_us import load_contact_us_page, validate_and_contact
 from backend.schemas.requests import ContactRequest
 from backend.utils.constants import provide_config_for_constants
@@ -28,7 +27,7 @@ def contact_us() -> str:
 @parse_json_body(
     ContactRequest,
     message="Unable to submit contact form.",
-    error_code=ContactErrorCodes.INVALID_FORM_INPUT,
+    error_code=1,
 )
 def submit_contact_us(validated_request: ContactRequest) -> FlaskResponse:
     return validate_and_contact(validated_request.subject, validated_request.content)
