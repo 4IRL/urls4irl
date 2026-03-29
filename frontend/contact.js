@@ -102,7 +102,7 @@ export function handleContactSubmit(event, $form) {
   });
 
   contactRequest.fail((xhr) => {
-    if (!xhr.hasOwnProperty("responseJSON")) {
+    if (xhr.responseJSON === undefined) {
       if (
         xhr.getResponseHeader("Content-Type") === "text/html; charset=utf-8"
       ) {
