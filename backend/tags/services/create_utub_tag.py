@@ -8,6 +8,7 @@ from backend.app_logger import (
 )
 from backend.models.utub_tags import Utub_Tags
 from backend.models.utubs import Utubs
+from backend.schemas.errors import build_message_error_response
 from backend.schemas.tags import (
     UtubTagAddedToUtubResponseSchema,
     UtubTagOnAddDeleteSchema,
@@ -34,10 +35,7 @@ def create_tag_in_utub(tag_string: str, current_utub: Utubs) -> FlaskResponse:
     is_duplicate_utub_tag = _check_if_duplicate_utub_tag(tag_to_add, current_utub)
 
     if is_duplicate_utub_tag:
-        return APIResponse(
-            status_code=400,
-            message=TAGS_FAILURE.TAG_ALREADY_IN_UTUB,
-        ).to_response()
+        return build_message_error_response(message=TAGS_FAILURE.TAG_ALREADY_IN_UTUB)
 
     return _create_new_utub_tag(tag_to_add, current_utub)
 

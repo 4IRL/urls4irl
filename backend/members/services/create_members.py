@@ -7,6 +7,10 @@ from backend.app_logger import (
     warning_log,
 )
 from backend.members.data_models import ValidatedMember
+from backend.schemas.errors import (
+    build_field_error_response,
+    build_message_error_response,
+)
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
@@ -30,18 +34,16 @@ def create_utub_member(username: str, current_utub: Utubs) -> FlaskResponse:
     new_user: Users | None = Users.query.filter(Users.username == username).first()
     if new_user is None:
         warning_log(f"User={current_user.id} tried adding nonexistent username")
-        return APIResponse(
-            status_code=400,
+        return build_field_error_response(
             message=MEMBER_FAILURE.UNABLE_TO_ADD_MEMBER,
             errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
-        ).to_response()
+        )
 
     member_in_utub = _check_if_member_already_in_utub(new_user, current_utub)
     if member_in_utub.in_utub:
-        return APIResponse(
-            status_code=400,
+        return build_message_error_response(
             message=MEMBER_FAILURE.MEMBER_ALREADY_IN_UTUB,
-        ).to_response()
+        )
 
     return _add_user_to_utub(user=new_user, current_utub=current_utub)
 

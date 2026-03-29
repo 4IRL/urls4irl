@@ -84,11 +84,17 @@ Use dangerouslyDisableSandbox: true for make commands.
 
 If the smoke test fails, enter the **Test Fix Loop** (Section 2e) before committing. If it passes, proceed to commit.
 
-#### 2d. Commit (via /git-commit skill)
+#### 2d. Commit (via subagent)
 
-Use the `/git-commit` skill to commit the step's changes. The skill handles staging, message generation, and pre-commit hook failures autonomously.
+Spawn a **commit subagent** to handle the entire commit workflow. The main agent must never load or execute `/git-commit` itself — doing so pulls staging, diff analysis, message drafting, and pre-commit hook fix loops into the main context window.
 
-**Never commit directly from the main agent** — always invoke `/git-commit`.
+```
+Commit the current changes using /git-commit.
+Follow all CLAUDE.md guidelines.
+Never use dangerouslyDisableSandbox for git commands.
+```
+
+**Why a subagent:** `/git-commit` involves reading diffs, generating messages, and potentially multiple pre-commit fix iterations — all of which pollute the orchestrator's context if run inline. The subagent absorbs this work and returns only a short summary.
 
 #### 2e. Test Fix Loop (when tests fail)
 
@@ -143,7 +149,7 @@ If failures persist after the fix loop, report them and stop for user guidance.
 | Behavior | next-step-taker | run-plan |
 |---|---|---|
 | Pause after each step | Always | Only on blockers |
-| Auto-commit | No | Yes, via /git-commit |
+| Auto-commit | No | Yes, via commit subagent |
 | Final test suite | No | Yes, runs all tests at end |
 | Scope | Single step | All remaining steps |
 | Main agent edits code | Never | Never — delegates to subagent |
@@ -151,7 +157,7 @@ If failures persist after the fix loop, report them and stop for user guidance.
 ## Important Notes
 
 - **Main agent is orchestrator only** — never directly edit implementation files, run tests, run make commands, or make code changes. ALL execution (code changes, tests, builds, make targets) MUST be delegated to subagents. This includes the final test suite in Step 3.
-- **Main agent CAN**: read the plan, read temp test output files, run `git diff --name-only`, invoke `/git-commit`, spawn subagents, re-read the plan between steps, and report progress.
+- **Main agent CAN**: read the plan, read temp test output files, run `git diff --name-only`, spawn subagents (including commit subagents), re-read the plan between steps, and report progress. **Main agent CANNOT** invoke `/git-commit` directly — it must always be delegated to a subagent.
 - **Each subagent runs the full /next-step-taker workflow** — including its own validation and review sub-subagents. The main agent does not duplicate that work.
 - **Test output goes to temp files** — test runner subagents write output to `$TMPDIR/<name>.txt`. The main agent or fix subagent reads from these files. Clean up temp files when no longer needed.
 - **Sandbox discipline** — git commands use default sandbox; Docker/make commands use `dangerouslyDisableSandbox: true`. Include this rule in all subagent prompts.

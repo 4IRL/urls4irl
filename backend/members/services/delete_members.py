@@ -4,6 +4,7 @@ from backend import db
 from backend.api_common.request_utils import is_current_utub_creator
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import critical_log, safe_add_many_logs, warning_log
+from backend.schemas.errors import build_message_error_response
 from backend.models.utub_members import Utub_Members
 from backend.models.utubs import Utubs
 from backend.schemas.users import MemberModifiedResponseSchema, UserSchema
@@ -39,10 +40,9 @@ def remove_member_or_self_from_utub(
     )
 
     if creator_removing_themself:
-        return APIResponse(
-            status_code=400,
+        return build_message_error_response(
             message=MEMBER_FAILURE.CREATOR_CANNOT_REMOVE_THEMSELF,
-        ).to_response()
+        )
 
     member_removing_another_member = _member_is_removing_another_member(
         is_utub_creator=is_utub_creator,
@@ -51,10 +51,10 @@ def remove_member_or_self_from_utub(
     )
 
     if member_removing_another_member:
-        return APIResponse(
-            status_code=403,
+        return build_message_error_response(
             message=MEMBER_FAILURE.INVALID_PERMISSION_TO_REMOVE,
-        ).to_response()
+            status_code=403,
+        )
 
     user_to_remove_in_utub: Utub_Members | None = Utub_Members.query.get(
         (current_utub.id, user_id_to_remove)
@@ -133,10 +133,10 @@ def _handle_removing_nonexistent_member() -> FlaskResponse:
     warning_log(
         f"User={current_user.id} tried removing a member that isn't in this UTub"
     )
-    return APIResponse(
-        status_code=404,
+    return build_message_error_response(
         message=MEMBER_FAILURE.MEMBER_NOT_IN_UTUB,
-    ).to_response()
+        status_code=404,
+    )
 
 
 def _remove_member_from_utub(

@@ -1,12 +1,17 @@
 from __future__ import annotations
 from functools import wraps
 from typing import Callable, Type, TypeVar
-from pydantic import BaseModel, ValidationError
+
 from flask import request
 from flask_login import current_user
-from backend.api_common.responses import APIResponse
+from pydantic import BaseModel, ValidationError
+
 from backend.api_common.request_errors import pydantic_errors_to_dict
 from backend.app_logger import warning_log
+from backend.schemas.errors import (
+    build_field_error_response,
+    build_message_error_response,
+)
 
 SchemaT = TypeVar("SchemaT", bound=BaseModel)
 
@@ -24,24 +29,23 @@ def parse_json_body(schema: Type[SchemaT], message: str, error_code: int) -> Cal
             if raw is None:
                 user_id = getattr(current_user, "id", "unknown")
                 warning_log(f"User={user_id} | Missing JSON body")
-                return APIResponse(
-                    status_code=400,
+                return build_message_error_response(
                     message=message,
                     error_code=error_code,
-                ).to_response()
+                    status_code=400,
+                )
             try:
                 kwargs["validated_request"] = schema.model_validate(raw)
             except ValidationError as validation_error:
                 user_id = getattr(current_user, "id", "unknown")
-                warning_log(
-                    f"User={user_id} | Invalid JSON: {pydantic_errors_to_dict(validation_error)}"
-                )
-                return APIResponse(
-                    status_code=400,
+                field_errors = pydantic_errors_to_dict(validation_error)
+                warning_log(f"User={user_id} | Invalid JSON: {field_errors}")
+                return build_field_error_response(
                     message=message,
+                    errors=field_errors,
                     error_code=error_code,
-                    errors=pydantic_errors_to_dict(validation_error),
-                ).to_response()
+                    status_code=400,
+                )
             return route_fn(*args, **kwargs)
 
         return wrapper

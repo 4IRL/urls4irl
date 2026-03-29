@@ -293,11 +293,14 @@ AskUserQuestion({
 
 **After the user answers all DDs (across one or more AskUserQuestion calls):**
 
-#### 5f: Apply user's design decisions
+#### 5f: Apply user's design decisions via subagent
 
-1. Apply each chosen option to the plan
-2. Update the `**Chosen:**` field in the review document with the user's choice and rationale
-3. If the user selected "Other" and provided custom text, apply that instead and document it as the chosen option
+**IMPORTANT:** Launch a single subagent to handle all DD resolution work. The main orchestrator agent must NOT read/edit plan files or review files directly for DD application — this pollutes the main context window with large file contents. Instead, the subagent receives:
+- The plan file path and review file path
+- All user answers (DD number → chosen option text and any user notes)
+- Instructions to: (1) apply each chosen option to the plan, (2) update the `**Chosen:**` field in the review document, (3) if the user selected "Other" with custom text, apply that instead
+
+The subagent reads the files, makes all edits, and returns a summary of what was changed. The orchestrator only needs the summary to continue.
 
 #### 5g: Loop decision
 

@@ -3,6 +3,10 @@ from flask import request, url_for
 from flask_login import current_user, login_user
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
+from backend.schemas.errors import (
+    build_field_error_response,
+    build_message_error_response,
+)
 from backend.models.users import Users
 from backend.models.utub_members import Utub_Members
 from backend.splash.constants import LoginErrorCodes
@@ -16,32 +20,30 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
 
     if not user:
         warning_log("User not found on login")
-        return APIResponse(
-            status_code=400,
+        return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
-            error_code=LoginErrorCodes.INVALID_FORM_INPUT,
             errors={"username": [USER_FAILURE.USER_NOT_EXIST]},
-        ).to_response()
+            error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+        )
 
     if not user.is_password_correct(password):
         warning_log("User entered wrong password on login")
-        return APIResponse(
-            status_code=400,
+        return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_LOGIN,
-            error_code=LoginErrorCodes.INVALID_FORM_INPUT,
             errors={"password": [USER_FAILURE.INVALID_PASSWORD]},
-        ).to_response()
+            error_code=LoginErrorCodes.INVALID_FORM_INPUT,
+        )
 
     # Log in before email_validated check so unvalidated users can request a resend
     login_user(user)  # Can add Remember Me functionality here
 
     if not user.email_validated:
         warning_log(f"User={user.id} not email validated")
-        return APIResponse(
-            status_code=401,
+        return build_message_error_response(
             message=USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
             error_code=LoginErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED,
-        ).to_response()
+            status_code=401,
+        )
 
     safe_add_log(f"Logging User.id={user.id} in")
 

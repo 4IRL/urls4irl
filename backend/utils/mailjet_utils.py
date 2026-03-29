@@ -1,7 +1,8 @@
 import requests
 
-from backend.api_common.responses import APIResponse, FlaskResponse
+from backend.api_common.responses import FlaskResponse
 from backend.app_logger import error_log
+from backend.schemas.errors import build_message_error_response
 from backend.utils.strings.email_validation_strs import EMAILS
 
 
@@ -27,8 +28,8 @@ def handle_mailjet_failure(
 
     error_log(f"(4) Email failed to send: {errors}")
 
-    return APIResponse(
-        status_code=400,
-        error_code=error_code,
+    return build_message_error_response(
         message=f"{EMAILS.ERROR_WITH_MAILJET} | {errors}",
-    ).to_response()
+        error_code=error_code,
+        status_code=400,
+    )

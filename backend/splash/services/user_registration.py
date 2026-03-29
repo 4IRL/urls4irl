@@ -2,6 +2,10 @@ from flask_login import login_user
 from backend import db
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
+from backend.schemas.errors import (
+    build_field_error_response,
+    build_message_error_response,
+)
 from backend.models.email_validations import Email_Validations
 from backend.models.users import Users
 from backend.splash.constants import RegisterErrorCodes
@@ -42,21 +46,20 @@ def register_new_user(username: str, email: str, password: str) -> FlaskResponse
 
     if errors:
         warning_log("Form errors when registering")
-        return APIResponse(
-            status_code=400,
+        return build_field_error_response(
             message=USER_FAILURE.UNABLE_TO_REGISTER,
-            error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
             errors=errors,
-        ).to_response()
+            error_code=RegisterErrorCodes.INVALID_FORM_INPUT,
+        )
 
     if unvalidated_email:
         login_user(email_user)
         warning_log(f"User={email_user.id} has not validated email yet")
-        return APIResponse(
-            status_code=401,
+        return build_message_error_response(
             message=USER_FAILURE.ACCOUNT_CREATED_EMAIL_NOT_VALIDATED,
             error_code=RegisterErrorCodes.ACCOUNT_NOT_EMAIL_VALIDATED,
-        ).to_response()
+            status_code=401,
+        )
 
     new_user = _build_new_user(username, email, password)
     new_user.email_confirm = _build_new_email_validation(new_user)
