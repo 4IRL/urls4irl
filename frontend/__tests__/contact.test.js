@@ -190,6 +190,28 @@ describe("contact form AJAX submission", () => {
     );
   });
 
+  it("shows generic error banner when responseJSON is absent and Content-Type is not text/html", () => {
+    const mockDeferred = $.Deferred();
+    ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
+
+    const $form = $("#ContactForm");
+    const fakeEvent = { preventDefault: vi.fn() };
+    handleContactSubmit(fakeEvent, $form);
+
+    const fakeXhr = {
+      status: 500,
+      responseText: "Internal Server Error",
+      getResponseHeader: vi.fn().mockReturnValue("text/plain"),
+    };
+    mockDeferred.reject(fakeXhr, "error", "Internal Server Error");
+
+    const $banner = $form.find("#Banner");
+    expect($banner.hasClass("hidden")).toBe(false);
+    expect($banner.hasClass("alert-danger")).toBe(true);
+    expect($banner.text()).toBe("Unable to submit contact form.");
+    expect(showNewPageOnAJAXHTMLResponse).not.toHaveBeenCalled();
+  });
+
   it("calls showNewPageOnAJAXHTMLResponse on 429 rate limit", () => {
     const mockDeferred = $.Deferred();
     ajaxSpy = vi.spyOn($, "ajax").mockReturnValue(mockDeferred);
