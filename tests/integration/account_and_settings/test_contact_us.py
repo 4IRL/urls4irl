@@ -4,7 +4,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
-from backend.api_common.request_errors import min_length_message
+from backend.api_common.request_errors import max_length_message, min_length_message
 from backend.contact.constants import CONTACT_FORM_CONSTANTS
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.users import Users
@@ -281,6 +281,52 @@ def test_contact_us_page_form_subject_too_short(
     assert "subject" in response_json[STD_JSON.ERRORS]
     expected_error = min_length_message(CONTACT_FORM_CONSTANTS.MIN_SUBJECT_LENGTH)
     assert expected_error in response_json[STD_JSON.ERRORS]["subject"]
+    mock_send_msg.assert_not_called()
+
+    with app.app_context():
+        assert ContactFormEntries.query.count() == 0
+
+
+@pytest.mark.parametrize(
+    "over_max_field, field_max_length",
+    [
+        ("subject", CONTACT_FORM_CONSTANTS.MAX_SUBJECT_LENGTH),
+        ("content", CONTACT_FORM_CONSTANTS.MAX_CONTENT_LENGTH),
+    ],
+)
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_contact_us_page_form_field_exceeds_max_length(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    over_max_field: str,
+    field_max_length: int,
+):
+    """
+    GIVEN a logged in user submitting a contact form
+    WHEN a field exceeds its maximum allowed length
+    THEN verify that a 400 response is returned with a max-length error for that field
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=200, text=None)
+
+    json_body = {
+        "subject": MOCK_SUBJECT,
+        "content": MOCK_CONTENT,
+    }
+    json_body[over_max_field] = "a" * (field_max_length + 1)
+
+    response = client.post(
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json=json_body,
+        headers={**HEADERS, "X-CSRFToken": csrf},
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert over_max_field in response_json[STD_JSON.ERRORS]
+    expected_error = max_length_message(field_max_length)
+    assert expected_error in response_json[STD_JSON.ERRORS][over_max_field]
     mock_send_msg.assert_not_called()
 
     with app.app_context():
