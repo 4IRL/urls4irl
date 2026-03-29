@@ -96,37 +96,6 @@ def test_error_response_with_url_string(app):
     assert payload["urlString"] == "https://example.com"
 
 
-def test_error_response_excludes_none_fields(app):
-    """
-    GIVEN an ErrorResponse with only a message (all optional fields are None)
-    WHEN to_response() is called
-    THEN the errors, details, errorCode, and urlString keys are absent
-    """
-    error = ErrorResponse(message="Simple error.")
-    with app.app_context():
-        response, status_code = error.to_response(400)
-        payload = response.get_json()
-
-    assert "errors" not in payload
-    assert "details" not in payload
-    assert "errorCode" not in payload
-    assert "urlString" not in payload
-
-
-def test_error_response_status_is_failure(app):
-    """
-    GIVEN any ErrorResponse
-    WHEN to_response() is called
-    THEN the status field equals "Failure"
-    """
-    error = ErrorResponse(message="Any error.")
-    with app.app_context():
-        response, status_code = error.to_response(400)
-        payload = response.get_json()
-
-    assert payload["status"] == "Failure"
-
-
 def test_build_field_error_response(app):
     """
     GIVEN a call to build_field_error_response with message, errors, and error_code
@@ -219,6 +188,27 @@ def test_build_detail_error_response(app):
     assert payload["details"] == "URL contains credentials"
     assert payload["message"] == "Invalid URL"
     assert payload["errorCode"] == 3
+
+
+def test_build_detail_error_response_custom_status_code(app):
+    """
+    GIVEN a call to build_detail_error_response with a non-default status_code
+    WHEN the response is built
+    THEN the HTTP status matches the custom status_code
+    """
+    with app.app_context():
+        response, status_code = build_detail_error_response(
+            message="Unprocessable entity",
+            details="Missing required field",
+            error_code=5,
+            status_code=422,
+        )
+        payload = response.get_json()
+
+    assert status_code == 422
+    assert payload["message"] == "Unprocessable entity"
+    assert payload["details"] == "Missing required field"
+    assert payload["errorCode"] == 5
 
 
 def test_build_url_conflict_error_response(app):

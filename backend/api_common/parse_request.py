@@ -1,6 +1,7 @@
 from __future__ import annotations
 from functools import wraps
 from typing import Callable, Type, TypeVar
+
 from flask import request
 from flask_login import current_user
 from pydantic import BaseModel, ValidationError
@@ -37,12 +38,11 @@ def parse_json_body(schema: Type[SchemaT], message: str, error_code: int) -> Cal
                 kwargs["validated_request"] = schema.model_validate(raw)
             except ValidationError as validation_error:
                 user_id = getattr(current_user, "id", "unknown")
-                warning_log(
-                    f"User={user_id} | Invalid JSON: {pydantic_errors_to_dict(validation_error)}"
-                )
+                field_errors = pydantic_errors_to_dict(validation_error)
+                warning_log(f"User={user_id} | Invalid JSON: {field_errors}")
                 return build_field_error_response(
                     message=message,
-                    errors=pydantic_errors_to_dict(validation_error),
+                    errors=field_errors,
                     error_code=error_code,
                     status_code=400,
                 )
