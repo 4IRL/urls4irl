@@ -62,8 +62,8 @@ function handleLogin(event, $modal) {
 function handleLoginSuccess(response, _, xhr) {
   if (xhr.status === 200) {
     bootstrap.Modal.getOrCreateInstance("#LoginModal").hide();
-    // Use redirect_url from JSON response
-    const redirectUrl = response.redirect_url || APP_CONFIG.routes.home;
+    // Use redirectUrl from JSON response
+    const redirectUrl = response.redirectUrl || APP_CONFIG.routes.home;
     window.location.replace(redirectUrl);
   }
 }

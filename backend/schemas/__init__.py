@@ -17,6 +17,7 @@ from backend.schemas.urls import (
     UtubUrlSchema,
 )
 from backend.schemas.users import (
+    LoginRedirectResponseSchema,
     MemberModifiedResponseSchema,
     MemberSchema,
     UserSchema,
@@ -33,6 +34,7 @@ from backend.schemas.utubs import (
 
 __all__ = [
     "BaseSchema",
+    "LoginRedirectResponseSchema",
     "MemberModifiedResponseSchema",
     "MemberSchema",
     "UserSchema",
