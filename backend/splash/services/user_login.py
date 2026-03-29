@@ -3,12 +3,13 @@ from flask import request, url_for
 from flask_login import current_user, login_user
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import safe_add_log, warning_log
+from backend.models.users import Users
+from backend.models.utub_members import Utub_Members
 from backend.schemas.errors import (
     build_field_error_response,
     build_message_error_response,
 )
-from backend.models.users import Users
-from backend.models.utub_members import Utub_Members
+from backend.schemas.users import LoginRedirectResponseSchema
 from backend.splash.constants import LoginErrorCodes
 from backend.utils.all_routes import ROUTES
 from backend.utils.strings.user_strs import USER_FAILURE
@@ -53,7 +54,7 @@ def login_user_to_u4i(username: str, password: str) -> FlaskResponse:
 
     return APIResponse(
         status_code=200,
-        data={"redirect_url": redirect_url},
+        data=LoginRedirectResponseSchema(redirect_url=redirect_url),
     ).to_response()
 
 

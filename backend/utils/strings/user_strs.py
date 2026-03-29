@@ -3,6 +3,7 @@ from backend.utils.strings.url_strs import URL_GENERAL
 from backend.utils.strings.utub_strs import UTUB_GENERAL
 
 # General strings
+REDIRECT_URL = "redirectUrl"
 COOKIE_BANNER_SEEN = "cookie_banner_seen=true"  # Both the name and value of the cookie
 COOKIE_BANNER_KEY = COOKIE_BANNER_SEEN.split("=")[0]
 

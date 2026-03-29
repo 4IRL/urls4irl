@@ -7,7 +7,7 @@ from pydantic import Field
 from backend.schemas.base import BaseSchema
 from backend.utils.strings.model_strs import MODELS as M
 from backend.utils.strings.utub_strs import UTUB_ID
-from backend.utils.strings.user_strs import MEMBER
+from backend.utils.strings.user_strs import MEMBER, REDIRECT_URL
 
 if TYPE_CHECKING:
     from backend.models.users import Users
@@ -50,6 +50,10 @@ class UtubSummaryListSchema(BaseSchema):
 
 
 UtubSummaryListSchema.model_rebuild()
+
+
+class LoginRedirectResponseSchema(BaseSchema):
+    redirect_url: str = Field(alias=REDIRECT_URL)
 
 
 class MemberModifiedResponseSchema(BaseSchema):

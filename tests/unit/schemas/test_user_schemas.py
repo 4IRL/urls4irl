@@ -2,11 +2,13 @@ import pytest
 from pydantic import ValidationError
 
 from backend.schemas.users import (
+    LoginRedirectResponseSchema,
     UserSchema,
     UtubSummaryItemSchema,
     UtubSummaryListSchema,
 )
 from backend.utils.strings.model_strs import MODELS as M
+from backend.utils.strings.user_strs import REDIRECT_URL
 
 pytestmark = pytest.mark.unit
 
@@ -64,3 +66,20 @@ def test_utub_summary_list_schema_validate_from_dict():
 def test_utub_summary_list_schema_missing_required_fields():
     with pytest.raises(ValidationError):
         UtubSummaryListSchema()
+
+
+def test_login_redirect_response_schema_dump():
+    schema = LoginRedirectResponseSchema(redirect_url="/home")
+    dumped = schema.model_dump(by_alias=True)
+    assert dumped == {REDIRECT_URL: "/home"}
+
+
+def test_login_redirect_response_schema_missing_field():
+    with pytest.raises(ValidationError):
+        LoginRedirectResponseSchema()
+
+
+def test_login_redirect_response_schema_model_validate_round_trip():
+    data = {REDIRECT_URL: "/home"}
+    schema = LoginRedirectResponseSchema.model_validate(data)
+    assert schema.redirect_url == "/home"
