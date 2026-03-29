@@ -166,6 +166,7 @@ describe("contact form AJAX submission", () => {
     mockDeferred.reject(fakeXhr, "error", "Bad Request");
 
     const $banner = $form.find("#Banner");
+    expect($banner.hasClass("hidden")).toBe(false);
     expect($banner.hasClass("alert-danger")).toBe(true);
     expect($banner.text()).toBe("Unable to submit contact form.");
   });
