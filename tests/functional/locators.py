@@ -25,7 +25,6 @@ class GenericPageLocator:
     CONTACT_BANNER = "#Banner"
     CONTACT_SUBJECT_ERROR = "#subject-error"
     CONTACT_CONTENT_ERROR = "#content-error"
-    FLASH_ELEMENT = "#flasher"
 
     # Cookie Banner
     COOKIE_BANNER = "#CookieBanner"
