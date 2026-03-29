@@ -1,3 +1,4 @@
+from backend.schemas.requests.contact import ContactRequest
 from backend.schemas.requests.members import AddMemberRequest
 from backend.schemas.requests.splash import (
     ForgotPasswordRequest,
@@ -18,6 +19,7 @@ from backend.schemas.requests.utubs import (
 )
 
 __all__ = [
+    "ContactRequest",
     "AddMemberRequest",
     "ForgotPasswordRequest",
     "LoginRequest",

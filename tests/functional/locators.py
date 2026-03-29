@@ -19,8 +19,8 @@ class GenericPageLocator:
 
     # Contact Us Page
     CONTACT_US_HEADER = "#ContactTitle"
-    CONTACT_SUBJECT_INPUT = "#Subject"
-    CONTACT_CONTENT_INPUT = "#Content"
+    CONTACT_SUBJECT_INPUT = "#subject"
+    CONTACT_CONTENT_INPUT = "#content"
     CONTACT_SUBMIT = "#submit"
     FLASH_ELEMENT = "#flasher"
 

@@ -1,25 +1,20 @@
-from flask import current_app, flash, render_template, request
+from flask import current_app, render_template, request
 from flask_login import current_user
 
 from backend import db
-from backend.contact.forms import ContactForm
+from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.extensions.extension_utils import safe_get_notif_sender
 from backend.models.contact_form_entries import ContactFormEntries
 
 
-def load_contact_us_page(contact_form: ContactForm, contacted: bool = False) -> str:
+def load_contact_us_page() -> str:
     return render_template(
         "pages/contact_us.html",
-        contact_form=contact_form,
         is_contact_form=True,
-        contacted=contacted,
     )
 
 
-def validate_and_contact(contact_form: ContactForm) -> str:
-    subject = contact_form.subject.get()
-    content = contact_form.content.get()
-
+def validate_and_contact(subject: str, content: str) -> FlaskResponse:
     # Parse the user agent string to get OS, browser, version
     user_agent = request.user_agent.string
 
@@ -45,5 +40,4 @@ def validate_and_contact(contact_form: ContactForm) -> str:
         contact_form_entry.delivered = True
         db.session.commit()
 
-    flash("Sent! Thanks for reaching out.")
-    return load_contact_us_page(contact_form, contacted=True)
+    return APIResponse(message="Sent! Thanks for reaching out.").to_response()

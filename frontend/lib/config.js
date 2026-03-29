@@ -53,6 +53,8 @@ export const APP_CONFIG = Object.freeze({
     createMember: (id) => raw.routes.createMember.replace("-1", id),
     removeMember: (utubId, userId) =>
       raw.routes.removeMember.replace("-1", utubId).replace("-4", userId),
+
+    contactUs: raw.routes.contactUs,
   }),
   constants: Object.freeze(raw.constants),
   strings: Object.freeze(raw.strings),

@@ -93,6 +93,7 @@ const appConfig = {
     deleteUTubTag: "/utubs/-1/tags/-2",
     createMember: "/utubs/-1/members",
     removeMember: "/utubs/-1/members/-4",
+    contactUs: "/contact",
   },
   constants: {
     UTUBS_MIN_NAME_LENGTH: 1,
