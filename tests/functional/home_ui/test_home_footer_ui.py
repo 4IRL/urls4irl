@@ -1,11 +1,11 @@
 from flask import Flask
 import pytest
+from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from tests.functional.assert_utils import (
     assert_login,
     assert_on_429_page,
-    assert_visible_css_selector,
 )
 from tests.functional.locators import HomePageLocators as HPL
 from tests.functional.login_utils import (
@@ -20,8 +20,6 @@ from tests.functional.selenium_utils import (
     visit_privacy_page,
     visit_terms_page,
     wait_then_click_element,
-    wait_then_get_element,
-    wait_then_get_elements,
     wait_until_visible_css_selector,
 )
 
@@ -201,8 +199,9 @@ def test_submit_contact_form_entry(
     contact_form_entry(browser=browser, subject="Subject" * 2, content="Content" * 10)
     wait_then_click_element(browser, HPL.CONTACT_SUBMIT)
 
-    wait_until_visible_css_selector(browser, HPL.FLASH_ELEMENT)
-    assert_visible_css_selector(browser, HPL.FLASH_ELEMENT)
+    wait_until_visible_css_selector(browser, HPL.CONTACT_BANNER)
+    banner = browser.find_element(By.CSS_SELECTOR, HPL.CONTACT_BANNER)
+    assert "Sent! Thanks for reaching out." in banner.text
 
 
 @pytest.mark.parametrize(
@@ -234,11 +233,29 @@ def test_submit_empty_fields(
     contact_form_entry(browser=browser, subject=subject, content=content)
     wait_then_click_element(browser, HPL.CONTACT_SUBMIT)
 
-    error_elems = wait_then_get_elements(browser, HPL.SUBHEADER_INVALID_FEEDBACK)
+    # Wait for the is-invalid class to appear on the first invalid field
+    empty_field_count = len([val for val in contact_form_fields if not bool(val)])
 
-    assert len(error_elems) == len(contact_form_fields) - len(
-        [val for val in contact_form_fields if bool(val)]
+    # Wait for is-invalid class on the first empty field's input
+    first_empty_selector = (
+        f"{HPL.CONTACT_SUBJECT_INPUT}.is-invalid"
+        if not subject
+        else f"{HPL.CONTACT_CONTENT_INPUT}.is-invalid"
     )
+    wait_until_visible_css_selector(browser, first_empty_selector)
+
+    # Count visible error divs with text
+    visible_error_count = 0
+    if not subject:
+        subject_error = browser.find_element(By.CSS_SELECTOR, HPL.CONTACT_SUBJECT_ERROR)
+        assert subject_error.text != ""
+        visible_error_count += 1
+    if not content:
+        content_error = browser.find_element(By.CSS_SELECTOR, HPL.CONTACT_CONTENT_ERROR)
+        assert content_error.text != ""
+        visible_error_count += 1
+
+    assert visible_error_count == empty_field_count
 
 
 def test_contact_form_button_disables_on_submit(
@@ -260,8 +277,6 @@ def test_contact_form_button_disables_on_submit(
     contact_form_entry(browser=browser, subject="Subject" * 2, content="Content" * 10)
     wait_then_click_element(browser, HPL.CONTACT_SUBMIT)
 
-    submit_btn = wait_then_get_element(
-        browser, f'{HPL.CONTACT_SUBMIT}[data-sent="true"]'
-    )
-    assert submit_btn
+    wait_until_visible_css_selector(browser, HPL.CONTACT_BANNER)
+    submit_btn = browser.find_element(By.CSS_SELECTOR, HPL.CONTACT_SUBMIT)
     assert submit_btn.get_property("disabled")

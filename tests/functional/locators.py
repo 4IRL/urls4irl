@@ -22,6 +22,9 @@ class GenericPageLocator:
     CONTACT_SUBJECT_INPUT = "#subject"
     CONTACT_CONTENT_INPUT = "#content"
     CONTACT_SUBMIT = "#submit"
+    CONTACT_BANNER = "#Banner"
+    CONTACT_SUBJECT_ERROR = "#subject-error"
+    CONTACT_CONTENT_ERROR = "#content-error"
     FLASH_ELEMENT = "#flasher"
 
     # Cookie Banner
