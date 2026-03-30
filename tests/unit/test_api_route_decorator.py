@@ -92,11 +92,6 @@ def minimal_app():
     def test_with_response(validated_request: LoginRequest):
         return {"username": validated_request.username}, 200
 
-    @flask_app.route("/test-default-error-args", methods=["POST"])
-    @api_route(request_schema=LoginRequest)
-    def test_default_error_args(validated_request: LoginRequest):
-        return {"username": validated_request.username}, 200
-
     return flask_app
 
 
@@ -166,43 +161,24 @@ def test_api_route_get_without_body_succeeds(minimal_app: Flask):
     assert payload["status"] == "ok"
 
 
-def test_api_route_default_error_args_missing_body_returns_400(minimal_app: Flask):
+def test_api_route_raises_when_request_schema_without_error_message():
     """
-    GIVEN a route decorated with @api_route(request_schema=LoginRequest) using
-        default error_message and error_code (no explicit values)
-    WHEN the request has no JSON body
-    THEN a 400 response is returned with empty message and errorCode 0
+    GIVEN @api_route called with request_schema but no error_message
+    WHEN the decorator is applied
+    THEN a ValueError is raised indicating error_message is required
     """
-    with minimal_app.test_client() as client:
-        response = client.post("/test-default-error-args")
-
-    assert response.status_code == 400
-    payload = response.get_json()
-    assert payload["message"] == ""
-    assert payload["errorCode"] == 0
-    assert "errors" not in payload
+    with pytest.raises(ValueError, match="error_message is required"):
+        api_route(request_schema=LoginRequest, error_code=1)
 
 
-def test_api_route_default_error_args_invalid_body_returns_400(minimal_app: Flask):
+def test_api_route_raises_when_request_schema_without_error_code():
     """
-    GIVEN a route decorated with @api_route(request_schema=LoginRequest) using
-        default error_message and error_code (no explicit values)
-    WHEN the request has a JSON body that fails schema validation
-    THEN a 400 response is returned with empty message, errorCode 0, and errors dict
+    GIVEN @api_route called with request_schema but no error_code
+    WHEN the decorator is applied
+    THEN a ValueError is raised indicating error_code is required
     """
-    with minimal_app.test_client() as client:
-        response = client.post(
-            "/test-default-error-args",
-            json={"username": "ab"},
-        )
-
-    assert response.status_code == 400
-    payload = response.get_json()
-    assert payload["message"] == ""
-    assert payload["errorCode"] == 0
-    assert "errors" in payload
-    assert isinstance(payload["errors"], dict)
-    assert "username" in payload["errors"] or "password" in payload["errors"]
+    with pytest.raises(ValueError, match="error_code is required"):
+        api_route(request_schema=LoginRequest, error_message="Some error")
 
 
 def test_api_route_stashes_request_schema(minimal_app: Flask):

@@ -40,6 +40,18 @@ def api_route(
     Must be placed innermost (closest to the function), after auth decorators.
     """
 
+    if request_schema is not None:
+        if not error_message:
+            raise ValueError(
+                f"error_message is required when request_schema is provided "
+                f"(got request_schema={request_schema.__name__})"
+            )
+        if not error_code:
+            raise ValueError(
+                f"error_code is required when request_schema is provided "
+                f"(got request_schema={request_schema.__name__})"
+            )
+
     def decorator(route_fn: Callable) -> Callable:
         @wraps(route_fn)
         def wrapper(*args, **kwargs):
