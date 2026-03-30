@@ -26,7 +26,6 @@ def contact_us() -> str:
 @contact.route("/contact", methods=["POST"])
 @api_route(
     request_schema=ContactRequest,
-    response_schema=None,
     error_message="Unable to submit contact form.",
     error_code=1,
 )

@@ -9,6 +9,6 @@ system = Blueprint("system", __name__)
 
 @system.route("/health", methods=["GET"])
 @limiter.exempt
-@api_route(response_schema=None)
+@api_route()
 def health() -> FlaskResponse:
     return APIResponse(status_code=200).to_response()

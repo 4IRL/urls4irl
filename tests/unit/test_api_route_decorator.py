@@ -71,7 +71,6 @@ def minimal_app():
     @flask_app.route("/test-with-body", methods=["POST"])
     @api_route(
         request_schema=LoginRequest,
-        response_schema=None,
         error_message="Invalid input",
         error_code=1,
     )
@@ -79,7 +78,7 @@ def minimal_app():
         return {"username": validated_request.username}, 200
 
     @flask_app.route("/test-no-body", methods=["GET"])
-    @api_route(response_schema=None)
+    @api_route()
     def test_no_body():
         return {"status": "ok"}, 200
 
@@ -182,7 +181,7 @@ def test_api_route_stashes_response_schema(minimal_app: Flask):
 
 def test_api_route_none_request_schema_stashed_for_get(minimal_app: Flask):
     """
-    GIVEN a GET route decorated with @api_route(response_schema=None)
+    GIVEN a GET route decorated with @api_route()
     WHEN accessing the view function
     THEN _api_route_request_schema is None
     """
@@ -192,7 +191,7 @@ def test_api_route_none_request_schema_stashed_for_get(minimal_app: Flask):
 
 def test_api_route_none_response_schema_stashed_when_none(minimal_app: Flask):
     """
-    GIVEN a route decorated with @api_route(response_schema=None)
+    GIVEN a route decorated with @api_route()
     WHEN accessing the view function
     THEN _api_route_response_schema is None
     """
