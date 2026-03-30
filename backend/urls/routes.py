@@ -10,6 +10,8 @@ from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import (
     safe_add_many_logs,
 )
+from backend.models.utub_urls import Utub_Urls
+from backend.models.utubs import Utubs
 from backend.schemas.errors import build_message_error_response
 from backend.schemas.requests.urls import (
     CreateURLRequest,
@@ -23,8 +25,6 @@ from backend.schemas.urls import (
     UrlUpdatedResponseSchema,
     UtubUrlDetailSchema,
 )
-from backend.models.utubs import Utubs
-from backend.models.utub_urls import Utub_Urls
 from backend.urls.services.create_urls import create_url_in_utub
 from backend.urls.services.delete_urls import (
     check_if_is_url_adder_or_utub_creator_on_url_delete,
