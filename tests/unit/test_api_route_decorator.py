@@ -36,6 +36,7 @@ from backend.schemas.tags import (
 from backend.schemas.urls import (
     UrlCreatedResponseSchema,
     UrlDeletedResponseSchema,
+    UrlReadResponseSchema,
     UrlTitleUpdatedResponseSchema,
     UrlUpdatedResponseSchema,
 )
@@ -220,7 +221,7 @@ ALL_API_ROUTES = [
     ("utubs.delete_utub", None, UtubDeletedResponseSchema),
     # URL routes
     ("urls.create_url", CreateURLRequest, UrlCreatedResponseSchema),
-    ("urls.get_url", None, UrlTitleUpdatedResponseSchema),
+    ("urls.get_url", None, UrlReadResponseSchema),
     ("urls.update_url", UpdateURLStringRequest, UrlUpdatedResponseSchema),
     ("urls.update_url_title", UpdateURLTitleRequest, UrlTitleUpdatedResponseSchema),
     ("urls.delete_url", None, UrlDeletedResponseSchema),

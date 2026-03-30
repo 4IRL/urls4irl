@@ -21,6 +21,7 @@ from backend.schemas.requests.urls import (
 from backend.schemas.urls import (
     UrlCreatedResponseSchema,
     UrlDeletedResponseSchema,
+    UrlReadResponseSchema,
     UrlTitleUpdatedResponseSchema,
     UrlUpdatedResponseSchema,
     UtubUrlDetailSchema,
@@ -72,7 +73,7 @@ def create_url(
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["GET"])
 @xml_http_request_only
 @utub_membership_with_valid_url_in_utub_required
-@api_route(response_schema=UrlTitleUpdatedResponseSchema)
+@api_route(response_schema=UrlReadResponseSchema)
 def get_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
 ) -> FlaskResponse:
@@ -94,7 +95,7 @@ def get_url(
     )
     return APIResponse(
         message=URL_SUCCESS.URL_FOUND_IN_UTUB,
-        data=UrlTitleUpdatedResponseSchema(
+        data=UrlReadResponseSchema(
             url=UtubUrlDetailSchema.from_orm_url(current_utub_url),
         ),
     ).to_response()

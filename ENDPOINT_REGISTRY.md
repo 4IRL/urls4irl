@@ -230,7 +230,7 @@ Base path: `/utubs/<utub_id>/urls`
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/urls/routes.py:get_url` |
-| **Decorators** | `@xml_http_request_only`, `@utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=None, response_schema=UrlTitleUpdatedResponseSchema)` |
+| **Decorators** | `@xml_http_request_only`, `@utub_membership_with_valid_url_in_utub_required`, `@api_route(request_schema=None, response_schema=UrlReadResponseSchema)` |
 | **Service** | `APIResponse()` direct |
 | **JS Module** | `frontend/home/urls/cards/get.js`, also called from `update-string.js`, `update-title.js`, `delete.js`, `frontend/home/urls/tags/create.js`, `frontend/home/urls/tags/delete.js` |
 | **Tests** | `tests/integration/urls/test_get_url_in_utub_route.py` (marker: `urls`) |
