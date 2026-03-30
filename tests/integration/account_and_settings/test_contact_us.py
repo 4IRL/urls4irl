@@ -347,7 +347,7 @@ def test_invalid_submissions_do_not_count_toward_rate_limit(
     client, csrf, user, app = login_first_user_with_register
     mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
 
-    limiter.enabled = True
+    _enable_limiter(app)
     try:
         rate_limit_count = CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR + 1
         for _ in range(rate_limit_count):
@@ -372,7 +372,51 @@ def test_invalid_submissions_do_not_count_toward_rate_limit(
         with app.app_context():
             assert ContactFormEntries.query.count() == 1
     finally:
-        limiter.enabled = False
+        _disable_limiter()
+
+
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_valid_submissions_are_rate_limited(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user
+    WHEN they submit RATE_LIMIT_PER_HOUR valid contact forms
+    THEN verify the next valid submission returns 429 Too Many Requests
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
+
+    _enable_limiter(app)
+    try:
+        for submission_idx in range(CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR):
+            response = client.post(
+                url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+                json={"subject": MOCK_SUBJECT, "content": MOCK_CONTENT},
+                headers={**HEADERS, "X-CSRFToken": csrf},
+            )
+            assert response.status_code == 200, (
+                f"Submission {submission_idx + 1} of "
+                f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} should succeed"
+            )
+
+        rate_limited_response = client.post(
+            url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+            json={"subject": MOCK_SUBJECT, "content": MOCK_CONTENT},
+            headers={**HEADERS, "X-CSRFToken": csrf},
+        )
+
+        assert rate_limited_response.status_code == 429
+        assert mock_send_msg.call_count == CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR
+
+        with app.app_context():
+            assert (
+                ContactFormEntries.query.count()
+                == CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR
+            )
+    finally:
+        _disable_limiter()
 
 
 @mock.patch("backend.extensions.notifications.notifications._send_msg")
@@ -399,6 +443,31 @@ def test_contact_us_page_form_missing_csrf_token(
 
     with app.app_context():
         assert ContactFormEntries.query.count() == 0
+
+
+def _enable_limiter(app: Flask) -> None:
+    """Enable the rate limiter with a properly initialized storage backend.
+
+    Flask 3.x prevents ``before_request`` registration after the first request.
+    We temporarily reset ``_got_first_request`` so ``limiter.init_app`` can
+    register its ``before_request`` hook, then restore the flag.
+    """
+    original_first_request = app._got_first_request
+    app._got_first_request = False
+    app.config["RATELIMIT_ENABLED"] = True
+    limiter.enabled = True
+    limiter.init_app(app)
+    app._got_first_request = original_first_request
+
+
+def _disable_limiter() -> None:
+    """Disable the rate limiter and clear its storage backend."""
+    if limiter._storage is not None:
+        limiter._storage.reset()
+    limiter._storage = None
+    limiter._limiter = None
+    limiter.enabled = False
+    limiter.initialized = False
 
 
 def _assert_valid_contact_form_entry(
