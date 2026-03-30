@@ -30,7 +30,7 @@ def contact_us() -> str:
     error_code=1,
 )
 @limiter.limit(
-    f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, 10 per day",
+    f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day",
     methods=["POST"],
 )
 def submit_contact_us(validated_request: ContactRequest) -> FlaskResponse:
