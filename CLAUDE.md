@@ -72,6 +72,10 @@ Tests are a MUST. We are looking for nearly 100% code completion if possible.
 
 This project is primarily Python with some JavaScript/HTML/CSS. When editing Python code, verify constant names, decorator types (`@model_validator` vs `@field_validator`), and imports against the actual codebase before making changes.
 
+### Import Style
+
+Always use top-level (global) imports. Never use local imports (inside functions, methods, or conditional blocks) unless the user explicitly requests it as a design decision — no exceptions.
+
 ### Import Ordering
 
 Imports are sorted into three groups, each alphabetized internally, separated by a blank line:

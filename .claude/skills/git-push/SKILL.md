@@ -86,7 +86,7 @@ Collect all 7 subagent responses. Parse each verdict:
 
 ```bash
 GH_TOKEN=$(/Users/ggpropersi/.claude/generate-gh-token.sh)
-git -c credential.helper="" push "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
+git -c credential.helper="" push -u "https://x-access-token:$GH_TOKEN@github.com/4IRL/urls4irl.git" $BRANCH
 ```
 
 This command does NOT need `dangerouslyDisableSandbox`. Only `gh` CLI commands (which make TLS connections to `api.github.com`) need sandbox disabled.
