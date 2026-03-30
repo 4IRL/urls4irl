@@ -1,11 +1,62 @@
+from typing import Type
+
 import pytest
 from flask import Flask
+from pydantic import BaseModel
 
 from backend import limiter
 from backend.api_common.parse_request import api_route
-from backend.schemas.requests.splash import LoginRequest
-from backend.schemas.users import LoginRedirectResponseSchema
+from backend.contact.routes import contact
+from backend.members.routes import members
+from backend.schemas.base import BaseSchema
+from backend.schemas.requests.contact import ContactRequest
+from backend.schemas.requests.members import AddMemberRequest
+from backend.schemas.requests.splash import (
+    ForgotPasswordRequest,
+    LoginRequest,
+    RegisterRequest,
+    ResetPasswordRequest,
+)
+from backend.schemas.requests.tags import AddTagRequest
+from backend.schemas.requests.urls import (
+    CreateURLRequest,
+    UpdateURLStringRequest,
+    UpdateURLTitleRequest,
+)
+from backend.schemas.requests.utubs import (
+    CreateUTubRequest,
+    UpdateUTubDescriptionRequest,
+    UpdateUTubNameRequest,
+)
+from backend.schemas.tags import (
+    UrlTagModifiedResponseSchema,
+    UtubTagAddedToUtubResponseSchema,
+    UtubTagDeletedFromUtubResponseSchema,
+)
+from backend.schemas.urls import (
+    UrlCreatedResponseSchema,
+    UrlDeletedResponseSchema,
+    UrlTitleUpdatedResponseSchema,
+    UrlUpdatedResponseSchema,
+)
+from backend.schemas.users import (
+    LoginRedirectResponseSchema,
+    MemberModifiedResponseSchema,
+    UtubSummaryListSchema,
+)
+from backend.schemas.utubs import (
+    UtubCreatedResponseSchema,
+    UtubDeletedResponseSchema,
+    UtubDescUpdatedResponseSchema,
+    UtubDetailSchema,
+    UtubNameUpdatedResponseSchema,
+)
+from backend.splash.routes import splash
 from backend.system.routes import system
+from backend.tags.url_tag_routes import utub_url_tags
+from backend.tags.utub_tag_routes import utub_tags
+from backend.urls.routes import urls
+from backend.utubs.routes import utubs
 
 pytestmark = pytest.mark.unit
 
@@ -163,3 +214,84 @@ def test_api_route_health_endpoint_stashes_none_response_schema():
     view_fn = flask_app.view_functions["system.health"]
     assert view_fn._api_route_response_schema is None
     assert view_fn._api_route_request_schema is None
+
+
+# All 24 migrated routes with their expected request and response schemas
+ALL_API_ROUTES = [
+    # Splash routes
+    ("splash.register_user", RegisterRequest, None),
+    ("splash.login", LoginRequest, LoginRedirectResponseSchema),
+    ("splash.send_validation_email", None, None),
+    ("splash.forgot_password", ForgotPasswordRequest, None),
+    ("splash.reset_password", ResetPasswordRequest, None),
+    # UTub routes
+    ("utubs.create_utub", CreateUTubRequest, UtubCreatedResponseSchema),
+    ("utubs.get_single_utub", None, UtubDetailSchema),
+    ("utubs.get_utubs", None, UtubSummaryListSchema),
+    ("utubs.update_utub_name", UpdateUTubNameRequest, UtubNameUpdatedResponseSchema),
+    (
+        "utubs.update_utub_desc",
+        UpdateUTubDescriptionRequest,
+        UtubDescUpdatedResponseSchema,
+    ),
+    ("utubs.delete_utub", None, UtubDeletedResponseSchema),
+    # URL routes
+    ("urls.create_url", CreateURLRequest, UrlCreatedResponseSchema),
+    ("urls.get_url", None, UrlTitleUpdatedResponseSchema),
+    ("urls.update_url", UpdateURLStringRequest, UrlUpdatedResponseSchema),
+    ("urls.update_url_title", UpdateURLTitleRequest, UrlTitleUpdatedResponseSchema),
+    ("urls.delete_url", None, UrlDeletedResponseSchema),
+    # Member routes
+    ("members.create_member", AddMemberRequest, MemberModifiedResponseSchema),
+    ("members.remove_member", None, MemberModifiedResponseSchema),
+    # UTub tag routes
+    ("utub_tags.create_utub_tag", AddTagRequest, UtubTagAddedToUtubResponseSchema),
+    ("utub_tags.delete_utub_tag", None, UtubTagDeletedFromUtubResponseSchema),
+    # URL tag routes
+    ("utub_url_tags.create_utub_url_tag", AddTagRequest, UrlTagModifiedResponseSchema),
+    ("utub_url_tags.delete_utub_url_tag", None, UrlTagModifiedResponseSchema),
+    # Contact routes
+    ("contact.submit_contact_us", ContactRequest, None),
+    # System routes
+    ("system.health", None, None),
+]
+
+
+@pytest.fixture()
+def real_app_with_all_blueprints():
+    """Flask app with all blueprints registered for schema introspection tests."""
+    flask_app = Flask(__name__)
+    flask_app.config["TESTING"] = True
+
+    limiter.init_app(flask_app)
+    flask_app.register_blueprint(splash)
+    flask_app.register_blueprint(utubs)
+    flask_app.register_blueprint(urls)
+    flask_app.register_blueprint(members)
+    flask_app.register_blueprint(utub_tags)
+    flask_app.register_blueprint(utub_url_tags)
+    flask_app.register_blueprint(contact)
+    flask_app.register_blueprint(system)
+
+    return flask_app
+
+
+@pytest.mark.parametrize(
+    "endpoint_name,expected_request_schema,expected_response_schema",
+    ALL_API_ROUTES,
+    ids=[route[0] for route in ALL_API_ROUTES],
+)
+def test_api_route_schema_stashed_on_all_migrated_routes(
+    real_app_with_all_blueprints: Flask,
+    endpoint_name: str,
+    expected_request_schema: Type[BaseModel] | None,
+    expected_response_schema: Type[BaseSchema] | None,
+):
+    """
+    GIVEN a route that has been migrated to @api_route
+    WHEN accessing the view function via app.view_functions
+    THEN _api_route_request_schema and _api_route_response_schema match expectations
+    """
+    view_fn = real_app_with_all_blueprints.view_functions[endpoint_name]
+    assert view_fn._api_route_request_schema is expected_request_schema
+    assert view_fn._api_route_response_schema is expected_response_schema
