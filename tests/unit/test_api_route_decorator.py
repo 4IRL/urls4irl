@@ -245,6 +245,24 @@ def test_api_route_none_response_schema_stashed_when_none(minimal_app: Flask):
     assert view_fn._api_route_response_schema is None
 
 
+def test_api_route_preserves_functools_wraps_attributes(minimal_app: Flask):
+    """
+    GIVEN routes decorated with @api_route
+    WHEN accessing the view functions registered on the Flask app
+    THEN __name__ matches the original function name and __wrapped__ points
+        to the original function
+    """
+    body_view_fn = minimal_app.view_functions["test_with_body"]
+    assert body_view_fn.__name__ == "test_with_body"
+    assert hasattr(body_view_fn, "__wrapped__")
+    assert callable(body_view_fn.__wrapped__)
+
+    no_body_view_fn = minimal_app.view_functions["test_no_body"]
+    assert no_body_view_fn.__name__ == "test_no_body"
+    assert hasattr(no_body_view_fn, "__wrapped__")
+    assert callable(no_body_view_fn.__wrapped__)
+
+
 # All 24 migrated routes with their expected request and response schemas
 ALL_API_ROUTES = [
     # Splash routes
