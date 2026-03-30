@@ -56,8 +56,8 @@ def api_route(
         @wraps(route_fn)
         def wrapper(*args, **kwargs):
             if request_schema is not None:
-                raw = request.get_json(silent=True)
-                if raw is None:
+                json_body = request.get_json(silent=True)
+                if json_body is None:
                     user_id = getattr(current_user, "id", "unknown")
                     warning_log(f"User={user_id} | Missing JSON body")
                     return build_message_error_response(
@@ -66,7 +66,9 @@ def api_route(
                         status_code=400,
                     )
                 try:
-                    kwargs["validated_request"] = request_schema.model_validate(raw)
+                    kwargs["validated_request"] = request_schema.model_validate(
+                        json_body
+                    )
                 except ValidationError as validation_error:
                     user_id = getattr(current_user, "id", "unknown")
                     field_errors = pydantic_errors_to_dict(validation_error)
