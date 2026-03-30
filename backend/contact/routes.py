@@ -4,8 +4,8 @@ from flask import (
 
 from backend import limiter
 from backend.api_common.parse_request import parse_json_body
-from backend.contact.constants import CONTACT_FORM_CONSTANTS
 from backend.api_common.responses import FlaskResponse
+from backend.contact.constants import CONTACT_FORM_CONSTANTS
 from backend.contact.contact_us import load_contact_us_page, validate_and_contact
 from backend.schemas.requests import ContactRequest
 from backend.utils.constants import provide_config_for_constants
