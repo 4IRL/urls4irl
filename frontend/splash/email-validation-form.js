@@ -18,9 +18,11 @@ export function initEmailValidationForm($modal, sendInitialEmail = false) {
 
   $modal.on("show.bs.modal", () => resetModalFormState($modal));
 
-  // Send validation email after register, but not if token for validation is expired
+  // Send validation email after register, but not if token for validation is expired.
+  // Defer until shown.bs.modal so the AJAX response doesn't race the modal fade-in
+  // (resetModalFormState fires on show.bs.modal, which precedes shown.bs.modal)
   if (sendInitialEmail) {
-    handleValidateEmail($modal);
+    $modal.one("shown.bs.modal", () => handleValidateEmail($modal));
   }
 }
 
