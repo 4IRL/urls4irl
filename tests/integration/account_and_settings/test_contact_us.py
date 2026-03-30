@@ -4,6 +4,7 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
+from backend import limiter
 from backend.api_common.request_errors import max_length_message, min_length_message
 from backend.contact.constants import CONTACT_FORM_CONSTANTS
 from backend.models.contact_form_entries import ContactFormEntries
@@ -331,6 +332,47 @@ def test_contact_us_page_form_field_exceeds_max_length(
 
     with app.app_context():
         assert ContactFormEntries.query.count() == 0
+
+
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_invalid_submissions_do_not_count_toward_rate_limit(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user who has submitted several invalid contact forms
+    WHEN they submit a valid contact form after exceeding what would be the rate limit
+    THEN verify the valid submission succeeds because invalid attempts are not rate-limited
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
+
+    limiter.enabled = True
+    try:
+        rate_limit_count = CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR + 1
+        for _ in range(rate_limit_count):
+            invalid_response = client.post(
+                url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+                json={"subject": "", "content": ""},
+                headers={**HEADERS, "X-CSRFToken": csrf},
+            )
+            assert invalid_response.status_code == 400
+
+        valid_response = client.post(
+            url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+            json={"subject": MOCK_SUBJECT, "content": MOCK_CONTENT},
+            headers={**HEADERS, "X-CSRFToken": csrf},
+        )
+
+        assert valid_response.status_code == 200
+        response_json = valid_response.get_json()
+        assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        mock_send_msg.assert_called_once()
+
+        with app.app_context():
+            assert ContactFormEntries.query.count() == 1
+    finally:
+        limiter.enabled = False
 
 
 @mock.patch("backend.extensions.notifications.notifications._send_msg")
