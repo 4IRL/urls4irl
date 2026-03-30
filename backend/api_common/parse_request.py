@@ -21,8 +21,8 @@ def api_route(
     *,
     request_schema: Type[SchemaT] | None = None,
     response_schema: Type[BaseSchema] | None = None,
-    error_message: str = "",
-    error_code: int = 0,
+    error_message: str | None = None,
+    error_code: int | None = None,
 ) -> Callable:
     """Unified decorator that handles request body validation and response schema
     declaration for API routes.
@@ -41,12 +41,12 @@ def api_route(
     """
 
     if request_schema is not None:
-        if not error_message:
+        if error_message is None:
             raise ValueError(
                 f"error_message is required when request_schema is provided "
                 f"(got request_schema={request_schema.__name__})"
             )
-        if not error_code:
+        if error_code is None:
             raise ValueError(
                 f"error_code is required when request_schema is provided "
                 f"(got request_schema={request_schema.__name__})"
