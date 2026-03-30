@@ -107,6 +107,7 @@ def test_api_route_missing_json_body_returns_400(minimal_app: Flask):
     assert response.status_code == 400
     payload = response.get_json()
     assert payload["message"] == "Invalid input"
+    assert payload["errorCode"] == 1
 
 
 def test_api_route_valid_body_injects_validated_request(minimal_app: Flask):
@@ -140,6 +141,7 @@ def test_api_route_invalid_body_returns_400_with_errors(minimal_app: Flask):
 
     assert response.status_code == 400
     payload = response.get_json()
+    assert payload["errorCode"] == 1
     assert "errors" in payload
     assert isinstance(payload["errors"], dict)
     assert "username" in payload["errors"] or "password" in payload["errors"]
