@@ -1071,7 +1071,7 @@ def test_update_utub_description_invalid_logs(
     WHEN the creator attempts to modify the UTub description to a description that contains HTML that would
         be fully sanitized (e.g. '<img src="evl.jpg">'), via a PATCH to "/utubs/<utub_id: int>/description"
     THEN verify that the server responds with 400 since the sanitized result differs from the original input,
-        and parse_json_body logs the validation failure
+        and @api_route logs the validation failure
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 

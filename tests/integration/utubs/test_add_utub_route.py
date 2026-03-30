@@ -732,7 +732,7 @@ def test_add_utub_form_failed_logs(login_first_user_with_register, caplog):
     GIVEN a valid logged in user on the home page
     WHEN they make a new UTub for themselves and do a POST to "/utubs" with invalid form data
         (empty UTub name which sanitizes to None)
-    THEN verify that a 400 is returned and parse_json_body logs the validation failure
+    THEN verify that a 400 is returned and @api_route logs the validation failure
     """
     client, csrf_token, user, _ = login_first_user_with_register
 

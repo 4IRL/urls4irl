@@ -1119,7 +1119,7 @@ def test_update_utub_name_invalid_form_logs(
     GIVEN a valid creator of a UTub that has members, URLs, and tags associated with all URLs
     WHEN the creator attempts to modify the UTub name to an empty name (which sanitizes to None), via a PATCH to
         "/utubs/<utub_id: int>/name" with invalid form data
-    THEN verify that a 400 is returned and parse_json_body logs the validation failure
+    THEN verify that a 400 is returned and @api_route logs the validation failure
     """
     client, csrf_token_string, user, app = login_first_user_without_register
 
