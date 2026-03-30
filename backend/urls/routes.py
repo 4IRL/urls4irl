@@ -5,7 +5,7 @@ from backend.api_common.auth_decorators import (
     utub_membership_with_valid_url_in_utub_required,
     xml_http_request_only,
 )
-from backend.api_common.parse_request import parse_json_body
+from backend.api_common.parse_request import api_route
 from backend.api_common.responses import APIResponse, FlaskResponse
 from backend.app_logger import (
     safe_add_many_logs,
@@ -16,7 +16,13 @@ from backend.schemas.requests.urls import (
     UpdateURLStringRequest,
     UpdateURLTitleRequest,
 )
-from backend.schemas.urls import UrlTitleUpdatedResponseSchema, UtubUrlDetailSchema
+from backend.schemas.urls import (
+    UrlCreatedResponseSchema,
+    UrlDeletedResponseSchema,
+    UrlTitleUpdatedResponseSchema,
+    UrlUpdatedResponseSchema,
+    UtubUrlDetailSchema,
+)
 from backend.models.utubs import Utubs
 from backend.models.utub_urls import Utub_Urls
 from backend.urls.services.create_urls import create_url_in_utub
@@ -41,9 +47,10 @@ STD_JSON = STD_JSON_RESPONSE
 
 @urls.route("/utubs/<int:utub_id>/urls", methods=["POST"])
 @utub_membership_required
-@parse_json_body(
-    CreateURLRequest,
-    message=URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
+@api_route(
+    request_schema=CreateURLRequest,
+    response_schema=UrlCreatedResponseSchema,
+    error_message=URL_FAILURE.UNABLE_TO_ADD_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
 )
 def create_url(
@@ -65,6 +72,7 @@ def create_url(
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["GET"])
 @xml_http_request_only
 @utub_membership_with_valid_url_in_utub_required
+@api_route(response_schema=UrlTitleUpdatedResponseSchema)
 def get_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
 ) -> FlaskResponse:
@@ -94,9 +102,10 @@ def get_url(
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["PATCH"])
 @utub_membership_with_valid_url_in_utub_required
-@parse_json_body(
-    UpdateURLStringRequest,
-    message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+@api_route(
+    request_schema=UpdateURLStringRequest,
+    response_schema=UrlUpdatedResponseSchema,
+    error_message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
 )
 def update_url(
@@ -133,9 +142,10 @@ def update_url(
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>/title", methods=["PATCH"])
 @utub_membership_with_valid_url_in_utub_required
-@parse_json_body(
-    UpdateURLTitleRequest,
-    message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
+@api_route(
+    request_schema=UpdateURLTitleRequest,
+    response_schema=UrlTitleUpdatedResponseSchema,
+    error_message=URL_FAILURE.UNABLE_TO_MODIFY_URL_FORM,
     error_code=URLErrorCodes.INVALID_FORM_INPUT,
 )
 def update_url_title(
@@ -172,6 +182,7 @@ def update_url_title(
 
 @urls.route("/utubs/<int:utub_id>/urls/<int:utub_url_id>", methods=["DELETE"])
 @utub_membership_with_valid_url_in_utub_required
+@api_route(response_schema=UrlDeletedResponseSchema)
 def delete_url(
     utub_id: int, utub_url_id: int, current_utub: Utubs, current_utub_url: Utub_Urls
 ) -> FlaskResponse:
