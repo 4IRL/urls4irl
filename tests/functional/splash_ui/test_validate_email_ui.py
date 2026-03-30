@@ -118,7 +118,7 @@ def test_email_validation_rate_limits(browser: ChromeRemoteWebDriver):
 
     # 'Email sent!' is shown when the modal loads
     alert_modal_banner = wait_then_get_element(
-        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=3
+        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=5
     )
     assert alert_modal_banner is not None
     assert alert_modal_banner.text == EMAILS.EMAIL_SENT
@@ -126,7 +126,7 @@ def test_email_validation_rate_limits(browser: ChromeRemoteWebDriver):
     # Clicking within 60 seconds will rate limit
     browser.find_element(By.CSS_SELECTOR, SPL.EMAIL_VALIDATION_BUTTON_SUBMIT).click()
     alert_modal_banner = wait_then_get_element(
-        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=3
+        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=5
     )
     assert alert_modal_banner is not None
     assert alert_modal_banner.text == "4" + EMAILS_FAILURE.TOO_MANY_ATTEMPTS

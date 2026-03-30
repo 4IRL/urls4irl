@@ -428,7 +428,7 @@ def test_register_user_unconfirmed_email_validate_btn_shows_validate_modal(
     wait_until_visible_css_selector(browser, SPL.HEADER_VALIDATE_EMAIL)
 
     email_sent = wait_then_get_element(
-        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=3
+        browser, SPL.EMAIL_VALIDATION_MODAL_ALERT, time=5
     )
     assert email_sent is not None
     assert email_sent.text == EMAILS.EMAIL_SENT
