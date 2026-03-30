@@ -4,12 +4,15 @@ from flask import Flask, url_for
 from flask.testing import FlaskClient
 import pytest
 
+from backend import limiter
+from backend.api_common.request_errors import max_length_message, min_length_message
+from backend.contact.constants import CONTACT_FORM_CONSTANTS
 from backend.models.contact_form_entries import ContactFormEntries
 from backend.models.users import Users
 from backend.utils.all_routes import ROUTES
-from backend.utils.strings.form_strs import CONTACT_FORM
 from backend.utils.strings.html_identifiers import IDENTIFIERS
 from backend.utils.strings.json_strs import FIELD_REQUIRED_STR
+from backend.utils.strings.json_strs import STD_JSON_RESPONSE as STD_JSON
 from backend.utils.strings.url_validation_strs import USER_AGENT
 from tests.utils_for_test import get_csrf_token
 
@@ -62,16 +65,19 @@ def test_contact_us_page_sends_notification_logged_in_user(
     mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
 
     response = client.post(
-        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US),
-        headers=HEADERS,
-        data={
-            CONTACT_FORM.SUBJECT: MOCK_SUBJECT,
-            CONTACT_FORM.CONTENT: MOCK_CONTENT,
-            CONTACT_FORM.CSRF_TOKEN: csrf,
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json={
+            "subject": MOCK_SUBJECT,
+            "content": MOCK_CONTENT,
         },
+        headers={**HEADERS, "X-CSRFToken": csrf},
     )
 
     assert response.status_code == 200
+    assert response.content_type == "application/json"
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == "Sent! Thanks for reaching out."
     mock_send_msg.assert_called_once()
 
     with app.app_context():
@@ -97,20 +103,24 @@ def test_contact_us_page_sends_notification_anonymous_user(
     mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
 
     csrf = get_csrf_token(
-        client.get(url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US)).get_data()
+        client.get(url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US)).get_data(),
+        meta_tag=True,
     )
 
     response = client.post(
-        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US),
-        headers=HEADERS,
-        data={
-            CONTACT_FORM.SUBJECT: MOCK_SUBJECT,
-            CONTACT_FORM.CONTENT: MOCK_CONTENT,
-            CONTACT_FORM.CSRF_TOKEN: csrf,
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json={
+            "subject": MOCK_SUBJECT,
+            "content": MOCK_CONTENT,
         },
+        headers={**HEADERS, "X-CSRFToken": csrf},
     )
 
     assert response.status_code == 200
+    assert response.content_type == "application/json"
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == "Sent! Thanks for reaching out."
     mock_send_msg.assert_called_once()
 
     with logged_out_app.app_context():
@@ -138,16 +148,19 @@ def test_contact_us_page_notification_fails(
     mock_send_msg.return_value = mock.Mock(response=True, status_code=400, text=None)
 
     response = client.post(
-        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US),
-        headers=HEADERS,
-        data={
-            CONTACT_FORM.SUBJECT: MOCK_SUBJECT,
-            CONTACT_FORM.CONTENT: MOCK_CONTENT,
-            CONTACT_FORM.CSRF_TOKEN: csrf,
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json={
+            "subject": MOCK_SUBJECT,
+            "content": MOCK_CONTENT,
         },
+        headers={**HEADERS, "X-CSRFToken": csrf},
     )
 
     assert response.status_code == 200
+    assert response.content_type == "application/json"
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+    assert response_json[STD_JSON.MESSAGE] == "Sent! Thanks for reaching out."
     mock_send_msg.assert_called_once()
 
     with app.app_context():
@@ -163,10 +176,10 @@ def test_contact_us_page_notification_fails(
 
 
 @pytest.mark.parametrize(
-    "empty_field",
+    "empty_field, expected_error",
     [
-        CONTACT_FORM.SUBJECT,
-        CONTACT_FORM.CONTENT,
+        ("subject", min_length_message(CONTACT_FORM_CONSTANTS.MIN_SUBJECT_LENGTH)),
+        ("content", FIELD_REQUIRED_STR),
     ],
 )
 @mock.patch("backend.extensions.notifications.notifications._send_msg")
@@ -174,23 +187,28 @@ def test_contact_us_page_form_empty_fields(
     mock_send_msg: mock.MagicMock,
     login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
     empty_field: str,
+    expected_error: str,
 ):
     client, csrf, user, app = login_first_user_with_register
     mock_send_msg.return_value = mock.Mock(response=True, status_code=200, text=None)
 
-    data = {
-        CONTACT_FORM.SUBJECT: MOCK_SUBJECT,
-        CONTACT_FORM.CONTENT: MOCK_CONTENT,
-        CONTACT_FORM.CSRF_TOKEN: csrf,
+    json_body = {
+        "subject": MOCK_SUBJECT,
+        "content": MOCK_CONTENT,
     }
-    data[empty_field] = ""
+    json_body[empty_field] = ""
 
     response = client.post(
-        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US), headers=HEADERS, data=data
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json=json_body,
+        headers={**HEADERS, "X-CSRFToken": csrf},
     )
 
-    assert response.status_code == 200
-    assert FIELD_REQUIRED_STR.encode() in response.data
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert empty_field in response_json[STD_JSON.ERRORS]
+    assert expected_error in response_json[STD_JSON.ERRORS][empty_field]
     mock_send_msg.assert_not_called()
 
     with app.app_context():
@@ -200,8 +218,8 @@ def test_contact_us_page_form_empty_fields(
 @pytest.mark.parametrize(
     "missing_field",
     [
-        CONTACT_FORM.SUBJECT,
-        CONTACT_FORM.CONTENT,
+        "subject",
+        "content",
     ],
 )
 @mock.patch("backend.extensions.notifications.notifications._send_msg")
@@ -213,23 +231,192 @@ def test_contact_us_page_form_missing_fields(
     client, csrf, user, app = login_first_user_with_register
     mock_send_msg.return_value = mock.Mock(response=True, status_code=200, text=None)
 
-    data = {
-        CONTACT_FORM.SUBJECT: MOCK_SUBJECT,
-        CONTACT_FORM.CONTENT: MOCK_CONTENT,
-        CONTACT_FORM.CSRF_TOKEN: csrf,
+    json_body = {
+        "subject": MOCK_SUBJECT,
+        "content": MOCK_CONTENT,
     }
-    data.pop(missing_field)
+    json_body.pop(missing_field)
 
     response = client.post(
-        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US), headers=HEADERS, data=data
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json=json_body,
+        headers={**HEADERS, "X-CSRFToken": csrf},
     )
 
-    assert response.status_code == 200
-    assert FIELD_REQUIRED_STR.encode() in response.data
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert missing_field in response_json[STD_JSON.ERRORS]
+    assert FIELD_REQUIRED_STR in response_json[STD_JSON.ERRORS][missing_field]
     mock_send_msg.assert_not_called()
 
     with app.app_context():
         assert ContactFormEntries.query.count() == 0
+
+
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_contact_us_page_form_subject_too_short(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user submitting a contact form
+    WHEN the subject is shorter than the minimum length
+    THEN verify that a 400 response is returned with a min-length error for the subject field
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=200, text=None)
+
+    response = client.post(
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json={
+            "subject": "Hi",
+            "content": MOCK_CONTENT,
+        },
+        headers={**HEADERS, "X-CSRFToken": csrf},
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert "subject" in response_json[STD_JSON.ERRORS]
+    expected_error = min_length_message(CONTACT_FORM_CONSTANTS.MIN_SUBJECT_LENGTH)
+    assert expected_error in response_json[STD_JSON.ERRORS]["subject"]
+    mock_send_msg.assert_not_called()
+
+    with app.app_context():
+        assert ContactFormEntries.query.count() == 0
+
+
+@pytest.mark.parametrize(
+    "over_max_field, field_max_length",
+    [
+        ("subject", CONTACT_FORM_CONSTANTS.MAX_SUBJECT_LENGTH),
+        ("content", CONTACT_FORM_CONSTANTS.MAX_CONTENT_LENGTH),
+    ],
+)
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_contact_us_page_form_field_exceeds_max_length(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+    over_max_field: str,
+    field_max_length: int,
+):
+    """
+    GIVEN a logged in user submitting a contact form
+    WHEN a field exceeds its maximum allowed length
+    THEN verify that a 400 response is returned with a max-length error for that field
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=200, text=None)
+
+    json_body = {
+        "subject": MOCK_SUBJECT,
+        "content": MOCK_CONTENT,
+    }
+    json_body[over_max_field] = "a" * (field_max_length + 1)
+
+    response = client.post(
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json=json_body,
+        headers={**HEADERS, "X-CSRFToken": csrf},
+    )
+
+    assert response.status_code == 400
+    response_json = response.get_json()
+    assert response_json[STD_JSON.STATUS] == STD_JSON.FAILURE
+    assert over_max_field in response_json[STD_JSON.ERRORS]
+    expected_error = max_length_message(field_max_length)
+    assert expected_error in response_json[STD_JSON.ERRORS][over_max_field]
+    mock_send_msg.assert_not_called()
+
+    with app.app_context():
+        assert ContactFormEntries.query.count() == 0
+
+
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_invalid_submissions_do_not_count_toward_rate_limit(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user who has submitted several invalid contact forms
+    WHEN they submit a valid contact form after exceeding what would be the rate limit
+    THEN verify the valid submission succeeds because invalid attempts are not rate-limited
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
+
+    _enable_limiter(app)
+    try:
+        rate_limit_count = CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR + 1
+        for _ in range(rate_limit_count):
+            invalid_response = client.post(
+                url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+                json={"subject": "", "content": ""},
+                headers={**HEADERS, "X-CSRFToken": csrf},
+            )
+            assert invalid_response.status_code == 400
+
+        valid_response = client.post(
+            url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+            json={"subject": MOCK_SUBJECT, "content": MOCK_CONTENT},
+            headers={**HEADERS, "X-CSRFToken": csrf},
+        )
+
+        assert valid_response.status_code == 200
+        response_json = valid_response.get_json()
+        assert response_json[STD_JSON.STATUS] == STD_JSON.SUCCESS
+        mock_send_msg.assert_called_once()
+
+        with app.app_context():
+            assert ContactFormEntries.query.count() == 1
+    finally:
+        _disable_limiter()
+
+
+@mock.patch("backend.extensions.notifications.notifications._send_msg")
+def test_valid_submissions_are_rate_limited(
+    mock_send_msg: mock.MagicMock,
+    login_first_user_with_register: Tuple[FlaskClient, str, Users, Flask],
+):
+    """
+    GIVEN a logged in user
+    WHEN they submit RATE_LIMIT_PER_HOUR valid contact forms
+    THEN verify the next valid submission returns 429 Too Many Requests
+    """
+    client, csrf, user, app = login_first_user_with_register
+    mock_send_msg.return_value = mock.Mock(response=True, status_code=204, text=None)
+
+    _enable_limiter(app)
+    try:
+        for submission_idx in range(CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR):
+            response = client.post(
+                url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+                json={"subject": MOCK_SUBJECT, "content": MOCK_CONTENT},
+                headers={**HEADERS, "X-CSRFToken": csrf},
+            )
+            assert response.status_code == 200, (
+                f"Submission {submission_idx + 1} of "
+                f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} should succeed"
+            )
+
+        rate_limited_response = client.post(
+            url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+            json={"subject": MOCK_SUBJECT, "content": MOCK_CONTENT},
+            headers={**HEADERS, "X-CSRFToken": csrf},
+        )
+
+        assert rate_limited_response.status_code == 429
+        assert mock_send_msg.call_count == CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR
+
+        with app.app_context():
+            assert (
+                ContactFormEntries.query.count()
+                == CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR
+            )
+    finally:
+        _disable_limiter()
 
 
 @mock.patch("backend.extensions.notifications.notifications._send_msg")
@@ -240,13 +427,13 @@ def test_contact_us_page_form_missing_csrf_token(
     client, csrf, user, app = login_first_user_with_register
     mock_send_msg.return_value = mock.Mock(response=True, status_code=200, text=None)
 
-    data = {
-        CONTACT_FORM.SUBJECT: MOCK_SUBJECT,
-        CONTACT_FORM.CONTENT: MOCK_CONTENT,
-    }
-
     response = client.post(
-        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US), headers=HEADERS, data=data
+        url_for(ROUTES.ACCOUNT_AND_SETTINGS.CONTACT_US_SUBMIT),
+        json={
+            "subject": MOCK_SUBJECT,
+            "content": MOCK_CONTENT,
+        },
+        headers=HEADERS,
     )
 
     assert response.status_code == 403
@@ -256,6 +443,31 @@ def test_contact_us_page_form_missing_csrf_token(
 
     with app.app_context():
         assert ContactFormEntries.query.count() == 0
+
+
+def _enable_limiter(app: Flask) -> None:
+    """Enable the rate limiter with a properly initialized storage backend.
+
+    Flask 3.x prevents ``before_request`` registration after the first request.
+    We temporarily reset ``_got_first_request`` so ``limiter.init_app`` can
+    register its ``before_request`` hook, then restore the flag.
+    """
+    original_first_request = app._got_first_request
+    app._got_first_request = False
+    app.config["RATELIMIT_ENABLED"] = True
+    limiter.enabled = True
+    limiter.init_app(app)
+    app._got_first_request = original_first_request
+
+
+def _disable_limiter() -> None:
+    """Disable the rate limiter and clear its storage backend."""
+    if limiter._storage is not None:
+        limiter._storage.reset()
+    limiter._storage = None
+    limiter._limiter = None
+    limiter.enabled = False
+    limiter.initialized = False
 
 
 def _assert_valid_contact_form_entry(

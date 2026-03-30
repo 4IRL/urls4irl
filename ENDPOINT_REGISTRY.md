@@ -396,15 +396,26 @@ Base path: `/utubs/<utub_id>/urls/<utub_url_id>/tags`
 
 ## Contact Blueprint
 
-### GET/POST /contact
+### GET /contact
 
 | Layer | Location |
 |---|---|
 | **Handler** | `backend/contact/routes.py:contact_us` |
-| **Decorators** | `@limiter.limit("5 per hour, 10 per day", methods=["POST"])` |
-| **Service** | GET: `backend/contact/contact_us.py:load_contact_us_page`, POST: `backend/contact/contact_us.py:validate_and_contact` |
-| **Template** | `pages/contact_us.html` (vars: `contact_form`, `is_contact_form`, `contacted`) |
-| **CSRF** | WTForms `hidden_tag()` (unique — all other forms use meta tag) |
+| **Service** | `backend/contact/contact_us.py:load_contact_us_page` |
+| **Template** | `pages/contact_us.html` (vars: `is_contact_form`) |
+| **CSRF** | Meta tag (`<meta name="csrf-token">`) |
+| **Tests** | `tests/integration/account_and_support/test_contact_us.py` (marker: `account_and_support`) |
+
+### POST /contact
+
+| Layer | Location |
+|---|---|
+| **Handler** | `backend/contact/routes.py:submit_contact_us` |
+| **Decorators** | `@limiter.limit(f"{CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_HOUR} per hour, {CONTACT_FORM_CONSTANTS.RATE_LIMIT_PER_DAY} per day", methods=["POST"])`, `@parse_json_body(ContactRequest, ...)` |
+| **Schema** | `backend/schemas/requests/contact.py:ContactRequest` |
+| **Request** | JSON `{"subject": "...", "content": "..."}` |
+| **Response** | Success: JSON `{"status": "Success", "message": "..."}`, Failure: JSON `{"status": "Failure", "errors": {...}}` |
+| **Service** | `backend/contact/contact_us.py:validate_and_contact` |
 | **Tests** | `tests/integration/account_and_support/test_contact_us.py` (marker: `account_and_support`) |
 
 ---

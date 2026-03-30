@@ -57,8 +57,9 @@ Run the Vite build via subagent:
 #### For UI Changes (Selenium/Playwright Tests):
 - If the plan specifies manual verification steps, list them for the user
 - If specific UI tests are mentioned, delegate to a subagent:
-  - Task: "Run UI tests for marker MARKER_NAME using `make test-marker-parallel m=MARKER_NAME`. Report pass/fail count. On failure, include test name and assertion/error for each failure."
-  - For a specific test file: "Run `make test-marker-parallel m=MARKER` or the specific pytest command in Docker. Report pass/fail with failure details."
+  - Task: "Run UI tests for marker MARKER_NAME using `make test-marker-parallel-built m=MARKER_NAME`. Report pass/fail count. On failure, include test name and assertion/error for each failure."
+  - For a specific test file: "Run `make test-marker-parallel-built m=MARKER` or the specific pytest command in Docker. Report pass/fail with failure details."
+- **Always use built targets** (`test-marker-parallel-built`, `test-ui-parallel-built`) for UI tests — they run against pre-built Vite assets, not the dev server.
 - Common UI test markers: `splash_ui`, `home_ui`, `utubs_ui`, `members_ui`, `urls_ui`, `tags_ui`, `mobile_ui`
 
 #### For Unit/Integration Tests:

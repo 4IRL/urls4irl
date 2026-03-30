@@ -56,6 +56,7 @@ class USER_ROUTES:
 class ACCOUNT_AND_SETTING_ROUTES:
     _CONTACT = "contact."
     CONTACT_US = _CONTACT + "contact_us"
+    CONTACT_US_SUBMIT = _CONTACT + "submit_contact_us"
 
 
 class SYSTEM_ROUTES:
@@ -132,4 +133,6 @@ def generate_routes_js() -> dict[str, str]:
         "errorPage": url_for(SPLASH_ROUTES.ERROR_PAGE),
         # Logout
         "logout": url_for(USER_ROUTES.LOGOUT),
+        # Contact
+        "contactUs": url_for(ACCOUNT_AND_SETTING_ROUTES.CONTACT_US_SUBMIT),
     }

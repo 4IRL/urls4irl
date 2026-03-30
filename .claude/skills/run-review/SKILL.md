@@ -91,8 +91,8 @@ The main agent reads the subagent's report and decides:
 If the completed item changed frontend code (JS, templates, CSS) or test locators/selectors, spawn a **smoke test subagent** before continuing:
 
 ```
-Run a quick UI smoke test. Execute:
-  make test-ui-parallel n=2
+Run a quick UI smoke test against built assets. Execute:
+  make test-ui-parallel-built n=2
 Write the full test output to $TMPDIR/smoke-test-review-item-N.txt.
 Report: total passed, total failed. If failures, include test names and error summaries.
 Use dangerouslyDisableSandbox: true for make commands.
@@ -134,7 +134,8 @@ When all items are done:
 
 1. **Run the relevant test suite via subagents** — sequentially, never simultaneously:
    - Spawn integration test subagent: `make test-integration-parallel`. Write output to `$TMPDIR/final-integration-results.txt`.
-   - After it completes, spawn UI test subagent: `make test-ui-parallel`. Write output to `$TMPDIR/final-ui-results.txt`.
+   - After it completes, spawn UI test subagent: `make test-ui-parallel-built`. Write output to `$TMPDIR/final-ui-results.txt`.
+   - **Always use `test-ui-parallel-built`** — UI tests must run against built Vite assets, never the dev server.
    - Main agent reads each result file to determine pass/fail.
 2. If failures exist, enter the **Test Fix Loop** (Section 2e).
 3. **Clean up** all temp test output files.

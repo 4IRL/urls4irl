@@ -3,53 +3,24 @@
 <main class="flex-column flex-center">
 
     <h1 id="ContactTitle">Contact Us</h1>
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-      <span id="flasher"><strong>{{ messages[0] }}</strong></span>
-        </ul>
-      {% endif %}
-    {% endwith %}
     <h4>Feature ideas, bugs, compliments? Send it our way!</h4>
 
-    <form id="ContactForm" method="POST" action="/contact" class="flex-column g-1-5r" novalidate>
-        {{ contact_form.hidden_tag() }}
+    <form id="ContactForm" method="POST" class="flex-column g-0-5r" novalidate>
         <div id="Banner" class="alert hidden" role="alert"></div>
         <fieldset class="form-group flex-column g-0-5r">
             <div class="form-group">
-                {{ contact_form.subject.label(class="form-control-label login-register-label")}}
-                {% if contact_form.subject.errors %}
-                {{ contact_form.subject(class="form-control login-register-form-group is-invalid",
-                autocomplete="subject") }}
-                <div class="invalid-feedback">
-                    {% for error in contact_form.subject.errors %}
-                    <span>{{ error }}</span>
-                    {% endfor %}
-                </div>
-                {% else %}
-                {{ contact_form.subject(class="form-control login-register-form-group", autocomplete="subject", autofocus=true)}}
-                {% endif %}
+                <label for="subject" class="form-control-label login-register-label">Subject</label>
+                <input id="subject" name="subject" type="text" class="form-control login-register-form-group" autocomplete="subject" autofocus>
+                <div id="subject-error" class="invalid-feedback"></div>
             </div>
             <div class="form-group">
-                {{ contact_form.content.label(class="form-control-label login-register-label")}}
-                {% if contact_form.content.errors %}
-                {{ contact_form.content(class="form-control login-register-form-group is-invalid", autocomplete="content")
-                }}
-                <div class="invalid-feedback">
-                    {% for error in contact_form.content.errors %}
-                    <span>{{ error }}</span>
-                    {% endfor %}
-                </div>
-                {% else %}
-                {{ contact_form.content(class="form-control login-register-form-group", autocomplete="content")}}
-                {% endif %}
+                <label for="content" class="form-control-label login-register-label">Content</label>
+                <textarea id="content" name="content" class="form-control login-register-form-group" autocomplete="content"></textarea>
+                <div id="content-error" class="invalid-feedback"></div>
             </div>
         </fieldset>
         <div>
-            {% if contacted %}
-            {{ contact_form.submit(class="btn btn-success login-register-form-group col-12 login-register-buttons", data_sent="true")}}
-            {% else %}
-            {{ contact_form.submit(class="btn btn-success login-register-form-group col-12 login-register-buttons")}}
-            {% endif %}
+            <input id="submit" type="submit" value="Submit" class="btn btn-success login-register-form-group col-12 login-register-buttons">
         </div>
     </form>
 

@@ -1,4 +1,5 @@
 import pytest
+from selenium.webdriver.common.by import By
 from selenium.webdriver.remote.webdriver import WebDriver
 
 from tests.functional.assert_utils import (
@@ -115,3 +116,18 @@ def test_visit_contact_page_return_splash(
     visit_contact_us_page(browser)
     wait_then_click_element(browser, splash_btn_css_selector, time=3)
     assert_visible_css_selector(browser, SPL.WELCOME_TEXT)
+
+
+EXPECTED_TEXTAREA_MIN_HEIGHT_PX = "320px"
+
+
+def test_contact_textarea_min_height(browser: WebDriver):
+    """
+    GIVEN a fresh load of the U4I Contact Us page
+    WHEN user views the contact form
+    THEN ensure the textarea#content element has min-height: 20rem (320px) applied
+    """
+    visit_contact_us_page(browser)
+    textarea = browser.find_element(By.CSS_SELECTOR, HPL.CONTACT_CONTENT_INPUT)
+    min_height = textarea.value_of_css_property("min-height")
+    assert min_height == EXPECTED_TEXTAREA_MIN_HEIGHT_PX

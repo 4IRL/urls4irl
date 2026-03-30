@@ -19,10 +19,12 @@ class GenericPageLocator:
 
     # Contact Us Page
     CONTACT_US_HEADER = "#ContactTitle"
-    CONTACT_SUBJECT_INPUT = "#Subject"
-    CONTACT_CONTENT_INPUT = "#Content"
+    CONTACT_SUBJECT_INPUT = "#subject"
+    CONTACT_CONTENT_INPUT = "#content"
     CONTACT_SUBMIT = "#submit"
-    FLASH_ELEMENT = "#flasher"
+    CONTACT_BANNER = "#Banner"
+    CONTACT_SUBJECT_ERROR = "#subject-error"
+    CONTACT_CONTENT_ERROR = "#content-error"
 
     # Cookie Banner
     COOKIE_BANNER = "#CookieBanner"
