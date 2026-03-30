@@ -26,6 +26,7 @@ from backend.schemas.urls import (
     UrlUpdatedResponseSchema,
     UtubUrlDetailSchema,
 )
+from backend.urls.constants import URLErrorCodes
 from backend.urls.services.create_urls import create_url_in_utub
 from backend.urls.services.delete_urls import (
     check_if_is_url_adder_or_utub_creator_on_url_delete,
@@ -36,7 +37,6 @@ from backend.urls.services.update_urls import (
     check_if_is_url_adder_or_utub_creator_on_url_update,
     update_url_in_utub,
 )
-from backend.urls.constants import URLErrorCodes
 from backend.utils.strings.json_strs import STD_JSON_RESPONSE
 from backend.utils.strings.url_strs import URL_FAILURE, URL_SUCCESS
 
