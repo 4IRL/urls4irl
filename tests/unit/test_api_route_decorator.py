@@ -161,6 +161,23 @@ def test_api_route_get_without_body_succeeds(minimal_app: Flask):
     assert payload["status"] == "ok"
 
 
+def test_api_route_no_schema_ignores_request_body(minimal_app: Flask):
+    """
+    GIVEN a route decorated with @api_route() with no request_schema
+    WHEN the request includes a JSON body
+    THEN the body is silently ignored and the route returns 200
+    """
+    with minimal_app.test_client() as client:
+        response = client.get(
+            "/test-no-body",
+            json={"unexpected": "data", "should_be": "ignored"},
+        )
+
+    assert response.status_code == 200
+    payload = response.get_json()
+    assert payload["status"] == "ok"
+
+
 def test_api_route_raises_when_request_schema_without_error_message():
     """
     GIVEN @api_route called with request_schema but no error_message
