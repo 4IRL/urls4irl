@@ -1,9 +1,11 @@
 import pytest
 from flask import Flask
 
+from backend import limiter
 from backend.api_common.parse_request import api_route
 from backend.schemas.requests.splash import LoginRequest
 from backend.schemas.users import LoginRedirectResponseSchema
+from backend.system.routes import system
 
 pytestmark = pytest.mark.unit
 
@@ -144,3 +146,20 @@ def test_api_route_none_response_schema_stashed_when_none(minimal_app: Flask):
     """
     view_fn = minimal_app.view_functions["test_no_body"]
     assert view_fn._api_route_response_schema is None
+
+
+def test_api_route_health_endpoint_stashes_none_response_schema():
+    """
+    GIVEN the system.health route decorated with @api_route(response_schema=None)
+    WHEN accessing the view function from the real app
+    THEN both _api_route_request_schema and _api_route_response_schema are None
+    """
+    flask_app = Flask(__name__)
+    flask_app.config["TESTING"] = True
+
+    limiter.init_app(flask_app)
+    flask_app.register_blueprint(system)
+
+    view_fn = flask_app.view_functions["system.health"]
+    assert view_fn._api_route_response_schema is None
+    assert view_fn._api_route_request_schema is None
